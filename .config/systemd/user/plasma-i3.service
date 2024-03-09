@@ -1,0 +1,11 @@
+[Install]
+WantedBy=plasma-workspace.target
+
+[Unit]
+Description=Plasma Custom Window Manager
+Before=plasma-workspace.target
+
+[Service]
+ExecStart=/usr/bin/i3 --shmlog-size=26214400
+Slice=session.slice
+Restart=on-failure
