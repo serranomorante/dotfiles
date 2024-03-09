@@ -1,0 +1,19 @@
+gui:
+  scrollHeight: 8
+  nerdFontsVersion: "3"
+# based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md#default
+keybinding:
+  universal:
+    quit: <disabled>
+# based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Custom_Pagers.md#delta
+git:
+  paging:
+    colorArg: always
+    pager: delta --dark --paging=never
+# based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
+os:
+  edit: "nvim --server $NVIM --remote-send '<C-\\><C-n>:lua vim.api.nvim_win_close(0, true)<CR>:lua vim.cmd.edit({{filename}})<CR>'"
+  editAtLine: 'nvim --server "$NVIM" --remote-tab {{filename}}; [ -z "$NVIM" ] || nvim --server "$NVIM" --remote-send ":{{line}}<CR>"'
+  editAtLineAndWait: 'nvim +{{line}} {{filename}}'
+promptToReturnFromSubprocess: false
+notARepository: 'quit'
