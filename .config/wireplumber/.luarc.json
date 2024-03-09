@@ -1,0 +1,9 @@
+{
+  "Lua.diagnostics.disable": ["lowercase-global"],
+  "Lua.diagnostics.globals": [
+    "SimpleEventHook",
+    "Log",
+    "EventInterest",
+    "Constraint"
+  ]
+}
