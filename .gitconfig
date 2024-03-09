@@ -1,0 +1,32 @@
+[user]
+	email = example@gmail.com
+	name = Example Name
+
+[init]
+	defaultBranch = main
+
+[rerere]
+	enabled = true
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+    navigate = true    # use n and N to move between diff sections
+    light = false      # set to true if you're in a terminal w/ a light background color (e.g. the default macOS terminal)
+
+[merge]
+    conflictstyle = diff3
+
+[diff]
+    colorMoved = default
+
+; [core]
+; 	pager = less -LRc --mouse
+
+[pager]
+	diff = LESS='LRc --mouse' delta
+	show = LESS='LRc --mouse' delta
+	; stash = LESS='LRc --mouse' delta
+	; log = LESS='LRc --mouse' delta
+	; reflog = LESS='LRc --mouse' delta

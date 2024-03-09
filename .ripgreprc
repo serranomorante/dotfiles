@@ -1,0 +1,7 @@
+# Add my 'web' type.
+--type-add
+web:*.{html,css,js}*
+
+# Add my 'lock' type.
+--type-add
+lock:*-lock.{json,yaml}
