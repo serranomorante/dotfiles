@@ -74,3 +74,6 @@ vim.opt_global.listchars:append({ leadmultispace = "  ", trail = " " })
 
 vim.cmd.syntax("off")
 vim.g.colors_name = "default" -- prevent lazy.nvim from setting colorscheme
+
+vim.o.completeopt = "menuone,noselect,noinsert"
+vim.o.pumheight = 15

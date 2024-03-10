@@ -89,16 +89,6 @@ return {
     local mason_registry = require("mason-registry")
     dap.set_log_level(vim.env.DAP_LOG_LEVEL or "INFO")
 
-    ---Enable cmp dap source after `threads` request to prevent "Unknown request: completions" error
-    dap.listeners.after.threads["source-completions"] = function()
-      require("cmp_dap")
-      require("cmp").setup.filetype({ "dap-repl" }, {
-        sources = { { name = "dap" } },
-      })
-
-      dap.listeners.after.threads["source-completions"] = nil
-    end
-
     ---╔══════════════════════════════════════╗
     ---║               Adapters               ║
     ---╚══════════════════════════════════════╝

@@ -231,4 +231,12 @@ function M.update_indent_line_curbuf()
   end
 end
 
+---https://github.com/mfussenegger/dotfiles/blob/9a96db7fdcda87b0036c587282de5e0882317a8a/vim/.config/nvim/init.lua#L20
+---@param keys string
+---@param mode? string
+function M.feedkeys(keys, mode)
+  mode = mode or "n"
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(keys, true, false, true), mode, true)
+end
+
 return M

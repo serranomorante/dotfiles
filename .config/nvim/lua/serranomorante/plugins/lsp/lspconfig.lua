@@ -8,7 +8,25 @@ local capabilities = nil
 
 return {
   {
+    "L3MON4D3/LuaSnip",
+    event = "InsertEnter",
+    opts = {
+      -- Don't jump into snippets that have been left
+      -- Thanks: https://github.com/AstroNvim/AstroNvim/commit/af54d1481ee217a2389230109cbd298f24639118
+      history = true,
+      delete_check_events = "TextChanged",
+      region_check_events = "CursorMoved",
+    },
+    config = function(_, opts)
+      if opts then require("luasnip").config.setup(opts) end
+      ---@diagnostic disable-next-line: param-type-mismatch
+      local path = utils.join_paths(vim.fn.stdpath("config"), "lua/serranomorante/snippets")
+      require("luasnip.loaders.from_lua").load({ paths = path })
+    end,
+  },
+  {
     "pmizio/typescript-tools.nvim",
+    enabled = false,
     dependencies = "neovim/nvim-lspconfig",
     event = "User CustomLSPLoadJavascript,CustomLSPLoadTypescript,CustomLSPLoadTypescriptreact,CustomLSPLoadJavascriptreact",
     opts = function()
@@ -87,8 +105,8 @@ return {
     cmd = { "LspInfo", "LspInstall", "LspStart" },
     event = "User CustomFile",
     dependencies = {
-      "hrsh7th/cmp-nvim-lsp",
       "ibhagwan/fzf-lua",
+      "mfussenegger/nvim-lsp-compl",
     },
     init = function()
       ---See: https://github.com/VonHeikemen/lsp-zero.nvim/blob/dev-v3/doc/md/guides/under-the-hood.md
@@ -128,7 +146,8 @@ return {
     config = function()
       if utils.is_available("neodev.nvim") then require("neodev") end
       local lspconfig = require("lspconfig")
-      local cmp_nvim_lsp = require("cmp_nvim_lsp")
+      local lsp_compl = require("lsp_compl")
+      local luasnip = require("luasnip")
       vim.lsp.set_log_level(vim.env.LSP_LOG_LEVEL or "INFO")
 
       on_init = function(client)
@@ -138,6 +157,9 @@ return {
       end
 
       on_attach = function(client, bufnr)
+        ---https://github.com/mfussenegger/nvim-lsp-compl?tab=readme-ov-file#configuration
+        lsp_compl.attach(client, bufnr)
+
         local opts = { noremap = true, silent = true, buffer = bufnr }
 
         if utils.is_available("fzf-lua") then
@@ -253,10 +275,43 @@ return {
           opts.desc = "LSP CodeLens run"
           vim.keymap.set("n", "<leader>lL", function() vim.lsp.codelens.run() end, opts)
         end
+
+        opts.desc = "LSP: Accept completion candidate"
+        vim.keymap.set(
+          "i",
+          "<C-y>",
+          function() return lsp_compl.accept_pum() and "<C-y>" or "<CR>" end,
+          { expr = true, unpack(opts) }
+        )
+
+        opts.desc = "LSP: Trigger completion"
+        vim.keymap.set("i", "<C-x><C-o>", lsp_compl.trigger_completion, opts)
+
+        opts.desc = "LSP: Expand or jump snippet"
+        vim.keymap.set({ "i", "s" }, "<Tab>", function()
+          if vim.fn.pumvisible() ~= 0 then
+            utils.feedkeys("<C-n>")
+          elseif luasnip.expand_or_locally_jumpable() then
+            luasnip.expand_or_jump()
+          else
+            utils.feedkeys("<Tab>")
+          end
+        end, opts)
+
+        opts.desc = "LSP: Expand or jump snippet"
+        vim.keymap.set({ "i", "s" }, "<S-Tab>", function()
+          if vim.fn.pumvisible() ~= 0 then
+            utils.feedkeys("<C-p>")
+          elseif luasnip.expand_or_locally_jumpable(-1) then
+            luasnip.jump(-1)
+          else
+            utils.feedkeys("<S-Tab>")
+          end
+        end, opts)
       end
 
       capabilities = vim.lsp.protocol.make_client_capabilities()
-      capabilities = vim.tbl_deep_extend("force", capabilities, cmp_nvim_lsp.default_capabilities())
+      capabilities = vim.tbl_deep_extend("force", capabilities, require("lsp_compl").capabilities())
       capabilities.textDocument.foldingRange = { dynamicRegistration = false, lineFoldingOnly = true }
 
       local servers = utils.get_from_tools(tools.by_filetype, "lsp", true)
