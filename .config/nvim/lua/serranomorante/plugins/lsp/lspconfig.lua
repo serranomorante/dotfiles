@@ -70,12 +70,14 @@ return {
         },
       }
 
-      for _, server in ipairs({ "jsonls", "yamlls" }) do
-        require("lspconfig")[server].setup({
+      for _, server in ipairs({ "json", "yaml" }) do
+        require("lspconfig")[server .. "ls"].setup({
           on_init = on_init,
           on_attach = on_attach,
           capabilities = capabilities,
-          settings = settings[server],
+          settings = {
+            [server] = settings[server],
+          },
         })
       end
     end,
