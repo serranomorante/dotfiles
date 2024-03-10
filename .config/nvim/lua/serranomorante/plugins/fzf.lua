@@ -55,7 +55,7 @@ M.fzf_lua = {
     },
     {
       "<leader>fw",
-      function() require("fzf-lua").live_grep_glob() end,
+      function() require("fzf-lua").live_grep() end,
       desc = "FZF: Live grep",
     },
     {
@@ -125,6 +125,10 @@ M.fzf_lua = {
         buffers = {
           ["default"] = fzf_lua.actions.buf_edit_or_qf,
         },
+      },
+      grep = {
+        rg_opts = "--column --line-number --no-heading --color=always --hidden --smart-case --max-columns=4096 -e",
+        rg_glob = true,
       },
       dap = {
         breakpoints = {
