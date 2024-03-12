@@ -11,7 +11,7 @@ return {
   { "nvim-treesitter/nvim-treesitter-textobjects", lazy = true },
   {
     "kevinhwang91/nvim-treesitter", -- see: https://github.com/kevinhwang91/nvim-bqf/issues/110#issuecomment-1509896444
-    event = "User CustomFile",
+    lazy = false,
     cmd = {
       "TSBufDisable",
       "TSBufEnable",
