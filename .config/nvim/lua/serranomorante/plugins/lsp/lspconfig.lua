@@ -8,54 +8,6 @@ local capabilities = nil
 
 return {
   {
-    "L3MON4D3/LuaSnip",
-    event = "InsertEnter",
-    opts = {
-      -- Don't jump into snippets that have been left
-      -- Thanks: https://github.com/AstroNvim/AstroNvim/commit/af54d1481ee217a2389230109cbd298f24639118
-      history = true,
-      delete_check_events = "TextChanged",
-      region_check_events = "CursorMoved",
-    },
-    config = function(_, opts)
-      if opts then require("luasnip").config.setup(opts) end
-      ---@diagnostic disable-next-line: param-type-mismatch
-      local path = utils.join_paths(vim.fn.stdpath("config"), "lua/serranomorante/snippets")
-      require("luasnip.loaders.from_lua").load({ paths = path })
-    end,
-  },
-  {
-    "pmizio/typescript-tools.nvim",
-    enabled = false,
-    dependencies = "neovim/nvim-lspconfig",
-    event = "User CustomLSPLoadJavascript,CustomLSPLoadTypescript,CustomLSPLoadTypescriptreact,CustomLSPLoadJavascriptreact",
-    opts = function()
-      return {
-        on_init = on_init,
-        capabilities = capabilities,
-        on_attach = on_attach,
-        single_file_support = false,
-        settings = {
-          code_lens = "all",
-          publish_diagnostic_on = "insert_leave",
-          complete_function_calls = false,
-          expose_as_code_action = { "fix_all", "add_missing_imports", "remove_unused" },
-          separate_diagnostic_server = false,
-          tsserver_file_preferences = {
-            includeInlayParameterNameHints = "all",
-            includeInlayParameterNameHintsWhenArgumentMatchesName = true,
-            includeInlayFunctionParameterTypeHints = true,
-            includeInlayVariableTypeHints = true,
-            includeInlayVariableTypeHintsWhenTypeMatchesName = true,
-            includeInlayPropertyDeclarationTypeHints = true,
-            includeInlayFunctionLikeReturnTypeHints = true,
-            includeInlayEnumMemberValueHints = true,
-          },
-        },
-      }
-    end,
-  },
-  {
     "p00f/clangd_extensions.nvim",
     dependencies = "neovim/nvim-lspconfig",
     event = "User CustomLSPLoadC",
@@ -104,10 +56,7 @@ return {
     "neovim/nvim-lspconfig",
     cmd = { "LspInfo", "LspInstall", "LspStart" },
     event = "User CustomFile",
-    dependencies = {
-      "ibhagwan/fzf-lua",
-      "mfussenegger/nvim-lsp-compl",
-    },
+    dependencies = { "ibhagwan/fzf-lua" },
     init = function()
       ---See: https://github.com/VonHeikemen/lsp-zero.nvim/blob/dev-v3/doc/md/guides/under-the-hood.md
       ---See: https://github.com/mfussenegger/nvim-lint/issues/340#issuecomment-1676438571
@@ -146,8 +95,6 @@ return {
     config = function()
       if utils.is_available("neodev.nvim") then require("neodev") end
       local lspconfig = require("lspconfig")
-      local lsp_compl = require("lsp_compl")
-      local luasnip = require("luasnip")
       vim.lsp.set_log_level(vim.env.LSP_LOG_LEVEL or "INFO")
 
       on_init = function(client)
@@ -278,44 +225,11 @@ return {
           opts.desc = "LSP CodeLens run"
           vim.keymap.set("n", "<leader>lL", function() vim.lsp.codelens.run() end, opts)
         end
-
-        opts.desc = "LSP: Accept completion candidate"
-        vim.keymap.set(
-          "i",
-          "<C-y>",
-          function() return lsp_compl.accept_pum() and "<C-y>" or "<CR>" end,
-          { expr = true, unpack(opts) }
-        )
-
-        opts.desc = "LSP: Trigger completion"
-        vim.keymap.set("i", "<C-x><C-o>", lsp_compl.trigger_completion, opts)
-
-        opts.desc = "LSP: Expand or jump snippet"
-        vim.keymap.set({ "i", "s" }, "<Tab>", function()
-          if vim.fn.pumvisible() ~= 0 then
-            utils.feedkeys("<C-n>")
-          elseif luasnip.expand_or_locally_jumpable() then
-            luasnip.expand_or_jump()
-          else
-            utils.feedkeys("<Tab>")
-          end
-        end, opts)
-
-        opts.desc = "LSP: Expand or jump snippet"
-        vim.keymap.set({ "i", "s" }, "<S-Tab>", function()
-          if vim.fn.pumvisible() ~= 0 then
-            utils.feedkeys("<C-p>")
-          elseif luasnip.expand_or_locally_jumpable(-1) then
-            luasnip.jump(-1)
-          else
-            utils.feedkeys("<S-Tab>")
-          end
-        end, opts)
       end
 
       capabilities = vim.lsp.protocol.make_client_capabilities()
-      capabilities = vim.tbl_deep_extend("force", capabilities, require("lsp_compl").capabilities())
       capabilities.textDocument.foldingRange = { dynamicRegistration = false, lineFoldingOnly = true }
+      capabilities.textDocument.completion.completionItem.snippetSupport = false
 
       local servers = utils.get_from_tools(tools.by_filetype, "lsp", true)
 
@@ -346,7 +260,9 @@ return {
                   globals = { "vim" },
                 },
                 completion = {
-                  callSnippet = "Replace",
+                  ---Disable snippets for keywords like for, while, etc
+                  ---https://github.com/LuaLS/lua-language-server/wiki/Settings#completionkeywordsnippet
+                  keywordSnippet = "Disable",
                 },
                 workspace = {
                   library = {
@@ -384,10 +300,58 @@ return {
             },
           })
         end,
+        ["vtsls"] = function()
+          lspconfig["vtsls"].setup({
+            on_init = on_init,
+            on_attach = on_attach,
+            capabilities = capabilities,
+            single_file_support = false,
+            settings = {
+              ---https://github.com/yioneko/vtsls/blob/main/packages/service/configuration.schema.json
+              typescript = {
+                inlayHints = {
+                  parameterNames = {
+                    enabled = "all",
+                  },
+                  parameterTypes = {
+                    enabled = true,
+                  },
+                  -- variableTypes = {
+                  --   enabled = true,
+                  -- },
+                  propertyDeclarationTypes = {
+                    enabled = true,
+                  },
+                  functionLikeReturnTypes = {
+                    enabled = true,
+                  },
+                  enumMemberValues = {
+                    enabled = true,
+                  },
+                },
+                referencesCodeLens = {
+                  enabled = true,
+                  showOnAllFunctions = true,
+                },
+                implementationsCodeLens = {
+                  enabled = true,
+                  showOnInterfaceMethods = true,
+                },
+              },
+              vtsls = {
+                experimental = {
+                  completion = {
+                    enableServerSideFuzzyMatch = true,
+                  },
+                },
+              },
+            },
+          })
+        end,
       }
 
-      ---Prevent lsp server setup only when plugin is available
-      if utils.is_available("typescript-tools.nvim") then custom["tsserver"] = function() end end
+      ---Prevent server setup
+      custom["tsserver"] = function() end
       if utils.is_available("clangd_extensions.nvim") then custom["clangd"] = function() end end
       if utils.is_available("SchemaStore.nvim") then
         custom["yamlls"] = function() end

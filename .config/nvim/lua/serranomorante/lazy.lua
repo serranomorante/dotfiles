@@ -24,6 +24,7 @@ require("lazy").setup({
     path = "~/repos",
     fallback = true,
     patterns = {
+      -- "mfussenegger/nvim-lsp-compl",
       -- "mfussenegger/nvim-dap",
       -- "neovim/nvim-lspconfig",
       -- "marilari88/neotest-vitest",

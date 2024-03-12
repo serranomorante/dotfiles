@@ -6,7 +6,7 @@ M.by_filetype = {
   javascript = {
     formatters = { "eslint_d", "prettierd" },
     linters = { "eslint_d" },
-    lsp = { "typescript-language-server", "tailwindcss-language-server" },
+    lsp = { "typescript-language-server", "tailwindcss-language-server", "vtsls" },
     dap = {
       ---Uncomment next line if you want to use `dapDebugServer` instead of `vsDebugServerBundle`
       -- { "js-debug-adapter", version = "v1.82.0" },
