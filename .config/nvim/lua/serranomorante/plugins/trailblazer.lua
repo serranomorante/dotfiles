@@ -65,8 +65,8 @@ return {
   },
   opts = function()
     local opts = {
-      auto_save_trailblazer_state_on_exit = false, -- we are manually doing it on `resession.nvim`
-      auto_load_trailblazer_state_on_enter = false, -- we are manually doing it on `resession.nvim`
+      auto_save_trailblazer_state_on_exit = false, -- we are manually doing it on `persistence.nvim`
+      auto_load_trailblazer_state_on_enter = false, -- we are manually doing it on `persistence.nvim`
       trail_options = {
         ---Marks are sorted by their buffer id and globally traversed from BOF to EOF
         current_trail_mark_mode = "global_buf_line_sorted",
