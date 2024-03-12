@@ -5,15 +5,12 @@ return {
   {
     "JoosepAlviste/nvim-ts-context-commentstring",
     lazy = true,
-    dependencies = "kevinhwang91/nvim-treesitter", -- see: https://github.com/kevinhwang91/nvim-bqf/issues/110#issuecomment-1509896444
-    opts = {
-      enable_autocmd = false,
-    },
+    opts = { enable_autocmd = false },
     init = function() vim.g.skip_ts_context_commentstring_module = true end,
   },
+  { "nvim-treesitter/nvim-treesitter-textobjects", lazy = true },
   {
-    "kevinhwang91/nvim-treesitter",
-    dependencies = "nvim-treesitter/nvim-treesitter-textobjects",
+    "kevinhwang91/nvim-treesitter", -- see: https://github.com/kevinhwang91/nvim-bqf/issues/110#issuecomment-1509896444
     event = "User CustomFile",
     cmd = {
       "TSBufDisable",
@@ -46,8 +43,14 @@ return {
         enable = true,
         disable = function(_, bufnr) return vim.b[bufnr].large_buf end,
       },
-      incremental_selection = { enable = true },
-      indent = { enable = true },
+      incremental_selection = {
+        enable = true,
+        disable = function(_, bufnr) return vim.b[bufnr].large_buf end,
+      },
+      indent = {
+        enable = true,
+        disable = function(_, bufnr) return vim.b[bufnr].large_buf end,
+      },
       textobjects = {
         select = {
           enable = true,

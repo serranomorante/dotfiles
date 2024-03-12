@@ -64,7 +64,11 @@ return {
 
     ---fixes: https://github.com/stevearc/resession.nvim/issues/44#issue-2006411201
     ---also: https://github.com/AstroNvim/AstroNvim/issues/2378#issue-2005950553
-    resession.add_hook("post_load", function() vim.api.nvim_exec_autocmds("BufReadPost", {}) end)
+    resession.add_hook("post_load", function()
+      ---Force the `BufReadPre` on start to disable certain functionality on very large files
+      vim.api.nvim_exec_autocmds("BufReadPre", { group = "large_buf" })
+      vim.api.nvim_exec_autocmds("BufReadPost", {})
+    end)
 
     ---Autoload session
     local autoload_session = function()

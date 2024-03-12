@@ -41,11 +41,12 @@ autocmd({ "BufReadPost", "BufNewFile", "BufWritePost" }, {
       events.event("File")
     end
 
-    ---Lazy load LSP plugins
-    utils.load_plugin_by_filetype("LSP", { buffer = args.buf })
-
     ---https://github.com/AstroNvim/AstroNvim/commit/ba0fbdf974eb63639e43d6467f7232929b8b9b4c
     vim.schedule(function()
+      if vim.b[args.buf].large_buf then return end
+      ---Lazy load LSP plugins
+      utils.load_plugin_by_filetype("LSP", { buffer = args.buf })
+
       if vim.bo[args.buf].filetype then
         vim.api.nvim_exec_autocmds("FileType", { buffer = args.buf, modeline = false })
       end
@@ -60,13 +61,16 @@ autocmd("BufEnter", {
   callback = function() vim.opt.formatoptions:remove({ "c", "r", "o" }) end,
 })
 
-autocmd("BufReadPost", {
+autocmd("BufReadPre", {
   desc = "Disable certain functionality on very large files",
   group = augroup("large_buf", { clear = true }),
   callback = function(args)
-    local ok, stats = pcall((vim.uv.fs_stat or vim.loop.fs_stat), vim.api.nvim_buf_get_name(args.buf))
-    vim.b[args.buf].large_buf = (ok and stats and stats.size > vim.g.max_file.size)
+    local ok, stats = pcall((vim.uv or vim.loop).fs_stat, vim.api.nvim_buf_get_name(args.buf))
+    local is_large_buf = (ok and stats and stats.size > vim.g.max_file.size)
       or vim.api.nvim_buf_line_count(args.buf) > vim.g.max_file.lines
+    vim.b[args.buf].large_buf = is_large_buf
+    ---Disable `FileType` event to prevent loading LSP and improve performance
+    vim.o.eventignore = is_large_buf and "Filetype" or ""
   end,
 })
 
@@ -108,7 +112,8 @@ autocmd("OptionSet", {
   desc = "Update indent line on shiftwidth change",
   group = indent_line_group,
   pattern = "shiftwidth",
-  callback = function()
+  callback = function(args)
+    if vim.b[args.buf].large_buf then return end
     if vim.v.option_type == "local" then
       utils.update_indent_line_curbuf()
     else
@@ -121,5 +126,8 @@ autocmd("User", {
   desc = "Update indent line on CustomFile event",
   pattern = "CustomFile",
   group = indent_line_group,
-  callback = function() vim.wo.listchars = utils.update_indent_line(vim.wo.listchars, vim.bo.shiftwidth) end,
+  callback = function(args)
+    if vim.b[args.buf].large_buf then return end
+    vim.wo.listchars = utils.update_indent_line(vim.wo.listchars, vim.bo.shiftwidth)
+  end,
 })

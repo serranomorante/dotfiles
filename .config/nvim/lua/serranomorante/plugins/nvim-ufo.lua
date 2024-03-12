@@ -31,7 +31,7 @@ return {
   "kevinhwang91/nvim-ufo",
   event = "User CustomFile",
   cmd = "UfoInspect",
-  dependencies = { "kevinhwang91/promise-async", "neovim/nvim-lspconfig", "kevinhwang91/nvim-treesitter" },
+  dependencies = "kevinhwang91/promise-async",
   keys = {
     {
       "zR",
@@ -72,8 +72,8 @@ return {
         scrollD = "<C-d>",
       },
     },
-    provider_selector = function(_, filetype, buftype)
-      if filetype == "" or buftype == "nofile" then return provider_by_filetype["nofile"] end
+    provider_selector = function(bufnr, filetype, buftype)
+      if vim.b[bufnr].large_buf or filetype == "" or buftype == "nofile" then return provider_by_filetype["nofile"] end
       return provider_by_filetype[filetype] or customize_selector
     end,
   },

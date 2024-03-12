@@ -3,7 +3,6 @@ local M = {}
 M.nvim_bqf = {
   "kevinhwang91/nvim-bqf",
   dependencies = {
-    "kevinhwang91/nvim-treesitter",
     {
       ---`junegunn/fzf` vim plugin is necessary because `nvim-bqf` uses `fzf#run(...)`
       ---https://github.com/junegunn/fzf/blob/master/README-VIM.md#summary

@@ -157,8 +157,11 @@ return {
       end
 
       on_attach = function(client, bufnr)
-        ---https://github.com/mfussenegger/nvim-lsp-compl?tab=readme-ov-file#configuration
-        lsp_compl.attach(client, bufnr)
+        ---Disable LSP on large buffers
+        if vim.b[bufnr].large_buf then
+          vim.schedule(function() vim.lsp.buf_detach_client(bufnr, client.id) end)
+          return
+        end
 
         local opts = { noremap = true, silent = true, buffer = bufnr }
 
