@@ -167,11 +167,6 @@ return {
           vim.keymap.set("n", "<leader>lh", vim.lsp.buf.signature_help, opts)
         end
 
-        if client.supports_method("workspace/symbol") then
-          opts.desc = "LSP: Search workspace symbols"
-          vim.keymap.set("n", "<leader>lG", vim.lsp.buf.workspace_symbol, opts)
-        end
-
         opts.desc = "LSP: Show line diagnostics"
         vim.keymap.set("n", "gl", vim.diagnostic.open_float, opts)
 
