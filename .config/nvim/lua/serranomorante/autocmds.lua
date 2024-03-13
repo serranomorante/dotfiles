@@ -115,3 +115,25 @@ autocmd("User", {
     vim.wo.listchars = utils.update_indent_line(vim.wo.listchars, vim.bo.shiftwidth)
   end,
 })
+
+autocmd("LspProgress", {
+  desc = "Minimal LSP progress messages in the command line",
+  group = augroup("lsp_progress", { clear = true }),
+  pattern = { "begin", "end" },
+  callback = function(args)
+    ---Inspired by: https://github.com/rockyzhang24/dotfiles/blob/master/.config/nvim/lua/rockyz/lsp/progress.lua
+    local id = args.data.client_id
+    local kind = args.data.result.value.kind
+    local title = args.data.result.value.title
+    local icons = { ["begin"] = "⣾", ["end"] = "" }
+    local client_name = vim.lsp.get_client_by_id(id).name
+    local suffix_when_done = kind == "end" and "DONE!" or ""
+
+    -- Assemble the output progress message
+    -- - General: ⣾ [client_name] title: message
+    -- - Done:     [client_name] title: DONE!
+    local message = string.format("%s [%s] %s: %s", icons[kind], client_name, title, suffix_when_done)
+
+    vim.notify(message, vim.log.levels.INFO, { title = "LSP Progress" })
+  end,
+})
