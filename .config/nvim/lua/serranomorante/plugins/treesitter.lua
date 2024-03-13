@@ -8,10 +8,10 @@ return {
     opts = { enable_autocmd = false },
     init = function() vim.g.skip_ts_context_commentstring_module = true end,
   },
-  { "nvim-treesitter/nvim-treesitter-textobjects", lazy = true },
   {
     "kevinhwang91/nvim-treesitter", -- see: https://github.com/kevinhwang91/nvim-bqf/issues/110#issuecomment-1509896444
     lazy = false,
+    dependencies = "nvim-treesitter/nvim-treesitter-textobjects",
     cmd = {
       "TSBufDisable",
       "TSBufEnable",
@@ -109,6 +109,21 @@ return {
         },
       },
     },
-    config = function(_, opts) require("nvim-treesitter.configs").setup(opts) end,
+    config = function(_, opts)
+      require("nvim-treesitter.configs").setup(opts)
+      local parser_config = require("nvim-treesitter.parsers").get_parser_configs()
+
+      for _, parser in ipairs({ "typescript", "tsx" }) do
+        parser_config[parser] = {
+          install_info = {
+            url = "~/repos/tree-sitter-typescript/" .. parser,
+            files = { "src/parser.c", "src/scanner.c" },
+            branch = "master",
+            requires_generate_from_grammar = false, -- if folder contains pre-generated src/parser.c
+            -- generate_requires_npm = false, -- if stand-alone parser without npm dependencies
+          },
+        }
+      end
+    end,
   },
 }
