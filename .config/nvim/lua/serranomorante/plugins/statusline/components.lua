@@ -125,7 +125,15 @@ M.LSPActive = {
     self.names = names
   end,
   static = {
-    surround = function(_, names) return vim.tbl_count(names) > 0 and " " .. table.concat(names, ",") or "" end,
+    surround = function(_, names)
+      if vim.tbl_count(names) == 0 then return "" end
+      local non_nil = {}
+      for _, v in ipairs(names) do
+        if v ~= nil then table.insert(non_nil, v) end
+      end
+      if #non_nil == 0 then return "" end
+      return " " .. table.concat(non_nil, ",")
+    end,
     truncate = function(_, value) return value and (value):sub(1, 5) .. ".." or "" end,
   },
   condition = heirline_conditions.lsp_attached,
