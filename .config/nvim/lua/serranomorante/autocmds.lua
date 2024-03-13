@@ -36,7 +36,7 @@ autocmd({ "BufReadPost", "BufNewFile", "BufWritePost" }, {
   desc = "Execute `CustomFile` user event on valid buffers",
   group = augroup("file_user_events", { clear = true }),
   callback = function(args)
-    local current_file = vim.fn.resolve(vim.fn.expand("%"))
+    local current_file = vim.api.nvim_buf_get_name(args.buf)
     if not (current_file == "" or vim.api.nvim_get_option_value("buftype", { buf = args.buf }) == "nofile") then
       events.event("File")
     end
