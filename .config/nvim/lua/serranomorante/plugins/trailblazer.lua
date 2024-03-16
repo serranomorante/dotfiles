@@ -1,5 +1,3 @@
-local utils = require("serranomorante.utils")
-
 return {
   "LeonHeidelbach/trailblazer.nvim",
   event = "User CustomFile",
@@ -103,25 +101,12 @@ return {
       },
     }
 
-    local hl_groups = {}
-    if utils.is_available("nightfox.nvim") then
-      local palette = require("nightfox.palette").load(vim.g.colors_name)
-
-      hl_groups = vim.tbl_deep_extend("force", hl_groups, {
-        TrailBlazerTrailMark = {
-          guifg = palette.fg2,
-        },
-        TrailBlazerTrailMarkNext = {
-          guifg = palette.fg2,
-        },
-        TrailBlazerTrailMarkPrevious = {
-          guifg = palette.fg2,
-        },
-        TrailBlazerTrailMarkNewest = {
-          guibg = palette.fg2,
-        },
-      })
-    end
+    local hl_groups = {
+      TrailBlazerTrailMark = { link = "Constant" },
+      TrailBlazerTrailMarkNext = { link = "Constant" },
+      TrailBlazerTrailMarkPrevious = { link = "Constant" },
+      TrailBlazerTrailMarkNewest = { link = "Constant" },
+    }
     opts.hl_groups = hl_groups
 
     return opts
