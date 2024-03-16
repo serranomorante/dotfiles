@@ -16,13 +16,21 @@ return {
     },
     {
       "<A-J>",
-      function() require("trailblazer").peek_move_next_down() end,
+      function()
+        local ok, result = pcall(require("trailblazer").peek_move_next_down)
+        if not ok and string.find(result, "common.lua:3") then return vim.notify("Marks empty", vim.log.levels.WARN) end
+        vim.notify(string.format("Error: %s", result), vim.log.levels.ERROR)
+      end,
       desc = "Trailblazer: Move to the next global trail mark",
       mode = { "n", "v" },
     },
     {
       "<A-K>",
-      function() require("trailblazer").peek_move_previous_up() end,
+      function()
+        local ok, result = pcall(require("trailblazer").peek_move_previous_up)
+        if not ok and string.find(result, "common.lua:3") then return vim.notify("Marks empty", vim.log.levels.WARN) end
+        vim.notify(string.format("Error: %s", result), vim.log.levels.ERROR)
+      end,
       desc = "Trailblazer: Move to the previous global trail mark",
       mode = { "n", "v" },
     },
