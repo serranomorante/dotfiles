@@ -1,9 +1,6 @@
 ---Global settings
 require("serranomorante.set")
 
----Colorscheme
-require("serranomorante.colorscheme")
-
 ---Plugin manager
 ---Depends on configurations from `set.lua` file
 require("serranomorante.lazy")

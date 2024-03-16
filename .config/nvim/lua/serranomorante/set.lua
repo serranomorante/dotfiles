@@ -30,8 +30,6 @@ vim.opt.shadafile = utils.join_paths(shadadir, "nvim.shada")
 vim.opt.undodir = undodir
 vim.opt.undofile = true
 
-vim.opt.termguicolors = true
-
 vim.opt.scrolloff = 4
 vim.opt.signcolumn = "yes:1"
 vim.opt.isfname:append("@-@")
@@ -73,7 +71,7 @@ vim.opt.list = true
 vim.opt_global.listchars:append({ leadmultispace = "  ", trail = " " })
 
 vim.cmd.syntax("off")
-vim.g.colors_name = "default" -- prevent lazy.nvim from setting colorscheme
+vim.cmd.colorscheme("default")
 
 vim.o.completeopt = "menuone,noselect,noinsert"
 vim.o.pumheight = 15

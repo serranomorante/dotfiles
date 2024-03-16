@@ -72,6 +72,8 @@ return {
 
     local DAPUIStatusLine = {
       condition = function() return conditions.is_active() and conditions.buffer_matches({ filetype = { "^dap-.*" } }) end,
+      components.Mode,
+      components.Space,
       components.FileNameBlock,
       components.Align,
     }
@@ -103,5 +105,16 @@ return {
         disable_winbar_cb = function(args) return not conditions.buffer_matches({ filetype = { "oil" } }, args.buf) end,
       },
     }
+  end,
+  config = function(_, opts)
+    require("heirline").setup(opts)
+    local utils = require("heirline.utils")
+
+    ---https://github.com/rebelot/heirline.nvim/blob/master/cookbook.md#theming
+    vim.api.nvim_create_augroup("Heirline", { clear = true })
+    vim.api.nvim_create_autocmd("ColorScheme", {
+      callback = function() utils.on_colorscheme(opts.opts.colors) end,
+      group = "Heirline",
+    })
   end,
 }
