@@ -15,10 +15,6 @@ vim.keymap.set("v", "K", ":m '<-2<CR>gv=gv", { desc = "Move lines up" })
 vim.keymap.set("v", "H", "<gv", { desc = "Indent lines left" })
 vim.keymap.set("v", "L", ">gv", { desc = "Indent lines right" })
 
--- Delete highlighted word into the void
--- register and paste over it.
-vim.keymap.set("x", "<leader>p", '"_dP', { desc = "Paste without losing previous copy" })
-
 -- Replace the highlighted word
 vim.keymap.set(
   "n",
@@ -51,8 +47,6 @@ vim.keymap.set("n", ">t", "<cmd>tabmove +1<CR>", { desc = "Move tab right" })
 
 vim.keymap.set("n", "<leader>qf", "<cmd>botright copen<CR>", { desc = "Quickfix: Open list" })
 vim.keymap.set("n", "<leader>ql", "<cmd>botright lopen<CR>", { desc = "Quickfix: Open location list" })
-vim.keymap.set("n", "<leader>qn", "<cmd>cnewer<CR>", { desc = "Quickfix: Go to next list" })
-vim.keymap.set("n", "<leader>qp", "<cmd>colder<CR>", { desc = "Quickfix: Go to previous list" })
 
 vim.keymap.set({ "i", "n" }, "<esc>", "<cmd>noh<cr><esc>", { desc = "Escape and clear hlsearch" })
 

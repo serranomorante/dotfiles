@@ -56,7 +56,7 @@ return {
     "neovim/nvim-lspconfig",
     cmd = { "LspInfo", "LspInstall", "LspStart" },
     event = "User CustomFile",
-    dependencies = { "ibhagwan/fzf-lua" },
+    dependencies = "ibhagwan/fzf-lua",
     init = function()
       ---See: https://github.com/VonHeikemen/lsp-zero.nvim/blob/dev-v3/doc/md/guides/under-the-hood.md
       ---See: https://github.com/mfussenegger/nvim-lint/issues/340#issuecomment-1676438571
