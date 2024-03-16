@@ -37,7 +37,8 @@ return {
         tools.by_filetype.rust,
         tools.by_filetype.fish,
         tools.by_filetype.toml,
-        tools.by_filetype.lua
+        tools.by_filetype.lua,
+        tools.by_filetype.vim
       ),
       highlight = {
         enable = true,

@@ -35,6 +35,7 @@ M.by_filetype = {
   fish = { formatters = { "fish_indent" }, parsers = { "fish" } },
   markdown = { lsp = { "marksman" }, formatters = { "prettierd" } },
   toml = { lsp = { "taplo" }, parsers = { "toml" } },
+  vim = { parsers = { "vimdoc" } }, -- TODO: Remove when problem is fixed in neovim
 }
 
 if vim.fn.executable("npm") == 0 then M.by_filetype.javascript = {} end
