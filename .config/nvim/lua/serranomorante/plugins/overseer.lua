@@ -1,9 +1,14 @@
 local utils = require("serranomorante.utils")
 
+local last_nvim_win_width = vim.api.nvim_win_get_width(0)
+
 return {
   "stevearc/overseer.nvim",
   lazy = true,
   keys = function()
+    local overseer = require("overseer")
+    local STATUS = require("overseer.constants").STATUS
+
     local keymaps = {
       { "<leader>oo", "<cmd>OverseerToggle<CR>", desc = "Overseer: Toggle the overseer window" },
       { "<leader>or", "<cmd>OverseerRun<CR>", desc = "Overseer: Run a task from a template" },
@@ -22,19 +27,15 @@ return {
       table.insert(keymaps, {
         "<leader>gg",
         function()
-          local template_name = "Toggle Lazygit"
-          local overseer = require("overseer")
-          local STATUS = require("overseer.constants").STATUS
-          local tasks = overseer.list_tasks({ name = "lazygit", status = STATUS.RUNNING })
-
-          if #tasks == 0 then
-            overseer.run_template({ name = template_name }, function(task)
-              if task then overseer.run_action(task, "open tab") end
+          local current_vim_win_width = vim.api.nvim_win_get_width(0)
+          local lazygit_tasks = overseer.list_tasks({ name = "lazygit", status = STATUS.RUNNING })
+          if vim.tbl_count(lazygit_tasks) == 0 then
+            overseer.run_template({ name = "Toggle Lazygit" }, function(task)
+              if task then lazygit_tasks = { task } end
             end)
-          else
-            for _, task in pairs(tasks) do
-              if task then overseer.run_action(task, "open tab") end
-            end
+          end
+          for _, task in pairs(lazygit_tasks) do
+            if task then overseer.run_action(task, "open tab") end -- open lazygit term on new tab
           end
 
           ---Auto enter insert mode
@@ -49,6 +50,8 @@ return {
               --- 3. `i` to enter insert mode again
               ---This only works when toggling the terminal, not when resizing the terminal
               ---for that look into the `VimResized` autocmd in this file
+              if current_vim_win_width == last_nvim_win_width then return end
+              last_nvim_win_width = current_vim_win_width
               utils.feedkeys("<C-\\><C-n>ki")
             end
           end, 100)
