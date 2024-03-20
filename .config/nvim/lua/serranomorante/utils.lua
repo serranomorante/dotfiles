@@ -239,4 +239,8 @@ function M.feedkeys(keys, mode)
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(keys, true, false, true), mode, true)
 end
 
+---Replace `%` char from filenames
+---@param filename string
+function M.get_escaped_filename(filename) return filename:gsub("%%", "_") end
+
 return M

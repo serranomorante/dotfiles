@@ -1,6 +1,7 @@
 local constants = require("serranomorante.constants")
 local heirline_conditions = require("heirline.conditions")
 local heirline_utils = require("heirline.utils")
+local utils = require("serranomorante.utils")
 
 local M = {}
 
@@ -40,7 +41,9 @@ M.Mode = {
 
 ---https://github.com/rebelot/heirline.nvim/blob/master/cookbook.md#crash-course-part-ii-filename-and-friends
 M.FileNameBlock = {
-  init = function(self) self.filename = vim.api.nvim_buf_get_name(0) end,
+  init = function(self)
+    self.filename = utils.get_escaped_filename(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":."))
+  end,
 }
 
 M.FileIcon = {
@@ -55,7 +58,7 @@ M.FileIcon = {
 
 M.FileName = {
   init = function(self)
-    self.filename = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":.")
+    self.filename = utils.get_escaped_filename(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":."))
     if self.filename == "" then self.filename = "[No Name]" end
   end,
   hl = { fg = "directory" },
