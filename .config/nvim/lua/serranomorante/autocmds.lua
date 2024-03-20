@@ -43,6 +43,7 @@ autocmd({ "BufReadPost", "BufNewFile", "BufWritePost" }, {
 
     ---https://github.com/AstroNvim/AstroNvim/commit/ba0fbdf974eb63639e43d6467f7232929b8b9b4c
     vim.schedule(function()
+      if not vim.api.nvim_buf_is_valid(args.buf) then return end
       if vim.b[args.buf].large_buf then return end
       ---Lazy load LSP plugins
       utils.load_plugin_by_filetype("LSP", { buffer = args.buf })
@@ -70,7 +71,7 @@ autocmd("BufReadPre", {
       or vim.api.nvim_buf_line_count(args.buf) > vim.g.max_file.lines
     vim.b[args.buf].large_buf = is_large_buf
     ---Disable `FileType` event to prevent loading LSP and improve performance
-    vim.o.eventignore = is_large_buf and "Filetype" or ""
+    vim.o.eventignore = is_large_buf and "FileType" or ""
   end,
 })
 
