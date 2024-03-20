@@ -10,7 +10,7 @@ return {
   },
   {
     "kevinhwang91/nvim-treesitter", -- see: https://github.com/kevinhwang91/nvim-bqf/issues/110#issuecomment-1509896444
-    lazy = false,
+    event = "LspAttach", -- don't judge me
     dependencies = "nvim-treesitter/nvim-treesitter-textobjects",
     cmd = {
       "TSBufDisable",
@@ -38,7 +38,7 @@ return {
         tools.by_filetype.fish,
         tools.by_filetype.toml,
         tools.by_filetype.lua,
-        tools.by_filetype.vim
+        tools.by_filetype.json
       ),
       highlight = {
         enable = true,
