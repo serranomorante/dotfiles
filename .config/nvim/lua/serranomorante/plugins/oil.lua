@@ -15,6 +15,33 @@ return {
       desc = "Oil: File navigation",
     },
   },
+  init = function()
+    vim.api.nvim_create_autocmd("User", {
+      desc = "Unlist buffers after deleted by Oil. Also set alternate file correctly.",
+      group = vim.api.nvim_create_augroup("unlist_buffers_after_oil", { clear = true }),
+      pattern = "OilActionsPost",
+      callback = function(args)
+        ---https://github.com/stevearc/oil.nvim/issues/310#issuecomment-2002783192
+        if args.data.err then return end
+        local util = require("oil.util")
+        local original_alternate_file = vim.fn.bufname("#")
+        local new_empty_buffer = nil
+
+        for _, action in ipairs(args.data.actions) do
+          if action.type == "delete" and action.entry_type == "file" then
+            local _, path = util.parse_url(action.url)
+            ---Set alternate file to a new empty buffer
+            if new_empty_buffer == nil and path == original_alternate_file then
+              new_empty_buffer = vim.api.nvim_create_buf(true, false)
+              vim.w.oil_original_buffer = new_empty_buffer
+            end
+            ---Unlist removed buffer
+            vim.cmd("bd! " .. path)
+          end
+        end
+      end,
+    })
+  end,
   opts = function()
     local oil_actions = require("oil.actions")
 
