@@ -3,45 +3,7 @@ return {
   event = "UiEnter",
   opts = function()
     local conditions = require("heirline.conditions")
-    local heirline_utils = require("heirline.utils")
     local components = require("serranomorante.plugins.statusline.components")
-
-    local Function = heirline_utils.get_highlight("Function")
-    local Constant = heirline_utils.get_highlight("Constant")
-    local String = heirline_utils.get_highlight("String")
-    local Statement = heirline_utils.get_highlight("Statement")
-    local DiagnosticError = heirline_utils.get_highlight("DiagnosticError")
-    local NonText = heirline_utils.get_highlight("NonText")
-    local Special = heirline_utils.get_highlight("Special")
-    local DiagnosticOk = heirline_utils.get_highlight("DiagnosticOk")
-    local DiagnosticWarn = heirline_utils.get_highlight("DiagnosticWarn")
-    local DiagnosticHint = heirline_utils.get_highlight("DiagnosticHint")
-    local DiagnosticInfo = heirline_utils.get_highlight("DiagnosticInfo")
-    local Directory = heirline_utils.get_highlight("Directory")
-
-    local colors = {
-      normal = Function.fg,
-      insert = Constant.fg,
-      command = String.fg,
-      terminal = Constant.fg,
-      visual = Statement.fg,
-      replace = DiagnosticError.fg,
-      directory = Directory.fg,
-      ---https://github.com/rebelot/heirline.nvim/blob/master/cookbook.md#colors-colors-more-colors
-      red = DiagnosticError.fg,
-      green = String.fg,
-      blue = Function.fg,
-      gray = NonText.fg,
-      orange = Constant.fg,
-      cyan = Special.fg,
-      diag_warn = DiagnosticWarn.fg,
-      diag_error = DiagnosticError.fg,
-      diag_hint = DiagnosticHint.fg,
-      diag_info = DiagnosticInfo.fg,
-      git_add = DiagnosticOk.fg,
-      git_change = DiagnosticWarn.fg,
-      git_del = DiagnosticError.fg,
-    }
 
     local DefaultStatusLine = {
       components.Mode,
@@ -100,21 +62,9 @@ return {
       statusline = StatusLines,
       winbar = WinBars,
       opts = {
-        colors = colors,
         ---Only enable winbar on oil.nvim buffers
         disable_winbar_cb = function(args) return not conditions.buffer_matches({ filetype = { "oil" } }, args.buf) end,
       },
     }
-  end,
-  config = function(_, opts)
-    require("heirline").setup(opts)
-    local utils = require("heirline.utils")
-
-    ---https://github.com/rebelot/heirline.nvim/blob/master/cookbook.md#theming
-    vim.api.nvim_create_augroup("Heirline", { clear = true })
-    vim.api.nvim_create_autocmd("ColorScheme", {
-      callback = function() utils.on_colorscheme(opts.opts.colors) end,
-      group = "Heirline",
-    })
   end,
 }

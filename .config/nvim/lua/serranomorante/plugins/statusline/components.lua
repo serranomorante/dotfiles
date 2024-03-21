@@ -26,11 +26,12 @@ M.Mode = {
   provider = function(self)
     ---Control the padding and make sure our string is always at least 2
     ---characters long.
-    return "%2(" .. self.modes[self.mode][1] .. "%)"
+    return " %2(" .. self.modes[self.mode][1] .. "%) "
   end,
   hl = function(self)
     ---Change the foreground according to the current mode
-    return { fg = self.modes[self.mode][2], bold = true }
+    if self.modes[self.mode][2] == "insert" then return { fg = "white", bg = "NvimDarkGrey1", bold = true } end
+    return { bg = "NvimLightGrey4", bold = true }
   end,
   update = {
     "ModeChanged",
@@ -53,7 +54,6 @@ M.FileIcon = {
     self.icon, self.icon_color = require("nvim-web-devicons").get_icon_color(filename, extension, { default = true })
   end,
   provider = function(self) return self.icon and (self.icon .. " ") end,
-  hl = function(self) return { fg = self.icon_color } end,
 }
 
 M.FileName = {
@@ -61,7 +61,6 @@ M.FileName = {
     self.filename = utils.get_escaped_filename(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":."))
     if self.filename == "" then self.filename = "[No Name]" end
   end,
-  hl = { fg = "directory" },
   flexible = M.priority.filename,
   {
     provider = function(self) return self.filename end,
@@ -75,18 +74,16 @@ M.FileFlags = {
   {
     condition = function() return vim.bo.modified end,
     provider = "[+]",
-    hl = { fg = "green" },
   },
   {
     condition = function() return not vim.bo.modifiable or vim.bo.readonly end,
     provider = "",
-    hl = { fg = "orange" },
   },
 }
 
 M.FileNameModifier = {
   hl = function()
-    if vim.bo.modified then return { fg = "cyan", bold = true, force = true } end
+    if vim.bo.modified then return { bold = true, underline = true } end
   end,
 }
 
@@ -107,7 +104,7 @@ M.Ruler = {
   -- %L = number of lines in the buffer
   -- %c = column number
   -- %P = percentage through file of displayed window
-  provider = "%P",
+  provider = "%P ",
 }
 
 ---https://github.com/rebelot/heirline.nvim/blob/master/cookbook.md#lsp
@@ -140,7 +137,6 @@ M.LSPActive = {
     truncate = function(_, value) return value and (value):sub(1, 5) .. ".." or "" end,
   },
   condition = heirline_conditions.lsp_attached,
-  hl = { fg = "green", bold = true },
   flexible = M.priority.lsp,
   {
     provider = function(self) return self:surround(self.names) end,
@@ -182,7 +178,7 @@ M.Diagnostics = {
   },
   {
     provider = function(self) return self.errors and (self.error_icon .. self.errors) end,
-    hl = { fg = "diag_error" },
+    hl = { fg = "NvimDarkRed", ctermfg = 9, bold = true },
   },
   {
     condition = function(self) return self.warns end,
@@ -190,7 +186,7 @@ M.Diagnostics = {
   },
   {
     provider = function(self) return self.warns and (self.warn_icon .. self.warns) end,
-    hl = { fg = "diag_warn" },
+    hl = { fg = "NvimDarkYellow", ctermfg = 11, bold = true },
   },
   {
     condition = function(self) return self.info end,
@@ -198,7 +194,7 @@ M.Diagnostics = {
   },
   {
     provider = function(self) return self.info and (self.info_icon .. self.info) end,
-    hl = { fg = "diag_info" },
+    hl = { fg = "NvimDarkCyan", ctermfg = 14, bold = true },
   },
   {
     condition = function(self) return self.hints end,
@@ -206,7 +202,7 @@ M.Diagnostics = {
   },
   {
     provider = function(self) return self.hints and (self.hint_icon .. self.hints) end,
-    hl = { fg = "diag_hint" },
+    hl = { fg = "NvimDarkBlue", ctermfg = 12, bold = true },
   },
 }
 
@@ -220,7 +216,6 @@ M.Git = {
       or (self.status_dict.changed ~= 0 and self.status_dict.changed ~= nil)
     self.branch = self.status_dict.head
   end,
-  hl = { fg = "orange" },
   {
     provider = function(self) return " " .. (self.branch ~= "" and self.branch or "?") end,
     hl = { bold = true },
@@ -234,21 +229,21 @@ M.Git = {
       local count = self.status_dict.added or 0
       return count > 0 and ("+" .. count)
     end,
-    hl = { fg = "git_add" },
+    hl = { fg = "NvimDarkGreen", ctermfg = 10, bold = true },
   },
   {
     provider = function(self)
       local count = self.status_dict.removed or 0
       return count > 0 and ("-" .. count)
     end,
-    hl = { fg = "git_del" },
+    hl = { fg = "NvimDarkRed", ctermfg = 9, bold = true },
   },
   {
     provider = function(self)
       local count = self.status_dict.changed or 0
       return count > 0 and ("~" .. count)
     end,
-    hl = { fg = "git_change" },
+    hl = { fg = "NvimDarkCyan", ctermfg = 14, bold = true },
   },
   {
     condition = function(self) return self.has_changes end,
@@ -264,18 +259,12 @@ M.DAPMessages = {
     return session ~= nil
   end,
   provider = function() return " " .. require("dap").status() end,
-  hl = "Debug",
 }
 
 local function OverseerTasksForStatus(status)
   return {
     condition = function(self) return self.tasks[status] end,
     provider = function(self) return string.format("%s%d", self.status[status][1], #self.tasks[status]) end,
-    hl = function()
-      return {
-        fg = heirline_utils.get_highlight(string.format("Overseer%s", status)).fg,
-      }
-    end,
   }
 end
 
@@ -304,7 +293,7 @@ M.Overseer = {
 
 M.Indent = {
   provider = function() return "S:" .. vim.api.nvim_get_option_value("shiftwidth", { buf = 0 }) end,
-  hl = { fg = "blue" },
+  hl = { bold = true },
 }
 
 return M
