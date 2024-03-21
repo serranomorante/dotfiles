@@ -86,8 +86,16 @@ return {
   end,
   config = function()
     local dap = require("dap")
+    local repl = require("dap.repl")
     local mason_registry = require("mason-registry")
     dap.set_log_level(vim.env.DAP_LOG_LEVEL or "INFO")
+
+    ---https://github.com/mfussenegger/nvim-dap/issues/1141#issuecomment-2002575842
+    dap.defaults.fallback.on_output = function(_, output_event)
+      if string.find(output_event.output, "Could not read source map for file") then return end
+      if output_event.category == "telemetry" then return end
+      repl.append(output_event.output, "$", { newline = false })
+    end
 
     ---╔══════════════════════════════════════╗
     ---║               Adapters               ║
