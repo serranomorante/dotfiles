@@ -9,6 +9,7 @@ M.priority = {
   lsp = 40,
   filename = 30,
   overseer = 20,
+  trailblazer = 10,
 }
 
 M.Align = {
@@ -294,6 +295,16 @@ M.Overseer = {
 M.Indent = {
   provider = function() return "S:" .. vim.api.nvim_get_option_value("shiftwidth", { buf = 0 }) end,
   hl = { bold = true },
+}
+
+M.TrailblazerCurrentStackName = {
+  flexible = M.priority.trailblazer,
+  {
+    provider = function()
+      return string.format("[%s]", require("trailblazer.trails.stacks").current_trail_mark_stack_name)
+    end,
+  },
+  { provider = "" },
 }
 
 return M
