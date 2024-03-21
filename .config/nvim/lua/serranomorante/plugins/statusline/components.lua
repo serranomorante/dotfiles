@@ -30,8 +30,8 @@ M.Mode = {
   end,
   hl = function(self)
     ---Change the foreground according to the current mode
-    if self.modes[self.mode][2] == "insert" then return { fg = "white", bg = "NvimDarkGrey1", bold = true } end
-    return { bg = "NvimLightGrey4", bold = true }
+    if self.modes[self.mode][2] == "normal" then return { bg = "NvimLightGrey4", bold = true } end
+    return { fg = "white", bg = "NvimDarkGrey1", bold = true }
   end,
   update = {
     "ModeChanged",

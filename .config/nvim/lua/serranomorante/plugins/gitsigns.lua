@@ -7,6 +7,7 @@ return {
   opts = {
     worktrees = vim.g.git_worktrees,
     attach_to_untracked = true,
+    max_file_length = vim.g.max_file.lines,
   },
   keys = {
     {
