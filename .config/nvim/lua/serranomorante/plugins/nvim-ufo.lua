@@ -1,4 +1,4 @@
----Anything not here will use lsp->treesitter->indent
+---Anything not here will use lsp->indent
 ---Seems like "lsp" offers better performance: https://github.com/kevinhwang91/nvim-ufo/issues/6#issuecomment-1172346709
 ---@type table<string, "treesitter" | "indent" | "">
 local provider_by_filetype = {
@@ -21,10 +21,7 @@ local function customize_selector(bufnr)
     end
   end
 
-  return require("ufo")
-    .getFolds(bufnr, "lsp")
-    :catch(function(err) return handleFallbackException(err, "treesitter") end)
-    :catch(function(err) return handleFallbackException(err, "indent") end)
+  return require("ufo").getFolds(bufnr, "lsp"):catch(function(err) return handleFallbackException(err, "indent") end)
 end
 
 return {
