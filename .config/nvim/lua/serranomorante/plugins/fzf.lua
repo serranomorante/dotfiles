@@ -101,6 +101,9 @@ M.fzf_lua = {
           horizontal = "right:40%",
         },
       },
+      previewers = {
+        bat = { args = "--color=always --style=numbers,changes --line-range=:500" },
+      },
       fzf_opts = {
         ["--history"] = utils.join_paths(fzf_lua_path, "fzf-lua-history"),
       },
