@@ -37,17 +37,14 @@ autocmd({ "BufReadPost", "BufNewFile", "BufWritePost" }, {
   group = augroup("file_user_events", { clear = true }),
   callback = function(args)
     local current_file = vim.api.nvim_buf_get_name(args.buf)
-    if not (current_file == "" or vim.api.nvim_get_option_value("buftype", { buf = args.buf }) == "nofile") then
-      events.event("File")
-    end
+    local buftype = vim.api.nvim_get_option_value("buftype", { buf = args.buf })
+    if current_file == "" or buftype == "nofile" or vim.b[args.buf].large_buf then return end
+
+    events.event("File")
+    utils.load_plugin_by_filetype("LSP", { buffer = args.buf })
 
     ---https://github.com/AstroNvim/AstroNvim/commit/ba0fbdf974eb63639e43d6467f7232929b8b9b4c
     vim.schedule(function()
-      if not vim.api.nvim_buf_is_valid(args.buf) then return end
-      if vim.b[args.buf].large_buf then return end
-      ---Lazy load LSP plugins
-      utils.load_plugin_by_filetype("LSP", { buffer = args.buf })
-
       if vim.bo[args.buf].filetype then
         vim.api.nvim_exec_autocmds("FileType", { buffer = args.buf, modeline = false })
       end
