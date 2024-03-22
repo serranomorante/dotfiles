@@ -36,8 +36,8 @@ M.Mode = {
   end,
   update = {
     "ModeChanged",
-    pattern = "*:*",
-    callback = vim.schedule_wrap(function() vim.cmd("redrawstatus") end),
+    pattern = "[^t]*:[^t]*", -- fixes issue with fzf-lua terminal buffers
+    callback = vim.schedule_wrap(function() vim.cmd.redrawstatus() end),
   },
 }
 
