@@ -85,10 +85,20 @@ M.fzf_lua = {
     if not utils.is_directory(fzf_lua_path) then vim.fn.mkdir(fzf_lua_path, "p") end
 
     return {
+      fzf_colors = {
+        bg = { "bg", "Normal" },
+        gutter = { "bg", "Normal" },
+        info = { "fg", "Conditional" },
+        scrollbar = { "bg", "Normal" },
+        separator = { "fg", "Comment" },
+      },
       winopts = {
+        width = 999,
+        border = "single",
         preview = {
           default = "bat", -- seems to be faster than builtin (treesitter)
-          hidden = "hidden",
+          border = "noborder",
+          horizontal = "right:40%",
         },
       },
       fzf_opts = {

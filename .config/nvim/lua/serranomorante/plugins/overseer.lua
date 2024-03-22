@@ -35,7 +35,7 @@ return {
             end)
           end
           for _, task in pairs(lazygit_tasks) do
-            if task then overseer.run_action(task, "open tab") end -- open lazygit term on new tab
+            if task then overseer.run_action(task, "open float") end
           end
 
           ---Auto enter insert mode
@@ -87,6 +87,7 @@ return {
     templates = { "builtin", "vscode-tasks", "editor" },
     task_win = {
       border = "single",
+      padding = 0,
       win_opts = {
         winblend = 0,
       },

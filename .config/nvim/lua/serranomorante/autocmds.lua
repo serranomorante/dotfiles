@@ -135,3 +135,12 @@ autocmd("LspProgress", {
     vim.notify(message, vim.log.levels.INFO, { title = "LSP Progress" })
   end,
 })
+
+autocmd("VimResized", {
+  desc = "Resize floating windows after resizing the terminal",
+  group = augroup("resize_floating_windows", { clear = true }),
+  callback = function()
+    local is_floating = vim.api.nvim_win_get_config(0).relative ~= ""
+    if is_floating then vim.api.nvim_win_set_width(0, vim.o.columns) end
+  end,
+})

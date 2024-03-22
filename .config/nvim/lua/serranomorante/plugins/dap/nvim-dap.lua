@@ -72,7 +72,7 @@ return {
       "<leader>ds",
       function()
         local ui = require("dap.ui.widgets")
-        ui.centered_float(ui.scopes, { number = true, wrap = false })
+        ui.centered_float(ui.scopes, { number = true, wrap = false, width = 999 })
       end,
       desc = 'DAP: Toggle "scopes" in floating window',
     },
