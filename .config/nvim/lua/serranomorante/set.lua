@@ -33,6 +33,8 @@ vim.opt.undofile = true
 vim.opt.scrolloff = 4
 vim.opt.signcolumn = "yes:1"
 vim.opt.isfname:append("@-@")
+vim.opt.cursorline = true
+vim.opt.cursorlineopt = "number"
 
 vim.opt.clipboard = "unnamedplus"
 
