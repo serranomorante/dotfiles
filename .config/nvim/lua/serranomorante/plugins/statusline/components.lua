@@ -299,9 +299,13 @@ M.Indent = {
 
 M.TrailblazerCurrentStackName = {
   flexible = M.priority.trailblazer,
+  condition = function() return package.loaded.trailblazer end,
   {
     provider = function()
-      return string.format("[%s]", require("trailblazer.trails.stacks").current_trail_mark_stack_name)
+      local stacks = require("trailblazer.trails.stacks")
+      local current_stack = stacks.current_trail_mark_stack_name
+      local stack_count = vim.tbl_count(stacks.trail_mark_stack_list) > 1 and "<" or ""
+      return string.format("[%s%s]", current_stack, stack_count)
     end,
   },
   { provider = "" },
