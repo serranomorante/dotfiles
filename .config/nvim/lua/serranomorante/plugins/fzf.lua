@@ -102,7 +102,7 @@ M.fzf_lua = {
         },
       },
       previewers = {
-        bat = { args = "--color=always --style=numbers,changes --line-range=:500" },
+        bat = { args = "--color=always --style=numbers,changes --line-range=:" .. vim.g.max_file.lines },
       },
       fzf_opts = {
         ["--history"] = utils.join_paths(fzf_lua_path, "fzf-lua-history"),
@@ -154,6 +154,11 @@ M.fzf_lua = {
             end,
             ["ctrl-x"] = { fn = DeleteBreakpoint, reload = true },
           },
+        },
+      },
+      helptags = {
+        actions = {
+          ["default"] = fzf_lua.actions.help_vert,
         },
       },
     }
