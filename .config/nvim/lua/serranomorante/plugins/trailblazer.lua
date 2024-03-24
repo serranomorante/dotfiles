@@ -48,13 +48,19 @@ return {
     },
     {
       "<A-.>",
-      function() require("trailblazer").switch_to_next_trail_mark_stack() end,
+      function()
+        require("trailblazer").switch_to_next_trail_mark_stack()
+        vim.schedule(vim.cmd.redrawstatus) -- TODO: move this to heirline
+      end,
       desc = "Trailblazer: Switch to the next trail mark stack",
       mode = { "n", "v" },
     },
     {
       "<A-,>",
-      function() require("trailblazer").switch_to_previous_trail_mark_stack() end,
+      function()
+        require("trailblazer").switch_to_previous_trail_mark_stack()
+        vim.schedule(vim.cmd.redrawstatus) -- TODO: move this to heirline
+      end,
       desc = "Trailblazer: Switch to the previous trail mark stack",
       mode = { "n", "v" },
     },
