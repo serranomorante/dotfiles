@@ -158,7 +158,7 @@ M.fzf_lua = {
       },
       helptags = {
         actions = {
-          ["default"] = fzf_lua.actions.help_vert,
+          ["default"] = fzf_lua.actions.help_tab,
         },
       },
     }
