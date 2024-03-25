@@ -93,11 +93,14 @@ return {
         number_line_color_enabled = false,
         trail_mark_in_text_highlights_enabled = false,
         trail_mark_symbol_line_indicators_enabled = true,
-        move_to_nearest_before_peek = true,
+        move_to_nearest_before_peek = false, -- set false to fix navigation issues on new file TODO
       },
       force_mappings = {},
       force_quickfix_mappings = {
         nv = {
+          motions = {
+            qf_motion_move_trail_mark_stack_cursor = "<CR>",
+          },
           actions = {
             qf_action_delete_trail_mark_selection = "d",
             qf_action_save_visual_selection_start_line = "v",

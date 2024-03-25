@@ -18,6 +18,7 @@ M.nvim_bqf = {
   opts = {
     auto_resize_height = true,
     func_map = {
+      open = "", -- disable to not conflict with trailblazer
       tabc = "te",
       vsplit = "sv",
       split = "ss",
