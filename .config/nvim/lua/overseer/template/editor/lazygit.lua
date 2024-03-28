@@ -15,7 +15,7 @@ return {
       name = "lazygit",
       cmd = { "lazygit" },
       args = args,
-      components = { "default" },
+      components = { "unique", "default" },
     }
   end,
   tags = { "editor" },
