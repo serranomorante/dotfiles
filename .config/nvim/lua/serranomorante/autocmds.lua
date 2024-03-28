@@ -45,9 +45,7 @@ autocmd({ "BufReadPost", "BufNewFile", "BufWritePost" }, {
 
     ---https://github.com/AstroNvim/AstroNvim/commit/ba0fbdf974eb63639e43d6467f7232929b8b9b4c
     vim.schedule(function()
-      if vim.bo[args.buf].filetype then
-        vim.api.nvim_exec_autocmds("FileType", { buffer = args.buf, modeline = false })
-      end
+      if vim.bo[args.buf].filetype then vim.api.nvim_exec_autocmds("FileType", { modeline = false }) end
       vim.api.nvim_exec_autocmds("CursorMoved", { modeline = false })
     end)
   end,
@@ -63,12 +61,14 @@ autocmd("BufReadPre", {
   desc = "Disable certain functionality on very large files",
   group = augroup("large_buf", { clear = true }),
   callback = function(args)
-    local ok, stats = pcall((vim.uv or vim.loop).fs_stat, vim.api.nvim_buf_get_name(args.buf))
-    local is_large_buf = (ok and stats and stats.size > vim.g.max_file.size)
-      or vim.api.nvim_buf_line_count(args.buf) > vim.g.max_file.lines
-    vim.b[args.buf].large_buf = is_large_buf
-    ---Disable `FileType` event to prevent loading LSP and improve performance
-    vim.o.eventignore = is_large_buf and "FileType" or ""
+    ---@diagnostic disable-next-line: undefined-field
+    local ok, stats = pcall((vim.uv or vim.loop).fs_stat, args.file)
+    if not ok or not stats then return end
+    ---you can't use `nvim_buf_line_count` because this runs on BufReadPre
+    local lines_count = #vim.fn.readfile(args.file)
+    vim.b[args.buf].large_buf = stats.size > vim.g.max_file.size
+      or lines_count > vim.g.max_file.lines
+      or stats.size / lines_count > vim.o.synmaxcol
   end,
 })
 
