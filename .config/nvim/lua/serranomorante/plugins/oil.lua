@@ -36,7 +36,7 @@ return {
               vim.w.oil_original_buffer = new_empty_buffer
             end
             ---Unlist removed buffer
-            vim.cmd("bd! " .. path)
+            vim.cmd("silent! bd! " .. path)
           end
         end
       end,
