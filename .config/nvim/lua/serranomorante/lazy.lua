@@ -16,6 +16,7 @@ require("lazy").setup({
   { import = "serranomorante.plugins.lsp" },
   { import = "serranomorante.plugins.dap" },
   { import = "serranomorante.plugins.statusline.heirline" },
+  { import = "serranomorante.plugins.session.persistence" },
 }, {
   change_detection = {
     notify = false,
@@ -24,6 +25,8 @@ require("lazy").setup({
     path = "~/repos",
     fallback = true,
     patterns = {
+      -- "kevinhwang91/nvim-bqf",
+      -- "LeonHeidelbach/trailblazer.nvim",
       -- "neovim/nvim-lspconfig",
       -- "kevinhwang91/nvim-treesitter",
       -- "mfussenegger/nvim-dap",

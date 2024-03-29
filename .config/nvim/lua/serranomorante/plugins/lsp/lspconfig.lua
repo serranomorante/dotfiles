@@ -56,7 +56,6 @@ return {
     "neovim/nvim-lspconfig",
     cmd = { "LspInfo", "LspInstall", "LspStart" },
     event = "User CustomFile",
-    dependencies = "ibhagwan/fzf-lua",
     init = function()
       ---See: https://github.com/VonHeikemen/lsp-zero.nvim/blob/dev-v3/doc/md/guides/under-the-hood.md
       ---See: https://github.com/mfussenegger/nvim-lint/issues/340#issuecomment-1676438571
@@ -264,6 +263,7 @@ return {
                     ---https://github.com/neovim/nvim-lspconfig/issues/2948#issuecomment-1871455900
                     vim.env.VIMRUNTIME .. "/lua",
                     "${3rd}/busted/library",
+                    "${3rd}/luv/library",
                   },
                 },
                 codeLens = {
