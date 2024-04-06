@@ -152,13 +152,17 @@ M.fzf_lua = {
               require("dap").list_breakpoints()
               vim.cmd(opts.copen or "botright copen")
             end,
-            ["ctrl-x"] = { fn = DeleteBreakpoint, reload = true },
           },
         },
       },
       helptags = {
         actions = {
           ["default"] = fzf_lua.actions.help_tab,
+        },
+      },
+      lsp = {
+        code_actions = {
+          previewer = "codeaction_native",
         },
       },
     }
@@ -180,18 +184,5 @@ M.fzf_lua = {
     end)
   end,
 }
-
-function DeleteBreakpoint(selected, opts)
-  local path = require("fzf-lua.path")
-  local dap = require("dap")
-  local dap_bps = require("dap.breakpoints")
-  for _, e in ipairs(selected) do
-    local entry = path.entry_to_file(e, opts)
-    if entry.bufnr > 0 and entry.line then
-      dap_bps.remove(entry.bufnr, entry.line)
-      dap.session():set_breakpoints(dap_bps.get(entry.bufnr))
-    end
-  end
-end
 
 return M.fzf_lua
