@@ -1,7 +1,7 @@
 return {
   "jbyuki/one-small-step-for-vimkind",
   dependencies = "mfussenegger/nvim-dap",
-  event = "User CustomDAPLoadLua",
+  event = "User CustomDAPlua",
   keys = {
     {
       "<leader>cc",

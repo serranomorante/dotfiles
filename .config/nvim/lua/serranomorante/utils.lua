@@ -197,19 +197,6 @@ function M.plugin_opts(plugin)
   return opts
 end
 
----Execute a custom user event constructed by a "lazy_type" and a filetype
----@param lazy_type "LSP" | "DAP"
----@param opts? { filetype?: string, buffer?: integer, delay?: boolean }
-function M.load_plugin_by_filetype(lazy_type, opts)
-  opts = opts or {}
-  local filetype = opts.filetype or vim.api.nvim_get_option_value("filetype", { buf = opts.buffer or 0 })
-
-  if filetype and lazy_type then
-    local capitalized_filetype = filetype:gsub("^%l", string.upper) -- https://stackoverflow.com/a/2421746
-    events.event(lazy_type .. "Load" .. capitalized_filetype, opts.delay)
-  end
-end
-
 ---Get the indent char string for a given shiftwidth
 ---@param shiftwidth number
 local function indent_char(shiftwidth) return "▏" .. string.rep(" ", shiftwidth > 0 and shiftwidth - 1 or 0) end

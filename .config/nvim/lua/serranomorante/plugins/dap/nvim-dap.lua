@@ -1,5 +1,6 @@
 local constants = require("serranomorante.constants")
 local utils = require("serranomorante.utils")
+local events = require("serranomorante.events")
 
 ---Debuggers can exist on one of 2 folders: `mason` or `debuggers`
 ---Mason: installed automatically. Usually for stable versions of packages.
@@ -200,14 +201,6 @@ return {
     require("overseer").patch_dap(true)
     require("dap.ext.vscode").json_decode = require("overseer.json").decode
 
-    vim.api.nvim_create_autocmd("FileType", {
-      desc = "Lazy-load DAP plugins by filetype",
-      group = vim.api.nvim_create_augroup("dap_filetype_load", { clear = true }),
-      callback = function(args) utils.load_plugin_by_filetype("DAP", { buffer = args.buf }) end,
-    })
-
-    utils.load_plugin_by_filetype("DAP")
-
     ---Only needed if your debugging type doesn't match your language type.
     ---For example, python is not necessary on this table because its debugging type is "python"
     ---@diagnostic disable-next-line: unused-local
@@ -222,5 +215,7 @@ return {
       ["pwa-extensionHost"] = constants.javascript_filetypes,
       ["cppdbg"] = constants.c_filetypes,
     }
+
+    events.event("DAP" .. vim.api.nvim_get_option_value("filetype", { buf = 0 }))
   end,
 }

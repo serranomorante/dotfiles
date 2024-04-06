@@ -50,29 +50,3 @@ describe("utils", function()
     end)
   end)
 end)
-
-describe("lazy load", function()
-  it("plugin by filetype", function()
-    local api = mock(vim.api, true)
-    api.nvim_exec_autocmds.returns(nil)
-    api.nvim_get_option_value.returns("javascript")
-
-    utils.load_plugin_by_filetype("LSP", {
-      delay = false,
-    })
-
-    assert
-      .stub(api.nvim_exec_autocmds)
-      .was_called_with("User", { pattern = "CustomLSPLoadJavascript", modeline = false })
-
-    utils.load_plugin_by_filetype("DAP", {
-      delay = false,
-    })
-
-    assert
-      .stub(api.nvim_exec_autocmds)
-      .was_called_with("User", { pattern = "CustomDAPLoadJavascript", modeline = false })
-
-    mock.revert(api)
-  end)
-end)

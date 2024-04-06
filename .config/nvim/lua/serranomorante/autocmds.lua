@@ -36,17 +36,15 @@ autocmd({ "BufReadPost", "BufNewFile", "BufWritePost" }, {
   desc = "Execute `CustomFile` user event on valid buffers",
   group = augroup("file_user_events", { clear = true }),
   callback = function(args)
+    if vim.b[args.buf].file_checked then return end
+    vim.b[args.buf].file_checked = true
     local current_file = vim.api.nvim_buf_get_name(args.buf)
-    local buftype = vim.api.nvim_get_option_value("buftype", { buf = args.buf })
-    if current_file == "" or buftype == "nofile" or vim.b[args.buf].large_buf then return end
-
+    if current_file == "" or vim.bo[args.buf].buftype == "nofile" or vim.b[args.buf].large_buf then return end
     events.event("File")
-    utils.load_plugin_by_filetype("LSP", { buffer = args.buf })
-
+    events.event("LSP" .. vim.bo[args.buf].filetype)
     ---https://github.com/AstroNvim/AstroNvim/commit/ba0fbdf974eb63639e43d6467f7232929b8b9b4c
     vim.schedule(function()
       if vim.bo[args.buf].filetype then vim.api.nvim_exec_autocmds("FileType", { modeline = false }) end
-      vim.api.nvim_exec_autocmds("CursorMoved", { modeline = false })
     end)
   end,
 })
@@ -144,3 +142,7 @@ autocmd("VimResized", {
     if is_floating then vim.api.nvim_win_set_width(0, vim.o.columns) end
   end,
 })
+
+-- autocmd("TermOpen", {
+--  -- clear hlsearch highlights when entering terminal
+-- })

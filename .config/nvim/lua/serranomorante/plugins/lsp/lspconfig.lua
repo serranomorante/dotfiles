@@ -1,4 +1,5 @@
 local utils = require("serranomorante.utils")
+local events = require("serranomorante.events")
 local constants = require("serranomorante.constants")
 local tools = require("serranomorante.tools")
 
@@ -10,7 +11,7 @@ return {
   {
     "p00f/clangd_extensions.nvim",
     dependencies = "neovim/nvim-lspconfig",
-    event = "User CustomLSPLoadC",
+    event = "User CustomLSPc,CustomLSPcpp",
     config = function()
       require("lspconfig")["clangd"].setup({
         on_init = on_init,
@@ -23,7 +24,7 @@ return {
     "b0o/SchemaStore.nvim",
     enabled = true,
     dependencies = "neovim/nvim-lspconfig",
-    event = "User CustomLSPLoadJson,CustomLSPLoadYaml",
+    event = "User CustomLSPjson,CustomLSPjsonc,CustomLSPyaml",
     config = function()
       local schemastore = require("schemastore")
       local settings = {
