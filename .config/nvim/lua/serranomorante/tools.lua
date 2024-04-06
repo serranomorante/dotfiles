@@ -21,7 +21,7 @@ M.by_filetype = {
     extra = { "iferr", "impl" },
     parsers = { "go" },
   },
-  json = { lsp = { "json-lsp" }, formatters = { "prettierd" }, parsers = { "json" } },
+  json = { lsp = { "json-lsp" }, formatters = { "prettierd" }, parsers = { "json", "jsonc" } },
   yaml = { lsp = { "yaml-language-server" }, parsers = { "yaml" } },
   c = { lsp = { "clangd" }, parsers = { "cpp" } },
   python = {

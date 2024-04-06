@@ -104,7 +104,7 @@ return {
 
       on_attach = function(client, bufnr)
         ---Disable LSP on large buffers
-        if vim.b[bufnr].large_buf then
+        if vim.b[bufnr].large_buf and vim.lsp.buf_is_attached(bufnr, client.id) then
           vim.schedule(function() vim.lsp.buf_detach_client(bufnr, client.id) end)
           return
         end
@@ -133,6 +133,11 @@ return {
             vim.keymap.set("n", "gy", function() builtin.lsp_typedefs() end, opts)
           end
 
+          if client.supports_method("textDocument/codeAction") then
+            opts.desc = "LSP: See available code actions"
+            vim.keymap.set({ "n", "v" }, "<leader>la", function() builtin.lsp_code_actions() end, opts)
+          end
+
           opts.desc = "LSP: Show document diagnostics"
           vim.keymap.set("n", "<leader>ld", function() builtin.diagnostics_document() end, opts)
 
@@ -149,11 +154,6 @@ return {
         if client.supports_method("textDocument/declaration") then
           opts.desc = "LSP: Go to declaration"
           vim.keymap.set("n", "gD", vim.lsp.buf.declaration, opts)
-        end
-
-        if client.supports_method("textDocument/codeAction") then
-          opts.desc = "LSP: See available code actions"
-          vim.keymap.set({ "n", "v" }, "<leader>la", vim.lsp.buf.code_action, opts)
         end
 
         if client.supports_method("textDocument/rename") then
@@ -304,6 +304,11 @@ return {
             settings = {
               ---https://github.com/yioneko/vtsls/blob/main/packages/service/configuration.schema.json
               typescript = {
+                ---https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-0.html#smarter-auto-imports
+                ---https://github.com/yioneko/vtsls/blob/41ad8c9d3f9dbd122ce3259564f34d020b7d71d9/packages/service/configuration.schema.json#L779C29-L779C58
+                preferences = { includePackageJsonAutoImports = "on" },
+                ---https://github.com/yioneko/vtsls/blob/41ad8c9d3f9dbd122ce3259564f34d020b7d71d9/packages/service/configuration.schema.json#L1025C17-L1025C43
+                preferGoToSourceDefinition = true,
                 inlayHints = {
                   parameterNames = {
                     enabled = "all",
@@ -311,9 +316,6 @@ return {
                   parameterTypes = {
                     enabled = true,
                   },
-                  -- variableTypes = {
-                  --   enabled = true,
-                  -- },
                   propertyDeclarationTypes = {
                     enabled = true,
                   },
@@ -334,6 +336,7 @@ return {
                 },
               },
               vtsls = {
+                autoUseWorkspaceTsdk = true,
                 experimental = {
                   completion = {
                     enableServerSideFuzzyMatch = true,
