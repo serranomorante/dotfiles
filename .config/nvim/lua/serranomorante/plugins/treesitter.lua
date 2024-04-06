@@ -96,19 +96,6 @@ return {
             ["[A"] = { query = "@parameter.inner", desc = "Treesitter: Previous argument end" },
           },
         },
-        swap = {
-          enable = true,
-          swap_next = {
-            [">K"] = { query = "@block.outer", desc = "Treesitter: Swap next block" },
-            [">F"] = { query = "@function.outer", desc = "Treesitter: Swap next function" },
-            [">A"] = { query = "@parameter.inner", desc = "Treesitter: Swap next argument" },
-          },
-          swap_previous = {
-            ["<K"] = { query = "@block.outer", desc = "Treesitter: Swap previous block" },
-            ["<F"] = { query = "@function.outer", desc = "Treesitter: Swap previous function" },
-            ["<A"] = { query = "@parameter.inner", desc = "Treesitter: Swap previous argument" },
-          },
-        },
       },
     },
     config = function(_, opts) require("nvim-treesitter.configs").setup(opts) end,
