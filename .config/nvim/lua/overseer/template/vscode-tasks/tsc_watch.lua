@@ -25,6 +25,7 @@ return {
       cmd = task_opts.cmd,
       components = {
         { "on_output_parse", problem_matcher = "$tsc-watch" },
+        "on_result_notify",
         "on_result_diagnostics_quickfix",
         "default",
       },
