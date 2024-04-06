@@ -16,7 +16,6 @@ return {
 
       components.DAPMessages,
       components.Space,
-      components.Overseer,
       components.TrailblazerCurrentStackName,
       components.Align,
 

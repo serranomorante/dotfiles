@@ -8,7 +8,6 @@ local M = {}
 M.priority = {
   lsp = 40,
   filename = 30,
-  overseer = 20,
   trailblazer = 10,
 }
 
@@ -260,36 +259,6 @@ M.DAPMessages = {
     return session ~= nil
   end,
   provider = function() return " " .. require("dap").status() end,
-}
-
-local function OverseerTasksForStatus(status)
-  return {
-    condition = function(self) return self.tasks[status] end,
-    provider = function(self) return string.format("%s%d", self.status[status][1], #self.tasks[status]) end,
-  }
-end
-
-M.Overseer = {
-  condition = function() return package.loaded.overseer end,
-  init = function(self)
-    local tasks = require("overseer.task_list").list_tasks({ unique = true })
-    local tasks_by_status = require("overseer.util").tbl_group_by(tasks, "status")
-    self.tasks = tasks_by_status
-  end,
-  flexible = M.priority.overseer,
-  static = {
-    status = constants.overseer_status,
-  },
-  {
-    OverseerTasksForStatus("CANCELED"),
-    { condition = function(self) return self.tasks.RUNNING end, M.Space },
-    OverseerTasksForStatus("RUNNING"),
-    { condition = function(self) return self.tasks.SUCCESS end, M.Space },
-    OverseerTasksForStatus("SUCCESS"),
-    { condition = function(self) return self.tasks.FAILURE end, M.Space },
-    OverseerTasksForStatus("FAILURE"),
-  },
-  { provider = "" },
 }
 
 M.Indent = {
