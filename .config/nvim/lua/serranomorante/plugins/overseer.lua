@@ -54,7 +54,7 @@ return {
               last_nvim_win_width = current_vim_win_width
               utils.feedkeys("<C-\\><C-n>ki")
             end
-          end, 100)
+          end, 300)
         end,
         desc = "Overseer: Toggle Lazygit Task",
       })
