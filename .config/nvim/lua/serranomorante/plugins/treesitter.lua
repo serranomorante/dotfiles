@@ -39,7 +39,8 @@ return {
         tools.by_filetype.toml,
         tools.by_filetype.lua,
         tools.by_filetype.json,
-        tools.by_filetype.yaml
+        tools.by_filetype.yaml,
+        tools.by_filetype.bash
       ),
       highlight = {
         enable = true,

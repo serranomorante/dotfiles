@@ -37,6 +37,8 @@ return {
       jsonc = { tools.by_filetype.json.formatters },
       markdown = { tools.by_filetype.markdown.formatters },
       fish = { tools.by_filetype.fish.formatters },
+      bash = { tools.by_filetype.bash.formatters },
+      sh = { tools.by_filetype.bash.formatters },
     },
     log_level = vim.log.levels[vim.env.CONFORM_LOG_LEVEL or "ERROR"],
   },

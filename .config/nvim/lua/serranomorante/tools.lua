@@ -31,7 +31,11 @@ M.by_filetype = {
     dap = { "debugpy" },
   },
   rust = { lsp = { "rust-analyzer" }, parsers = { "rust" } },
-  bash = { lsp = { "bash-language-server" } },
+  bash = {
+    formatters = { "beautysh" },
+    lsp = { "bash-language-server" },
+    parsers = { "bash" },
+  },
   fish = { formatters = { "fish_indent" }, parsers = { "fish" } },
   markdown = { lsp = { "marksman" }, formatters = { "prettierd" } },
   toml = { lsp = { "taplo" }, parsers = { "toml" } },
