@@ -1,5 +1,4 @@
 local utils = require("serranomorante.utils")
-local events = require("serranomorante.events")
 local constants = require("serranomorante.constants")
 local tools = require("serranomorante.tools")
 
