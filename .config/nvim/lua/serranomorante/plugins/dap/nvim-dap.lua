@@ -84,6 +84,13 @@ return {
     vim.fn.sign_define("DapBreakpointRejected", { text = " ", texthl = "DapBreakpoint" })
     vim.fn.sign_define("DapLogPoint", { text = "", texthl = "DapLogPoint" })
     vim.fn.sign_define("DapStopped", { text = "󰁕 ", texthl = "DapStopped" })
+
+    vim.api.nvim_create_autocmd("FileType", {
+      desc = 'Attach autocompletion to "dap-repl" filetype',
+      pattern = "dap-repl",
+      group = vim.api.nvim_create_augroup("repl-autocompletion", { clear = true }),
+      callback = function() require("dap.ext.autocompl").attach() end,
+    })
   end,
   config = function()
     local dap = require("dap")
