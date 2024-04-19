@@ -11,7 +11,10 @@ return {
   {
     "kevinhwang91/nvim-treesitter", -- see: https://github.com/kevinhwang91/nvim-bqf/issues/110#issuecomment-1509896444
     event = "LspAttach", -- don't judge me
-    dependencies = "nvim-treesitter/nvim-treesitter-textobjects",
+    dependencies = {
+      "nvim-treesitter/nvim-treesitter-textobjects",
+      { "LiadOz/nvim-dap-repl-highlights", config = true },
+    },
     cmd = {
       "TSBufDisable",
       "TSBufEnable",
@@ -40,7 +43,8 @@ return {
         tools.by_filetype.lua,
         tools.by_filetype.json,
         tools.by_filetype.yaml,
-        tools.by_filetype.bash
+        tools.by_filetype.bash,
+        tools.by_filetype.all
       ),
       highlight = {
         enable = true,
