@@ -106,6 +106,7 @@ M.fzf_lua = {
       },
       fzf_opts = {
         ["--history"] = utils.join_paths(fzf_lua_path, "fzf-lua-history"),
+        ["--keep-right"] = "",
       },
       keymap = {
         builtin = {
