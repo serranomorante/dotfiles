@@ -8,6 +8,55 @@ local capabilities = nil
 
 return {
   {
+    "cstoku/typescript-tools.nvim",
+    branch = "fix/codelens_respect_bufnr",
+    dependencies = "neovim/nvim-lspconfig",
+    event = "User CustomLSPjavascript,CustomLSPtypescript,CustomLSPtypescriptreact,CustomLSPjavascriptreact",
+    opts = function()
+      return {
+        on_init = on_init,
+        capabilities = capabilities,
+        on_attach = on_attach,
+        single_file_support = false,
+        settings = {
+          code_lens = "all",
+          publish_diagnostic_on = "insert_leave",
+          complete_function_calls = false,
+          expose_as_code_action = { "fix_all", "add_missing_imports", "remove_unused" },
+          separate_diagnostic_server = false,
+          tsserver_file_preferences = {
+            includeInlayParameterNameHints = "all",
+            includeInlayParameterNameHintsWhenArgumentMatchesName = true,
+            includeInlayFunctionParameterTypeHints = true,
+            includeInlayVariableTypeHints = true,
+            includeInlayVariableTypeHintsWhenTypeMatchesName = true,
+            includeInlayPropertyDeclarationTypeHints = true,
+            includeInlayFunctionLikeReturnTypeHints = true,
+            includeInlayEnumMemberValueHints = true,
+            includeCompletionsForModuleExports = false,
+          },
+        },
+      }
+    end,
+    init = function()
+      -- I don't want `typescript-tools.nvim` CodeLens to be enable on startup
+      -- I also don't want `typescript-tools.nvim` CodeLens to refresh on "CursorHold" event
+      -- I want to enable both things on demand with keymaps
+      vim.api.nvim_create_autocmd("LspAttach", {
+        desc = "Remove auto commands from typescript-tools.nvim CodeLens feature",
+        group = vim.api.nvim_create_augroup("remove_typescript_tools_codelens", { clear = true }),
+        callback = function()
+          local cmds_found, ts_codelens_cmds = pcall(vim.api.nvim_get_autocmds, {
+            group = "TypescriptToolsCodeLensGroup",
+          })
+          if cmds_found then
+            if cmds_found then vim.tbl_map(function(cmd) vim.api.nvim_del_autocmd(cmd.id) end, ts_codelens_cmds) end
+          end
+        end,
+      })
+    end,
+  },
+  {
     "p00f/clangd_extensions.nvim",
     dependencies = "neovim/nvim-lspconfig",
     event = "User CustomLSPc,CustomLSPcpp",
@@ -92,7 +141,6 @@ return {
       })
     end,
     config = function()
-      if utils.is_available("neodev.nvim") then require("neodev") end
       local lspconfig = require("lspconfig")
       vim.lsp.set_log_level(vim.env.LSP_LOG_LEVEL or "INFO")
 
@@ -229,6 +277,52 @@ return {
 
       ---Custom handlers for lsp servers and plugins
       local custom = {
+        ["tsserver"] = function()
+          lspconfig["tsserver"].setup({
+            on_init = on_init,
+            on_attach = on_attach,
+            capabilities = capabilities,
+            init_options = {
+              preferences = {
+                includeCompletionsForModuleExports = false,
+              },
+            },
+            settings = {
+              javascript = {
+                implementationsCodeLens = { enabled = true },
+                referencesCodeLens = {
+                  showOnAllFunctions = true,
+                  enabled = true,
+                },
+                inlayHints = {
+                  includeInlayEnumMemberValueHints = true,
+                  includeInlayFunctionLikeReturnTypeHints = true,
+                  includeInlayFunctionParameterTypeHints = true,
+                  includeInlayParameterNameHints = "all", -- 'none' | 'literals' | 'all';
+                  includeInlayParameterNameHintsWhenArgumentMatchesName = true,
+                  includeInlayPropertyDeclarationTypeHints = true,
+                  includeInlayVariableTypeHints = true,
+                },
+              },
+              typescript = {
+                implementationsCodeLens = { enabled = true },
+                referencesCodeLens = {
+                  enabled = true,
+                  showOnAllFunctions = true,
+                },
+                inlayHints = {
+                  includeInlayEnumMemberValueHints = true,
+                  includeInlayFunctionLikeReturnTypeHints = true,
+                  includeInlayFunctionParameterTypeHints = true,
+                  includeInlayParameterNameHints = "all", -- 'none' | 'literals' | 'all';
+                  includeInlayParameterNameHintsWhenArgumentMatchesName = true,
+                  includeInlayPropertyDeclarationTypeHints = true,
+                  includeInlayVariableTypeHints = true,
+                },
+              },
+            },
+          })
+        end,
         ["ruff_lsp"] = function()
           lspconfig["ruff_lsp"].setup({
             on_init = on_init,
@@ -295,7 +389,7 @@ return {
             },
           })
         end,
-        ["vtsls"] = function()
+        ["vtsls"] = function() -- Very large import times
           lspconfig["vtsls"].setup({
             on_init = on_init,
             on_attach = on_attach,
@@ -349,7 +443,10 @@ return {
       }
 
       ---Prevent server setup
-      custom["tsserver"] = function() end
+      if utils.is_available("typescript-tools.nvim") then
+        custom["tsserver"] = function() end
+        custom["vtsls"] = function() end
+      end
       if utils.is_available("clangd_extensions.nvim") then custom["clangd"] = function() end end
       if utils.is_available("SchemaStore.nvim") then
         custom["yamlls"] = function() end
