@@ -40,7 +40,7 @@ return {
       end,
       on_output = function(self, task, data)
         ---Open float when prompted for passphrase
-        if vim.tbl_islist(data) and data ~= nil then
+        if vim.islist(data) and data ~= nil then
           for _, line in ipairs(data) do
             local is_passphrase_prompt = string.find(line, "Passphrase: ___________________")
             if is_passphrase_prompt then overseer.run_action(task, "open float") end

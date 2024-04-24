@@ -1,4 +1,3 @@
-local events = require("serranomorante.events")
 local tools = require("serranomorante.tools")
 
 local M = {}
@@ -96,7 +95,7 @@ end
 function M.toggle_buffer_inlay_hints(bufnr)
   bufnr = bufnr or 0
   vim.b[bufnr].inlay_hints_enabled = not vim.b[bufnr].inlay_hints_enabled
-  vim.lsp.inlay_hint.enable(bufnr, vim.b[bufnr].inlay_hints_enabled)
+  vim.lsp.inlay_hint.enable(vim.b[bufnr].inlay_hints_enabled, { bufnr = bufnr })
 end
 
 --- Toggle LSP codelens
@@ -109,7 +108,7 @@ function M.bool2str(bool) return bool and "on" or "off" end
 
 --- Helper function to check if any active LSP clients given a filter provide a specific capability
 ---@param capability string The server capability to check for (example: "documentFormattingProvider")
----@param filter vim.lsp.get_clients.filter|nil (table|nil) A table with
+---@param filter vim.lsp.get_clients.Filter|nil (table|nil) A table with
 ---              key-value pairs used to filter the returned clients.
 ---              The available keys are:
 ---               - id (number): Only return clients with the given id
