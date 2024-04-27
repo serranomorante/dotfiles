@@ -245,6 +245,8 @@ bar {
 }
 
 focus_wrapping no
+# Prevent chrome debugger from grabbing focus
+focus_on_window_activation urgent
 
 for_window [all] title_window_icon padding 3px
 
