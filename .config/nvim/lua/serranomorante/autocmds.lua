@@ -143,6 +143,9 @@ autocmd("VimResized", {
   end,
 })
 
--- autocmd("TermOpen", {
---  -- clear hlsearch highlights when entering terminal
--- })
+autocmd({ "BufWinEnter", "WinEnter" }, { -- TermOpen would only execute the callback once
+  desc = "Clear hlsearch highlights when entering terminal",
+  pattern = "term://*",
+  group = augroup("clear_hlsearch_on_term_open", { clear = true }),
+  callback = vim.schedule_wrap(function() vim.cmd("nohlsearch") end),
+})
