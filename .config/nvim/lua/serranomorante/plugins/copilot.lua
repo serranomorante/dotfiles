@@ -7,6 +7,7 @@ return {
     vim.g.copilot_filetypes = {
       ["oil"] = false,
     }
+    vim.g.copilot_enabled = false -- disable by default
   end,
   config = function()
     vim.keymap.set("i", "<M-c>", 'copilot#Accept("\\<CR>")', {
