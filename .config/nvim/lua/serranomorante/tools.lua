@@ -12,7 +12,7 @@ M.by_filetype = {
       -- { "js-debug-adapter", version = "v1.82.0" },
       "js-debug-adapter",
     },
-    parsers = { "javascript", "typescript", "tsx" },
+    parsers = { "javascript", "typescript", "tsx", "jsdoc" },
   },
   lua = { formatters = { "stylua" }, lsp = { "lua-language-server" } },
   go = {
