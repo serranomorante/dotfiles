@@ -1,8 +1,9 @@
+local conditions = require("heirline.conditions")
+
 local M = {}
 
 M.Breadcrumb = {
   condition = function() return package.loaded["aerial"] end,
-  update = { "CursorMoved", "LspAttach" },
   init = function(self)
     local data = require("aerial").get_location(true) or {}
     local children = {}
@@ -39,6 +40,7 @@ M.Breadcrumb = {
 }
 
 M.Oil = {
+  condition = function() return conditions.buffer_matches({ filetype = { "oil" } }) end,
   provider = function() return vim.fn.fnamemodify(require("oil").get_current_dir(), ":.") end,
 }
 

@@ -1,14 +1,9 @@
+local heirline_utils = require("serranomorante.plugins.statusline.utils")
+
 return {
   "rebelot/heirline.nvim",
   event = "UiEnter",
-  dependencies = {
-    "stevearc/aerial.nvim",
-    opts = {
-      filter_kind = false,
-      disable_max_lines = vim.g.max_file.lines,
-      disable_max_size = vim.g.max_file.size,
-    },
-  },
+  dependencies = "stevearc/aerial.nvim",
   init = function()
     vim.api.nvim_create_autocmd("LspAttach", {
       desc = "Re-trigger disable_winbar_cb on attach",
@@ -66,12 +61,23 @@ return {
 
     local WinBars = {
       fallthrough = false,
+      winbar_components.Oil,
       {
-        condition = function() return conditions.buffer_matches({ filetype = { "oil" } }) end,
-        winbar_components.Oil,
-      },
-      {
-        condition = function() return conditions.lsp_attached end,
+        ---force winbar visibility on start
+        init = heirline_utils.update_events({
+          "CursorMoved",
+          {
+            "LspAttach",
+            desc = "Aerial: force start on most LSP servers",
+            callback = function() vim.defer_fn(vim.cmd.redrawstatus, 500) end,
+          },
+          {
+            "LspProgress",
+            desc = "Aerial: force start on very slow LSP servers",
+            pattern = "end",
+            callback = function() vim.cmd.redrawstatus() end,
+          },
+        }),
         winbar_components.Breadcrumb,
       },
     }

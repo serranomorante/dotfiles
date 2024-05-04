@@ -193,7 +193,13 @@ return {
           vim.keymap.set("n", "<leader>lD", function() builtin.diagnostics_workspace() end, opts)
 
           opts.desc = "LSP: Document symbols"
-          vim.keymap.set("n", "<leader>ls", function() builtin.lsp_document_symbols() end, opts)
+          vim.keymap.set("n", "<leader>ls", function()
+            if utils.is_available("aerial.nvim") then
+              require("aerial").toggle()
+            else
+              builtin.lsp_document_symbols()
+            end
+          end, opts)
 
           opts.desc = "LSP: Workspace symbols"
           vim.keymap.set("n", "<leader>lS", function() builtin.lsp_workspace_symbols() end, opts)

@@ -19,6 +19,8 @@ local groups = {
   DapBreakpoint = { fg = fg .. "Red" },
   DapLogPoint = { fg = fg .. "Blue" },
   DapStopped = { fg = fg .. "Cyan" },
+  ---Aerial
+  AerialLine = { fg = fg .. "Cyan", ctermfg = 14, bg = bg .. "Grey3" },
 }
 
 vim.g.terminal_color_0 = vim.g.terminal_color_0 or (bg .. "Grey1")
