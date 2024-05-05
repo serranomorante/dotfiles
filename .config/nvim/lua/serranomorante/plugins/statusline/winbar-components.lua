@@ -42,7 +42,14 @@ M.Breadcrumb = {
 
 M.Oil = {
   condition = function() return conditions.buffer_matches({ filetype = { "oil" } }) end,
-  provider = function() return vim.fn.fnamemodify(require("oil").get_current_dir(), ":.") end,
+  init = function(self) self.dir = require("oil").get_current_dir() end,
+  {
+    provider = function() return vim.fn.fnamemodify(vim.fn.getcwd(), ":p"):gsub("^" .. vim.env.HOME, "~") end,
+    hl = { fg = "NvimDarkCyan", bold = true },
+  },
+  {
+    provider = function(self) return vim.fn.fnamemodify(self.dir, ":.") end,
+  },
 }
 
 return M
