@@ -1,10 +1,9 @@
-local heirline_utils = require("serranomorante.plugins.statusline.utils")
-
 return {
   "rebelot/heirline.nvim",
   event = "UiEnter",
   dependencies = "stevearc/aerial.nvim",
   init = function()
+    ---By default, `disable_winbar_cb` is not re-checked on the `LspAttach` event
     vim.api.nvim_create_autocmd("LspAttach", {
       desc = "Re-trigger disable_winbar_cb on attach",
       group = vim.api.nvim_create_augroup("retrigger_disable_winbar_cb_on_attach", { clear = true }),
@@ -62,30 +61,14 @@ return {
     local WinBars = {
       fallthrough = false,
       winbar_components.Oil,
-      {
-        ---force winbar visibility on start
-        init = heirline_utils.update_events({
-          "CursorMoved",
-          {
-            "LspAttach",
-            desc = "Aerial: force start on most LSP servers",
-            callback = function() vim.defer_fn(vim.cmd.redrawstatus, 500) end,
-          },
-          {
-            "LspProgress",
-            desc = "Aerial: force start on very slow LSP servers",
-            pattern = "end",
-            callback = function() vim.cmd.redrawstatus() end,
-          },
-        }),
-        winbar_components.Breadcrumb,
-      },
+      winbar_components.Breadcrumb,
     }
 
     return {
       statusline = StatusLines,
       winbar = WinBars,
       opts = {
+        ---Winbar should be disabled by default and only enabled after these conditions
         disable_winbar_cb = function(args)
           if conditions.buffer_matches({ filetype = { "oil" } }, args.buf) then return false end
           if vim.tbl_count(vim.lsp.get_clients({ bufnr = args.buf })) > 0 then return false end

@@ -4,6 +4,7 @@ local M = {}
 
 M.Breadcrumb = {
   condition = function() return package.loaded["aerial"] end,
+  update = "CursorMoved",
   init = function(self)
     local data = require("aerial").get_location(true) or {}
     local children = {}
