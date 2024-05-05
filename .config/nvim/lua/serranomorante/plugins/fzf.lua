@@ -97,6 +97,7 @@ M.fzf_lua = {
         width = 999,
         border = "single",
         preview = {
+          wrap = "wrap",
           default = "bat", -- seems to be faster than builtin (treesitter)
           border = "noborder",
           horizontal = "right:40%",
@@ -110,20 +111,20 @@ M.fzf_lua = {
       },
       keymap = {
         builtin = {
-          ["<C-d>"] = "preview-page-down",
-          ["<C-u>"] = "preview-page-up",
+          ["<C-d>"] = "preview-half-page-down",
+          ["<C-u>"] = "preview-half-page-up",
           ["<C-z>"] = "toggle-fullscreen",
           ["<F4>"] = "toggle-preview",
         },
         fzf = {
-          ["ctrl-f"] = "half-page-down",
-          ["ctrl-b"] = "half-page-up",
+          ["ctrl-f"] = "preview-page-down",
+          ["ctrl-b"] = "preview-page-up",
           ["ctrl-a"] = "beginning-of-line",
           ["ctrl-e"] = "end-of-line",
           ---Only valid with fzf previewers (bat/cat/git/etc)
           ["f4"] = "toggle-preview",
-          ["ctrl-d"] = "preview-page-down",
-          ["ctrl-u"] = "preview-page-up",
+          ["ctrl-d"] = "preview-half-page-down",
+          ["ctrl-u"] = "preview-half-page-up",
           ---https://github.com/ibhagwan/fzf-lua/issues/546#issuecomment-1736076539
           ["ctrl-q"] = "select-all+accept",
           ["ctrl-h"] = "previous-history",

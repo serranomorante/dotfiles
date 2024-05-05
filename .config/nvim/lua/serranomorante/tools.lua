@@ -8,11 +8,9 @@ M.by_filetype = {
     linters = { "eslint_d" },
     lsp = { "typescript-language-server", "tailwindcss-language-server", "vtsls" },
     dap = {
-      ---Uncomment next line if you want to use `dapDebugServer` instead of `vsDebugServerBundle`
-      -- { "js-debug-adapter", version = "v1.82.0" },
-      "js-debug-adapter",
+      "js-debug-adapter", -- or { "js-debug-adapter", version = "v1.82.0" },
     },
-    parsers = { "javascript", "typescript", "tsx", "jsdoc" },
+    parsers = { "javascript", "typescript", "tsx" },
   },
   lua = { formatters = { "stylua" }, lsp = { "lua-language-server" } },
   go = {

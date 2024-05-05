@@ -77,3 +77,5 @@ vim.cmd.colorscheme("default")
 
 vim.o.completeopt = "menuone,noselect,noinsert"
 vim.o.pumheight = 15
+
+vim.g.shortmess = "a"

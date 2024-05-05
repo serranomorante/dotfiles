@@ -357,7 +357,7 @@ return {
               typescript = {
                 ---https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-0.html#smarter-auto-imports
                 ---https://github.com/yioneko/vtsls/blob/41ad8c9d3f9dbd122ce3259564f34d020b7d71d9/packages/service/configuration.schema.json#L779C29-L779C58
-                preferences = { includePackageJsonAutoImports = "on" },
+                preferences = { includePackageJsonAutoImports = "off" },
                 ---https://github.com/yioneko/vtsls/blob/41ad8c9d3f9dbd122ce3259564f34d020b7d71d9/packages/service/configuration.schema.json#L1025C17-L1025C43
                 preferGoToSourceDefinition = true,
                 inlayHints = {

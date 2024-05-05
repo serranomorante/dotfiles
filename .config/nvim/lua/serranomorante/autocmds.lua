@@ -152,6 +152,7 @@ autocmd({ "BufWinEnter", "WinEnter" }, { -- TermOpen would only execute the call
 
 autocmd({ "FileType" }, {
   desc = "Enable syntax only of these filetypes",
+  group = augroup("enable_syntax_per_filetype", { clear = true }),
   pattern = "qf",
   command = "syntax on",
 })
