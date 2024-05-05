@@ -35,8 +35,6 @@ M.nvim_bqf = {
   },
 }
 
-local ns = vim.api.nvim_create_namespace("highlight-quickfix-filename")
-
 ---https://github.com/kevinhwang91/nvim-bqf?tab=readme-ov-file#format-new-quickfix
 function _G.qftf(info)
   local items
@@ -73,24 +71,6 @@ function _G.qftf(info)
     str = valid_qf_fmt:format(fname, lnum, col, qtype, e.text)
     table.insert(ret, str)
   end
-  ---Highlight quickfix filenames
-  vim.schedule(function()
-    local buf = vim.api.nvim_get_current_buf()
-    vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-    for line, content in ipairs(ret) do
-      content = content:sub(1, limit + 10)
-      local from, to = content:find("^.*/")
-      if from then
-        vim.api.nvim_buf_set_extmark(
-          buf,
-          ns,
-          line - 1,
-          from - 1,
-          { end_col = to, hl_group = "Comment", priority = 110 }
-        )
-      end
-    end
-  end)
   return ret
 end
 

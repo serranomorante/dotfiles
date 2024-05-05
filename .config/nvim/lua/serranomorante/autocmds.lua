@@ -149,3 +149,9 @@ autocmd({ "BufWinEnter", "WinEnter" }, { -- TermOpen would only execute the call
   group = augroup("clear_hlsearch_on_term_open", { clear = true }),
   callback = vim.schedule_wrap(function() vim.cmd("nohlsearch") end),
 })
+
+autocmd({ "FileType" }, {
+  desc = "Enable syntax only of these filetypes",
+  pattern = "qf",
+  command = "syntax on",
+})
