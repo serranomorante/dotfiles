@@ -125,33 +125,28 @@ M.LSPActive = {
     self.names = names
   end,
   static = {
-    surround = function(_, names)
-      if vim.tbl_count(names) == 0 then return "" end
-      local non_nil = {}
-      for _, v in ipairs(names) do
-        if v ~= nil then table.insert(non_nil, v) end
-      end
-      if #non_nil == 0 then return "" end
-      return " " .. table.concat(non_nil, ",")
+    DEFAULT_LSP_TRUNC = 99,
+    wrap = function(self, names, trunc)
+      local limit = trunc or self.DEFAULT_LSP_TRUNC
+      return " " .. string.format("%." .. limit .. "s%s", table.concat(names, ","), trunc and "…" or "")
     end,
-    truncate = function(_, value) return value and (value):sub(1, 5) .. ".." or "" end,
   },
   condition = heirline_conditions.lsp_attached,
   flexible = M.priority.lsp,
   {
-    provider = function(self) return self:surround(self.names) end,
+    provider = function(self) return self:wrap(self.names) end,
   },
   {
-    provider = function(self) return self:surround({ self.names[1], self.names[2], self:truncate(self.names[3]) }) end,
+    provider = function(self) return self:wrap(self.names, 15) end,
   },
   {
-    provider = function(self) return self:surround({ self.names[1], self:truncate(self.names[2]) }) end,
+    provider = function(self) return self:wrap(self.names, 10) end,
   },
   {
-    provider = function(self) return self:surround({ self:truncate(self.names[1]) }) end,
+    provider = function(self) return self:wrap(self.names, 5) end,
   },
   {
-    provider = function(self) return self:surround({ "LSP" }) end,
+    provider = function(self) return self:wrap({ "LSP" }) end,
   },
 }
 ---https://github.com/rebelot/heirline.nvim/blob/master/cookbook.md#diagnostics
