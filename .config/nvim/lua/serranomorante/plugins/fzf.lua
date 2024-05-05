@@ -85,6 +85,7 @@ M.fzf_lua = {
     if not utils.is_directory(fzf_lua_path) then vim.fn.mkdir(fzf_lua_path, "p") end
 
     return {
+      defaults = { formatter = "path.filename_first" },
       fzf_colors = {
         bg = { "bg", "Normal" },
         gutter = { "bg", "Normal" },
@@ -103,12 +104,6 @@ M.fzf_lua = {
       },
       previewers = {
         bat = { args = "--color=always --style=numbers,changes --line-range=:" .. vim.g.max_file.lines },
-      },
-      files = {
-        formatter = "path.filename_first",
-      },
-      buffers = {
-        formatter = "path.filename_first",
       },
       fzf_opts = {
         ["--history"] = utils.join_paths(fzf_lua_path, "fzf-lua-history"),
@@ -146,7 +141,6 @@ M.fzf_lua = {
         },
       },
       grep = {
-        formatter = "path.filename_first",
         rg_opts = "--column --line-number --no-heading --color=always --hidden --smart-case --max-columns=4096 -e",
         rg_glob = true,
       },
