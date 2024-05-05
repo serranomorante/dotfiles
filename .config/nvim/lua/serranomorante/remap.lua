@@ -1,4 +1,5 @@
 local utils = require("serranomorante.utils")
+local events = require("serranomorante.events")
 
 -- Toggle wrap
 vim.keymap.set("n", "<leader>uw", function()
@@ -151,3 +152,13 @@ if vim.env.TMUX and utils.is_available("plenary.nvim") then
     end
   end, { desc = "Tmux: Open file directory" })
 end
+
+vim.keymap.set("n", "u", function()
+  events.event("Undo")
+  return "u"
+end, { expr = true })
+
+vim.keymap.set("n", "<C-r>", function()
+  events.event("Redo")
+  return "<C-r>"
+end, { expr = true })
