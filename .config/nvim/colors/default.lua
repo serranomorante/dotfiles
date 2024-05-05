@@ -13,6 +13,7 @@ local fg = bg == "NvimDark" and "NvimLight" or "NvimDark"
 local groups = {
   ---Builtin
   DiffChange = { bg = bg .. "Grey3" },
+  QuickFixLine = { ctermfg = "NONE", fg = "NONE", bold = true },
   ---LSP
   LspCodeLens = { link = "Comment" },
   ---DAP

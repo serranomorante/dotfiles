@@ -35,47 +35,62 @@ M.nvim_bqf = {
   },
 }
 
+local ns = vim.api.nvim_create_namespace("highlight-quickfix-filename")
+
 ---https://github.com/kevinhwang91/nvim-bqf?tab=readme-ov-file#format-new-quickfix
 function _G.qftf(info)
   local items
   local ret = {}
-
   if info.quickfix == 1 then
     items = vim.fn.getqflist({ id = info.id, items = 0 }).items
   else
     items = vim.fn.getloclist(info.winid, { id = info.id, items = 0 }).items
   end
   local limit = 50
-  local fnameFmt1, fnameFmt2 = "%-" .. limit .. "s", "…%." .. (limit - 1) .. "s"
-  local validFmt = "%s │%5d:%-3d│%s %s"
+  local fname_short_fmt, fname_large_fmt = "%-" .. limit .. "s", "…%." .. (limit - 1) .. "s"
+  local valid_qf_fmt = "%s │%5d:%-3d│%s %s"
   for i = info.start_idx, info.end_idx do
     local e = items[i]
     local fname = ""
     local str
-    if e.valid == 1 then
-      if e.bufnr > 0 then
-        fname = vim.fn.bufname(e.bufnr)
-        if fname == "" then
-          fname = "[No Name]"
-        else
-          fname = fname:gsub("^" .. vim.env.HOME, "~")
-        end
-        -- char in fname may occur more than 1 width, ignore this issue in order to keep performance
-        if #fname <= limit then
-          fname = fnameFmt1:format(fname)
-        else
-          fname = fnameFmt2:format(fname:sub(1 - limit))
-        end
+    if e.bufnr > 0 then
+      fname = vim.fn.bufname(e.bufnr)
+      if fname == "" then
+        fname = "[No Name]"
+      else
+        fname = fname:gsub("^" .. vim.env.HOME, "~")
       end
-      local lnum = e.lnum > 99999 and -1 or e.lnum
-      local col = e.col > 999 and -1 or e.col
-      local qtype = e.type == "" and "" or " " .. e.type:sub(1, 1):upper()
-      str = validFmt:format(fname, lnum, col, qtype, e.text)
-    else
-      str = e.text
+      -- char in fname may occur more than 1 width, ignore this issue in order to keep performance
+      if #fname <= limit then
+        fname = fname_short_fmt:format(fname)
+      else
+        fname = fname_large_fmt:format(fname:sub(1 - limit))
+      end
     end
+    local lnum = e.lnum > 99999 and -1 or e.lnum
+    local col = e.col > 999 and -1 or e.col
+    local qtype = e.type == "" and "" or " " .. e.type:sub(1, 1):upper()
+    str = valid_qf_fmt:format(fname, lnum, col, qtype, e.text)
     table.insert(ret, str)
   end
+  ---Highlight quickfix filenames
+  vim.schedule(function()
+    local buf = vim.api.nvim_get_current_buf()
+    vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+    for line, content in ipairs(ret) do
+      content = content:sub(1, limit + 10)
+      local from, to = content:find("^.*/")
+      if from then
+        vim.api.nvim_buf_set_extmark(
+          buf,
+          ns,
+          line - 1,
+          from - 1,
+          { end_col = to, hl_group = "Comment", priority = 110 }
+        )
+      end
+    end
+  end)
   return ret
 end
 
