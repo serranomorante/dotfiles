@@ -13,7 +13,6 @@ return {
     event = "LspAttach", -- don't judge me
     dependencies = {
       "nvim-treesitter/nvim-treesitter-textobjects",
-      { "LiadOz/nvim-dap-repl-highlights", config = true },
     },
     cmd = {
       "TSBufDisable",
