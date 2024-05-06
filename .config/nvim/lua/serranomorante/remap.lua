@@ -162,3 +162,8 @@ vim.keymap.set("n", "<C-r>", function()
   events.event("Redo")
   return "<C-r>"
 end, { expr = true })
+
+vim.keymap.set("n", "f", "m'f")
+vim.keymap.set("n", "F", "m'F")
+vim.keymap.set("n", "t", "m't")
+vim.keymap.set("n", "T", "m'T")

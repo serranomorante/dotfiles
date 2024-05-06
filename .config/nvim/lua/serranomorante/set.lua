@@ -25,10 +25,11 @@ vim.opt.shiftwidth = 4
 vim.opt.swapfile = false
 vim.opt.backup = false
 
-vim.opt.shada = "'0,<0,%0,:10000,/10000,s500,h"
+vim.opt.shada = "'100,<0,%0,:10000,/10000,s500,h"
 vim.opt.shadafile = utils.join_paths(shadadir, "nvim.shada")
 vim.opt.undodir = undodir
 vim.opt.undofile = true
+vim.opt.jumpoptions:append("stack")
 
 vim.opt.scrolloff = 4
 vim.opt.signcolumn = "yes:1"
