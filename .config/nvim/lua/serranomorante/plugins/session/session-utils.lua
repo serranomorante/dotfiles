@@ -48,4 +48,17 @@ M.save = function(filename, user_data)
   M.write_json_file(filename, data)
 end
 
+---Do some cleaning before saving session
+---Remove buffers outside cwd, remove buffers that are directories
+M.clean_before_session_save = function()
+  local cwd = vim.uv.cwd()
+  if cwd and cwd:sub(-1) ~= "/" then cwd = cwd .. "/" end
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    local bufname = vim.api.nvim_buf_get_name(buf)
+    local buf_outside_cwd = bufname:sub(1, #cwd)
+    local is_dir = vim.fn.isdirectory(bufname)
+    if buf_outside_cwd ~= cwd or is_dir == 1 then vim.api.nvim_buf_delete(buf, { force = true }) end
+  end
+end
+
 return M

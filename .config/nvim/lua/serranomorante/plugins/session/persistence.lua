@@ -16,6 +16,7 @@ return {
     local filename = vim.fn.fnameescape(persistence.get_current())
 
     opts.pre_save = function()
+      session_utils.clean_before_session_save()
       local dap_data = dap.on_save()
       local data = { dap = dap_data }
       session_utils.save(filename, data)
