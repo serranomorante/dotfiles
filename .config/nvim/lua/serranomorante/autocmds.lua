@@ -3,8 +3,6 @@ local autocmd = vim.api.nvim_create_autocmd
 local utils = require("serranomorante.utils")
 local events = require("serranomorante.events")
 
-local general = augroup("General Settings", { clear = true })
-
 autocmd("TextYankPost", {
   desc = "Highlight yanked text",
   group = augroup("highlight_yank", { clear = true }),
@@ -49,12 +47,6 @@ autocmd({ "BufReadPost", "BufNewFile", "BufWritePost" }, {
   end,
 })
 
-autocmd("BufEnter", {
-  desc = "Disable New Line Comment",
-  group = general,
-  callback = function() vim.opt.formatoptions:remove({ "c", "r", "o" }) end,
-})
-
 autocmd("BufReadPre", {
   desc = "Disable certain functionality on very large files",
   group = augroup("large_buf", { clear = true }),
@@ -86,7 +78,7 @@ autocmd({ "BufWinLeave", "BufWinEnter" }, {
   end,
 })
 
-local indent_line_group = augroup("indent_line", {})
+local indent_line_group = augroup("indent_line", { clear = true })
 
 autocmd("OptionSet", {
   desc = "Update indent line on shiftwidth change",
@@ -151,7 +143,7 @@ autocmd({ "BufWinEnter", "WinEnter" }, { -- TermOpen would only execute the call
 })
 
 autocmd({ "FileType" }, {
-  desc = "Enable syntax only of these filetypes",
+  desc = "Enable syntax only for these filetypes",
   group = augroup("enable_syntax_per_filetype", { clear = true }),
   pattern = "qf",
   command = "syntax on",

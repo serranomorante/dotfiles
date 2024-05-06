@@ -21,6 +21,9 @@ require("lazy").setup({
   change_detection = {
     notify = false,
   },
+  install = {
+    missing = false,
+  },
   dev = {
     path = "~/repos",
     fallback = true,
@@ -34,5 +37,11 @@ require("lazy").setup({
       -- "marilari88/neotest-vitest",
       -- "ibhagwan/fzf-lua",
     },
+  },
+  diff = {
+    cmd = "diffview.nvim",
+  },
+  readme = {
+    enabled = false,
   },
 })

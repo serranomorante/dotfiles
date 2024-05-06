@@ -13,16 +13,18 @@ return {
     },
   },
   init = function()
+    local linters_augroup = augroup("run_linters", { clear = true })
+    local function run_linters() require("lint").try_lint() end
     autocmd({ "BufEnter", "BufWritePost", "InsertLeave" }, {
       desc = "Run linters",
-      group = augroup("run_linters", { clear = true }),
-      callback = function() require("lint").try_lint() end,
+      group = linters_augroup,
+      callback = run_linters,
     })
     autocmd("User", {
       desc = "Run linters on undo redo",
-      group = augroup("run_linter_on_undo_redo", { clear = true }),
       pattern = { "CustomUndo", "CustomRedo" },
-      callback = function() require("lint").try_lint() end,
+      group = linters_augroup,
+      callback = run_linters,
     })
   end,
   config = function()

@@ -68,14 +68,13 @@ vim.opt.updatetime = 50
 vim.opt.timeoutlen = 300
 
 vim.opt.inccommand = "split"
+vim.opt.formatoptions:remove({ "c", "r", "o" })
 
 vim.opt.list = true
 vim.opt_global.listchars:append({ leadmultispace = "  ", trail = " " })
+vim.opt.completeopt = { "menuone", "noselect", "noinsert", "popup" }
+vim.opt.pumheight = 15
+vim.o.shortmess = "atToOF"
 
 vim.cmd.syntax("off")
 vim.cmd.colorscheme("default")
-
-vim.o.completeopt = "menuone,noselect,noinsert"
-vim.o.pumheight = 15
-
-vim.g.shortmess = "a"
