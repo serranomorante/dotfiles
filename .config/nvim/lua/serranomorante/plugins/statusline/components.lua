@@ -257,7 +257,8 @@ M.DAPMessages = {
 }
 
 M.Indent = {
-  provider = function() return "S:" .. vim.api.nvim_get_option_value("shiftwidth", { buf = 0 }) end,
+  condition = function() return utils.is_available("vim-sleuth") end,
+  provider = function() return vim.fn.call("SleuthIndicator", {}) end,
   hl = { bold = true },
 }
 
