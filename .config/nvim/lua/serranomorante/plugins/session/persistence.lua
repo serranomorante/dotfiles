@@ -4,7 +4,7 @@ return {
   opts = {
     ---No `tabpages`
     ---https://github.com/rmagatti/auto-session?tab=readme-ov-file#recommended-sessionoptions-config
-    options = { "blank", "buffers", "winsize", "winpos", "terminal" },
+    options = { "blank", "buffers", "winsize", "winpos", "terminal", "folds" },
   },
   config = function(_, opts)
     local persistence = require("persistence")

@@ -45,7 +45,7 @@ M.Oil = {
   init = function(self) self.dir = require("oil").get_current_dir() end,
   {
     provider = function() return vim.fn.fnamemodify(vim.fn.getcwd(), ":p"):gsub("^" .. vim.env.HOME, "~") end,
-    hl = { fg = "NvimDarkCyan", bold = true },
+    hl = { fg = "NvimLightCyan", bold = true },
   },
   {
     provider = function(self) return vim.fn.fnamemodify(self.dir, ":.") end,
