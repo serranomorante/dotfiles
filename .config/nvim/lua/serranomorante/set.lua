@@ -69,7 +69,6 @@ vim.opt.updatetime = 50
 vim.opt.timeoutlen = 300
 
 vim.opt.inccommand = "split"
-vim.opt.formatoptions:remove({ "c", "r", "o" })
 
 vim.opt.list = true
 vim.opt_global.listchars:append({ leadmultispace = "  ", trail = " " })

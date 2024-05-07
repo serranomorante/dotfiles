@@ -3,6 +3,9 @@ local autocmd = vim.api.nvim_create_autocmd
 local utils = require("serranomorante.utils")
 local events = require("serranomorante.events")
 
+local general_settings_group = augroup("general_settings", { clear = true })
+local indent_line_group = augroup("indent_line", { clear = true })
+
 autocmd("TextYankPost", {
   desc = "Highlight yanked text",
   group = augroup("highlight_yank", { clear = true }),
@@ -78,8 +81,6 @@ autocmd({ "BufWinLeave", "BufWinEnter" }, {
   end,
 })
 
-local indent_line_group = augroup("indent_line", { clear = true })
-
 autocmd("OptionSet", {
   desc = "Update indent line on shiftwidth change",
   group = indent_line_group,
@@ -142,9 +143,15 @@ autocmd({ "BufWinEnter", "WinEnter" }, { -- TermOpen would only execute the call
   callback = vim.schedule_wrap(function() vim.cmd("nohlsearch") end),
 })
 
-autocmd({ "FileType" }, {
+autocmd("FileType", {
   desc = "Enable syntax only for these filetypes",
-  group = augroup("enable_syntax_per_filetype", { clear = true }),
+  group = general_settings_group,
   pattern = "qf",
   command = "syntax on",
+})
+
+autocmd("FileType", {
+  desc = "Disable new line comments",
+  group = general_settings_group,
+  command = "set formatoptions-=cro",
 })
