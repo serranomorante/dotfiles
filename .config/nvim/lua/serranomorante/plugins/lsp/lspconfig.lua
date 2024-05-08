@@ -238,7 +238,6 @@ return {
 
       capabilities = vim.lsp.protocol.make_client_capabilities()
       capabilities.textDocument.foldingRange = { dynamicRegistration = false, lineFoldingOnly = true }
-      capabilities.textDocument.completion.completionItem.snippetSupport = false
 
       local servers = utils.get_from_tools(tools.by_filetype, "lsp", true)
 
