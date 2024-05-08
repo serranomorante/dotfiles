@@ -1,6 +1,6 @@
 return {
   "github/copilot.vim",
-  event = "User CustomFile",
+  cmd = "Copilot",
   init = function()
     vim.g.copilot_node_command = vim.g.node_system_executable
     vim.g.copilot_no_tab_map = true -- I use `tab` for completion
