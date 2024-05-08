@@ -2,6 +2,14 @@ local tools = require("serranomorante.tools")
 local augroup = vim.api.nvim_create_augroup
 local autocmd = vim.api.nvim_create_autocmd
 
+local function run_linters(args)
+  if vim.b[args.buf].large_buf then
+    require("lint").linters_by_ft[vim.bo[args.buf].filetype] = {}
+    return vim.diagnostic.reset(nil, args.buf)
+  end
+  require("lint").try_lint()
+end
+
 return {
   "mfussenegger/nvim-lint",
   event = { "BufReadPre", "BufReadPost" },
@@ -14,7 +22,6 @@ return {
   },
   init = function()
     local linters_augroup = augroup("run_linters", { clear = true })
-    local function run_linters() require("lint").try_lint() end
     autocmd({ "BufEnter", "BufWritePost", "InsertLeave" }, {
       desc = "Run linters",
       group = linters_augroup,
@@ -36,6 +43,6 @@ return {
       typescriptreact = tools.by_filetype.javascript.linters,
       python = tools.by_filetype.python.linters,
     }
-    lint.try_lint() -- Trigger on first load
+    run_linters({ buf = vim.api.nvim_get_current_buf() }) -- Trigger on first load
   end,
 }
