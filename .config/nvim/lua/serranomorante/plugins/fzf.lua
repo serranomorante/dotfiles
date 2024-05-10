@@ -107,6 +107,7 @@ M.fzf_lua = {
         bat = { args = "--color=always --style=numbers,changes --line-range=:" .. vim.g.max_file.lines },
       },
       fzf_opts = {
+        ["--header-lines"] = false, -- https://github.com/ibhagwan/fzf-lua/issues/569#issuecomment-1329342154
         ["--history"] = utils.join_paths(fzf_lua_path, "fzf-lua-history"),
       },
       keymap = {
