@@ -50,10 +50,16 @@ return {
       components.Align,
     }
 
+    local QuickfixStatusLine = {
+      condition = function() return conditions.is_active() and conditions.buffer_matches({ filetype = { "qf" } }) end,
+      components.QuickfixTitle,
+    }
+
     local StatusLines = {
       hl = function() return conditions.is_active() and "StatusLine" or "StatusLineNC" end,
       fallthrough = false,
       DAPUIStatusLine,
+      QuickfixStatusLine,
       InactiveStatusLine,
       DefaultStatusLine,
     }

@@ -276,4 +276,9 @@ M.TrailblazerCurrentStackName = {
   { provider = "" },
 }
 
+M.QuickfixTitle = {
+  provider = function() return vim.w.quickfix_title end,
+  hl = { bold = true },
+}
+
 return M
