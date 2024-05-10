@@ -117,8 +117,8 @@ M.fzf_lua = {
           ["<F4>"] = "toggle-preview",
         },
         fzf = {
-          ["ctrl-f"] = "preview-page-down",
-          ["ctrl-b"] = "preview-page-up",
+          ["ctrl-f"] = "half-page-down",
+          ["ctrl-b"] = "half-page-up",
           ["ctrl-a"] = "beginning-of-line",
           ["ctrl-e"] = "end-of-line",
           ---Only valid with fzf previewers (bat/cat/git/etc)
