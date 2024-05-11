@@ -66,7 +66,7 @@ vim.g.git_worktrees = {
 }
 
 vim.opt.updatetime = 50
-vim.opt.timeoutlen = 300
+vim.opt.timeoutlen = 500
 
 vim.opt.inccommand = "split"
 
