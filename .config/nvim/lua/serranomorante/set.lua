@@ -37,8 +37,6 @@ vim.opt.isfname:append("@-@")
 vim.opt.cursorline = true
 vim.opt.cursorlineopt = "number"
 
-vim.opt.clipboard = "unnamedplus"
-
 vim.opt.foldcolumn = "1"
 vim.opt.foldlevel = 99 -- set high foldlevel for nvim-ufo
 vim.opt.foldlevelstart = 99 -- start with all code unfolded
