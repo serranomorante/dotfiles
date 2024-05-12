@@ -9,7 +9,6 @@ keybinding:
 git:
   paging:
     colorArg: always
-    pager: delta --dark --paging=never
 # based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
 os:
   edit: "nvim --server $NVIM --remote-send '<C-\\><C-n>:lua vim.api.nvim_win_close(0, true)<CR>:lua vim.cmd.edit({{filename}})<CR>'"
