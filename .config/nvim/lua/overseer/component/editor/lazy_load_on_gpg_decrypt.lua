@@ -42,8 +42,13 @@ return {
         ---Open float when prompted for passphrase
         if vim.islist(data) and data ~= nil then
           for _, line in ipairs(data) do
-            local is_passphrase_prompt = string.find(line, "Passphrase: ___________________")
-            if is_passphrase_prompt then overseer.run_action(task, "open float") end
+            local is_passphrase_prompt = string.match(line, "Passphrase:")
+            if is_passphrase_prompt ~= nil then
+              overseer.run_action(task, "open float")
+              vim.defer_fn(function()
+                if vim.api.nvim_get_option_value("buftype", { buf = 0 }) == "terminal" then vim.cmd("startinsert") end
+              end, 300)
+            end
           end
         end
       end,
