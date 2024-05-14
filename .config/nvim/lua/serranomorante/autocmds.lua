@@ -112,8 +112,8 @@ autocmd("LspProgress", {
   callback = function(args)
     ---Inspired by: https://github.com/rockyzhang24/dotfiles/blob/master/.config/nvim/lua/rockyz/lsp/progress.lua
     local id = args.data.client_id
-    local kind = args.data.result.value.kind
-    local title = args.data.result.value.title
+    local kind = args.data.params.value.kind
+    local title = args.data.params.value.title
     local icons = { ["begin"] = "⣾", ["end"] = "" }
     local client_name = vim.lsp.get_client_by_id(id).name
     local suffix_when_done = kind == "end" and "DONE!" or ""
