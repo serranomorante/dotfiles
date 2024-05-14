@@ -88,9 +88,6 @@ return {
     task_win = {
       border = "single",
       padding = 0,
-      win_opts = {
-        winblend = 0,
-      },
     },
   },
 }
