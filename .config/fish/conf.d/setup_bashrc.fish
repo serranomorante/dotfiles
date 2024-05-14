@@ -33,6 +33,7 @@ set -gx SYSTEMD_PAGER ""
 # fzf use df instead of find
 set -gx FZF_DEFAULT_COMMAND "fd --type f"
 set -gx FZF_DEFAULT_OPTS "--layout=reverse --border"
+set -gx FZF_DEFAULT_OPTS_FILE "$HOME/.fzfrc"
 
 set -gx RIPGREP_CONFIG_PATH "$HOME/.ripgreprc"
 
