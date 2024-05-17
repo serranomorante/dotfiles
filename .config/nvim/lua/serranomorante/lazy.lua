@@ -14,7 +14,9 @@ vim.opt.rtp:prepend(lazypath)
 require("lazy").setup({
   { import = "serranomorante.plugins" },
   { import = "serranomorante.plugins.lsp" },
-  { import = "serranomorante.plugins.dap" },
+  { import = "serranomorante.plugins.dap.nvim-dap" },
+  { import = "serranomorante.plugins.dap.nvim-dap-python" },
+  { import = "serranomorante.plugins.dap.one-small-step-for-vimkind" },
   { import = "serranomorante.plugins.statusline.heirline" },
   { import = "serranomorante.plugins.session.persistence" },
 }, {

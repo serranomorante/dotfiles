@@ -1,6 +1,7 @@
 local constants = require("serranomorante.constants")
 local utils = require("serranomorante.utils")
 local events = require("serranomorante.events")
+local dap_utils = require("serranomorante.plugins.dap.dap-utils")
 
 ---Debuggers can exist on one of 2 folders: `mason` or `debuggers`
 ---Mason: installed automatically. Usually for stable versions of packages.
@@ -9,6 +10,7 @@ local events = require("serranomorante.events")
 
 ---`h: dap.ext.vscode.load_launchjs`
 local vscode_type_to_ft
+local log_is_trace = vim.env.DAP_LOG_LEVEL == "TRACE" or false
 
 return {
   "mfussenegger/nvim-dap",
@@ -157,31 +159,69 @@ return {
     ---║           Configurations             ║
     ---╚══════════════════════════════════════╝
 
-    local function url_prompt(default)
-      default = default or "http://localhost:3000"
-      local co = coroutine.running()
-      return coroutine.create(function()
-        vim.ui.input({ prompt = "Enter URL: ", default = default }, function(url)
-          if url == nil or url == "" then
-            return
-          else
-            coroutine.resume(co, url)
-          end
-        end)
-      end)
-    end
+    --[[ 
+    Javascript/Next.js/Typescript/Turborepo:
+    I prefer the "attach" configs so that closing nvim doesn't kill the debug adapters (google-chrome-stable or next-server process)
+    You cannot reuse the same ports (for example, on `--remote-debugging-port=9222` or `--inspect=9229`) across nvim-dap sessions.
+    Either you open new ones (new instances of chrome, new instances of next-server) and attach to those new ports, or stop your
+    running nvim-dap sessions (that use those ports) and start a new one (my workflow, don't pay too much attention to this).
+    ]]
 
+    local javascript_project_files = { "tsconfig.json", "package.json", "jsconfig.json", ".git" }
     for _, language in ipairs(constants.javascript_filetypes) do
       dap.configurations[language] = {
         {
-          name = "DAP: Debug with PWA Chrome",
+          name = "DAP: Next.js client launch",
           type = "pwa-chrome",
           request = "launch",
-          url = url_prompt,
+          sourceMaps = true,
+          url = function()
+            return coroutine.create(function(dap_run_co)
+              local items = { "3000", "3001", "3002", "3003", "3004" } -- TODO: get the ports programatically
+              items = vim.tbl_map(function(item) return "http://localhost:" .. item end, items)
+              vim.ui.select(items, { label = "Port> " }, function(choice)
+                if choice then coroutine.resume(dap_run_co, choice) end
+              end)
+            end)
+          end,
+          webRoot = function() return dap_utils.choose_path_relative_to_file(javascript_project_files) end,
+          userDataDir = true,
+          trace = log_is_trace,
         },
-        ---Most of my dap configurations are too specific to add them here.
-        ---I'm writing some nvim-dap guides in here:
-        ---https://github.com/serranomorante/.dotfiles?tab=readme-ov-file#some-guides-to-my-self
+        {
+          name = "DAP: Next.js client attach",
+          type = "pwa-chrome",
+          request = "attach",
+          port = 9222, -- Start chrome with `google-chrome-stable --remote-debugging-port=9222`
+          sourceMaps = true,
+          protocol = "inspector",
+          webRoot = function() return dap_utils.choose_path_relative_to_file(javascript_project_files) end,
+          trace = log_is_trace,
+        },
+        { -- Tested on next.js 14.2.3. It doesn't work on next.js 14.0.4
+          name = "DAP: Next.js server attach",
+          type = "pwa-node",
+          request = "attach",
+          processId = function() return require("dap.utils").pick_process({ filter = "^next.server.*" }) end,
+          port = function()
+            -- TODO: get the ports programatically
+            return coroutine.create(function(dap_run_co)
+              vim.ui.input(
+                {
+                  prompt = "Enter port: ",
+                  default = "9230", --[[
+                    You should start your dev server with `NODE_OPTIONS='--inspect' ...`
+                    "--inspect option was detected, the Next.js router server should be inspected at port 9230"
+                  ]]
+                },
+                function(input) return (input and input ~= "") and coroutine.resume(dap_run_co, input) or dap.ABORT end
+              )
+            end)
+          end,
+          cwd = function() return dap_utils.choose_path_relative_to_file(javascript_project_files) end,
+          trace = log_is_trace,
+        },
+        --- Next.js server "launch" is not included here because it can be too specific depending on the project
       }
     end
 
