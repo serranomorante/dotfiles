@@ -86,13 +86,6 @@ M.fzf_lua = {
 
     return {
       defaults = { formatter = "path.filename_first" },
-      fzf_colors = {
-        bg = { "bg", "Normal" },
-        gutter = { "bg", "Normal" },
-        info = { "fg", "Conditional" },
-        scrollbar = { "bg", "Normal" },
-        separator = { "fg", "Comment" },
-      },
       winopts = {
         width = 999,
         border = "single",
@@ -118,8 +111,6 @@ M.fzf_lua = {
           ["<F4>"] = "toggle-preview",
         },
         fzf = {
-          ["ctrl-f"] = "half-page-down",
-          ["ctrl-b"] = "half-page-up",
           ["ctrl-a"] = "beginning-of-line",
           ["ctrl-e"] = "end-of-line",
           ---Only valid with fzf previewers (bat/cat/git/etc)
@@ -128,10 +119,6 @@ M.fzf_lua = {
           ["ctrl-u"] = "preview-half-page-up",
           ---https://github.com/ibhagwan/fzf-lua/issues/546#issuecomment-1736076539
           ["ctrl-q"] = "select-all+accept",
-          ["ctrl-h"] = "previous-history",
-          ["ctrl-l"] = "next-history",
-          ["ctrl-n"] = "down",
-          ["ctrl-p"] = "up",
         },
       },
       actions = {
