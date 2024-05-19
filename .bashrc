@@ -38,6 +38,7 @@ export PATH="$HOME/bin:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
 # Add pynvim to path
 export PATH="/usr/lib/python3.11/site-packages:$PATH"
+export FONTCONFIG_PATH=/etc/fonts
 # For go packages
 if [ -x "$(command -v go)" ]; then
     export PATH="$PATH:$(go env GOBIN):$(go env GOPATH)/bin"

@@ -14,6 +14,7 @@ abbr --add cls printf "\033c"
 set -gx VOLTA_HOME "$HOME/.volta"
 set -gx PATH "$VOLTA_HOME/bin:$PATH"
 set -gx PATH "$HOME/bin:$PATH"
+set -gx FONTCONFIG_PATH /etc/fonts
 
 # This fixes poetry not being found
 set -gx PATH "$HOME/.local/bin:$PATH"
