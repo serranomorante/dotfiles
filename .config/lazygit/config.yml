@@ -16,3 +16,27 @@ os:
   editAtLineAndWait: 'nvim +{{line}} {{filename}}'
 promptToReturnFromSubprocess: false
 notARepository: 'quit'
+customCommands:
+  - key : '<c-a>'
+    description: 'Search the whole history (From a ref and down) for an expression in a file'
+    command: "git checkout {{index .PromptResponses 3}}"
+    context: 'commits'
+    prompts:
+      - type: 'input'
+        title: 'Search word:'
+      - type: 'input'
+        title: 'File/Subtree:'
+      - type: 'input'
+        title: 'Ref:'
+        initialValue: "{{index .CheckedOutBranch.Name }}"
+      - type: 'menuFromCommand'
+        title: 'Commits:'
+        command: "git log --oneline {{index .PromptResponses 2}} -S'{{index .PromptResponses 0}}' --all -- {{index .PromptResponses 1}}"
+        filter: '(?P<commit_id>[0-9a-zA-Z]*) *(?P<commit_msg>.*)'
+        valueFormat: '{{ .commit_id }}'
+        labelFormat: '{{ .commit_id | green | bold }} - {{ .commit_msg | yellow }}'
+  - key: 'E'
+    description: 'Add empty commit'
+    context: 'commits'
+    command: 'git commit --allow-empty -m "empty commit"'
+    loadingText: 'Committing empty commit...'
