@@ -11,7 +11,7 @@ wait_shell_cmd=0.001
 
 # create session, name window and detach
 # tell new-session to use the size of your terminal: https://unix.stackexchange.com/a/569731
-tmux new-session -d -n $foam -s $session_name -x "$(tput cols)" -y "$(tput lines)"
+tmux attach-session -t $session_name || tmux new-session -d -n $foam -s $session_name -x "$(tput cols)" -y "$(tput lines)"
 
 # setup "foam" window
 # ---------------------
