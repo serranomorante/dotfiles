@@ -59,9 +59,14 @@ autocmd("BufReadPre", {
     if not ok or not stats then return end
     ---you can't use `nvim_buf_line_count` because this runs on BufReadPre
     local lines_count = #vim.fn.readfile(args.file)
-    vim.b[args.buf].large_buf = stats.size > vim.g.max_file.size
+    local is_large_buffer = stats.size > vim.g.max_file.size
       or lines_count > vim.g.max_file.lines
       or stats.size / lines_count > vim.o.synmaxcol
+    vim.b[args.buf].large_buf = is_large_buffer
+    if not is_large_buffer then return end
+    ---Prevent slow initialization of large buffers
+    vim.o.eventignore = "FileType"
+    vim.schedule(function() vim.o.eventignore = "" end)
   end,
 })
 
