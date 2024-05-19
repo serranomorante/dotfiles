@@ -8,4 +8,4 @@ Before=plasma-workspace.target
 [Service]
 ExecStart=/usr/local/bin/dwm
 Slice=session.slice
-Restart=always
+Restart=on-success
