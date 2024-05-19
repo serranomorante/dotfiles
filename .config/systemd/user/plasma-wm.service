@@ -6,6 +6,6 @@ Description=Plasma Custom Window Manager
 Before=plasma-workspace.target
 
 [Service]
-ExecStart=/usr/bin/i3 --shmlog-size=26214400
+ExecStart=/usr/local/bin/dwm
 Slice=session.slice
-Restart=on-failure
+Restart=always

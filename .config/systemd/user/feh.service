@@ -1,0 +1,10 @@
+[Unit]
+Description=Start feh for user
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/bash -c "feh --bg-scale --randomize /home/serranomorante/.wallpapers/*"
+
+[Install]
+WantedBy=graphical-session.target
+

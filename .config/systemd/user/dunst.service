@@ -1,0 +1,9 @@
+[Unit]
+Description=Start dunst for user
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/dunst
+
+[Install]
+WantedBy=graphical-session.target
