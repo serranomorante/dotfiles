@@ -37,6 +37,7 @@ M.by_filetype = {
   fish = { formatters = { "fish_indent" }, parsers = { "fish" } },
   markdown = { lsp = { "marksman" }, formatters = { "prettierd" } },
   toml = { lsp = { "taplo" }, parsers = { "toml" } },
+  tmux = { parsers = { "tmux" } },
   all = { parsers = {} },
 }
 
