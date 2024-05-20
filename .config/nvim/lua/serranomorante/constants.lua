@@ -54,4 +54,43 @@ M.overseer_status = {
   ["RUNNING"] = { "R", "cyan" },
 }
 
+---https://github.com/folke/ts-comments.nvim
+M.commentstring_setup = {
+  lang = {
+    astro = "<!-- %s -->",
+    c = "// %s",
+    cpp = "// %s",
+    css = "/* %s */",
+    gleam = "// %s",
+    glimmer = "{{! %s }}",
+    graphql = "# %s",
+    handlebars = "{{! %s }}",
+    hcl = "# %s",
+    html = "<!-- %s -->",
+    ini = "; %s",
+    php = "// %s",
+    rego = "# %s",
+    rescript = "// %s",
+    sql = "-- %s",
+    svelte = "<!-- %s -->",
+    terraform = "# %s",
+    tsx = {
+      _ = "// %s",
+      call_expression = "// %s",
+      comment = "// %s",
+      jsx_attribute = "// %s",
+      jsx_element = "{/* %s */}",
+      jsx_fragment = "{/* %s */}",
+      spread_element = "// %s",
+      statement_block = "// %s",
+    },
+    twig = "{# %s #}",
+    typescript = "// %s",
+    vim = '" %s',
+    vue = "<!-- %s -->",
+  },
+}
+
+M.commentstring_setup.lang.javascript = vim.deepcopy(M.commentstring_setup.lang.tsx)
+
 return M

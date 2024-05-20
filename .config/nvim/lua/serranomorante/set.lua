@@ -76,3 +76,5 @@ vim.o.shortmess = "atToOF"
 
 vim.cmd.syntax("off")
 vim.cmd.colorscheme("default")
+
+vim.filetype.get_option = utils.hijack_commentstring_get_option()
