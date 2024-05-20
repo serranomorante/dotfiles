@@ -3,7 +3,7 @@ local tools = require("serranomorante.tools")
 
 return {
   "kevinhwang91/nvim-treesitter", -- see: https://github.com/kevinhwang91/nvim-bqf/issues/110#issuecomment-1509896444
-  event = "LspAttach", -- don't judge me
+  event = "User CustomFile",
   dependencies = {
     "nvim-treesitter/nvim-treesitter-textobjects",
   },
