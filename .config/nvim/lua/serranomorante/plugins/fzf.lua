@@ -91,13 +91,17 @@ M.fzf_lua = {
         border = "single",
         preview = {
           wrap = "wrap",
-          default = "bat", -- seems to be faster than builtin (treesitter)
+          default = "builtin", -- builtin (treesitter)
           border = "noborder",
           horizontal = "right:40%",
         },
       },
       previewers = {
         bat = { args = "--color=always --style=numbers,changes --line-range=:" .. vim.g.max_file.lines },
+        builtin = {
+          syntax_limit_l = vim.g.max_file.lines,
+          syntax_limit_b = vim.g.max_file.size,
+        },
       },
       fzf_opts = {
         ["--header-lines"] = false, -- https://github.com/ibhagwan/fzf-lua/issues/569#issuecomment-1329342154
