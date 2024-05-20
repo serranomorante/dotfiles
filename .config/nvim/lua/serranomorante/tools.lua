@@ -38,6 +38,7 @@ M.by_filetype = {
   markdown = { lsp = { "marksman" }, formatters = { "prettierd" } },
   toml = { lsp = { "taplo" }, parsers = { "toml" } },
   tmux = { parsers = { "tmux" } },
+  gitcommit = { parsers = { "gitcommit" } },
   all = { parsers = {} },
 }
 
