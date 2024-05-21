@@ -118,13 +118,17 @@ return {
           return
         end
 
+        local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
         local opts = { noremap = true, silent = true, buffer = bufnr }
 
         if utils.is_available("fzf-lua") then
           local builtin = require("fzf-lua")
           if client.supports_method("textDocument/references") then
             opts.desc = "LSP: Show references"
-            vim.keymap.set("n", "gr", function() builtin.lsp_references() end, opts)
+            vim.keymap.set("n", "gr", function()
+              local regex_filter = constants.regex_filters[filetype]
+              builtin.lsp_references({ regex_filter = regex_filter })
+            end, opts)
           end
 
           if client.supports_method("textDocument/definition") then

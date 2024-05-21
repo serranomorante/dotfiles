@@ -93,4 +93,23 @@ M.commentstring_setup = {
 
 M.commentstring_setup.lang.javascript = vim.deepcopy(M.commentstring_setup.lang.tsx)
 
+M.regex_filters = {}
+---@param filter function|string|table
+---@param filetypes string[]
+local function add_regex_filter(filter, filetypes)
+  M.regex_filters =
+    vim.tbl_deep_extend("force", M.regex_filters, vim.tbl_map(function(ft) M.regex_filters[ft] = filter end, filetypes))
+end
+
+add_regex_filter(function(item)
+  if item.text:match("^import%s.*from.*") then return false end
+  return true
+end, M.javascript_filetypes)
+
+add_regex_filter(function(item)
+  if item.text:match("^from%s.*import.*") then return false end
+  if item.text:match("^import%s.*") then return false end
+  return true
+end, M.python_filetypes)
+
 return M
