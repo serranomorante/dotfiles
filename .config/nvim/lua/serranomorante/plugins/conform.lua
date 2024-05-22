@@ -19,6 +19,7 @@ return {
             ---https://github.com/stevearc/conform.nvim/issues/250#issuecomment-1868544121
             if err then return vim.notify(err, vim.log.levels.WARN) end
             if utils.is_available("nvim-lint") then require("lint").try_lint() end
+            utils.refresh_codelens()
             vim.notify("Formatted", vim.log.levels.INFO)
           end
         )

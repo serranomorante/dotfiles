@@ -256,4 +256,15 @@ function M.hijack_commentstring_get_option(opts)
   end
 end
 
+---Refresh codelens
+---@param args any
+function M.refresh_codelens(args)
+  local buf = args and args.buf or vim.api.nvim_get_current_buf()
+  if not M.has_capability("textDocument/codeLens", { bufnr = buf }) then
+    M.del_buffer_autocmd("lsp_codelens_augroup", buf)
+    return
+  end
+  if vim.g.codelens_enabled then vim.lsp.codelens.refresh({ bufnr = buf }) end
+end
+
 return M

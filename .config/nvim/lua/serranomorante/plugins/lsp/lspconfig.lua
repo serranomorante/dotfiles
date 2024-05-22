@@ -78,27 +78,18 @@ return {
         vim.lsp.with(vim.lsp.handlers.signature_help, { border = "single" })
 
       local codelens_augroup = vim.api.nvim_create_augroup("lsp_codelens_augroup", { clear = true })
-      ---Refresh codelens
-      ---@param args any
-      local function refresh_codelens(args)
-        if not utils.has_capability("textDocument/codeLens", { bufnr = args.buf }) then
-          utils.del_buffer_autocmd("lsp_codelens_augroup", args.buf)
-          return
-        end
-        if vim.g.codelens_enabled then vim.lsp.codelens.refresh({ bufnr = args.buf }) end
-      end
 
       vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost", "InsertLeave" }, {
         desc = "Refresh codelens",
         group = codelens_augroup,
-        callback = refresh_codelens,
+        callback = utils.refresh_codelens,
       })
 
       vim.api.nvim_create_autocmd("User", {
         desc = "Refresh codelens on undo redo events",
         pattern = { "CustomUndo", "CustomRedo" },
         group = codelens_augroup,
-        callback = refresh_codelens,
+        callback = utils.refresh_codelens,
       })
     end,
     config = function()
