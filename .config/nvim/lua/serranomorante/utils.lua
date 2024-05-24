@@ -90,13 +90,15 @@ function M.file_worktree(path, worktrees)
   end
 end
 
---- Toggle buffer LSP inlay hints
---- Thanks AstroNvim
----@param bufnr? number of the buffer to toggle the clients on
-function M.toggle_buffer_inlay_hints(bufnr)
-  bufnr = bufnr or 0
-  vim.b[bufnr].inlay_hints_enabled = not vim.b[bufnr].inlay_hints_enabled
-  vim.lsp.inlay_hint.enable(vim.b[bufnr].inlay_hints_enabled, { bufnr = bufnr })
+---Toggle global LSP inlay hints
+function M.toggle_inlay_hints()
+  if vim.lsp.inlay_hint then
+    ---@diagnostic disable-next-line: missing-parameter
+    local is_enabled = not vim.lsp.inlay_hint.is_enabled()
+    vim.lsp.inlay_hint.enable(is_enabled)
+    return is_enabled
+  end
+  return false
 end
 
 --- Toggle LSP codelens

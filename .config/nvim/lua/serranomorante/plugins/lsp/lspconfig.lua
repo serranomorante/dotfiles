@@ -204,11 +204,8 @@ return {
         if client.supports_method("textDocument/inlayHint") then
           opts.desc = "LSP: Toggle inlay hints"
           vim.keymap.set("n", "<leader>uH", function()
-            utils.toggle_buffer_inlay_hints(bufnr)
-            vim.notify(
-              string.format("Inlay hints %s", utils.bool2str(vim.b[bufnr].inlay_hints_enabled)),
-              vim.log.levels.INFO
-            )
+            local is_enabled = utils.toggle_inlay_hints()
+            vim.notify(string.format("Inlay hints %s", utils.bool2str(is_enabled)), vim.log.levels.INFO)
           end, opts)
         end
 
