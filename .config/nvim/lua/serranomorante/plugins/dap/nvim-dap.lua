@@ -160,11 +160,11 @@ return {
     ---╚══════════════════════════════════════╝
 
     --[[ 
-    Javascript/Next.js/Typescript/Turborepo:
-    I prefer the "attach" configs so that closing nvim doesn't kill the debug adapters (google-chrome-stable or next-server process)
-    You cannot reuse the same ports (for example, on `--remote-debugging-port=9222` or `--inspect=9229`) across nvim-dap sessions.
-    Either you open new ones (new instances of chrome, new instances of next-server) and attach to those new ports, or stop your
-    running nvim-dap sessions (that use those ports) and start a new one (my workflow, don't pay too much attention to this).
+      # Javascript/Next.js/Typescript/Turborepo:
+      # I prefer the "attach" configs so that closing nvim doesn't kill the debug adapters (google-chrome-stable or next-server process)
+      # You cannot reuse the same ports (for example, on `--remote-debugging-port=9222` or `--inspect=9229`) across nvim-dap sessions.
+      # Either you open new ones (new instances of chrome, new instances of next-server) and attach to those new ports, or stop your
+      # running nvim-dap sessions (that use those ports) and start a new one (my workflow, don't pay too much attention to this).
     ]]
 
     local javascript_project_files = { "tsconfig.json", "package.json", "jsconfig.json", ".git" }
@@ -196,6 +196,12 @@ return {
           sourceMaps = true,
           protocol = "inspector",
           webRoot = function() return dap_utils.choose_path_relative_to_file(javascript_project_files) end,
+          pauseForSourceMap = false, -- https://github.com/microsoft/vscode-js-debug/blob/main/OPTIONS.md#pauseforsourcemap-5
+          urlFilter = "http://localhost:*", -- This allows me to use the same chrome instance for normal browsing
+          skipFiles = {
+            "**/node_modules/**",
+            "!**/node_modules/my-module/**",
+          },
           trace = log_is_trace,
         },
         { -- Tested on next.js 14.2.3. It doesn't work on next.js 14.0.4
@@ -219,6 +225,11 @@ return {
             end)
           end,
           cwd = function() return dap_utils.choose_path_relative_to_file(javascript_project_files) end,
+          skipFiles = {
+            "/**", -- same as default value: https://github.com/microsoft/vscode-js-debug/blob/main/OPTIONS.md#default-value-25
+            "**/node_modules/**",
+            "!**/node_modules/my-module/**",
+          },
           trace = log_is_trace,
         },
         --- Next.js server "launch" is not included here because it can be too specific depending on the project
