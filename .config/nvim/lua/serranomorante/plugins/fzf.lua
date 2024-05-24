@@ -134,7 +134,7 @@ M.fzf_lua = {
         },
       },
       grep = {
-        rg_opts = "--column --line-number --no-heading --color=always --hidden --smart-case --max-columns=4096 -e",
+        rg_opts = "--pcre2 --column --line-number --no-heading --color=always --hidden --smart-case --max-columns=4096 -e",
         rg_glob = true,
         keymap = { fzf = { start = "beginning-of-line" } },
       },
