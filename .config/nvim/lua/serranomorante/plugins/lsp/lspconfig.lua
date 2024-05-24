@@ -139,7 +139,7 @@ return {
 
           if client.supports_method("textDocument/codeAction") then
             opts.desc = "LSP: See available code actions"
-            vim.keymap.set({ "n", "v" }, "<leader>la", function() builtin.lsp_code_actions() end, opts)
+            vim.keymap.set({ "n", "x" }, "<leader>la", function() builtin.lsp_code_actions() end, opts)
           end
 
           opts.desc = "LSP: Show document diagnostics"
