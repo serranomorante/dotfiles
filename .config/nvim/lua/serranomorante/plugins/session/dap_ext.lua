@@ -40,11 +40,11 @@ M.on_post_load = function(data)
       local bopts = {} -- TODO: conditions etc.
       vim.schedule(function() -- prevent invalid window id issue
         require("dap.breakpoints").set(bopts, buf, breakpoint.line)
-        vim.notify(("Restoring breakpoint at %s:%s"):format(breakpoint.filename, breakpoint.line), vim.log.levels.DEBUG)
+        vim.notify(("Restoring breakpoint at buf %s line %s"):format(buf, breakpoint.line), vim.log.levels.DEBUG)
       end)
     else
       vim.notify(
-        ("Could not restore breakpoint at %s:%s"):format(breakpoint.filename, breakpoint.line),
+        ("Could not restore breakpoint at buf %s line %s"):format(buf, breakpoint.line),
         vim.log.levels.WARN
       )
     end
