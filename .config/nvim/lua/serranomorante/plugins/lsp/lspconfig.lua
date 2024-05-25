@@ -103,10 +103,18 @@ return {
       end
 
       on_attach = function(client, bufnr)
+        if client.server_capabilities.signatureHelpProvider then
+          client.server_capabilities.signatureHelpProvider.triggerCharacters = {}
+        end
+
         ---Disable LSP on large buffers
         if vim.b[bufnr].large_buf and vim.lsp.buf_is_attached(bufnr, client.id) then
           vim.schedule(function() vim.lsp.buf_detach_client(bufnr, client.id) end)
           return
+        end
+
+        if utils.is_available("nvim-lsp-compl") then
+          require("lsp_compl").attach(client, bufnr, { server_side_fuzzy_completion = true })
         end
 
         local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
@@ -229,6 +237,9 @@ return {
       end
 
       capabilities = vim.lsp.protocol.make_client_capabilities()
+      if utils.is_available("nvim-lsp-compl") then
+        capabilities = vim.tbl_deep_extend("force", capabilities, require("lsp_compl").capabilities())
+      end
       capabilities.textDocument.foldingRange = { dynamicRegistration = false, lineFoldingOnly = true }
 
       local servers = utils.get_from_tools(tools.by_filetype, "lsp", true)
@@ -304,11 +315,6 @@ return {
                 },
                 diagnostics = {
                   globals = { "vim" },
-                },
-                completion = {
-                  ---Disable snippets for keywords like for, while, etc
-                  ---https://github.com/LuaLS/lua-language-server/wiki/Settings#completionkeywordsnippet
-                  keywordSnippet = "Disable",
                 },
                 workspace = {
                   library = {

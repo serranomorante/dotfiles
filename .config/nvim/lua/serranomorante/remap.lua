@@ -49,7 +49,7 @@ vim.keymap.set("n", ">t", "<cmd>tabmove +1<CR>", { desc = "Move tab right" })
 vim.keymap.set("n", "<leader>qf", "<cmd>botright copen<CR>", { desc = "Quickfix: Open list" })
 vim.keymap.set("n", "<leader>ql", "<cmd>botright lopen<CR>", { desc = "Quickfix: Open location list" })
 
-vim.keymap.set({ "i", "n" }, "<esc>", "<cmd>noh<cr><esc>", { desc = "Escape and clear hlsearch" })
+vim.keymap.set("n", "<ESC>", "<cmd>noh<CR><ESC>", { desc = "Escape and clear hlsearch" })
 
 vim.keymap.set("i", "<C-f>", "<Esc>gUiw`]a", { desc = "Make the word before the cursor uppercase" })
 
