@@ -45,8 +45,6 @@ local TabpageClose = {
 }
 
 M.TabPages = {
-  -- only show this component if there's 2 or more tabpages
-  condition = function() return #vim.api.nvim_list_tabpages() >= 2 end,
   heirline_utils.make_tablist(Tabpage),
   { provider = "%=" },
   TabpageClose,

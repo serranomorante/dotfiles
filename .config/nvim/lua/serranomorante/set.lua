@@ -65,6 +65,7 @@ vim.g.git_worktrees = {
 
 vim.opt.updatetime = 50
 vim.opt.timeoutlen = 500
+vim.opt.showtabline = 2
 
 vim.opt.inccommand = "split"
 
