@@ -14,6 +14,7 @@ return {
     local conditions = require("heirline.conditions")
     local components = require("serranomorante.plugins.statusline.components")
     local winbar_components = require("serranomorante.plugins.statusline.winbar-components")
+    local tabline_components = require("serranomorante.plugins.statusline.tabline-components")
 
     local DefaultStatusLine = {
       components.Mode,
@@ -38,7 +39,7 @@ return {
 
     local InactiveStatusLine = {
       condition = conditions.is_not_active,
-      components.FileName,
+      -- components.FileName,
       components.Align,
     }
 
@@ -70,9 +71,12 @@ return {
       winbar_components.Breadcrumb,
     }
 
+    local TabLines = { tabline_components.TabPages }
+
     return {
       statusline = StatusLines,
       winbar = WinBars,
+      tabline = TabLines,
       opts = {
         ---Winbar should be disabled by default and only enabled after these conditions
         disable_winbar_cb = function(args)

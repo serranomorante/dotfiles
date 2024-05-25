@@ -40,27 +40,16 @@ M.Mode = {
   },
 }
 
----https://github.com/rebelot/heirline.nvim/blob/master/cookbook.md#crash-course-part-ii-filename-and-friends
-M.FileNameBlock = {
-  init = function(self)
-    self.filename = utils.get_escaped_filename(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":."))
-  end,
-}
-
 M.FileIcon = {
   init = function(self)
-    local filename = self.filename
-    local extension = vim.fn.fnamemodify(filename, ":e")
-    self.icon, self.icon_color = require("nvim-web-devicons").get_icon_color(filename, extension, { default = true })
+    local extension = vim.fn.fnamemodify(self.filename, ":e")
+    self.icon, self.icon_color =
+      require("nvim-web-devicons").get_icon_color(self.filename, extension, { default = true })
   end,
   provider = function(self) return self.icon and (self.icon .. " ") end,
 }
 
 M.FileName = {
-  init = function(self)
-    self.filename = utils.get_escaped_filename(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":."))
-    if self.filename == "" then self.filename = "[No Name]" end
-  end,
   flexible = M.priority.filename,
   {
     provider = function(self) return self.filename end,
@@ -72,12 +61,17 @@ M.FileName = {
 
 M.FileFlags = {
   {
-    condition = function() return vim.bo.modified end,
+    condition = function(self) return vim.api.nvim_get_option_value("modified", { buf = self.bufnr }) end,
     provider = "[+]",
+    hl = { fg = "green" },
   },
   {
-    condition = function() return not vim.bo.modifiable or vim.bo.readonly end,
-    provider = "",
+    condition = function(self)
+      return not vim.api.nvim_get_option_value("modifiable", { buf = self.bufnr })
+        or vim.api.nvim_get_option_value("readonly", { buf = self.bufnr })
+    end,
+    provider = " ",
+    hl = { fg = "orange" },
   },
 }
 
@@ -88,9 +82,13 @@ M.FileNameModifier = {
 }
 
 M.FileNameBlock = {
+  init = function(self)
+    self.bufnr = vim.api.nvim_get_current_buf()
+    self.filename = utils.get_escaped_filename(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(self.bufnr), ":."))
+    if self.filename == "" then self.filename = "[No Name]" end
+  end,
   flexible = M.priority.filename,
   heirline_utils.insert(
-    M.FileNameBlock,
     M.FileIcon,
     heirline_utils.insert(M.FileNameModifier, M.FileName),
     M.FileFlags,
