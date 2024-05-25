@@ -90,6 +90,7 @@ M.fzf_lua = {
         width = 999,
         border = "single",
         preview = {
+          delay = 0, -- no delay on builtin previewer
           wrap = "wrap",
           default = "builtin", -- builtin (treesitter)
           border = "noborder",
