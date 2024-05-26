@@ -100,12 +100,20 @@ return {
         ---Disable semanticTokensProvider
         ---https://gist.github.com/swarn/fb37d9eefe1bc616c2a7e476c0bc0316
         client.server_capabilities.semanticTokensProvider = nil
+        if client.server_capabilities.completionProvider then
+          client.server_capabilities.completionProvider.triggerCharacters = {}
+        end
+        if client.server_capabilities.signatureHelpProvider then
+          client.server_capabilities.signatureHelpProvider.triggerCharacters = {}
+        end
       end
 
       on_attach = function(client, bufnr)
         if client.server_capabilities.signatureHelpProvider then
           client.server_capabilities.signatureHelpProvider.triggerCharacters = {}
         end
+
+        client.server_capabilities.completionProvider.triggerCharacters = {}
 
         ---Disable LSP on large buffers
         if vim.b[bufnr].large_buf and vim.lsp.buf_is_attached(bufnr, client.id) then

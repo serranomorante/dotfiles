@@ -2,6 +2,7 @@ local utils = require("serranomorante.utils")
 
 return {
   "mfussenegger/nvim-lsp-compl",
+  lazy = true,
   init = function() vim.bo.omnifunc = "" end,
   config = function()
     local lsp_compl = require("lsp_compl")
