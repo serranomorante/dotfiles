@@ -6,7 +6,7 @@ M.by_filetype = {
   javascript = {
     formatters = { "eslint_d", "prettierd" },
     linters = { "eslint_d" },
-    lsp = { "typescript-language-server", "tailwindcss-language-server", "vtsls" },
+    lsp = { "typescript-language-server", "tailwindcss-language-server" },
     dap = {
       "js-debug-adapter", -- or { "js-debug-adapter", version = "v1.82.0" },
     },

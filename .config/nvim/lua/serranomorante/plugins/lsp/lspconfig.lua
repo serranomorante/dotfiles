@@ -255,6 +255,10 @@ return {
               preferences = {
                 includeCompletionsForModuleExports = false,
               },
+              tsserver = {
+                logVerbosity = vim.env.LSP_LOG_LEVEL == "TRACE" and "verbose" or "off",
+                trace = vim.env.LSP_LOG_LEVEL == "TRACE" and "verbose" or "off",
+              },
             },
             settings = {
               javascript = {
@@ -362,6 +366,7 @@ return {
             settings = {
               ---https://github.com/yioneko/vtsls/blob/main/packages/service/configuration.schema.json
               typescript = {
+                tsserver = { log = vim.env.LSP_LOG_LEVEL == "TRACE" and "verbose" or "off" },
                 ---https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-0.html#smarter-auto-imports
                 ---https://github.com/yioneko/vtsls/blob/41ad8c9d3f9dbd122ce3259564f34d020b7d71d9/packages/service/configuration.schema.json#L779C29-L779C58
                 preferences = { includePackageJsonAutoImports = "off" },
@@ -408,7 +413,8 @@ return {
 
       ---Prevent server setup
       custom["tsserver"] = function() end
-      -- custom["vtsls"] = function() end
+      custom["vtsls"] = function() end
+      custom["tailwindcss"] = function() end
       if utils.is_available("clangd_extensions.nvim") then custom["clangd"] = function() end end
       if utils.is_available("SchemaStore.nvim") then
         custom["yamlls"] = function() end
