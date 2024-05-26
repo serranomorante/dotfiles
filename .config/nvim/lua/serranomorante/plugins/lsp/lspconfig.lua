@@ -109,21 +109,15 @@ return {
       end
 
       on_attach = function(client, bufnr)
-        if client.server_capabilities.signatureHelpProvider then
-          client.server_capabilities.signatureHelpProvider.triggerCharacters = {}
-        end
-
-        client.server_capabilities.completionProvider.triggerCharacters = {}
-
-        ---Disable LSP on large buffers
-        if vim.b[bufnr].large_buf and vim.lsp.buf_is_attached(bufnr, client.id) then
+        ---Disable LSP on large buffers or when coc is already attached
+        local should_detach = vim.b[bufnr].large_buf or vim.b[bufnr].coc_enabled == 1
+        if should_detach and vim.lsp.buf_is_attached(bufnr, client.id) then
           vim.schedule(function() vim.lsp.buf_detach_client(bufnr, client.id) end)
           return
         end
 
-        if utils.is_available("nvim-lsp-compl") then
-          require("lsp_compl").attach(client, bufnr, { server_side_fuzzy_completion = true })
-        end
+        ---Don't continue if coc-extension is already attached to this buffer
+        if vim.b[bufnr].coc_enabled == 1 then return end
 
         local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
         local opts = { noremap = true, silent = true, buffer = bufnr }
@@ -245,12 +239,10 @@ return {
       end
 
       capabilities = vim.lsp.protocol.make_client_capabilities()
-      if utils.is_available("nvim-lsp-compl") then
-        capabilities = vim.tbl_deep_extend("force", capabilities, require("lsp_compl").capabilities())
-      end
       capabilities.textDocument.foldingRange = { dynamicRegistration = false, lineFoldingOnly = true }
 
       local servers = utils.get_from_tools(tools.by_filetype, "lsp", true)
+      local extensions = utils.get_from_tools(tools.by_filetype, "extensions", true)
 
       ---Custom handlers for lsp servers and plugins
       local custom = {
@@ -419,14 +411,19 @@ return {
         end,
       }
 
-      ---Prevent server setup
-      custom["tsserver"] = function() end
-      custom["vtsls"] = function() end
-      custom["tailwindcss"] = function() end
+      ---Prevent server setup if a plugin exists for it
       if utils.is_available("clangd_extensions.nvim") then custom["clangd"] = function() end end
       if utils.is_available("SchemaStore.nvim") then
         custom["yamlls"] = function() end
         custom["jsonls"] = function() end
+      end
+
+      ---Prevent server setup if a coc-extension exists for it
+      for _, extension in ipairs(extensions) do
+        local skippables = tools.skip_server_setup_by_coc[extension]
+        for _, skippable in ipairs(skippables) do
+          custom[skippable] = function() end
+        end
       end
 
       ---Setup servers that don't require any extra plugins

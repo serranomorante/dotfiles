@@ -132,17 +132,23 @@ end
 
 ---@alias MasonToolType "formatters"|"lsp"|"linters"|"dap"|"extra"
 ---@alias TreesitterToolType "parsers"
----@alias ToolEnsureInstall table<MasonToolType|TreesitterToolType, string[]|table[]>
+---@alias CocToolType "extensions"
+---@alias ToolEnsureInstall table<MasonToolType|TreesitterToolType|CocToolType, string[]|table[]>
 
 ---Merges an array of `ToolEnsureInstall` specs into 1 flat array of strings
----@param installer_type? "treesitter"|"mason" We will use Mason by default
+---@param installer_type? "treesitter"|"mason"|"coc" We will use Mason by default
 ---@param ... ToolEnsureInstall
 ---@return string[] # A flat array of tools without duplicates
 function M.merge_tools(installer_type, ...)
   installer_type = installer_type or "mason"
   local mason_tool_type = { "formatters", "lsp", "linters", "dap", "extra" }
   local treesitter_tool_type = { "parsers" }
-  local tool_type_by_installer = { mason = mason_tool_type, treesitter = treesitter_tool_type }
+  local coc_tool_type = { "extensions" }
+  local tool_type_by_installer = {
+    ["mason"] = mason_tool_type,
+    ["treesitter"] = treesitter_tool_type,
+    ["coc"] = coc_tool_type,
+  }
   local merge_result = {}
   for _, tools_table in ipairs({ ... }) do
     for _, tool_type in ipairs(tool_type_by_installer[installer_type]) do
@@ -156,7 +162,7 @@ end
 
 ---Get a list of tools from a specific tool type: lsp, dap, etc.
 ---@param base table<string, ToolEnsureInstall> The base list of tools
----@param tool_type MasonToolType|TreesitterToolType The type to extract tools from
+---@param tool_type MasonToolType|TreesitterToolType|CocToolType The type to extract tools from
 ---@param use_lspconfig_map? boolean Whether we should use nvim-lspconfig names (lua-language-server -> lua_ls)
 ---@param lspconfig_map? table<string, string> Your custom lspconfig mapping
 ---@return string[]
@@ -267,6 +273,24 @@ function M.refresh_codelens(args)
     return
   end
   if vim.g.codelens_enabled then vim.lsp.codelens.refresh({ bufnr = buf }) end
+end
+
+---Setup coc per buffer (start coc if not initialized)
+---@param buf? integer
+---@param on_attach? function
+function M.setup_coc_per_buffer(buf, on_attach)
+  local buffer = buf or vim.api.nvim_get_current_buf()
+  local filetype = vim.api.nvim_get_option_value("filetype", { buf = buffer })
+  local filetype_tools = ((tools.by_filetype[filetype] or {}).extensions or {})
+  for _, extension in ipairs(vim.g.coc_global_extensions or {}) do
+    if vim.list_contains(filetype_tools, extension) then
+      vim.b[buf].coc_enabled = 1
+      if vim.g.coc_service_initialized ~= 1 then vim.cmd.CocStart() end
+      if on_attach ~= nil then on_attach(buffer) end
+      return
+    end
+  end
+  vim.b[buf].coc_enabled = 0
 end
 
 return M
