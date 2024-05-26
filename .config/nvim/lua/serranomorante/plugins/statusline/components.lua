@@ -2,6 +2,7 @@ local constants = require("serranomorante.constants")
 local heirline_conditions = require("heirline.conditions")
 local heirline_utils = require("heirline.utils")
 local utils = require("serranomorante.utils")
+local events = require("serranomorante.events")
 
 local M = {}
 
@@ -276,6 +277,66 @@ M.TrailblazerCurrentStackName = {
 
 M.QuickfixTitle = {
   provider = function() return vim.w.quickfix_title end,
+  hl = { bold = true },
+}
+
+local CocProgress = {
+  condition = function()
+    local current_buf = vim.api.nvim_get_current_buf()
+    return vim.g.coc_service_initialized == 1 and vim.b[current_buf].coc_enabled == 1
+  end,
+  provider = "%{coc#status()}%{get(b:,'coc_current_function','')}",
+  update = {
+    "User",
+    pattern = "CocStatusChange",
+    callback = vim.schedule_wrap(function() vim.cmd.redrawstatus() end),
+  },
+}
+
+local LspProgress = {
+  init = require("serranomorante.plugins.statusline.utils").update_events({
+    {
+      "User",
+      pattern = "CustomClearLspProgress",
+      callback = vim.schedule_wrap(function(self)
+        self.message = ""
+        vim.cmd.redrawstatus()
+      end),
+    },
+    {
+      "LspProgress",
+      pattern = { "begin", "end" },
+      callback = vim.schedule_wrap(function(self, args)
+        ---Inspired by: https://github.com/rockyzhang24/dotfiles/blob/master/.config/nvim/lua/rockyz/lsp/progress.lua
+        local id = args.data.client_id
+        local kind = args.data.params.value.kind
+        local title = args.data.params.value.title
+        local icons = { ["begin"] = "â£¾", ["end"] = "îª²" }
+        local client_name = vim.lsp.get_client_by_id(id).name
+        local suffix_when_done = kind == "end" and "DONE!" or ""
+
+        --[[
+          # Assemble the output progress message
+          #  - General: â£¾ [client_name] title: message
+          #  - Done:    îª² [client_name] title: DONE!
+        ]]
+        self.message = string.format("%s [%s] %s: %s", icons[kind], client_name, title, suffix_when_done)
+        if suffix_when_done ~= "" then utils.set_timeout(2000, function() events.event("ClearLspProgress") end) end
+        vim.cmd.redrawstatus()
+      end),
+    },
+  }),
+  condition = function()
+    local current_buf = vim.api.nvim_get_current_buf()
+    local is_attached = vim.tbl_count(vim.lsp.get_clients({ bufnr = current_buf })) > 0
+    return is_attached and vim.b[current_buf].coc_enabled ~= 1
+  end,
+  provider = function(self) return self.message or "" end,
+}
+
+M.LspProgress = {
+  CocProgress,
+  LspProgress,
   hl = { bold = true },
 }
 

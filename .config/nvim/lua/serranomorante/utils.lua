@@ -293,4 +293,18 @@ function M.setup_coc_per_buffer(buf, on_attach)
   vim.b[buf].coc_enabled = 0
 end
 
+---Simple setTimeout wrapper
+---@param timeout integer
+---@param callback function
+function M.set_timeout(timeout, callback)
+  local timer = vim.uv.new_timer()
+  if timer == nil then return end
+  timer:start(timeout, 0, function()
+    timer:stop()
+    timer:close()
+    callback()
+  end)
+  return timer
+end
+
 return M

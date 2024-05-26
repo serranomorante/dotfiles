@@ -28,6 +28,8 @@ return {
       components.DAPMessages,
       components.Space,
       components.TrailblazerCurrentStackName,
+      components.Space,
+      components.LspProgress,
       components.Align,
 
       components.LSPActive,
