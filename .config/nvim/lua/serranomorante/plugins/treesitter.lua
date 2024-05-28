@@ -37,6 +37,7 @@ return {
       tools.by_filetype.yaml,
       tools.by_filetype.bash,
       tools.by_filetype.tmux,
+      tools.by_filetype.markdown,
       tools.by_filetype.gitcommit,
       tools.by_filetype.all
     ),

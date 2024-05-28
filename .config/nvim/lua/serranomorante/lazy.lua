@@ -38,6 +38,8 @@ require("lazy").setup({
       -- "neovim/nvim-lspconfig",
       -- "marilari88/neotest-vitest",
       -- "ibhagwan/fzf-lua",
+      -- "hedyhli/outline.nvim",
+      "stevearc/aerial.nvim",
     },
   },
   diff = {

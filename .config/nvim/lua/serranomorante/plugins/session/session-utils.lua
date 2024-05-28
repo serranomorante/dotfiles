@@ -54,13 +54,22 @@ M.clean_before_session_save = function()
   local cwd = vim.uv.cwd()
   if cwd and cwd:sub(-1) ~= "/" then cwd = cwd .. "/" end
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    local delete = nil
+    local bufname = vim.api.nvim_buf_get_name(buf)
     local buftype = vim.api.nvim_get_option_value("buftype", { buf = buf })
-    if vim.api.nvim_buf_is_valid(buf) and not vim.tbl_contains({ "terminal" }, buftype) then
-      local bufname = vim.api.nvim_buf_get_name(buf)
-      local buf_outside_cwd = bufname:sub(1, #cwd)
-      local is_dir = vim.fn.isdirectory(bufname)
-      if buf_outside_cwd ~= cwd or is_dir == 1 then vim.api.nvim_buf_delete(buf, { force = true }) end
+    local filetype = vim.api.nvim_get_option_value("filetype", { buf = buf })
+    if vim.list_contains({ "Outline" }, filetype) then
+      ---Delete buffers if filetype match
+      delete = true
+    elseif bufname:sub(1, #cwd) ~= cwd or vim.fn.isdirectory(bufname) == 1 then
+      ---Delete buffers outside cwd
+      delete = true
+    elseif vim.tbl_contains({ "terminal" }, buftype) then
+      ---Skip deleting terminal buffers (because it fails)
+      ---they will not be persisted in the session anyways
+      delete = false
     end
+    if delete then vim.api.nvim_buf_delete(buf, { force = true }) end
   end
 end
 

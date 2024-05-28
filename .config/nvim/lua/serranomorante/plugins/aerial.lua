@@ -20,7 +20,7 @@ return {
     disable_max_lines = vim.g.max_file.lines,
     disable_max_size = vim.g.max_file.size,
     highlight_on_jump = 1000,
-    backends = { "lsp" },
+    backends = { "lsp", "coc" },
     layout = {
       default_direction = "float",
     },

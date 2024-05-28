@@ -16,7 +16,7 @@ M.nvim_bqf = {
     vim.o.qftf = "{info -> v:lua._G.qftf(info)}"
   end,
   opts = {
-    auto_resize_height = true,
+    auto_resize_height = false, -- to stay consistent
     func_map = {
       open = "", -- disable to not conflict with trailblazer
       tabc = "te",
@@ -25,7 +25,6 @@ M.nvim_bqf = {
     },
     preview = {
       winblend = 0,
-      show_scroll_bar = false,
     },
     filter = {
       fzf = {

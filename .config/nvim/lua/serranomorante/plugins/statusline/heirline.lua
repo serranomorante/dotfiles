@@ -3,11 +3,21 @@ return {
   event = "UiEnter",
   dependencies = "stevearc/aerial.nvim",
   init = function()
-    ---By default, `disable_winbar_cb` is not re-checked on the `LspAttach` event
+    ---Force triggering `disable_winbar_cb` as the default events are not enough for my setup
+    ---These are the default events: "VimEnter", "UIEnter", "BufWinEnter", "FileType", "TermOpen"
+    local function trigger_winbar_cb() vim.api.nvim_exec_autocmds("FileType", { group = "Heirline_init_winbar" }) end
+
+    local trigger_winbar_cb_augroup = vim.api.nvim_create_augroup("trigger_winbar_cb", { clear = true })
     vim.api.nvim_create_autocmd("LspAttach", {
-      desc = "Re-trigger disable_winbar_cb on attach",
-      group = vim.api.nvim_create_augroup("retrigger_disable_winbar_cb_on_attach", { clear = true }),
-      callback = function() vim.api.nvim_exec_autocmds("Filetype", { group = "Heirline_init_winbar" }) end,
+      desc = "Trigger disable_winbar_cb on LspAttach",
+      group = trigger_winbar_cb_augroup,
+      callback = trigger_winbar_cb,
+    })
+    vim.api.nvim_create_autocmd("User", {
+      desc = "Trigger disable_winbar_cb on CocNvimInit",
+      pattern = "CocNvimInit",
+      group = trigger_winbar_cb_augroup,
+      callback = vim.schedule_wrap(trigger_winbar_cb),
     })
   end,
   opts = function()
@@ -41,7 +51,7 @@ return {
 
     local InactiveStatusLine = {
       condition = conditions.is_not_active,
-      -- components.FileName,
+      components.FileNameBlock,
       components.Align,
     }
 
@@ -82,9 +92,15 @@ return {
       opts = {
         ---Winbar should be disabled by default and only enabled after these conditions
         disable_winbar_cb = function(args)
+          ---Show winbar on these filetypes
           if conditions.buffer_matches({ filetype = { "oil" } }, args.buf) then return false end
-          if vim.tbl_count(vim.lsp.get_clients({ bufnr = args.buf })) > 0 then return false end
-          return true
+          ---Show winbar if these lsp servers are ready
+          if vim.b[args.buf].coc_enabled ~= 1 and vim.tbl_count(vim.lsp.get_clients({ bufnr = args.buf })) > 0 then
+            return false
+          end
+          ---Show winbar if coc extensions are ready
+          if vim.b[args.buf].coc_enabled == 1 then return false end
+          return true -- hide winbar by default
         end,
       },
     }

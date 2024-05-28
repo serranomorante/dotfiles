@@ -11,7 +11,7 @@ M.by_filetype = {
       "js-debug-adapter", -- or { "js-debug-adapter", version = "v1.82.0" },
     },
     parsers = { "javascript", "typescript", "tsx" },
-    extensions = { "coc-tsserver" },
+    extensions = { "coc-tsserver", "@yaegassy/coc-tailwindcss3" },
   },
   lua = { formatters = { "stylua" }, lsp = { "lua-language-server" } },
   go = {
@@ -36,18 +36,18 @@ M.by_filetype = {
     parsers = { "bash" },
   },
   fish = { formatters = { "fish_indent" }, parsers = { "fish" } },
-  markdown = { lsp = { "marksman" }, formatters = { "prettierd" } },
+  markdown = { lsp = { "marksman" }, formatters = { "prettierd" }, parsers = { "markdown" } },
   toml = { lsp = { "taplo" }, parsers = { "toml" } },
   tmux = { parsers = { "tmux" } },
   gitcommit = { parsers = { "gitcommit" } },
   all = { parsers = {} },
 }
 
-local javascript_tools = vim.deepcopy(M.by_filetype.javascript)
-M.by_filetype.tsx = javascript_tools
-M.by_filetype.typescript = javascript_tools
-M.by_filetype.typescriptreact = javascript_tools
-M.by_filetype.javascriptreact = javascript_tools
+---Make sure all possible filetypes that a tool can handle are considered here
+M.by_filetype.tsx = vim.deepcopy(M.by_filetype.javascript)
+M.by_filetype.typescript = vim.deepcopy(M.by_filetype.javascript)
+M.by_filetype.typescriptreact = vim.deepcopy(M.by_filetype.javascript)
+M.by_filetype.javascriptreact = vim.deepcopy(M.by_filetype.javascript)
 
 if vim.fn.executable("npm") == 0 then M.by_filetype.javascript = {} end
 if vim.fn.executable("go") == 0 then M.by_filetype.go = {} end
@@ -62,11 +62,6 @@ M.mason_to_lspconfig = {
   ["typescript-language-server"] = "tsserver",
   ["rust-analyzer"] = "rust_analyzer",
   ["tailwindcss-language-server"] = "tailwindcss",
-}
-
----Map coc-extension to a list of lsp servers whose setup should be skipped
-M.skip_server_setup_by_coc = {
-  ["coc-tsserver"] = { "tsserver", "vtsls", "tailwindcss", "tailwindcss-language-server", "typescript-language-server" },
 }
 
 return M

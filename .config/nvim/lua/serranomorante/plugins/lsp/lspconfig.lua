@@ -241,9 +241,6 @@ return {
       capabilities = vim.lsp.protocol.make_client_capabilities()
       capabilities.textDocument.foldingRange = { dynamicRegistration = false, lineFoldingOnly = true }
 
-      local servers = utils.get_from_tools(tools.by_filetype, "lsp", true)
-      local extensions = utils.get_from_tools(tools.by_filetype, "extensions", true)
-
       ---Custom handlers for lsp servers and plugins
       local custom = {
         ["tsserver"] = function()
@@ -418,25 +415,33 @@ return {
         custom["jsonls"] = function() end
       end
 
-      ---Prevent server setup if a coc-extension exists for it
-      for _, extension in ipairs(extensions) do
-        local skippables = tools.skip_server_setup_by_coc[extension]
-        for _, skippable in ipairs(skippables) do
-          custom[skippable] = function() end
-        end
-      end
+      local servers = utils.get_from_tools(tools.by_filetype, "lsp", true)
+      local extensions = utils.get_from_tools(tools.by_filetype, "extensions", true)
 
       ---Setup servers that don't require any extra plugins
-      ---Lsp servers that require plugins are lazy loaded
+      ---Lsp servers that require plugins are lazy loaded on `CustomLSP<filetype>` events
       local function setup_base_servers()
         for _, server in ipairs(servers) do
+          ---Prevent lsp server setup if coc-extension already support the same filetypes
+          local module_name = server:gsub(".*/", ""):gsub("%.lua$", "")
+          local server_config = require("lspconfig.server_configurations." .. module_name)
+          local server_filetypes = server_config.default_config.filetypes
+          for _, extension in ipairs(extensions) do
+            local extension_filetypes = utils.get_filetypes_from_tool(tools.by_filetype, extension)
+            for _, server_filetype in ipairs(server_filetypes) do
+              if vim.list_contains(extension_filetypes, server_filetype) then custom[server] = function() end end
+            end
+          end
+
           if not vim.tbl_contains(vim.tbl_keys(custom), server) then
+            ---Setup lsp servers through nvim-lspconfig defaults
             lspconfig[server].setup({
               on_init = on_init,
               on_attach = on_attach,
               capabilities = capabilities,
             })
           else
+            ---Setup lsp servers throught custom handler
             custom[server]()
           end
         end

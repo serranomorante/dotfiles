@@ -283,7 +283,7 @@ M.QuickfixTitle = {
 local CocProgress = {
   condition = function()
     local current_buf = vim.api.nvim_get_current_buf()
-    return vim.g.coc_service_initialized == 1 and vim.b[current_buf].coc_enabled == 1
+    return vim.b[current_buf].coc_enabled == 1
   end,
   provider = "%{coc#status()}%{get(b:,'coc_current_function','')}",
   update = {
@@ -311,14 +311,14 @@ local LspProgress = {
         local id = args.data.client_id
         local kind = args.data.params.value.kind
         local title = args.data.params.value.title
-        local icons = { ["begin"] = "â£¾", ["end"] = "îª²" }
+        local icons = { ["begin"] = "⣾", ["end"] = "" }
         local client_name = vim.lsp.get_client_by_id(id).name
         local suffix_when_done = kind == "end" and "DONE!" or ""
 
         --[[
           # Assemble the output progress message
-          #  - General: â£¾ [client_name] title: message
-          #  - Done:    îª² [client_name] title: DONE!
+          #  - General: ⣾ [client_name] title: message
+          #  - Done:      [client_name] title: DONE!
         ]]
         self.message = string.format("%s [%s] %s: %s", icons[kind], client_name, title, suffix_when_done)
         if suffix_when_done ~= "" then utils.set_timeout(2000, function() events.event("ClearLspProgress") end) end
