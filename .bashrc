@@ -64,19 +64,28 @@ export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 # 5. trace messages (T)
 export WIREPLUMBER_DEBUG=3
 
-# aliases
-alias config='/usr/bin/git --git-dir=/home/serranomorante/.dotfiles/ --work-tree=/home/serranomorante'
+# Add abbreviation for vim
+if command -v nvim &> /dev/null; then
+    alias vim='nvim'
+fi
 
-if [ -x "$(command -v nvim)" ]; then
-    alias vim="$(command -v nvim)"
+if command -v nvim &> /dev/null && command -v tmux &> /dev/null && [ -n "$TMUX" ]; then
+    NVIM_LISTEN_ADDRESS=$(tmux show-environment NVIM_LISTEN_ADDRESS | sed "s:^.*=::")
+    if [ -n "$NVIM_LISTEN_ADDRESS" ]; then
+        if command -v nvr &> /dev/null; then
+            nvr --nostart -s --servername "$NVIM_LISTEN_ADDRESS"
+            if [ $? -eq 0 ]; then
+                alias vim='nvim --remote-ui --server "$NVIM_LISTEN_ADDRESS"'
+            else
+                alias vim='nvim --listen "$NVIM_LISTEN_ADDRESS"'
+            fi
+        fi
+    fi
 fi
 
 if [ -x "$(command -v volta)" ]; then
     export SYSTEM_DEFAULT_NODE_VERSION=$(volta list node | grep "default" | cut -d "@" -f 2 | cut -d " " -f 1)
 fi
-
-alias work="~/.config/tmux/scripts/work.sh"
-alias conf="~/.config/tmux/scripts/config.sh"
 
 # https://github.com/mfussenegger/nvim-dap/blob/e64ebf3309154b578a03c76229ebf51c37898118/doc/dap.txt#L960
 # Available log levels:

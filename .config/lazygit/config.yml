@@ -1,6 +1,7 @@
 gui:
   scrollHeight: 8
   nerdFontsVersion: "3"
+  expandFocusedSidePanel: true
 # based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md#default
 keybinding:
   universal:
@@ -11,12 +12,16 @@ git:
     colorArg: always
 # based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
 os:
-  edit: "nvim --server $NVIM --remote-send '<C-\\><C-n>:lua vim.api.nvim_win_close(0, true)<CR>:lua vim.cmd.edit({{filename}})<CR>'"
-  editAtLine: 'nvim --server "$NVIM" --remote-tab {{filename}}; [ -z "$NVIM" ] || nvim --server "$NVIM" --remote-send ":{{line}}<CR>"'
-  editAtLineAndWait: 'nvim +{{line}} {{filename}}'
+  edit: 'nvr --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}'
+  editAtLine: 'nvr --nostart --remote {{filename}} -cc "1tabnext" -c "{{line}}" | tmux select-window -t {start}'
+  editAtLineAndWait: 'nvr --nostart --remote-wait {{filename}} -cc "1tabnext" -c "{{line}}" | tmux select-window -t {start}'
+  editInTerminal: false
+  open: 'nvr --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}'
+  openDirInEditor: 'nvr --nostart {{dir}} | tmux select-window -t {start}'
 promptToReturnFromSubprocess: false
 notARepository: 'quit'
 customCommands:
+  # From commits, search the whole history for an expression in a file (case-sensitive)
   - key : '<c-a>'
     description: 'Search the whole history (From a ref and down) for an expression in a file'
     command: "git checkout {{index .PromptResponses 3}}"
@@ -35,8 +40,48 @@ customCommands:
         filter: '(?P<commit_id>[0-9a-zA-Z]*) *(?P<commit_msg>.*)'
         valueFormat: '{{ .commit_id }}'
         labelFormat: '{{ .commit_id | green | bold }} - {{ .commit_msg | yellow }}'
+  # From commits, add empty commit
   - key: 'E'
     description: 'Add empty commit'
     context: 'commits'
     command: 'git commit --allow-empty -m "empty commit"'
     loadingText: 'Committing empty commit...'
+  # From files, open mergetool (DiffviewOpen)
+  - key: "M"
+    description: Open mergetool
+    command: "nvr --nostart --remote {{ .SelectedFile.Name }} -c 'DiffviewOpen' | tmux select-window -t {start}"
+    context: "files"
+    loadingText: "loading DiffviewOpen"
+    subprocess: true
+  # From files, open difftool (DiffviewOpen)
+  - key: "<c-t>"
+    description: Open difftool
+    command: "nvr --nostart --remote {{ .SelectedFile.Name }} -c 'DiffviewOpen' | tmux select-window -t {start}"
+    context: "files"
+    loadingText: "loading DiffviewOpen"
+    subprocess: true
+  # From commits, push a specific commit (and any preceding)
+  - key: 'P'
+    description: "Push a specific commit (and any preceding)"
+    command: "git push {{.SelectedRemote.RefName}} {{.SelectedLocalCommit.Sha}}:{{.SelectedLocalBranch.RefName}}"
+    context: "commits"
+    loadingText: "Pushing commit..."
+    stream: true
+  # From remotes, fetch a remote branch as a new local branch
+  - key: '<c-f>'
+    description: 'fetch a remote branch as a new local branch'
+    command: "git fetch {{index .SelectedRemote.Name }} {{index .PromptResponses 0}}:{{index .PromptResponses 1}}"
+    context: 'remotes'
+    prompts:
+      - type: 'input'
+        title: 'Remote Branch Name'
+        initialValue: ''
+      - type: 'input'
+        title: 'New Local Branch Name'
+        initialValue: ''
+    loadingText: 'fetching branch'
+  # From commitFiles, compare (difftool) with local copy
+  - key: 'f'
+    description: 'Compare (difftool) with local copy'
+    command: "nvr --nostart --remote {{.SelectedCommitFile.Name}} -c 'DiffviewFileHistory % HEAD..{{.SelectedLocalCommit.Sha}}' | tmux select-window -t {start}"
+    context: 'commitFiles'

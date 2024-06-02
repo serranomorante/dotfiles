@@ -7,3 +7,6 @@
 
 [rerere]
 	enabled = true
+
+[core]
+	editor = tmux select-window -t {start} | nvr --nostart --remote-tab-wait-silent

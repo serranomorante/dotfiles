@@ -3,25 +3,35 @@
 # https://github.com/ThePrimeagen/.dotfiles/blob/master/bin/.local/scripts/tmux-sessionizer
 
 if [[ $# -eq 1 ]]; then
-    selected=$1
+    selected_path=$1
 else
-    selected=$(find ~/work/gp/.bare ~/pjs ~/repos ~/courses ~/temp ~/issues -mindepth 1 -maxdepth 1 -type d | fzf)
+    selected_path=$(find ~/work/gp/.bare ~/pjs ~/repos ~/courses ~/temp ~/issues ~/dotfiles/.config -mindepth 1 -maxdepth 1 -type d | fzf)
 fi
 
-if [[ -z $selected ]]; then
+if [[ -z $selected_path ]]; then
     exit 0
 fi
 
-selected_name=$(basename "$selected" | tr . _)
+selected_name=$(basename "$selected_path" | tr . _)
+selected_path_escaped=$(echo $selected_path | sed -e 's/[]\/$*.^[]/_/g')
 tmux_running=$(pgrep tmux)
 
 if [[ -z $TMUX ]] && [[ -z $tmux_running ]]; then
-    tmux new-session -s $selected_name -c $selected
+    # create a new session when tmux is not running
+    tmux new-session -s $selected_name -c $selected_path
     exit 0
 fi
 
 if ! tmux has-session -t=$selected_name 2> /dev/null; then
-    tmux new-session -ds $selected_name -c $selected
+    # create new session in detached mode
+    tmux new-session -ds $selected_name -c $selected_path -x "$(tput cols)" -y "$(tput lines)"
+    # set per-session env to define an nvim pipe
+    tmux setenv -t $selected_name NVIM_LISTEN_ADDRESS "/tmp/$selected_path_escaped"
+    # open lazygit on a new window
+    tmux new-window -t "=$selected_name:1" -c $selected_path
+    tmux send-keys -t "=$selected_name:1" "lazygit" Enter
+    # go back to first window
+    tmux select-window -t "=$selected_name:{start}"
 fi
 
 tmux switch-client -t $selected_name

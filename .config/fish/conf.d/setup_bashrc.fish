@@ -8,7 +8,6 @@ end
 
 command -q eza; and abbr --add ls eza -1 -l --icons always --color always
 abbr --add grep grep --color=auto
-
 abbr --add cls printf "\033c"
 
 set -gx VOLTA_HOME "$HOME/.volta"
@@ -35,7 +34,6 @@ set -gx SYSTEMD_PAGER ""
 set -gx FZF_DEFAULT_COMMAND "fd --type f"
 set -gx FZF_DEFAULT_OPTS "--layout=reverse --border"
 set -gx FZF_DEFAULT_OPTS_FILE "$HOME/.fzfrc"
-
 set -gx RIPGREP_CONFIG_PATH "$HOME/.ripgreprc"
 
 # Wireplumber logging
@@ -47,23 +45,30 @@ set -gx RIPGREP_CONFIG_PATH "$HOME/.ripgreprc"
 # 5. trace messages (T)
 set -gx WIREPLUMBER_DEBUG 3
 
-abbr --add config /usr/bin/git --git-dir="$HOME/.dotfiles/" --work-tree="$HOME"
-
-abbr --add lazydots lazygit --git-dir="$HOME/.dotfiles/" --work-tree="$HOME"
-
-command -q nvim; and abbr --add vim nvim
-
 command -q volta; and set -gx SYSTEM_DEFAULT_NODE_VERSION $(volta list node | grep "default" | cut -d "@" -f 2 | cut -d " " -f 1)
 
-set -l tmux_work_script ~/.config/tmux/scripts/work.sh
-set -l tmux_config_script ~/.config/tmux/scripts/config.sh
+# Add abbreviation for vim
+command -q nvim; and abbr --add vim nvim
 
-if test -e "$tmux_work_script"; and test -x "$tmux_work_script"
-    abbr --add work ~/.config/tmux/scripts/work.sh
-end
+# Check for the existence of `nvim`, `tmux`, and whether we are inside a tmux session
+if command -q nvim; and command -q tmux; and set -q TMUX
+    # Check if NVIM_LISTEN_ADDRESS exists in tmux environment, ignoring errors
+    if set -l nvim_address_check (tmux show-environment NVIM_LISTEN_ADDRESS 2>/dev/null; or echo "")
+        set -gx NVIM_LISTEN_ADDRESS (string split "=" -- $nvim_address_check)[2]
 
-if test -e "$tmux_config_script"; and test -x "$tmux_config_script"
-    abbr --add conf ~/.config/tmux/scripts/config.sh
+        if string length --quiet "$NVIM_LISTEN_ADDRESS"
+            command -q nvr; and nvr --nostart -s --servername $NVIM_LISTEN_ADDRESS
+
+            # Check if there's an existing nvim server
+            if test $status -eq 0
+                # Connect to existing nvim server if exists
+                abbr --add vim nvim --remote-ui --server "$NVIM_LISTEN_ADDRESS"
+            else
+                # Create a new nvim server
+                abbr --add vim nvim --listen "$NVIM_LISTEN_ADDRESS"
+            end
+        end
+    end
 end
 
 # https://github.com/mfussenegger/nvim-dap/blob/e64ebf3309154b578a03c76229ebf51c37898118/doc/dap.txt#L960
