@@ -155,6 +155,14 @@ return {
       }
     end
 
+    local bash_debug_adapter = mason_registry.get_package("bash-debug-adapter")
+    local bash_debug_adapter_bin = bash_debug_adapter:get_install_path() .. "/bash-debug-adapter"
+    dap.adapters.bashdb = {
+      name = "bashdb",
+      type = "executable",
+      command = bash_debug_adapter_bin,
+    }
+
     ---╔══════════════════════════════════════╗
     ---║           Configurations             ║
     ---╚══════════════════════════════════════╝
@@ -252,6 +260,28 @@ return {
         program = function() return vim.fn.input("Path to executable: ", vim.fn.getcwd() .. "/", "file") end,
         cwd = "${workspaceFolder}",
         preLaunchTask = "C/C++: gcc build active file",
+      },
+    }
+
+    dap.configurations.sh = {
+      {
+        type = "bashdb",
+        request = "launch",
+        name = "Launch file",
+        showDebugOutput = true,
+        pathBashdb = bash_debug_adapter:get_install_path() .. "/extension/bashdb_dir/bashdb",
+        pathBashdbLib = bash_debug_adapter:get_install_path() .. "/extension/bashdb_dir",
+        trace = true,
+        file = "${command:pickFile}",
+        program = "${command:pickFile}",
+        cwd = "${workspaceFolder}",
+        pathCat = "cat",
+        pathBash = "/bin/bash",
+        pathMkfifo = "mkfifo",
+        pathPkill = "pkill",
+        args = {},
+        env = {},
+        terminalKind = "integrated",
       },
     }
 

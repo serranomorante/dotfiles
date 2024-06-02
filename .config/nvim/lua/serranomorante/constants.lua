@@ -7,6 +7,7 @@ M.javascript_filetypes = { "typescript", "javascript", "javascriptreact", "types
 M.lua_filetypes = { "lua" }
 M.markdown_filetypes = { "markdown" }
 M.json_filetypes = { "json", "jsonc" }
+M.bash_filetypes = { "sh", "bash" }
 
 ---Map `vim.fn.mode()` to mode text and highlight color
 ---https://github.com/AstroNvim/AstroNvim/blob/f8b94716912ad867998e0659497884d577cd9ec1/lua/astronvim/utils/status/env.lua#L33

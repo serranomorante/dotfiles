@@ -13,7 +13,7 @@ M.by_filetype = {
     parsers = { "javascript", "typescript", "tsx" },
     extensions = { "coc-tsserver", "@yaegassy/coc-tailwindcss3" },
   },
-  lua = { formatters = { "stylua" }, lsp = { "lua-language-server" } },
+  lua = { formatters = { "stylua" }, lsp = { "lua-language-server" }, parsers = { "lua", "luap", "luadoc" } },
   go = {
     formatters = { "gofumpt", "goimports", "gomodifytags" },
     lsp = { "gopls" },
@@ -33,6 +33,7 @@ M.by_filetype = {
   bash = {
     formatters = { "beautysh" },
     lsp = { "bash-language-server" },
+    dap = { "bash-debug-adapter" },
     parsers = { "bash" },
   },
   fish = { formatters = { "fish_indent" }, parsers = { "fish" } },
@@ -40,7 +41,9 @@ M.by_filetype = {
   toml = { lsp = { "taplo" }, parsers = { "toml" } },
   tmux = { parsers = { "tmux" } },
   gitcommit = { parsers = { "gitcommit" } },
-  all = { parsers = {} },
+  diff = { parsers = { "diff" } },
+  vim = { parsers = { "vim", "vimdoc" } },
+  all = { parsers = { "regex" } },
 }
 
 ---Make sure all possible filetypes that a tool can handle are considered here
