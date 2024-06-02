@@ -90,9 +90,8 @@ M.fzf_lua = {
         width = 999,
         border = "single",
         preview = {
-          delay = 0, -- no delay on builtin previewer
           wrap = "wrap",
-          default = "builtin", -- builtin (treesitter)
+          default = "bat", -- better performance than treesitter
           border = "noborder",
           horizontal = "right:40%",
         },
