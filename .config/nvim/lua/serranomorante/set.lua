@@ -71,7 +71,7 @@ vim.opt.inccommand = "split"
 
 vim.opt.list = true
 vim.opt_global.listchars:append({ leadmultispace = "  ", trail = " " })
-vim.opt.completeopt = { "menuone", "noselect", "noinsert", "popup" }
+vim.opt.completeopt = { "menuone", "noselect", "noinsert", "popup", "fuzzy" }
 vim.opt.pumheight = 15
 vim.o.shortmess = "atToOF"
 

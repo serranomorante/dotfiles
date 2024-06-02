@@ -100,9 +100,6 @@ return {
         ---Disable semanticTokensProvider
         ---https://gist.github.com/swarn/fb37d9eefe1bc616c2a7e476c0bc0316
         client.server_capabilities.semanticTokensProvider = nil
-        if client.server_capabilities.completionProvider then
-          client.server_capabilities.completionProvider.triggerCharacters = {}
-        end
         if client.server_capabilities.signatureHelpProvider then
           client.server_capabilities.signatureHelpProvider.triggerCharacters = {}
         end
@@ -118,6 +115,9 @@ return {
 
         ---Don't continue if coc-extension is already attached to this buffer
         if vim.b[bufnr].coc_enabled == 1 then return end
+
+        ---Enable new native completions
+        vim.lsp.completion.enable(true, client.id, bufnr, { autotrigger = true })
 
         local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
         local opts = { noremap = true, silent = true, buffer = bufnr }
@@ -209,6 +209,9 @@ return {
 
         opts.desc = "LSP: Show info"
         vim.keymap.set("n", "<leader>li", "<cmd>LspInfo<CR>", opts)
+
+        opts.desc = "LSP: Trigger completions"
+        vim.keymap.set("i", "<C-x><C-o>", vim.lsp.completion.trigger, opts)
 
         ---Toggle inlay hints with keymap
         if client.supports_method("textDocument/inlayHint") then
