@@ -129,10 +129,10 @@ autocmd({ "BufWinEnter", "WinEnter" }, { -- TermOpen would only execute the call
 })
 
 autocmd("FileType", {
-  desc = "Enable syntax only for these filetypes",
+  desc = "Enable vim syntax option only for specific filetypes",
   group = general_settings_group,
-  pattern = { "qf", "undotree", "OverseerList", "aerial", "Outline" },
-  command = "syntax on",
+  pattern = { "qf", "undotree", "OverseerList", "aerial", "git" },
+  callback = function(args) vim.cmd.set("syntax=" .. args.match) end,
 })
 
 autocmd("FileType", {
@@ -144,5 +144,5 @@ autocmd("FileType", {
 autocmd("CmdwinEnter", {
   desc = "Set mappings and options local to command-line window",
   group = general_settings_group,
-  command = "startinsert",
+  callback = function() vim.cmd.startinsert() end,
 })
