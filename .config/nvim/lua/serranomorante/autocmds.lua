@@ -17,14 +17,13 @@ autocmd("TextYankPost", {
   end,
 })
 
-autocmd({ "WinEnter", "BufWinEnter" }, {
+autocmd("BufWinEnter", {
   desc = "Make q close help, man, quickfix, dap floats",
   group = augroup("q_close_windows", { clear = true }),
   callback = function(event)
     local buftype = vim.api.nvim_get_option_value("buftype", { buf = event.buf })
     local match = vim.tbl_contains({ "help", "nofile", "quickfix" }, buftype)
-    local is_floating = vim.api.nvim_win_get_config(0).relative ~= ""
-    if match or is_floating and vim.fn.maparg("q", "n") == "" then
+    if match and vim.fn.maparg("q", "n") == "" then
       vim.keymap.set("n", "q", "<cmd>close<cr>", {
         desc = "Close window",
         buffer = event.buf,
