@@ -136,6 +136,7 @@ M.fzf_lua = {
       grep = {
         rg_opts = "--pcre2 --column --line-number --no-heading --color=always --hidden --smart-case --max-columns=4096 -e",
         rg_glob = true,
+        multiline = 1, -- https://github.com/ibhagwan/fzf-lua/commit/b2d6b82aae8103f3390a685339394252ddd69ebf
         keymap = { fzf = { start = "beginning-of-line" } },
       },
       dap = {
