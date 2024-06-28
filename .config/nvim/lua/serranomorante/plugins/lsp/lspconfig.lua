@@ -412,6 +412,7 @@ return {
       }
 
       ---Prevent server setup if a plugin exists for it
+      custom["tsserver"] = function() end
       if utils.is_available("clangd_extensions.nvim") then custom["clangd"] = function() end end
       if utils.is_available("SchemaStore.nvim") then
         custom["yamlls"] = function() end

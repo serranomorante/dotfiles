@@ -41,6 +41,9 @@ return {
       tools.by_filetype.diff,
       tools.by_filetype.markdown,
       tools.by_filetype.gitcommit,
+      tools.by_filetype.html,
+      tools.by_filetype.xml,
+      tools.by_filetype.css,
       tools.by_filetype.all
     ),
     highlight = {

@@ -6,7 +6,7 @@ M.by_filetype = {
   javascript = {
     formatters = { "eslint_d", "prettierd" },
     linters = { "eslint_d" },
-    lsp = { "typescript-language-server", "tailwindcss-language-server" },
+    lsp = { "typescript-language-server", "tailwindcss-language-server", "vtsls" },
     dap = {
       "js-debug-adapter", -- or { "js-debug-adapter", version = "v1.82.0" },
     },
@@ -36,13 +36,16 @@ M.by_filetype = {
     dap = { "bash-debug-adapter" },
     parsers = { "bash" },
   },
-  fish = { formatters = { "fish_indent" }, parsers = { "fish" } },
+  fish = { parsers = { "fish" } },
   markdown = { lsp = { "marksman" }, formatters = { "prettierd" }, parsers = { "markdown" } },
   toml = { lsp = { "taplo" }, parsers = { "toml" } },
   tmux = { parsers = { "tmux" } },
   gitcommit = { parsers = { "gitcommit" } },
   diff = { parsers = { "diff" } },
-  vim = { parsers = { "vim", "vimdoc" } },
+  vim = { parsers = { "vim", "vimdoc" }, lsp = { "vim-language-server" } },
+  html = { parsers = { "html" } },
+  xml = { parsers = { "xml" } },
+  css = { parsers = { "css" } },
   all = { parsers = { "regex" } },
 }
 
@@ -65,6 +68,7 @@ M.mason_to_lspconfig = {
   ["typescript-language-server"] = "tsserver",
   ["rust-analyzer"] = "rust_analyzer",
   ["tailwindcss-language-server"] = "tailwindcss",
+  ["vim-language-server"] = "vimls",
 }
 
 return M
