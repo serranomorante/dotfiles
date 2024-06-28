@@ -1,6 +1,6 @@
 [Unit]
 Description=tmux session for user
-After=graphical-session.target
+Before=plasma-workspace.target
 
 [Service]
 Type=forking
@@ -8,4 +8,4 @@ ExecStart=/usr/bin/tmux new-session -s default -d
 ExecStop=/usr/bin/tmux kill-session -t default
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=plasma-workspace.target
