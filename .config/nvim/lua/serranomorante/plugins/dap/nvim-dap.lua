@@ -14,6 +14,7 @@ local log_is_trace = vim.env.DAP_LOG_LEVEL == "TRACE" or false
 
 return {
   "mfussenegger/nvim-dap",
+  cmd = { "DapEval" },
   keys = {
     { "<leader>db", function() require("dap").toggle_breakpoint() end, desc = "DAP: Toggle Breakpoint (F9)" },
     { "<leader>dB", function() require("dap").clear_breakpoints() end, desc = "DAP: Clear Breakpoints" },
@@ -65,7 +66,10 @@ return {
     { "<leader>dr", function() require("dap").restart_frame() end, desc = "DAP: Restart (C-F5)" },
     {
       "<leader>dR",
-      function() require("dap").repl.toggle({ wrap = false }, "belowright vsplit") end,
+      function()
+        require("dap").repl.open({ wrap = false }, "tabnew")
+        vim.cmd.tabnext() -- https://github.com/mfussenegger/nvim-dap/issues/756#issuecomment-1312684460
+      end,
       desc = "DAP: Toggle REPL",
     },
     { "<leader>dS", function() require("dap").run_to_cursor() end, desc = "DAP: Run To Cursor" },
@@ -99,12 +103,18 @@ return {
     local repl = require("dap.repl")
     local mason_registry = require("mason-registry")
     dap.set_log_level(vim.env.DAP_LOG_LEVEL or "INFO")
+    dap.defaults.fallback.focus_terminal = true
+    dap.defaults.fallback.force_external_terminal = true
 
     ---https://github.com/mfussenegger/nvim-dap/issues/1141#issuecomment-2002575842
     dap.defaults.fallback.on_output = function(_, output_event)
-      if string.find(output_event.output, "Could not read source map for file") then return end
-      if output_event.category == "telemetry" then return end
-      repl.append(output_event.output, "$", { newline = false })
+      if output_event.category == "stderr" then
+        if string.find(output_event.output, "Could not read source map for file") then return end
+      elseif output_event.category == "telemetry" then
+        return
+      else
+        repl.append(output_event.output, "$", { newline = false })
+      end
     end
 
     ---╔══════════════════════════════════════╗
@@ -205,7 +215,17 @@ return {
           protocol = "inspector",
           webRoot = function() return dap_utils.choose_path_relative_to_file(javascript_project_files) end,
           pauseForSourceMap = false, -- https://github.com/microsoft/vscode-js-debug/blob/main/OPTIONS.md#pauseforsourcemap-5
-          urlFilter = "http://localhost:*", -- This allows me to use the same chrome instance for normal browsing
+          urlFilter = function() -- This allows me to use the same chrome instance for normal browsing
+            return coroutine.create(function(dap_run_co)
+              vim.ui.input(
+                {
+                  prompt = "Enter urlFilter: ",
+                  default = "localhost:*", -- https://stackoverflow.com/a/47410471
+                },
+                function(input) return (input and input ~= "") and coroutine.resume(dap_run_co, input) or dap.ABORT end
+              )
+            end)
+          end,
           skipFiles = {
             "**/node_modules/**",
             "!**/node_modules/my-module/**",
