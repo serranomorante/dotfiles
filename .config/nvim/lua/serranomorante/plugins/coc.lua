@@ -147,12 +147,15 @@ local function on_coc_enabled(buf)
       opts.desc = "COC: Show info"
       vim.keymap.set("n", "<leader>li", "<cmd>CocInfo<CR>", opts)
     end
+  else
+    vim.notify("ensureDocument didn't work", vim.log.levels.WARN)
   end
 end
 
 return {
   "neoclide/coc.nvim",
   branch = "release",
+  cmd = { "CocUpdate" },
   event = {
     "User CustomLSPjavascript,CustomLSPjavascriptreact,CustomLSPtypescript,CustomLSPtypescriptreact",
   },
@@ -186,7 +189,7 @@ return {
       callback = function(args) utils.setup_coc_per_buffer(args.buf, on_coc_enabled) end,
     })
 
-    vim.api.nvim_create_autocmd({ "BufEnter", "TabEnter" }, {
+    vim.api.nvim_create_autocmd({ "BufEnter", "TabEnter", "BufNew", "BufWritePost" }, {
       desc = "Setup coc per buffer on buffer enter",
       group = setup_coc_augroup,
       callback = function(args)
