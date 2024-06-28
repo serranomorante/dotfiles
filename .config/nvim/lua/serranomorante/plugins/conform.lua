@@ -11,7 +11,7 @@ return {
       function()
         require("conform").format(
           {
-            lsp_fallback = true, -- Make it compatible with `clang-format`
+            lsp_format = "fallback", -- Make it compatible with `clang-format`
             async = false,
             timeout_ms = 10000,
           }, ---@param err string|nil
