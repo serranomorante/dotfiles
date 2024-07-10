@@ -2,9 +2,22 @@ local tools = require("serranomorante.tools")
 local augroup = vim.api.nvim_create_augroup
 local autocmd = vim.api.nvim_create_autocmd
 
+---Disable nvim-lint for the passed buffer
+---@param buf integer
+local function disable_linter_for_buffer(buf) require("lint").linters_by_ft[vim.bo[buf].filetype] = {} end
+
+---Run nvim-lint
+---@param args table
 local function run_linters(args)
+  if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) == "nowrite" then
+    return disable_linter_for_buffer(args.buf)
+  end
+  if vim.startswith(vim.api.nvim_get_option_value("filetype", { buf = args.buf }), "Diffview") then
+    ---`nvim-lint` is throwing errors on diffview
+    return disable_linter_for_buffer(args.buf)
+  end
   if vim.b[args.buf].large_buf then
-    require("lint").linters_by_ft[vim.bo[args.buf].filetype] = {}
+    disable_linter_for_buffer(args.buf)
     return vim.diagnostic.reset(nil, args.buf)
   end
   require("lint").try_lint()
@@ -28,7 +41,7 @@ return {
       callback = run_linters,
     })
     autocmd("User", {
-      desc = "Run linters on undo redo",
+      desc = "Run linters on user events",
       pattern = { "CustomUndo", "CustomRedo" },
       group = linters_augroup,
       callback = run_linters,
