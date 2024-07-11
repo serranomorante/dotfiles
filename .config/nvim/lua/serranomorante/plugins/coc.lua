@@ -2,7 +2,7 @@
   # I'm using coc only for javascript/typescript
   # What I'm not doing with coc.nvim?
   #  - Formatting, for that I still use conform
-  #  - Linting, for that I still use conform
+  #  - Linting, for that I still use nvim-lint
   #  - Folding, lucky me, folding works with coc.nvim
 ]]
 
@@ -163,6 +163,8 @@ return {
     local user_config = {
       ["suggest.autoTrigger"] = "trigger",
       ["suggest.noselect"] = true,
+      ["codeLens.enable"] = true,
+      ["codeLens.position"] = "eol",
       ["diagnostic.enableHighlightLineNumber"] = false,
       ["diagnostic.enableSign"] = false,
       ["diagnostic.virtualText"] = true,
@@ -173,6 +175,8 @@ return {
       ["diagnostic.floatConfig"] = { border = true, focusable = true },
       ["diagnostic.enableMessage"] = "jump",
       ["coc.preferences.promptInput"] = false,
+      ["typescript.implementationsCodeLens.enabled"] = true,
+      ["typescript.referencesCodeLens.enabled"] = true,
     }
 
     vim.g.coc_user_config = user_config
