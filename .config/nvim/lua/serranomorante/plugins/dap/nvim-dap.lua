@@ -186,7 +186,7 @@ return {
     ]]
 
     local javascript_project_files = { "tsconfig.json", "package.json", "jsconfig.json", ".git" }
-    for _, language in ipairs(constants.javascript_filetypes) do
+    for _, language in ipairs(constants.javascript_aliases) do
       dap.configurations[language] = {
         {
           name = "DAP: Next.js client launch",
@@ -313,14 +313,14 @@ return {
     ---For example, python is not necessary on this table because its debugging type is "python"
     ---@diagnostic disable-next-line: unused-local
     vscode_type_to_ft = {
-      ["node"] = constants.javascript_filetypes,
-      ["chrome"] = constants.javascript_filetypes,
-      ["firefox"] = constants.javascript_filetypes,
-      ["pwa-node"] = constants.javascript_filetypes,
-      ["pwa-chrome"] = constants.javascript_filetypes,
-      ["pwa-msedge"] = constants.javascript_filetypes,
-      ["node-terminal"] = constants.javascript_filetypes,
-      ["pwa-extensionHost"] = constants.javascript_filetypes,
+      ["node"] = constants.javascript_aliases,
+      ["chrome"] = constants.javascript_aliases,
+      ["firefox"] = constants.javascript_aliases,
+      ["pwa-node"] = constants.javascript_aliases,
+      ["pwa-chrome"] = constants.javascript_aliases,
+      ["pwa-msedge"] = constants.javascript_aliases,
+      ["node-terminal"] = constants.javascript_aliases,
+      ["pwa-extensionHost"] = constants.javascript_aliases,
       ["cppdbg"] = constants.c_filetypes,
     }
 

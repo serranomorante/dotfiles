@@ -3,7 +3,7 @@ local M = {}
 ---Useful way of organizing some common filetypes
 M.c_filetypes = { "c" }
 M.python_filetypes = { "python" }
-M.javascript_filetypes = { "typescript", "javascript", "javascriptreact", "typescriptreact" }
+M.javascript_aliases = { "typescript", "javascript", "javascriptreact", "typescriptreact" }
 M.lua_filetypes = { "lua" }
 M.markdown_filetypes = { "markdown" }
 M.json_filetypes = { "json", "jsonc" }
@@ -105,7 +105,7 @@ end
 add_regex_filter(function(item)
   if item.text:match("^import%s.*from.*") then return false end
   return true
-end, M.javascript_filetypes)
+end, M.javascript_aliases)
 
 add_regex_filter(function(item)
   if item.text:match("^from%s.*import.*") then return false end

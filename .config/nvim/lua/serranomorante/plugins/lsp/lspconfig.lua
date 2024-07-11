@@ -70,6 +70,7 @@ return {
         },
         virtual_text = { source = true },
         float = { border = "single", source = true },
+        jump = { float = { scope = "line" } },
       })
 
       vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = "single" })
@@ -187,13 +188,7 @@ return {
         end
 
         opts.desc = "LSP: Show line diagnostics"
-        vim.keymap.set("n", "gl", vim.diagnostic.open_float, opts)
-
-        opts.desc = "LSP: Go to previous diagnostic"
-        vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, opts)
-
-        opts.desc = "LSP: Go to next diagnostic"
-        vim.keymap.set("n", "]d", vim.diagnostic.goto_next, opts)
+        vim.keymap.set("n", "gl", function() vim.diagnostic.open_float({ scope = "line" }) end, opts)
 
         opts.desc = "LSP: Restart current buffer clients"
         vim.keymap.set("n", "<leader>rs", function()
@@ -349,7 +344,7 @@ return {
             on_init = on_init,
             on_attach = on_attach,
             capabilities = capabilities,
-            filetypes = constants.javascript_filetypes,
+            filetypes = constants.javascript_aliases,
             settings = {
               tailwindCSS = {
                 experimental = { classRegex = { cva, cva_cx, javascript_plain_object } },
