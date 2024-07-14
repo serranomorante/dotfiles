@@ -149,9 +149,10 @@ end
 return {
   "neoclide/coc.nvim",
   branch = "release",
-  cmd = { "CocUpdate" },
+  cmd = { "CocUpdate", "CocCommand" },
   event = {
     "User CustomLSPjavascript,CustomLSPjavascriptreact,CustomLSPtypescript,CustomLSPtypescriptreact",
+    "User CustomLSPmarkdown",
   },
   init = function()
     local user_config = {
@@ -176,7 +177,8 @@ return {
 
     vim.g.coc_user_config = user_config
     vim.g.coc_quickfix_open_command = "botright copen"
-    vim.g.coc_global_extensions = utils.merge_tools("coc", tools.by_filetype.javascript)
+    vim.g.coc_global_extensions =
+      utils.merge_tools("coc", tools.by_filetype.javascript, tools.by_filetype.markdown, tools.by_filetype.all)
     vim.api.nvim_set_hl(0, "CocMenuSel", { link = "PmenuSel" }) -- fix highlight
   end,
   config = function()

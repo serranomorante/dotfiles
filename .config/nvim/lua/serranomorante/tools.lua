@@ -37,7 +37,12 @@ M.by_filetype = {
     parsers = { "bash" },
   },
   fish = { parsers = { "fish" } },
-  markdown = { lsp = { "marksman" }, formatters = { "prettierd" }, parsers = { "markdown" } },
+  markdown = {
+    lsp = { "marksman" },
+    formatters = { "prettierd" },
+    parsers = { "markdown" },
+    extensions = { "coc-markdown-preview-enhanced" },
+  },
   toml = { lsp = { "taplo" }, parsers = { "toml" } },
   tmux = { parsers = { "tmux" } },
   gitcommit = { parsers = { "gitcommit" } },
@@ -46,7 +51,7 @@ M.by_filetype = {
   html = { parsers = { "html" } },
   xml = { parsers = { "xml" } },
   css = { parsers = { "css" } },
-  all = { parsers = { "regex" } },
+  all = { parsers = { "regex" }, extensions = { "coc-webview" } },
 }
 
 ---Make sure all possible filetypes that a tool can handle are considered here
