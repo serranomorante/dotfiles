@@ -114,7 +114,7 @@ vim.keymap.set("n", "<C-r>", function()
   return "<C-r>"
 end, { expr = true })
 
-vim.keymap.set("n", "f", "m'f")
-vim.keymap.set("n", "F", "m'F")
-vim.keymap.set("n", "t", "m't")
-vim.keymap.set("n", "T", "m'T")
+vim.keymap.set("n", "f", function() return "m'" .. vim.v.count1 .. "f" end, { expr = true })
+vim.keymap.set("n", "F", function() return "m'" .. vim.v.count1 .. "F" end, { expr = true })
+vim.keymap.set("n", "t", function() return "m'" .. vim.v.count1 .. "t" end, { expr = true })
+vim.keymap.set("n", "T", function() return "m'" .. vim.v.count1 .. "T" end, { expr = true })
