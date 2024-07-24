@@ -16,7 +16,7 @@ return {
   "mfussenegger/nvim-dap",
   cmd = { "DapEval" },
   keys = {
-    { "<leader>db", function() require("dap").toggle_breakpoint() end, desc = "DAP: Toggle Breakpoint (F9)" },
+    { "<leader>db", function() require("dap").toggle_breakpoint() end, desc = "DAP: Toggle Breakpoint" },
     { "<leader>dB", function() require("dap").clear_breakpoints() end, desc = "DAP: Clear Breakpoints" },
     {
       "<leader>dc",
@@ -57,13 +57,13 @@ return {
       end,
       desc = "DAP: Log Point",
     },
-    { "<leader>di", function() require("dap").step_into() end, desc = "DAP: Step Into (F11)" },
-    { "<leader>do", function() require("dap").step_over() end, desc = "DAP: Step Over (F10)" },
-    { "<leader>dO", function() require("dap").step_out() end, desc = "DAP: Step Out (S-F11)" },
+    { "<leader>di", function() require("dap").step_into() end, desc = "DAP: Step Into" },
+    { "<leader>do", function() require("dap").step_over() end, desc = "DAP: Step Over" },
+    { "<leader>dO", function() require("dap").step_out() end, desc = "DAP: Step Out" },
     { "<leader>dq", function() require("dap").close() end, desc = "DAP: Close Session" },
-    { "<leader>dQ", function() require("dap").terminate() end, desc = "DAP: Terminate Session (S-F5)" },
-    { "<leader>dp", function() require("dap").pause() end, desc = "DAP: Pause (F6)" },
-    { "<leader>dr", function() require("dap").restart_frame() end, desc = "DAP: Restart (C-F5)" },
+    { "<leader>dQ", function() require("dap").terminate() end, desc = "DAP: Terminate Session" },
+    { "<leader>dp", function() require("dap").pause() end, desc = "DAP: Pause" },
+    { "<leader>dr", function() require("dap").restart_frame() end, desc = "DAP: Restart" },
     {
       "<leader>dR",
       function()
@@ -82,6 +82,15 @@ return {
         ui.centered_float(ui.scopes, { number = true, wrap = false, width = 999 })
       end,
       desc = 'DAP: Toggle "scopes" in floating window',
+    },
+    {
+      ---https://github.com/mfussenegger/nvim-dap/issues/1288#issuecomment-2248506225
+      "<leader>da",
+      function()
+        local ui = require("dap.ui.widgets")
+        ui.centered_float(ui.sessions, { number = true, wrap = false, width = 999 })
+      end,
+      desc = 'DAP: Toggle "sessions" in floating window',
     },
   },
   init = function()
