@@ -155,6 +155,12 @@ return {
     "User CustomLSPmarkdown",
   },
   init = function()
+    ---This env variable comes from my personal .bashrc file
+    local system_node_version = vim.env.SYSTEM_DEFAULT_NODE_VERSION or "latest"
+    ---Bypass volta's context detection to prevent running the debugger with unsupported node versions
+    local node_path = utils.cmd({ "volta", "run", "--node", system_node_version, "which", "node" }):gsub("\n", "")
+    if node_path then vim.g.node_system_executable = node_path end
+
     local user_config = {
       ["suggest.autoTrigger"] = "trigger",
       ["suggest.noselect"] = true,
@@ -173,8 +179,14 @@ return {
       ["coc.preferences.promptInput"] = false,
       ["typescript.implementationsCodeLens.enabled"] = true,
       ["typescript.referencesCodeLens.enabled"] = true,
+      ["javascript.implementationsCodeLens.enabled"] = true,
+      ["javascript.referencesCodeLens.enabled"] = true,
+      ---Download the compiled jar from this url and add it to the following dir
+      ---https://plantuml.com/download
+      ["markdown-preview-enhanced.plantumlJarPath"] = vim.env.HOME .. "/plantuml/plantuml.jar",
     }
 
+    vim.g.coc_node_path = node_path
     vim.g.coc_user_config = user_config
     vim.g.coc_quickfix_open_command = "botright copen"
     vim.g.coc_global_extensions =
