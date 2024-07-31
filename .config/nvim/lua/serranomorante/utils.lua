@@ -330,4 +330,12 @@ function M.set_timeout(timeout, callback)
   return timer
 end
 
+---Return an adapted filename which includes cursor's current line and column
+---Example: <filename>:<line>:<col>
+function M.filename_with_cursor_pos()
+  local fname = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":.")
+  local line_col_pair = vim.api.nvim_win_get_cursor(0) -- row is index 1, column is index 0 indexed
+  return fname .. ":" .. tostring(line_col_pair[1]) .. ":" .. tostring(line_col_pair[2])
+end
+
 return M
