@@ -164,8 +164,11 @@ return {
         },
         ["<leader>ff"] = {
           callback = function()
-            local current_dir = vim.fn.fnamemodify(require("oil").get_current_dir(), ":.")
-            require("fzf-lua").files({ cwd = current_dir })
+            local current_dir = require("oil").get_current_dir()
+            local dir_relative_to_root = vim.fn.fnamemodify(current_dir, ":.")
+            require("fzf-lua").files({
+              cwd = vim.fn.empty(dir_relative_to_root) and current_dir or dir_relative_to_root,
+            })
           end,
           desc = "Oil: Search files into this directory with FZF",
         },
