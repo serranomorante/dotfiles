@@ -29,18 +29,25 @@ return {
   opts = {
     formatters_by_ft = {
       lua = tools.by_filetype.lua.formatters,
-      javascript = tools.by_filetype.javascript.formatters,
-      typescript = { tools.by_filetype.javascript.formatters },
-      javascriptreact = tools.by_filetype.javascript.formatters,
-      typescriptreact = { tools.by_filetype.javascript.formatters },
+      javascript = vim.tbl_extend("force", tools.by_filetype.javascript.formatters, { stop_after_first = true }),
+      typescript = vim.tbl_extend("force", tools.by_filetype.typescript.formatters, { stop_after_first = true }),
+      javascriptreact = vim.tbl_extend(
+        "force",
+        tools.by_filetype.javascriptreact.formatters,
+        { stop_after_first = true }
+      ),
+      typescriptreact = vim.tbl_extend(
+        "force",
+        tools.by_filetype.typescriptreact.formatters,
+        { stop_after_first = true }
+      ),
       python = tools.by_filetype.python.formatters,
       go = tools.by_filetype.go.formatters,
-      json = { tools.by_filetype.json.formatters },
-      jsonc = { tools.by_filetype.json.formatters },
-      markdown = { tools.by_filetype.markdown.formatters },
-      fish = { tools.by_filetype.fish.formatters },
-      bash = { tools.by_filetype.bash.formatters },
-      sh = { tools.by_filetype.bash.formatters },
+      json = vim.tbl_extend("force", tools.by_filetype.json.formatters, { stop_after_first = true }),
+      jsonc = vim.tbl_extend("force", tools.by_filetype.json.formatters, { stop_after_first = true }),
+      markdown = vim.tbl_extend("force", tools.by_filetype.markdown.formatters, { stop_after_first = true }),
+      bash = vim.tbl_extend("force", tools.by_filetype.bash.formatters, { stop_after_first = true }),
+      sh = vim.tbl_extend("force", tools.by_filetype.bash.formatters, { stop_after_first = true }),
     },
     log_level = vim.log.levels[vim.env.CONFORM_LOG_LEVEL or "ERROR"],
   },
