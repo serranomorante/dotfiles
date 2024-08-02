@@ -139,9 +139,3 @@ autocmd("FileType", {
   group = general_settings_group,
   command = "set formatoptions-=cro",
 })
-
-autocmd("CmdwinEnter", {
-  desc = "Set mappings and options local to command-line window",
-  group = general_settings_group,
-  callback = function() vim.cmd.startinsert() end,
-})
