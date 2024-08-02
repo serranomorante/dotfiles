@@ -7,7 +7,7 @@ M.nvim_bqf = {
       ---`junegunn/fzf` vim plugin is necessary because `nvim-bqf` uses `fzf#run(...)`
       ---https://github.com/junegunn/fzf/blob/master/README-VIM.md#summary
       "junegunn/fzf",
-      build = function() vim.fn["fzf#install"]() end,
+      build = ":call fzf#install()",
     },
   },
   ft = "qf",
