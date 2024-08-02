@@ -6,7 +6,7 @@ if test -e "$brew_ubuntu_path"; and test -x "$brew_ubuntu_path"
     eval "$($brew_ubuntu_path shellenv)"
 end
 
-command -q eza; and abbr --add ls eza -1 -l --icons always --color always
+command -q eza; and abbr --add ls eza -1 -a -h --git --sort modified -l --icons always --color always
 abbr --add grep grep --color=auto
 abbr --add cls printf "\033c"
 

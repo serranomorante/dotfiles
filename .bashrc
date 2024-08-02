@@ -21,7 +21,7 @@ fi
 
 
 if [ -x "$(command -v eza)" ]; then
-    alias ls='eza -1 -l --icons always --color always'
+    alias ls='eza -1 -a -h --git --sort modified -l --icons always --color always'
 fi
 
 alias grep='grep --color=auto'
