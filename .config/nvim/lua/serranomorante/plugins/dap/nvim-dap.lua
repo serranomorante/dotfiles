@@ -62,6 +62,11 @@ return {
     { "<leader>dO", function() require("dap").step_out() end, desc = "DAP: Step Out" },
     { "<leader>dq", function() require("dap").close() end, desc = "DAP: Close Session" },
     { "<leader>dQ", function() require("dap").terminate() end, desc = "DAP: Terminate Session" },
+    {
+      "<leader>dD",
+      function() require("dap").disconnect({ terminateDebuggee = false }) end,
+      desc = "DAP: Disconnect adapter",
+    },
     { "<leader>dp", function() require("dap").pause() end, desc = "DAP: Pause" },
     { "<leader>dr", function() require("dap").restart_frame() end, desc = "DAP: Restart" },
     {
