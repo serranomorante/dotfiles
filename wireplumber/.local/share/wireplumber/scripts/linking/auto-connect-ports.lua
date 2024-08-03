@@ -29,41 +29,44 @@ log = Log.open_topic("s-linking")
 -- end
 
 local APP_TO_OUTPUT = {
-	["Brave"] = "media-sink",
+  ["Brave"] = "media-sink",
+  ["Firefox"] = "media-sink",
+  ["Google Chrome"] = "media-sink",
+  ["ALSA plug-in [plexamp]"] = "media-sink",
 }
 
 SimpleEventHook({
-	name = "linking/find-user-target",
-	before = "linking/find-defined-target",
-	interests = {
-		EventInterest({
-			Constraint({ "event.type", "=", "select-target" }),
-		}),
-	},
-	execute = function(event)
-		-- local luaunit = require("luaunit")
-		local source, om, si, si_props, si_flags, target = putils:unwrap_select_target_event(event)
+  name = "linking/find-user-target",
+  before = "linking/find-defined-target",
+  interests = {
+    EventInterest({
+      Constraint({ "event.type", "=", "select-target" }),
+    }),
+  },
+  execute = function(event)
+    -- local luaunit = require("luaunit")
+    local source, om, si, si_props, si_flags, target = putils:unwrap_select_target_event(event)
 
-		-- print("## si_props: " .. luaunit.prettystr(si_props))
-		-- print("## si_flags: " .. luaunit.prettystr(si_flags))
-		-- print("## target: " .. luaunit.prettystr(target))
-		print('## node name: ' .. si_props["node.name"])
+    -- print("## si_props: " .. luaunit.prettystr(si_props))
+    -- print("## si_flags: " .. luaunit.prettystr(si_flags))
+    -- print("## target: " .. luaunit.prettystr(target))
+    print("## node name: " .. si_props["node.name"])
 
-		-- bypass the hook if the target is already picked up
-		if target then
-			return
-		end
+    -- bypass the hook if the target is already picked up
+    if target then
+      return
+    end
 
-		log:info(si, "in find-user-target")
+    log:info(si, "in find-user-target")
 
-		local media_sink_si = om:lookup({ Constraint({ "node.name", "=", APP_TO_OUTPUT[si_props["node.name"]] }) })
+    local media_sink_si = om:lookup({ Constraint({ "node.name", "=", APP_TO_OUTPUT[si_props["node.name"]] }) })
 
-		-- print("## metadata: " .. luaunit.prettystr(media_sink_si["properties"]))
+    -- print("## metadata: " .. luaunit.prettystr(media_sink_si["properties"]))
 
-		-- implement logic here to find a suitable target
+    -- implement logic here to find a suitable target
 
-		-- store the found target on the event,
-		-- the next hooks will take care of linking
-		event:set_data("target", media_sink_si)
-	end,
+    -- store the found target on the event,
+    -- the next hooks will take care of linking
+    event:set_data("target", media_sink_si)
+  end,
 }):register()
