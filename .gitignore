@@ -1,6 +1,6 @@
-.config/lazygit/state.yml
+lazygit/.config/lazygit/state.yml
 
 # Ignore symlinks from systemd
-.config/systemd/user/*.wants
-.config/systemd/user/*session-manager.service
-.config/systemd/user/*kwin_x11.service
+systemd/.config/systemd/user/*.wants
+systemd/.config/systemd/user/*session-manager.service
+systemd/.config/systemd/user/*kwin_x11.service
