@@ -1,6 +1,0 @@
-#!/bin/bash
-
-sleep 0.3
-
-my_hor_gap=$(xgetres i3wm.Gaps.my_hor_gap)
-i3-msg "gaps horizontal all set $my_hor_gap"

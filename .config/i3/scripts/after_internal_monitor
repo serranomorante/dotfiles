@@ -1,5 +1,0 @@
-#!/bin/bash
-
-sleep 0.3
-
-i3-msg "gaps horizontal all set 0"
