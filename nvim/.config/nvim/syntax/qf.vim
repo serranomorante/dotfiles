@@ -23,4 +23,7 @@ hi def link qfWarning DiagnosticWarn
 hi def link qfInfo DiagnosticInfo
 hi def link qfNote DiagnosticHint
 
+setlocal cursorline
+setlocal cursorlineopt=line
+
 let b:current_syntax = 'qf'
