@@ -203,7 +203,7 @@ return {
     for _, language in ipairs(constants.javascript_aliases) do
       dap.configurations[language] = {
         {
-          name = "DAP: Next.js client launch",
+          name = "DAP: chrome client launch",
           type = "pwa-chrome",
           request = "launch",
           sourceMaps = true,
@@ -221,7 +221,7 @@ return {
           trace = log_is_trace,
         },
         {
-          name = "DAP: Next.js client attach",
+          name = "DAP: chrome client attach",
           type = "pwa-chrome",
           request = "attach",
           port = 9222, -- Start chrome with `google-chrome-stable --remote-debugging-port=9222`
