@@ -12,6 +12,9 @@ M.on_save = function()
       table.insert(breakpoints, {
         filename = fname,
         line = breakpoint.line,
+        condition = breakpoint.condition,
+        logMessage = breakpoint.logMessage,
+        hitCondition = breakpoint.hitCondition,
       })
     end
   end
@@ -37,16 +40,16 @@ M.on_post_load = function(data)
   for _, breakpoint in ipairs(data.breakpoints or {}) do
     local buf = bufs_by_name[breakpoint.filename]
     if buf and vim.api.nvim_buf_is_valid(buf) then
-      local bopts = {} -- TODO: conditions etc.
-      vim.schedule(function() -- prevent invalid window id issue
+      local bopts = {}
+      if breakpoint.condition then bopts.condition = breakpoint.condition end
+      if breakpoint.logMessage then bopts.log_message = breakpoint.logMessage end
+      if breakpoint.hitCondition then bopts.hit_condition = breakpoint.hitCondition end
+      vim.schedule(function() -- prevents invalid window id issue
         require("dap.breakpoints").set(bopts, buf, breakpoint.line)
         vim.notify(("Restoring breakpoint at buf %s line %s"):format(buf, breakpoint.line), vim.log.levels.DEBUG)
       end)
     else
-      vim.notify(
-        ("Could not restore breakpoint at buf %s line %s"):format(buf, breakpoint.line),
-        vim.log.levels.WARN
-      )
+      vim.notify(("Could not restore breakpoint at buf %s line %s"):format(buf, breakpoint.line), vim.log.levels.WARN)
     end
   end
 end
