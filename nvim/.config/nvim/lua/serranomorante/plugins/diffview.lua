@@ -15,6 +15,9 @@ return {
   },
   opts = {
     watch_index = false,
+    default_args = {
+      DiffviewFileHistory = { "--no-merges" },
+    },
     view = {
       default = {
         winbar_info = true,
@@ -26,6 +29,14 @@ return {
     file_panel = {
       win_config = {
         width = 50,
+        win_opts = {
+          number = true,
+          cursorlineopt = "line,number",
+        },
+      },
+    },
+    file_history_panel = {
+      win_config = {
         win_opts = {
           number = true,
           cursorlineopt = "line,number",
