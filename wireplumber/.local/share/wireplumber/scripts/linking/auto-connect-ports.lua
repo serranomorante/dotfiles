@@ -12,7 +12,7 @@ local APP_TO_OUTPUT = {
   ["ALSA plug-in [plexamp]"] = "media-sink",
   ["BTAdapter"] = "media-sink",
   ---Apply noise reduction to Google chrome media sound
-  ["Google Chrome"] = "NoiseTorch Headphones", -- will fallback to default if not available
+  ["Google Chrome"] = "Filtered Headphones", -- will fallback to default if not available
 }
 
 SimpleEventHook({
