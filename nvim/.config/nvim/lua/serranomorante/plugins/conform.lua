@@ -9,11 +9,8 @@ return {
       "<leader>lf",
       function()
         require("conform").format(
-          {
-            lsp_format = "fallback", -- Make it compatible with `clang-format`
-            async = false,
-            timeout_ms = 10000,
-          }, ---@param err string|nil
+          { async = true },
+          ---@param err string|nil
           function(err)
             ---https://github.com/stevearc/conform.nvim/issues/250#issuecomment-1868544121
             if err then return vim.notify(err, vim.log.levels.WARN) end
