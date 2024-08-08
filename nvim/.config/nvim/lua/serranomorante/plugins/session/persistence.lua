@@ -5,14 +5,14 @@ vim.api.nvim_create_autocmd("User", {
   desc = "Do stuff before saving the session",
   group = vim.api.nvim_create_augroup("persistence-pre-save", { clear = true }),
   pattern = "PersistenceSavePre",
-  callback = vim.schedule_wrap(function()
+  callback = function()
     local persistence = require("persistence")
     local filename = vim.fn.fnameescape(persistence.current())
     session_utils.clean_before_session_save()
     local dap_data = dap.on_save()
     local data = { dap = dap_data }
     session_utils.save(filename, data)
-  end),
+  end,
 })
 
 return {
