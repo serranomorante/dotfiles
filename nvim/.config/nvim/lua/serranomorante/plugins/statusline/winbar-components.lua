@@ -59,7 +59,10 @@ M.Breadcrumb = {
 }
 
 M.Oil = {
-  condition = function() return heirline_conditions.buffer_matches({ filetype = { "oil" } }) end,
+  condition = function()
+    return heirline_conditions.buffer_matches({ filetype = { "oil" } })
+      and (not heirline_conditions.buffer_matches({ filetype = { "oil_preview" } }))
+  end,
   init = function(self) self.dir = require("oil").get_current_dir() end,
   {
     provider = function(self)
