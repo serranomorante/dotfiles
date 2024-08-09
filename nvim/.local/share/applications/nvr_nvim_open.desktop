@@ -1,0 +1,14 @@
+[Desktop Entry]
+Categories=Utility;
+Exec=nvr_open_nvim.sh %u
+Icon=utilities-terminal
+MimeType=x-scheme-handler/terminal
+Name[en_US]=NVR Open Nvim
+Name=NVR Open Nvim
+Name[en_CA]=NVR Open Nvim
+Name[en_GB]=NVR Open Nvim
+StartupNotify=true
+Terminal=true
+Type=Application
+X-KDE-SubstituteUID=false
+X-KDE-Username=
