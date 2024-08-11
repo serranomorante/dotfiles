@@ -28,6 +28,7 @@ M.by_filetype = {
     formatters = { "isort", "black" },
     linters = { "mypy", "pylint" },
     lsp = { "basedpyright", "ruff-lsp" },
+    lsp = { "python-lsp-server" },
     dap = { "debugpy" },
   },
   rust = { lsp = { "rust-analyzer" }, parsers = { "rust" } },

@@ -115,7 +115,6 @@ return {
   config = function()
     local dap = require("dap")
     local repl = require("dap.repl")
-    local mason_registry = require("mason-registry")
     dap.set_log_level(vim.env.DAP_LOG_LEVEL or "INFO")
     dap.defaults.fallback.focus_terminal = true
     dap.defaults.fallback.force_external_terminal = true

@@ -291,15 +291,21 @@ return {
             },
           })
         end,
-        ["ruff_lsp"] = function()
-          lspconfig["ruff_lsp"].setup({
+        ["pylsp"] = function()
+          lspconfig["pylsp"].setup({
             on_init = on_init,
-            on_attach = function(client, bufnr)
-              -- Disable hover in favor of Pyright
-              client.server_capabilities.hoverProvider = false
-              on_attach(client, bufnr)
-            end,
             capabilities = capabilities,
+            on_attach = on_attach,
+            settings = {
+              pylsp = {
+                plugins = {
+                  ruff = {
+                    enabled = true,
+                    formatEnabled = true,
+                  },
+                },
+              },
+            },
           })
         end,
         ["lua_ls"] = function()

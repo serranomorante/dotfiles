@@ -1,0 +1,35 @@
+---
+# LSP
+- name: "{{ item }} language: ensure LSP - pylsp virtualenv"
+  pip:
+    name:
+      - pip
+      - python-lsp-server
+      - pydocstyle
+      - pylsp-mypy
+      - python-lsp-ruff # disables pycodestyle, pyflakes, mccabe, autopep8, yapf
+    virtualenv: "{{ home_path }}/apps/lang-tools/pylsp/.venv"
+    virtualenv_command: /usr/bin/python3 -m venv
+    state: latest
+
+- name: "{{ item }} language: ensure LSP - symlink pylsp"
+  file:
+    src: "{{ home_path }}/apps/lang-tools/pylsp/.venv/bin/pylsp"
+    dest: "{{ home_path }}/bin/pylsp"
+    state: link
+
+# DAP
+- name: "{{ item }} language: ensure DAP - debugpy virtualenv"
+  pip:
+    name:
+      - pip
+      - debugpy
+    virtualenv: "{{ home_path }}/apps/lang-tools/debugpy/.venv"
+    virtualenv_command: /usr/bin/python3 -m venv
+    state: latest
+
+- name: "{{ item }} language: ensure DAP - symlink debugpy"
+  file:
+    src: "{{ home_path }}/apps/lang-tools/debugpy/.venv/bin/debugpy"
+    dest: "{{ home_path }}/bin/debugpy"
+    state: "link"
