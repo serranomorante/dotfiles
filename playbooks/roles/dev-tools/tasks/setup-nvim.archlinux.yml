@@ -1,0 +1,20 @@
+---
+- name: "Neovim: ensure Neovim - clone"
+  ansible.builtin.git:
+    repo: https://github.com/neovim/neovim.git
+    dest: ~/repos/neovim
+    depth: 1
+
+- name: "Neovim: ensure neovim - build"
+  ansible.builtin.command: make
+  become: true
+  environment:
+    CMAKE_BUILD_TYPE: RelWithDebInfo
+  args:
+    chdir: "{{ home_path }}/repos/neovim"
+
+- name: "Neovim: ensure neovim - install"
+  become: true
+  ansible.builtin.command: make install
+  args:
+    chdir: "{{ home_path }}/repos/neovim"

@@ -1,10 +1,10 @@
 ---
 - hosts: localhost
-  become: false
-  gather_facts: true
+  vars:
+    home_path: /home/serranomorante
   roles:
     - lang-tools # lsp, dap, syntax, linters, formatters
-    # - dev-tools # editors
+    - dev-tools # editors
     # - music-tools # DAWs, VSTs, pipewire, etc
     # - browsing-tools # browsers, etc
     # - recording-tools # obs, etc

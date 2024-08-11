@@ -1,0 +1,3 @@
+---
+- name: Ensure nvim is installed
+  ansible.builtin.include_tasks: setup-nvim.{{ ansible_distribution | lower | replace(' ', '') }}.yml
