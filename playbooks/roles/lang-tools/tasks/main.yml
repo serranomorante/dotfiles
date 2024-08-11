@@ -1,13 +1,9 @@
 ---
-- name: Ensure fish tools are installed
+- name: Ensure language tools are installed
   # see:  https://github.com/ansible/ansible/issues/30600
-  ansible.builtin.include_tasks: setup-fish-tools.{{ ansible_distribution | lower | replace(' ', '') }}.yml
-
-- name: Ensure javascript tools are installed
-  ansible.builtin.include_tasks: setup-javascript-tools.{{ ansible_distribution | lower | replace(' ', '') }}.yml
-
-- name: Ensure c tools are installed
-  ansible.builtin.include_tasks: setup-c-tools.{{ ansible_distribution | lower | replace(' ', '') }}.yml
-
-- name: Ensure lua tools are installed
-  ansible.builtin.include_tasks: setup-lua-tools.{{ ansible_distribution | lower | replace(' ', '') }}.yml
+  ansible.builtin.include_tasks: setup-{{ item }}-tools.{{ user_os }}.yml
+  loop:
+    - c
+    - lua
+    - javascript
+    - fish

@@ -1,11 +1,11 @@
 ---
-- name: "Lua: ensure LSP"
+- name: "{{ item }} language: ensure LSP"
   become: true
   ansible.builtin.package:
     state: present
     name: lua-language-server
 
-- name: "Lua: ensure FORMATTERS"
+- name: "{{ item }} language: ensure FORMATTERS"
   become: true
   ansible.builtin.package:
     state: present
