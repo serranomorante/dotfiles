@@ -10,9 +10,6 @@ if status is-interactive
     # https://github.com/fish-shell/fish-shell/issues/5894
     set -g fish_escape_delay_ms 10
 
-    # Add ruby gems
-    command -q rbenv; and rbenv init - fish | source
-
     # See https://github.com/pyenv/pyenv#set-up-your-shell-environment-for-pyenv
     command -q pyenv; and pyenv init - | source
 

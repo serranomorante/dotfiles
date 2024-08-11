@@ -81,6 +81,5 @@ end
 set -gx DAP_LOG_LEVEL INFO
 set -gx LSP_LOG_LEVEL INFO
 set -gx CONFORM_LOG_LEVEL INFO
-set -gx NEOTEST_LOG_LEVEL INFO
 
 command -q fish; and set -gx AVAILABLE_SHELL "$(command -v fish)"; or set -gx AVAILABLE_SHELL "$(command -v bash)"

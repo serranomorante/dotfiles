@@ -3,11 +3,6 @@ local utils = require("serranomorante.utils")
 local events = require("serranomorante.events")
 local dap_utils = require("serranomorante.plugins.dap.dap-utils")
 
----Debuggers can exist on one of 2 folders: `mason` or `debuggers`
----Mason: installed automatically. Usually for stable versions of packages.
----Debuggers: installed manually. Usually for nightly versions of packages. This is
----a custom folder on my system for things like `cpp_tools` or `vscode-js-debug`
-
 ---`h: dap.ext.vscode.load_launchjs`
 local vscode_type_to_ft
 local log_is_trace = vim.env.DAP_LOG_LEVEL == "TRACE" or false

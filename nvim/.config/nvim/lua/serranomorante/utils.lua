@@ -130,22 +130,22 @@ function M.del_buffer_autocmd(augroup, bufnr)
   if cmds_found then vim.tbl_map(function(cmd) vim.api.nvim_del_autocmd(cmd.id) end, cmds) end
 end
 
----@alias MasonToolType "formatters"|"lsp"|"linters"|"dap"|"extra"
+---@alias GeneralToolType "formatters"|"lsp"|"linters"|"dap"|"extra"
 ---@alias TreesitterToolType "parsers"
 ---@alias CocToolType "extensions"
----@alias ToolEnsureInstall table<MasonToolType|TreesitterToolType|CocToolType, string[]|table[]>
+---@alias ToolEnsureInstall table<GeneralToolType|TreesitterToolType|CocToolType, string[]|table[]>
 
 ---Merges an array of `ToolEnsureInstall` specs into 1 flat array of strings
----@param installer_type? "treesitter"|"mason"|"coc" We will use Mason by default
+---@param installer_type? "general"|"treesitter"|"coc" Default is "general"
 ---@param ... ToolEnsureInstall
 ---@return string[] # A flat array of tools without duplicates
 function M.merge_tools(installer_type, ...)
-  installer_type = installer_type or "mason"
-  local mason_tool_type = { "formatters", "lsp", "linters", "dap", "extra" }
+  installer_type = installer_type or "general"
+  local general_tool_type = { "formatters", "lsp", "linters", "dap", "extra" }
   local treesitter_tool_type = { "parsers" }
   local coc_tool_type = { "extensions" }
   local tool_type_by_installer = {
-    ["mason"] = mason_tool_type,
+    ["general"] = general_tool_type,
     ["treesitter"] = treesitter_tool_type,
     ["coc"] = coc_tool_type,
   }
@@ -162,7 +162,7 @@ end
 
 ---Get a list of tools from a specific tool type: lsp, dap, etc.
 ---@param base table<string, ToolEnsureInstall> The base list of tools
----@param tool_type MasonToolType|TreesitterToolType|CocToolType The type to extract tools from
+---@param tool_type GeneralToolType|TreesitterToolType|CocToolType The type to extract tools from
 ---@param use_lspconfig_map? boolean Whether we should use nvim-lspconfig names (lua-language-server -> lua_ls)
 ---@param lspconfig_map? table<string, string> Your custom lspconfig mapping
 ---@return string[]

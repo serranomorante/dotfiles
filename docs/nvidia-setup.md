@@ -140,7 +140,7 @@ fi
 
 I installed the [xf86-video-amdgpu](https://archlinux.org/packages/?name=xf86-video-amdgpu) package and this was very important to make everything work correctly.
 
-### Enable `nvidia-persistence` service
+### Enable `nvidia-persistence` service (actually don't as I only have single gpu)
 
 ### Add modprobe conf file
 

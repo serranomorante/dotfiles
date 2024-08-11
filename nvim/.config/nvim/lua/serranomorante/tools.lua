@@ -1,6 +1,6 @@
 local M = {}
 
----Names should be mason and treesitter compatible
+---Don't add nvim-lspconfig names like `tsserver` here
 ---@type table<string, ToolEnsureInstall>
 M.by_filetype = {
   javascript = {

@@ -44,7 +44,7 @@ describe("utils", function()
     end)
 
     it("can merge a list of tools (by filetype) without duplicates", function()
-      local result = utils.merge_tools("mason", by_filetype.javascript, by_filetype.python, by_filetype.json)
+      local result = utils.merge_tools("general", by_filetype.javascript, by_filetype.python, by_filetype.json)
       assert.are.same(6, #result) -- 7 in total but 6 without duplicates!
       assert.are.unique(result)
     end)
