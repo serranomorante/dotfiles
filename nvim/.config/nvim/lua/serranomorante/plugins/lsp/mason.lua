@@ -36,7 +36,6 @@ return {
       run_on_start = false,
       ensure_installed = utils.merge_tools(
         "mason",
-        tools.by_filetype.c,
         tools.by_filetype.go,
         tools.by_filetype.lua,
         tools.by_filetype.bash,

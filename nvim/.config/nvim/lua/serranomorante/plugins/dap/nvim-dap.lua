@@ -164,7 +164,7 @@ return {
       end
     end
 
-    local dap_executable = vim.fn.stdpath("data") .. "/debuggers/cpp_tools/extension/debugAdapters/bin/OpenDebugAD7"
+    local dap_executable = vim.env.HOME .. "/apps/lang-tools/cpp_tools/extension/debugAdapters/bin/OpenDebugAD7"
 
     ---https://github.com/mfussenegger/nvim-dap/wiki/C-C---Rust-(gdb-via--vscode-cpptools)
     if vim.fn.executable(dap_executable) == 1 then

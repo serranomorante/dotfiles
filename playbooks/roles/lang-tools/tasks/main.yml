@@ -5,3 +5,6 @@
 
 - name: Ensure javascript tools are installed
   ansible.builtin.include_tasks: setup-javascript-tools.{{ ansible_distribution | lower | replace(' ', '') }}.yml
+
+- name: Ensure c tools are installed
+  ansible.builtin.include_tasks: setup-c-tools.{{ ansible_distribution | lower | replace(' ', '') }}.yml
