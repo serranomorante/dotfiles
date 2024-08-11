@@ -1,0 +1,13 @@
+---
+- hosts: localhost
+  become: false
+  gather_facts: true
+  roles:
+    - lang-tools # lsp, dap, syntax, linters, formatters
+    # - dev-tools # editors
+    # - music-tools # DAWs, VSTs, pipewire, etc
+    # - browsing-tools # browsers, etc
+    # - recording-tools # obs, etc
+    # - monitoring-tools # cpu monitoring, etc
+    # - writing-tools # notes, etc
+

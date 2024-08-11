@@ -40,7 +40,6 @@ return {
         tools.by_filetype.go,
         tools.by_filetype.lua,
         tools.by_filetype.bash,
-        tools.by_filetype.fish,
         tools.by_filetype.vim,
         tools.by_filetype.json,
         tools.by_filetype.yaml,

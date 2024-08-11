@@ -36,7 +36,7 @@ M.by_filetype = {
     dap = { "bash-debug-adapter" },
     parsers = { "bash" },
   },
-  fish = { parsers = { "fish" } },
+  fish = { parsers = { "fish" }, lsp = { "fish-lsp" } },
   markdown = {
     lsp = { "marksman" },
     formatters = { "prettierd" },
@@ -74,6 +74,7 @@ M.mason_to_lspconfig = {
   ["rust-analyzer"] = "rust_analyzer",
   ["tailwindcss-language-server"] = "tailwindcss",
   ["vim-language-server"] = "vimls",
+  ["fish-lsp"] = "fish_lsp"
 }
 
 return M
