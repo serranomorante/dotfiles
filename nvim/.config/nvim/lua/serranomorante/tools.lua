@@ -14,24 +14,13 @@ M.by_filetype = {
     extensions = { "coc-tsserver", "@yaegassy/coc-tailwindcss3" },
   },
   lua = { formatters = { "stylua" }, lsp = { "lua-language-server" }, parsers = { "lua", "luap", "luadoc" } },
-  go = {
-    formatters = { "gofumpt", "goimports", "gomodifytags" },
-    lsp = { "gopls" },
-    extra = { "iferr", "impl" },
-    parsers = { "go" },
-  },
-  json = { lsp = { "json-lsp" }, formatters = { "prettierd" }, parsers = { "json", "jsonc" } },
   json = { lsp = { "vscode-json-languageserver" }, formatters = { "prettierd" }, parsers = { "json", "jsonc" } },
   yaml = { lsp = { "yaml-language-server" }, parsers = { "yaml" } },
   c = { lsp = { "clangd" }, parsers = { "cpp" } },
   python = {
-    formatters = { "isort", "black" },
-    linters = { "mypy", "pylint" },
-    lsp = { "basedpyright", "ruff-lsp" },
     lsp = { "python-lsp-server" },
     dap = { "debugpy" },
   },
-  rust = { lsp = { "rust-analyzer" }, parsers = { "rust" } },
   bash = {
     formatters = { "beautysh" },
     lsp = { "bash-language-server" },
@@ -45,7 +34,7 @@ M.by_filetype = {
     parsers = { "markdown" },
     extensions = { "coc-markdown-preview-enhanced" },
   },
-  toml = { lsp = { "taplo" }, parsers = { "toml" } },
+  toml = { parsers = { "toml" } },
   tmux = { parsers = { "tmux" } },
   gitcommit = { parsers = { "gitcommit" } },
   diff = { parsers = { "diff" } },
@@ -63,10 +52,9 @@ M.by_filetype.typescriptreact = vim.deepcopy(M.by_filetype.javascript)
 M.by_filetype.javascriptreact = vim.deepcopy(M.by_filetype.javascript)
 
 if vim.fn.executable("npm") == 0 then M.by_filetype.javascript = {} end
-if vim.fn.executable("go") == 0 then M.by_filetype.go = {} end
 if vim.fn.executable("pip") == 0 then M.by_filetype.python = {} end
 
-M.mason_to_lspconfig = {
+M.package_name_to_lspconfig = {
   ["lua-language-server"] = "lua_ls",
   ["bash-language-server"] = "bashls",
   ["yaml-language-server"] = "yamlls",
@@ -76,7 +64,8 @@ M.mason_to_lspconfig = {
   ["rust-analyzer"] = "rust_analyzer",
   ["tailwindcss-language-server"] = "tailwindcss",
   ["vim-language-server"] = "vimls",
-  ["fish-lsp"] = "fish_lsp"
+  ["fish-lsp"] = "fish_lsp",
+  ["python-lsp-server"] = "pylsp",
 }
 
 return M

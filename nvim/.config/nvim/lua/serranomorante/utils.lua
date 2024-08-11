@@ -172,7 +172,7 @@ function M.get_from_tools(base, tool_type, use_lspconfig_map, lspconfig_map)
     for _, tool in ipairs(v[tool_type] or {}) do
       if type(tool) == "table" then tool = tool[1] end
       if use_lspconfig_map then
-        local nvim_lspconfig_map = lspconfig_map or tools.mason_to_lspconfig
+        local nvim_lspconfig_map = lspconfig_map or tools.package_name_to_lspconfig
         if nvim_lspconfig_map[tool] ~= nil then tool = nvim_lspconfig_map[tool] end
       end
       if tool and not vim.list_contains(types, tool) then table.insert(types, tool) end
