@@ -1,0 +1,3 @@
+---
+- name: Ensure ansible aur module is installed
+  ansible.builtin.include_tasks: setup-aur.{{ ansible_distribution | lower | replace(' ', '') }}.yml

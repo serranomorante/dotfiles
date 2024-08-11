@@ -14,9 +14,7 @@ return {
   condition = {
     callback = function(search)
       if not vim.list_contains(constants.javascript_aliases, search.filetype) then return false end
-      local mason_registry = require("mason-registry")
-      local eslint_d_exists = mason_registry.get_package("eslint_d")
-      return eslint_d_exists
+      return vim.fn.executable("eslint_d") == 1
     end,
   },
   tags = { "editor" },

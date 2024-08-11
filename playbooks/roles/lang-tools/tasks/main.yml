@@ -2,3 +2,6 @@
 - name: Ensure fish tools are installed
   # see:  https://github.com/ansible/ansible/issues/30600
   ansible.builtin.include_tasks: setup-fish-tools.{{ ansible_distribution | lower | replace(' ', '') }}.yml
+
+- name: Ensure javascript tools are installed
+  ansible.builtin.include_tasks: setup-javascript-tools.{{ ansible_distribution | lower | replace(' ', '') }}.yml

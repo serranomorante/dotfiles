@@ -3,6 +3,7 @@
   vars:
     home_path: /home/serranomorante
   roles:
+    - system-tools # general system packages
     - lang-tools # lsp, dap, syntax, linters, formatters
     - dev-tools # editors
     # - music-tools # DAWs, VSTs, pipewire, etc

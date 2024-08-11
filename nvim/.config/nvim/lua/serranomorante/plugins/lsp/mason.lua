@@ -46,8 +46,7 @@ return {
         tools.by_filetype.rust,
         tools.by_filetype.toml,
         tools.by_filetype.python,
-        tools.by_filetype.markdown,
-        tools.by_filetype.javascript
+        tools.by_filetype.markdown
       ),
     },
   },
