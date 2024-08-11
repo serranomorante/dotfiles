@@ -39,7 +39,6 @@ return {
         tools.by_filetype.go,
         tools.by_filetype.bash,
         tools.by_filetype.vim,
-        tools.by_filetype.yaml,
         tools.by_filetype.rust,
         tools.by_filetype.toml,
         tools.by_filetype.python,
