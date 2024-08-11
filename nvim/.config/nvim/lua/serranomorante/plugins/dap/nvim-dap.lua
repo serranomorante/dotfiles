@@ -175,12 +175,10 @@ return {
       }
     end
 
-    local bash_debug_adapter = mason_registry.get_package("bash-debug-adapter")
-    local bash_debug_adapter_bin = bash_debug_adapter:get_install_path() .. "/bash-debug-adapter"
     dap.adapters.bashdb = {
       name = "bashdb",
       type = "executable",
-      command = bash_debug_adapter_bin,
+      command = vim.env.HOME .. "/apps/lang-tools/bash-debug-adapter"
     }
 
     ---╔══════════════════════════════════════╗
@@ -299,8 +297,8 @@ return {
         request = "launch",
         name = "Launch file",
         showDebugOutput = true,
-        pathBashdb = bash_debug_adapter:get_install_path() .. "/extension/bashdb_dir/bashdb",
-        pathBashdbLib = bash_debug_adapter:get_install_path() .. "/extension/bashdb_dir",
+        pathBashdb = vim.env.HOME .. "/apps/lang-tools/bash-debug-adapter/extension/bashdb_dir/bashdb",
+        pathBashdbLib = vim.env.HOME .. "/apps/lang-tools/bash-debug-adapter/extension/bashdb_dir",
         trace = true,
         file = "${command:pickFile}",
         program = "${command:pickFile}",

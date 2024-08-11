@@ -1,0 +1,27 @@
+---
+# LSP
+- name: "{{ item }} language: ensure LSP"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: bash-language-server
+
+# FORMATTERS
+- name: "{{ item }} language: ensure FORMATTERS (using aur)"
+  aur:
+    use: yay
+    state: present
+    name: beautysh
+
+# DAP
+- name: "{{ item }} language: ensure DAP - bash-debug-adapter folder exists"
+  ansible.builtin.file:
+    path: "{{ home_path }}/apps/lang-tools/bash-debug-adapter"
+    state: directory
+    mode: "0755"
+
+- name: "{{ item }} language: ensure DAP - install bash-debug-adapter"
+  ansible.builtin.unarchive:
+    src: https://github.com/rogalmic/vscode-bash-debug/releases/download/v{{ bash_debug_adapter_0_3 }}/bash-debug-{{ bash_debug_adapter_0_3 }}.vsix
+    dest: "{{ home_path }}/apps/lang-tools/bash-debug-adapter"
+    remote_src: true
