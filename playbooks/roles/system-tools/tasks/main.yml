@@ -1,3 +1,6 @@
 ---
 - name: Ensure ansible aur module is installed
-  ansible.builtin.include_tasks: setup-aur.{{ ansible_distribution | lower | replace(' ', '') }}.yml
+  ansible.builtin.include_tasks: setup-aur.{{ user_os }}.yml
+
+- name: Ensure handy utilities are installed
+  ansible.builtin.include_tasks: setup-xdotool.{{ user_os }}.yml

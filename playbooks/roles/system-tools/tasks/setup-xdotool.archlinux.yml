@@ -1,0 +1,5 @@
+---
+- name: "xdotool: ensure xdotool"
+  ansible.builtin.package:
+    state: present
+    name: xdotool

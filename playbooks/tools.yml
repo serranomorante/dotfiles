@@ -1,6 +1,7 @@
 ---
 - hosts: localhost
   vars:
+    user_os: "{{ ansible_distribution | lower | replace(' ', '') }}" # see: https://github.com/ansible/ansible/issues/30600
     home_path: /home/serranomorante
   roles:
     - system-tools # general system packages
