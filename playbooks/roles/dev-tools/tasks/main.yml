@@ -1,3 +1,6 @@
 ---
-- name: Ensure nvim is installed
-  ansible.builtin.include_tasks: setup-nvim.{{ ansible_distribution | lower | replace(' ', '') }}.yml
+- name: Ensure neovim is installed
+  ansible.builtin.include_tasks: setup-neovim.{{ user_os }}.yml
+
+- name: Ensure plantuml compiled jar is in location
+  ansible.builtin.include_tasks: setup-plantuml.{{ user_os }}.yml
