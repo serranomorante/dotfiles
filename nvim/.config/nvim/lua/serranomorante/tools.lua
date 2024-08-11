@@ -21,6 +21,7 @@ M.by_filetype = {
     parsers = { "go" },
   },
   json = { lsp = { "json-lsp" }, formatters = { "prettierd" }, parsers = { "json", "jsonc" } },
+  json = { lsp = { "vscode-json-languageserver" }, formatters = { "prettierd" }, parsers = { "json", "jsonc" } },
   yaml = { lsp = { "yaml-language-server" }, parsers = { "yaml" } },
   c = { lsp = { "clangd" }, parsers = { "cpp" } },
   python = {
@@ -68,7 +69,7 @@ M.mason_to_lspconfig = {
   ["lua-language-server"] = "lua_ls",
   ["bash-language-server"] = "bashls",
   ["yaml-language-server"] = "yamlls",
-  ["json-lsp"] = "jsonls",
+  ["vscode-json-languageserver"] = "jsonls",
   ["ruff-lsp"] = "ruff_lsp",
   ["typescript-language-server"] = "tsserver",
   ["rust-analyzer"] = "rust_analyzer",
