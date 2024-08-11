@@ -2,7 +2,7 @@
 - name: "Fish: ensure LSP - clone fish-lsp"
   ansible.builtin.git:
     repo: https://github.com/ndonfris/fish-lsp.git
-    dest: ~/repos/fish-lsp
+    dest: "{{ home_path }}/repos/fish-lsp"
     depth: 1
     force: true
 
@@ -12,10 +12,10 @@
 - name: "Fish: ensure LSP - install fish-lsp"
   ansible.builtin.command: yarn install
   args:
-    chdir: ~/repos/fish-lsp
+    chdir: "{{ home_path }}/repos/fish-lsp"
 
 - name: "Fish: ensure LSP - symlink fish-lsp"
   file:
-    src: ~/repos/fish-lsp/bin/fish-lsp
-    dest: ~/bin/fish-lsp
+    src: "{{ home_path }}/repos/fish-lsp/bin/fish-lsp"
+    dest: "{{ home_path }}/bin/fish-lsp"
     state: link
