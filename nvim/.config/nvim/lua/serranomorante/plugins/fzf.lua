@@ -127,10 +127,7 @@ M.fzf_lua = {
       },
       actions = {
         files = {
-          ["default"] = fzf_lua.actions.file_edit_or_qf,
-        },
-        buffers = {
-          ["default"] = fzf_lua.actions.buf_edit_or_qf,
+          ["enter"] = fzf_lua.actions.file_edit_or_qf,
         },
       },
       grep = {
@@ -153,7 +150,7 @@ M.fzf_lua = {
       },
       helptags = {
         actions = {
-          ["default"] = fzf_lua.actions.help_tab,
+          ["enter"] = fzf_lua.actions.help_tab,
         },
       },
       lsp = {
