@@ -11,7 +11,7 @@ return {
     vim.g.ale_disable_lsp = 1
     vim.g.ale_echo_cursor = 0
     vim.g.ale_hover_cursor = 0
-    vim.g.ale_linters_explicit = 0
+    vim.g.ale_linters_explicit = 1
     vim.g.ale_maximum_file_size = vim.g.max_file.size
     vim.g.ale_set_signs = 0
 
@@ -22,7 +22,10 @@ return {
     }
 
     vim.g.ale_linters = {
-      javascript = tools.by_filetype.javascript.linters,
+      javascript = { "eslint" },
+      javascriptreact = { "eslint" },
+      typescript = { "eslint" },
+      typescriptreact = { "eslint" },
       python = tools.by_filetype.python.linters,
     }
   end,
