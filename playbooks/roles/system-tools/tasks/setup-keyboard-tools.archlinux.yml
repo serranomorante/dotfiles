@@ -1,0 +1,18 @@
+---
+- name: "{{ item }} peripheral: ensure keyd is present"
+  ansible.builtin.package:
+    state: present
+    name: keyd
+
+- name: "{{ item }} peripheral: enable service keyd and ensure is not masked"
+  ansible.builtin.systemd_service:
+    name: keyd
+    enabled: true
+    masked: no
+
+- name: "{{ item }} peripheral: copy keyd default.conf file"
+  become: true
+  ansible.builtin.copy:
+    src: "{{ home_path }}/.config/keyd/default.conf"
+    dest: /etc/keyd/default.conf
+    owner: root

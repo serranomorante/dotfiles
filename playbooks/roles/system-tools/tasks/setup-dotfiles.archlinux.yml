@@ -1,0 +1,10 @@
+---
+- name: "Dotfiles: ensure stow installed"
+  ansible.builtin.package:
+    state: present
+    name: stow
+
+- name: "Dotfiles: apply stow"
+  shell: stow dunst fish gnupg kitty lazygit nvim peripherals pipewire playbooks systemd tmux wireplumber
+  args:
+    chdir: "{{ home_path }}/dotfiles"
