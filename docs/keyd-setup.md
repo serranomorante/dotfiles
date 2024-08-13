@@ -14,7 +14,7 @@ Now instead of switching between language layouts I just map all these special c
 
 My process to map new chars is as follows:
 
-1. First on `~/config/keyd/default.conf` I add the new special char that I want to use:
+1. First on `/etc/keyd/default.conf` I add the new special char that I want to use:
 
 ```dotini
 [ids]
