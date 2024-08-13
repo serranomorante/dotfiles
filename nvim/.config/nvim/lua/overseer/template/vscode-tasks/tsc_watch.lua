@@ -1,4 +1,5 @@
 local utils = require("serranomorante.utils")
+local constants = require("serranomorante.constants")
 if not utils.is_available("overseer.nvim") then return {} end
 local overseer = require("overseer")
 local typescript_provider = require("overseer.template.vscode.provider.typescript")
@@ -33,6 +34,6 @@ return {
   end,
   tags = { overseer.TAG.BUILD },
   condition = {
-    filetype = { "typescript", "typescriptreact" },
+    filetype = constants.javascript_aliases,
   },
 }
