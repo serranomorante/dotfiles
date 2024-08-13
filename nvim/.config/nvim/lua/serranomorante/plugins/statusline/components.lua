@@ -34,11 +34,6 @@ M.Mode = {
     if self.modes[self.mode][2] == "normal" then return { bg = "NvimLightGrey4", bold = true } end
     return { fg = "white", bg = "NvimDarkGrey1", bold = true }
   end,
-  update = {
-    "ModeChanged",
-    pattern = "[^t]*:[^t]*", -- fixes issue with fzf-lua terminal buffers
-    callback = vim.schedule_wrap(function() vim.cmd.redrawstatus() end),
-  },
 }
 
 M.FileIcon = {
