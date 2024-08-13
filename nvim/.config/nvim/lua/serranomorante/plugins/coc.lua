@@ -132,6 +132,9 @@ local function on_coc_enabled(buf)
         return "<C-x><C-o>"
       end, coc_completion_opts)
 
+      opts.desc = "COC: Show document diagnostics"
+      vim.keymap.set("n", "<leader>ld", "<cmd>CocDiagnostics<CR>", opts)
+
       opts.desc = "COC: Show line diagnostics"
       vim.keymap.set("n", "gl", vim.diagnostic.open_float, opts) -- ALE is required for this to work with coc
 
