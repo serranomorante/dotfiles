@@ -1,3 +1,4 @@
+local session_utils = require("serranomorante.plugins.session.session-utils")
 ---https://github.com/stevearc/oil.nvim/blob/master/doc/recipes.md#hide-gitignored-files
 local git_ignored = setmetatable({}, {
   __index = function(self, key)
@@ -39,7 +40,7 @@ return {
   },
   init = function()
     vim.api.nvim_create_autocmd("User", {
-      desc = "Unlist buffers after deleted by Oil. Also set alternate file correctly.",
+      desc = "Perform actions after OilActionsPost event",
       group = vim.api.nvim_create_augroup("unlist_buffers_after_oil", { clear = true }),
       pattern = "OilActionsPost",
       callback = function(args)
@@ -50,7 +51,15 @@ return {
         local new_empty_buffer = nil
 
         for _, action in ipairs(args.data.actions) do
-          if action.type == "delete" and action.entry_type == "file" then
+          ---Automatically add title to new markdown files created from oil buffer
+          if action.type == "create" and action.entry_type == "file" then
+            local _, filename = util.parse_url(action.url)
+            local file_ext = vim.fn.fnamemodify(filename, ":e")
+            if file_ext == "md" then
+              session_utils.write_file(filename, "# " .. vim.fn.fnamemodify(filename, ":t"):gsub("." .. file_ext, ""))
+            end
+          ---Remove deleted file from buffer list
+          elseif action.type == "delete" and action.entry_type == "file" then
             local _, path = util.parse_url(action.url)
             ---Set alternate file to a new empty buffer
             if new_empty_buffer == nil and path == original_alternate_file then
