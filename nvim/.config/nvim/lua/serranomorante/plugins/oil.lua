@@ -1,4 +1,6 @@
 local session_utils = require("serranomorante.plugins.session.session-utils")
+local detail = false
+
 ---https://github.com/stevearc/oil.nvim/blob/master/doc/recipes.md#hide-gitignored-files
 local git_ignored = setmetatable({}, {
   __index = function(self, key)
@@ -159,6 +161,17 @@ return {
         ["<leader>yy"] = {
           callback = oil_actions.copy_entry_path.callback,
           desc = "Oil: Yank the filepath of the entry under the cursor to a register",
+        },
+        ["gd"] = {
+          callback = function()
+            detail = not detail
+            if detail then
+              require("oil").set_columns({ "icon", "permissions", "size", "mtime" })
+            else
+              require("oil").set_columns({ "icon" })
+            end
+          end,
+          desc = "Oil: Toggle file detail view",
         },
         ["<leader>fw"] = {
           callback = function()
