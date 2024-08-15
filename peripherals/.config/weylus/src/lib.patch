@@ -1,5 +1,5 @@
 diff --git a/lib.ts b/lib.patched.ts
-index 75fb8e5..8a1dfa1 100644
+index 75fb8e5..39cca6f 100644
 --- a/lib.ts
 +++ b/lib.patched.ts
 @@ -63,10 +63,11 @@ function frame_update_scale_inv(x: number) {
@@ -58,3 +58,11 @@ index 75fb8e5..8a1dfa1 100644
                  new_index = i;
          });
          if (new_index !== undefined)
+@@ -330,6 +333,7 @@ class Settings {
+         else if (current_selection)
+             // Can't find the window, so don't select anything
+             this.capturable_select.value = "";
++        this.send_server_config()
+     }
+ }
+ 
