@@ -1,6 +1,7 @@
 ---
 - hosts: localhost
   vars:
+    username: "serranomorante"
     user_os: "{{ ansible_distribution | lower | replace(' ', '') }}" # see: https://github.com/ansible/ansible/issues/30600
     home_path: /home/serranomorante # reliable... neither tilde (~), nor ($HOME) work when running as sudo
   roles:

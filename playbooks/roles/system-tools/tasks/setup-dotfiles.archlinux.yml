@@ -5,6 +5,22 @@
     name: stow
 
 - name: "Dotfiles: apply stow"
-  shell: stow dunst fish gnupg kitty lazygit nvim peripherals pipewire playbooks systemd tmux wireplumber home
+  ansible.builtin.shell: stow {{ package }}
+  loop_control:
+    loop_var: package
+  loop:
+    - dunst
+    - fish
+    - gnupg
+    - kitty
+    - lazygit
+    - nvim
+    - peripherals
+    - pipewire
+    - playbooks
+    - systemd
+    - tmux
+    - wireplumber
+    - home
   args:
     chdir: "{{ home_path }}/dotfiles"

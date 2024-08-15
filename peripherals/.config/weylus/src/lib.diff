@@ -1,0 +1,31 @@
+diff --git a/peripherals/.config/weylus/src/lib.ts b/peripherals/.config/weylus/src/lib.ts
+index 75fb8e5..64b3551 100644
+--- a/peripherals/.config/weylus/src/lib.ts
++++ b/peripherals/.config/weylus/src/lib.ts
+@@ -63,10 +63,11 @@ function frame_update_scale_inv(x: number) {
+ 
+ 
+ function calc_max_video_resolution(scale: number) {
+-    return [
+-        Math.round(scale * window.innerWidth * window.devicePixelRatio),
+-        Math.round(scale * window.innerHeight * window.devicePixelRatio)
+-    ];
++    return [1929, 1220]
++    // return [
++    //     Math.round(scale * window.innerWidth * window.devicePixelRatio),
++    //     Math.round(scale * window.innerHeight * window.devicePixelRatio)
++    // ];
+ }
+ 
+ function fresh_canvas() {
+@@ -322,7 +323,9 @@ class Settings {
+             option.value = String(i);
+             option.innerText = name;
+             this.capturable_select.appendChild(option);
+-            if (name === current_selection)
++            if (typeof name === "string" && name.includes("Monitor")) { // prefer monitor over desktop
++                new_index = i;
++            } else if (name === current_selection)
+                 new_index = i;
+         });
+         if (new_index !== undefined)

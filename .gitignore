@@ -4,3 +4,6 @@ lazygit/.config/lazygit/state.yml
 systemd/.config/systemd/user/*.wants
 systemd/.config/systemd/user/*session-manager.service
 systemd/.config/systemd/user/*kwin_x11.service
+
+# Ignore weylus compiled js
+peripherals/.config/weylus/out

@@ -9,6 +9,7 @@
   ansible.builtin.include_tasks: setup-{{ item }}-tools.{{ user_os }}.yml
   loop:
     - keyboard
+    - graphic-tablet
 
 - name: Ensure handy utilities are installed
   ansible.builtin.include_tasks: setup-xdotool.{{ user_os }}.yml

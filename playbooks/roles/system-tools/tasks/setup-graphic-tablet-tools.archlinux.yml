@@ -1,0 +1,61 @@
+---
+- name: "{{ item }} peripheral: ensure weylus"
+  aur:
+    use: yay
+    state: present
+    name: weylus-bin
+
+- name: "{{ item }} peripheral: clone weylus lib.ts file"
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/H-M-H/Weylus/master/ts/lib.ts
+    dest: "{{ home_path }}/.config/weylus/src/lib.ts"
+    force: true
+
+- name: "{{ item }} peripheral: apply custom patch to lib.ts"
+  ansible.posix.patch:
+    src: "{{ home_path }}/.config/weylus/src/lib.patch"
+    dest: "{{ home_path }}/.config/weylus/src/lib.ts"
+    basedir: "{{ home_path }}/.config/weylus/src"
+    state: present
+
+- name: "{{ item }} peripheral: compile weylus lib.ts"
+  ansible.builtin.command: tsc --project "{{ home_path }}/.config/weylus/tsconfig.json"
+  args:
+    chdir: "{{ home_path }}/.config/weylus"
+
+- name: "{{ item }} peripheral: remove weylus lib.ts source file"
+  ansible.builtin.file:
+    path: "{{ home_path }}/.config/weylus/src/lib.ts"
+    state: absent
+
+- name: "{{ item }} peripheral: register ufw status variable"
+  ansible.builtin.systemd:
+    name: ufw
+  register: ufw_service_status
+
+- name: "{{ item }} peripheral: open ufw to weylus ports"
+  become: true
+  ansible.builtin.command: ufw allow {{ port }}/tcp
+  when: ufw_service_status.status.ActiveState == "active"
+  loop:
+    - 1701
+    - 9001
+  loop_control:
+    loop_var: port
+
+- name: "{{ item }} peripheral: weylus - ensure uinput group"
+  become: true
+  ansible.builtin.group:
+    state: present
+    name: uinput
+
+- name: "{{ item }} peripheral: weylus - append user to group"
+  become: true
+  ansible.builtin.user:
+    append: true
+    groups: uinput
+    name: "{{ username }}"
+
+- name: "{{ item }} peripheral: weylus - add udev rule"
+  become: true
+  ansible.builtin.shell: echo 'KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/60-weylus.rules

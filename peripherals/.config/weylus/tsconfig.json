@@ -1,0 +1,13 @@
+// https://github.com/H-M-H/Weylus/blob/master/tsconfig.json
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "lib": ["es2020", "dom", "es6"],
+    "module": "commonjs",
+    "outDir": "out",
+    "sourceMap": false
+  },
+  "include": [
+    "src/lib.ts"
+  ]
+}
