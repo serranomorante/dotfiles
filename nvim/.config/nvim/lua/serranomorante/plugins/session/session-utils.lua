@@ -57,6 +57,10 @@ M.clean_before_session_save = function()
     local delete = nil
     local bufname = vim.api.nvim_buf_get_name(buf)
     local buftype = vim.api.nvim_get_option_value("buftype", { buf = buf })
+    if bufname:sub(1, #cwd) == cwd and not M.exists(bufname) then
+      ---Delete buffers that don't exists in the file system anymore
+      delete = true
+    end
     if bufname:sub(1, #cwd) ~= cwd or vim.fn.isdirectory(bufname) == 1 then
       ---Delete buffers outside cwd
       delete = true
