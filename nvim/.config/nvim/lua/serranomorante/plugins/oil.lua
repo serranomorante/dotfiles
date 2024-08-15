@@ -1,5 +1,6 @@
 local session_utils = require("serranomorante.plugins.session.session-utils")
 local detail = false
+local show_hidden = false
 
 ---https://github.com/stevearc/oil.nvim/blob/master/doc/recipes.md#hide-gitignored-files
 local git_ignored = setmetatable({}, {
@@ -80,7 +81,7 @@ return {
 
     return {
       view_options = {
-        show_hidden = false,
+        show_hidden = show_hidden,
         is_hidden_file = function(name, _)
           local dir = require("oil").get_current_dir()
           ---if no local directory (e.g. for ssh connections), always show
@@ -151,7 +152,11 @@ return {
           desc = "Oil: Open the entry under the cursor in an external program",
         },
         ["g."] = {
-          callback = oil_actions.toggle_hidden.callback,
+          callback = function(...)
+            oil_actions.toggle_hidden.callback(...)
+            show_hidden = not show_hidden
+            vim.notify(show_hidden == true and "Oil: show hidden: ON" or "Oil: show hidden: OFF")
+          end,
           desc = "Oil: Toggle hidden files and directories",
         },
         ["g\\"] = {
