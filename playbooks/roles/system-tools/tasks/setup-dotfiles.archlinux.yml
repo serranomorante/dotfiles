@@ -22,5 +22,6 @@
     - tmux
     - wireplumber
     - home
+    - utilities
   args:
     chdir: "{{ home_path }}/dotfiles"

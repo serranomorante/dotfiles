@@ -13,3 +13,6 @@
 
 - name: Ensure handy utilities are installed
   ansible.builtin.include_tasks: setup-xdotool.{{ user_os }}.yml
+
+- name: Ensure compositor is installed
+  ansible.builtin.include_tasks: setup-compositor.{{ user_os }}.yml

@@ -1,10 +1,13 @@
 ---
-- name: "{{ item }} peripheral: ensure weylus"
+- name: "{{ item }} peripheral: ensure tools (using aur)"
   aur:
     use: yay
     state: present
-    name: weylus-bin
+    name:
+      - ardesia
+      - weylus-bin
 
+# Setup weylus
 - name: "{{ item }} peripheral: clone weylus lib.ts file"
   ansible.builtin.get_url:
     url: https://raw.githubusercontent.com/H-M-H/Weylus/master/ts/lib.ts

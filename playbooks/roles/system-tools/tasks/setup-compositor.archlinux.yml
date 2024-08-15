@@ -1,0 +1,13 @@
+---
+- name: "Compositor: ensure picom"
+  ansible.builtin.package:
+    state: present
+    name: picom
+
+- name: "Compositor: enable compositor service and ensure is not masked"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: compositor
+    state: started
+    enabled: true
+    masked: no
