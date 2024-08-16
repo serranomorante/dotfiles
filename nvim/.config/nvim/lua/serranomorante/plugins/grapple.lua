@@ -1,7 +1,21 @@
 return {
   "cbochs/grapple.nvim",
+  init = function()
+    vim.api.nvim_create_autocmd("FileType", {
+      pattern = "grapple",
+      callback = vim.schedule_wrap(function()
+        for _, option in ipairs({ { "cursorline", true }, { "cursorlineopt", "line" } }) do
+          vim.api.nvim_set_option_value(option[1], option[2], {
+            scope = "local",
+            win = 0,
+          })
+        end
+      end),
+    })
+  end,
   opts = {
-    scope = "cwd", -- also try out "git_branch"
+    prune = "99999999999999999d",
+    scope = "cwd",
     win_opts = {
       width = 999,
     },
