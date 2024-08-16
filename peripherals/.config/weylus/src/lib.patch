@@ -1,5 +1,5 @@
 diff --git a/lib.ts b/lib.patched.ts
-index 75fb8e5..39cca6f 100644
+index 75fb8e5..b1cc7a8 100644
 --- a/lib.ts
 +++ b/lib.patched.ts
 @@ -63,10 +63,11 @@ function frame_update_scale_inv(x: number) {
@@ -18,23 +18,6 @@ index 75fb8e5..39cca6f 100644
  }
  
  function fresh_canvas() {
-@@ -293,12 +294,12 @@ class Settings {
- 
-     pointer_types() {
-         let ptrs = [];
--        if (this.checks.get("enable_mouse").checked)
--            ptrs.push("mouse");
-+        // if (this.checks.get("enable_mouse").checked)
-+        //     ptrs.push("mouse");
-         if (this.checks.get("enable_stylus").checked)
-             ptrs.push("pen");
--        if (this.checks.get("enable_touch").checked)
--            ptrs.push("touch");
-+        // if (this.checks.get("enable_touch").checked)
-+        //     ptrs.push("touch");
-         return ptrs;
-     }
- 
 @@ -313,16 +314,18 @@ class Settings {
  
      onCapturableList(window_names: string[]) {
