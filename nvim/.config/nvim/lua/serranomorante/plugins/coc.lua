@@ -138,6 +138,9 @@ local function on_coc_enabled(buf)
       opts.desc = "COC: Show line diagnostics"
       vim.keymap.set("n", "gl", vim.diagnostic.open_float, opts) -- ALE is required for this to work with coc
 
+      opts.desc = "COC: Reset diagnostics"
+      vim.keymap.set("n", "<leader>rS", vim.diagnostic.reset, opts)
+
       opts.desc = "COC: Restart coc service"
       vim.keymap.set("n", "<leader>li", "<cmd>CocRestart<CR>", opts)
 
