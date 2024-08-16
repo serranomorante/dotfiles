@@ -130,7 +130,7 @@ autocmd({ "BufWinEnter", "WinEnter" }, { -- TermOpen would only execute the call
 autocmd("FileType", {
   desc = "Enable vim syntax option only for specific filetypes",
   group = general_settings_group,
-  pattern = { "qf", "undotree", "OverseerList", "aerial", "git", "grapple" },
+  pattern = { "qf", "undotree", "OverseerList", "aerial", "git", "grapple", "oil" },
   callback = function(args) vim.cmd.set("syntax=" .. args.match) end,
 })
 
