@@ -4,8 +4,16 @@
     use: yay
     state: present
     name:
-      - ardesia
+      - gromit-mpx
       - weylus-bin
+
+- name: "{{ item }} peripheral: enable gromit-mpx service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: gromit-mpx
+    state: started
+    enabled: true
+    masked: no
 
 # Setup weylus
 - name: "{{ item }} peripheral: clone weylus lib.ts file"
@@ -32,7 +40,7 @@
     state: absent
 
 - name: "{{ item }} peripheral: register ufw status variable"
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: ufw
   register: ufw_service_status
 

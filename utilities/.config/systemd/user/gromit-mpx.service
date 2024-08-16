@@ -1,0 +1,9 @@
+[Unit]
+Description=Start Gromit MPX
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/gromit-mpx
+
+[Install]
+WantedBy=graphical-session.target
