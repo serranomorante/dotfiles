@@ -3,7 +3,8 @@ Description=Start feh for user
 After=graphical-session.target
 
 [Service]
-ExecStart=/usr/bin/bash -c "feh --bg-scale --randomize /home/serranomorante/.wallpapers/*"
+Type=oneshot
+ExecStart=/usr/bin/feh --bg-scale --recursive --verbose --randomize %h/.wallpapers/
 
 [Install]
 WantedBy=graphical-session.target
