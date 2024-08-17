@@ -14,6 +14,7 @@ LINE=$(echo $LINK | sed -E 's/^.*:(.*)/\1/g') # extract the line number part
 # 4. Opens the filename passed as args
 # 5. Positions the cursor to the line passed as args
 # 6. Executes a shell command from inside vim to focus the first tmux window and the top-left pane (this is a fixed nvim position across all tmux sessions on my setup)
+# 7. Also handles any zoomed pane that might block the nvim pane
 nvr --nostart --servername $SERVERNAME --remote $FILENAME \
     -cc "1tabnext | silent exec '!xdotool key super+2'" \
-    -c "$LINE | silent exec '!tmux select-window -t {start}\; select-pane -t {top-left}'"
+    -c "$LINE | silent exec \"!tmux select-window -t {start}\\\; if-shell -F '\\\\#{window_zoomed_flag}' 'resize-pane -Z' ''\\\; select-pane -t {top-left}\""

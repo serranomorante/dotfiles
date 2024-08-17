@@ -13,12 +13,12 @@ git:
     externalDiffCommand: difft --color=always
 # based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
 os:
-  edit: 'nvr --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}\; select-pane -t {top-left}'
-  editAtLine: 'nvr --nostart --remote {{filename}} -cc "1tabnext" -c "{{line}}" | tmux select-window -t {start}\; select-pane -t {top-left}'
-  editAtLineAndWait: 'nvr --nostart --remote-wait {{filename}} -cc "1tabnext" -c "{{line}}" | tmux select-window -t {start}\; select-pane -t {top-left}'
+  edit: 'nvr --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}\; if-shell -F "#{window_zoomed_flag}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+  editAtLine: 'nvr --nostart --remote {{filename}} -cc "1tabnext" -c "{{line}}" | tmux select-window -t {start}\; if-shell -F "#{window_zoomed_flag}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+  editAtLineAndWait: 'nvr --nostart --remote-wait {{filename}} -cc "1tabnext" -c "{{line}}" | tmux select-window -t {start}\; if-shell -F "#{window_zoomed_flag}" "resize-pane -Z" "" \; select-pane -t {top-left}'
   editInTerminal: false
-  open: 'nvr --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}\; select-pane -t {top-left}'
-  openDirInEditor: 'nvr --nostart {{dir}} | tmux select-window -t {start}\; select-pane -t {top-left}'
+  open: 'nvr --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}\; if-shell -F "#{window_zoomed_flag}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+  openDirInEditor: 'nvr --nostart {{dir}} | tmux select-window -t {start}\; if-shell -F "#{window_zoomed_flag}" "resize-pane -Z" "" \; select-pane -t {top-left}'
 promptToReturnFromSubprocess: false
 notARepository: 'quit'
 customCommands:
@@ -50,14 +50,14 @@ customCommands:
   # From files, open mergetool (DiffviewOpen)
   - key: "M"
     description: Open mergetool
-    command: 'nvr --nostart --remote {{ .SelectedFile.Name }} -c "DiffviewOpen" | tmux select-window -t {start}\; select-pane -t {top-left}'
+    command: 'nvr --nostart --remote {{ .SelectedFile.Name }} -c "DiffviewOpen" | tmux select-window -t {start}\; if-shell -F "#{window_zoomed_flag}" "resize-pane -Z" "" \; select-pane -t {top-left}'
     context: "files"
     loadingText: "loading DiffviewOpen"
     subprocess: true
   # From files, open difftool (DiffviewOpen)
   - key: "<c-t>"
     description: Open difftool
-    command: 'nvr --nostart --remote {{ .SelectedFile.Name }} -c "DiffviewOpen" | tmux select-window -t {start}\; select-pane -t {top-left}'
+    command: 'nvr --nostart --remote {{ .SelectedFile.Name }} -c "DiffviewOpen" | tmux select-window -t {start}\; if-shell -F "#{window_zoomed_flag}" "resize-pane -Z" "" \; select-pane -t {top-left}'
     context: "files"
     loadingText: "loading DiffviewOpen"
     subprocess: true
@@ -71,7 +71,7 @@ customCommands:
   # From commits, open as a PR review
   - key: 'D'
     description: "Open commit as a PR review"
-    command: 'nvr --nostart -c "DiffviewOpen {{.SelectedLocalCommit.Sha}}~..{{.SelectedLocalCommit.Sha}}" | tmux select-window -t {start}\; select-pane -t {top-left}'
+    command: 'nvr --nostart -c "DiffviewOpen {{.SelectedLocalCommit.Sha}}~..{{.SelectedLocalCommit.Sha}}" | tmux select-window -t {start}\; if-shell -F "#{window_zoomed_flag}" "resize-pane -Z" "" \; select-pane -t {top-left}'
     context: "commits"
   # From remotes, fetch a remote branch as a new local branch
   - key: '<c-f>'
@@ -89,5 +89,5 @@ customCommands:
   # From commitFiles, compare (difftool) with local copy
   - key: 'f'
     description: 'Compare (difftool) with local copy'
-    command: 'nvr --nostart --remote {{.SelectedCommitFile.Name}} -c "DiffviewFileHistory % HEAD..{{.SelectedLocalCommit.Sha}}" | tmux select-window -t {start}\; select-pane -t {top-left}'
+    command: 'nvr --nostart --remote {{.SelectedCommitFile.Name}} -c "DiffviewFileHistory % HEAD..{{.SelectedLocalCommit.Sha}}" | tmux select-window -t {start}\; if-shell -F "#{window_zoomed_flag}" "resize-pane -Z" "" \; select-pane -t {top-left}'
     context: 'commitFiles'
