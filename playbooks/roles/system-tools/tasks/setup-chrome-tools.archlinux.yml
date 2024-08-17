@@ -1,0 +1,8 @@
+---
+- name: "{{ item }} tools: ensure chrome as debugger service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: chrome-debugger
+    state: started
+    enabled: true
+    masked: no

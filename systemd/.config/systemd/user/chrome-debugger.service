@@ -1,0 +1,9 @@
+[Unit]
+Description=Start google chrome as debugger
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/google-chrome-stable --remote-debugging-port=9222
+
+[Install]
+WantedBy=graphical-session.target
