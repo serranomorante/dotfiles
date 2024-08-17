@@ -21,7 +21,6 @@ Necesary dependencies for my workflow
 - [feh](https://wiki.archlinux.org/title/feh). Set your system wallpaper programatically
 - [jq](https://man.archlinux.org/man/jq.1.en). Command-line JSON processor
 - [xgetres](https://aur.archlinux.org/packages/xgetres). Get entries from .Xresources
-- [veikk-tablet-bin](https://aur.archlinux.org/packages/veikk-tablet-bin). Driver for my graphic tablet
 
 ## Workflow
 
