@@ -10,6 +10,7 @@ keybinding:
 git:
   paging:
     colorArg: always
+    externalDiffCommand: difft --color=always
 # based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
 os:
   edit: 'nvr --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}\; select-pane -t {top-left}'

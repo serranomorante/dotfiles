@@ -1,6 +1,12 @@
 ---
-- name: Ensure neovim is installed
-  ansible.builtin.include_tasks: setup-neovim.{{ user_os }}.yml
+# - name: Ensure neovim is installed
+#   ansible.builtin.include_tasks: setup-neovim.{{ user_os }}.yml
+
+- name: Ensure editor tools
+  ansible.builtin.include_tasks: setup-editor-tools.{{ user_os }}.yml
 
 - name: Ensure plantuml compiled jar is in location
   ansible.builtin.include_tasks: setup-plantuml.{{ user_os }}.yml
+
+- name: Ensure git tools
+  ansible.builtin.include_tasks: setup-git-tools.{{ user_os }}.yml

@@ -1,0 +1,6 @@
+---
+- name: "Editor tools: ensure neovim"
+  aur:
+    use: yay
+    state: present
+    name: neovim-git
