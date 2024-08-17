@@ -9,4 +9,4 @@
 	enabled = true
 
 [core]
-	editor = tmux select-window -t {start} | nvr --nostart --remote-tab-wait-silent
+	editor = tmux select-window -t {start} && tmux select-pane -t {top-left} && nvr --nostart --remote-tab-wait-silent
