@@ -10,6 +10,7 @@
     src: https://github.com/microsoft/vscode-cpptools/releases/download/{{ cpptools_1_21 }}/cpptools-linux-x64.vsix
     dest: "{{ home_path }}/apps/lang-tools/cpptools"
     remote_src: true
+    creates: "{{ home_path }}/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7" # if exists, this step will not be run
 
 - name: "{{ item }} language: ensure DAP - set cpptools as executable"
   ansible.builtin.file:
