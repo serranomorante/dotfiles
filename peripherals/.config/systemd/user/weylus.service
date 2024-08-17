@@ -1,0 +1,9 @@
+[Unit]
+Description=Start X compositor
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/weylus --no-gui --try-nvenc --custom-lib-js ~/.config/weylus/out/lib.js
+
+[Install]
+WantedBy=graphical-session.target

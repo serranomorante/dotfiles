@@ -70,3 +70,11 @@
 - name: "{{ item }} peripheral: weylus - add udev rule"
   become: true
   ansible.builtin.shell: echo 'KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/60-weylus.rules
+
+- name: "{{ item }} peripheral: ensure weylus service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: weylus
+    state: started
+    enabled: true
+    masked: no
