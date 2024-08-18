@@ -318,6 +318,7 @@
     mouse_left_click = close_current
     mouse_middle_click = do_action, close_current
     mouse_right_click = close_all
+    enable_posix_regex = true
 
 # Experimental features that may or may not work correctly. Do not expect them
 # to have a consistent behaviour across releases.
@@ -391,7 +392,14 @@
 #    alignment
 #    hide_text
 #    override_pause_level
-#
+
+[hide_memex_annoying_alert]
+    msg_urgency = "normal"
+    desktop_entry = "google-chrome"
+    body = "^Memex"
+    skip_display = true
+    history_ignore = true
+
 # Shell-like globbing will get expanded.
 #
 # Instead of the appname filter, it's recommended to use the desktop_entry filter.
