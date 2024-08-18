@@ -123,3 +123,7 @@
 # Toggle gromit-mpx
 super + {y,c,v}
     gromit-mpx --{toggle,clear,visibility}
+
+# Toggle dunst notifications history
+super + n
+    dunstctl history-pop  
