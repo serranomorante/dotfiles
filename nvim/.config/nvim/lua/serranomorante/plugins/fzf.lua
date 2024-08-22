@@ -131,8 +131,13 @@ M.fzf_lua = {
         },
       },
       grep = {
-        rg_opts = "--pcre2 --column --line-number --no-heading --color=always --hidden --smart-case --max-columns=4096 -e",
         rg_glob = true,
+        RIPGREP_CONFIG_PATH = vim.env.RIPGREP_CONFIG_PATH,
+        rg_glob_fn = function(query, opts)
+          local regex, flags = query:match("^(.-)%s%-%-(.*)$")
+          -- If no separator is detected will return the original query
+          return (regex or query), flags
+        end,
         multiline = 1, -- https://github.com/ibhagwan/fzf-lua/commit/b2d6b82aae8103f3390a685339394252ddd69ebf
         keymap = { fzf = { start = "beginning-of-line" } },
       },

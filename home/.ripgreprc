@@ -5,3 +5,13 @@ web:*.{html,css,js}*
 # Add my 'lock' type.
 --type-add
 lock:*-lock.{json,yaml}
+
+--pcre2
+--column
+--line-number
+--no-heading
+--color=always
+--hidden
+--smart-case
+--max-columns=4096
+-e
