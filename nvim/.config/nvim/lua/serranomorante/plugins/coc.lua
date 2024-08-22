@@ -15,26 +15,24 @@ function _G.show_docs()
   ---K do nothing if already on floating window
   if vim.api.nvim_win_get_config(0).relative ~= "" then return end
   ---K focus floating window if present
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if vim.api.nvim_win_get_config(win).relative ~= "" then
-      utils.feedkeys("<C-w><C-w>", "n")
-      vim.schedule(function()
-        if vim.fn.maparg("q", "n") == "" then
-          vim.keymap.set("n", "q", "<cmd>close<cr>", {
-            desc = "Close window",
-            buffer = vim.api.nvim_get_current_buf(),
-            silent = true,
-            nowait = true,
-          })
-        end
-      end)
-      return
-    end
+  if vim.api.nvim_eval("coc#float#has_float()") ~= 0 then
+    utils.feedkeys("<C-w><C-w>", "n")
+    vim.schedule(function()
+      if vim.fn.maparg("q", "n") == "" then
+        vim.keymap.set("n", "q", "<cmd>close<cr>", {
+          desc = "Close window",
+          buffer = vim.api.nvim_get_current_buf(),
+          silent = true,
+          nowait = true,
+        })
+      end
+    end)
+    return
   end
   local cw = vim.fn.expand("<cword>")
   if vim.fn.index({ "vim", "help" }, vim.bo.filetype) >= 0 then
     vim.api.nvim_command("h " .. cw)
-  elseif vim.api.nvim_eval("coc#rpc#ready()") then
+  elseif vim.api.nvim_eval("coc#rpc#ready()") ~= 0 then
     vim.fn.CocActionAsync("doHover")
   else
     vim.api.nvim_command("!" .. vim.o.keywordprg .. " " .. cw)
