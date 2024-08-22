@@ -72,8 +72,8 @@ M.FileFlags = {
 }
 
 M.FileNameModifier = {
-  hl = function()
-    if vim.bo.modified then return { bold = true, underline = true } end
+  hl = function(self)
+    if vim.api.nvim_get_option_value("modified", { buf = self.bufnr }) then return { bold = true, underline = true } end
   end,
 }
 
