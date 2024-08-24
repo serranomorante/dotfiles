@@ -67,7 +67,7 @@ return {
     {
       "<leader>dR",
       function()
-        require("dap").repl.open({ wrap = false }, "tabnew")
+        require("dap").repl.open({ wrap = false }, "edit")
         vim.cmd.tabnext() -- https://github.com/mfussenegger/nvim-dap/issues/756#issuecomment-1312684460
       end,
       desc = "DAP: Toggle REPL",
@@ -158,7 +158,7 @@ return {
       end
     end
 
-    local dap_executable = vim.env.HOME .. "/apps/lang-tools/cpp_tools/extension/debugAdapters/bin/OpenDebugAD7"
+    local dap_executable = vim.env.HOME .. "/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7"
 
     ---https://github.com/mfussenegger/nvim-dap/wiki/C-C---Rust-(gdb-via--vscode-cpptools)
     if vim.fn.executable(dap_executable) == 1 then
@@ -172,7 +172,7 @@ return {
     dap.adapters.bashdb = {
       name = "bashdb",
       type = "executable",
-      command = vim.env.HOME .. "/apps/lang-tools/bash-debug-adapter"
+      command = vim.env.HOME .. "/apps/lang-tools/bash-debug-adapter",
     }
 
     ---╔══════════════════════════════════════╗
@@ -268,20 +268,27 @@ return {
 
     dap.configurations.c = {
       {
-        name = "Launch file",
+        name = "DAP: c/c++ build active file & launch it",
         request = "launch",
         type = "cppdbg",
         cwd = "${workspaceFolder}",
         program = "${fileDirname}/${fileBasenameNoExtension}",
-        preLaunchTask = "C/C++: gcc build active file",
+        preLaunchTask = "vscode-tasks: C/C++: gcc build active file",
       },
       {
-        name = "Launch file by custom path",
+        name = "DAP: c/c++ pick and launch executable",
         type = "cppdbg",
         request = "launch",
-        program = function() return vim.fn.input("Path to executable: ", vim.fn.getcwd() .. "/", "file") end,
+        program = function() return require("dap.utils").pick_file() end,
         cwd = "${workspaceFolder}",
-        preLaunchTask = "C/C++: gcc build active file",
+        environment = {
+          {
+            ---I override the `DAP_OVERRIDED_DISPLAY` env variable (which fallbacks to the original DISPLAY value)
+            ---from an overseer task that setups my dwm debugging session
+            name = "DISPLAY",
+            value = "${env:DAP_OVERRIDED_DISPLAY}",
+          },
+        },
       },
     }
 
@@ -289,7 +296,7 @@ return {
       {
         type = "bashdb",
         request = "launch",
-        name = "Launch file",
+        name = "DAP: sh debug launch file",
         showDebugOutput = true,
         pathBashdb = vim.env.HOME .. "/apps/lang-tools/bash-debug-adapter/extension/bashdb_dir/bashdb",
         pathBashdbLib = vim.env.HOME .. "/apps/lang-tools/bash-debug-adapter/extension/bashdb_dir",
@@ -308,7 +315,7 @@ return {
     }
 
     ---https://github.com/stevearc/overseer.nvim/blob/master/doc/third_party.md#dap
-    require("overseer").patch_dap(true)
+    require("overseer").enable_dap(true)
     require("dap.ext.vscode").json_decode = require("overseer.json").decode
 
     ---Only needed if your debugging type doesn't match your language type.
@@ -323,7 +330,7 @@ return {
       ["pwa-msedge"] = constants.javascript_aliases,
       ["node-terminal"] = constants.javascript_aliases,
       ["pwa-extensionHost"] = constants.javascript_aliases,
-      ["cppdbg"] = constants.c_filetypes,
+      ["cppdbg"] = constants.c_aliases,
     }
 
     events.event("DAP" .. vim.api.nvim_get_option_value("filetype", { buf = 0 }))

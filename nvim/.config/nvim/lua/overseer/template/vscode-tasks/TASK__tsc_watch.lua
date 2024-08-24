@@ -5,7 +5,7 @@ local overseer = require("overseer")
 local typescript_provider = require("overseer.template.vscode.provider.typescript")
 
 return {
-  name = "tsc: watch - relative tsconfig.json",
+  name = "vscode-tasks: TSC watch tsconfig.json (relative)",
   desc = "Watch a typescript project using the tsconfig.json from the current buffer's directory",
   builder = function()
     local tsconfig = vim.fs.find("tsconfig.json", {

@@ -1,7 +1,8 @@
 local utils = require("serranomorante.utils")
 
+---@type overseer.ComponentDefinition
 return {
-  desc = "Lazy load plugin after GPG successful decryption",
+  name = "editor-components: lazy load plugin after gpg decryption",
   params = {
     parser = {
       desc = "Parser definition to extract values from output",

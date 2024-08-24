@@ -1,9 +1,10 @@
+local constants = require("serranomorante.constants")
 local utils = require("serranomorante.utils")
 if not utils.is_available("overseer.nvim") then return {} end
 local overseer = require("overseer")
 
 return {
-  name = "tsc: build - tsconfig.json",
+  name = "vscode-tasks: TSC build tsconfig.json",
   builder = function()
     return {
       cmd = { "tsc" },
@@ -17,6 +18,6 @@ return {
   end,
   tags = { overseer.TAG.BUILD },
   condition = {
-    filetype = { "typescript" },
+    filetype = constants.javascript_aliases,
   },
 }

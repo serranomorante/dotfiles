@@ -98,6 +98,9 @@ export DAP_LOG_LEVEL=INFO
 export LSP_LOG_LEVEL=INFO
 export CONFORM_LOG_LEVEL=INFO
 export NEOTEST_LOG_LEVEL=INFO
+if [ -z "$DAP_OVERRIDED_DISPLAY" ] && [ -n "$DISPLAY" ]; then
+    export DAP_OVERRIDED_DISPLAY="$DISPLAY" # defaults to DISPLAY
+fi
 
 if [ -x "$(command -v fish)" ]; then
     export AVAILABLE_SHELL="$(command -v fish)"

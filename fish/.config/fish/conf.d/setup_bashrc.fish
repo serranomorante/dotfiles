@@ -81,5 +81,8 @@ end
 set -gx DAP_LOG_LEVEL INFO
 set -gx LSP_LOG_LEVEL INFO
 set -gx CONFORM_LOG_LEVEL INFO
+if test -z "$DAP_OVERRIDED_DISPLAY" -a -n "$DISPLAY"
+    set -gx DAP_OVERRIDED_DISPLAY "$DISPLAY" # fallback to DISPLAY variable
+end
 
 command -q fish; and set -gx AVAILABLE_SHELL "$(command -v fish)"; or set -gx AVAILABLE_SHELL "$(command -v bash)"

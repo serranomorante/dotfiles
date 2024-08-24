@@ -1,13 +1,13 @@
 local M = {}
 
 ---Useful way of organizing some common filetypes
-M.c_filetypes = { "c" }
-M.python_filetypes = { "python" }
+M.c_aliases = { "c" }
+M.python_aliases = { "python" }
 M.javascript_aliases = { "typescript", "javascript", "javascriptreact", "typescriptreact" }
-M.lua_filetypes = { "lua" }
-M.markdown_filetypes = { "markdown" }
-M.json_filetypes = { "json", "jsonc" }
-M.bash_filetypes = { "sh", "bash" }
+M.lua_aliases = { "lua" }
+M.markdown_aliases = { "markdown" }
+M.json_aliases = { "json", "jsonc" }
+M.bash_aliases = { "sh", "bash" }
 
 ---Map `vim.fn.mode()` to mode text and highlight color
 ---https://github.com/AstroNvim/AstroNvim/blob/f8b94716912ad867998e0659497884d577cd9ec1/lua/astronvim/utils/status/env.lua#L33
@@ -111,6 +111,6 @@ add_regex_filter(function(item)
   if item.text:match("^from%s.*import.*") then return false end
   if item.text:match("^import%s.*") then return false end
   return true
-end, M.python_filetypes)
+end, M.python_aliases)
 
 return M

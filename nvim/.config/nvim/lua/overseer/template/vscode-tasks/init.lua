@@ -1,1 +1,1 @@
-return { "vscode-tasks.tsc_watch", "vscode-tasks.tsc_build", "vscode-tasks.gcc_build_active_file" }
+return { "vscode-tasks.TASK__tsc_watch", "vscode-tasks.TASK__tsc_build", "vscode-tasks.TASK__gcc_build_active_file" }

@@ -1,7 +1,8 @@
 local utils = require("serranomorante.utils")
 
+---@type overseer.TemplateDefinition
 return {
-  name = "Decrypt OpenAI key and load plugin",
+  name = "editor-tasks: decrypt OpenAI key and load plugin",
   params = {
     parser_capture_group_name = {
       desc = "Name of the capture group property for the parser",
@@ -31,7 +32,7 @@ return {
       args = { "--decrypt", utils.join_paths(vim.env.HOME, "openai_api_key.asc") },
       components = {
         {
-          "editor.lazy_load_on_gpg_decrypt",
+          "editor-components.COMPONENT__lazy_load_on_gpg_decrypt",
           parser = { { "extract", "(sk%-.*)", params.parser_capture_group_name } },
           plugin = params.plugin,
           parser_capture_group_name = params.parser_capture_group_name,
@@ -41,5 +42,5 @@ return {
       },
     }
   end,
-  tags = { "editor" },
+  tags = { "editor-tasks" },
 }
