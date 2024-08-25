@@ -5,10 +5,8 @@
   loop:
     - c
     - lua
-    - json
     - javascript
     - fish
-    - yaml
     - bash
     - vim
     - python

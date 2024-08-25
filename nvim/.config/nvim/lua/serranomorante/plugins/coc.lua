@@ -13,7 +13,7 @@ local tools = require("serranomorante.tools")
 
 ---Use K to show documentation in preview window
 ---https://github.com/neoclide/coc.nvim?tab=readme-ov-file#example-lua-configuration
-function _G.show_docs()
+local function show_docs()
   ---K do nothing if already on floating window
   if vim.api.nvim_win_get_config(0).relative ~= "" then return end
   ---K focus floating window if present
@@ -113,9 +113,9 @@ local function on_coc_enabled(buf)
       end)
 
       vim.fn.CocActionAsync("hasProvider", "hover", function(_, result)
-        if result == true then
+        if result == true or vim.NIL then -- json and yaml files result is false, maybe a bug?
           opts.desc = "COC: Hover"
-          vim.keymap.set("n", "K", "<cmd>lua _G.show_docs()<CR>", opts)
+          vim.keymap.set("n", "K", show_docs, opts)
         end
       end)
 
@@ -189,28 +189,38 @@ local init = function()
   vim.g.coc_node_path = node_path
   vim.g.coc_user_config = user_config
   vim.g.coc_quickfix_open_command = "botright copen"
-  vim.g.coc_global_extensions =
-    utils.merge_tools("coc", tools.by_filetype.javascript, tools.by_filetype.markdown, tools.by_filetype.all)
+  vim.g.coc_global_extensions = utils.merge_tools(
+    "coc",
+    tools.by_filetype.javascript,
+    tools.by_filetype.markdown,
+    tools.by_filetype.json,
+    tools.by_filetype.yaml,
+    tools.by_filetype.all
+  )
   vim.b.coc_force_attach = 1
   vim.api.nvim_set_hl(0, "CocMenuSel", { link = "PmenuSel" }) -- fix highlight
 end
 
 M.config = function()
   init()
-  local setup_coc_augroup = vim.api.nvim_create_augroup("setup_coc", { clear = true })
+
+  local setup_coc_augroup = vim.api.nvim_create_augroup("setup_coc_on_init", { clear = true })
+
   vim.api.nvim_create_autocmd("User", {
     desc = "Setup coc per buffer on coc events",
-    group = vim.api.nvim_create_augroup("setup_coc_per_buffer", { clear = true }),
+    group = setup_coc_augroup,
     pattern = { "CocNvimInit" },
     callback = function(args) utils.setup_coc_per_buffer(args.buf, on_coc_enabled) end,
   })
 
   vim.api.nvim_create_autocmd({ "BufEnter", "TabEnter", "BufNew", "BufWritePost" }, {
     desc = "Setup coc per buffer on buffer enter",
-    group = setup_coc_augroup,
+    group = vim.api.nvim_create_augroup("setup_coc_per_buffer", { clear = true }),
     callback = function(args)
-      if args.match:match("^diffview") then return end -- exclude unnecessary matches
-      utils.setup_coc_per_buffer(args.buf, on_coc_enabled)
+      if vim.g.coc_service_initialized == 1 then -- don't interfere with CocNvimInit
+        if args.match:match("^diffview") then return end -- exclude unnecessary matches
+        utils.setup_coc_per_buffer(args.buf, on_coc_enabled)
+      end
     end,
   })
 

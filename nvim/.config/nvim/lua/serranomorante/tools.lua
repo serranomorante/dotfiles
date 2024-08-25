@@ -14,8 +14,12 @@ M.by_filetype = {
     extensions = { "coc-tsserver", "@yaegassy/coc-tailwindcss3" },
   },
   lua = { formatters = { "stylua" }, lsp = { "lua-language-server" }, parsers = { "lua", "luap", "luadoc" } },
-  json = { lsp = { "vscode-json-languageserver" }, formatters = { "prettierd" }, parsers = { "json", "jsonc" } },
-  yaml = { lsp = { "yaml-language-server" }, parsers = { "yaml" } },
+  json = {
+    formatters = { "prettierd" },
+    parsers = { "json", "jsonc" },
+    extensions = { "coc-json" },
+  },
+  yaml = { parsers = { "yaml" }, extensions = { "coc-yaml" } },
   c = { lsp = { "clangd" }, parsers = { "cpp" } },
   python = {
     lsp = { "python-lsp-server" },
@@ -51,14 +55,14 @@ M.by_filetype.typescript = vim.deepcopy(M.by_filetype.javascript)
 M.by_filetype.typescriptreact = vim.deepcopy(M.by_filetype.javascript)
 M.by_filetype.javascriptreact = vim.deepcopy(M.by_filetype.javascript)
 
+M.by_filetype.jsonc = vim.deepcopy(M.by_filetype.json)
+
 if vim.fn.executable("npm") == 0 then M.by_filetype.javascript = {} end
 if vim.fn.executable("pip") == 0 then M.by_filetype.python = {} end
 
 M.package_name_to_lspconfig = {
   ["lua-language-server"] = "lua_ls",
   ["bash-language-server"] = "bashls",
-  ["yaml-language-server"] = "yamlls",
-  ["vscode-json-languageserver"] = "jsonls",
   ["ruff-lsp"] = "ruff_lsp",
   ["typescript-language-server"] = "tsserver",
   ["rust-analyzer"] = "rust_analyzer",
