@@ -1,21 +1,19 @@
 local M = {}
 
-M.nvim_bqf = {
-  "kevinhwang91/nvim-bqf",
-  dependencies = {
-    {
-      ---`junegunn/fzf` vim plugin is necessary because `nvim-bqf` uses `fzf#run(...)`
-      ---https://github.com/junegunn/fzf/blob/master/README-VIM.md#summary
-      "junegunn/fzf",
-      build = ":call fzf#install()",
-    },
-  },
-  ft = "qf",
-  init = function()
-    ---https://github.com/kevinhwang91/nvim-bqf?tab=readme-ov-file#format-new-quickfix
-    vim.o.qftf = "{info -> v:lua._G.qftf(info)}"
-  end,
-  opts = {
+-- {
+--   ---`junegunn/fzf` vim plugin is necessary because `nvim-bqf` uses `fzf#run(...)`
+--   ---https://github.com/junegunn/fzf/blob/master/README-VIM.md#summary
+--   "junegunn/fzf",
+--   build = ":call fzf#install()",
+-- },
+
+local init = function()
+  ---https://github.com/kevinhwang91/nvim-bqf?tab=readme-ov-file#format-new-quickfix
+  vim.o.qftf = "{info -> v:lua._G.qftf(info)}"
+end
+
+local opts = function()
+  return {
     auto_resize_height = false, -- to stay consistent
     func_map = {
       open = "", -- disable to not conflict with trailblazer
@@ -31,8 +29,8 @@ M.nvim_bqf = {
         extra_opts = { "--bind", "ctrl-o:toggle-all", "--delimiter", "│" },
       },
     },
-  },
-}
+  }
+end
 
 ---https://github.com/kevinhwang91/nvim-bqf?tab=readme-ov-file#format-new-quickfix
 function _G.qftf(info)
@@ -73,4 +71,9 @@ function _G.qftf(info)
   return ret
 end
 
-return M.nvim_bqf
+M.config = function()
+  init()
+  require("bqf").setup(opts())
+end
+
+return M

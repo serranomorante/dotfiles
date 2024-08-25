@@ -4,3 +4,57 @@
     use: yay
     state: present
     name: neovim-git
+
+- name: "Editor tools: ensure nvim plugins"
+  ansible.builtin.git:
+    repo: https://github.com/{{ item.repo }}
+    dest: "{{ home_path }}/.config/nvim/pack/plugins/{{ item.folder }}/{{ item.repo | basename }}"
+    single_branch: true
+    depth: 1
+    version: "{{ item.version | default('HEAD') }}"
+  async: 1000
+  poll: 0
+  loop:
+    - { folder: start, repo: stevearc/oil.nvim }
+    - { folder: start, repo: ibhagwan/fzf-lua }
+    - { folder: start, repo: nvim-lua/plenary.nvim }
+    - { folder: start, repo: kevinhwang91/promise-async }
+    - { folder: start, repo: nvim-tree/nvim-web-devicons }
+    - { folder: start, repo: neovim/nvim-lspconfig }
+    - { folder: start, repo: neoclide/coc.nvim }
+    - { folder: start, repo: stevearc/overseer.nvim }
+    - { folder: start, repo: kevinhwang91/nvim-treesitter }
+    - { folder: start, repo: nvim-treesitter/nvim-treesitter-context }
+    - { folder: start, repo: nvim-treesitter/nvim-treesitter-textobjects }
+    - { folder: start, repo: dense-analysis/ale }
+    - { folder: start, repo: FabijanZulj/blame.nvim }
+    - { folder: start, repo: stevearc/conform.nvim }
+    - { folder: start, repo: sindrets/diffview.nvim }
+    - { folder: start, repo: lewis6991/gitsigns.nvim }
+    - { folder: start, repo: cbochs/grapple.nvim }
+    - { folder: start, repo: kevinhwang91/nvim-bqf }
+    - { folder: start, repo: kevinhwang91/nvim-ufo }
+    - { folder: start, repo: tpope/vim-sleuth }
+    - { folder: start, repo: mfussenegger/nvim-dap }
+    - { folder: start, repo: mfussenegger/nvim-dap-python }
+    - { folder: start, repo: jbyuki/one-small-step-for-vimkind }
+    - { folder: start, repo: rebelot/heirline.nvim }
+    - { folder: start, repo: mbbill/undotree }
+    - { folder: start, repo: chrisbra/Colorizer }
+    - { folder: start, repo: folke/persistence.nvim }
+    - { folder: opt, repo: Robitx/gp.nvim }
+
+- name: "Editor tools: ensure nvim dev plugins"
+  ansible.builtin.git:
+    repo: https://github.com/{{ item }}
+    dest: ~/.config/nvim/pack/plugins/start/{{ item | basename }}
+    update: false
+  async: 1000
+  poll: 0
+  loop:
+    - serranomorante/aerial.nvim
+
+- name: "Editor tools: compile coc.nvim master (release is already compiled)"
+  ansible.builtin.command: npm ci 
+  args:
+    chdir: "{{ home_path }}/.config/nvim/pack/plugins/start/coc.nvim"

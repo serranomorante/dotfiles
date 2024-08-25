@@ -1,19 +1,17 @@
-return {
-  "sindrets/diffview.nvim",
-  cmd = { "DiffviewOpen", "DiffviewFileHistory" },
-  keys = {
-    {
-      "<leader>vd",
-      "<cmd>DiffviewOpen<CR>",
-      desc = "Diffview: compare against current index",
-    },
-    {
-      "<leader>vf",
-      "<cmd>DiffviewFileHistory %<CR>",
-      desc = "Diffview: all commits affecting the current file",
-    },
-  },
-  opts = {
+local M = {}
+
+local keys = function()
+  vim.keymap.set("n", "<leader>vd", "<cmd>DiffviewOpen<CR>", { desc = "Diffview: compare against current index" })
+  vim.keymap.set(
+    "n",
+    "<leader>vf",
+    "<cmd>DiffviewFileHistory %<CR>",
+    { desc = "Diffview: all commits affecting the current file" }
+  )
+end
+
+local opts = function()
+  return {
     watch_index = false,
     default_args = {
       DiffviewFileHistory = { "--no-merges" },
@@ -47,5 +45,12 @@ return {
       ---Fixes issue with coc.nvim
       diff_buf_read = function(bufnr) vim.b[bufnr].coc_enabled = 0 end,
     },
-  },
-}
+  }
+end
+
+M.config = function()
+  keys()
+  require("diffview").setup(opts())
+end
+
+return M

@@ -1,5 +1,5 @@
-return {
-  "FabijanZulj/blame.nvim",
-  cmd = "BlameToggle",
-  config = true,
-}
+local M = {}
+
+M.config = function() require("blame").setup() end
+
+return M

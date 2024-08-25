@@ -14,7 +14,7 @@ return {
     plugin = {
       desc = "Name of the plugin to load",
       type = "enum",
-      choices = { "gp.nvim" },
+      choices = { "gp.nvim", "gp" },
       optional = false,
       order = 2,
     },

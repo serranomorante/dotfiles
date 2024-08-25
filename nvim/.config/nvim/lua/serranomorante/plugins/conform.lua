@@ -1,29 +1,27 @@
 local tools = require("serranomorante.tools")
 local utils = require("serranomorante.utils")
 
-return {
-  "stevearc/conform.nvim",
-  cmd = "ConformInfo",
-  keys = {
-    {
-      "<leader>lf",
-      function()
-        require("conform").format(
-          { async = true },
-          ---@param err string|nil
-          function(err)
-            ---https://github.com/stevearc/conform.nvim/issues/250#issuecomment-1868544121
-            if err then return vim.notify(err, vim.log.levels.WARN) end
-            utils.refresh_codelens()
-            vim.notify("Formatted", vim.log.levels.INFO)
-          end
-        )
-      end,
-      mode = { "n", "v" },
-      desc = "Formatting: Format file or range",
-    },
-  },
-  opts = {
+local M = {}
+
+local keys = function()
+  vim.keymap.set({ "n", "v" }, "<leader>lf", function()
+    require("conform").format(
+      { async = true },
+      ---@param err string|nil
+      function(err)
+        ---https://github.com/stevearc/conform.nvim/issues/250#issuecomment-1868544121
+        if err then return vim.notify(err, vim.log.levels.WARN) end
+        utils.refresh_codelens()
+        vim.notify("Formatted", vim.log.levels.INFO)
+      end
+    )
+  end, {
+    desc = "Formatting: Format file or range",
+  })
+end
+
+local opts = function()
+  return {
     formatters_by_ft = {
       lua = tools.by_filetype.lua.formatters,
       javascript = vim.tbl_extend("force", tools.by_filetype.javascript.formatters, { stop_after_first = true }),
@@ -47,5 +45,12 @@ return {
       c = { lsp_format = "fallback" },
     },
     log_level = vim.log.levels[vim.env.CONFORM_LOG_LEVEL or "ERROR"],
-  },
-}
+  }
+end
+
+M.config = function()
+  keys()
+  require("conform").setup(opts())
+end
+
+return M

@@ -8,8 +8,9 @@ local M = {}
 ---@param plugin string # The plugin to search for
 ---@return boolean available # Whether the plugin is available
 function M.is_available(plugin)
-  local lazy_config_avail, lazy_config = pcall(require, "lazy.core.config")
-  return lazy_config_avail and lazy_config.plugins[plugin] ~= nil
+  -- local lazy_config_avail, lazy_config = pcall(require, "lazy.core.config")
+  -- return lazy_config_avail and lazy_config.plugins[plugin] ~= nil
+  return true -- TODO fix later
 end
 
 --- Call function if a condition is met
@@ -150,7 +151,7 @@ function M.merge_tools(installer_type, ...)
     ["coc"] = coc_tool_type,
   }
   local merge_result = {}
-  for _, tools_table in ipairs({ ... }) do
+  for _, tools_table in pairs({ ... }) do
     for _, tool_type in ipairs(tool_type_by_installer[installer_type]) do
       for _, tool in ipairs(tools_table[tool_type] or {}) do
         if not vim.list_contains(merge_result, tool) then table.insert(merge_result, tool) end
@@ -203,20 +204,6 @@ function M.buf_inside_cwd(bufnr, cwd)
   local dir = cwd or vim.fn.getcwd()
   dir = dir:sub(-1) ~= "/" and dir .. "/" or dir
   return vim.startswith(vim.api.nvim_buf_get_name(bufnr), dir)
-end
-
----Resolve the options table for a given plugin with lazy
----@param plugin string The plugin to search for
----@return table opts # The plugin options
-function M.plugin_opts(plugin)
-  local lazy_config_avail, lazy_config = pcall(require, "lazy.core.config")
-  local lazy_plugin_avail, lazy_plugin = pcall(require, "lazy.core.plugin")
-  local opts = {}
-  if lazy_config_avail and lazy_plugin_avail then
-    local spec = lazy_config.spec.plugins[plugin]
-    if spec then opts = lazy_plugin.values(spec, "opts") end
-  end
-  return opts
 end
 
 ---Get the indent char string for a given shiftwidth

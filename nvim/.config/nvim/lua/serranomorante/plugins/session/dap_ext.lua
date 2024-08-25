@@ -29,9 +29,6 @@ M.on_post_load = function(data)
     return -- No breakpoints to load, no need to load dap plugin
   end
 
-  local dap_ok, _ = pcall(require, "dap") -- force full lazy-loading of the plugin
-  if not dap_ok then return end
-
   local bufs_by_name = {}
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
     bufs_by_name[vim.api.nvim_buf_get_name(buf)] = buf

@@ -1,3 +1,5 @@
+local M = {}
+
 ---Anything not here will use lsp->indent
 ---Seems like "lsp" offers better performance: https://github.com/kevinhwang91/nvim-ufo/issues/6#issuecomment-1172346709
 ---@type table<string, "treesitter" | "indent" | "">
@@ -24,39 +26,26 @@ local function customize_selector(bufnr)
   return require("ufo").getFolds(bufnr, "lsp"):catch(function(err) return handleFallbackException(err, "indent") end)
 end
 
-return {
-  "kevinhwang91/nvim-ufo",
-  event = "User CustomFile",
-  cmd = "UfoInspect",
-  dependencies = "kevinhwang91/promise-async",
-  keys = {
-    {
-      "zR",
-      function() require("ufo").openAllFolds() end,
-      desc = "Ufo: Open all folds",
-    },
-    {
-      "zM",
-      function() require("ufo").closeAllFolds() end,
-      desc = "Ufo: Close all folds",
-    },
-    {
-      "zr",
-      function() require("ufo").openFoldsExceptKinds() end,
-      desc = "Ufo: Open folds except kinds",
-    },
-    {
-      "zm",
-      function() require("ufo").closeFoldsWith() end,
-      desc = "Ufo: Close folds with level",
-    },
-    {
-      "zp",
-      function() require("ufo").peekFoldedLinesUnderCursor() end,
-      desc = "Ufo: Peek folded lines under cursor",
-    },
-  },
-  opts = {
+local keys = function()
+  vim.keymap.set("n", "zR", function() require("ufo").openAllFolds() end, { desc = "Ufo: Open all folds" })
+  vim.keymap.set("n", "zM", function() require("ufo").closeAllFolds() end, { desc = "Ufo: Close all folds" })
+  vim.keymap.set(
+    "n",
+    "zr",
+    function() require("ufo").openFoldsExceptKinds() end,
+    { desc = "Ufo: Open folds except kinds" }
+  )
+  vim.keymap.set("n", "zm", function() require("ufo").closeFoldsWith() end, { desc = "Ufo: Close folds with level" })
+  vim.keymap.set(
+    "n",
+    "zp",
+    function() require("ufo").peekFoldedLinesUnderCursor() end,
+    { desc = "Ufo: Peek folded lines under cursor" }
+  )
+end
+
+local opts = function()
+  return {
     preview = {
       win_config = {
         winblend = 0,
@@ -73,6 +62,12 @@ return {
       if vim.b[bufnr].large_buf or filetype == "" or buftype == "nofile" then return provider_by_filetype["nofile"] end
       return provider_by_filetype[filetype] or customize_selector
     end,
-  },
-  config = function(_, opts) require("ufo").setup(opts) end,
-}
+  }
+end
+
+M.config = function()
+  keys()
+  require("ufo").setup(opts())
+end
+
+return M

@@ -65,21 +65,10 @@ return {
         local winbuf = vim.api.nvim_win_get_buf(0)
         local buftype = vim.api.nvim_get_option_value("buftype", { buf = winbuf })
         if buftype == "terminal" then vim.api.nvim_win_close(0, true) end
-
-        local plugin_name = params.plugin
-
-        if utils.is_available(plugin_name) then
-          local loader = require("lazy.core.loader")
-          local config = require("lazy.core.config")
-          local plugin = config.plugins[plugin_name]
-
-          local opts = vim.tbl_deep_extend("force", utils.plugin_opts(plugin_name), {
-            [params.plugin_opt_name] = decrypted_content[params.parser_capture_group_name],
-          })
-          require(loader.get_main(plugin)).setup(opts)
-        else
-          vim.notify("Plugin: " .. plugin_name .. " not available", vim.log.levels.ERROR)
-        end
+        vim.cmd.packadd(params.plugin)
+        require("serranomorante.plugins.gp").config()
+        -- vim.notify("Plugin: " .. plugin_name .. " not available", vim.log.levels.ERROR)
+        -- TODO fix this later
       end,
     }
   end,

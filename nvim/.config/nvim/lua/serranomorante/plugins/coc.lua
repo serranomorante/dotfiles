@@ -6,6 +6,8 @@
   #  - Folding, lucky me, folding works with coc.nvim
 ]]
 
+local M = {}
+
 local utils = require("serranomorante.utils")
 local tools = require("serranomorante.tools")
 
@@ -150,80 +152,75 @@ local function on_coc_enabled(buf)
   end
 end
 
-return {
-  "neoclide/coc.nvim",
-  branch = "release",
-  cmd = { "CocUpdate", "CocCommand" },
-  event = {
-    "User CustomLSPjavascript,CustomLSPjavascriptreact,CustomLSPtypescript,CustomLSPtypescriptreact",
-    "User CustomLSPmarkdown",
-  },
-  init = function()
-    ---This env variable comes from my personal .bashrc file
-    local system_node_version = vim.env.SYSTEM_DEFAULT_NODE_VERSION or "latest"
-    ---Bypass volta's context detection to prevent running the debugger with unsupported node versions
-    local node_path = utils.cmd({ "volta", "run", "--node", system_node_version, "which", "node" }):gsub("\n", "")
-    if node_path then vim.g.node_system_executable = node_path end
+local init = function()
+  ---This env variable comes from my personal .bashrc file
+  local system_node_version = vim.env.SYSTEM_DEFAULT_NODE_VERSION or "latest"
+  ---Bypass volta's context detection to prevent running the debugger with unsupported node versions
+  local node_path = utils.cmd({ "volta", "run", "--node", system_node_version, "which", "node" }):gsub("\n", "")
+  if node_path then vim.g.node_system_executable = node_path end
 
-    local user_config = {
-      ["suggest.autoTrigger"] = "trigger",
-      ["suggest.noselect"] = true,
-      ["codeLens.enable"] = true,
-      ["codeLens.position"] = "eol",
-      ["diagnostic.enableHighlightLineNumber"] = false,
-      ["diagnostic.enableSign"] = false,
-      ["diagnostic.virtualText"] = true,
-      ["diagnostic.displayByAle"] = true,
-      ["diagnostic.virtualTextCurrentLineOnly"] = false,
-      ["diagnostic.messageTarget"] = "float",
-      ["coc.preferences.useQuickfixForLocations"] = true,
-      ["hover.floatConfig"] = { border = true, focusable = true },
-      ["diagnostic.floatConfig"] = { border = true, focusable = true },
-      ["diagnostic.enableMessage"] = "jump",
-      ["coc.preferences.promptInput"] = false,
-      ["typescript.implementationsCodeLens.enabled"] = true,
-      ["typescript.suggest.completeFunctionCalls"] = false,
-      ["typescript.referencesCodeLens.enabled"] = true,
-      ["javascript.implementationsCodeLens.enabled"] = true,
-      ["javascript.suggest.completeFunctionCalls"] = false,
-      ["javascript.referencesCodeLens.enabled"] = true,
-      ---Download the compiled jar from this url and add it to the following dir
-      ---https://plantuml.com/download
-      ["markdown-preview-enhanced.plantumlJarPath"] = vim.env.HOME .. "/plantuml/plantuml.jar",
-    }
+  local user_config = {
+    ["suggest.autoTrigger"] = "trigger",
+    ["suggest.noselect"] = true,
+    ["codeLens.enable"] = true,
+    ["codeLens.position"] = "eol",
+    ["diagnostic.enableHighlightLineNumber"] = false,
+    ["diagnostic.enableSign"] = false,
+    ["diagnostic.virtualText"] = true,
+    ["diagnostic.displayByAle"] = true,
+    ["diagnostic.virtualTextCurrentLineOnly"] = false,
+    ["diagnostic.messageTarget"] = "float",
+    ["coc.preferences.useQuickfixForLocations"] = true,
+    ["hover.floatConfig"] = { border = true, focusable = true },
+    ["diagnostic.floatConfig"] = { border = true, focusable = true },
+    ["diagnostic.enableMessage"] = "jump",
+    ["coc.preferences.promptInput"] = false,
+    ["typescript.implementationsCodeLens.enabled"] = true,
+    ["typescript.suggest.completeFunctionCalls"] = false,
+    ["typescript.referencesCodeLens.enabled"] = true,
+    ["javascript.implementationsCodeLens.enabled"] = true,
+    ["javascript.suggest.completeFunctionCalls"] = false,
+    ["javascript.referencesCodeLens.enabled"] = true,
+    ---Download the compiled jar from this url and add it to the following dir
+    ---https://plantuml.com/download
+    ["markdown-preview-enhanced.plantumlJarPath"] = vim.env.HOME .. "/plantuml/plantuml.jar",
+  }
 
-    vim.g.coc_node_path = node_path
-    vim.g.coc_user_config = user_config
-    vim.g.coc_quickfix_open_command = "botright copen"
-    vim.g.coc_global_extensions =
-      utils.merge_tools("coc", tools.by_filetype.javascript, tools.by_filetype.markdown, tools.by_filetype.all)
-    vim.b.coc_force_attach = 1
-    vim.api.nvim_set_hl(0, "CocMenuSel", { link = "PmenuSel" }) -- fix highlight
-  end,
-  config = function()
-    local setup_coc_augroup = vim.api.nvim_create_augroup("setup_coc", { clear = true })
-    vim.api.nvim_create_autocmd("User", {
-      desc = "Setup coc per buffer on coc events",
-      group = vim.api.nvim_create_augroup("setup_coc_per_buffer", { clear = true }),
-      pattern = { "CocNvimInit" },
-      callback = function(args) utils.setup_coc_per_buffer(args.buf, on_coc_enabled) end,
-    })
+  vim.g.coc_node_path = node_path
+  vim.g.coc_user_config = user_config
+  vim.g.coc_quickfix_open_command = "botright copen"
+  vim.g.coc_global_extensions =
+    utils.merge_tools("coc", tools.by_filetype.javascript, tools.by_filetype.markdown, tools.by_filetype.all)
+  vim.b.coc_force_attach = 1
+  vim.api.nvim_set_hl(0, "CocMenuSel", { link = "PmenuSel" }) -- fix highlight
+end
 
-    vim.api.nvim_create_autocmd({ "BufEnter", "TabEnter", "BufNew", "BufWritePost" }, {
-      desc = "Setup coc per buffer on buffer enter",
-      group = setup_coc_augroup,
-      callback = function(args)
-        if args.match:match("^diffview") then return end -- exclude unnecessary matches
-        utils.setup_coc_per_buffer(args.buf, on_coc_enabled)
-      end,
-    })
+M.config = function()
+  init()
+  local setup_coc_augroup = vim.api.nvim_create_augroup("setup_coc", { clear = true })
+  vim.api.nvim_create_autocmd("User", {
+    desc = "Setup coc per buffer on coc events",
+    group = vim.api.nvim_create_augroup("setup_coc_per_buffer", { clear = true }),
+    pattern = { "CocNvimInit" },
+    callback = function(args) utils.setup_coc_per_buffer(args.buf, on_coc_enabled) end,
+  })
 
-    vim.api.nvim_create_autocmd("VimLeavePre", {
-      desc = "Teardown coc when exit vim",
-      group = vim.api.nvim_create_augroup("teardown_coc", { clear = true }),
-      callback = function()
-        if vim.g.coc_process_pid then utils.cmd({ "kill", "-9", vim.g.coc_process_pid }) end
-      end,
-    })
-  end,
-}
+  vim.api.nvim_create_autocmd({ "BufEnter", "TabEnter", "BufNew", "BufWritePost" }, {
+    desc = "Setup coc per buffer on buffer enter",
+    group = setup_coc_augroup,
+    callback = function(args)
+      if args.match:match("^diffview") then return end -- exclude unnecessary matches
+      utils.setup_coc_per_buffer(args.buf, on_coc_enabled)
+    end,
+  })
+
+  vim.api.nvim_create_autocmd("VimLeavePre", {
+    desc = "Teardown coc when exit vim",
+    group = vim.api.nvim_create_augroup("teardown_coc", { clear = true }),
+    callback = function()
+      if vim.g.coc_process_pid then utils.cmd({ "kill", "-9", vim.g.coc_process_pid }) end
+    end,
+  })
+end
+
+return M
