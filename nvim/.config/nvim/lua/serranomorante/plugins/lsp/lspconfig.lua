@@ -1,6 +1,7 @@
 local utils = require("serranomorante.utils")
 local constants = require("serranomorante.constants")
 local tools = require("serranomorante.tools")
+local lazy_config = require("lazy.core.config")
 
 local on_init = nil
 local on_attach = nil
@@ -309,6 +310,23 @@ return {
           })
         end,
         ["lua_ls"] = function()
+          ---@param plugin string
+          ---@return string
+          local get_lazy_dir = function(plugin)
+            local lazy_dir = lazy_config.options.root .. "/" .. plugin
+            local dev_dir = vim.env.HOME .. "/repos/" .. plugin
+            return vim.fn.isdirectory(lazy_dir) == 1 and lazy_dir or dev_dir
+          end
+
+          local library = {
+            ---https://github.com/neovim/nvim-lspconfig/issues/2948#issuecomment-1871455900
+            vim.env.VIMRUNTIME,
+            "${3rd}/busted/library",
+            "${3rd}/luv/library",
+            get_lazy_dir("overseer.nvim"),
+            get_lazy_dir("lazy.nvim"),
+          }
+
           lspconfig["lua_ls"].setup({
             on_init = on_init,
             capabilities = capabilities,
@@ -322,12 +340,8 @@ return {
                   globals = { "vim" },
                 },
                 workspace = {
-                  library = {
-                    ---https://github.com/neovim/nvim-lspconfig/issues/2948#issuecomment-1871455900
-                    vim.env.VIMRUNTIME .. "/lua",
-                    "${3rd}/busted/library",
-                    "${3rd}/luv/library",
-                  },
+                  checkThirdParty = false,
+                  library = library,
                 },
                 codeLens = {
                   enable = true,
