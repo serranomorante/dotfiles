@@ -182,8 +182,10 @@ return {
       ["diagnostic.enableMessage"] = "jump",
       ["coc.preferences.promptInput"] = false,
       ["typescript.implementationsCodeLens.enabled"] = true,
+      ["typescript.suggest.completeFunctionCalls"] = false,
       ["typescript.referencesCodeLens.enabled"] = true,
       ["javascript.implementationsCodeLens.enabled"] = true,
+      ["javascript.suggest.completeFunctionCalls"] = false,
       ["javascript.referencesCodeLens.enabled"] = true,
       ---Download the compiled jar from this url and add it to the following dir
       ---https://plantuml.com/download
