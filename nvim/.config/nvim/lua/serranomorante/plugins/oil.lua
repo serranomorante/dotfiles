@@ -49,7 +49,7 @@ local init = function()
       local original_alternate_file = vim.fn.bufname("#")
       local new_empty_buffer = nil
 
-      for _, action in ipairs(args.data.actions) do
+      for _, action in pairs(args.data.actions) do
         ---Automatically add title to new markdown files created from oil buffer
         if action.type == "create" and action.entry_type == "file" then
           local _, filename = util.parse_url(action.url)

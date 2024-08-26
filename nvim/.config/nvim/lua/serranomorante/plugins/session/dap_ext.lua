@@ -7,7 +7,7 @@ M.on_save = function()
   local breakpoints = {}
 
   for buf, buf_breakpoints in pairs(require("dap.breakpoints").get()) do
-    for _, breakpoint in ipairs(buf_breakpoints) do
+    for _, breakpoint in pairs(buf_breakpoints) do
       local fname = vim.api.nvim_buf_get_name(buf)
       table.insert(breakpoints, {
         filename = fname,
@@ -34,7 +34,7 @@ M.on_post_load = function(data)
     bufs_by_name[vim.api.nvim_buf_get_name(buf)] = buf
   end
 
-  for _, breakpoint in ipairs(data.breakpoints or {}) do
+  for _, breakpoint in pairs(data.breakpoints or {}) do
     local buf = bufs_by_name[breakpoint.filename]
     if buf and vim.api.nvim_buf_is_valid(buf) then
       local bopts = {}

@@ -22,7 +22,7 @@ local AerialBreadcrumb = {
       }) end
     end
 
-    for i, d in ipairs(data) do
+    for i, d in pairs(data) do
       if i > start_idx then
         ---Symbol name
         local child = {

@@ -73,7 +73,7 @@ function M.file_worktree(path, worktrees)
 
   if vim.startswith(path, "oil:") then path = path:gsub("oil:", "") end
 
-  for _, worktree in ipairs(worktrees) do
+  for _, worktree in pairs(worktrees) do
     if
       M.cmd({
         "git",
@@ -120,7 +120,7 @@ function M.bool2str(bool) return bool and "on" or "off" end
 ---               - name (string): Only return clients with the given name
 ---@return boolean # Whether or not any of the clients provide the capability
 function M.has_capability(capability, filter)
-  for _, client in ipairs(vim.lsp.get_clients(filter)) do
+  for _, client in pairs(vim.lsp.get_clients(filter)) do
     if client.supports_method(capability) then return true end
   end
   return false

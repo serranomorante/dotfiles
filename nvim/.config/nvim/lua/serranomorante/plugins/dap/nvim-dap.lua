@@ -80,6 +80,7 @@ local keys = function()
     { desc = 'DAP: Toggle "sessions" in floating window' }
   )
 end
+
 local init = function()
   vim.fn.sign_define("DapBreakpoint", { text = "⬤", texthl = "DapBreakpoint" })
   vim.fn.sign_define("DapBreakpointCondition", { text = " ", texthl = "DapBreakpoint" })
@@ -94,6 +95,7 @@ local init = function()
     callback = function() require("dap.ext.autocompl").attach() end,
   })
 end
+
 M.config = function()
   init()
   keys()
