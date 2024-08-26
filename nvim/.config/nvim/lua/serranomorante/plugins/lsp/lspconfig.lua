@@ -44,6 +44,7 @@ local init = function()
     callback = utils.refresh_codelens,
   })
 end
+
 M.config = function()
   init()
   local lspconfig = require("lspconfig")
