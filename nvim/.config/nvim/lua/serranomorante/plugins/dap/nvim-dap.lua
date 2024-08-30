@@ -58,10 +58,12 @@ local keys = function()
   )
   vim.keymap.set("n", "<leader>dp", function() require("dap").pause() end, { desc = "DAP: Pause" })
   vim.keymap.set("n", "<leader>dr", function() require("dap").restart_frame() end, { desc = "DAP: Restart" })
-  vim.keymap.set("n", "<leader>dR", function()
-    require("dap").repl.open({ wrap = false }, "edit")
-    vim.cmd.tabnext() -- https://github.com/mfussenegger/nvim-dap/issues/756#issuecomment-1312684460
-  end, { desc = "DAP: Toggle REPL" })
+  vim.keymap.set(
+    "n",
+    "<leader>dR",
+    function() require("dap").repl.open({ wrap = false }, "edit") end,
+    { desc = "DAP: Toggle REPL" }
+  )
   vim.keymap.set("n", "<leader>dS", function() require("dap").run_to_cursor() end, { desc = "DAP: Run To Cursor" })
   vim.keymap.set("n", "<leader>dd", function() require("dap").focus_frame() end, { desc = "DAP: Focus frame" })
   vim.keymap.set("n", "<leader>dh", function() require("dap.ui.widgets").hover() end, { desc = "DAP: Debugger Hover" })
