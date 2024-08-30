@@ -96,6 +96,13 @@ local init = function()
     group = vim.api.nvim_create_augroup("repl-autocompletion", { clear = true }),
     callback = function() require("dap.ext.autocompl").attach() end,
   })
+
+  vim.api.nvim_create_autocmd("BufEnter", {
+    desc = 'Always start "dap-repl" in normal mode', -- similar to what is done on ex command line window
+    pattern = "\\[dap-repl*\\]",
+    group = vim.api.nvim_create_augroup("repl-stopinsert", { clear = true }),
+    command = "stopinsert",
+  })
 end
 
 M.config = function()
