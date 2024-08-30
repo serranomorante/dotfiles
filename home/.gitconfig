@@ -10,5 +10,5 @@
 
 [core]
 	editor = "tmux select-window -t {start}" \
-		&& "tmux if-shell -F '#{window_zoomed_flag}' 'resize-pane -Z' ''" \
+		&& "tmux if-shell -F '#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}' 'resize-pane -Z' ''" \
 		&& "tmux select-pane -t {top-left} && nvr --nostart --remote-tab-wait-silent"
