@@ -407,6 +407,7 @@ M.config = function()
   end
 
   setup_base_servers()
+  require("serranomorante.plugins.nvim-ufo").config()
 end
 
 return M
