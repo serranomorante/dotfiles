@@ -12,7 +12,10 @@
     - graphic-tablet
 
 - name: Ensure handy utilities are installed
-  ansible.builtin.include_tasks: setup-xdotool.{{ user_os }}.yml
+  ansible.builtin.include_tasks: setup-{{ item }}-tools.{{ user_os }}.yml
+  loop:
+    - automation
+    - grep
 
 - name: Ensure compositor is installed
   ansible.builtin.include_tasks: setup-compositor.{{ user_os }}.yml
