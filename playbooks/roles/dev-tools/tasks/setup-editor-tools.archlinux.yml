@@ -5,6 +5,11 @@
     state: present
     name: neovim-git
 
+- name: "Editor tools: unfold nvim link"
+  ansible.builtin.file:
+    state: absent
+    path: "{{ home_path }}/.config/nvim"
+
 - name: "Editor tools: ensure nvim plugins"
   ansible.builtin.git:
     repo: https://github.com/{{ item.repo }}
@@ -53,6 +58,11 @@
   poll: 0
   loop:
     - serranomorante/aerial.nvim
+
+- name: "Editor tools: re-stow nvim to unfold symlink"
+  ansible.builtin.shell: stow --restow --dotfiles nvim
+  args:
+    chdir: "{{ home_path }}/dotfiles"
 
 - name: "Editor tools: compile coc.nvim master (release is already compiled)"
   ansible.builtin.command: npm ci 
