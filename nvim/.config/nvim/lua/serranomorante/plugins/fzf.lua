@@ -105,6 +105,8 @@ local opts = function()
       RIPGREP_CONFIG_PATH = vim.env.RIPGREP_CONFIG_PATH,
       rg_glob_fn = function(query, opts)
         local regex, flags = query:match("^(.-)%s%-%-(.*)$")
+        -- UNCOMMENT TO DEBUG PRINT INTO FZF
+        -- if flags then io.write(("q: %s -> flags: %s, query: %s\n"):format(query, flags, (regex or query))) end
         -- If no separator is detected will return the original query
         return (regex or query), flags
       end,

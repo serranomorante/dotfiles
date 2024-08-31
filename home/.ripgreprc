@@ -11,7 +11,5 @@ lock:*-lock.{json,yaml}
 --line-number
 --no-heading
 --color=always
---hidden
 --smart-case
 --max-columns=4096
--e

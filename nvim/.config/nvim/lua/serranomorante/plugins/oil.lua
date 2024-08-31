@@ -182,7 +182,7 @@ M.config = function()
           local current_dir = vim.fn.fnamemodify(require("oil").get_current_dir(), ":.")
           require("fzf-lua").live_grep({
             ---https://github.com/ibhagwan/fzf-lua/wiki/Options#grep-providers-options
-            search = string.format(" -- %s**", current_dir),
+            search = string.format(" -- --iglob=%s**", current_dir),
             no_esc = true, -- Do not escape regex characters
           })
         end,
