@@ -3,10 +3,10 @@
   ansible.builtin.file:
     state: directory
     recurse: true
-    path: ~/.ansible/plugins/modules
+    path: "{{ home_path }}/.ansible/plugins/modules"
 
 - name: "AUR: ensure ansible aur helper"
   ansible.builtin.get_url:
     url: https://raw.githubusercontent.com/kewlfft/ansible-aur/master/plugins/modules/aur.py
-    dest: ~/.ansible/plugins/modules/aur.py
+    dest: "{{ home_path }}/.ansible/plugins/modules/aur.py"
     mode: 0644

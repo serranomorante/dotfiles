@@ -5,7 +5,7 @@
     name: stow
 
 - name: "Dotfiles: apply stow"
-  ansible.builtin.shell: stow {{ package }}
+  ansible.builtin.shell: stow --dotfiles {{ package }}
   loop_control:
     loop_var: package
   loop:

@@ -1,9 +1,10 @@
-lazygit/.config/lazygit/state.yml
+lazygit/dot-config/lazygit/state.yml
 
 # Ignore symlinks from systemd
-systemd/.config/systemd/user/*.wants
-systemd/.config/systemd/user/*session-manager.service
-systemd/.config/systemd/user/*kwin_x11.service
+systemd/dot-config/systemd/user/*.wants
+systemd/dot-config/systemd/user/*session-manager.service
+systemd/dot-config/systemd/user/*kwin_x11.service
 
 # Ignore weylus compiled js
-peripherals/.config/weylus/out
+peripherals/dot-config/weylus/out
+nvim/dot-config/nvim/pack/plugins

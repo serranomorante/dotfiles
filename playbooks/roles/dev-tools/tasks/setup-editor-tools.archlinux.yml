@@ -47,7 +47,7 @@
 - name: "Editor tools: ensure nvim dev plugins"
   ansible.builtin.git:
     repo: https://github.com/{{ item }}
-    dest: ~/.config/nvim/pack/plugins/start/{{ item | basename }}
+    dest: "{{ home_path }}/.config/nvim/pack/plugins/start/{{ item | basename }}"
     update: false
   async: 1000
   poll: 0

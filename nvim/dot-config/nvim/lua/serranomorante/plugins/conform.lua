@@ -24,18 +24,10 @@ local opts = function()
   return {
     formatters_by_ft = {
       lua = tools.by_filetype.lua.formatters,
-      javascript = vim.tbl_extend("force", tools.by_filetype.javascript.formatters, { stop_after_first = true }),
-      typescript = vim.tbl_extend("force", tools.by_filetype.typescript.formatters, { stop_after_first = true }),
-      javascriptreact = vim.tbl_extend(
-        "force",
-        tools.by_filetype.javascriptreact.formatters,
-        { stop_after_first = true }
-      ),
-      typescriptreact = vim.tbl_extend(
-        "force",
-        tools.by_filetype.typescriptreact.formatters,
-        { stop_after_first = true }
-      ),
+      javascript = tools.by_filetype.javascript.formatters,
+      typescript = tools.by_filetype.typescript.formatters,
+      javascriptreact = tools.by_filetype.javascriptreact.formatters,
+      typescriptreact = tools.by_filetype.typescriptreact.formatters,
       python = { lsp_format = "fallback" },
       json = vim.tbl_extend("force", tools.by_filetype.json.formatters, { stop_after_first = true }),
       jsonc = vim.tbl_extend("force", tools.by_filetype.json.formatters, { stop_after_first = true }),
