@@ -11,6 +11,11 @@
     - keyboard
     - graphic-tablet
 
+- name: Ensure display tools are configured
+  ansible.builtin.include_tasks: setup-{{ item }}-tools.{{ user_os }}.yml
+  loop:
+    - nvidia
+
 - name: Ensure handy utilities are installed
   ansible.builtin.include_tasks: setup-{{ item }}-tools.{{ user_os }}.yml
   loop:
