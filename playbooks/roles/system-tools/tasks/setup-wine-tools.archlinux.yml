@@ -1,0 +1,17 @@
+---
+- name: "{{ item }} tools: enable multilib repository"
+  become: true
+  ansible.builtin.blockinfile:
+    dest: /etc/pacman.conf
+    insertafter: '(?m)^#\[multilib\]\n#Include'
+    block: |
+      [multilib]
+      Include = /etc/pacman.d/mirrorlist
+
+- name: "{{ item }} tools: ensure wine is installed"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - wine-staging
+      - wine-mono

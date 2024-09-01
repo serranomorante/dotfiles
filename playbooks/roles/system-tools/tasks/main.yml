@@ -24,3 +24,9 @@
   ansible.builtin.include_tasks: setup-{{ item }}-tools.{{ user_os }}.yml
   loop:
     - chrome
+
+- name: Ensure wine tools are setup
+  ansible.builtin.include_tasks: setup-{{ item }}-tools.{{ user_os }}.yml
+  loop:
+    - wine
+    - yabridge
