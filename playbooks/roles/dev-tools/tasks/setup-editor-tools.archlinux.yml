@@ -26,7 +26,7 @@
     - { folder: start, repo: kevinhwang91/promise-async }
     - { folder: start, repo: nvim-tree/nvim-web-devicons }
     - { folder: start, repo: neovim/nvim-lspconfig }
-    - { folder: start, repo: neoclide/coc.nvim }
+    - { folder: start, repo: neoclide/coc.nvim, version: release }
     - { folder: start, repo: stevearc/overseer.nvim }
     - { folder: start, repo: kevinhwang91/nvim-treesitter }
     - { folder: start, repo: nvim-treesitter/nvim-treesitter-context }
@@ -63,8 +63,3 @@
   ansible.builtin.shell: stow --restow --dotfiles nvim
   args:
     chdir: "{{ home_path }}/dotfiles"
-
-- name: "Editor tools: compile coc.nvim master (release is already compiled)"
-  ansible.builtin.command: npm ci 
-  args:
-    chdir: "{{ home_path }}/.config/nvim/pack/plugins/start/coc.nvim"
