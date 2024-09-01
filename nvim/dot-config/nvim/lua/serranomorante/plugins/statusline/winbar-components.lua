@@ -68,7 +68,7 @@ M.Oil = {
     provider = function(self)
       local cwd = vim.fn.getcwd()
       local parent = vim.fn.fnamemodify(cwd, ":p"):gsub("^" .. vim.env.HOME, "~")
-      if not string.find(self.dir, cwd) then
+      if self.dir and not string.find(self.dir, cwd) then
         ---This means we are outside of our current working directory
         return "(" .. parent .. ") "
       end
