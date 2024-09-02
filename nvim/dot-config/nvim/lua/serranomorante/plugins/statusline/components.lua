@@ -242,12 +242,16 @@ M.Git = {
 
 ---https://github.com/rebelot/heirline.nvim/blob/master/cookbook.md#debugger
 M.DAPMessages = {
+  init = function(self) self.dap_message = require("dap").status() or "" end,
   condition = function()
     if not package.loaded.dap then return false end
     local session = require("dap").session()
     return session ~= nil
   end,
-  provider = function() return " " .. require("dap").status() end,
+  provider = function(self) return " " .. self.dap_message end,
+  hl = function(self)
+    if self.dap_message:match("[sS]topped") ~= nil then return { fg = "red", bold = true } end
+  end,
 }
 
 M.Indent = {

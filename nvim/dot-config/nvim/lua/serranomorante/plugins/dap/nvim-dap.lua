@@ -27,6 +27,7 @@ local keys = function()
     ---https://github.com/mfussenegger/nvim-dap/issues/20#issuecomment-1356791734
     require("dap.ext.vscode").load_launchjs(nil, vscode_type_to_ft)
     require("dap").continue()
+    vim.defer_fn(function() vim.cmd.redrawstatus() end, 100)
   end, { desc = "DAP: Start/Continue (F5)" })
   vim.keymap.set("n", "<leader>dC", function()
     vim.ui.input({ prompt = "Condition: " }, function(condition)
@@ -123,6 +124,11 @@ M.config = function()
     else
       repl.append(output_event.output, "$", { newline = false })
     end
+  end
+
+  local dap_events = { "initialized", "breakpoint", "continued", "exited", "terminated", "thread", "stopped" }
+  for event_index, event in ipairs(dap_events) do
+    dap.listeners.after["event_" .. event]["statusline" .. event_index] = function() vim.cmd.redrawstatus() end
   end
 
   ---╔══════════════════════════════════════╗
