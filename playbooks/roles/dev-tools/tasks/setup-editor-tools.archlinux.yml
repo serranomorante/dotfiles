@@ -47,6 +47,7 @@
     - { folder: start, repo: mbbill/undotree }
     - { folder: start, repo: chrisbra/Colorizer }
     - { folder: start, repo: folke/persistence.nvim }
+    - { folder: start, repo: refractalize/oil-git-status.nvim }
     - { folder: opt, repo: Robitx/gp.nvim }
 
 - name: "Editor tools: ensure nvim dev plugins"
