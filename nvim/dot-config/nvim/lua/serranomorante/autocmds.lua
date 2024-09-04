@@ -121,3 +121,19 @@ autocmd("FileType", {
   group = general_settings_group,
   command = "set formatoptions-=cro",
 })
+
+autocmd({ "FocusGained", "BufEnter" }, {
+  desc = "Perform buffer reload after file changes outside vim",
+  group = general_settings_group,
+  callback = function()
+    local forbidden_modes = { "c" }
+    if vim.list_contains(forbidden_modes, vim.fn.mode()) then return end
+    vim.cmd.checktime()
+  end,
+})
+
+autocmd("FileChangedShellPost", {
+  desc = "Notify when file changes outside vim",
+  group = general_settings_group,
+  callback = function() vim.notify("File changed on disk. Buffer reloaded", vim.log.levels.INFO) end,
+})
