@@ -99,7 +99,6 @@ M.config = function()
     ---Copied here for readability
     keymaps = {
       ["<C-p>"] = false,
-      ["<C-l>"] = false,
       ["<C-h>"] = false,
       ["g?"] = {
         callback = oil_actions.show_help.callback,
@@ -125,7 +124,7 @@ M.config = function()
         callback = oil_actions.close.callback,
         desc = "Oil: Close oil and restore original buffer",
       },
-      ["<leader>rr"] = {
+      ["C-l"] = {
         callback = oil_actions.refresh.callback,
         desc = "Oil: Refresh current directory list",
       },
