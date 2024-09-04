@@ -79,6 +79,7 @@ M.config = function()
 
   local oil_actions = require("oil.actions")
   local opts = {
+    watch_for_changes = true,
     view_options = {
       show_hidden = show_hidden,
       is_hidden_file = function(name, _)
@@ -96,6 +97,12 @@ M.config = function()
     cleanup_delay_ms = false,
     skip_confirm_for_simple_edits = true,
     delete_to_trash = true,
+    git = {
+      ---Return true to automatically git add/mv/rm files
+      add = function(path) return true end,
+      mv = function(src_path, dest_path) return true end,
+      rm = function(path) return true end,
+    },
     ---Copied here for readability
     keymaps = {
       ["<C-p>"] = false,
