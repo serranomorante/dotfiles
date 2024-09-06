@@ -114,11 +114,6 @@ vim.keymap.set("n", "<C-r>", function()
   return "<C-r>"
 end, { expr = true })
 
-vim.keymap.set("n", "f", function() return "m'" .. vim.v.count1 .. "f" end, { expr = true })
-vim.keymap.set("n", "F", function() return "m'" .. vim.v.count1 .. "F" end, { expr = true })
-vim.keymap.set("n", "t", function() return "m'" .. vim.v.count1 .. "t" end, { expr = true })
-vim.keymap.set("n", "T", function() return "m'" .. vim.v.count1 .. "T" end, { expr = true })
-
 vim.keymap.set("n", "<leader>yy", function()
   local filename_with_cursor_pos = utils.filename_with_cursor_pos()
   vim.fn.setreg("+", filename_with_cursor_pos)
