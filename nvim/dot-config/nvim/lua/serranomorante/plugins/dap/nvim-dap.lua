@@ -114,6 +114,7 @@ M.config = function()
   dap.set_log_level(vim.env.DAP_LOG_LEVEL or "INFO")
   dap.defaults.fallback.focus_terminal = true
   dap.defaults.fallback.force_external_terminal = true
+  dap.defaults.fallback.switchbuf = "usevisible,usetab,uselast"
 
   ---https://github.com/mfussenegger/nvim-dap/issues/1141#issuecomment-2002575842
   dap.defaults.fallback.on_output = function(_, output_event)
