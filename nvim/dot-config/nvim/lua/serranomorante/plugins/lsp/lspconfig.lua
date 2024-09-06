@@ -194,8 +194,8 @@ M.config = function()
 
   ---Custom handlers for lsp servers and plugins
   local custom = {
-    ["tsserver"] = function()
-      lspconfig["tsserver"].setup({
+    ["ts_ls"] = function()
+      lspconfig["ts_ls"].setup({
         on_init = on_init,
         on_attach = on_attach,
         capabilities = capabilities,
@@ -369,7 +369,7 @@ M.config = function()
   }
 
   ---Prevent server setup if a plugin exists for it
-  custom["tsserver"] = function() end
+  custom["ts_ls"] = function() end
   if utils.is_available("clangd_extensions.nvim") then custom["clangd"] = function() end end
   if utils.is_available("SchemaStore.nvim") then
     custom["yamlls"] = function() end
