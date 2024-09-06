@@ -137,3 +137,9 @@ autocmd("FileChangedShellPost", {
   group = general_settings_group,
   callback = function() vim.notify("File changed on disk. Buffer reloaded", vim.log.levels.INFO) end,
 })
+
+autocmd("FocusGained", {
+  desc = "Redraw status on nvim focus",
+  group = general_settings_group,
+  command = "redrawstatus",
+})
