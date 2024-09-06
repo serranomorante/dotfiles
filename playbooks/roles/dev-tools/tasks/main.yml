@@ -1,6 +1,6 @@
 ---
-# - name: Ensure neovim is installed
-#   ansible.builtin.include_tasks: setup-neovim.{{ user_os }}.yml
+- name: Ensure neovim is installed
+  ansible.builtin.include_tasks: setup-neovim.{{ user_os }}.yml
 
 - name: Ensure editor tools
   ansible.builtin.include_tasks: setup-editor-tools.{{ user_os }}.yml

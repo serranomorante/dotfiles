@@ -5,6 +5,13 @@
     dest: "{{ home_path }}/repos/neovim"
     depth: 1
 
+- name: "Neovim: ensure neovim build dependencies"
+  become: true
+  ansible.builtin.package:
+    name:
+      - cmake
+      - ninja
+
 - name: "Neovim: ensure neovim - build"
   ansible.builtin.command: make
   become: true

@@ -1,10 +1,4 @@
 ---
-- name: "Editor tools: ensure neovim"
-  aur:
-    use: yay
-    state: present
-    name: neovim-git
-
 - name: "Editor tools: unfold nvim link"
   ansible.builtin.file:
     state: absent
@@ -15,7 +9,7 @@
     repo: https://github.com/{{ item.repo }}
     dest: "{{ home_path }}/.config/nvim/pack/plugins/{{ item.folder }}/{{ item.repo | basename }}"
     single_branch: true
-    depth: 1
+    depth: 10
     version: "{{ item.version | default('HEAD') }}"
   async: 1000
   poll: 0
