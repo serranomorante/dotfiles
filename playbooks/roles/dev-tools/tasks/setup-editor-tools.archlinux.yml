@@ -1,9 +1,4 @@
 ---
-- name: "Editor tools: unfold nvim link"
-  ansible.builtin.file:
-    state: absent
-    path: "{{ home_path }}/.config/nvim"
-
 - name: "Editor tools: ensure nvim plugins"
   ansible.builtin.git:
     repo: https://github.com/{{ item.repo }}
@@ -52,8 +47,3 @@
   loop:
     - serranomorante/aerial.nvim
     - serranomorante/nvim-ufo
-
-- name: "Editor tools: re-stow nvim to unfold symlink"
-  ansible.builtin.shell: stow --restow --dotfiles nvim
-  args:
-    chdir: "{{ home_path }}/dotfiles"
