@@ -1,2 +1,4 @@
 ^/dot-config/nvim/pack/.*
 ^/.config/nvim/pack/.*
+
+^/patches/.*

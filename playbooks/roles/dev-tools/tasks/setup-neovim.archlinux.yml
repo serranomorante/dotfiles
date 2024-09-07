@@ -12,6 +12,13 @@
       - cmake
       - ninja
 
+- name: "Neovim: apply folds patch to neovim"
+  ansible.posix.patch:
+    src: "{{ home_path }}/dotfiles/nvim/patches/folds.patch"
+    dest: "{{ home_path }}/repos/neovim/src/nvim/drawline.c"
+    basedir: "{{ home_path }}/repos/neovim"
+    state: present
+
 - name: "Neovim: ensure neovim - build"
   ansible.builtin.command: make
   become: true
