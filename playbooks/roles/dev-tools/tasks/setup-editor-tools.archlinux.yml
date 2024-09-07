@@ -35,6 +35,7 @@
     - { folder: start, repo: folke/persistence.nvim }
     - { folder: start, repo: refractalize/oil-git-status.nvim }
     - { folder: start, repo: p00f/clangd_extensions.nvim }
+    - { folder: start, repo: ibhagwan/smartyank.nvim }
     - { folder: opt, repo: Robitx/gp.nvim }
 
 - name: "Editor tools: ensure nvim dev plugins"

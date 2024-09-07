@@ -5,17 +5,6 @@ local utils = require("serranomorante.utils")
 local general_settings_group = augroup("general_settings", { clear = true })
 local indent_line_group = augroup("indent_line", { clear = true })
 
-autocmd("TextYankPost", {
-  desc = "Highlight yanked text",
-  group = augroup("highlight_yank", { clear = true }),
-  callback = function()
-    vim.highlight.on_yank({
-      timeout = 300,
-      on_macro = true,
-    })
-  end,
-})
-
 autocmd("BufWinEnter", {
   desc = "Make q close help, man, quickfix, dap floats",
   group = augroup("q_close_windows", { clear = true }),

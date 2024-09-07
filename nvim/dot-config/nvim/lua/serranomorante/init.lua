@@ -3,28 +3,35 @@ require("serranomorante.set")
 require("serranomorante.remap")
 require("serranomorante.autocmds")
 
-require("serranomorante.plugins.statusline.heirline").config()
-require("serranomorante.plugins.session.persistence").config()
-require("serranomorante.plugins.coc").config()
-require("serranomorante.plugins.lsp").config()
-require("serranomorante.plugins.nvim-ufo").config()
-require("serranomorante.plugins.undotree").config()
-require("serranomorante.plugins.vim-sleuth").config()
-require("serranomorante.plugins.treesitter.treesitter").config()
-require("serranomorante.plugins.treesitter.treesitter-context").config()
-require("serranomorante.plugins.oil").config()
-require("serranomorante.plugins.oil-git-status").config()
-require("serranomorante.plugins.fzf").config()
-require("serranomorante.plugins.ale").config()
-require("serranomorante.plugins.blame").config()
-require("serranomorante.plugins.grapple").config()
-require("serranomorante.plugins.conform").config()
-require("serranomorante.plugins.gitsigns").config()
-require("serranomorante.plugins.overseer").config()
-require("serranomorante.plugins.aerial").config()
-require("serranomorante.plugins.diffview").config()
-require("serranomorante.plugins.colorizer").config()
-require("serranomorante.plugins.nvim-bqf").config()
-require("serranomorante.plugins.dap.nvim-dap").config()
-require("serranomorante.plugins.dap.nvim-dap-python").config()
-require("serranomorante.plugins.dap.one-small-step-for-vimkind").config()
+local plugins = {
+  "session.persistence",
+  "statusline.heirline",
+  "coc",
+  "lsp",
+  "nvim-ufo",
+  "undotree",
+  "vim-sleuth",
+  "treesitter.treesitter",
+  "treesitter.treesitter-context",
+  "oil",
+  "oil-git-status",
+  "fzf",
+  "ale",
+  "blame",
+  "grapple",
+  "conform",
+  "gitsigns",
+  "overseer",
+  "aerial",
+  "diffview",
+  "colorizer",
+  "quicker",
+  "dap.nvim-dap",
+  "dap.nvim-dap-python",
+  "dap.one-small-step-for-vimkind",
+  "smartyank",
+}
+
+for _, plugin in ipairs(plugins) do
+  require("serranomorante.plugins." .. plugin).config()
+end
