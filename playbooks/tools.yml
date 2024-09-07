@@ -7,7 +7,7 @@
   roles:
     - system-tools # general system packages
     - lang-tools # lsp, dap, syntax, linters, formatters
-    - dev-tools # editors
+    - dev-tools # editors, editor plugins
     # - music-tools # DAWs, VSTs, pipewire, etc
     # - browsing-tools # browsers, etc
     # - recording-tools # obs, etc

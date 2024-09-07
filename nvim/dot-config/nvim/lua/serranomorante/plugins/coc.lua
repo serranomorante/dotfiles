@@ -186,6 +186,7 @@ local init = function()
     ["markdown-preview-enhanced.plantumlJarPath"] = vim.env.HOME .. "/plantuml/plantuml.jar",
   }
 
+  vim.g.coc_start_at_startup = 0
   vim.g.coc_node_path = node_path
   vim.g.coc_user_config = user_config
   vim.g.coc_quickfix_open_command = "botright copen"
@@ -206,16 +207,11 @@ M.config = function()
 
   local setup_coc_augroup = vim.api.nvim_create_augroup("setup_coc_on_init", { clear = true })
 
-  local function wrap_with_plugin_start(handler)
-    require("serranomorante.plugins.nvim-ufo").config()
-    return handler
-  end
-
   vim.api.nvim_create_autocmd("User", {
     desc = "Setup coc per buffer on coc events",
     group = setup_coc_augroup,
     pattern = { "CocNvimInit" },
-    callback = function(args) utils.setup_coc_per_buffer(args.buf, wrap_with_plugin_start(on_coc_enabled)) end,
+    callback = function(args) utils.setup_coc_per_buffer(args.buf, on_coc_enabled) end,
   })
 
   vim.api.nvim_create_autocmd({ "BufEnter", "TabEnter", "BufNew", "BufWritePost" }, {
@@ -224,7 +220,7 @@ M.config = function()
     callback = function(args)
       if vim.g.coc_service_initialized == 1 then -- don't interfere with CocNvimInit
         if args.match:match("^diffview") then return end -- exclude unnecessary matches
-        utils.setup_coc_per_buffer(args.buf, wrap_with_plugin_start(on_coc_enabled))
+        utils.setup_coc_per_buffer(args.buf, on_coc_enabled)
       end
     end,
   })

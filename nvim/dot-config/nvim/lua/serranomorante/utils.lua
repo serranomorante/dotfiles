@@ -276,31 +276,44 @@ function M.refresh_codelens(args)
   if vim.g.codelens_enabled then vim.lsp.codelens.refresh({ bufnr = buf }) end
 end
 
+---@param bufnr integer
+---@return boolean
+function M.buf_has_coc_extension_available(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  local has_extension = false
+  local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
+  local filetype_tools = ((tools.by_filetype[filetype] or {}).extensions or {})
+  for _, extension in ipairs(vim.g.coc_global_extensions or {}) do
+    if vim.list_contains(filetype_tools, extension) then has_extension = true end
+  end
+  return has_extension
+end
+
+---Rules to detect if we should prevent attaching coc to this buffer
+---If not already attached, this function does nothing
+---@param bufnr integer
+---@return boolean
+function M.buf_prevent_coc_attach(bufnr)
+  local prevent_coc_attach = false
+  if vim.wo.diff then prevent_coc_attach = true end
+  if not M.buf_has_coc_extension_available(bufnr) then prevent_coc_attach = true end
+  return prevent_coc_attach
+end
+
 ---Enable/disable coc per buffer based on whether passed buffer's filetype
 ---has coc-extensions assigned
 ---@param bufnr? integer
 ---@param on_coc_enabled? function
 function M.setup_coc_per_buffer(bufnr, on_coc_enabled)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-  ---We can set `_coc_enabled` as a window scoped variable
-  ---to forcefully prevent coc from attaching a window-specific buffer
-  ---This is useful for diff buffers to prevent diagnostics on them
-  ---Also, coc sometimes fails on those buffers
-  if vim.wo.diff then
-    vim.b[bufnr].coc_enabled = 0
-  else
-    local document_is_attached = vim.g.coc_service_initialized == 1 and vim.b[bufnr].coc_enabled == 1
-    if document_is_attached then return end
-    local coc_enabled = 0 -- disable by default
-    local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
-    ---`tools.lua` file is the source of thruth for almost everything in my config
-    local filetype_tools = ((tools.by_filetype[filetype] or {}).extensions or {})
-    for _, extension in ipairs(vim.g.coc_global_extensions or {}) do
-      if vim.list_contains(filetype_tools, extension) and vim.g.coc_service_initialized == 1 then coc_enabled = 1 end
-    end
-    vim.b[bufnr].coc_enabled = coc_enabled
-    if on_coc_enabled ~= nil and coc_enabled == 1 then on_coc_enabled(bufnr) end
-  end
+  local document_is_attached = vim.g.coc_service_initialized == 1 and vim.b[bufnr].coc_enabled == 1
+  if document_is_attached then return end
+
+  local coc_enabled = 0 -- disabled by default
+  if vim.g.coc_service_initialized == 1 then coc_enabled = 1 end
+  if M.buf_prevent_coc_attach(bufnr) then coc_enabled = 0 end
+  vim.b[bufnr].coc_enabled = coc_enabled
+  if on_coc_enabled ~= nil and coc_enabled == 1 then on_coc_enabled(bufnr) end
 end
 
 ---Simple setTimeout wrapper

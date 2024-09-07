@@ -19,7 +19,6 @@
     - { folder: start, repo: nvim-lua/plenary.nvim }
     - { folder: start, repo: kevinhwang91/promise-async }
     - { folder: start, repo: nvim-tree/nvim-web-devicons }
-    - { folder: start, repo: neovim/nvim-lspconfig }
     - { folder: start, repo: neoclide/coc.nvim, version: release }
     - { folder: start, repo: stevearc/overseer.nvim }
     - { folder: start, repo: kevinhwang91/nvim-treesitter }
@@ -42,6 +41,7 @@
     - { folder: start, repo: chrisbra/Colorizer }
     - { folder: start, repo: folke/persistence.nvim }
     - { folder: start, repo: refractalize/oil-git-status.nvim }
+    - { folder: start, repo: p00f/clangd_extensions.nvim }
     - { folder: opt, repo: Robitx/gp.nvim }
 
 - name: "Editor tools: ensure nvim dev plugins"

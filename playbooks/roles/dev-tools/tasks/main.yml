@@ -5,6 +5,10 @@
 - name: Ensure editor tools
   ansible.builtin.include_tasks: setup-editor-tools.{{ user_os }}.yml
 
+- name: Ensure editor code-generation
+  ansible.builtin.include_tasks: setup-editor-code-generation.{{ user_os }}.yml
+  tags: testing
+
 - name: Ensure plantuml compiled jar is in location
   ansible.builtin.include_tasks: setup-plantuml.{{ user_os }}.yml
 

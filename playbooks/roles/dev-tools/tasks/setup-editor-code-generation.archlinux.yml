@@ -1,0 +1,24 @@
+---
+- name: "Editor code generation: register binaries paths"
+  ansible.builtin.command: which {{ executable }}
+  register: binaries
+  loop_control:
+    loop_var: executable
+  loop:
+    - lua-language-server
+    - vtsls
+    - pylsp
+    - tailwindcss-language-server
+    - clangd
+
+- name: "Editor code generation: ensure binaries code-generation"
+  ansible.builtin.blockinfile:
+    dest: "{{ home_path }}/.config/nvim/lua/{{ username }}/binaries.lua"
+    create: true
+    marker: "-- {mark} ANSIBLE MANAGED BLOCK"
+    block: |
+      return {
+        {% for pkg_path in binaries.results -%}
+          {{ pkg_path.executable|replace("-", "_") }} = function() return "{{ pkg_path.stdout }}" end,
+        {% endfor %}
+      }
