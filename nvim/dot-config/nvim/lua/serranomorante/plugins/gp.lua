@@ -83,9 +83,9 @@ local keys = function()
   vim.keymap.set("v", "<C-g>wt", ":<C-u>'<,'>GpWhisperTabnew<cr>", keymapOptions("Visual Whisper Tabnew"))
 end
 
-M.config = function()
+M.config = function(_, opts)
   keys()
-  require("gp").setup({})
+  require("gp").setup(opts)
 end
 
 return M

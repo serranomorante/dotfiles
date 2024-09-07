@@ -2,7 +2,7 @@
 - name: "Editor tools: ensure nvim plugins"
   ansible.builtin.git:
     repo: https://github.com/{{ item.repo }}
-    dest: "{{ home_path }}/.config/nvim/pack/plugins/{{ item.folder }}/{{ item.repo | basename }}"
+    dest: "{{ home_path }}/.config/nvim/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}"
     single_branch: true
     depth: 10
     version: "{{ item.version | default('HEAD') }}"
@@ -37,7 +37,7 @@
     - { folder: start, repo: p00f/clangd_extensions.nvim }
     - { folder: start, repo: ibhagwan/smartyank.nvim }
     - { folder: start, repo: stevearc/quicker.nvim }
-    - { folder: opt, repo: Robitx/gp.nvim }
+    - { folder: opt, repo: Robitx/gp.nvim, name: gp }
 
 - name: "Editor tools: ensure nvim dev plugins"
   ansible.builtin.git:
