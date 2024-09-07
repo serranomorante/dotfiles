@@ -64,7 +64,7 @@ customCommands:
   # From commits, push a specific commit (and any preceding)
   - key: 'P'
     description: "Push a specific commit (and any preceding)"
-    command: "git push {{.SelectedRemote.RefName}} {{.SelectedLocalCommit.Sha}}:{{.SelectedLocalBranch.RefName}}"
+    command: "git push {{.SelectedRemote.Name}} {{.SelectedLocalCommit.Sha}}:{{.SelectedLocalBranch.Name}}"
     context: "commits"
     loadingText: "Pushing commit..."
     stream: true
