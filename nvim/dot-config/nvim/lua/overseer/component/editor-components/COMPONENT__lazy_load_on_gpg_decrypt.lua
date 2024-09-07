@@ -1,5 +1,3 @@
-local utils = require("serranomorante.utils")
-
 ---@type overseer.ComponentDefinition
 return {
   name = "editor-components: lazy load plugin after gpg decryption",
@@ -66,9 +64,8 @@ return {
         local buftype = vim.api.nvim_get_option_value("buftype", { buf = winbuf })
         if buftype == "terminal" then vim.api.nvim_win_close(0, true) end
         vim.cmd.packadd(params.plugin)
-        require("serranomorante.plugins.gp").config()
-        -- vim.notify("Plugin: " .. plugin_name .. " not available", vim.log.levels.ERROR)
-        -- TODO fix this later
+        local opts = { [params.plugin_opt_name] = decrypted_content[params.parser_capture_group_name] }
+        require("serranomorante.plugins." .. params.plugin).config(nil, opts)
       end,
     }
   end,
