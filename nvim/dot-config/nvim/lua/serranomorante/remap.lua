@@ -14,10 +14,10 @@ vim.keymap.set("n", "<leader>nb", "<cmd>enew<CR>", { desc = "New buffer" })
 vim.keymap.set("n", "ZQ", "<cmd>qa!<CR>", { desc = 'Quit without checking for changes (same as ":q!")' })
 
 -- Move selected lines around
-vim.keymap.set("v", "J", ":m '>+1<CR>gv=gv", { desc = "Move lines down" })
-vim.keymap.set("v", "K", ":m '<-2<CR>gv=gv", { desc = "Move lines up" })
-vim.keymap.set("v", "H", "<gv", { desc = "Indent lines left" })
-vim.keymap.set("v", "L", ">gv", { desc = "Indent lines right" })
+vim.keymap.set("x", "J", ":m '>+1<CR>gv=gv", { desc = "Move lines down" })
+vim.keymap.set("x", "K", ":m '<-2<CR>gv=gv", { desc = "Move lines up" })
+vim.keymap.set("x", "H", "<gv", { desc = "Indent lines left" })
+vim.keymap.set("x", "L", ">gv", { desc = "Indent lines right" })
 
 -- Replace the highlighted word
 vim.keymap.set(
@@ -26,10 +26,6 @@ vim.keymap.set(
   [[:%s/\<<C-r><C-w>\>/<C-r><C-w>/gI<Left><Left><Left>]],
   { desc = "Replace highlighted word" }
 )
-
--- Horizontal and vertical splits
-vim.keymap.set("n", "ss", "<cmd>split<CR>", { desc = "Horizontal split" })
-vim.keymap.set("n", "sv", "<cmd>vsplit<CR>", { desc = "Vertical split" })
 
 -- Close window
 vim.keymap.set("n", "<C-q>", "<cmd>close<CR>")

@@ -83,16 +83,6 @@ autocmd("OptionSet", {
   end,
 })
 
-autocmd("User", {
-  desc = "Update indent line on CustomFile event",
-  pattern = "CustomFile",
-  group = indent_line_group,
-  callback = function(args)
-    if vim.b[args.buf].large_buf then return end
-    vim.wo.listchars = utils.update_indent_line(vim.wo.listchars, vim.bo.shiftwidth)
-  end,
-})
-
 autocmd("VimResized", {
   desc = "Resize floating windows after resizing the terminal",
   group = augroup("resize_floating_windows", { clear = true }),
