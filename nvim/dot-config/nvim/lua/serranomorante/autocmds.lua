@@ -58,6 +58,15 @@ autocmd({ "BufWinLeave", "BufWinEnter" }, {
   end,
 })
 
+autocmd("BufReadPost", {
+  desc = "Update indent line on BufReadPost event",
+  group = indent_line_group,
+  callback = function(args)
+    if vim.b[args.buf].large_buf then return end
+    vim.wo.listchars = utils.update_indent_line(vim.wo.listchars, vim.bo.shiftwidth)
+  end,
+})
+
 autocmd("OptionSet", {
   desc = "Update indent line on shiftwidth change",
   group = indent_line_group,
