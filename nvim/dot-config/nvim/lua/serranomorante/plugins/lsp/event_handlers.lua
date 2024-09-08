@@ -142,7 +142,7 @@ M.detach = function(client, bufnr)
   end
 
   if client_buf_supports_method(ms.textDocument_inlayHint) then
-    require("serranomorante.plugins.lsp.capability_handlers.codelens").detach(client_id, bufnr)
+    require("serranomorante.plugins.lsp.capability_handlers.inlayhints").detach(client_id, bufnr)
   end
 
   local clients = vim.lsp.get_clients({ bufnr = bufnr })
