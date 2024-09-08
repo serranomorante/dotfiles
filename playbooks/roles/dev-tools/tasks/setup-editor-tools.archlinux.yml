@@ -25,6 +25,7 @@
     - { folder: start, repo: lewis6991/gitsigns.nvim }
     - { folder: start, repo: cbochs/grapple.nvim }
     - { folder: start, repo: kevinhwang91/nvim-bqf }
+    - { folder: start, repo: kevinhwang91/nvim-ufo }
     - { folder: start, repo: tpope/vim-sleuth }
     - { folder: start, repo: mfussenegger/nvim-dap }
     - { folder: start, repo: mfussenegger/nvim-dap-python }
@@ -48,4 +49,3 @@
   poll: 0
   loop:
     - serranomorante/aerial.nvim
-    - serranomorante/nvim-ufo
