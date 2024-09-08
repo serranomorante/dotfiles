@@ -24,7 +24,6 @@
     - { folder: start, repo: sindrets/diffview.nvim }
     - { folder: start, repo: lewis6991/gitsigns.nvim }
     - { folder: start, repo: cbochs/grapple.nvim }
-    - { folder: start, repo: kevinhwang91/nvim-bqf }
     - { folder: start, repo: kevinhwang91/nvim-ufo }
     - { folder: start, repo: tpope/vim-sleuth }
     - { folder: start, repo: mfussenegger/nvim-dap }
@@ -37,7 +36,7 @@
     - { folder: start, repo: refractalize/oil-git-status.nvim }
     - { folder: start, repo: p00f/clangd_extensions.nvim }
     - { folder: start, repo: ibhagwan/smartyank.nvim }
-    - { folder: start, repo: junegunn/fzf }
+    - { folder: start, repo: stevearc/quicker.nvim }
     - { folder: opt, repo: Robitx/gp.nvim }
 
 - name: "Editor tools: ensure nvim dev plugins"

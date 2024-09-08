@@ -28,6 +28,8 @@ local groups = {
   BqfPreviewThumb = { link = "PmenuSel" },
   ---Diffview
   DiffviewCursorLine = { ctermfg = 14, bg = bg .. "Grey3" },
+  qfDirName = { link = "Directory", default = true },
+  qfFileName = { link = "CursorLineNr", default = true },
 }
 
 vim.g.terminal_color_0 = vim.g.terminal_color_0 or (bg .. "Grey1")
