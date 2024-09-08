@@ -1,12 +1,5 @@
 local M = {}
 
--- {
---   ---`junegunn/fzf` vim plugin is necessary because `nvim-bqf` uses `fzf#run(...)`
---   ---https://github.com/junegunn/fzf/blob/master/README-VIM.md#summary
---   "junegunn/fzf",
---   build = ":call fzf#install()",
--- },
-
 local init = function()
   ---https://github.com/kevinhwang91/nvim-bqf?tab=readme-ov-file#format-new-quickfix
   vim.o.qftf = "{info -> v:lua._G.qftf(info)}"
