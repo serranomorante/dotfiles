@@ -8,9 +8,12 @@ keybinding:
     quit: <disabled>
 # based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Custom_Pagers.md#delta
 git:
+  autoStageResolvedConflicts: false
   paging:
     colorArg: always
-    externalDiffCommand: difft --color=always
+    # uncomment if you want to use difftastic
+    # externalDiffCommand: difft --color=always
+    pager: delta --paging=never --line-numbers --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
 # based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
 os:
   edit: 'nvr --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
@@ -24,9 +27,9 @@ notARepository: 'quit'
 customCommands:
   # From commits, search the whole history for an expression in a file (case-sensitive)
   - key : '<c-a>'
-    description: 'Search the whole history (From a ref and down) for an expression in a file'
+    description: 'Custom: Search the whole history (from a ref and down) for an expression in a file'
     command: "git checkout {{index .PromptResponses 3}}"
-    context: 'commits'
+    context: 'commits,subCommits'
     prompts:
       - type: 'input'
         title: 'Search word:'
@@ -43,39 +46,44 @@ customCommands:
         labelFormat: '{{ .commit_id | green | bold }} - {{ .commit_msg | yellow }}'
   # From commits, add empty commit
   - key: 'E'
-    description: 'Add empty commit'
-    context: 'commits'
+    description: 'Custom: Add empty commit'
+    context: 'commits,files'
     command: 'git commit --allow-empty -m "empty commit"'
     loadingText: 'Committing empty commit...'
   # From files, open mergetool (DiffviewOpen)
   - key: "M"
-    description: Open mergetool
+    description: 'Custom: Open mergetool'
     command: 'nvr --nostart --remote {{ .SelectedFile.Name }} -c "DiffviewOpen" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
     context: "files"
     loadingText: "loading DiffviewOpen"
     subprocess: true
+  # From commits, extract diff into /tmp/<sha>.patch file
+  - key: '<c-q>'
+    command: git diff {{.SelectedCommit.Sha}}^! > /tmp/{{.SelectedCommit.Sha}}.patch
+    context: "commits,subCommits"
+    description: 'Custom: extract commit diff into /tmp/<sha>.patch file'
   # From files, open difftool (DiffviewOpen)
   - key: "<c-t>"
-    description: Open difftool
+    description: 'Custom: Open difftool'
     command: 'nvr --nostart --remote {{ .SelectedFile.Name }} -c "DiffviewOpen" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
     context: "files"
     loadingText: "loading DiffviewOpen"
     subprocess: true
   # From commits, push a specific commit (and any preceding)
   - key: 'P'
-    description: "Push a specific commit (and any preceding)"
-    command: "git push {{.SelectedRemote.Name}} {{.SelectedLocalCommit.Sha}}:{{.SelectedLocalBranch.Name}}"
+    description: 'Custom: Push a specific commit (and any preceding)'
+    command: "git push {{.SelectedRemote.Name}} {{.SelectedCommit.Sha}}:{{.SelectedLocalBranch.Name}}"
     context: "commits"
     loadingText: "Pushing commit..."
     stream: true
   # From commits, open as a PR review
   - key: 'D'
-    description: "Open commit as a PR review"
-    command: 'nvr --nostart -c "DiffviewOpen {{.SelectedLocalCommit.Sha}}~..{{.SelectedLocalCommit.Sha}}" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
-    context: "commits"
+    description: 'Custom: Diff commit against parent commit'
+    command: 'nvr --nostart -c "DiffviewOpen {{.SelectedCommit.Sha}}^!" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+    context: "commits,subCommits"
   # From remotes, fetch a remote branch as a new local branch
   - key: '<c-f>'
-    description: 'fetch a remote branch as a new local branch'
+    description: 'Custom: fetch a remote branch as a new local branch'
     command: "git fetch {{index .SelectedRemote.Name }} {{index .PromptResponses 0}}:{{index .PromptResponses 1}}"
     context: 'remotes'
     prompts:
@@ -88,6 +96,6 @@ customCommands:
     loadingText: 'fetching branch'
   # From commitFiles, compare (difftool) with local copy
   - key: 'f'
-    description: 'Compare (difftool) with local copy'
-    command: 'nvr --nostart --remote {{.SelectedCommitFile.Name}} -c "DiffviewFileHistory % HEAD..{{.SelectedLocalCommit.Sha}}" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+    description: 'Custom: Compare (difftool) with local copy'
+    command: 'nvr --nostart --remote {{.SelectedCommitFile.Name}} -c "DiffviewOpen {{.SelectedCommit.Sha}} -- %" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
     context: 'commitFiles'

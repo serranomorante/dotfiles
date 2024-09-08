@@ -1,6 +1,8 @@
 ---
-- name: "Git tools: ensure difftastic"
+- name: "Git tools: ensure diff tools"
   become: true
   ansible.builtin.package:
     state: present
-    name: difftastic
+    name:
+      - difftastic
+      - git-delta
