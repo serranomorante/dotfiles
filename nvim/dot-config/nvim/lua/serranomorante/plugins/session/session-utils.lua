@@ -1,7 +1,7 @@
 ---Thanks!
 ---https://github.com/stevearc/resession.nvim/blob/master/lua/resession/files.lua
 
-M = {}
+local M = {}
 
 ---@param filepath string
 ---@return boolean

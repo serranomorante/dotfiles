@@ -4,6 +4,8 @@ local tools = require("serranomorante.tools")
 local parser_dir = vim.fn.stdpath("data") .. "/treesitter"
 if not utils.is_directory(parser_dir) then vim.fn.mkdir(parser_dir, "p") end
 
+local M = {}
+
 local init = function() vim.opt.runtimepath:prepend(parser_dir) end
 
 local opts = function()
