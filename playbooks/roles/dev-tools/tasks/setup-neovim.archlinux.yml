@@ -3,6 +3,7 @@
   ansible.builtin.git:
     repo: https://github.com/neovim/neovim.git
     dest: "{{ home_path }}/repos/neovim"
+    force: true
     depth: 1
 
 - name: "Neovim: ensure neovim build dependencies"
