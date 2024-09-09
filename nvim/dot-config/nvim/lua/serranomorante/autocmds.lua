@@ -131,3 +131,21 @@ autocmd("FocusGained", {
   group = general_settings_group,
   command = "redrawstatus",
 })
+
+---@type table
+local default_cursor_hl = vim.api.nvim_get_hl(0, { name = "Cursor" })
+autocmd("ModeChanged", {
+  desc = "Change cursor color on operator-pending mode",
+  group = general_settings_group,
+  pattern = {
+    "i:niI", -- from insert mode to operator-pending
+    "niI:*", -- from operator-pending mode to any
+  },
+  callback = function(event)
+    if event.match == "i:niI" then
+      vim.api.nvim_set_hl(0, "Cursor", { bg = "NvimLightBlue" })
+    else
+      vim.api.nvim_set_hl(0, "Cursor", default_cursor_hl)
+    end
+  end,
+})
