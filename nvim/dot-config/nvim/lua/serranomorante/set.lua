@@ -2,7 +2,7 @@ local utils = require("serranomorante.utils")
 
 vim.g.mapleader = " "
 
-vim.opt.guicursor = ""
+vim.opt.guicursor = "n:block-Cursor/lCursor,a:blinkwait700-blinkoff400-blinkon250-Cursor/lCursor"
 
 ---@type string
 ---@diagnostic disable-next-line: assign-type-mismatch
