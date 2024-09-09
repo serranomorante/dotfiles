@@ -2,7 +2,7 @@
 - name: "Editor tools: ensure nvim plugins"
   ansible.builtin.git:
     repo: https://github.com/{{ item.repo }}
-    dest: "{{ home_path }}/.config/nvim/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}"
+    dest: "{{ home_path }}/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}"
     single_branch: true
     depth: 10
     version: "{{ item.version | default('HEAD') }}"
@@ -14,8 +14,8 @@
     - { folder: start, repo: kevinhwang91/promise-async }
     - { folder: start, repo: nvim-tree/nvim-web-devicons }
     - { folder: start, repo: neoclide/coc.nvim, version: release }
-    - { folder: start, repo: stevearc/overseer.nvim }
     - { folder: start, repo: kevinhwang91/nvim-treesitter }
+    - { folder: start, repo: stevearc/overseer.nvim, name: overseer }
     - { folder: start, repo: nvim-treesitter/nvim-treesitter-context }
     - { folder: start, repo: nvim-treesitter/nvim-treesitter-textobjects }
     - { folder: start, repo: dense-analysis/ale }
@@ -26,7 +26,7 @@
     - { folder: start, repo: cbochs/grapple.nvim }
     - { folder: start, repo: kevinhwang91/nvim-ufo }
     - { folder: start, repo: tpope/vim-sleuth }
-    - { folder: start, repo: mfussenegger/nvim-dap }
+    - { folder: start, repo: mfussenegger/nvim-dap, name: dap }
     - { folder: start, repo: mfussenegger/nvim-dap-python }
     - { folder: start, repo: jbyuki/one-small-step-for-vimkind }
     - { folder: start, repo: rebelot/heirline.nvim }
@@ -42,7 +42,7 @@
 - name: "Editor tools: ensure nvim dev plugins"
   ansible.builtin.git:
     repo: https://github.com/{{ item }}
-    dest: "{{ home_path }}/.config/nvim/pack/plugins/start/{{ item | basename }}"
+    dest: "{{ home_path }}/.local/share/nvim/site/pack/plugins/start/{{ item | basename }}"
     update: false
   async: 1000
   poll: 0
