@@ -15,13 +15,11 @@ return {
         },
       },
       before_init = function()
-        table.insert(nvim_library, "${3rd}/luv/library")
         table.insert(nvim_library, vim.env.VIMRUNTIME)
-        table.insert(nvim_library, vim.fn.stdpath("config"))
-        ---@diagnostic disable-next-line: param-type-mismatch
-        for _, dir in ipairs(vim.fn.stdpath("config_dirs")) do
-          table.insert(nvim_library, dir)
-        end
+        table.insert(nvim_library, "${3rd}/busted/library")
+        table.insert(nvim_library, "${3rd}/luv/library")
+        table.insert(nvim_library, vim.fn.stdpath("data") .. "/site/pack/plugins/start/overseer/lua")
+        table.insert(nvim_library, vim.fn.stdpath("data") .. "/site/pack/plugins/start/dap/lua")
       end,
       on_init = function(client)
         ---Disable semanticTokensProvider
