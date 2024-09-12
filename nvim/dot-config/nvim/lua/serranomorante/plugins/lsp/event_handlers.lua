@@ -28,7 +28,7 @@ M.attach = function(client, bufnr)
   }
 
   if client_buf_supports_method(ms.textDocument_references) then
-    vim.keymap.set("n", "gr", function()
+    vim.keymap.set("n", "grr", function()
       local regex_filter = constants.regex_filters[filetype]
       fzf_lua.lsp_references({ regex_filter = regex_filter })
     end, opts_with_desc("Show references"))
@@ -54,7 +54,7 @@ M.attach = function(client, bufnr)
   if client_buf_supports_method(ms.textDocument_codeAction) then
     vim.keymap.set(
       { "n", "x" },
-      "<leader>la",
+      "gra",
       function() fzf_lua.lsp_code_actions() end,
       opts_with_desc("See available code actions")
     )
@@ -96,11 +96,11 @@ M.attach = function(client, bufnr)
   end
 
   if client_buf_supports_method(ms.textDocument_rename) then
-    vim.keymap.set("n", "<leader>lr", vim.lsp.buf.rename, opts_with_desc("Smart rename"))
+    vim.keymap.set("n", "grn", vim.lsp.buf.rename, opts_with_desc("Smart rename"))
   end
 
   if client_buf_supports_method(ms.textDocument_signatureHelp) then
-    vim.keymap.set("n", "<leader>lh", vim.lsp.buf.signature_help, opts_with_desc("Signature help"))
+    vim.keymap.set("n", "<C-S>", vim.lsp.buf.signature_help, opts_with_desc("Signature help"))
   end
 
   vim.keymap.set(
