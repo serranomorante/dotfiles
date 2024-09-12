@@ -70,14 +70,14 @@ if command -v nvim &> /dev/null; then
 fi
 
 if command -v nvim &> /dev/null && command -v tmux &> /dev/null && [ -n "$TMUX" ]; then
-    NVIM_LISTEN_ADDRESS=$(tmux show-environment NVIM_LISTEN_ADDRESS | sed "s:^.*=::")
-    if [ -n "$NVIM_LISTEN_ADDRESS" ]; then
+    CUSTOM_NVIM_LISTEN_ADDRESS=$(tmux show-environment CUSTOM_NVIM_LISTEN_ADDRESS | sed "s:^.*=::")
+    if [ -n "$CUSTOM_NVIM_LISTEN_ADDRESS" ]; then
         if command -v nvr &> /dev/null; then
-            nvr --nostart -s --servername "$NVIM_LISTEN_ADDRESS"
+            nvr --nostart -s --servername "$CUSTOM_NVIM_LISTEN_ADDRESS"
             if [ $? -eq 0 ]; then
-                alias vim='nvim --remote-ui --server "$NVIM_LISTEN_ADDRESS"'
+                alias vim='nvim --remote-ui --server "$CUSTOM_NVIM_LISTEN_ADDRESS"'
             else
-                alias vim='nvim --listen "$NVIM_LISTEN_ADDRESS"'
+                alias vim='nvim --listen "$CUSTOM_NVIM_LISTEN_ADDRESS"'
             fi
         fi
     fi
