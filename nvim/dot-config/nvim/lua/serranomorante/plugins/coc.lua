@@ -56,7 +56,7 @@ local function on_coc_enabled(buf)
       vim.fn.CocActionAsync("hasProvider", "reference", function(_, result)
         if result == true then
           opts.desc = "COC: Show references"
-          vim.keymap.set("n", "gr", "<Plug>(coc-references)", opts)
+          vim.keymap.set("n", "grr", "<Plug>(coc-references)", opts)
         end
       end)
 
@@ -84,8 +84,8 @@ local function on_coc_enabled(buf)
       vim.fn.CocActionAsync("hasProvider", "codeAction", function(_, result)
         if result == true then
           opts.desc = "COC: See available code actions"
-          vim.keymap.set("n", "<leader>la", "<Plug>(coc-codeaction-cursor)", opts)
-          vim.keymap.set("x", "<leader>la", "<Plug>(coc-codeaction-selected)", opts)
+          vim.keymap.set("n", "gra", "<Plug>(coc-codeaction-cursor)", opts)
+          vim.keymap.set("x", "gra", "<Plug>(coc-codeaction-selected)", opts)
         end
       end)
 
@@ -108,7 +108,6 @@ local function on_coc_enabled(buf)
       vim.fn.CocActionAsync("hasProvider", "rename", function(_, result)
         if result == true then
           opts.desc = "COC: Smart rename"
-          vim.keymap.set("n", "<leader>lr", "<Plug>(coc-rename)", opts)
         end
       end)
 
@@ -122,7 +121,6 @@ local function on_coc_enabled(buf)
       vim.fn.CocActionAsync("hasProvider", "signature", function(_, result)
         if result == true then
           opts.desc = "COC: Signature help"
-          vim.keymap.set("n", "<leader>lh", function() vim.fn.CocActionAsync("showSignatureHelp") end, opts)
         end
       end)
 
