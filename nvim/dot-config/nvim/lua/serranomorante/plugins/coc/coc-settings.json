@@ -1,0 +1,41 @@
+{
+  "suggest.autoTrigger": "trigger",
+  "inlayHint.display": false,
+  "[javascript]": {
+    "inlayHint.display": true
+  },
+  "suggest.noselect": true,
+  "codeLens.enable": true,
+  "codeLens.position": "eol",
+  "diagnostic.enableHighlightLineNumber": false,
+  "diagnostic.enableSign": false,
+  "diagnostic.virtualText": true,
+  "diagnostic.displayByAle": true,
+  "diagnostic.virtualTextCurrentLineOnly": false,
+  "diagnostic.messageTarget": "float",
+  "coc.preferences.useQuickfixForLocations": true,
+  "hover.floatConfig": { "border": true, "focusable": true },
+  "diagnostic.floatConfig": { "border": true, "focusable": true },
+  "diagnostic.enableMessage": "jump",
+  "coc.preferences.promptInput": false,
+  "typescript.implementationsCodeLens.enabled": true,
+  "typescript.suggest.completeFunctionCalls": false,
+  "typescript.referencesCodeLens.enabled": true,
+  "javascript.implementationsCodeLens.enabled": true,
+  "javascript.suggest.completeFunctionCalls": false,
+  "javascript.referencesCodeLens.enabled": true,
+  "typescript.inlayHints.parameterNames.enabled": "all",
+  "typescript.inlayHints.variableTypes.enabled": true,
+  "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
+  "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
+  "typescript.inlayHints.enumMemberValues.enabled": true,
+  "javascript.inlayHints.parameterNames.enabled": "all",
+  "javascript.inlayHints.parameterTypes.enabled": true,
+  "javascript.inlayHints.variableTypes.enabled": true,
+  "javascript.inlayHints.propertyDeclarationTypes.enabled": true,
+  "javascript.inlayHints.functionLikeReturnTypes.enabled": true,
+  "javascript.inlayHints.enumMemberValues.enabled": true,
+  // Download the compiled jar from this url and add it to the following dir
+  // https://plantuml.com/download
+  "markdown-preview-enhanced.plantumlJarPath": "${userHome}/plantuml/plantuml.jar"
+}
