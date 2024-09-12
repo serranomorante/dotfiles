@@ -16,12 +16,12 @@ git:
     pager: delta --paging=never --line-numbers --hyperlinks --hyperlinks-file-link-format="lazygit-edit://{path}:{line}"
 # based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
 os:
-  edit: 'nvr --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
-  editAtLine: 'nvr --nostart --remote {{filename}} -cc "1tabnext" -c "{{line}}" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
-  editAtLineAndWait: 'nvr --nostart --remote-wait {{filename}} -cc "1tabnext" -c "{{line}}" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+  edit: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+  editAtLine: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote {{filename}} -cc "1tabnext" -c "{{line}}" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+  editAtLineAndWait: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote-wait {{filename}} -cc "1tabnext" -c "{{line}}" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
   editInTerminal: false
-  open: 'nvr --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
-  openDirInEditor: 'nvr --nostart {{dir}} | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+  open: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+  openDirInEditor: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart {{dir}} | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
 promptToReturnFromSubprocess: false
 notARepository: 'quit'
 customCommands:
@@ -53,7 +53,7 @@ customCommands:
   # From files, open mergetool (DiffviewOpen)
   - key: "M"
     description: 'Custom: Open mergetool'
-    command: 'nvr --nostart --remote {{ .SelectedFile.Name }} -c "DiffviewOpen" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+    command: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote {{ .SelectedFile.Name }} -c "DiffviewOpen" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
     context: "files"
     loadingText: "loading DiffviewOpen"
     subprocess: true
@@ -65,7 +65,7 @@ customCommands:
   # From files, open difftool (DiffviewOpen)
   - key: "<c-t>"
     description: 'Custom: Open difftool'
-    command: 'nvr --nostart --remote {{ .SelectedFile.Name }} -c "DiffviewOpen" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+    command: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote {{ .SelectedFile.Name }} -c "DiffviewOpen" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
     context: "files"
     loadingText: "loading DiffviewOpen"
     subprocess: true
@@ -79,7 +79,7 @@ customCommands:
   # From commits, open as a PR review
   - key: 'D'
     description: 'Custom: Diff commit against parent commit'
-    command: 'nvr --nostart -c "DiffviewOpen {{.SelectedCommit.Sha}}^!" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+    command: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart -c "DiffviewOpen {{.SelectedCommit.Sha}}^!" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
     context: "commits,subCommits"
   # From remotes, fetch a remote branch as a new local branch
   - key: '<c-f>'
@@ -97,5 +97,5 @@ customCommands:
   # From commitFiles, compare (difftool) with local copy
   - key: 'f'
     description: 'Custom: Compare (difftool) with local copy'
-    command: 'nvr --nostart --remote {{.SelectedCommitFile.Name}} -c "DiffviewOpen {{.SelectedCommit.Sha}} -- %" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+    command: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote {{.SelectedCommitFile.Name}} -c "DiffviewOpen {{.SelectedCommit.Sha}} -- %" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
     context: 'commitFiles'

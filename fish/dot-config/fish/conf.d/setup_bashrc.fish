@@ -52,20 +52,20 @@ command -q nvim; and abbr --add vim nvim
 
 # Check for the existence of `nvim`, `tmux`, and whether we are inside a tmux session
 if command -q nvim; and command -q tmux; and set -q TMUX
-    # Check if NVIM_LISTEN_ADDRESS exists in tmux environment, ignoring errors
-    if set -l nvim_address_check (tmux show-environment NVIM_LISTEN_ADDRESS 2>/dev/null; or echo "")
-        set -gx NVIM_LISTEN_ADDRESS (string split "=" -- $nvim_address_check)[2]
+    # Check if CUSTOM_NVIM_LISTEN_ADDRESS exists in tmux environment, ignoring errors
+    if set -l nvim_address_check (tmux show-environment CUSTOM_NVIM_LISTEN_ADDRESS 2>/dev/null; or echo "")
+        set -gx CUSTOM_NVIM_LISTEN_ADDRESS (string split "=" -- $nvim_address_check)[2]
 
-        if string length --quiet "$NVIM_LISTEN_ADDRESS"
-            command -q nvr; and nvr --nostart -s --servername $NVIM_LISTEN_ADDRESS
+        if string length --quiet "$CUSTOM_NVIM_LISTEN_ADDRESS"
+            command -q nvr; and nvr --nostart -s --servername $CUSTOM_NVIM_LISTEN_ADDRESS
 
             # Check if there's an existing nvim server
             if test $status -eq 0
                 # Connect to existing nvim server if exists
-                abbr --add vim nvim --remote-ui --server "$NVIM_LISTEN_ADDRESS"
+                abbr --add vim nvim --remote-ui --server "$CUSTOM_NVIM_LISTEN_ADDRESS"
             else
                 # Create a new nvim server
-                abbr --add vim nvim --listen "$NVIM_LISTEN_ADDRESS"
+                abbr --add vim nvim --listen "$CUSTOM_NVIM_LISTEN_ADDRESS"
             end
         end
     end
