@@ -14,6 +14,7 @@ local groups = {
   ---Builtin
   DiffChange = { bg = bg .. "Grey3" },
   QuickFixLine = { ctermfg = "NONE", fg = "NONE", bold = true, bg = bg .. "Blue" },
+  LspInlayHint = { link = "CursorColumn" },
   ---LSP
   LspCodeLens = { link = "Comment" },
   ---DAP
