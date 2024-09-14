@@ -2,12 +2,16 @@ gui:
   scrollHeight: 8
   nerdFontsVersion: "3"
   expandFocusedSidePanel: true
+  expandedSidePanelWeight: 5
+  skipRewordInEditorWarning: true
+  filterMode: "fuzzy"
 # based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md#default
 keybinding:
   universal:
     quit: <disabled>
 # based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Custom_Pagers.md#delta
 git:
+  branchLogCmd: "git log --graph --color=always --abbrev-commit --decorate --date=relative --pretty=medium --oneline {{branchName}} --"
   autoStageResolvedConflicts: false
   paging:
     colorArg: always
