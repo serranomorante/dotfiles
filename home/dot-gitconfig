@@ -15,3 +15,36 @@
     editor = "tmux select-window -t {start}" \
         && "tmux if-shell -F '#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}' 'resize-pane -Z' ''" \
         && "tmux select-pane -t {top-left} && nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote-tab-wait-silent"
+    pager = delta
+
+[interactive]
+    diffFilter = delta
+
+[merge]
+    conflictstyle = diff3
+
+[diff]
+    colorMoved = default
+
+[delta]
+    features = settings interactive decorations
+
+[delta "settings"]
+    true-color = always
+    dark = true
+    paging = never
+    line-numbers = true
+    hyperlinks = true
+    hyperlinks-file-link-format = "lazygit-edit://{path}:{line}"
+
+[delta "interactive"]
+    keep-plus-minus-markers = false
+
+[delta "decorations"]
+    commit-decoration-style = blue
+    commit-style = raw
+    file-style = omit
+    hunk-header-decoration-style = Black box
+    hunk-header-file-style = Gray bold ul
+    hunk-header-style = file line-number syntax
+
