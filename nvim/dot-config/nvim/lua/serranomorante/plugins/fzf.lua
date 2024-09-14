@@ -120,7 +120,7 @@ local opts = function()
             ---Lists all breakpoints and log points in quickfix window.
             ---https://github.com/ibhagwan/fzf-lua/wiki/Advanced#keybind-handlers
             require("dap").list_breakpoints()
-            vim.cmd(opts.copen or "botright copen")
+            require("quicker").toggle({ open_cmd_mods = { split = "botright" } })
           end,
         },
       },
