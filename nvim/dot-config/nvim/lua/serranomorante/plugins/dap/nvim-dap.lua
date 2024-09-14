@@ -1,7 +1,7 @@
 local constants = require("serranomorante.constants")
-local utils = require("serranomorante.utils")
 local events = require("serranomorante.events")
 local dap_utils = require("serranomorante.plugins.dap.dap-utils")
+local binaries = require("serranomorante.binaries")
 
 local M = {}
 
@@ -136,33 +136,25 @@ M.config = function()
   ---║               Adapters               ║
   ---╚══════════════════════════════════════╝
 
-  ---This env variable comes from my personal .bashrc file
-  local system_node_version = vim.env.SYSTEM_DEFAULT_NODE_VERSION or "latest"
-  ---Bypass volta's context detection to prevent running the debugger with unsupported node versions
-  local node_path = utils.cmd({ "volta", "run", "--node", system_node_version, "which", "node" }):gsub("\n", "")
-  if node_path then vim.g.node_system_executable = node_path end
-
-  if vim.g.node_system_executable then
-    for _, type in ipairs({
-      "node",
-      "chrome",
-      "pwa-node",
-      "pwa-chrome",
-      "pwa-msedge",
-      "node-terminal",
-      "pwa-extensionHost",
-    }) do
-      local host = "localhost"
-      dap.adapters[type] = {
-        type = "server",
-        host = host,
-        port = "${port}",
-        executable = {
-          command = vim.g.node_system_executable,
-          args = { "/usr/bin/dapDebugServer.js", "${port}", host },
-        },
-      }
-    end
+  for _, type in ipairs({
+    "node",
+    "chrome",
+    "pwa-node",
+    "pwa-chrome",
+    "pwa-msedge",
+    "node-terminal",
+    "pwa-extensionHost",
+  }) do
+    local host = "localhost"
+    dap.adapters[type] = {
+      type = "server",
+      host = host,
+      port = "${port}",
+      executable = {
+        command = binaries.system_default_node(),
+        args = { "/usr/bin/dapDebugServer.js", "${port}", host },
+      },
+    }
   end
 
   local dap_executable = vim.env.HOME .. "/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7"

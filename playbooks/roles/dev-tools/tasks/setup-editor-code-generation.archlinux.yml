@@ -11,6 +11,10 @@
     - tailwindcss-language-server
     - clangd
 
+- name: "Editor code generation: register volta default node version"
+  ansible.builtin.shell:  volta run --node "$(volta list node | grep "default" | cut -d "@" -f 2 | cut -d " " -f 1)" which node
+  register: system_default_node
+
 - name: "Editor code generation: ensure binaries code-generation"
   ansible.builtin.blockinfile:
     dest: "{{ home_path }}/.config/nvim/lua/{{ username }}/binaries.lua"
@@ -21,4 +25,5 @@
         {% for pkg_path in binaries.results -%}
           {{ pkg_path.executable|replace("-", "_") }} = function() return "{{ pkg_path.stdout }}" end,
         {% endfor %}
+        system_default_node = function() return "{{ system_default_node.stdout }}" end,
       }

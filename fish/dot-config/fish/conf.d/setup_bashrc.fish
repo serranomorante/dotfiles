@@ -45,8 +45,6 @@ set -gx RIPGREP_CONFIG_PATH "$HOME/.ripgreprc"
 # 5. trace messages (T)
 set -gx WIREPLUMBER_DEBUG 3
 
-command -q volta; and set -gx SYSTEM_DEFAULT_NODE_VERSION $(volta list node | grep "default" | cut -d "@" -f 2 | cut -d " " -f 1)
-
 # Add abbreviation for vim
 command -q nvim; and abbr --add vim nvim
 

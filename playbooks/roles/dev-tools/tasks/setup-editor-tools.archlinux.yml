@@ -11,7 +11,7 @@
   loop:
     - { folder: start, repo: stevearc/oil.nvim }
     - { folder: start, repo: ibhagwan/fzf-lua }
-    - { folder: start, repo: kevinhwang91/promise-async }
+    - { folder: start, repo: kevinhwang91/promise-async } # use `typings/?.lua` on .luarc.json
     - { folder: start, repo: nvim-tree/nvim-web-devicons }
     - { folder: start, repo: neoclide/coc.nvim, version: release }
     - { folder: start, repo: kevinhwang91/nvim-treesitter }
@@ -24,7 +24,7 @@
     - { folder: start, repo: sindrets/diffview.nvim }
     - { folder: start, repo: lewis6991/gitsigns.nvim }
     - { folder: start, repo: cbochs/grapple.nvim }
-    - { folder: start, repo: kevinhwang91/nvim-ufo }
+    - { folder: start, repo: kevinhwang91/nvim-ufo, name: ufo }
     - { folder: start, repo: tpope/vim-sleuth }
     - { folder: start, repo: mfussenegger/nvim-dap, name: dap }
     - { folder: start, repo: mfussenegger/nvim-dap-python }
