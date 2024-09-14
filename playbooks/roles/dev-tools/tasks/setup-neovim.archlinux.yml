@@ -20,6 +20,13 @@
     basedir: "{{ home_path }}/repos/neovim"
     state: present
 
+- name: "Neovim: apply msg limit patch to neovim"
+  ansible.posix.patch:
+    src: "{{ home_path }}/dotfiles/nvim/patches/msg_limit.patch"
+    dest: "{{ home_path }}/repos/neovim/src/nvim/vim_defs.h"
+    basedir: "{{ home_path }}/repos/neovim"
+    state: present
+
 - name: "Neovim: ensure neovim - build"
   ansible.builtin.command: make
   become: true
