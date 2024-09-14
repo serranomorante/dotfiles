@@ -1,17 +1,17 @@
 [user]
-	email = serranomorantepatricio@gmail.com
-	name = Patricio Serrano
+    email = serranomorantepatricio@gmail.com
+    name = Patricio Serrano
 
 [init]
-	defaultBranch = main
+    defaultBranch = main
 
 [rerere]
-	enabled = true
+    enabled = true
 
 [commit]
     verbose = true
 
 [core]
-	editor = "tmux select-window -t {start}" \
-		&& "tmux if-shell -F '#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}' 'resize-pane -Z' ''" \
-		&& "tmux select-pane -t {top-left} && nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote-tab-wait-silent"
+    editor = "tmux select-window -t {start}" \
+        && "tmux if-shell -F '#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}' 'resize-pane -Z' ''" \
+        && "tmux select-pane -t {top-left} && nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote-tab-wait-silent"
