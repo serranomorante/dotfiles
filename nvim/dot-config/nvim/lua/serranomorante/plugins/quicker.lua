@@ -6,6 +6,9 @@ local opts = function()
     opts = {
       number = true,
     },
+    highlight = {
+      load_buffers = false, -- fixes issues with attaching coc keymaps
+    },
     on_qf = function(bufnr)
       vim.keymap.set(
         "n",
