@@ -83,10 +83,6 @@ if command -v nvim &> /dev/null && command -v tmux &> /dev/null && [ -n "$TMUX" 
     fi
 fi
 
-if [ -x "$(command -v volta)" ]; then
-    export SYSTEM_DEFAULT_NODE_VERSION=$(volta list node | grep "default" | cut -d "@" -f 2 | cut -d " " -f 1)
-fi
-
 # https://github.com/mfussenegger/nvim-dap/blob/e64ebf3309154b578a03c76229ebf51c37898118/doc/dap.txt#L960
 # Available log levels:
 # TRACE

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/sumneko/vscode-lua/master/setting/schema.json",
+  "format.enable": true,
+  "codeLens.enable": true,
+  "hint.enable": true,
+  "runtime.version": "LuaJIT",
+  "runtime.pathStrict": true,
+  "runtime.path": ["lua/?.lua", "lua/?/init.lua", "typings/?.lua"],
+  "telemetry.enable": false,
+  "workspace.checkThirdParty": false,
+  "workspace.library": [
+    "$VIMRUNTIME/lua",
+    "${3rd}/busted/library",
+    "${3rd}/luv/library",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/overseer/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/dap/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/quicker/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/promise-async/typings",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/ufo/lua"
+  ]
+}

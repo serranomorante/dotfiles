@@ -1,18 +1,12 @@
-local utils = require("serranomorante.utils")
 local binaries = require("serranomorante.binaries")
 
 return {
   ---@param bufnr integer
   ---@return vim.lsp.ClientConfig
   config = function(bufnr)
-    ---This env variable comes from my personal .bashrc file
-    local system_node_version = vim.env.SYSTEM_DEFAULT_NODE_VERSION or "latest"
-    ---Bypass volta's context detection to prevent running the debugger with unsupported node versions
-    local node_path = utils.cmd({ "volta", "run", "--node", system_node_version, "which", "node" }):gsub("\n", "")
-
     return {
       name = "vtsls",
-      cmd = { node_path, binaries.vtsls(), "--stdio" },
+      cmd = { binaries.system_default_node(), binaries.vtsls(), "--stdio" },
       settings = {
         ---https://github.com/yioneko/vtsls/blob/main/packages/service/configuration.schema.json
         typescript = {
