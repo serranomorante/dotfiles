@@ -20,6 +20,7 @@ return {
         table.insert(nvim_library, "${3rd}/luv/library")
         table.insert(nvim_library, vim.fn.stdpath("data") .. "/site/pack/plugins/start/overseer/lua")
         table.insert(nvim_library, vim.fn.stdpath("data") .. "/site/pack/plugins/start/dap/lua")
+        table.insert(nvim_library, vim.fn.stdpath("data") .. "/site/pack/plugins/start/quicker/lua")
       end,
       on_init = function(client)
         ---Disable semanticTokensProvider

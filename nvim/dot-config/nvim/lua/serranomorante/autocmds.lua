@@ -6,11 +6,11 @@ local general_settings_group = augroup("general_settings", { clear = true })
 local indent_line_group = augroup("indent_line", { clear = true })
 
 autocmd("BufWinEnter", {
-  desc = "Make q close help, man, quickfix, dap floats",
+  desc = "Make q close help, man, dap floats",
   group = augroup("q_close_windows", { clear = true }),
   callback = function(event)
     local buftype = vim.api.nvim_get_option_value("buftype", { buf = event.buf })
-    local match = vim.tbl_contains({ "help", "nofile", "quickfix" }, buftype)
+    local match = vim.tbl_contains({ "help", "nofile" }, buftype)
     if match and vim.fn.maparg("q", "n") == "" then
       vim.keymap.set("n", "q", "<cmd>close<cr>", {
         desc = "Close window",
