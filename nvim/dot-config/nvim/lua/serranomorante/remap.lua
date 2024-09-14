@@ -111,3 +111,8 @@ vim.keymap.set("n", "<leader>yy", function()
   local filename_with_cursor_pos = utils.filename_with_cursor_pos()
   vim.fn.setreg("+", filename_with_cursor_pos)
 end, { desc = "Copy <filename>:<line>:<col>" })
+
+vim.keymap.set("n", "<C-S-e>", "zl", { desc = "Scroll right horizontally" })
+vim.keymap.set("n", "<C-S-y>", "zh", { desc = "Scroll left horizontally" })
+vim.keymap.set("n", "<C-S-d>", "50zl", { desc = "Scroll right horizontally +50" })
+vim.keymap.set("n", "<C-S-u>", "50zh", { desc = "Scroll left horizontally +50" })
