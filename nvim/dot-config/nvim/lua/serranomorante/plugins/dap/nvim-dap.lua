@@ -1,3 +1,4 @@
+local utils = require("serranomorante.utils")
 local constants = require("serranomorante.constants")
 local events = require("serranomorante.events")
 local dap_utils = require("serranomorante.plugins.dap.dap-utils")
@@ -130,6 +131,10 @@ M.config = function()
   local dap_events = { "initialized", "breakpoint", "continued", "exited", "terminated", "thread", "stopped" }
   for event_index, event in ipairs(dap_events) do
     dap.listeners.after["event_" .. event]["statusline" .. event_index] = function() vim.cmd.redrawstatus() end
+  end
+
+  dap.listeners.after.event_stopped["system_notification"] = function()
+    utils.cmd({ "notify-send", "Breakpoint stopped", "--icon=dialog-information" })
   end
 
   ---╔══════════════════════════════════════╗

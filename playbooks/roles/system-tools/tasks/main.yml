@@ -21,6 +21,7 @@
   loop:
     - automation
     - grep
+    - notification
 
 - name: Ensure compositor is installed
   ansible.builtin.include_tasks: setup-compositor.{{ user_os }}.yml
