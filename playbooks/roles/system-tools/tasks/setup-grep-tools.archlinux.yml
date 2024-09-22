@@ -5,3 +5,10 @@
     name:
       - ripgrep
       - fd
+
+- name: "{{ item }} utilities: ensure .fzf_history"
+  ansible.builtin.blockinfile:
+    dest: "{{ home_path }}/dotfiles/home/dot-fzfrc"
+    create: true
+    block: |
+      --history={{ home_path }}/.fzf_history
