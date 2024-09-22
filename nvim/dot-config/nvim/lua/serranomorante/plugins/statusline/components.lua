@@ -262,6 +262,7 @@ M.Indent = {
 M.GrappleStatusline = {
   condition = function() return package.loaded["grapple"] and require("grapple").exists() end,
   provider = function() return "󰛢 " .. require("grapple").name_or_index() end,
+  hl = { fg = "green", bold = true },
 }
 
 M.TrailblazerCurrentStackName = {
