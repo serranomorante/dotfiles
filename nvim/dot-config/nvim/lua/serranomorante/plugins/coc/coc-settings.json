@@ -2,7 +2,7 @@
   "suggest.autoTrigger": "trigger",
   "inlayHint.display": false,
   "[javascript]": {
-    "inlayHint.display": true
+    "inlayHint.display": false
   },
   "suggest.noselect": true,
   "codeLens.enable": true,
