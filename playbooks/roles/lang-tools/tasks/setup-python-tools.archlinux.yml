@@ -1,7 +1,7 @@
 ---
 # LSP
 - name: "{{ item }} language: ensure LSP - pylsp virtualenv"
-  pip:
+  ansible.builtin.pip:
     name:
       - pip
       - python-lsp-server
@@ -20,7 +20,7 @@
 
 # DAP
 - name: "{{ item }} language: ensure DAP - debugpy virtualenv"
-  pip:
+  ansible.builtin.pip:
     name:
       - pip
       - debugpy

@@ -10,8 +10,6 @@ command -q eza; and abbr --add ls eza -1 -a -h --git --sort modified -l --icons 
 abbr --add grep grep --color=auto
 abbr --add cls printf "\033c"
 
-set -gx VOLTA_HOME "$HOME/.volta"
-set -gx PATH "$VOLTA_HOME/bin:$PATH"
 set -gx PATH "$HOME/bin:$PATH"
 set -gx FONTCONFIG_PATH /etc/fonts
 set -gx COLORTERM truecolor
@@ -85,3 +83,11 @@ if test -z "$DAP_OVERRIDED_DISPLAY" -a -n "$DISPLAY"
 end
 
 command -q fish; and set -gx AVAILABLE_SHELL "$(command -v fish)"; or set -gx AVAILABLE_SHELL "$(command -v bash)"
+## BEGIN ANSIBLE MANAGED BLOCK - SETUP NODE
+set -gx VOLTA_HOME "$HOME/.volta"
+set -gx PATH "$VOLTA_HOME/bin:$PATH"
+## END ANSIBLE MANAGED BLOCK - SETUP NODE
+## BEGIN ANSIBLE MANAGED BLOCK - SETUP PYTHON
+set -gx PYENV_ROOT "$HOME/.pyenv"
+set -gx PATH "/usr/bin/pyenv:$PATH"
+## END ANSIBLE MANAGED BLOCK - SETUP PYTHON
