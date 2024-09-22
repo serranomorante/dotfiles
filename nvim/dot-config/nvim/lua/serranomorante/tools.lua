@@ -10,7 +10,7 @@ M.by_filetype = {
     dap = {
       "js-debug-adapter", -- or { "js-debug-adapter", version = "v1.82.0" },
     },
-    parsers = { "javascript", "typescript", "tsx" },
+    parsers = { "javascript", "typescript", "tsx", "jsdoc" },
     extensions = { "coc-tsserver", "@yaegassy/coc-tailwindcss3" },
   },
   lua = { formatters = { "stylua" }, lsp = { "lua-language-server" }, parsers = { "lua", "luap", "luadoc" } },
@@ -24,6 +24,7 @@ M.by_filetype = {
   python = {
     lsp = { "python-lsp-server" },
     dap = { "debugpy" },
+    parsers = { "requirements" },
   },
   bash = {
     formatters = { "beautysh" },
@@ -46,7 +47,10 @@ M.by_filetype = {
   html = { parsers = { "html" } },
   xml = { parsers = { "xml" } },
   css = { parsers = { "css" } },
-  all = { parsers = { "regex" }, extensions = { "coc-webview" } },
+  all = {
+    parsers = { "regex", "git_config", "git_rebase", "gitattributes", "gitignore", "rst", "ssh_config", "sxhkdrc" },
+    extensions = { "coc-webview" },
+  },
 }
 
 ---Make sure all possible filetypes that a tool can handle are considered here
@@ -59,17 +63,5 @@ M.by_filetype.jsonc = vim.deepcopy(M.by_filetype.json)
 
 if vim.fn.executable("npm") == 0 then M.by_filetype.javascript = {} end
 if vim.fn.executable("pip") == 0 then M.by_filetype.python = {} end
-
-M.package_name_to_lspconfig = {
-  ["lua-language-server"] = "lua_ls",
-  ["bash-language-server"] = "bashls",
-  ["ruff-lsp"] = "ruff_lsp",
-  ["typescript-language-server"] = "ts_ls",
-  ["rust-analyzer"] = "rust_analyzer",
-  ["tailwindcss-language-server"] = "tailwindcss",
-  ["vim-language-server"] = "vimls",
-  ["fish-lsp"] = "fish_lsp",
-  ["python-lsp-server"] = "pylsp",
-}
 
 return M
