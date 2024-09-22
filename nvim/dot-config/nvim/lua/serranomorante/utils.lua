@@ -261,7 +261,6 @@ end
 function M.buf_prevent_coc_attach(bufnr)
   local prevent_coc_attach = false
   if vim.wo.diff then prevent_coc_attach = true end
-  if vim.api.nvim_win_get_config(0).relative ~= "" then prevent_coc_attach = true end
   if not M.buf_has_coc_extension_available(bufnr) then prevent_coc_attach = true end
   return prevent_coc_attach
 end
