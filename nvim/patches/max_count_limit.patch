@@ -1,0 +1,13 @@
+diff --git a/src/nvim/search.h b/src/nvim/search.h
+index 1b6c1a637..749df46a2 100644
+--- a/src/nvim/search.h
++++ b/src/nvim/search.h
+@@ -62,7 +62,7 @@ enum {
+ 
+ // Values for searchcount()
+ enum { SEARCH_STAT_DEF_TIMEOUT = 40, };
+-enum { SEARCH_STAT_DEF_MAX_COUNT = 99, };
++enum { SEARCH_STAT_DEF_MAX_COUNT = 5000, };
+ enum { SEARCH_STAT_BUF_LEN = 12, };
+ 
+ enum {
