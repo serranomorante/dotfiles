@@ -1,9 +1,14 @@
 local M = {}
 
+local keys = function()
+  vim.keymap.set("n", "[c", function() require("treesitter-context").go_to_context(vim.v.count1) end, { silent = true })
+end
+
 local opts = function()
   return {
-    max_lines = 1,
+    max_lines = 2,
     trim_scope = "inner", -- outer
+    separator = "—",
     on_attach = function(bufnr)
       if vim.b[bufnr].large_buf then return false end
       return nil
@@ -12,6 +17,7 @@ local opts = function()
 end
 
 M.config = function()
+  keys()
   require("treesitter-context").setup(opts())
 
   ---https://github.com/nvim-treesitter/nvim-treesitter-textobjects?tab=readme-ov-file#text-objects-move
