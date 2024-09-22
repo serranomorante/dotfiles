@@ -49,3 +49,9 @@
   poll: 0
   loop:
     - serranomorante/aerial.nvim
+
+- name: "Editor tools: ensure universal ctags"
+  aur:
+    use: yay
+    state: present
+    name: ctags-git

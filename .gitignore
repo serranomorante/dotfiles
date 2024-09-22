@@ -9,3 +9,6 @@ systemd/dot-config/systemd/user/*kwin_x11.service
 peripherals/dot-config/weylus/out
 nvim/dot-config/nvim/pack/plugins
 nvim/dot-config/nvim/lua/serranomorante/binaries.lua
+
+# Ignore ctags
+tags
