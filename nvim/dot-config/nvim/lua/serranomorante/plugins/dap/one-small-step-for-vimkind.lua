@@ -1,12 +1,14 @@
 local M = {}
 
 local keys = function()
-  vim.keymap.set(
-    "n",
-    "<leader>cc",
-    [[:lua require"osv".launch({port = 8086})<CR>]],
-    { desc = "DAP: Launch one small step for vimkind" }
-  )
+  vim.keymap.set("n", "<leader>cc", function()
+    ---osv uses `nvim --headless --embed` so we cannot start neovim with `--listen`
+    ---https://github.com/jbyuki/one-small-step-for-vimkind/issues/14#issuecomment-1105938997
+    if vim.env.CUSTOM_NVIM_LISTEN_ADDRESS == vim.v.servername then
+      return vim.notify("Please start nvim without any arguments", vim.log.levels.ERROR)
+    end
+    require(".osv").launch({ port = 8086 })
+  end, { desc = "DAP: Launch one small step for vimkind" })
 end
 
 M.config = function()

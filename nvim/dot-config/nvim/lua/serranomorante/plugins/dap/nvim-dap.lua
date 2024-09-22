@@ -340,7 +340,8 @@ M.config = function()
     ["cppdbg"] = constants.c_aliases,
   }
 
-  events.event("DAP" .. vim.api.nvim_get_option_value("filetype", { buf = 0 }))
+  vim.cmd.packadd("osv")
+  require("serranomorante.plugins.dap.one-small-step-for-vimkind").config()
 end
 
 return M
