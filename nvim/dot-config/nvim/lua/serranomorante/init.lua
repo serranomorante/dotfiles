@@ -28,6 +28,7 @@ local plugins = {
   "quicker",
   "dap.nvim-dap",
   "dap.nvim-dap-python",
+  "dap.nvim-dap-virtual-text",
   "dap.one-small-step-for-vimkind",
   "smartyank",
 }
