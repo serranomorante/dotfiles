@@ -36,7 +36,6 @@ local opts = function()
 
     components.DAPMessages,
     components.Space,
-    components.TrailblazerCurrentStackName,
     components.GrappleStatusline,
     components.Space,
     components.LspProgress,

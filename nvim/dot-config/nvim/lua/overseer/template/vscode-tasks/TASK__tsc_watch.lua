@@ -1,6 +1,6 @@
 local utils = require("serranomorante.utils")
 local constants = require("serranomorante.constants")
-if not utils.is_available("overseer.nvim") then return {} end
+if not utils.is_available("overseer") then return {} end
 local overseer = require("overseer")
 local typescript_provider = require("overseer.template.vscode.provider.typescript")
 

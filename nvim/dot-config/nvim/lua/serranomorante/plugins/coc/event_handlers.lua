@@ -75,7 +75,7 @@ function M.attach(buf)
 
     coc_utils.coc_ext_supports_method("documentSymbol"):thenCall(function()
       vim.keymap.set("n", "<leader>ls", function()
-        if utils.is_available("aerial.nvim") then require("aerial").toggle() end
+        if utils.is_available("aerial") then require("aerial").toggle() end
       end, opts_with_desc("Document symbols"))
     end, function() notify_keymap_error("Document symbols") end)
 
