@@ -10,6 +10,7 @@ vim.o.termguicolors = true
 local bg = vim.o.background == "dark" and "NvimDark" or "NvimLight"
 local fg = bg == "NvimDark" and "NvimLight" or "NvimDark"
 
+---@type table<string, vim.api.keyset.highlight>
 local groups = {
   ---Builtin
   DiffChange = { bg = bg .. "Grey3" },
