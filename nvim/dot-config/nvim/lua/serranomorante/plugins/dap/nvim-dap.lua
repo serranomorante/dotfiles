@@ -50,8 +50,14 @@ local keys = function()
   vim.keymap.set("n", "<leader>di", function() require("dap").step_into() end, { desc = "DAP: Step Into" })
   vim.keymap.set("n", "<leader>do", function() require("dap").step_over() end, { desc = "DAP: Step Over" })
   vim.keymap.set("n", "<leader>dO", function() require("dap").step_out() end, { desc = "DAP: Step Out" })
-  vim.keymap.set("n", "<leader>dq", function() require("dap").close() end, { desc = "DAP: Close Session" })
-  vim.keymap.set("n", "<leader>dQ", function() require("dap").terminate() end, { desc = "DAP: Terminate Session" })
+  vim.keymap.set("n", "<leader>dq", function()
+    require("dap").close()
+    vim.defer_fn(function() vim.cmd.redrawstatus() end, 100)
+  end, { desc = "DAP: Close Session" })
+  vim.keymap.set("n", "<leader>dQ", function()
+    require("dap").terminate()
+    vim.defer_fn(function() vim.cmd.redrawstatus() end, 100)
+  end, { desc = "DAP: Terminate Session" })
   vim.keymap.set(
     "n",
     "<leader>dD",
@@ -233,7 +239,6 @@ M.config = function()
         end,
         skipFiles = {
           "**/node_modules/**",
-          "!**/node_modules/my-module/**",
         },
         trace = log_is_trace,
       },

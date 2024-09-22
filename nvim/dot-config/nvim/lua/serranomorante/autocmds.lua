@@ -101,7 +101,28 @@ autocmd("FileType", {
   desc = "Enable vim syntax option only for specific filetypes",
   group = general_settings_group,
   pattern = { "qf", "undotree", "OverseerList", "aerial", "git", "grapple", "oil" },
-  callback = function(args) vim.cmd.set("syntax=" .. args.match) end,
+  callback = function(args) vim.api.nvim_set_option_value("syntax", args.match, { buf = args.buf }) end,
+})
+
+autocmd("CmdwinEnter", {
+  desc = "Set mappings and options local to command-line window",
+  group = general_settings_group,
+  callback = function(args)
+    vim.api.nvim_set_option_value("syntax", "vim", { buf = args.buf })
+    if vim.b[args.buf].saved_complete == nil then
+      vim.b[args.buf].saved_complete = vim.api.nvim_get_option_value("complete", { buf = args.buf })
+    end
+    vim.api.nvim_set_option_value("complete", ".,t", { buf = args.buf })
+  end,
+})
+
+autocmd("CmdwinLeave", {
+  desc = "Set mappings and options local to command-line window",
+  group = general_settings_group,
+  callback = function(args)
+    if vim.b[args.buf].saved_complete == nil then return end
+    vim.api.nvim_set_option_value("complete", vim.b[args.buf].saved_complete, { buf = args.buf })
+  end,
 })
 
 autocmd("FileType", {
@@ -115,6 +136,9 @@ autocmd({ "FocusGained", "BufEnter" }, {
   group = general_settings_group,
   callback = function()
     local forbidden_modes = { "c" }
+    ---Fix autocmds.lua:142: Vim:E11: Invalid in command-line window; <CR> executes, CTRL-C quits
+    ---TODO check if instead of skipping `checktime` there's a way to skipped it from the cmd window only
+    if vim.fn.getcmdwintype() ~= "" then return end
     if vim.list_contains(forbidden_modes, vim.fn.mode()) then return end
     vim.cmd.checktime()
   end,

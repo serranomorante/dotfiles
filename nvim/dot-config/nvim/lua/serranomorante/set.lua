@@ -36,6 +36,7 @@ vim.opt.signcolumn = "yes:1"
 vim.opt.isfname:append("@-@")
 vim.opt.cursorline = true
 vim.opt.cursorlineopt = "number"
+vim.opt.wrapscan = false
 
 vim.opt.foldcolumn = "1"
 vim.opt.foldlevel = 99 -- set high foldlevel for nvim-ufo
