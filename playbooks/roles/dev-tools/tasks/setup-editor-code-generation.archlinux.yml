@@ -10,6 +10,7 @@
     - pylsp
     - tailwindcss-language-server
     - clangd
+    - fish-lsp
 
 - name: "Editor code generation: register volta default node version"
   ansible.builtin.shell:  volta run --node "{{ node_system_default_version }}" which node
