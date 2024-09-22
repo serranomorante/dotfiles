@@ -28,6 +28,7 @@
     - { folder: start, repo: tpope/vim-sleuth }
     - { folder: start, repo: mfussenegger/nvim-dap, name: dap }
     - { folder: start, repo: mfussenegger/nvim-dap-python }
+    - { folder: start, repo: theHamsta/nvim-dap-virtual-text }
     - { folder: start, repo: jbyuki/one-small-step-for-vimkind }
     - { folder: start, repo: rebelot/heirline.nvim }
     - { folder: start, repo: mbbill/undotree }
