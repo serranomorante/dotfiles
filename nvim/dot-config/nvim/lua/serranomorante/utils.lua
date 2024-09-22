@@ -3,15 +3,10 @@ local constants = require("serranomorante.constants")
 
 local M = {}
 
----Check if a plugin spec exists in lazy config.
----This will not load the plugin.
----@param plugin string # The plugin to search for
+---Check if a plugin has been loaded
+---@param plugin string # The name of the plugin. It should be the same as the one you use in `require(plugin name)`
 ---@return boolean available # Whether the plugin is available
-function M.is_available(plugin)
-  -- local lazy_config_avail, lazy_config = pcall(require, "lazy.core.config")
-  -- return lazy_config_avail and lazy_config.plugins[plugin] ~= nil
-  return true -- TODO fix later
-end
+function M.is_available(plugin) return package.loaded[plugin] ~= nil end
 
 --- Call function if a condition is met
 ---@param func function # The function to run

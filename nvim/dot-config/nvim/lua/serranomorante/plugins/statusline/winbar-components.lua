@@ -1,13 +1,11 @@
 local heirline_conditions = require("heirline.conditions")
 local heirline_utils = require("heirline.utils")
+local utils = require("serranomorante.utils")
 
 local M = {}
 
 local AerialBreadcrumb = {
-  condition = function()
-    local aerial_ready = package.loaded["aerial"]
-    return aerial_ready
-  end,
+  condition = function() return utils.is_available("aerial") end,
   init = function(self)
     local data = require("aerial").get_location(true) or {}
     local children = {}

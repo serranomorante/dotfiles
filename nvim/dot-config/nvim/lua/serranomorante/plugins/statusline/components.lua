@@ -9,7 +9,6 @@ local M = {}
 M.priority = {
   lsp = 40,
   filename = 30,
-  trailblazer = 10,
 }
 
 M.Align = {
@@ -106,14 +105,6 @@ M.LSPActive = {
     local names = {}
     for _, server in pairs(vim.lsp.get_clients({ bufnr = 0 })) do
       table.insert(names, server.name)
-    end
-    if package.loaded.lint ~= nil then
-      local buf_lint_clients = require("lint").linters_by_ft[vim.bo.filetype]
-      if buf_lint_clients and #buf_lint_clients > 0 then
-        for _, lint_client in pairs(buf_lint_clients) do
-          table.insert(names, lint_client or "")
-        end
-      end
     end
     self.names = names
   end,
@@ -243,7 +234,7 @@ M.Git = {
 M.DAPMessages = {
   init = function(self) self.dap_message = require("dap").status() or "" end,
   condition = function()
-    if not package.loaded.dap then return false end
+    if not utils.is_available("dap") then return false end
     local session = require("dap").session()
     return session ~= nil
   end,
@@ -254,29 +245,18 @@ M.DAPMessages = {
 }
 
 M.Indent = {
-  condition = function() return utils.is_available("vim-sleuth") end,
+  condition = function()
+    local ok, _ = pcall(vim.fn["SleuthIndicator"])
+    return ok
+  end,
   provider = function() return vim.fn.call("SleuthIndicator", {}) end,
   hl = { bold = true },
 }
 
 M.GrappleStatusline = {
-  condition = function() return package.loaded["grapple"] and require("grapple").exists() end,
+  condition = function() return utils.is_available("grapple") and require("grapple").exists() end,
   provider = function() return "󰛢 " .. require("grapple").name_or_index() end,
   hl = { fg = "green", bold = true },
-}
-
-M.TrailblazerCurrentStackName = {
-  flexible = M.priority.trailblazer,
-  condition = function() return package.loaded.trailblazer end,
-  {
-    provider = function()
-      local stacks = require("trailblazer.trails.stacks")
-      local current_stack = stacks.current_trail_mark_stack_name
-      local stack_count = vim.tbl_count(stacks.trail_mark_stack_list) > 1 and "<" or ""
-      return string.format("[%s%s]", current_stack, stack_count)
-    end,
-  },
-  { provider = "" },
 }
 
 M.QuickfixTitle = {

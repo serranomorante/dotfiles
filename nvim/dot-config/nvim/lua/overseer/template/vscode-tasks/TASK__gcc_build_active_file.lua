@@ -1,5 +1,5 @@
 local utils = require("serranomorante.utils")
-if not utils.is_available("overseer.nvim") then return {} end
+if not utils.is_available("overseer") then return {} end
 local overseer = require("overseer")
 local variables = require("overseer.template.vscode.variables")
 
