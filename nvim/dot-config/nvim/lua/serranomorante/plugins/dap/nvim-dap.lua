@@ -1,6 +1,5 @@
 local utils = require("serranomorante.utils")
 local constants = require("serranomorante.constants")
-local events = require("serranomorante.events")
 local dap_utils = require("serranomorante.plugins.dap.dap-utils")
 local binaries = require("serranomorante.binaries")
 
