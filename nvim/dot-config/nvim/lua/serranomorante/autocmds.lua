@@ -140,6 +140,7 @@ autocmd({ "FocusGained", "BufEnter" }, {
     ---TODO check if instead of skipping `checktime` there's a way to skipped it from the cmd window only
     if vim.fn.getcmdwintype() ~= "" then return end
     if vim.list_contains(forbidden_modes, vim.fn.mode()) then return end
+    if Init_debug then return end -- do nothing when debugging on init
     vim.cmd.checktime()
   end,
 })
@@ -153,7 +154,10 @@ autocmd("FileChangedShellPost", {
 autocmd("FocusGained", {
   desc = "Redraw status on nvim focus",
   group = general_settings_group,
-  command = "redrawstatus",
+  callback = function()
+    if Init_debug then return end -- do nothing when debugging on init
+    vim.cmd.redrawstatus()
+  end,
 })
 
 ---@type table
