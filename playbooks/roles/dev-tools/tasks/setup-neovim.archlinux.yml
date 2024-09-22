@@ -27,6 +27,13 @@
     basedir: "{{ home_path }}/repos/neovim"
     state: present
 
+- name: "Neovim: apply match count limit patch to neovim"
+  ansible.posix.patch:
+    src: "{{ home_path }}/dotfiles/nvim/patches/max_count_limit.patch"
+    dest: "{{ home_path }}/repos/neovim/src/nvim/search.h"
+    basedir: "{{ home_path }}/repos/neovim"
+    state: present
+
 - name: "Neovim: ensure neovim - build"
   ansible.builtin.command: make
   become: true
