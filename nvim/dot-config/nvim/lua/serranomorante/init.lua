@@ -4,7 +4,7 @@ require("serranomorante.remap")
 require("serranomorante.autocmds")
 
 local plugins = {
-  "session.persistence",
+  "resession",
   "statusline.heirline",
   "coc",
   "lsp",

@@ -1,4 +1,3 @@
-local session_utils = require("serranomorante.plugins.session.session-utils")
 local detail = false
 local show_hidden = false
 
@@ -55,7 +54,9 @@ local init = function()
           local _, filename = util.parse_url(action.url)
           local file_ext = vim.fn.fnamemodify(filename, ":e")
           if file_ext == "md" then
-            session_utils.write_file(filename, "# " .. vim.fn.fnamemodify(filename, ":t"):gsub("." .. file_ext, ""))
+            local fd = assert(vim.uv.fs_open(filename, "w", 420))
+            vim.uv.fs_write(fd, "# " .. vim.fn.fnamemodify(filename, ":t"):gsub("." .. file_ext, ""))
+            vim.uv.fs_close(fd)
           end
           ---Remove deleted file from buffer list
         elseif action.type == "delete" and action.entry_type == "file" then
