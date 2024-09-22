@@ -31,8 +31,6 @@ alias grep='grep --color=auto'
 alias cls='printf "\033c"'
 
 # path env variables
-export VOLTA_HOME="$HOME/.volta"
-export PATH="$VOLTA_HOME/bin:$PATH"
 export PATH="$HOME/bin:$PATH"
 # This fixes poetry not being found
 export PATH="$HOME/.local/bin:$PATH"
@@ -104,3 +102,12 @@ if [ -x "$(command -v fish)" ]; then
 else
     export AVAILABLE_SHELL="$(command -v bash)"
 fi
+## BEGIN ANSIBLE MANAGED BLOCK - SETUP NODE
+export VOLTA_HOME="$HOME/.volta"
+export PATH="$VOLTA_HOME/bin:$PATH"
+## END ANSIBLE MANAGED BLOCK - SETUP NODE
+## BEGIN ANSIBLE MANAGED BLOCK - SETUP PYTHON
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="/usr/bin/pyenv:$PATH"
+eval "$(pyenv init -)" 
+## END ANSIBLE MANAGED BLOCK - SETUP PYTHON

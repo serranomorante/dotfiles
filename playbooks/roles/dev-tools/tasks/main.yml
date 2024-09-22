@@ -1,4 +1,10 @@
 ---
+- name: Ensure node
+  ansible.builtin.include_tasks: setup-node.{{ user_os }}.yml
+
+- name: Ensure python
+  ansible.builtin.include_tasks: setup-python.{{ user_os }}.yml
+
 - name: Ensure neovim is installed
   ansible.builtin.include_tasks: setup-neovim.{{ user_os }}.yml
 
