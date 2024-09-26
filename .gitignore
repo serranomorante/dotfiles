@@ -12,3 +12,5 @@ nvim/dot-config/nvim/lua/serranomorante/binaries.lua
 
 # Ignore ctags
 tags
+
+.mypy_cache

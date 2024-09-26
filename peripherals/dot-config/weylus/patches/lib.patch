@@ -1,0 +1,51 @@
+diff --git a/ts/lib.ts b/ts/lib.ts
+index 75fb8e5..b1cc7a8 100644
+--- a/ts/lib.ts
++++ b/ts/lib.ts
+@@ -63,10 +63,11 @@ function frame_update_scale_inv(x: number) {
+ 
+ 
+ function calc_max_video_resolution(scale: number) {
+-    return [
+-        Math.round(scale * window.innerWidth * window.devicePixelRatio),
+-        Math.round(scale * window.innerHeight * window.devicePixelRatio)
+-    ];
++    return [1929, 1220]
++    // return [
++    //     Math.round(scale * window.innerWidth * window.devicePixelRatio),
++    //     Math.round(scale * window.innerHeight * window.devicePixelRatio)
++    // ];
+ }
+ 
+ function fresh_canvas() {
+@@ -313,16 +314,18 @@ class Settings {
+ 
+     onCapturableList(window_names: string[]) {
+         let current_selection = undefined;
+-        if (this.capturable_select.selectedOptions[0])
+-            current_selection = this.capturable_select.selectedOptions[0].textContent;
++        // if (this.capturable_select.selectedOptions[0])
++        //     current_selection = this.capturable_select.selectedOptions[0].textContent;
+         let new_index;
+-        this.capturable_select.innerText = "";
++        this.capturable_select.innerText = JSON.stringify(this.capturable_select.selectedOptions[0], null, 2)
+         window_names.forEach((name, i) => {
+             let option = document.createElement("option");
+             option.value = String(i);
+             option.innerText = name;
+             this.capturable_select.appendChild(option);
+-            if (name === current_selection)
++            if (typeof name === "string" && name.includes("Monitor")) { // prefer monitor over desktop
++                new_index = i;
++            } else if (name === current_selection)
+                 new_index = i;
+         });
+         if (new_index !== undefined)
+@@ -330,6 +333,7 @@ class Settings {
+         else if (current_selection)
+             // Can't find the window, so don't select anything
+             this.capturable_select.value = "";
++        this.send_server_config()
+     }
+ }
+ 

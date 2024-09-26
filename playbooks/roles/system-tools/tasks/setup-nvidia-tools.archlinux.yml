@@ -1,6 +1,0 @@
----
-- name: "{{ item }} tools: ensure nvidia packages"
-  become: true
-  ansible.builtin.package:
-    name:
-      - nvidia-lts

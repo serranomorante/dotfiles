@@ -1,0 +1,7 @@
+---
+plantuml_compiled_jar_version: 1.2024.6
+node_system_default_version: 20.13.1
+RUST_VERSION: 1.75.0
+DEBIAN_FISH_SHELL_VERSION: 3.5.1
+DEBIAN_TMUX_VERSION: 3.5
+DEBIAN_LIBEVENT_VERSION: 2.1.12

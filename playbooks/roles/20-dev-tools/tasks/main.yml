@@ -1,0 +1,92 @@
+---
+- name: Ensure node
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 10-setup-node.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure rust
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 20-setup-rust.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['debian']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure python
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 30-setup-python.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure python tools
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 40-setup-python-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- block:
+  - name: Ensure neovim is installed
+    ansible.builtin.include_tasks: "{{ task_file }}"
+    with_first_found:
+      - files: 50-setup-neovim.{{ user_os }}.yml
+        skip: true
+    when: "user_os in ['archlinux', 'debian']"
+    loop_control:
+      loop_var: task_file
+
+- name: Ensure editor tools
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 60-setup-editor-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux', 'debian']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure editor code-generation
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 70-setup-editor-code-generation.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux', 'debian']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure plantuml compiled jar is in location
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 80-setup-plantuml.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure git tools
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 90-setup-git-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- block:
+  - name: Setup terminal tools
+    ansible.builtin.include_tasks: "{{ task_file }}"
+    with_first_found:
+      - files: 100-setup-terminal-tools.{{ user_os }}.yml
+        skip: true
+    when: "user_os in ['archlinux', 'debian']"
+    loop_control:
+      loop_var: task_file

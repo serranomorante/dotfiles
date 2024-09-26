@@ -1,0 +1,47 @@
+---
+
+# https://github.com/pyenv/pyenv/wiki#suggested-build-environment
+- name: "Setup python: ensure build dependencies"
+  ansible.builtin.package:
+    state: present
+    name:
+      - pyenv
+      - base-devel
+      - openssl
+      - zlib
+      - xz
+      - tk
+
+- name: "Setup python: register pyenv binary"
+  ansible.builtin.shell: which pyenv
+  register: pyenv_executable
+
+- name: "Setup python: ensure startup setup scripts"
+  ansible.builtin.blockinfile:
+    dest: "{{ item.script }}"
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP PYTHON"
+    create: true
+    block: |
+      {% if 'dot-bashrc' in item.script %}
+      export PYENV_ROOT="$HOME/.pyenv"
+      export PATH="{{ pyenv_executable.stdout }}:$PATH"
+      eval "$(pyenv init -)" 
+      {% elif 'setup_bashrc.fish' in item.script %}
+      set -gx PYENV_ROOT "$HOME/.pyenv"
+      set -gx PATH "{{ pyenv_executable.stdout }}:$PATH"
+      {% elif 'fish.config' in item.script %}
+      command -q pyenv; and pyenv init - | source
+      {% endif %}
+  loop:
+    - { script: ~/dotfiles/home/dot-bashrc }
+    - { script: ~/dotfiles/fish/dot-config/fish/conf.d/setup_bashrc.fish }
+
+- name: "Setup python: ensure python versions"
+  ansible.builtin.shell: pyenv install --skip-existing {{ item }}
+  ignore_errors: true
+  loop:
+    - 3.11.2
+    - 3.11.3
+
+- name: "Setup python: ensure python system default"
+  ansible.builtin.shell: pyenv global 3.11.3

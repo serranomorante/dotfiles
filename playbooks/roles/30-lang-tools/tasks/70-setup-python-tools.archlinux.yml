@@ -1,0 +1,35 @@
+---
+# LSP
+- name: "Python language: ensure LSP - pylsp virtualenv"
+  ansible.builtin.pip:
+    name:
+      - pip
+      - python-lsp-server
+      - pydocstyle
+      - pylsp-mypy
+      - python-lsp-ruff # disables pycodestyle, pyflakes, mccabe, autopep8, yapf
+    virtualenv: ~/apps/lang-tools/pylsp/.venv
+    virtualenv_command: /usr/bin/python3 -m venv
+    state: latest
+
+- name: "Python language: ensure LSP - symlink pylsp"
+  ansible.builtin.file:
+    src: ~/apps/lang-tools/pylsp/.venv/bin/pylsp
+    dest: ~/bin/pylsp
+    state: link
+
+# DAP
+- name: "Python language: ensure DAP - debugpy virtualenv"
+  ansible.builtin.pip:
+    name:
+      - pip
+      - debugpy
+    virtualenv: ~/apps/lang-tools/debugpy/.venv
+    virtualenv_command: /usr/bin/python3 -m venv
+    state: latest
+
+- name: "Python language: ensure DAP - symlink debugpy"
+  ansible.builtin.file:
+    src: ~/apps/lang-tools/debugpy/.venv/bin/debugpy
+    dest: ~/bin/debugpy
+    state: "link"

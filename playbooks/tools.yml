@@ -1,16 +1,16 @@
 ---
-- hosts: localhost
+- hosts: localhost,cloud
+  gather_facts: false
   vars:
-    username: "serranomorante"
-    user_os: "{{ ansible_distribution | lower | replace(' ', '') }}" # see: https://github.com/ansible/ansible/issues/30600
-    home_path: /home/serranomorante # reliable... neither tilde (~), nor ($HOME) work when running as sudo
+    user_os: "{{ ansible_distribution|lower|replace(' ', '') }}"
   roles:
-    - system-tools # general system packages
-    - lang-tools # lsp, dap, syntax, linters, formatters
-    - dev-tools # editors, editor plugins
-    # - music-tools # DAWs, VSTs, pipewire, etc
-    # - browsing-tools # browsers, etc
-    # - recording-tools # obs, etc
-    # - monitoring-tools # cpu monitoring, etc
-    # - writing-tools # notes, etc
-
+    - 10-system-tools       # general system packages
+    - 20-dev-tools          # editors, editor plugins, terminal tools
+    - 30-lang-tools         # lang dependencies, lsp, dap, syntax, linters, formatters
+    - 40-note-taking-tools
+    - 50-cloud-tools        #
+    # - 60-music-tools      # DAWs, VSTs, pipewire, etc
+    # - 70-browsing-tools   # browsers, etc
+    # - 80-recording-tools  # obs, etc
+    # - 90-monitoring-tools # cpu monitoring, etc
+    # - 100-writing-tools   # notes, etc

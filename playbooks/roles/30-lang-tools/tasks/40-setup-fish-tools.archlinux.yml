@@ -1,0 +1,35 @@
+---
+- name: "Fish language: register fish-lsp"
+  ansible.builtin.shell: ~/bin/fish-lsp --version
+  register: fish_lsp_available
+  ignore_errors: true
+
+- name: "Fish language: ensure LSP - clone fish-lsp"
+  ansible.builtin.git:
+    repo: https://github.com/ndonfris/fish-lsp.git
+    dest: ~/repos/fish-lsp
+    depth: 1
+    force: true
+  when: fish_lsp_available is failed
+
+- name: "Fish language: register yarn_1_22_22_exists var"
+  ansible.builtin.shell: volta list yarn | grep 1.22.22
+  register: yarn_1_22_22_exists
+  ignore_errors: true
+
+- name: "Fish language: ensure LSP - prepare fish-lsp dependencies"
+  ansible.builtin.shell: volta install yarn@1.22.22 # needed by the fish-lsp package
+  when: yarn_1_22_22_exists is failed and fish_lsp_available is failed
+
+- name: "Fish language: ensure LSP - install fish-lsp"
+  ansible.builtin.shell: yarn install
+  args:
+    chdir: ~/repos/fish-lsp
+  when: fish_lsp_available is failed
+
+- name: "Fish language: ensure LSP - symlink fish-lsp"
+  file:
+    src: ~/repos/fish-lsp/bin/fish-lsp
+    dest: ~/bin/fish-lsp
+    state: link
+  when: fish_lsp_available is failed

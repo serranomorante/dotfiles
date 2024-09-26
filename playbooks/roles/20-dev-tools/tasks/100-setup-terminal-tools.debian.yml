@@ -1,0 +1,59 @@
+---
+- name: "Setup terminal tools: register fish exists"
+  ansible.builtin.shell: ~/.local/bin/fish --version
+  register: fish_executable
+  ignore_errors: true
+
+- name: "Setup terminal tools: ensure fish source folder exists"
+  ansible.builtin.file:
+    state: directory
+    recurse: true
+    path: ~/apps/fish
+  when: fish_executable is failed
+
+- name: "Setup terminal tools: unzip, unrar, unarchive fish"
+  ansible.builtin.unarchive:
+    src: https://github.com/fish-shell/fish-shell/releases/download/{{ DEBIAN_FISH_SHELL_VERSION }}/fish-{{ DEBIAN_FISH_SHELL_VERSION }}.tar.xz
+    dest: ~/apps/fish
+    remote_src: true
+  when: fish_executable is failed
+
+- name: "Setup terminal tools: ensure fish build folder"
+  ansible.builtin.file:
+    state: directory
+    recurse: true
+    path: ~/apps/fish/fish-{{ DEBIAN_FISH_SHELL_VERSION }}/build
+  when: fish_executable is failed
+
+- name: "Setup terminal tools: cmake fish"
+  ansible.builtin.shell: cmake -DCMAKE_INSTALL_PREFIX="$HOME/.local" -DBUILD_SHARED_LIBS=OFF ..
+  args:
+    chdir: ~/apps/fish/fish-{{ DEBIAN_FISH_SHELL_VERSION }}/build
+  when: fish_executable is failed
+
+- name: "Setup terminal tools: make fish"
+  ansible.builtin.shell: make
+  args:
+    chdir: ~/apps/fish/fish-{{ DEBIAN_FISH_SHELL_VERSION }}/build
+  when: fish_executable is failed
+
+- name: "Setup terminal tools: install fish"
+  ansible.builtin.shell: make install
+  args:
+    chdir: ~/apps/fish/fish-{{ DEBIAN_FISH_SHELL_VERSION }}/build
+  when: fish_executable is failed
+
+- name: "Setup terminal tools: change tools configs"
+  ansible.builtin.blockinfile:
+    dest: "{{ item.script }}"
+    create: true
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP {{ item.script|basename|upper }}"
+    block: |
+      {% if 'tmux.conf' in item.script %}
+      set-option -g default-shell ~/.local/bin/fish
+      {% elif 'kitty.conf' in item.script %}
+      shell ~/.local/bin/fish
+      {% endif %}
+  loop:
+    - { script: ~/dotfiles/tmux/dot-config/tmux/tmux.conf }
+    - { script: ~/dotfiles/kitty/dot-config/kitty/kitty.conf }

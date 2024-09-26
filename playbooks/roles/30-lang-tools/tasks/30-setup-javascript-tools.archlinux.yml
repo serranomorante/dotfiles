@@ -1,0 +1,33 @@
+---
+- name: "Javascript language: ensure LSP"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - typescript-language-server
+      - tailwindcss-language-server
+
+- name: "Javascript language: ensure LSP (using aur)"
+  aur:
+    use: yay
+    state: present
+    name: vtsls
+
+- name: "Javascript language: ensure LINTERS"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: eslint_d
+
+- name: "Javascript language: ensure FORMATTERS (using aur)"
+  aur:
+    use: yay
+    state: present
+    name: prettierd
+
+- name: "Javascript language: ensure DAP (using aur)"
+  aur:
+    use: yay
+    state: present
+    name: vscode-js-debug
+

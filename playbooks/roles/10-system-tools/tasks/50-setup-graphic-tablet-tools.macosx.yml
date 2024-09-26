@@ -1,0 +1,80 @@
+---
+- name: "Graphic tablet peripheral: ensure tools (using aur)"
+  aur:
+    use: yay
+    state: present
+    name:
+      - gromit-mpx
+      - weylus-bin
+
+- name: "Graphic tablet peripheral: enable gromit-mpx service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: gromit-mpx
+    state: started
+    enabled: true
+    masked: no
+
+# Setup weylus
+- name: "Graphic tablet peripheral: clone weylus lib.ts file"
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/H-M-H/Weylus/master/ts/lib.ts
+    dest: ~/.config/weylus/src/lib.ts
+    force: true
+
+- name: "Graphic tablet peripheral: apply custom patch to lib.ts"
+  ansible.posix.patch:
+    src: ~/.config/weylus/src/lib.patch
+    dest: ~/.config/weylus/src/lib.ts
+    basedir: ~/.config/weylus/src
+    state: present
+
+- name: "Graphic tablet peripheral: compile weylus lib.ts"
+  ansible.builtin.shell: tsc --project ~/.config/weylus/tsconfig.json
+  args:
+    chdir: ~/.config/weylus
+
+- name: "Graphic tablet peripheral: remove weylus lib.ts source file"
+  ansible.builtin.file:
+    path: ~/.config/weylus/src/lib.ts
+    state: absent
+
+- name: "Graphic tablet peripheral: register ufw status variable"
+  ansible.builtin.systemd_service:
+    name: ufw
+  register: ufw_service_status
+
+- name: "Graphic tablet peripheral: open ufw to weylus ports"
+  become: true
+  ansible.builtin.shell: ufw allow {{ port }}/tcp
+  when: ufw_service_status.status.ActiveState == "active"
+  loop:
+    - 1701
+    - 9001
+  loop_control:
+    loop_var: port
+
+- name: "Graphic tablet peripheral: weylus - ensure uinput group"
+  become: true
+  ansible.builtin.group:
+    state: present
+    name: uinput
+
+- name: "Graphic tablet peripheral: weylus - append user to group"
+  become: true
+  ansible.builtin.user:
+    append: true
+    groups: uinput
+    name: "{{ username }}"
+
+- name: "Graphic tablet peripheral: weylus - add udev rule"
+  become: true
+  ansible.builtin.shell: echo 'KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/60-weylus.rules
+
+- name: "Graphic tablet peripheral: ensure weylus service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: weylus
+    state: started
+    enabled: true
+    masked: no

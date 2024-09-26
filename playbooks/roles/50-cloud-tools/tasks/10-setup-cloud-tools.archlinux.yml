@@ -1,0 +1,6 @@
+---
+- name: "Setup cloud tools: install client packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: nextcloud-client

@@ -1,0 +1,8 @@
+---
+- name: "Editor code generation: ensure binaries code-generation"
+  ansible.builtin.blockinfile:
+    dest: ~/.config/nvim/lua/serranomorante/binaries.lua
+    create: true
+    marker: "-- {mark} ANSIBLE MANAGED BLOCK"
+    block: |
+      return {}

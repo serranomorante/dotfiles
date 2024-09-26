@@ -1,0 +1,18 @@
+---
+CLOUD_TOOLS:
+  - wireguard
+  - syncthing
+  - overseerr
+  - sonarr
+  - calibre-web
+  - calibre
+  - audiobookshelf
+  - bazarr
+  - jdownloader2
+  - flaresolverr
+  - nextcloud
+  - plex
+  - prowlarr
+  - radarr
+  - emby
+  - tautulli
