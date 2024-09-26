@@ -1,0 +1,133 @@
+---
+- name: Ensure startup scripts
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 10-setup-startup-scripts.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['debian']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure ansible aur module is installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 20-setup-aur.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- block:
+  - name: Ensure dotfiles are setup
+    ansible.builtin.include_tasks: "{{ task_file }}"
+    with_first_found:
+      - files: 30-setup-dotfiles.{{ user_os }}.yml
+        skip: true
+    when: "user_os in ['archlinux', 'debian']"
+    loop_control:
+      loop_var: task_file
+  tags: only
+
+- name: Ensure peripheral tools are configured
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 40-setup-keyboard-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- block:
+  - name: Ensure peripheral tools are configured
+    ansible.builtin.include_tasks: "{{ task_file }}"
+    with_first_found:
+      - files: 50-setup-graphic-tablet-tools.{{ user_os }}.yml
+        skip: true
+    when: "user_os in ['archlinux']"
+    loop_control:
+      loop_var: task_file
+  tags: only
+
+- name: Ensure display tools are configured
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 60-setup-nvidia-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure handy utilities are installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 70-setup-automation-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure grep utilities are installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 80-setup-grep-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux', 'debian']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure handy utilities are installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 90-setup-notification-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure compositor is installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 100-setup-compositor.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure browser tools are setup
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 110-setup-chrome-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure wine tools are setup
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 120-setup-wine-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure wine tools are setup
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 130-setup-yabridge-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+# - name: Ensure virtualbox is setup
+#   ansible.builtin.include_tasks: 140-setup-virtualbox.{{ user_os }}.yml
+
+- name: Setup persistence tools
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 150-setup-persistence-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file

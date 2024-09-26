@@ -1,0 +1,33 @@
+---
+- name: "Persistence tools: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: redis
+
+- name: "Persistence tools: enable redis service and ensure is not masked"
+  become: true
+  ansible.builtin.systemd_service:
+    name: redis
+    state: started
+    enabled: true
+    masked: no
+
+- name: "Persistence tools: ensure virtualenv packages"
+  ansible.builtin.pip:
+    name:
+      - pip
+      - redis
+      - ansible
+    virtualenv: ~/apps/persistence-tools/.venv
+    virtualenv_command: /usr/bin/python3 -m venv
+    state: latest
+
+- name: "Persistence tools: symlink virtualenv ansible"
+  ansible.builtin.file:
+    src: ~/apps/persistence-tools/.venv/bin/{{ item.bin_name }}
+    dest: ~/bin/{{ item.symlink_name }}
+    state: link
+  loop:
+    - { bin_name: ansible, symlink_name: vansible }
+    - { bin_name: ansible-playbook, symlink_name: vansible-playbook }

@@ -1,0 +1,19 @@
+---
+- name: "Cloud tools: setup cloud tools"
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 10-setup-cloud-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: "Cloud tools: upgrade cloud tools"
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 20-upgrade-cloud-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['debian']"
+  loop_control:
+    loop_var: task_file
+  tags: [ never, slow ]

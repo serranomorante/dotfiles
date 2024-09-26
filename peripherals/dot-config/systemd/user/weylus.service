@@ -3,7 +3,7 @@ Description=Start X compositor
 After=graphical-session.target
 
 [Service]
-ExecStart=/usr/bin/weylus --no-gui --try-nvenc --custom-lib-js %h/.config/weylus/out/lib.js
+ExecStart=/usr/bin/weylus --no-gui --try-nvenc --custom-lib-js %h/repos/Weylus/www/static/lib.js
 
 [Install]
 WantedBy=graphical-session.target

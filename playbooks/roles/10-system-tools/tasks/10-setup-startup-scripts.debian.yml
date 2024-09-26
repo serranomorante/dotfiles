@@ -1,0 +1,12 @@
+---
+- name: "Setup startup scripts: setup .bashrc"
+  ansible.builtin.blockinfile:
+    dest: "{{ item.script }}"
+    create: true
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP BIN"
+    block: |
+      {% if 'bashrc' in item.script %}
+      export PATH="$HOME/.local/bin:$PATH"
+      {% endif %}
+  loop:
+    - { script: ~/.bashrc }

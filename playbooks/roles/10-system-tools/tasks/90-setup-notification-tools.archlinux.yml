@@ -1,0 +1,7 @@
+---
+- name: "Notification utilities: ensure several grep packages"
+  ansible.builtin.package:
+    state: present
+    name:
+      - dunst
+      - libnotify

@@ -1,0 +1,8 @@
+---
+- name: "Yabridge tools: ensure yabridge is installed"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - yabridge
+      - yabridgectl

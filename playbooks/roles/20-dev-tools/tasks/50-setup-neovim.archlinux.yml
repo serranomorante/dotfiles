@@ -1,0 +1,37 @@
+---
+- name: "Neovim: ensure Neovim - clone"
+  ansible.builtin.git:
+    repo: https://github.com/neovim/neovim.git
+    dest: ~/repos/neovim
+    force: true
+
+- name: "Neovim: ensure neovim build dependencies"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - cmake
+      - ninja
+
+- name: "Neovim: apply patches to neovim"
+  ansible.builtin.shell: git apply ~/dotfiles/nvim/patches/{{ item.patch_filename }}
+  args:
+    chdir: ~/repos/neovim
+  loop:
+    - { patch_filename: folds.patch }
+    - { patch_filename: msg_limit.patch }
+    - { patch_filename: max_count_limit.patch }
+
+- name: "Neovim: ensure neovim - build"
+  ansible.builtin.shell: make
+  environment:
+    CMAKE_BUILD_TYPE: RelWithDebInfo
+  args:
+    chdir: ~/repos/neovim
+    creates: ~/repos/neovim/build/bin/nvim
+
+- name: "Neovim: ensure symlink neovim"
+  ansible.builtin.file:
+    src: ~/repos/neovim/build/bin/nvim
+    dest: ~/bin/nvim
+    state: link

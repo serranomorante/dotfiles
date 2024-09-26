@@ -1,0 +1,6 @@
+---
+- name: "Yaml language: ensure LSP"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: yaml-language-server

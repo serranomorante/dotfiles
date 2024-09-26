@@ -1,0 +1,21 @@
+---
+- name: "Upgrade cloud tools: stop tools"
+  ansible.builtin.shell: app-{{ cloud_tool }} stop
+  loop: "{{ CLOUD_TOOLS }}"
+  loop_control:
+    loop_var: cloud_tool
+  tags: [ never, slow ]
+
+- name: "Upgrade cloud tools: upgrade tools"
+  ansible.builtin.shell: app-{{ cloud_tool }} upgrade
+  loop: "{{ CLOUD_TOOLS }}"
+  loop_control:
+    loop_var: cloud_tool
+  tags: [ never, slow ]
+
+- name: "Upgrade cloud tools: start tools"
+  ansible.builtin.shell: app-{{ cloud_tool }} start
+  loop: "{{ CLOUD_TOOLS }}"
+  loop_control:
+    loop_var: cloud_tool
+  tags: [ never, slow ]

@@ -1,0 +1,90 @@
+---
+- name: Ensure language tools are installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 10-setup-c-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure language tools are installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 20-setup-lua-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure language tools are installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 30-setup-javascript-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure language tools are installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 40-setup-fish-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure language tools are installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 50-setup-bash-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure language tools are installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 60-setup-vim-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure language tools are installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 70-setup-python-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure language tools are installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 80-setup-json-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure language tools are installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 90-setup-yaml-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file
+
+- name: Ensure language tools are installed
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: 100-setup-markdown-tools.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file

@@ -1,0 +1,9 @@
+---
+- name: Ensure note-taking utility packages
+  ansible.builtin.include_tasks: "{{ task_file }}"
+  with_first_found:
+    - files: setup-note-taking-utilities.{{ user_os }}.yml
+      skip: true
+  when: "user_os in ['archlinux']"
+  loop_control:
+    loop_var: task_file

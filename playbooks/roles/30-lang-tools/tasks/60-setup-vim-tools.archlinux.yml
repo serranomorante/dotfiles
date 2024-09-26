@@ -1,0 +1,6 @@
+---
+- name: "Vim language: ensure LSP (using aur)"
+  aur:
+    use: yay
+    state: present
+    name: vim-language-server

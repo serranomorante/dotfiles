@@ -1,0 +1,57 @@
+---
+- name: "Editor tools: ensure nvim plugins"
+  ansible.builtin.git:
+    repo: https://github.com/{{ item.repo }}
+    dest: ~/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}
+    single_branch: true
+    depth: 10
+    version: "{{ item.version | default('HEAD') }}"
+  async: 1000
+  poll: 0
+  loop:
+    - { folder: start, repo: stevearc/oil.nvim }
+    - { folder: start, repo: ibhagwan/fzf-lua }
+    - { folder: start, repo: kevinhwang91/promise-async } # use `typings/?.lua` on .luarc.json
+    - { folder: start, repo: nvim-tree/nvim-web-devicons }
+    - { folder: start, repo: neoclide/coc.nvim, version: release }
+    - { folder: start, repo: kevinhwang91/nvim-treesitter }
+    - { folder: start, repo: stevearc/overseer.nvim, name: overseer }
+    - { folder: start, repo: nvim-treesitter/nvim-treesitter-context }
+    - { folder: start, repo: nvim-treesitter/nvim-treesitter-textobjects }
+    - { folder: start, repo: dense-analysis/ale }
+    - { folder: start, repo: FabijanZulj/blame.nvim }
+    - { folder: start, repo: stevearc/conform.nvim }
+    - { folder: start, repo: sindrets/diffview.nvim }
+    - { folder: start, repo: lewis6991/gitsigns.nvim }
+    - { folder: start, repo: cbochs/grapple.nvim }
+    - { folder: start, repo: kevinhwang91/nvim-ufo, name: ufo }
+    - { folder: start, repo: tpope/vim-sleuth }
+    - { folder: start, repo: mfussenegger/nvim-dap, name: dap }
+    - { folder: start, repo: mfussenegger/nvim-dap-python }
+    - { folder: start, repo: theHamsta/nvim-dap-virtual-text }
+    - { folder: start, repo: rebelot/heirline.nvim }
+    - { folder: start, repo: mbbill/undotree }
+    - { folder: start, repo: chrisbra/Colorizer }
+    - { folder: start, repo: stevearc/resession.nvim, name: resession }
+    - { folder: start, repo: refractalize/oil-git-status.nvim }
+    - { folder: start, repo: p00f/clangd_extensions.nvim }
+    - { folder: start, repo: ibhagwan/smartyank.nvim }
+    - { folder: start, repo: stevearc/quicker.nvim, name: quicker }
+    - { folder: opt, repo: jbyuki/one-small-step-for-vimkind, name: osv }
+    - { folder: opt, repo: Robitx/gp.nvim, name: gp }
+
+- name: "Editor tools: ensure nvim dev plugins"
+  ansible.builtin.git:
+    repo: https://github.com/{{ item.repo }}
+    dest: ~/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}
+    update: false
+  async: 1000
+  poll: 0
+  loop:
+    - serranomorante/aerial.nvim
+
+- name: "Editor tools: ensure universal ctags"
+  aur:
+    use: yay
+    state: present
+    name: ctags-git

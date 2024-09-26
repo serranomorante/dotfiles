@@ -1,0 +1,15 @@
+---
+- name: "Grep utilities: ensure several grep packages"
+  ansible.builtin.package:
+    state: present
+    name:
+      - ripgrep
+      - fd
+      - fzf
+
+- name: "Grep utilities: ensure .fzf_history"
+  ansible.builtin.blockinfile:
+    dest: ~/dotfiles/home/dot-fzfrc
+    create: true
+    block: |
+      --history={{ ansible_env.HOME }}/.fzf_history

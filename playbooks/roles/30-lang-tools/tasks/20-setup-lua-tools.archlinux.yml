@@ -1,0 +1,12 @@
+---
+- name: "Lua language: ensure LSP"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: lua-language-server
+
+- name: "Lua language: ensure FORMATTERS"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: stylua
