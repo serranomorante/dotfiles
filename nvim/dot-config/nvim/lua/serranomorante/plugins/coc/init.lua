@@ -9,7 +9,6 @@ local init = function()
   vim.g.coc_start_at_startup = 0
   vim.g.coc_user_config = vim.fn.stdpath("config") .. "/lua/serranomorante/plugins/coc"
   vim.g.coc_config_home = vim.fn.stdpath("config") .. "/lua/serranomorante/plugins/coc"
-  vim.g.coc_node_path = binaries.system_default_node()
   vim.g.coc_quickfix_open_command = "botright copen"
   vim.g.coc_global_extensions = utils.merge_tools(
     "coc",
@@ -22,6 +21,8 @@ local init = function()
   vim.b.coc_force_attach = 1
   vim.api.nvim_set_hl(0, "CocMenuSel", { link = "PmenuSel" }) -- fix highlight
   vim.api.nvim_set_hl(0, "CocInlayHint", { link = "CursorColumn" })
+  local ok, override_node = pcall(binaries.system_default_node)
+  if ok and override_node then vim.g.coc_node_path = override_node end
 end
 
 M.config = function()
