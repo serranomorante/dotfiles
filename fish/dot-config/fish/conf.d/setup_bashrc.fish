@@ -10,12 +10,14 @@ command -q eza; and abbr --add ls eza -1 -a -h --git --sort modified -l --icons 
 abbr --add grep grep --color=auto
 abbr --add cls printf "\033c"
 
-set -gx PATH "$HOME/bin:$PATH"
 set -gx FONTCONFIG_PATH /etc/fonts
 set -gx COLORTERM truecolor
 
 # This fixes poetry not being found
 set -gx PATH "$HOME/.local/bin:$PATH"
+
+# Make ~/bin take priority over ~/.local/bin
+set -gx PATH "$HOME/bin:$PATH"
 
 # Add pynvim to path
 set -gx PATH "/usr/lib/python3.11/site-packages:$PATH"
