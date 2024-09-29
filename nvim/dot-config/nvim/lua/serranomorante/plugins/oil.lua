@@ -1,3 +1,5 @@
+local utils = require("serranomorante.utils")
+
 local detail = false
 local show_hidden = false
 
@@ -52,6 +54,7 @@ local init = function()
         ---Automatically add title to new markdown files created from oil buffer
         if action.type == "create" and action.entry_type == "file" then
           local _, filename = util.parse_url(action.url)
+          if filename == nil then return end
           local file_ext = vim.fn.fnamemodify(filename, ":e")
           if file_ext == "md" then
             local fd = assert(vim.uv.fs_open(filename, "w", 420))
@@ -79,6 +82,8 @@ M.config = function()
   keys()
 
   local oil_actions = require("oil.actions")
+
+  ---@type oil.SetupOpts
   local opts = {
     watch_for_changes = true,
     win_options = {
@@ -103,7 +108,12 @@ M.config = function()
     delete_to_trash = true,
     git = {
       ---Return true to automatically git add/mv/rm files
-      add = function(path) return true end,
+      add = function(path)
+        local relative_path = vim.fn.fnamemodify(path, ":.")
+        local is_ignored = utils.cmd({ "git", "check-ignore", relative_path }, false)
+        if is_ignored then return false end -- don't use git if file is ignored
+        return true
+      end,
       mv = function(src_path, dest_path) return true end,
       rm = function(path) return true end,
     },
@@ -164,8 +174,8 @@ M.config = function()
         desc = "Oil: Open the entry under the cursor in an external program",
       },
       ["g."] = {
-        callback = function(...)
-          oil_actions.toggle_hidden.callback(...)
+        callback = function()
+          oil_actions.toggle_hidden.callback()
           show_hidden = not show_hidden
           vim.notify(show_hidden == true and "Oil: show hidden: ON" or "Oil: show hidden: OFF")
         end,
@@ -192,7 +202,9 @@ M.config = function()
       },
       ["<leader>fw"] = {
         callback = function()
-          local current_dir = vim.fn.fnamemodify(require("oil").get_current_dir(), ":.")
+          local oil_dir = require("oil").get_current_dir()
+          if oil_dir == nil then return end
+          local current_dir = vim.fn.fnamemodify(oil_dir, ":.")
           require("fzf-lua").live_grep({
             ---https://github.com/ibhagwan/fzf-lua/wiki/Options#grep-providers-options
             search = string.format(" -- --iglob=%s**", current_dir),
@@ -203,10 +215,11 @@ M.config = function()
       },
       ["<leader>ff"] = {
         callback = function()
-          local current_dir = require("oil").get_current_dir()
-          local dir_relative_to_root = vim.fn.fnamemodify(current_dir, ":.")
+          local oil_dir = require("oil").get_current_dir()
+          if oil_dir == nil then return end
+          local dir_relative_to_root = vim.fn.fnamemodify(oil_dir, ":.")
           require("fzf-lua").files({
-            cwd = vim.fn.empty(dir_relative_to_root) and current_dir or dir_relative_to_root,
+            cwd = vim.fn.empty(dir_relative_to_root) and oil_dir or dir_relative_to_root,
           })
         end,
         desc = "Oil: Search files into this directory with FZF",
