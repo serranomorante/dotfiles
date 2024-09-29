@@ -18,6 +18,7 @@
     "$HOME/.local/share/nvim/site/pack/plugins/start/promise-async/typings",
     "$HOME/.local/share/nvim/site/pack/plugins/start/ufo/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/start/nvim-dap-virtual-text/lua",
-    "$HOME/.local/share/nvim/site/pack/plugins/start/resession/lua"
+    "$HOME/.local/share/nvim/site/pack/plugins/start/resession/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/oil/lua"
   ]
 }
