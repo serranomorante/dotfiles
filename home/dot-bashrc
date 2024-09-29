@@ -31,9 +31,10 @@ alias grep='grep --color=auto'
 alias cls='printf "\033c"'
 
 # path env variables
-export PATH="$HOME/bin:$PATH"
 # This fixes poetry not being found
 export PATH="$HOME/.local/bin:$PATH"
+# Make ~/bin take priority over ~/.local/bin
+export PATH="$HOME/bin:$PATH"
 # Add pynvim to path
 export PATH="/usr/lib/python3.11/site-packages:$PATH"
 export FONTCONFIG_PATH=/etc/fonts
