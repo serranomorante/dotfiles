@@ -146,6 +146,8 @@ M.config = function()
   ---║               Adapters               ║
   ---╚══════════════════════════════════════╝
 
+  local ok, override_node = pcall(binaries.system_default_node)
+
   for _, type in ipairs({
     "node",
     "chrome",
@@ -161,7 +163,7 @@ M.config = function()
       host = host,
       port = "${port}",
       executable = {
-        command = binaries.system_default_node(),
+        command = (ok and override_node) and override_node or "node",
         args = { "/usr/bin/dapDebugServer.js", "${port}", host },
       },
     }
