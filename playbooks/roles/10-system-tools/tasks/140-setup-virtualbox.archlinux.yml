@@ -20,4 +20,4 @@
   ansible.builtin.user:
     append: true
     groups: vboxusers
-    name: ansible_env.USER
+    name: "{{ ansible_env.USER }}"

@@ -60,7 +60,7 @@
   ansible.builtin.user:
     append: true
     groups: uinput
-    name: ansible_env.USER
+    name: "{{ ansible_env.USER }}"
 
 - name: "Graphic tablet peripheral: weylus - add udev rule"
   become: true
