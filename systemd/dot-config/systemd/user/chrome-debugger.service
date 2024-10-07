@@ -1,9 +1,11 @@
 [Unit]
-Description=Start google chrome as debugger
+Description=Start chromium as debugger
 After=graphical-session.target
 
 [Service]
-ExecStart=/usr/bin/google-chrome-stable --remote-debugging-port=9222
+## BEGIN ANSIBLE MANAGED BLOCK - SETUP CHROMIUM
+ExecStart=/usr/bin/chromium --remote-debugging-port=9222 --load-extension=%h/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,%h/repos/NewTab-Redirect,%h/repos/vimium,%h/repos/chrome-show-tab-numbers
+## END ANSIBLE MANAGED BLOCK - SETUP CHROMIUM
 
 [Install]
 WantedBy=graphical-session.target

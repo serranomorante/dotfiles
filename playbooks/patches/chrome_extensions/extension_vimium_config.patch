@@ -1,0 +1,40 @@
+diff --git a/lib/settings.js b/lib/settings.js
+index 1df45451..b2138278 100644
+--- a/lib/settings.js
++++ b/lib/settings.js
+@@ -2,7 +2,7 @@
+ const defaultOptions = {
+   scrollStepSize: 60,
+   smoothScroll: true,
+-  keyMappings: "# Insert your preferred key mappings here.",
++  keyMappings: "# Insert your preferred key mappings here.\n\nmap K previousTab\nmap J nextTab\n\nunmap d\nunmap u\nmap <c-d> scrollPageDown\nmap <c-u> scrollPageUp",
+   linkHintCharacters: "sadfjklewcmpgh",
+   linkHintNumbers: "0123456789",
+   filterLinkHints: false,
+@@ -27,10 +27,9 @@ div > .vimiumHintMarker > .matchingCharacter {
+ `,
+   // Default exclusion rules.
+   exclusionRules: [
+-    // Disable Vimium on Gmail.
+     {
+       passKeys: "",
+-      pattern: "https?://mail.google.com/*",
++      pattern: "https://docs.google.com/",
+     },
+   ],
+ 
+@@ -64,11 +63,11 @@ w: https://www.wikipedia.org/w/index.php?title=Special:Search&search=%s Wikipedi
+ # qw: https://www.qwant.com/?q=%s Qwant\
+ `,
+   newTabUrl: "about:newtab", // Equal to the value of chromeNewTabUrl in tab_operations.js.
+-  grabBackFocus: false,
+-  regexFindMode: false,
++  grabBackFocus: true,
++  regexFindMode: true,
+   waitForEnterForFilteredHints: true,
+   helpDialog_showAdvancedCommands: false,
+-  ignoreKeyboardLayout: false,
++  ignoreKeyboardLayout: true,
+ };
+ 
+ /*

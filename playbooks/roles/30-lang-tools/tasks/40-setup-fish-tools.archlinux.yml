@@ -28,7 +28,7 @@
   when: fish_lsp_available is failed
 
 - name: "Fish language: ensure LSP - symlink fish-lsp"
-  file:
+  ansible.builtin.file:
     src: ~/repos/fish-lsp/bin/fish-lsp
     dest: ~/bin/fish-lsp
     state: link

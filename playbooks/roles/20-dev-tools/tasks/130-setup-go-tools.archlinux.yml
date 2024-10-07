@@ -1,0 +1,6 @@
+---
+- name: "Setup go tools: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: go

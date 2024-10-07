@@ -1,3 +1,14 @@
 ---
 DEBIAN_STOW_VERSION: 2.4.1
 DEBIAN_FZF_VERSION: 0.55.0
+extension_react_devtools: nipckbchhibgnbgnabineijogaiegchd    # copy from chrome://extensions
+extension_bitwarden: nngceckbapebfimnlniiiahkandclblb         # copy from chrome://extensions
+extension_show_tab_numbers: egbdjbfggjldijfoahggfipdkpijmmgd  # copy from chrome://extensions
+extension_floccus: fnaicdffflnofjppbagibeoednhnbjhg           # copy from chrome://extensions
+extension_memex: abkfbakhjpmblaafnpgjppbmioombali             # copy from chrome://extensions
+extension_new_tab_redirect: jbkaalaijhbkmaffefakjjpphiefocai  # copy from chrome://extensions
+extension_vimium: dblffdcabmecmgepoideebngccnllhlo            # copy from chrome://extensions
+chromium_local_extensions:
+  - NewTab-Redirect
+  - vimium
+  - chrome-show-tab-numbers

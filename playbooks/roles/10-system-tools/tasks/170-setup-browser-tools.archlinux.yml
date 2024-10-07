@@ -1,0 +1,237 @@
+---
+- name: "Setup browser tools: ensure packages"
+  become: true
+  ansible.builtin.package:
+    name:
+      - chromium    # gives the user more control from the cli
+      - ruby        # to install extensionator
+      - jdk-openjdk # to build react-devtools
+
+- name: "Setup browser tools: ensure folder exists"
+  ansible.builtin.file:
+    state: directory
+    recurse: true
+    path: ~/apps/browser-tools/chrome/extensions
+
+- name: "Setup browser tools: get chrome-session-dump"
+  ansible.builtin.get_url:
+    url: https://github.com/lemnos/chrome-session-dump/releases/download/v0.0.2/chrome-session-dump-linux
+    dest: ~/apps/browser-tools/chrome/chrome-session-dump-linux
+    force: true
+    mode: "0755"
+
+- name: "Setup browser tools: symlink chrome-session-dump"
+  ansible.builtin.file:
+    src: ~/apps/browser-tools/chrome/chrome-session-dump-linux
+    dest: ~/bin/chrome-session-dump
+    state: link
+
+- name: "Setup browser tools: ensure ruby packages"
+  community.general.gem:
+    name: extensionator
+    state: present
+
+- name: "Setup browser tools: clone chrome extensions"
+  ansible.builtin.git:
+    repo: "{{ item.repo }}"
+    dest: "~/repos/{{ item.name | default(item.repo) | basename }}"
+    version: "{{ item.version | default('HEAD') }}"
+    depth: 10
+    single_branch: true
+  register: result
+  failed_when: '"msg" in result and "Local modifications exist in the destination" not in result.msg'
+  loop:
+    - { repo: https://github.com/jimschubert/NewTab-Redirect }
+    - { repo: https://github.com/philc/vimium }
+    - { repo: https://github.com/kg8m/chrome-show-tab-numbers }
+    - { repo: https://github.com/facebook/react, version: 1460d67c5b9a0d4498b4d22e1a5a6c0ccac85fdd } # version that worked first try
+
+- name: "Setup browser tools: check if NewTab-Redirect already patched"
+  ansible.builtin.shell: |
+    git ls-files -m
+  register: newtab_redirect_modified_files
+  args:
+    chdir: ~/repos/NewTab-Redirect
+  changed_when: false
+
+- name: "Setup browser tools: patch NewTab-Redirect extension"
+  ansible.builtin.shell: |
+    git apply ~/dotfiles/playbooks/patches/chrome_extensions/{{ item }}
+  args:
+    chdir: ~/repos/NewTab-Redirect
+  loop:
+    - extension_new_tab_redirect.patch
+  when: '"main.html" not in newtab_redirect_modified_files.stdout'
+
+- name: "Setup browser tools: check if react-devtools already patched"
+  ansible.builtin.shell: |
+    git ls-files -m
+  register: react_devtools_modified_files
+  args:
+    chdir: ~/repos/react
+  changed_when: false
+
+- name: "Setup browser tools: patch react-devtools extension"
+  ansible.builtin.shell: |
+    git apply ~/dotfiles/playbooks/patches/chrome_extensions/{{ item }}
+  args:
+    chdir: ~/repos/react
+  loop:
+    - extension_react_devtools.patch
+  when: '"utils.js" not in react_devtools_modified_files.stdout'
+
+- name: "Setup browser tools: check if vimium already patched"
+  ansible.builtin.shell: |
+    git ls-files -m
+  register: vimium_modified_files
+  args:
+    chdir: ~/repos/vimium
+  changed_when: false
+
+- name: "Setup browser tools: patch vimium extension"
+  ansible.builtin.shell: |
+    git apply ~/dotfiles/playbooks/patches/chrome_extensions/{{ item }}
+  args:
+    chdir: ~/repos/vimium
+  loop:
+    - extension_vimium_config.patch
+  when: '"settings.js" not in vimium_modified_files.stdout'
+
+- name: "Setup browser tools: prepare react-devtools"
+  ansible.builtin.shell: |
+    yarn install
+    yarn build-for-devtools
+  args:
+    creates: ~/repos/react/build/bundle-sizes.json
+    chdir: ~/repos/react
+
+- name: "Setup browser tools: build chrome react-devtools extension"
+  ansible.builtin.shell: |
+    yarn build:chrome
+  args:
+    creates: ~/repos/react/packages/react-devtools-extensions/chrome/build/ReactDevTools.zip
+    chdir: ~/repos/react/packages/react-devtools-extensions
+
+- name: "Setup browser tools: generate key file"
+  ansible.builtin.shell: |
+    openssl genrsa -out ~/apps/browser-tools/chrome/extensions/identity.pem 2048
+  args:
+    creates: ~/apps/browser-tools/chrome/extensions/identity.pem
+
+- name: "Setup browser tools: build external crx"
+  ansible.builtin.shell: >
+    ~/.local/share/gem/ruby/3.2.0/bin/extensionator
+    -d ~/repos/{{ extension_github_repo_name }}
+    -i ~/apps/browser-tools/chrome/extensions/identity.pem
+    -o ~/repos/{{ extension_github_repo_name }}/{{ extension_github_repo_name }}.crx
+  args:
+    creates: ~/repos/{{ extension_github_repo_name }}/{{ extension_github_repo_name }}.crx
+  loop: "{{ chromium_local_extensions }}"
+  loop_control:
+    loop_var: extension_github_repo_name
+
+- name: "Setup browser tools: build react-devtools crx"
+  ansible.builtin.shell: >
+    ~/.local/share/gem/ruby/3.2.0/bin/extensionator
+    -d ~/repos/react/packages/react-devtools-extensions/chrome/build/unpacked/
+    -i ~/apps/browser-tools/chrome/extensions/identity.pem
+    -o ~/repos/react/packages/react-devtools-extensions/chrome/build/unpacked/react-devtools.crx
+  args:
+    creates: ~/repos/react/packages/react-devtools-extensions/chrome/build/unpacked/react-devtools.crx
+
+- name: "Setup browser tools: create chromium policy directory for all users"
+  become: true
+  ansible.builtin.file:
+    path: /etc/chromium/policies/managed
+    state: directory
+    recurse: true
+
+- name: "Setup browser tools: create chromium policy file for all users"
+  become: true
+  ansible.builtin.copy:
+    content: |
+      {
+        "SystemShortcutBehavior": 3,
+        "ShortcutCustomizationAllowed": true,
+        "TranslateEnabled": false,
+        "HomepageIsNewTabPage": false,
+        "ExtensionSettings": {
+          "{{ extension_show_tab_numbers }}": {
+            "allowed_permissions": [
+              "contextMenus",
+              "scripting",
+              "storage",
+              "tabGroups",
+              "tabs"
+            ],
+            "file_url_navigation_allowed": true
+          },
+          "{{ extension_new_tab_redirect }}": {
+            "allowed_permissions": [
+              "favicon",
+              "storage"
+            ],
+            "file_url_navigation_allowed": true
+          },
+          "{{ extension_react_devtools }}": {
+            "file_url_navigation_allowed": true,
+          },
+          "{{ extension_bitwarden }}": {
+            "toolbar_pin": "force_pinned"
+          },
+          "{{ extension_vimium }}": {
+            "toolbar_pin": "force_pinned",
+            "file_url_navigation_allowed": true,
+            "allowed_permissions": [
+              "tabs",
+              "bookmarks",
+              "history",
+              "storage",
+              "sessions",
+              "notifications",
+              "scripting",
+              "favicon",
+              "webNavigation",
+              "search"
+            ]
+          }
+        }
+      }
+    dest: "/etc/chromium/policies/managed/{{ ansible_env.USER }}-policy.json"
+    mode: "644"
+
+- name: "Setup browser tools: register chromium path"
+  ansible.builtin.command: which chromium
+  register: chromium_path
+  changed_when: false
+
+- name: "Setup browser tools: auto generate chrome-debugger service"
+  ansible.builtin.blockinfile:
+    dest: ~/dotfiles/systemd/dot-config/systemd/user/chrome-debugger.service
+    create: true
+    insertafter: '^\[Service\]'
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP CHROMIUM"
+    block: >
+      ExecStart={{ chromium_path.stdout }}
+      --remote-debugging-port=9222
+      --load-extension=%h/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,%h/repos/{{ chromium_local_extensions | join(',%h/repos/') }}
+    mode: "644"
+
+- name: "Setup browser tools: create extensions directory for all users"
+  become: true
+  ansible.builtin.file:
+    path: /usr/share/chromium/extensions
+    state: directory
+    recurse: true
+
+- name: "Setup browser tools: create extension files"
+  become: true
+  ansible.builtin.copy:
+    dest: /usr/share/chromium/extensions/{{ item }}.json
+    content: |
+      { "external_update_url": "https://clients2.google.com/service/update2/crx" }
+    mode: "644"
+  loop:
+    - "{{ extension_bitwarden }}"
+    - "{{ extension_floccus }}"
+    - "{{ extension_memex }}"

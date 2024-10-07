@@ -1,0 +1,13 @@
+diff --git a/packages/react-devtools-shared/src/utils.js b/packages/react-devtools-shared/src/utils.js
+index 715834334..24acd514c 100644
+--- a/packages/react-devtools-shared/src/utils.js
++++ b/packages/react-devtools-shared/src/utils.js
+@@ -384,7 +384,7 @@ export function filterOutLocationComponentFilters(
+ export function getDefaultOpenInEditorURL(): string {
+   return typeof process.env.EDITOR_URL === 'string'
+     ? process.env.EDITOR_URL
+-    : '';
++    : 'terminal://{path}:{line}';
+ }
+ 
+ export function getOpenInEditorURL(): string {
