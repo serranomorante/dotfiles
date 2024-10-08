@@ -3,11 +3,15 @@ local utils = require("serranomorante.utils")
 if not utils.is_available("overseer") then return {} end
 local overseer = require("overseer")
 
+local task_name = "vscode-tasks-tsc-build"
+
 return {
-  name = "vscode-tasks: TSC build tsconfig.json",
+  name = task_name,
   builder = function()
+    local session_name = task_name .. vim.fn.fnameescape(vim.v.servername)
     return {
-      cmd = { "tsc" },
+      cmd = { "tmux" },
+      args = utils.wrap_overseer_args_with_tmux({ "tsc" }, session_name),
       components = {
         { "on_output_parse", problem_matcher = "$tsc" },
         "on_result_diagnostics",

@@ -1,8 +1,10 @@
 local utils = require("serranomorante.utils")
 
+local task_name = "editor-tasks-decrypt-and-load-plugin"
+
 ---@type overseer.TemplateDefinition
 return {
-  name = "editor-tasks: decrypt OpenAI key and load plugin",
+  name = task_name,
   params = {
     parser_capture_group_name = {
       desc = "Name of the capture group property for the parser",
@@ -27,9 +29,13 @@ return {
     },
   },
   builder = function(params)
+    local session_name = task_name .. vim.fn.fnameescape(vim.v.servername)
     return {
-      cmd = { "gpg" },
-      args = { "--decrypt", utils.join_paths(vim.env.HOME, "openai_api_key.asc") },
+      cmd = { "tmux" },
+      args = utils.wrap_overseer_args_with_tmux(
+        { "gpg", "--decrypt", utils.join_paths(vim.env.HOME, "openai_api_key.asc") },
+        session_name
+      ),
       components = {
         {
           "editor-components.COMPONENT__lazy_load_on_gpg_decrypt",

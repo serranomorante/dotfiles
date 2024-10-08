@@ -255,6 +255,7 @@ end
 ---@return boolean
 function M.buf_prevent_coc_attach(bufnr)
   local prevent_coc_attach = false
+  local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
   if vim.wo.diff then prevent_coc_attach = true end
   if not M.buf_has_coc_extension_available(bufnr) then prevent_coc_attach = true end
   return prevent_coc_attach
@@ -296,6 +297,23 @@ function M.filename_with_cursor_pos()
   local fname = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":.")
   local line_col_pair = vim.api.nvim_win_get_cursor(0) -- row is index 1, column is index 0 indexed
   return fname .. ":" .. tostring(line_col_pair[1]) .. ":" .. tostring(line_col_pair[2])
+end
+
+---@param cmd table
+---@param session_name string
+function M.wrap_overseer_args_with_tmux(cmd, session_name)
+  local args = {
+    "-L", -- use different tmux server for overseer tasks
+    "overseer",
+    "-f", -- use tmux config that disables statusbar
+    vim.env.HOME .. "/.config/tmux/tmuxnvim.conf",
+    "new-session",
+    "-A", -- attach in session exists
+    "-s", -- session name
+    session_name,
+  }
+  vim.list_extend(args, cmd)
+  return args
 end
 
 return M
