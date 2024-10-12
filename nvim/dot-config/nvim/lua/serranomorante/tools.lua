@@ -47,8 +47,19 @@ M.by_filetype = {
   html = { parsers = { "html" } },
   xml = { parsers = { "xml" } },
   css = { parsers = { "css" } },
+  php = { parsers = { "php" } },
   all = {
-    parsers = { "regex", "git_config", "git_rebase", "gitattributes", "gitignore", "rst", "ssh_config", "sxhkdrc" },
+    parsers = {
+      "regex",
+      "git_config",
+      "git_rebase",
+      "gitattributes",
+      "gitignore",
+      "rst",
+      "ssh_config",
+      "sxhkdrc",
+      "dockerfile",
+    },
     extensions = { "coc-webview" },
   },
 }

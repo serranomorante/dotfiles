@@ -1,0 +1,6 @@
+---
+- name: "PHP language: ensure LSP (using aur)"
+  aur:
+    use: yay
+    state: present
+    name: phpactor

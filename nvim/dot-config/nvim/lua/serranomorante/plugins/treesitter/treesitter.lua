@@ -32,6 +32,7 @@ local opts = function()
       tools.by_filetype.xml,
       tools.by_filetype.css,
       tools.by_filetype.python,
+      tools.by_filetype.php,
       tools.by_filetype.all
     ),
     highlight = {

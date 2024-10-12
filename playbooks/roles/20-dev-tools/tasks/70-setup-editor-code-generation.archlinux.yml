@@ -15,6 +15,7 @@
     - vscode-css-language-server
     - vscode-json-language-server
     - vscode-eslint-language-server
+    - phpactor
 
 - name: "Editor code generation: register volta default node version"
   ansible.builtin.shell: volta run --node "{{ node_system_default_version }}" which node
