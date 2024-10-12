@@ -117,3 +117,5 @@ vim.keymap.set("n", "<C-S-e>", "zl", { desc = "Scroll right horizontally" })
 vim.keymap.set("n", "<C-S-y>", "zh", { desc = "Scroll left horizontally" })
 vim.keymap.set("n", "<C-S-d>", "50zl", { desc = "Scroll right horizontally +50" })
 vim.keymap.set("n", "<C-S-u>", "50zh", { desc = "Scroll left horizontally +50" })
+
+vim.keymap.set({ "n", "x", "o" }, "'", "`", { desc = "Make single quote act like backtick" })
