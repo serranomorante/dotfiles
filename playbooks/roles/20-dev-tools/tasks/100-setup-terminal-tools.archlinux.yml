@@ -27,3 +27,11 @@
   loop:
     - { script: ~/dotfiles/tmux/dot-config/tmux/tmux.conf }
     - { script: ~/dotfiles/kitty/dot-config/kitty/kitty.conf }
+
+- name: "Setup terminal tools: fix kdeglobals"
+  ansible.builtin.blockinfile:
+    dest: ~/.config/kdeglobals
+    insertafter: '^\[General\]'
+    block: |
+      TerminalApplication=kitty
+      TerminalService=kitty.desktop

@@ -1,0 +1,22 @@
+---
+- name: "Setup NVR tools: ensure virtualenv packages"
+  ansible.builtin.pip:
+    name:
+      - pip
+      - neovim-remote
+    virtualenv: ~/apps/python-tools/.venv
+    virtualenv_command: /usr/bin/python3 -m venv
+    state: latest
+
+- name: "Setup NVR tools: symlink virtualenv nvr"
+  ansible.builtin.file:
+    src: ~/apps/python-tools/.venv/bin/{{ item }}
+    dest: ~/bin/{{ item }}
+    state: link
+  loop:
+    - nvr
+
+- name: "Setup NVR tools: prepare .desktop and mimetype"
+  ansible.builtin.shell: |
+    update-desktop-database ~/.local/share/applications
+    xdg-mime default nvr_nvim_open.desktop x-scheme-handler/terminal

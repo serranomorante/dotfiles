@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # This script is very coupled to the rest of my setup
 # Any file that you open in the format: `terminal://<filename>:<line>` will open as a buffer in the
 # corresponding nvim instance. Example: `xdg-open terminal://test.md:35`
