@@ -36,9 +36,20 @@ local opts = function()
     ---https://github.com/stevearc/overseer.nvim/blob/master/doc/third_party.md#dap
     dap = false,
     templates = { "builtin", "vscode-tasks", "editor-tasks", "debugging-tasks" },
+    task_list = {
+      direction = "left",
+    },
     task_win = {
       border = "single",
       padding = 0,
+    },
+    component_aliases = {
+      defaults_without_notification = {
+        { "display_duration", detail_level = 2 },
+        "on_output_summarize",
+        "on_exit_set_status",
+        { "on_complete_dispose", require_view = { "SUCCESS", "FAILURE" } },
+      },
     },
   }
 end

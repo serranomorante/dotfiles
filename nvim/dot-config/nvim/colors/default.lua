@@ -26,6 +26,9 @@ local groups = {
   AerialLine = { fg = fg .. "Cyan", ctermfg = 14, bg = bg .. "Grey3" },
   ---Overseer
   OverseerRUNNING = { fg = fg .. "Cyan" },
+  OverseerField = { fg = fg .. "Cyan" },
+  OverseerComponent = { fg = fg .. "Yellow" },
+  OverseerTask = { fg = fg .. "Blue" },
   ---nvim-bqf
   BqfPreviewThumb = { link = "PmenuSel" },
   ---Diffview
