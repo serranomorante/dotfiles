@@ -1,5 +1,26 @@
 local M = {}
 
+local function keys()
+  vim.keymap.set(
+    "n",
+    "<leader>qf",
+    function()
+      require("quicker").toggle({
+        focus = true,
+        open_cmd_mods = { split = "botright" },
+      })
+    end,
+    { desc = "Quicker: toggle quickfix list" }
+  )
+
+  vim.keymap.set(
+    "n",
+    "<leader>ql",
+    function() require("quicker").toggle({ focus = true, loclist = true }) end,
+    { desc = "Quicker: toggle location list" }
+  )
+end
+
 ---@return quicker.SetupOptions
 local opts = function()
   return {
@@ -10,25 +31,6 @@ local opts = function()
       load_buffers = false, -- fixes issues with attaching coc keymaps
     },
     on_qf = function(bufnr)
-      vim.keymap.set(
-        "n",
-        "<leader>qf",
-        function()
-          require("quicker").toggle({
-            focus = true,
-            open_cmd_mods = { split = "botright" },
-          })
-        end,
-        { desc = "Quicker: toggle quickfix list" }
-      )
-
-      vim.keymap.set(
-        "n",
-        "<leader>ql",
-        function() require("quicker").toggle({ focus = true, loclist = true }) end,
-        { desc = "Quicker: toggle location list" }
-      )
-
       vim.keymap.set(
         "n",
         ">",
@@ -63,6 +65,9 @@ local opts = function()
   }
 end
 
-M.config = function() require("quicker").setup(opts()) end
+M.config = function()
+  keys()
+  require("quicker").setup(opts())
+end
 
 return M
