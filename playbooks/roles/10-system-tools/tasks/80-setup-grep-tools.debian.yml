@@ -1,7 +1,7 @@
 ---
 - name: "Grep utilities: ensure fzf bin"
   ansible.builtin.unarchive:
-    src: https://github.com/junegunn/fzf/releases/download/v{{ DEBIAN_FZF_VERSION }}/fzf-{{ DEBIAN_FZF_VERSION }}-linux_amd64.tar.gz
+    src: https://github.com/junegunn/fzf/releases/download/v{{ debian_fzf_version }}/fzf-{{ debian_fzf_version }}-linux_amd64.tar.gz
     dest: ~/bin
     remote_src: true
 

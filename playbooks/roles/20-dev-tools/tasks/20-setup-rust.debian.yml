@@ -7,13 +7,13 @@
 
 - name: "Setup rust: unzip, unrar, unarchive rust"
   ansible.builtin.unarchive:
-    src: https://static.rust-lang.org/dist/rust-{{ RUST_VERSION }}-x86_64-unknown-linux-gnu.tar.gz
+    src: https://static.rust-lang.org/dist/rust-{{ rust_version }}-x86_64-unknown-linux-gnu.tar.gz
     dest: ~/apps/lang-tools/rust
     remote_src: true
 
 # - name: "Setup rust: symlink rust tools"
 #   ansible.builtin.file:
-#     src: ~/apps/lang-tools/rust/rust-{{ RUST_VERSION }}-x86_64-unknown-linux-gnu/{{ item }}/bin/{{ item }}
+#     src: ~/apps/lang-tools/rust/rust-{{ rust_version }}-x86_64-unknown-linux-gnu/{{ item }}/bin/{{ item }}
 #     dest: ~/bin/{{ item }}
 #     state: link
 #   loop:
@@ -27,8 +27,8 @@
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP RUST"
     block: |
       {% if 'bashrc' in item.script %}
-      export PATH="$HOME/apps/lang-tools/rust/rust-{{ RUST_VERSION }}-x86_64-unknown-linux-gnu/rustc/bin:$PATH"
-      export PATH="$HOME/apps/lang-tools/rust/rust-{{ RUST_VERSION }}-x86_64-unknown-linux-gnu/cargo/bin:$PATH"
+      export PATH="$HOME/apps/lang-tools/rust/rust-{{ rust_version }}-x86_64-unknown-linux-gnu/rustc/bin:$PATH"
+      export PATH="$HOME/apps/lang-tools/rust/rust-{{ rust_version }}-x86_64-unknown-linux-gnu/cargo/bin:$PATH"
       {% endif %}
   loop:
     - { script: ~/.bashrc }

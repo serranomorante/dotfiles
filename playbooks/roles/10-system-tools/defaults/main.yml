@@ -1,6 +1,6 @@
 ---
-DEBIAN_STOW_VERSION: 2.4.1
-DEBIAN_FZF_VERSION: 0.55.0
+debian_stow_version: 2.4.1
+debian_fzf_version: 0.55.0
 extension_react_devtools: nipckbchhibgnbgnabineijogaiegchd    # copy from chrome://extensions
 extension_bitwarden: nngceckbapebfimnlniiiahkandclblb         # copy from chrome://extensions
 extension_show_tab_numbers: egbdjbfggjldijfoahggfipdkpijmmgd  # copy from chrome://extensions

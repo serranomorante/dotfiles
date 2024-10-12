@@ -7,7 +7,7 @@
 
 - name: "C language: ensure DAP - install cpptools"
   ansible.builtin.unarchive:
-    src: https://github.com/microsoft/vscode-cpptools/releases/download/{{ cpptools_1_21 }}/cpptools-linux-x64.vsix
+    src: https://github.com/microsoft/vscode-cpptools/releases/download/{{ cpptools_version }}/cpptools-linux-x64.vsix
     dest: ~/apps/lang-tools/cpptools
     remote_src: true
     creates: ~/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7 # if exists, this step will not be run

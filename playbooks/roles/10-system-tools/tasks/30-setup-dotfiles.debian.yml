@@ -13,7 +13,7 @@
 
 - name: "Dotfiles: unzip, unrar, unarchive stow"
   ansible.builtin.unarchive:
-    src: https://ftp.gnu.org/gnu/stow/stow-{{ DEBIAN_STOW_VERSION }}.tar.gz
+    src: https://ftp.gnu.org/gnu/stow/stow-{{ debian_stow_version }}.tar.gz
     dest: ~/apps/stow
     remote_src: true
   when: stow_executable is failed
@@ -21,19 +21,19 @@
 - name: "Dotfiles: configure stow"
   ansible.builtin.shell: ./configure --prefix="$HOME/.local"
   args:
-    chdir: ~/apps/stow/stow-{{ DEBIAN_STOW_VERSION }}
+    chdir: ~/apps/stow/stow-{{ debian_stow_version }}
   when: stow_executable is failed
 
 - name: "Dotfiles: build stow"
   ansible.builtin.shell: make
   args:
-    chdir: ~/apps/stow/stow-{{ DEBIAN_STOW_VERSION }}
+    chdir: ~/apps/stow/stow-{{ debian_stow_version }}
   when: stow_executable is failed
 
 - name: "Dotfiles: install stow"
   ansible.builtin.shell: make install
   args:
-    chdir: ~/apps/stow/stow-{{ DEBIAN_STOW_VERSION }}
+    chdir: ~/apps/stow/stow-{{ debian_stow_version }}
   when: stow_executable is failed
 
 - name: "Dotfiles: register stow exists"

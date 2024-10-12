@@ -13,7 +13,7 @@
 
 - name: "Setup terminal tools: unzip, unrar, unarchive fish"
   ansible.builtin.unarchive:
-    src: https://github.com/fish-shell/fish-shell/releases/download/{{ DEBIAN_FISH_SHELL_VERSION }}/fish-{{ DEBIAN_FISH_SHELL_VERSION }}.tar.xz
+    src: https://github.com/fish-shell/fish-shell/releases/download/{{ debian_fish_shell_version }}/fish-{{ debian_fish_shell_version }}.tar.xz
     dest: ~/apps/fish
     remote_src: true
   when: fish_executable is failed
@@ -22,25 +22,25 @@
   ansible.builtin.file:
     state: directory
     recurse: true
-    path: ~/apps/fish/fish-{{ DEBIAN_FISH_SHELL_VERSION }}/build
+    path: ~/apps/fish/fish-{{ debian_fish_shell_version }}/build
   when: fish_executable is failed
 
 - name: "Setup terminal tools: cmake fish"
   ansible.builtin.shell: cmake -DCMAKE_INSTALL_PREFIX="$HOME/.local" -DBUILD_SHARED_LIBS=OFF ..
   args:
-    chdir: ~/apps/fish/fish-{{ DEBIAN_FISH_SHELL_VERSION }}/build
+    chdir: ~/apps/fish/fish-{{ debian_fish_shell_version }}/build
   when: fish_executable is failed
 
 - name: "Setup terminal tools: make fish"
   ansible.builtin.shell: make
   args:
-    chdir: ~/apps/fish/fish-{{ DEBIAN_FISH_SHELL_VERSION }}/build
+    chdir: ~/apps/fish/fish-{{ debian_fish_shell_version }}/build
   when: fish_executable is failed
 
 - name: "Setup terminal tools: install fish"
   ansible.builtin.shell: make install
   args:
-    chdir: ~/apps/fish/fish-{{ DEBIAN_FISH_SHELL_VERSION }}/build
+    chdir: ~/apps/fish/fish-{{ debian_fish_shell_version }}/build
   when: fish_executable is failed
 
 - name: "Setup terminal tools: change tools configs"

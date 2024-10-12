@@ -22,6 +22,6 @@
 
 - name: "Bash language: ensure DAP - install bash-debug-adapter"
   ansible.builtin.unarchive:
-    src: https://github.com/rogalmic/vscode-bash-debug/releases/download/v{{ bash_debug_adapter_0_3 }}/bash-debug-{{ bash_debug_adapter_0_3 }}.vsix
+    src: https://github.com/rogalmic/vscode-bash-debug/releases/download/v{{ bash_debug_adapter_version }}/bash-debug-{{ bash_debug_adapter_version }}.vsix
     dest: ~/apps/lang-tools/bash-debug-adapter
     remote_src: true
