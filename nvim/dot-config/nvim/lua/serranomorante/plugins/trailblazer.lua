@@ -85,7 +85,7 @@ local function opts()
       cursor_mark_symbol = "",
       next_mark_symbol = "",
       previous_mark_symbol = "",
-      trail_mark_priority = 20, -- nvim-dap breakpoints priority is 21
+      trail_mark_priority = 20,
       multiple_mark_symbol_counters_enabled = false,
       number_line_color_enabled = false,
       trail_mark_in_text_highlights_enabled = false,

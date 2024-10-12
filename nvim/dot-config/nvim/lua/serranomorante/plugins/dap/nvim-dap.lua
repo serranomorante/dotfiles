@@ -92,11 +92,11 @@ local keys = function()
 end
 
 local init = function()
-  vim.fn.sign_define("DapBreakpoint", { text = "⬤", texthl = "DapBreakpoint" })
-  vim.fn.sign_define("DapBreakpointCondition", { text = " ", texthl = "DapBreakpoint" })
-  vim.fn.sign_define("DapBreakpointRejected", { text = " ", texthl = "DapBreakpoint" })
-  vim.fn.sign_define("DapLogPoint", { text = "", texthl = "DapLogPoint" })
-  vim.fn.sign_define("DapStopped", { text = "󰁕 ", texthl = "DapStopped" })
+  vim.fn.sign_define("DapBreakpoint", { text = "⬤", texthl = "DapBreakpoint", priority = 21 })
+  vim.fn.sign_define("DapBreakpointCondition", { text = " ", texthl = "DapBreakpoint", priority = 21 })
+  vim.fn.sign_define("DapBreakpointRejected", { text = " ", texthl = "DapBreakpoint", priority = 21 })
+  vim.fn.sign_define("DapLogPoint", { text = "", texthl = "DapLogPoint", priority = 21 })
+  vim.fn.sign_define("DapStopped", { text = "󰁕 ", texthl = "DapStopped", priority = 22 })
 
   vim.api.nvim_create_autocmd("FileType", {
     desc = 'Attach autocompletion to "dap-repl" filetype',
