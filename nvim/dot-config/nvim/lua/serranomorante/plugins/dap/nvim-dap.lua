@@ -5,9 +5,7 @@ local binaries = require("serranomorante.binaries")
 
 local M = {}
 
----`h: dap.ext.vscode.load_launchjs`
-local vscode_type_to_ft
-local log_is_trace = vim.env.DAP_LOG_LEVEL == "TRACE" or false
+local LOG_IS_TRACE = vim.env.DAP_LOG_LEVEL == "TRACE" or false
 
 local keys = function()
   vim.keymap.set(
@@ -23,9 +21,6 @@ local keys = function()
     { desc = "DAP: Clear Breakpoints" }
   )
   vim.keymap.set("n", "<leader>dc", function()
-    ---Load most recent `.vscode/launch.json` config
-    ---https://github.com/mfussenegger/nvim-dap/issues/20#issuecomment-1356791734
-    require("dap.ext.vscode").load_launchjs(nil, vscode_type_to_ft)
     require("dap").continue()
     vim.defer_fn(function() vim.cmd.redrawstatus() end, 100)
   end, { desc = "DAP: Start/Continue (F5)" })
@@ -51,11 +46,17 @@ local keys = function()
   vim.keymap.set("n", "<leader>dO", function() require("dap").step_out() end, { desc = "DAP: Step Out" })
   vim.keymap.set("n", "<leader>dq", function()
     require("dap").close()
-    vim.defer_fn(function() vim.cmd.redrawstatus() end, 100)
+    vim.defer_fn(function()
+      vim.cmd.redrawstatus()
+      require("nvim-dap-virtual-text").refresh()
+    end, 100)
   end, { desc = "DAP: Close Session" })
   vim.keymap.set("n", "<leader>dQ", function()
     require("dap").terminate()
-    vim.defer_fn(function() vim.cmd.redrawstatus() end, 100)
+    vim.defer_fn(function()
+      vim.cmd.redrawstatus()
+      require("nvim-dap-virtual-text").refresh()
+    end, 100)
   end, { desc = "DAP: Terminate Session" })
   vim.keymap.set(
     "n",
@@ -117,6 +118,9 @@ M.config = function()
   keys()
   local dap = require("dap")
   local repl = require("dap.repl")
+  ---https://github.com/stevearc/overseer.nvim/blob/master/doc/third_party.md#dap
+  require("overseer").enable_dap(true)
+  require("dap.ext.vscode").json_decode = require("overseer.json").decode
   dap.set_log_level(vim.env.DAP_LOG_LEVEL or "INFO")
   dap.defaults.fallback.focus_terminal = true
   dap.defaults.fallback.force_external_terminal = true
@@ -148,43 +152,75 @@ M.config = function()
 
   local ok, override_node = pcall(binaries.system_default_node)
 
-  for _, type in ipairs({
-    "node",
-    "chrome",
-    "pwa-node",
-    "pwa-chrome",
-    "pwa-msedge",
-    "node-terminal",
-    "pwa-extensionHost",
-  }) do
-    local host = "localhost"
-    dap.adapters[type] = {
-      type = "server",
-      host = host,
-      port = "${port}",
-      executable = {
-        command = (ok and override_node) and override_node or "node",
-        args = { "/usr/bin/dapDebugServer.js", "${port}", host },
-      },
-    }
+  if binaries.vscode_js_debug_dap_executable() then
+    for _, type in ipairs({
+      "node",
+      "chrome",
+      "pwa-node",
+      "pwa-chrome",
+      "pwa-msedge",
+      "node-terminal",
+      "pwa-extensionHost",
+    }) do
+      local host = "localhost"
+      dap.adapters[type] = {
+        type = "server",
+        host = host,
+        port = "${port}",
+        executable = {
+          command = (ok and override_node) and override_node or "node",
+          args = { binaries.vscode_js_debug_dap_executable(), "${port}", host },
+        },
+      }
+    end
   end
 
-  local dap_executable = vim.env.HOME .. "/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7"
-
   ---https://github.com/mfussenegger/nvim-dap/wiki/C-C---Rust-(gdb-via--vscode-cpptools)
-  if vim.fn.executable(dap_executable) == 1 then
+  if vim.fn.executable(binaries.cppdbg_dap_executable()) == 1 then
     dap.adapters.cppdbg = {
       id = "cppdbg",
       type = "executable",
-      command = dap_executable,
+      command = binaries.cppdbg_dap_executable(),
     }
   end
 
-  dap.adapters.bashdb = {
-    name = "bashdb",
-    type = "executable",
-    command = vim.env.HOME .. "/apps/lang-tools/bash-debug-adapter",
-  }
+  if vim.fn.executable(binaries.bashdb_dap_executable()) == 1 then
+    dap.adapters.bashdb = {
+      name = "bashdb",
+      type = "executable",
+      command = binaries.bashdb_dap_executable(),
+    }
+  end
+
+  if vim.fn.executable(binaries.debugpy_dap_executable()) == 1 then
+    dap.adapters.python = function(cb, config)
+      if config.request == "attach" then
+        ---@diagnostic disable-next-line: undefined-field
+        local port = (config.connect or config).port
+        ---@diagnostic disable-next-line: undefined-field
+        local host = (config.connect or config).host or "127.0.0.1"
+        cb({
+          type = "server",
+          port = assert(port, "`connect.port` is required for a python `attach` configuration"),
+          host = host,
+          enrich_config = dap_utils.python_enrich_config,
+          options = {
+            source_filetype = "python",
+          },
+        })
+      else
+        cb({
+          type = "executable",
+          command = binaries.debugpy_dap_executable(),
+          args = { "-m", "debugpy.adapter" },
+          enrich_config = dap_utils.python_enrich_config,
+          options = {
+            source_filetype = "python",
+          },
+        })
+      end
+    end
+  end
 
   ---╔══════════════════════════════════════╗
   ---║           Configurations             ║
@@ -202,46 +238,22 @@ M.config = function()
   for _, language in ipairs(constants.javascript_aliases) do
     dap.configurations[language] = {
       {
-        name = "DAP: chrome client launch",
-        type = "pwa-chrome",
-        request = "launch",
-        sourceMaps = true,
-        url = function()
-          return coroutine.create(function(dap_run_co)
-            local items = { "3000", "3001", "3002", "3003", "3004" } -- TODO: get the ports programatically
-            items = vim.tbl_map(function(item) return "http://localhost:" .. item end, items)
-            vim.ui.select(items, { label = "Port> " }, function(choice)
-              if choice then coroutine.resume(dap_run_co, choice) end
-            end)
-          end)
-        end,
-        webRoot = function() return dap_utils.choose_path_relative_to_file(javascript_project_files) end,
-        userDataDir = true,
-        trace = log_is_trace,
-      },
-      {
         name = "DAP: chrome client attach",
         type = "pwa-chrome",
         request = "attach",
         port = 9222, -- Start chrome with `google-chrome-stable --remote-debugging-port=9222`
         sourceMaps = true,
         protocol = "inspector",
-        webRoot = function() return dap_utils.choose_path_relative_to_file(javascript_project_files) end,
+        webRoot = function() return dap_utils.pick_workspace_relative_to_file(javascript_project_files) end,
         pauseForSourceMap = false, -- https://github.com/microsoft/vscode-js-debug/blob/main/OPTIONS.md#pauseforsourcemap-5
-        urlFilter = function() -- This allows me to use the same chrome instance for normal browsing
-          return coroutine.create(function(dap_run_co)
-            vim.ui.input({
-              prompt = "Enter urlFilter: ",
-              default = "localhost:*", -- https://stackoverflow.com/a/47410471
-            }, function(input)
-              return (input and input ~= "") and coroutine.resume(dap_run_co, input) or dap.ABORT
-            end)
-          end)
+        urlFilter = function()
+          ---Pick a specific tab to debug
+          return dap_utils.pick_url_filter_from_tabs()
         end,
         skipFiles = {
           "**/node_modules/**",
         },
-        trace = log_is_trace,
+        trace = LOG_IS_TRACE,
       },
       { -- Tested on next.js 14.2.3. It doesn't work on next.js 14.0.4
         name = "DAP: Next.js server attach",
@@ -262,13 +274,8 @@ M.config = function()
             end)
           end)
         end,
-        cwd = function() return dap_utils.choose_path_relative_to_file(javascript_project_files) end,
-        skipFiles = {
-          "/**", -- same as default value: https://github.com/microsoft/vscode-js-debug/blob/main/OPTIONS.md#default-value-25
-          "**/node_modules/**",
-          "!**/node_modules/my-module/**",
-        },
-        trace = log_is_trace,
+        cwd = function() return dap_utils.pick_workspace_relative_to_file(javascript_project_files) end,
+        trace = LOG_IS_TRACE,
       },
       --- Next.js server "launch" is not included here because it can be too specific depending on the project
     }
@@ -320,25 +327,6 @@ M.config = function()
       env = {},
       terminalKind = "integrated",
     },
-  }
-
-  ---https://github.com/stevearc/overseer.nvim/blob/master/doc/third_party.md#dap
-  require("overseer").enable_dap(true)
-  require("dap.ext.vscode").json_decode = require("overseer.json").decode
-
-  ---Only needed if your debugging type doesn't match your language type.
-  ---For example, python is not necessary on this table because its debugging type is "python"
-  ---@diagnostic disable-next-line: unused-local
-  vscode_type_to_ft = {
-    ["node"] = constants.javascript_aliases,
-    ["chrome"] = constants.javascript_aliases,
-    ["firefox"] = constants.javascript_aliases,
-    ["pwa-node"] = constants.javascript_aliases,
-    ["pwa-chrome"] = constants.javascript_aliases,
-    ["pwa-msedge"] = constants.javascript_aliases,
-    ["node-terminal"] = constants.javascript_aliases,
-    ["pwa-extensionHost"] = constants.javascript_aliases,
-    ["cppdbg"] = constants.c_aliases,
   }
 
   vim.cmd.packadd("osv")

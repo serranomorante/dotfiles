@@ -27,7 +27,6 @@ local plugins = {
   "colorizer",
   "quicker",
   "dap.nvim-dap",
-  "dap.nvim-dap-python",
   "dap.nvim-dap-virtual-text",
   "smartyank",
 }
