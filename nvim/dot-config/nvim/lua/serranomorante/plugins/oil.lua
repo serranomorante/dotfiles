@@ -91,11 +91,11 @@ M.config = function()
     },
     view_options = {
       show_hidden = show_hidden,
-      is_hidden_file = function(name, _)
+      is_hidden_file = function(name, bufnr)
         ---https://github.com/stevearc/oil.nvim/blob/b77ed915ab1e53720a6283702816cea2695a2638/doc/recipes.md
         ---dotfiles are always considered hidden
         if vim.startswith(name, ".") and name ~= ".." then return true end
-        local dir = require("oil").get_current_dir()
+        local dir = require("oil").get_current_dir(bufnr)
         ---if no local directory (e.g. for ssh connections), always show
         if not dir then return false end
         ---Check if file is gitignored
