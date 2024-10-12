@@ -36,6 +36,7 @@
     - { folder: start, repo: p00f/clangd_extensions.nvim }
     - { folder: start, repo: ibhagwan/smartyank.nvim }
     - { folder: start, repo: stevearc/quicker.nvim, name: quicker }
+    - { folder: start, repo: kevinhwang91/nvim-fundo, name: fundo }
     - { folder: opt, repo: jbyuki/one-small-step-for-vimkind, name: osv }
     - { folder: opt, repo: Robitx/gp.nvim, name: gp }
 

@@ -29,6 +29,7 @@ local plugins = {
   "dap.nvim-dap",
   "dap.nvim-dap-virtual-text",
   "smartyank",
+  "nvim-fundo",
 }
 
 for _, plugin in ipairs(plugins) do
