@@ -6,7 +6,7 @@ return {
   config = function(bufnr)
     ---@type vim.lsp.ClientConfig
     return {
-      name = "lua_language_server",
+      name = "lua-lsp",
       cmd = { binaries.lua_language_server() },
       capabilities = {
         textDocument = {

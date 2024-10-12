@@ -1,0 +1,6 @@
+---
+- name: "HTML language: ensure LSP (using aur)"
+  aur:
+    use: yay
+    state: present
+    name: vscode-langservers-extracted
