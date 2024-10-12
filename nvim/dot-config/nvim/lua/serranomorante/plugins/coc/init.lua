@@ -10,6 +10,9 @@ local init = function()
   vim.g.coc_user_config = vim.fn.stdpath("config") .. "/lua/serranomorante/plugins/coc"
   vim.g.coc_config_home = vim.fn.stdpath("config") .. "/lua/serranomorante/plugins/coc"
   vim.g.coc_quickfix_open_command = "botright copen"
+  vim.g.coc_filetype_map = {
+    ["yaml.ansible"] = "ansible",
+  }
   vim.g.coc_global_extensions = utils.merge_tools(
     "coc",
     tools.by_filetype.javascript,

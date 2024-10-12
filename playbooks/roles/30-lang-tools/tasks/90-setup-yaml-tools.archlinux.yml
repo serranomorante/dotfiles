@@ -3,4 +3,23 @@
   become: true
   ansible.builtin.package:
     state: present
-    name: yaml-language-server
+    name:
+      - yaml-language-server
+      - yamllint
+
+- name: "Yaml language: ensure virtualenv packages"
+  ansible.builtin.pip:
+    name:
+      - pip
+      - ansible-lint
+    virtualenv: ~/apps/lang-tools/yaml/.venv
+    virtualenv_command: /usr/bin/python3 -m venv
+    state: latest
+
+- name: "Yaml language: symlink utilities"
+  ansible.builtin.file:
+    src: ~/apps/lang-tools/yaml/.venv/bin/{{ item }}
+    dest: ~/bin/{{ item }}
+    state: link
+  loop:
+    - ansible-lint

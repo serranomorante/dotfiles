@@ -19,7 +19,7 @@ M.by_filetype = {
     parsers = { "json", "jsonc" },
     extensions = { "coc-json" },
   },
-  yaml = { parsers = { "yaml" }, extensions = { "coc-yaml" } },
+  yaml = { parsers = { "yaml" }, extensions = { "coc-yaml", "@yaegassy/coc-ansible" } },
   c = { lsp = { "clangd" }, parsers = { "cpp" } },
   python = {
     lsp = { "python-lsp-server" },
@@ -60,6 +60,7 @@ M.by_filetype.typescriptreact = vim.deepcopy(M.by_filetype.javascript)
 M.by_filetype.javascriptreact = vim.deepcopy(M.by_filetype.javascript)
 
 M.by_filetype.jsonc = vim.deepcopy(M.by_filetype.json)
+M.by_filetype["yaml.ansible"] = vim.deepcopy(M.by_filetype.yaml)
 
 if vim.fn.executable("npm") == 0 then M.by_filetype.javascript = {} end
 if vim.fn.executable("pip") == 0 then M.by_filetype.python = {} end
