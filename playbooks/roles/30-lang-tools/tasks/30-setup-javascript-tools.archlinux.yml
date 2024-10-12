@@ -25,9 +25,19 @@
     state: present
     name: prettierd
 
-- name: "Javascript language: ensure DAP (using aur)"
-  aur:
-    use: yay
-    state: present
-    name: vscode-js-debug
+- name: "Javascript language: clone vscode-js-debug"
+  ansible.builtin.git:
+    repo: https://github.com/microsoft/vscode-js-debug.git
+    dest: ~/repos/vscode-js-debug
+    depth: 1
+    force: true
+    single_branch: true
+    version: "v{{ vscode_js_debug_version }}"
 
+- name: "Javascript language: install vscode-js-debug"
+  ansible.builtin.shell: |
+    npm install
+    npx gulp dapDebugServer
+  args:
+    chdir: ~/repos/vscode-js-debug
+    creates: ~/repos/vscode-js-debug/dist/src/dapDebugServer.js
