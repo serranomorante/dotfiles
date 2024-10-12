@@ -40,15 +40,17 @@
     - { folder: opt, repo: jbyuki/one-small-step-for-vimkind, name: osv }
     - { folder: opt, repo: Robitx/gp.nvim, name: gp }
 
-- name: "Editor tools: ensure nvim dev plugins"
-  ansible.builtin.git:
-    repo: https://github.com/{{ item.repo }}
-    dest: ~/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}
-    update: false
-  async: 1000
-  poll: 0
-  loop:
-    - serranomorante/aerial.nvim
+- block:
+  - name: "Editor tools: ensure nvim dev plugins"
+    ansible.builtin.git:
+      repo: https://github.com/{{ item.repo }}
+      dest: ~/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}
+      update: false
+    async: 1000
+    poll: 0
+    loop:
+      - { folder: start, repo: serranomorante/aerial.nvim }
+  tags: only
 
 - name: "Editor tools: ensure universal ctags"
   aur:

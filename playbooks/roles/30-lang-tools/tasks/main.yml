@@ -17,14 +17,15 @@
   loop_control:
     loop_var: task_file
 
-- name: Ensure language tools are installed
-  ansible.builtin.include_tasks: "{{ task_file }}"
-  with_first_found:
-    - files: 30-setup-javascript-tools.{{ user_os }}.yml
-      skip: true
-  when: "user_os in ['archlinux']"
-  loop_control:
-    loop_var: task_file
+- block:
+  - name: Ensure language tools are installed
+    ansible.builtin.include_tasks: "{{ task_file }}"
+    with_first_found:
+      - files: 30-setup-javascript-tools.{{ user_os }}.yml
+        skip: true
+    when: "user_os in ['archlinux']"
+    loop_control:
+      loop_var: task_file
 
 - name: Ensure language tools are installed
   ansible.builtin.include_tasks: "{{ task_file }}"
@@ -71,14 +72,15 @@
   loop_control:
     loop_var: task_file
 
-- name: Ensure language tools are installed
-  ansible.builtin.include_tasks: "{{ task_file }}"
-  with_first_found:
-    - files: 90-setup-yaml-tools.{{ user_os }}.yml
-      skip: true
-  when: "user_os in ['archlinux']"
-  loop_control:
-    loop_var: task_file
+- block:
+  - name: Ensure language tools are installed
+    ansible.builtin.include_tasks: "{{ task_file }}"
+    with_first_found:
+      - files: 90-setup-yaml-tools.{{ user_os }}.yml
+        skip: true
+    when: "user_os in ['archlinux']"
+    loop_control:
+      loop_var: task_file
 
 - name: Ensure language tools are installed
   ansible.builtin.include_tasks: "{{ task_file }}"
@@ -98,4 +100,3 @@
     when: "user_os in ['archlinux']"
     loop_control:
       loop_var: task_file
-  tags: only
