@@ -4,6 +4,7 @@
     name:
       - pip
       - hatch
+      - poetry
     virtualenv: ~/apps/python-tools/.venv
     virtualenv_command: /usr/bin/python3 -m venv
     state: latest
@@ -15,3 +16,4 @@
     state: link
   loop:
     - hatch
+    - poetry
