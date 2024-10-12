@@ -18,7 +18,7 @@ local plugins = {
   "fzf",
   "ale",
   "blame",
-  "grapple",
+  "trailblazer",
   "conform",
   "gitsigns",
   "overseer",

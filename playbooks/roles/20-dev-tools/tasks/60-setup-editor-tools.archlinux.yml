@@ -23,7 +23,7 @@
     - { folder: start, repo: stevearc/conform.nvim }
     - { folder: start, repo: sindrets/diffview.nvim }
     - { folder: start, repo: lewis6991/gitsigns.nvim }
-    - { folder: start, repo: cbochs/grapple.nvim }
+    - { folder: start, repo: LeonHeidelbach/trailblazer.nvim, name: trailblazer }
     - { folder: start, repo: kevinhwang91/nvim-ufo, name: ufo }
     - { folder: start, repo: tpope/vim-sleuth }
     - { folder: start, repo: mfussenegger/nvim-dap, name: dap }
