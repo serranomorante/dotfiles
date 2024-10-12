@@ -9,4 +9,4 @@
   ansible.builtin.get_url:
     url: https://raw.githubusercontent.com/kewlfft/ansible-aur/master/plugins/modules/aur.py
     dest: ~/.ansible/plugins/modules/aur.py
-    mode: 0644
+    mode: "644"
