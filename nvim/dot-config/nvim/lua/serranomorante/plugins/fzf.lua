@@ -27,7 +27,13 @@ local keys = function()
     { desc = "FZF: Find visual selection" }
   )
   vim.keymap.set("n", "<leader>ff", function() require("fzf-lua").files() end, { desc = "FZF: Find files" })
-  vim.keymap.set("n", "<leader>fw", function() require("fzf-lua").live_grep() end, { desc = "FZF: Live grep" })
+  vim.keymap.set("n", "<leader>fw", function()
+    require("fzf-lua").live_grep({
+      ---https://github.com/ibhagwan/fzf-lua/wiki/Options#grep-providers-options
+      search = string.format(" --"),
+      no_esc = true, -- Do not escape regex characters
+    })
+  end, { desc = "FZF: Live grep" })
   vim.keymap.set(
     "n",
     "<leader>gc",
@@ -153,7 +159,7 @@ M.config = function()
     elseif h > max_h then
       h = max_h
     end
-    return { winopts = { height = h, width = 0.60, row = 0.40 } }
+    return { winopts = { height = h, width = 999, row = 0.40 } }
   end)
 end
 
