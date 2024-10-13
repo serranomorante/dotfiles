@@ -5,6 +5,7 @@ local task_name = "editor-tasks-decrypt-and-load-plugin"
 ---@type overseer.TemplateDefinition
 return {
   name = task_name,
+  desc = "Decrypt and load plugin",
   params = {
     parser_capture_group_name = {
       desc = "Name of the capture group property for the parser",

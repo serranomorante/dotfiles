@@ -27,10 +27,7 @@ return {
 
     return {
       cmd = { "tmux" },
-      args = utils.wrap_overseer_args_with_tmux(
-        vim.tbl_deep_extend("force", task_opts.cmd, { "--pretty", "false" }),
-        session_name
-      ),
+      args = utils.wrap_overseer_args_with_tmux(vim.list_extend(task_opts.cmd, { "--pretty", "false" }), session_name),
       env = {
         NO_COLOR = "1",
       },
