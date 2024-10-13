@@ -1,11 +1,16 @@
 ---
 - name: "Setup terminal tools: ensure packages"
   ansible.builtin.package:
-    name: 
+    name:
+      - polkit # https://wiki.archlinux.org/title/Systemd/User#Automatic_start-up_of_systemd_user_instances
       - kitty
       - tmux
       - fish
     state: present
+
+- name: "Setup terminal tools: ensure automatic start-up of systemd user instances"
+  ansible.builtin.command: loginctl enable-linger
+  changed_when: false
 
 - name: "Setup terminal tools: register default shell"
   ansible.builtin.shell: which fish 
@@ -35,3 +40,16 @@
     block: |
       TerminalApplication=kitty
       TerminalService=kitty.desktop
+
+- name: "Setup terminal tools: autostart base tmux sessions with systemd"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: "{{ service }}"
+    state: started
+    enabled: true
+    masked: false
+  loop:
+    - tmux
+    - tmux-overseer
+  loop_control:
+    loop_var: service

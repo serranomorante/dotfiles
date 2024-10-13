@@ -55,7 +55,6 @@
     when: "user_os in ['archlinux', 'debian']"
     loop_control:
       loop_var: task_file
-  tags: only
 
 - block:
   - name: Ensure editor code-generation
@@ -94,6 +93,7 @@
     when: "user_os in ['archlinux', 'debian']"
     loop_control:
       loop_var: task_file
+  tags: only
 
 - block:
   - name: Setup nvr tools
