@@ -4,6 +4,13 @@ local M = {}
 
 local group = vim.api.nvim_create_augroup("trailblazer-custom-config", { clear = true })
 
+---Check if trailblazer quickfix window is open
+---@param any_qf boolean? Check if any qf window is open (not only trailblazer)
+local function is_trailblazer_qf_open(any_qf)
+  if require("trailblazer.trails").list.get_trailblazer_quickfix_buf(any_qf) then return true end
+  return false
+end
+
 local function init()
   vim.api.nvim_create_autocmd("FileType", {
     desc = "Add trailblazer keymaps when opening compatible qf buffer",
@@ -11,7 +18,7 @@ local function init()
     pattern = "qf",
     callback = function()
       local list = require("trailblazer.trails.list")
-      if list.get_trailblazer_quickfix_buf() then list.register_quickfix_keybindings(list.config.quickfix_mappings) end
+      if is_trailblazer_qf_open() then list.register_quickfix_keybindings(list.config.quickfix_mappings) end
     end,
   })
 end
@@ -33,28 +40,21 @@ local function keys()
 
   vim.keymap.set({ "n", "v" }, "<A-j>", function()
     local trails = require("trailblazer.trails")
-    if trails.list.get_trailblazer_quickfix_buf(true) and not trails.list.get_trailblazer_quickfix_buf() then
-      return utils.next_qf_item()
-    end
+    if is_trailblazer_qf_open(true) and not is_trailblazer_qf_open() then return utils.next_qf_item() end
     if #trails.stacks.current_trail_mark_stack == 0 then return vim.notify("Marks empty", vim.log.levels.WARN) end
     require("trailblazer").peek_move_next_down()
   end, { desc = "Trailblazer: Move to the next global trail mark" })
 
   vim.keymap.set({ "n", "v" }, "<A-k>", function()
     local trails = require("trailblazer.trails")
-    if trails.list.get_trailblazer_quickfix_buf(true) and not trails.list.get_trailblazer_quickfix_buf() then
-      return utils.prev_qf_item()
-    end
+    if is_trailblazer_qf_open(true) and not is_trailblazer_qf_open() then return utils.prev_qf_item() end
     if #trails.stacks.current_trail_mark_stack == 0 then return vim.notify("Marks empty", vim.log.levels.WARN) end
     require("trailblazer").peek_move_previous_up()
   end, { desc = "Trailblazer: Move to the previous global trail mark" })
 
-  vim.keymap.set(
-    { "n", "v" },
-    "<A-m>",
-    function() require("trailblazer").toggle_trail_mark_list("quickfix") end,
-    { desc = "Trailblazer: Toggle a global list of all trail marks" }
-  )
+  vim.keymap.set({ "n", "v" }, "<A-m>", function()
+    require("trailblazer").toggle_trail_mark_list("quickfix")
+  end, { desc = "Trailblazer: Toggle a global list of all trail marks" })
 
   vim.keymap.set(
     { "n", "v" },
