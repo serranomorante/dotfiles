@@ -316,4 +316,21 @@ function M.wrap_overseer_args_with_tmux(cmd, session_name)
   return args
 end
 
+function M.check_quickfix_list_open()
+  for _, win in pairs(vim.fn.getwininfo()) do
+    if win["quickfix"] == 1 then return true end
+  end
+  return false
+end
+
+function M.next_qf_item()
+  local ok, _ = pcall(vim.cmd.cnext)
+  if not ok then return vim.notify("No more items", vim.log.levels.WARN) end
+end
+
+function M.prev_qf_item()
+  local ok, _ = pcall(vim.cmd.cprev)
+  if not ok then return vim.notify("No more items", vim.log.levels.WARN) end
+end
+
 return M

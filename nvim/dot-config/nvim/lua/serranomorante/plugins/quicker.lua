@@ -31,19 +31,15 @@ local opts = function()
       load_buffers = false, -- fixes issues with attaching coc keymaps
     },
     on_qf = function(bufnr)
-      vim.keymap.set(
-        "n",
-        ">",
-        "<cmd>cnewer<CR>",
-        { desc = "Quicker: go to next quickfix in history", nowait = true, buffer = bufnr }
-      )
+      vim.keymap.set("n", ">", function()
+        local ok, _ = pcall(vim.cmd.cnewer)
+        if not ok then return vim.notify("At the top of the quickfix stack", vim.log.levels.WARN) end
+      end, { desc = "Quicker: go to next quickfix in history", nowait = true, buffer = bufnr })
 
-      vim.keymap.set(
-        "n",
-        "<",
-        "<cmd>colder<CR>",
-        { desc = "Quicker: go to previous quickfix in history", nowait = true, buffer = bufnr }
-      )
+      vim.keymap.set("n", "<", function()
+        local ok, _ = pcall(vim.cmd.colder)
+        if not ok then return vim.notify("At the bottom of the quickfix stack", vim.log.levels.WARN) end
+      end, { desc = "Quicker: go to previous quickfix in history", nowait = true, buffer = bufnr })
 
       vim.keymap.set("n", "+", function()
         require("quicker").expand({ before = 2, after = 2, add_to_existing = true })

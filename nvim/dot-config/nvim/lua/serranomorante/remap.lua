@@ -119,3 +119,6 @@ vim.keymap.set("n", "<C-S-d>", "50zl", { desc = "Scroll right horizontally +50" 
 vim.keymap.set("n", "<C-S-u>", "50zh", { desc = "Scroll left horizontally +50" })
 
 vim.keymap.set({ "n", "x", "o" }, "'", "`", { desc = "Make single quote act like backtick" })
+
+vim.keymap.set("n", "<A-j>", utils.next_qf_item, { desc = "Next quickfix list item" })
+vim.keymap.set("n", "<A-k>", utils.prev_qf_item, { desc = "Prev quickfix list item" })
