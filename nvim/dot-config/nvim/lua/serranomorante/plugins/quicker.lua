@@ -6,7 +6,7 @@ local function keys()
     "<leader>qf",
     function()
       require("quicker").toggle({
-        focus = true,
+        focus = false,
         open_cmd_mods = { split = "botright" },
       })
     end,
@@ -16,7 +16,7 @@ local function keys()
   vim.keymap.set(
     "n",
     "<leader>ql",
-    function() require("quicker").toggle({ focus = true, loclist = true }) end,
+    function() require("quicker").toggle({ focus = false, loclist = true }) end,
     { desc = "Quicker: toggle location list" }
   )
 end
@@ -46,10 +46,12 @@ local opts = function()
         vim.api.nvim_win_set_height(0, math.min(20, vim.api.nvim_buf_line_count(0)))
       end, { desc = "Quicker: expand quickfix content", buffer = bufnr })
 
-      vim.keymap.set("n", "=", function()
-        require("quicker").collapse()
-        vim.api.nvim_win_set_height(0, 10)
-      end, { desc = "Quicker: collapse quickfix content", buffer = bufnr })
+      vim.keymap.set(
+        "n",
+        "=",
+        function() require("quicker").collapse() end,
+        { desc = "Quicker: collapse quickfix content", buffer = bufnr }
+      )
 
       vim.keymap.set(
         "n",

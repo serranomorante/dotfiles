@@ -54,6 +54,7 @@ local function keys()
 
   vim.keymap.set({ "n", "v" }, "<A-m>", function()
     require("trailblazer").toggle_trail_mark_list("quickfix")
+    if is_trailblazer_qf_open() then vim.cmd.wincmd({ args = { "p" } }) end
   end, { desc = "Trailblazer: Toggle a global list of all trail marks" })
 
   vim.keymap.set(

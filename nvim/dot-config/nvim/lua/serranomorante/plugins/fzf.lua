@@ -61,7 +61,10 @@ local opts = function()
   if not utils.is_directory(fzf_lua_path) then vim.fn.mkdir(fzf_lua_path, "p") end
 
   return {
-    defaults = { formatter = "path.filename_first" },
+    defaults = {
+      formatter = "path.filename_first",
+      copen = "botright copen | wincmd p",
+    },
     winopts = {
       width = 999,
       border = "single",
