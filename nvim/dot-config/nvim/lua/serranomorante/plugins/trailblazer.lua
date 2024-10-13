@@ -2,7 +2,19 @@ local utils = require("serranomorante.utils")
 
 local M = {}
 
-local group = vim.api.nvim_create_augroup("trailblazer_autosave_session", { clear = true })
+local group = vim.api.nvim_create_augroup("trailblazer-custom-config", { clear = true })
+
+local function init()
+  vim.api.nvim_create_autocmd("FileType", {
+    desc = "Add trailblazer keymaps when opening compatible qf buffer",
+    group = group,
+    pattern = "qf",
+    callback = function()
+      local list = require("trailblazer.trails.list")
+      if list.get_trailblazer_quickfix_buf() then list.register_quickfix_keybindings(list.config.quickfix_mappings) end
+    end,
+  })
+end
 
 local function keys()
   vim.keymap.set(
@@ -84,7 +96,7 @@ local function keys()
     end)
   end, { desc = "Trailblazer: Switch stack" })
 
-  vim.keymap.set("n", '<A-">', function()
+  vim.keymap.set("n", "<A-s>", function()
     local modes = require("trailblazer.trails").config.custom.available_trail_mark_modes
     local current_mode = require("trailblazer.trails").config.custom.current_trail_mark_mode
     modes = vim.tbl_filter(function(mode) return mode ~= current_mode end, modes)
@@ -92,6 +104,15 @@ local function keys()
       if choice then require("trailblazer").set_trail_mark_select_mode(choice, false) end
     end)
   end)
+
+  vim.keymap.set("n", '<A-">', function()
+    local stacks = require("trailblazer.trails").stacks.get_sorted_stack_names()
+    local current_stack = require("trailblazer.trails").stacks.current_trail_mark_stack_name
+    stacks = vim.tbl_filter(function(stack) return stack ~= current_stack end, stacks)
+    vim.ui.select(stacks, { prompt = "Delete stack " }, function(choice)
+      if choice then require("trailblazer").delete_trail_mark_stack(choice) end
+    end)
+  end, { desc = "Trailblazer: Delete stack" })
 end
 
 local function opts()
@@ -110,7 +131,6 @@ local function opts()
       number_line_color_enabled = false,
       trail_mark_in_text_highlights_enabled = false,
       trail_mark_symbol_line_indicators_enabled = true,
-      -- move_to_nearest_before_peek = true,
     },
     force_mappings = {},
     force_quickfix_mappings = {
@@ -137,9 +157,11 @@ local function opts()
 end
 
 function M.config()
+  init()
   keys()
   local trailblazer = require("trailblazer")
   trailblazer.setup(opts())
+
   vim.schedule(trailblazer.load_trailblazer_state_from_file)
 
   vim.api.nvim_create_autocmd("VimLeavePre", {
