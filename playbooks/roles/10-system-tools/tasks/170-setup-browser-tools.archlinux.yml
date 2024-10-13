@@ -7,6 +7,12 @@
       - ruby        # to install extensionator
       - jdk-openjdk # to build react-devtools
 
+- name: "Setup browser tools: ensure aur packages"
+  aur:
+    use: yay
+    state: present
+    name: brave-bin
+
 - name: "Setup browser tools: ensure folder exists"
   ansible.builtin.file:
     state: directory
@@ -139,12 +145,15 @@
   args:
     creates: ~/repos/react/packages/react-devtools-extensions/chrome/build/unpacked/react-devtools.crx
 
-- name: "Setup browser tools: create chromium policy directory for all users"
+- name: "Setup browser tools: create browser policy directory for all users"
   become: true
   ansible.builtin.file:
-    path: /etc/chromium/policies/managed
+    path: /etc/{{ item }}/policies/managed
     state: directory
     recurse: true
+  loop:
+    - chromium
+    - brave
 
 - name: "Setup browser tools: create chromium policy file for all users"
   become: true
@@ -197,8 +206,11 @@
           }
         }
       }
-    dest: "/etc/chromium/policies/managed/{{ ansible_env.USER }}-policy.json"
+    dest: "/etc/{{ item }}/policies/managed/{{ ansible_env.USER }}-policy.json"
     mode: "644"
+  loop:
+    - chromium
+    - brave
 
 - name: "Setup browser tools: register chromium path"
   ansible.builtin.command: which chromium
@@ -235,3 +247,17 @@
     - "{{ extension_bitwarden }}"
     - "{{ extension_floccus }}"
     - "{{ extension_memex }}"
+
+- name: "Setup browser tools: copy brave desktop file to user directory"
+  become: true
+  ansible.builtin.copy:
+    src: /usr/share/applications/brave-browser.desktop
+    dest: "{{ ansible_env.HOME }}/.local/share/applications/brave-browser.desktop"
+    owner: "{{ ansible_env.USER }}"
+    mode: "644"
+
+- name: "Setup browser tools: override brave desktop file"
+  ansible.builtin.replace:
+    path: "{{ ansible_env.HOME }}/.local/share/applications/brave-browser.desktop"
+    regexp: "^(Exec=).*"
+    replace: '\1brave --load-extension={{ ansible_env.HOME }}/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,{{ ansible_env.HOME }}/repos/NewTab-Redirect,{{ ansible_env.HOME }}/repos/vimium,{{ ansible_env.HOME }}/repos/chrome-show-tab-numbers'
