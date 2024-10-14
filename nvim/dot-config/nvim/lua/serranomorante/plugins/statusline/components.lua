@@ -54,6 +54,7 @@ M.FileName = {
 }
 
 M.FileFlags = {
+  condition = function(self) return not heirline_conditions.buffer_matches({ filetype = { "^dap-.*" } }, self.bufnr) end,
   {
     condition = function(self) return vim.api.nvim_get_option_value("modified", { buf = self.bufnr }) end,
     provider = "[+]",
@@ -71,6 +72,7 @@ M.FileFlags = {
 
 M.FileNameModifier = {
   hl = function(self)
+    if heirline_conditions.buffer_matches({ filetype = { "^dap-.*" } }, self.bufnr) then return end
     if vim.api.nvim_get_option_value("modified", { buf = self.bufnr }) then return { bold = true, underline = true } end
   end,
 }
@@ -78,8 +80,10 @@ M.FileNameModifier = {
 M.FileNameBlock = {
   init = function(self)
     self.bufnr = vim.api.nvim_get_current_buf()
-    self.filename = utils.get_escaped_filename(vim.fn.fnamemodify(vim.api.nvim_buf_get_name(self.bufnr), ":."))
-    if self.filename == "" then self.filename = "[No Name]" end
+    self.bufname = vim.api.nvim_buf_get_name(self.bufnr)
+    self.filename = vim.fn.fnamemodify(self.bufname, ":.")
+    if vim.fn.empty(self.filename) == 1 then self.filename = "[No Name]" end
+    if self.filename:match("%%") ~= nil then self.filename = utils.get_escaped_filename(self.filename) end
   end,
   flexible = M.priority.filename,
   heirline_utils.insert(

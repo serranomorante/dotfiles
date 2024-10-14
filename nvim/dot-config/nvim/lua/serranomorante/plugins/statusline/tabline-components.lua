@@ -8,16 +8,12 @@ local TablineFileNameBlock = {
   init = function(self)
     local window = vim.api.nvim_tabpage_get_win(self.tabpage)
     self.bufnr = vim.api.nvim_win_get_buf(window)
-    self.filename = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(self.bufnr), ":t")
-    if self.filename == "" then self.filename = "[No Name]" end
+    self.bufname = vim.api.nvim_buf_get_name(self.bufnr)
+    self.filename = vim.fn.fnamemodify(self.bufname, ":t")
+    if vim.fn.empty(self.filename) == 1 then self.filename = "[No Name]" end
+    if require("oil.util").parse_url(self.bufname) then self.filename = "File Explorer" end
   end,
-  hl = function(self)
-    if self.is_active then
-      return "TabLineSel"
-    else
-      return "TabLine"
-    end
-  end,
+  hl = function(self) return self.is_active and "TabLineSel" or "TabLine" end,
   heirline_utils.insert(
     components.FileIcon,
     heirline_utils.insert(components.FileNameModifier, components.FileName),

@@ -61,21 +61,20 @@ M.Oil = {
     return heirline_conditions.buffer_matches({ filetype = { "oil" } })
       and (not heirline_conditions.buffer_matches({ filetype = { "oil_preview" } }))
   end,
-  init = function(self) self.dir = require("oil").get_current_dir() end,
+  init = function(self)
+    self.dir = require("oil").get_current_dir()
+    self.cwd = vim.fn.getcwd()
+    self.outside_cwd = string.find(self.dir, self.cwd) == nil
+  end,
   {
     provider = function(self)
-      local cwd = vim.fn.getcwd()
-      local parent = vim.fn.fnamemodify(cwd, ":p"):gsub("^" .. vim.env.HOME, "~")
-      if self.dir and not string.find(self.dir, cwd) then
-        ---This means we are outside of our current working directory
-        return "(" .. parent .. ") "
-      end
-      return parent
+      local outside_cwd_dir = string.format("(%s)", vim.fn.fnamemodify(self.dir, ":~"))
+      return self.outside_cwd and outside_cwd_dir or vim.fn.fnamemodify(self.cwd, ":~") .. "/"
     end,
     hl = { fg = "NvimLightCyan", bold = true },
   },
   {
-    provider = function(self) return vim.fn.fnamemodify(self.dir, ":.") end,
+    provider = function(self) return self.outside_cwd and "" or vim.fn.fnamemodify(self.dir, ":.") end,
   },
 }
 

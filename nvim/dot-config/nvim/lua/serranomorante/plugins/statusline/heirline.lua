@@ -82,14 +82,8 @@ local opts = function()
     winbar_components.Breadcrumb,
   }
 
-  local OilTabLine = {
-    condition = function() return conditions.buffer_matches({ filetype = { "oil" } }) end,
-    provider = " File Explorer",
-  }
-
   local TabLines = {
     fallthrough = false,
-    OilTabLine,
     tabline_components.TabPages,
   }
 
