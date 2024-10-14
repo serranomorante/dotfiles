@@ -202,24 +202,19 @@ M.config = function()
       },
       ["<leader>fw"] = {
         callback = function()
-          local oil_dir = require("oil").get_current_dir()
-          if oil_dir == nil then return end
-          local current_dir = vim.fn.fnamemodify(oil_dir, ":.")
-          require("fzf-lua").live_grep({
+          local options = {
             ---https://github.com/ibhagwan/fzf-lua/wiki/Options#grep-providers-options
-            search = string.format(" -- --iglob=%s**", current_dir),
+            search = " -- " .. vim.fn.fnamemodify(require("oil").get_current_dir() or "", ":~"),
             no_esc = true, -- Do not escape regex characters
-          })
+          }
+          require("fzf-lua").live_grep(options)
         end,
         desc = "Oil: Grep into this directory with FZF",
       },
       ["<leader>ff"] = {
         callback = function()
-          local oil_dir = require("oil").get_current_dir()
-          if oil_dir == nil then return end
-          local dir_relative_to_root = vim.fn.fnamemodify(oil_dir, ":.")
           require("fzf-lua").files({
-            cwd = vim.fn.empty(dir_relative_to_root) and oil_dir or dir_relative_to_root,
+            cwd = vim.fn.fnamemodify(require("oil").get_current_dir() or "", ":.:~"),
           })
         end,
         desc = "Oil: Search files into this directory with FZF",
