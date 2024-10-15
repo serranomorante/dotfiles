@@ -164,6 +164,9 @@
         "ShortcutCustomizationAllowed": true,
         "TranslateEnabled": false,
         "HomepageIsNewTabPage": false,
+        "VideoCaptureAllowedUrls": [
+          "https://[*.]google.com/"
+        ],
         "ExtensionSettings": {
           "{{ extension_show_tab_numbers }}": {
             "allowed_permissions": [
