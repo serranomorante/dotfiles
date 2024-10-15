@@ -27,21 +27,12 @@ local function customize_selector(bufnr)
 end
 
 local keys = function()
-  vim.keymap.set("n", "zR", function() require("ufo").openAllFolds() end, { desc = "Ufo: Open all folds" })
-  vim.keymap.set("n", "zM", function() require("ufo").closeAllFolds() end, { desc = "Ufo: Close all folds" })
-  vim.keymap.set(
-    "n",
-    "zr",
-    function() require("ufo").openFoldsExceptKinds() end,
-    { desc = "Ufo: Open folds except kinds" }
-  )
-  vim.keymap.set("n", "zm", function() require("ufo").closeFoldsWith() end, { desc = "Ufo: Close folds with level" })
-  vim.keymap.set(
-    "n",
-    "zp",
-    function() require("ufo").peekFoldedLinesUnderCursor() end,
-    { desc = "Ufo: Peek folded lines under cursor" }
-  )
+  local ufo = require("ufo")
+  vim.keymap.set("n", "zR", ufo.openAllFolds, { desc = "Ufo: Open all folds" })
+  vim.keymap.set("n", "zM", ufo.closeAllFolds, { desc = "Ufo: Close all folds" })
+  vim.keymap.set("n", "zr", ufo.openFoldsExceptKinds, { desc = "Ufo: Open folds except kinds" })
+  vim.keymap.set("n", "zm", ufo.closeFoldsWith, { desc = "Ufo: Close folds with level" })
+  vim.keymap.set("n", "zp", ufo.peekFoldedLinesUnderCursor, { desc = "Ufo: Peek folded lines under cursor" })
 end
 
 local opts = function()
@@ -49,13 +40,14 @@ local opts = function()
     preview = {
       win_config = {
         winblend = 0,
-        winhighlight = "Normal:Folded",
       },
       mappings = {
         scrollB = "<C-b>",
         scrollF = "<C-f>",
         scrollU = "<C-u>",
         scrollD = "<C-d>",
+        jumpTop = "gg",
+        jumpBot = "G",
       },
     },
     provider_selector = function(bufnr, filetype, buftype)
