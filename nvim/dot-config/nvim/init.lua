@@ -5,12 +5,12 @@ vim.filetype.add({
     ["sxhkdrc"] = "sxhkdrc",
     [".stow-global-ignore"] = "gitignore",
     [".stow-local-ignore"] = "gitignore",
-    ["dot-bashrc"] = "bash",
+    ["dot-bashrc"] = "sh",
     ["xhtml"] = "html",
   },
   pattern = {
     [".*/requirements.*%.txt"] = "requirements",
-    ["^%.env.*"] = "bash",
+    ["%.env.*"] = "sh",
   },
 })
 
