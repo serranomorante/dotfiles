@@ -11,7 +11,7 @@ local function show_docs()
   if vim.api.nvim_win_get_config(0).relative ~= "" then return end
   ---K focus floating window if present
   if vim.api.nvim_eval("coc#float#has_float()") ~= 0 then
-    utils.feedkeys("<C-w><C-w>", "n")
+    vim.cmd('execute "normal \\<Plug>(coc-float-jump)"')
     vim.schedule(function()
       if vim.fn.maparg("q", "n") == "" then
         vim.keymap.set("n", "q", "<cmd>close<cr>", {
