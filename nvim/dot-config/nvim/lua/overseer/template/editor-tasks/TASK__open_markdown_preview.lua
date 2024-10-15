@@ -8,7 +8,7 @@ return {
       args = { "--servername", vim.v.servername, "-c", "CocCommand markdown-preview-enhanced.openPreviewBackground" },
       components = {
         "unique",
-        "default",
+        "defaults_without_notification",
       },
     }
   end,
