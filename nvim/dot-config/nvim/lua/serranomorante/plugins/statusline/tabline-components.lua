@@ -1,4 +1,5 @@
 local heirline_utils = require("heirline.utils")
+local heirline_conds = require("heirline.conditions")
 local components = require("serranomorante.plugins.statusline.components")
 
 local M = {}
@@ -11,7 +12,7 @@ local TablineFileNameBlock = {
     self.bufname = vim.api.nvim_buf_get_name(self.bufnr)
     self.filename = vim.fn.fnamemodify(self.bufname, ":t")
     if vim.fn.empty(self.filename) == 1 then self.filename = "[No Name]" end
-    if require("oil.util").parse_url(self.bufname) then self.filename = "File Explorer" end
+    if heirline_conds.buffer_matches({ filetype = { "oil" } }, self.bufnr) then self.filename = "File Explorer" end
   end,
   hl = function(self) return self.is_active and "TabLineSel" or "TabLine" end,
   heirline_utils.insert(
