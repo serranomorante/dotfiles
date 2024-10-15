@@ -6,7 +6,7 @@ end
 
 local opts = function()
   return {
-    max_lines = 2,
+    max_lines = 1,
     trim_scope = "inner", -- outer
     separator = "—",
     on_attach = function(bufnr)
