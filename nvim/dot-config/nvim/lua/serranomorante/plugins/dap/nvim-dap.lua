@@ -256,7 +256,7 @@ M.config = function()
         trace = LOG_IS_TRACE,
       },
       { -- Tested on next.js 14.2.3. It doesn't work on next.js 14.0.4
-        name = "DAP: Next.js server attach",
+        name = "DAP: next.js server attach",
         type = "pwa-node",
         request = "attach",
         processId = function() return require("dap.utils").pick_process({ filter = "^next.server.*" }) end,
