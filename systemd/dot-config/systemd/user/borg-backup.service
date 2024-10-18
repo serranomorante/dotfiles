@@ -1,0 +1,10 @@
+[Unit]
+Description=Borg backup service
+Wants=borg-backup.timer
+
+[Service]
+## BEGIN ANSIBLE MANAGED BLOCK - SETUP BORG BACKUP
+ExecStart=/usr/bin/borg create %h/nvim-data-backups::nvim-data-{now} %h/.local/share/nvim/trailblazer %h/.local/share/nvim/dirsession %h/.local/share/nvim/fzf-lua %h/.local/share/nvim/gp %h/.cache/nvim/fundo %h/.cache/nvim/undodir %h/.cache/nvim/shadadir %h/.cache/nvim/gp %h/.local/state/nvim/shada
+## END ANSIBLE MANAGED BLOCK - SETUP BORG BACKUP
+Environment=export BORG_PASSCOMMAND='gpg --decrypt %h/borg_passphrase.gpg'
+Type=oneshot

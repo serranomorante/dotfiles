@@ -1,0 +1,46 @@
+---
+- name: "Setup backup tools: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - borg
+      - vorta
+
+- name: "Setup backup tools: ensure nvim-data-backups folder"
+  ansible.builtin.file:
+    state: directory
+    recurse: true
+    path: ~/nvim-data-backups
+
+- name: "Setup backup tools: bootstrap borg config repo"
+  ansible.builtin.shell: |
+    export BORG_PASSCOMMAND='gpg --decrypt {{ ansible_env.HOME }}/borg_passphrase.gpg'
+    borg init --encryption=repokey {{ ansible_env.HOME }}/nvim-data-backups
+  args:
+    creates: ~/nvim-data-backups/config
+
+- name: "Setup backup tools: register borg path"
+  ansible.builtin.command: which borg
+  register: borg_executable_path
+  changed_when: false
+
+- name: "Setup backup tools: auto generate borg-backup service"
+  ansible.builtin.blockinfile:
+    dest: ~/dotfiles/systemd/dot-config/systemd/user/borg-backup.service
+    create: true
+    insertafter: '^\[Service\]'
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP BORG BACKUP"
+    block: >
+      ExecStart={{ borg_executable_path.stdout }}
+      create
+      %h/nvim-data-backups::nvim-data-{now} %h/{{ nvim_data_backups | join(' %h/') }}
+    mode: "644"
+
+- name: "Setup backup tools: ensure borg backup timer"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: borg-backup.timer
+    state: started
+    enabled: true
+    masked: false

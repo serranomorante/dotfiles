@@ -1,0 +1,12 @@
+[Unit]
+Description=Borg backup timer
+Requires=borg-backup.service
+
+[Timer]
+Persistent=true
+OnBootSec=10min
+OnUnitActiveSec=15min
+Unit=borg-backup.service
+
+[Install]
+WantedBy=timers.target

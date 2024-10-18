@@ -12,3 +12,13 @@ chromium_local_extensions:
   - NewTab-Redirect
   - vimium
   - chrome-show-tab-numbers
+nvim_data_backups:
+  - .local/share/nvim/trailblazer        # trailblazer marks
+  - .local/share/nvim/dirsession         # resession
+  - .local/share/nvim/fzf-lua            # fzf lua history
+  - .local/share/nvim/gp                 # chat gpt
+  - .cache/nvim/fundo                    # nvim fundo
+  - .cache/nvim/undodir                  # undo history
+  - .cache/nvim/shadadir                 # shada file
+  - .cache/nvim/gp
+  - .local/state/nvim/shada
