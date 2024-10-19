@@ -7,18 +7,18 @@
       - borg
       - vorta
 
-- name: "Setup backup tools: ensure nvim-data-backups folder"
+- name: "Setup backup tools: ensure home-config-data-backups folder"
   ansible.builtin.file:
     state: directory
     recurse: true
-    path: ~/nvim-data-backups
+    path: ~/home-config-data-backups
 
 - name: "Setup backup tools: bootstrap borg config repo"
   ansible.builtin.shell: |
     export BORG_PASSCOMMAND='gpg --decrypt {{ ansible_env.HOME }}/borg_passphrase.gpg'
-    borg init --encryption=repokey {{ ansible_env.HOME }}/nvim-data-backups
+    borg init --encryption=repokey {{ ansible_env.HOME }}/home-config-data-backups
   args:
-    creates: ~/nvim-data-backups/config
+    creates: ~/home-config-data-backups/config
 
 - name: "Setup backup tools: register borg path"
   ansible.builtin.command: which borg
@@ -34,7 +34,7 @@
     block: >
       ExecStart={{ borg_executable_path.stdout }}
       create
-      %h/nvim-data-backups::nvim-data-{now} %h/{{ nvim_data_backups | join(' %h/') }}
+      %h/home-config-data-backups::home-config-data-archive-{now:%%Y-%%m-%%d_%%H_%%M_%%S} %h/{{ home_config_data_backups | join(' %h/') }}
     mode: "644"
 
 - name: "Setup backup tools: ensure borg backup timer"
