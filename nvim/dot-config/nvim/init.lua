@@ -11,6 +11,8 @@ vim.filetype.add({
   pattern = {
     [".*/requirements.*%.txt"] = "requirements",
     ["%.env.*"] = "sh",
+    [".*%.service"] = "gitconfig",
+    [".*%.timer"] = "gitconfig",
   },
 })
 

@@ -12,6 +12,12 @@ local function is_trailblazer_qf_open(any_qf)
 end
 
 local function init()
+  vim.filetype.add({
+    pattern = {
+      [".*%.tbsv"] = "json",
+    },
+  })
+
   vim.api.nvim_create_autocmd("FileType", {
     desc = "Add trailblazer keymaps when opening compatible qf buffer",
     group = group,
