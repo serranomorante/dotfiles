@@ -281,31 +281,33 @@ M.config = function()
     }
   end
 
-  dap.configurations.c = {
-    {
-      name = "DAP: c/c++ build active file & launch it",
-      request = "launch",
-      type = "cppdbg",
-      cwd = "${workspaceFolder}",
-      program = "${fileDirname}/${fileBasenameNoExtension}",
-      preLaunchTask = "vscode-tasks: C/C++: gcc build active file",
-    },
-    {
-      name = "DAP: c/c++ pick and launch executable",
-      type = "cppdbg",
-      request = "launch",
-      program = function() return require("dap.utils").pick_file() end,
-      cwd = "${workspaceFolder}",
-      environment = {
-        {
-          ---I override the `DAP_OVERRIDED_DISPLAY` env variable (which fallbacks to the original DISPLAY value)
-          ---from an overseer task that setups my dwm debugging session
-          name = "DISPLAY",
-          value = "${env:DAP_OVERRIDED_DISPLAY}",
+  for _, language in ipairs({ "c", "cpp" }) do
+    dap.configurations[language] = {
+      {
+        name = "DAP: c/c++ build active file & launch it",
+        request = "launch",
+        type = "cppdbg",
+        cwd = "${workspaceFolder}",
+        program = "${fileDirname}/${fileBasenameNoExtension}",
+        preLaunchTask = "vscode-tasks-gcc-build-active-file",
+      },
+      {
+        name = "DAP: c/c++ pick and launch executable",
+        type = "cppdbg",
+        request = "launch",
+        program = function() return require("dap.utils").pick_file() end,
+        cwd = "${workspaceFolder}",
+        environment = {
+          {
+            ---I override the `DAP_OVERRIDED_DISPLAY` env variable (which fallbacks to the original DISPLAY value)
+            ---from an overseer task that setups my dwm debugging session
+            name = "DISPLAY",
+            value = "${env:DAP_OVERRIDED_DISPLAY}",
+          },
         },
       },
-    },
-  }
+    }
+  end
 
   dap.configurations.sh = {
     {

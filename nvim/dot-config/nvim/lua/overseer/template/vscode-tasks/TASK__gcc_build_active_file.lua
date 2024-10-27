@@ -23,13 +23,12 @@ return {
         precalculated_vars.fileDirname .. "/" .. precalculated_vars.fileBasenameNoExtension,
       }, session_name),
       components = {
-        { "on_output_quickfix", open = false },
-        "default",
+        "defaults_without_notification",
       },
     }
   end,
   condition = {
-    filetype = { "c" },
+    filetype = { "c", "cpp" },
   },
   tags = { overseer.TAG.BUILD },
 }
