@@ -257,12 +257,6 @@ M.Indent = {
   hl = { bold = true },
 }
 
-M.GrappleStatusline = {
-  condition = function() return utils.is_available("grapple") and require("grapple").exists() end,
-  provider = function() return "󰛢 " .. require("grapple").name_or_index() end,
-  hl = { fg = "green", bold = true },
-}
-
 M.QuickfixTitle = {
   provider = function() return vim.w.quickfix_title end,
   hl = { bold = true },
