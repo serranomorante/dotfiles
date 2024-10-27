@@ -45,6 +45,7 @@
     when: "user_os in ['archlinux']"
     loop_control:
       loop_var: task_file
+  tags: only
 
 - name: Ensure display tools are configured
   ansible.builtin.include_tasks: "{{ task_file }}"
@@ -159,4 +160,3 @@
     when: "user_os in ['archlinux']"
     loop_control:
       loop_var: task_file
-  tags: only

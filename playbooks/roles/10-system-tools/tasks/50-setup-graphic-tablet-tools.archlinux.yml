@@ -1,4 +1,12 @@
 ---
+- name: "Graphic tablet peripheral: ensure tools"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - xf86-input-wacom
+      - usbutils
+
 - name: "Graphic tablet peripheral: ensure tools (using aur)"
   aur:
     use: yay
@@ -13,7 +21,25 @@
     name: gromit-mpx
     state: started
     enabled: true
-    masked: no
+    masked: false
+
+- name: "Graphic tablet peripheral: wacom - add udev rule"
+  become: true
+  ansible.builtin.shell: >
+    set -o pipefail &&
+    echo 'ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="{{ wacom_vendor_id }}",
+    TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="wacom.service"' |
+    sudo tee /etc/udev/rules.d/99-wacom.rules
+  args:
+    creates: /etc/udev/rules.d/99-wacom.rules
+
+- name: "Graphic tablet peripheral: ensure wacom service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: wacom
+    state: started
+    enabled: true
+    masked: false
 
 # Setup weylus
 - name: "Graphic tablet peripheral: clone weylus"
@@ -72,4 +98,4 @@
     name: weylus
     state: started
     enabled: true
-    masked: no
+    masked: false
