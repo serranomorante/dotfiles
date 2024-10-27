@@ -56,9 +56,10 @@
     chdir: ~/repos/Weylus
 
 - name: "Graphic tablet peripheral: compile weylus lib.ts"
-  ansible.builtin.shell: tsc
+  ansible.builtin.command: tsc
   args:
     chdir: ~/repos/Weylus
+    creates: ~/repos/Weylus/www/static/lib.js
 
 - name: "Graphic tablet peripheral: register ufw status variable"
   ansible.builtin.systemd_service:
@@ -90,7 +91,11 @@
 
 - name: "Graphic tablet peripheral: weylus - add udev rule"
   become: true
-  ansible.builtin.shell: echo 'KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/60-weylus.rules
+  ansible.builtin.shell: >
+    set -o pipefail &&
+    echo 'KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/60-weylus.rules
+  args:
+    creates: /etc/udev/rules.d/60-weylus.rules
 
 - name: "Graphic tablet peripheral: ensure weylus service"
   ansible.builtin.systemd_service:

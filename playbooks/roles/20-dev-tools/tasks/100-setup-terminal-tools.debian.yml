@@ -1,8 +1,9 @@
 ---
 - name: "Setup terminal tools: register fish exists"
-  ansible.builtin.shell: ~/.local/bin/fish --version
+  ansible.builtin.command: ~/.local/bin/fish --version
   register: fish_executable
   ignore_errors: true
+  changed_when: false
 
 - name: "Setup terminal tools: ensure fish source folder exists"
   ansible.builtin.file:

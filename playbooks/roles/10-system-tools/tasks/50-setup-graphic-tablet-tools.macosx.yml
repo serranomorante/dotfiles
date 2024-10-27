@@ -13,7 +13,7 @@
     name: gromit-mpx
     state: started
     enabled: true
-    masked: no
+    masked: false
 
 # Setup weylus
 - name: "Graphic tablet peripheral: clone weylus lib.ts file"
@@ -77,4 +77,4 @@
     name: weylus
     state: started
     enabled: true
-    masked: no
+    masked: false

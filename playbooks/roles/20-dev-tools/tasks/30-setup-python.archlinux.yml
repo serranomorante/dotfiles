@@ -13,8 +13,9 @@
       - tk
 
 - name: "Setup python: register pyenv binary"
-  ansible.builtin.shell: which pyenv
+  ansible.builtin.command: which pyenv
   register: pyenv_executable
+  changed_when: false
 
 - name: "Setup python: ensure startup setup scripts"
   ansible.builtin.blockinfile:
@@ -25,7 +26,7 @@
       {% if 'dot-bashrc' in item.script %}
       export PYENV_ROOT="$HOME/.pyenv"
       export PATH="{{ pyenv_executable.stdout }}:$PATH"
-      eval "$(pyenv init -)" 
+      eval "$(pyenv init -)"
       {% elif 'setup_bashrc.fish' in item.script %}
       set -gx PYENV_ROOT "$HOME/.pyenv"
       set -gx PATH "{{ pyenv_executable.stdout }}:$PATH"

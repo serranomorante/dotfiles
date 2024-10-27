@@ -5,4 +5,4 @@
     name: chrome-debugger
     state: started
     enabled: true
-    masked: no
+    masked: false

@@ -110,5 +110,5 @@ export PATH="$VOLTA_HOME/bin:$PATH"
 ## BEGIN ANSIBLE MANAGED BLOCK - SETUP PYTHON
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="/usr/bin/pyenv:$PATH"
-eval "$(pyenv init -)" 
+eval "$(pyenv init -)"
 ## END ANSIBLE MANAGED BLOCK - SETUP PYTHON

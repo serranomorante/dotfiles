@@ -27,14 +27,16 @@
     loop_control:
       loop_var: task_file
 
-- name: Ensure peripheral tools are configured
-  ansible.builtin.include_tasks: "{{ task_file }}"
-  with_first_found:
-    - files: 40-setup-keyboard-tools.{{ user_os }}.yml
-      skip: true
-  when: "user_os in ['archlinux']"
-  loop_control:
-    loop_var: task_file
+- block:
+  - name: Ensure peripheral tools are configured
+    ansible.builtin.include_tasks: "{{ task_file }}"
+    with_first_found:
+      - files: 40-setup-keyboard-tools.{{ user_os }}.yml
+        skip: true
+    when: "user_os in ['archlinux']"
+    loop_control:
+      loop_var: task_file
+  tags: only
 
 - block:
   - name: Ensure peripheral tools are configured
@@ -45,7 +47,6 @@
     when: "user_os in ['archlinux']"
     loop_control:
       loop_var: task_file
-  tags: only
 
 - name: Ensure display tools are configured
   ansible.builtin.include_tasks: "{{ task_file }}"

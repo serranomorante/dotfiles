@@ -11,7 +11,7 @@
     name: redis
     state: started
     enabled: true
-    masked: no
+    masked: false
 
 - name: "Persistence tools: ensure virtualenv packages"
   ansible.builtin.pip:

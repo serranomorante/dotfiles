@@ -17,7 +17,7 @@
     - { patch_filename: max_count_limit.patch }
 
 - name: "Neovim: ensure neovim - build"
-  ansible.builtin.shell: make
+  ansible.builtin.command: make
   environment:
     CMAKE_BUILD_TYPE: RelWithDebInfo
   args:

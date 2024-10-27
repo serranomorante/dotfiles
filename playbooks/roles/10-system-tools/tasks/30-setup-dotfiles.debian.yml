@@ -1,8 +1,9 @@
 ---
 - name: "Dotfiles: register stow exists"
-  ansible.builtin.shell: ~/.local/bin/stow --version
+  ansible.builtin.command: ~/.local/bin/stow --version
   register: stow_executable
   ignore_errors: true
+  changed_when: false
 
 - name: "Dotfiles: ensure stow folder exists"
   ansible.builtin.file:
@@ -37,9 +38,10 @@
   when: stow_executable is failed
 
 - name: "Dotfiles: register stow exists"
-  ansible.builtin.shell: ~/.local/bin/stow --version
+  ansible.builtin.command: ~/.local/bin/stow --version
   register: stow_executable
   ignore_errors: true
+  changed_when: false
 
 - name: "Dotfiles: download dotfiles"
   ansible.builtin.git:
@@ -50,7 +52,9 @@
   when: stow_executable is succeeded
 
 - name: "Dotfiles: apply stow"
-  ansible.builtin.shell: ~/.local/bin/stow --dotfiles fish nvim tmux
+  ansible.builtin.shell: >
+    set -o pipefail &&
+    ~/.local/bin/stow --dotfiles fish nvim tmux
   args:
     chdir: ~/dotfiles
   when: stow_executable is succeeded
