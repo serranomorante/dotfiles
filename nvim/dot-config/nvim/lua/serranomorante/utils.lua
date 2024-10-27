@@ -333,4 +333,7 @@ function M.prev_qf_item()
   if not ok then return vim.notify("No more items", vim.log.levels.WARN) end
 end
 
+---Check if nvim was started with no args
+function M.nvim_started_without_args() return vim.fn.argc(-1) == 0 end
+
 return M

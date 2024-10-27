@@ -265,8 +265,7 @@ function M.config()
     desc = "Save a dir-specific session when you close Neovim",
     group = group,
     callback = function()
-      ---Only save the session if nvim was started with no args
-      if vim.fn.argc(-1) == 0 then trailblazer.save_trailblazer_state_to_file(nil, nil, false) end
+      if utils.nvim_started_without_args() then trailblazer.save_trailblazer_state_to_file(nil, nil, false) end
     end,
   })
 end
