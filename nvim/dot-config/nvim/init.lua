@@ -13,6 +13,8 @@ vim.filetype.add({
     ["%.env.*"] = "sh",
     [".*%.service"] = "gitconfig",
     [".*%.timer"] = "gitconfig",
+    [".*/pipewire/.*/.*%.conf"] = "gitconfig",
+    [".*/wireplumber/.*/.*%.conf"] = "gitconfig",
   },
 })
 

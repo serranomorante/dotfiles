@@ -10,7 +10,6 @@ local opts = function()
       "binary",
       "bufhidden",
       "buflisted",
-      "filetype",
       "modifiable",
       "previewwindow",
       "readonly",
