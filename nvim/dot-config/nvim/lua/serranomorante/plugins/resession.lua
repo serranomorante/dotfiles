@@ -3,6 +3,12 @@ local utils = require("serranomorante.utils")
 local M = {}
 
 local opts = function()
+  ---@type overseer.ListTaskOpts
+  local overseer_ext_conf = {
+    enable_in_tab = true,
+    filter = require("serranomorante.plugins.overseer").task_allowed_to_store_in_session,
+  }
+
   return {
     load_detail = false,
     ---Remove `cmdheight` and `diff` options
@@ -41,10 +47,7 @@ local opts = function()
       aerial = {
         enable_in_tab = true,
       },
-      overseer = {
-        enable_in_tab = true,
-        name = {},
-      },
+      overseer = overseer_ext_conf,
     },
   }
 end

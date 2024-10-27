@@ -59,4 +59,19 @@ M.config = function()
   require("overseer").setup(opts())
 end
 
+---Check if task is allowed to store in session
+---@param task overseer.Task
+---@return boolean
+function M.task_allowed_to_store_in_session(task)
+  local allowed_tasks = {
+    "editor-tasks-refresh-ctags",
+  }
+  return vim.tbl_count(
+    vim.tbl_filter(
+      function(allowed_task) return string.find(task.name, allowed_task, nil, true) ~= nil end,
+      allowed_tasks
+    )
+  ) > 0
+end
+
 return M
