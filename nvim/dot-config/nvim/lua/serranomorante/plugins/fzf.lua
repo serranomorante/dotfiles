@@ -2,6 +2,34 @@ local utils = require("serranomorante.utils")
 
 local M = {}
 
+---Custom action to delete bufs but skip trailblazer marks
+---@param selected table
+---@param opts table
+local function buf_del_action(selected, opts)
+  local path = require("fzf-lua.path")
+  local fzf_utils = require("fzf-lua.utils")
+  local stacks_bufnames = {}
+
+  for _, stack in pairs(require("trailblazer.trails").stacks.trail_mark_stack_list) do
+    for _, trail in pairs(stack.stack) do
+      if vim.api.nvim_buf_is_valid(trail.buf) then
+        local stack_bufname = vim.api.nvim_buf_get_name(trail.buf)
+        if not vim.list_contains(stacks_bufnames, stack_bufname) then table.insert(stacks_bufnames, stack_bufname) end
+      end
+    end
+  end
+
+  for _, sel in ipairs(selected) do
+    local entry = path.entry_to_file(sel, opts)
+    local omit_buf = vim.list_contains(stacks_bufnames, entry.bufname)
+
+    if omit_buf then vim.notify("Skipping delete due to trailblazer marks", vim.log.levels.WARN) end
+    if entry.bufnr and not fzf_utils.buffer_is_dirty(entry.bufnr, true, false) and not omit_buf then
+      vim.api.nvim_buf_delete(entry.bufnr, { force = true })
+    end
+  end
+end
+
 local keys = function()
   vim.keymap.set(
     "n",
@@ -107,6 +135,12 @@ local opts = function()
     actions = {
       files = {
         ["enter"] = fzf_lua.actions.file_edit_or_qf,
+      },
+    },
+    buffers = {
+      actions = {
+        ---https://github.com/ibhagwan/fzf-lua/wiki/Advanced#fzf-exec-act-resume
+        ["ctrl-x"] = { fn = buf_del_action, reload = true },
       },
     },
     grep = {

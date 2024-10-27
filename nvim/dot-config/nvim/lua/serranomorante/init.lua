@@ -5,6 +5,7 @@ require("serranomorante.autocmds")
 
 local plugins = {
   "resession",
+  "trailblazer",
   "statusline.heirline",
   "coc",
   "lsp",
@@ -18,7 +19,6 @@ local plugins = {
   "fzf",
   "ale",
   "blame",
-  "trailblazer",
   "conform",
   "gitsigns",
   "overseer",
