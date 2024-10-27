@@ -6,6 +6,7 @@
     single_branch: true
     depth: 10
     version: "{{ item.version | default('HEAD') }}"
+    force: true
   async: 1000
   poll: 0
   loop:
@@ -15,7 +16,7 @@
     - { folder: start, repo: nvim-tree/nvim-web-devicons }
     - { folder: start, repo: neoclide/coc.nvim, version: release }
     - { folder: start, repo: stevearc/overseer.nvim, name: overseer }
-    - { folder: start, repo: nvim-treesitter/nvim-treesitter }
+    - { folder: start, repo: kevinhwang91/nvim-treesitter }
     - { folder: start, repo: nvim-treesitter/nvim-treesitter-context }
     - { folder: start, repo: nvim-treesitter/nvim-treesitter-textobjects }
     - { folder: start, repo: dense-analysis/ale }
@@ -23,7 +24,7 @@
     - { folder: start, repo: stevearc/conform.nvim }
     - { folder: start, repo: sindrets/diffview.nvim }
     - { folder: start, repo: lewis6991/gitsigns.nvim }
-    - { folder: start, repo: cbochs/grapple.nvim }
+    - { folder: start, repo: LeonHeidelbach/trailblazer.nvim, name: trailblazer }
     - { folder: start, repo: kevinhwang91/nvim-ufo, name: ufo }
     - { folder: start, repo: tpope/vim-sleuth }
     - { folder: start, repo: mfussenegger/nvim-dap, name: dap }
