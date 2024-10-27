@@ -64,7 +64,7 @@ M.Oil = {
   init = function(self)
     self.dir = require("oil").get_current_dir()
     self.cwd = vim.fn.getcwd()
-    self.outside_cwd = string.find(self.dir, self.cwd) == nil
+    self.outside_cwd = not vim.startswith(self.dir, self.cwd)
   end,
   {
     provider = function(self)
