@@ -5,7 +5,7 @@
 if [[ $# -eq 1 ]]; then
     selected_path=$1
 else
-    selected_path=$(find ~/work/gp/.bare ~/pjs ~/repos ~/courses ~/temp ~/issues ~/dotfiles ~/Notes ~/.local/share/nvim/site/pack/plugins/start -mindepth 1 -maxdepth 1 -type d | fzf)
+    selected_path=$(find ~/work/gp/.bare ~/pjs ~/repos ~/courses ~/temp ~/issues ~/dotfiles ~/Notes ~/.local/share/nvim/site/pack/plugins/start ~/.local/share/nvim/site/pack/plugins/opt -mindepth 1 -maxdepth 1 -type d | fzf)
 fi
 
 if [[ -z $selected_path ]]; then

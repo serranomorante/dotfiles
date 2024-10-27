@@ -43,6 +43,7 @@ local opts = function()
       },
       overseer = {
         enable_in_tab = true,
+        name = {},
       },
     },
   }

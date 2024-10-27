@@ -23,7 +23,10 @@ local function buf_del_action(selected, opts)
     local entry = path.entry_to_file(sel, opts)
     local omit_buf = vim.list_contains(stacks_bufnames, entry.bufname)
 
-    if omit_buf then vim.notify("Skipping delete due to trailblazer marks", vim.log.levels.WARN) end
+    if omit_buf then
+      vim.notify(string.format("Skipping buf %d as it contains trailblazer marks", entry.bufnr), vim.log.levels.WARN)
+    end
+
     if entry.bufnr and not fzf_utils.buffer_is_dirty(entry.bufnr, true, false) and not omit_buf then
       vim.api.nvim_buf_delete(entry.bufnr, { force = true })
     end

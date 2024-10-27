@@ -110,7 +110,7 @@ end, { expr = true })
 vim.keymap.set("n", "<leader>yy", function()
   local filename_with_cursor_pos = utils.filename_with_cursor_pos()
   vim.fn.setreg("+", filename_with_cursor_pos)
-  vim.notify("Copied filename:line:col", vim.log.levels.INFO)
+  vim.notify("Copied " .. filename_with_cursor_pos, vim.log.levels.INFO)
 end, { desc = "Copy <filename>:<line>:<col>" })
 
 vim.keymap.set("n", "<C-S-e>", "zl", { desc = "Scroll right horizontally" })
