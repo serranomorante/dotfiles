@@ -24,7 +24,6 @@ local plugins = {
   "overseer",
   "aerial",
   "diffview",
-  "colorizer",
   "quicker",
   "dap.nvim-dap",
   "dap.nvim-dap-virtual-text",
