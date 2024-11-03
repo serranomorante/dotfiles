@@ -7,7 +7,7 @@ return {
   builder = function()
     return {
       cmd = { "nvr" },
-      args = { "--servername", vim.v.servername, "-c", "CocCommand markdown-preview-enhanced.openPreviewBackground" },
+      args = { "--servername", vim.v.servername, "-c", "CocCommand markdown-preview-enhanced.openPreview" },
       components = {
         "unique",
         "defaults_without_notification",

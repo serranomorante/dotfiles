@@ -45,7 +45,7 @@ return {
           parser_capture_group_name = params.parser_capture_group_name,
           plugin_opt_name = params.plugin_opt_name,
         },
-        "default",
+        "defaults_without_notification",
       },
     }
   end,
