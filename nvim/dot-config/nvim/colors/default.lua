@@ -16,6 +16,7 @@ local groups = {
   DiffChange = { bg = bg .. "Grey3" },
   QuickFixLine = { ctermfg = "NONE", fg = "NONE", bold = true, bg = bg .. "Blue" },
   LspInlayHint = { link = "CursorColumn" },
+  TabLineSel = { fg = "White", bg = bg .. "Grey2" },
   ---LSP
   LspCodeLens = { link = "Comment" },
   ---DAP
