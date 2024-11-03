@@ -9,7 +9,9 @@ local function init()
     desc = "Set formatexpr per buffer using conform.formatexpr",
     pattern = vim.tbl_keys(require("conform").formatters_by_ft),
     group = vim.api.nvim_create_augroup("conform_formatexpr", { clear = true }),
-    callback = function() vim.opt_local.formatexpr = [[v:lua.require'conform'.formatexpr({ 'lsp_format': 'never' })]] end,
+    callback = function(args)
+      vim.bo[args.buf].formatexpr = [[v:lua.require'conform'.formatexpr({ 'lsp_format': 'never' })]]
+    end,
   })
 end
 

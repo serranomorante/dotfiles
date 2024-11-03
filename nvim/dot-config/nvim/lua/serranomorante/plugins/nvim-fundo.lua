@@ -1,6 +1,6 @@
 local M = {}
 
-local function init() vim.opt.undofile = true end
+local function init() vim.bo.undofile = true end
 
 function M.config()
   init()
