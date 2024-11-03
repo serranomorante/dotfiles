@@ -12,6 +12,9 @@ local function is_trailblazer_qf_open(any_qf)
 end
 
 local function init()
+  vim.api.nvim_set_hl(0, "TrailblazerCustomMark", { fg = "NvimDarkGrey4", bg = "NONE" })
+  vim.api.nvim_set_hl(0, "TrailblazerCustomMarkInvert", { fg = "NONE", bg = "NvimDarkGrey4" })
+
   vim.filetype.add({
     pattern = {
       [".*%.tbsv"] = "json",
@@ -130,11 +133,11 @@ local function opts()
     auto_load_trailblazer_state_on_enter = false,
     trail_options = {
       current_trail_mark_stack_sort_mode = "chron_asc",
-      mark_symbol = "",
-      newest_mark_symbol = "",
-      cursor_mark_symbol = "",
-      next_mark_symbol = "",
-      previous_mark_symbol = "",
+      mark_symbol = "",
+      newest_mark_symbol = "",
+      cursor_mark_symbol = "",
+      next_mark_symbol = "",
+      previous_mark_symbol = "",
       trail_mark_priority = 20,
       multiple_mark_symbol_counters_enabled = false,
       number_line_color_enabled = false,
@@ -162,94 +165,49 @@ local function opts()
     },
     hl_groups = {
       TrailBlazerTrailMark = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMark",
       },
       TrailBlazerTrailMarkNext = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMark",
       },
       TrailBlazerTrailMarkPrevious = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMark",
       },
       TrailBlazerTrailMarkCursor = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMarkInvert",
       },
       TrailBlazerTrailMarkNewest = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMarkInvert",
       },
       TrailBlazerTrailMarkCustomOrd = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMarkInvert",
       },
       TrailBlazerTrailMarkGlobalChron = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMarkInvert",
       },
       TrailBlazerTrailMarkGlobalBufLineSorted = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMarkInvert",
       },
       TrailBlazerTrailMarkGlobalFpathLineSorted = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMarkInvert",
       },
       TrailBlazerTrailMarkGlobalChronBufLineSorted = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMarkInvert",
       },
       TrailBlazerTrailMarkGlobalChronFpathLineSorted = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMarkInvert",
       },
       TrailBlazerTrailMarkGlobalChronBufSwitchGroupChron = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMarkInvert",
       },
       TrailBlazerTrailMarkGlobalChronBufSwitchGroupLineSorted = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMarkInvert",
       },
       TrailBlazerTrailMarkBufferLocalChron = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMarkInvert",
       },
       TrailBlazerTrailMarkBufferLocalLineSorted = {
-        guifg = "none",
-        guibg = "none",
-        gui = "undercurl",
-        guisp = "Yellow",
+        link = "TrailblazerCustomMarkInvert",
       },
     },
   }
