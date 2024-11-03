@@ -5,20 +5,20 @@
     state: present
     name: evince
 
-- name: "Other tools: ensure Iosevka fonts directory exists"
+- name: "Other tools: ensure font directory exists"
   ansible.builtin.file:
     path: ~/.local/share/fonts/Iosevka
     state: directory
     mode: "775"
 
-- name: "Other tools: check Iosevka exists"
+- name: "Other tools: check font files exists"
   ansible.builtin.shell: "ls ~/.local/share/fonts/Iosevka/Iosevka*Nerd*Font*"
-  register: iosevka_exists
+  register: font_dir_exists
   ignore_errors: true
   changed_when: false
 
-- name: "Other tools: install Iosevka"
-  when: iosevka_exists is failed
+- name: "Other tools: install font"
+  when: font_dir_exists is failed
   ansible.builtin.unarchive:
     src: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.2.1/Iosevka.zip
     dest: ~/.local/share/fonts/Iosevka
