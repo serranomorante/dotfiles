@@ -22,10 +22,17 @@ local opts = function()
     link_tree_to_folds = false,
     layout = {
       default_direction = "float",
+      win_opts = {
+        winhl = "Normal:CustomAerialBg,NormalFloat:CustomAerialBg",
+      },
     },
     float = {
-      border = "single",
+      border = "solid",
       relative = "editor",
+      override = function(conf, source_winid)
+        conf.title = "Document symbols"
+        return conf
+      end,
     },
     keymaps = {
       ["l"] = false, -- tree_open
