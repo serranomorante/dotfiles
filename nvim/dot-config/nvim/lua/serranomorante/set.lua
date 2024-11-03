@@ -49,6 +49,9 @@ vim.opt.foldlevelstart = 99 -- start with all code unfolded
 vim.opt.foldenable = true
 vim.opt.foldopen:remove({ "hor" })
 vim.opt.fillchars:append({ eob = " ", fold = " ", foldopen = " ", foldsep = " ", foldclose = "+" })
+vim.wo.foldmethod = "expr"
+vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+vim.wo.foldtext = ""
 
 vim.opt.splitright = true
 vim.opt.splitbelow = true

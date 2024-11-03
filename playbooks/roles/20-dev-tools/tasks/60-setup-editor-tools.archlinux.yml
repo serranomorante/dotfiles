@@ -37,18 +37,9 @@
     - { folder: start, repo: kevinhwang91/nvim-fundo, name: fundo }
     - { folder: start, repo: tpope/vim-rsi } # https://vi.stackexchange.com/a/6041
     - { folder: start, repo: wellle/tmux-complete.vim }
+    - { folder: start, repo: stevearc/aerial.nvim }
     - { folder: opt, repo: jbyuki/one-small-step-for-vimkind, name: osv }
     - { folder: opt, repo: Robitx/gp.nvim, name: gp }
-
-- name: "Editor tools: ensure nvim dev plugins"
-  ansible.builtin.git:
-    repo: https://github.com/{{ item.repo }}
-    dest: ~/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}
-    update: false
-  async: 1000
-  poll: 0
-  loop:
-    - { folder: start, repo: serranomorante/aerial.nvim }
 
 - name: "Editor tools: ensure universal ctags"
   aur:

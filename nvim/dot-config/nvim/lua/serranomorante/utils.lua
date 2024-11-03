@@ -255,7 +255,6 @@ end
 ---@return boolean
 function M.buf_prevent_coc_attach(bufnr)
   local prevent_coc_attach = false
-  local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
   if vim.wo.diff then prevent_coc_attach = true end
   if not M.buf_has_coc_extension_available(bufnr) then prevent_coc_attach = true end
   return prevent_coc_attach
