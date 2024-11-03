@@ -97,6 +97,9 @@ end
 M.config = function()
   init()
   require("nvim-treesitter.configs").setup(opts())
+
+  vim.treesitter.language.register("git_config", "systemd")
+  vim.treesitter.language.register("git_config", "conf")
 end
 
 return M
