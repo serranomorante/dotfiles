@@ -121,7 +121,7 @@
 #    bspc node -v {-20 0,0 20,0 -20,20 0}
 
 # Toggle gromit-mpx
-super + {y,c,v}
+super + {z,c,v}
     gromit-mpx --{toggle,clear,visibility}
 
 # Toggle dunst notifications history
