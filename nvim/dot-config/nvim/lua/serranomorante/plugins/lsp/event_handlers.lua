@@ -1,4 +1,3 @@
-local constants = require("serranomorante.constants")
 local keymapper = require("serranomorante.plugins.lsp.keymapper")
 local augroups = require("serranomorante.plugins.lsp.augroups")
 local ms = vim.lsp.protocol.Methods
@@ -11,13 +10,22 @@ local ms = vim.lsp.protocol.Methods
 
 local M = {}
 
+---Open quickfix list but don't focus
+---@param options vim.lsp.LocationOpts.OnList
+local function on_list(options)
+  ---@diagnostic disable-next-line: param-type-mismatch
+  vim.fn.setqflist({}, " ", options)
+  require("quicker").open({ focus = false, open_cmd_mods = { split = "botright" } })
+end
+
 ---@param client vim.lsp.Client
 ---@param bufnr integer
 M.attach = function(client, bufnr)
   local fzf_lua = require("fzf-lua")
   local augroup = augroups.get_augroup(client)
-  local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
   local opts_with_desc = keymapper.opts_for(bufnr)
+  ---@type vim.lsp.LocationOpts
+  local lsp_default_opts = { on_list = on_list }
 
   local function client_buf_supports_method(method) return client.supports_method(method, { bufnr = bufnr }) end
 
@@ -28,35 +36,38 @@ M.attach = function(client, bufnr)
   }
 
   if client_buf_supports_method(ms.textDocument_references) then
-    vim.keymap.set("n", "grr", function()
-      local regex_filter = constants.regex_filters[filetype]
-      fzf_lua.lsp_references({ regex_filter = regex_filter })
-    end, opts_with_desc("Show references"))
+    vim.keymap.set(
+      "n",
+      "grr",
+      function() vim.lsp.buf.references(nil, lsp_default_opts) end,
+      opts_with_desc("Show references")
+    )
   end
 
   if client_buf_supports_method(ms.textDocument_definition) then
     vim.keymap.set(
       "n",
       "gd",
-      function() fzf_lua.lsp_definitions({ jump_to_single_result = true }) end,
+      function() vim.lsp.buf.definition(lsp_default_opts) end,
       opts_with_desc("Show definitions")
     )
   end
 
   if client_buf_supports_method(ms.textDocument_implementation) then
-    vim.keymap.set("n", "gI", function() fzf_lua.lsp_implementations() end, opts_with_desc("Show implementations"))
+    vim.keymap.set(
+      "n",
+      "gI",
+      function() vim.lsp.buf.implementation(lsp_default_opts) end,
+      opts_with_desc("Show implementations")
+    )
   end
 
   if client_buf_supports_method(ms.textDocument_typeDefinition) then
-    vim.keymap.set("n", "gy", function() fzf_lua.lsp_typedefs() end, opts_with_desc("Show type definitions"))
-  end
-
-  if client_buf_supports_method(ms.textDocument_codeAction) then
     vim.keymap.set(
-      { "n", "x" },
-      "gra",
-      function() fzf_lua.lsp_code_actions() end,
-      opts_with_desc("See available code actions")
+      "n",
+      "gy",
+      function() vim.lsp.buf.type_definition(lsp_default_opts) end,
+      opts_with_desc("Show type definitions")
     )
   end
 
@@ -86,21 +97,18 @@ M.attach = function(client, bufnr)
     vim.keymap.set(
       "n",
       "<leader>lS",
-      function() fzf_lua.lsp_workspace_symbols() end,
+      function() vim.lsp.buf.workspace_symbol(nil, lsp_default_opts) end,
       opts_with_desc("Workspace symbols")
     )
   end
 
   if client_buf_supports_method(ms.textDocument_declaration) then
-    vim.keymap.set("n", "gD", vim.lsp.buf.declaration, opts_with_desc("Go to declaration"))
-  end
-
-  if client_buf_supports_method(ms.textDocument_rename) then
-    vim.keymap.set("n", "grn", vim.lsp.buf.rename, opts_with_desc("Smart rename"))
-  end
-
-  if client_buf_supports_method(ms.textDocument_signatureHelp) then
-    vim.keymap.set("n", "<C-S>", vim.lsp.buf.signature_help, opts_with_desc("Signature help"))
+    vim.keymap.set(
+      "n",
+      "gD",
+      function() vim.lsp.buf.declaration(lsp_default_opts) end,
+      opts_with_desc("Go to declaration")
+    )
   end
 
   vim.keymap.set(
