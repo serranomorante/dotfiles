@@ -18,7 +18,7 @@
     state: present
     name: keyd
 
-- name: "Keyboard peripheral: enable service keyd and ensure is not masked"
+- name: "Keyboard peripheral: enable services"
   ansible.builtin.systemd_service:
     scope: "{{ service.scope }}"
     name: "{{ service.name }}"
@@ -27,7 +27,7 @@
     masked: false
   loop:
     - { name: keyd, scope: system }
-    - { name: keyd-compose, scope: user }
+    - { name: kbdrate, scope: user }
   loop_control:
     loop_var: service
 
@@ -39,10 +39,12 @@
     owner: root
     mode: "644"
 
-- name: "Keyboard peripheral: enable kbdrate service"
-  ansible.builtin.systemd_service:
-    scope: user
-    name: kbdrate
-    state: started
-    enabled: true
-    masked: false
+- name: "Keyboard peripheral: kbdrate udev rule"
+  become: true
+  ansible.builtin.shell: >
+    set -o pipefail &&
+    echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="8087", ATTRS{idProduct}=="0029",
+    TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="kbdrate.service"' |
+    sudo tee /etc/udev/rules.d/99-kbdrate.rules
+  args:
+    creates: /etc/udev/rules.d/99-kbdrate.rules

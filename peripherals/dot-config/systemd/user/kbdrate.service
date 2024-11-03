@@ -1,9 +1,9 @@
 [Unit]
 Description=Keyboard repeat rate in tty.
-After=graphical-session.target
+After=plasma-workspace.target
 
 [Service]
-ExecStart=/usr/bin/xset r rate 200 30
+ExecStart=%h/bin/configure-keyboard.sh
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=plasma-workspace.target
