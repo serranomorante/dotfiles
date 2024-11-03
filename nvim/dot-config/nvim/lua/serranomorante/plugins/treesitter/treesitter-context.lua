@@ -33,25 +33,13 @@ M.config = function()
   end)
 
   ---Get the default behaviour again (that behaviour overrided by ts_repeat_move.repeat_last_move)
-  vim.keymap.set({ "n", "x", "o" }, "f", function()
-    local expression = ts_repeat_move.builtin_f_expr()
-    return vim.v.operator ~= "" and expression or "m`" .. vim.v.count1 .. expression
-  end, { expr = true })
-
-  vim.keymap.set({ "n", "x", "o" }, "F", function()
-    local expression = ts_repeat_move.builtin_F_expr()
-    return vim.v.operator ~= "" and expression or "m`" .. vim.v.count1 .. expression
-  end, { expr = true })
-
-  vim.keymap.set({ "n", "x", "o" }, "t", function()
-    local expression = ts_repeat_move.builtin_t_expr()
-    return vim.v.operator ~= "" and expression or "m`" .. vim.v.count1 .. expression
-  end, { expr = true })
-
-  vim.keymap.set({ "n", "x", "o" }, "T", function()
-    local expression = ts_repeat_move.builtin_T_expr()
-    return vim.v.operator ~= "" and expression or "m`" .. vim.v.count1 .. expression
-  end, { expr = true })
+  for _, operator in ipairs({ "f", "F", "t", "T" }) do
+    vim.keymap.set({ "n", "x", "o" }, operator, function()
+      local expression = ts_repeat_move[string.format("builtin_%s_expr", operator)]()
+      return (vim.api.nvim_get_mode().mode == "niI" or vim.v.operator ~= "") and expression
+        or string.format("m`%d%s", vim.v.count1, expression)
+    end, { expr = true })
+  end
 end
 
 return M
