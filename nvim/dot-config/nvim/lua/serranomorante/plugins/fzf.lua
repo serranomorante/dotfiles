@@ -94,7 +94,7 @@ local opts = function()
   return {
     defaults = {
       formatter = "path.filename_first",
-      copen = "botright copen | wincmd p",
+      copen = 'lua require("serranomorante.utils").open_quickfix_list()',
     },
     winopts = {
       width = 999,

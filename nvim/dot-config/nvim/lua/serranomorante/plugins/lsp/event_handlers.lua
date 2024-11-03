@@ -1,5 +1,6 @@
 local keymapper = require("serranomorante.plugins.lsp.keymapper")
 local augroups = require("serranomorante.plugins.lsp.augroups")
+local utils = require("serranomorante.utils")
 local ms = vim.lsp.protocol.Methods
 
 ---@alias HandlerData {augroup: integer, bufnr: integer, client: vim.lsp.Client}
@@ -15,7 +16,7 @@ local M = {}
 local function on_list(options)
   ---@diagnostic disable-next-line: param-type-mismatch
   vim.fn.setqflist({}, " ", options)
-  require("quicker").open({ focus = false, open_cmd_mods = { split = "botright" } })
+  utils.open_quickfix_list()
 end
 
 ---@param client vim.lsp.Client

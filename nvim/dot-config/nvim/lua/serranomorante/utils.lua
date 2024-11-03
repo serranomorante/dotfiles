@@ -351,4 +351,9 @@ end
 ---Check if nvim was started with no args
 function M.nvim_started_without_args() return vim.fn.argc(-1) == 0 end
 
+function M.open_quickfix_list()
+  vim.cmd.cfirst()
+  vim.cmd("normal! zz")
+  require("quicker").open({ focus = false, open_cmd_mods = { split = "botright" } })
+end
 return M
