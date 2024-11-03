@@ -20,6 +20,7 @@
     "$HOME/.local/share/nvim/site/pack/plugins/start/resession/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/start/oil/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/start/fundo/lua",
-    "$HOME/.local/share/nvim/site/pack/plugins/start/trailblazer/lua"
+    "$HOME/.local/share/nvim/site/pack/plugins/start/trailblazer/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/conform/lua"
   ]
 }

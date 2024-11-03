@@ -21,7 +21,7 @@
     - { folder: start, repo: nvim-treesitter/nvim-treesitter-textobjects }
     - { folder: start, repo: dense-analysis/ale }
     - { folder: start, repo: FabijanZulj/blame.nvim }
-    - { folder: start, repo: stevearc/conform.nvim }
+    - { folder: start, repo: stevearc/conform.nvim, name: conform }
     - { folder: start, repo: sindrets/diffview.nvim }
     - { folder: start, repo: lewis6991/gitsigns.nvim }
     - { folder: start, repo: LeonHeidelbach/trailblazer.nvim, name: trailblazer }
