@@ -1,0 +1,14 @@
+---
+- name: "Setup desktop: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: sddm
+
+- name: "Setup desktop: copy sddm Xsetup script"
+  become: true
+  ansible.builtin.copy:
+    src: ~/dotfiles/assets/scripts/sddm/Xsetup
+    dest: /usr/share/sddm/scripts/Xsetup
+    owner: root
+    mode: "744"

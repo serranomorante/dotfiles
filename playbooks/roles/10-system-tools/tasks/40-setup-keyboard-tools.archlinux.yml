@@ -38,3 +38,11 @@
     dest: /etc/keyd/default.conf
     owner: root
     mode: "644"
+
+- name: "Keyboard peripheral: enable kbdrate service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: kbdrate
+    state: started
+    enabled: true
+    masked: false

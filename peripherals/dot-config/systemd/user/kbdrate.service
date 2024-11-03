@@ -1,0 +1,9 @@
+[Unit]
+Description=Keyboard repeat rate in tty.
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/xset r rate 200 30
+
+[Install]
+WantedBy=graphical-session.target
