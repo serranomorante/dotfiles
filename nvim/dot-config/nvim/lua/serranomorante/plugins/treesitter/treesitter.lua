@@ -1,16 +1,10 @@
 local utils = require("serranomorante.utils")
 local tools = require("serranomorante.tools")
 
-local parser_dir = vim.fn.stdpath("data") .. "/treesitter"
-if not utils.is_directory(parser_dir) then vim.fn.mkdir(parser_dir, "p") end
-
 local M = {}
-
-local init = function() vim.opt.runtimepath:prepend(parser_dir) end
 
 local opts = function()
   return {
-    parser_install_dir = parser_dir,
     ensure_installed = utils.merge_tools(
       "treesitter",
       tools.by_filetype.javascript,
@@ -95,9 +89,7 @@ local opts = function()
 end
 
 M.config = function()
-  init()
   require("nvim-treesitter.configs").setup(opts())
-
   vim.treesitter.language.register("git_config", "systemd")
   vim.treesitter.language.register("git_config", "conf")
 end
