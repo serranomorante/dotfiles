@@ -48,14 +48,16 @@ local function keys()
     local trails = require("trailblazer.trails")
     if is_trailblazer_qf_open(true) and not is_trailblazer_qf_open() then return utils.next_qf_item() end
     if #trails.stacks.current_trail_mark_stack == 0 then return vim.notify("Marks empty", vim.log.levels.WARN) end
-    require("trailblazer").peek_move_next_down()
+    require("trailblazer").switch_trail_mark_stack(trails.stacks.current_trail_mark_stack_name, false) -- fixes trails getting stuck
+    require("trailblazer").move_to_nearest(vim.api.nvim_get_current_buf(), "fpath_down", "lin_char_dist")
   end, { desc = "Trailblazer: Move to the next global trail mark" })
 
   vim.keymap.set({ "n", "v" }, "<A-k>", function()
     local trails = require("trailblazer.trails")
     if is_trailblazer_qf_open(true) and not is_trailblazer_qf_open() then return utils.prev_qf_item() end
     if #trails.stacks.current_trail_mark_stack == 0 then return vim.notify("Marks empty", vim.log.levels.WARN) end
-    require("trailblazer").peek_move_previous_up()
+    require("trailblazer").switch_trail_mark_stack(trails.stacks.current_trail_mark_stack_name, false) -- fixes trails getting stuck
+    require("trailblazer").move_to_nearest(vim.api.nvim_get_current_buf(), "fpath_up", "lin_char_dist")
   end, { desc = "Trailblazer: Move to the previous global trail mark" })
 
   vim.keymap.set({ "n", "v" }, "<A-m>", function()
@@ -259,7 +261,14 @@ function M.config()
   local trailblazer = require("trailblazer")
   trailblazer.setup(opts())
 
-  vim.schedule(trailblazer.load_trailblazer_state_from_file)
+  vim.schedule(function()
+    local common = require("trailblazer.trails.common")
+    local original_method = common.focus_win_and_buf
+    ---@diagnostic disable-next-line: duplicate-set-field
+    common.focus_win_and_buf = function() return true end -- https://github.com/LeonHeidelbach/trailblazer.nvim/discussions/51#discussion-6054353
+    trailblazer.load_trailblazer_state_from_file()
+    common.focus_win_and_buf = original_method
+  end)
 
   vim.api.nvim_create_autocmd("VimLeavePre", {
     desc = "Save a dir-specific session when you close Neovim",
