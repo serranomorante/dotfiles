@@ -49,15 +49,8 @@ vim.keymap.set("i", "<C-f>", "<Esc>gUiw`]a", { desc = "Make the word before the 
 
 vim.keymap.set("n", "<leader>zl", function()
   local winid = vim.api.nvim_get_current_win()
-  local foldopen_visible = vim.wo[winid].fillchars:gsub("foldopen: ", "foldopen:")
-  vim.wo[winid].fillchars = foldopen_visible
-
-  ---Hide available folds after timout
-  local timeout = 2000
-  vim.defer_fn(function()
-    local foldopen_hidden = vim.wo[winid].fillchars:gsub("foldopen:", "foldopen: ")
-    vim.wo[winid].fillchars = foldopen_hidden
-  end, timeout)
+  vim.wo[winid].fillchars = vim.wo[winid].fillchars .. ",foldopen:"
+  vim.defer_fn(function() vim.wo[winid].fillchars = vim.wo[winid].fillchars .. ",foldopen: " end, 2000)
 end, { desc = "Temporarily show available folds" })
 
 if vim.env.TMUX then
