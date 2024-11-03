@@ -15,6 +15,7 @@ vim.filetype.add({
     [".*%.timer"] = "gitconfig",
     [".*/pipewire/.*/.*%.conf"] = "gitconfig",
     [".*/wireplumber/.*/.*%.conf"] = "gitconfig",
+    [".*/keyd/.*%.conf"] = "gitconfig",
   },
 })
 
