@@ -5,34 +5,57 @@ local show_hidden = false
 
 local M = {}
 
----https://github.com/stevearc/oil.nvim/blob/master/doc/recipes.md#hide-gitignored-files
-local git_ignored = setmetatable({}, {
-  __index = function(self, key)
-    local proc = vim.system({ "git", "ls-files", "--ignored", "--exclude-standard", "--others", "--directory" }, {
-      cwd = key,
-      text = true,
-    })
-    local result = proc:wait()
-    local ret = {}
-    if result.code == 0 then
-      for line in vim.gsplit(result.stdout, "\n", { plain = true, trimempty = true }) do
-        ---Remove trailing slash
-        line = line:gsub("/$", "")
-        table.insert(ret, line)
-      end
+---Helper function to parse output
+local function parse_output(proc)
+  local result = proc:wait()
+  local ret = {}
+  if result.code == 0 then
+    for line in vim.gsplit(result.stdout, "\n", { plain = true, trimempty = true }) do
+      ---Remove trailing slash
+      line = line:gsub("/$", "")
+      ret[line] = true
     end
+  end
+  return ret
+end
 
-    rawset(self, key, ret)
-    return ret
-  end,
-})
+---Build git status cache
+local function new_git_status()
+  return setmetatable({}, {
+    __index = function(self, key)
+      local ignore_proc = vim.system(
+        { "git", "ls-files", "--ignored", "--exclude-standard", "--others", "--directory" },
+        {
+          cwd = key,
+          text = true,
+        }
+      )
+      local tracked_proc = vim.system({ "git", "ls-tree", "HEAD", "--name-only" }, {
+        cwd = key,
+        text = true,
+      })
+      local ret = {
+        ignored = parse_output(ignore_proc),
+        tracked = parse_output(tracked_proc),
+      }
 
-local keys = function()
+      rawset(self, key, ret)
+      return ret
+    end,
+  })
+end
+
+local function keys()
   vim.keymap.set("n", "<leader>e", function()
     ---https://github.com/stevearc/oil.nvim/issues/153#issuecomment-1675154847
     if vim.bo.filetype == "oil" then
       require("oil").close()
     else
+      local parent_dir = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":h")
+      if not utils.is_directory(parent_dir) then
+        vim.notify(string.format('"%s" not found. Opening cwd...', parent_dir), vim.log.levels.WARN)
+        return require("oil").open(vim.fn.getcwd())
+      end
       require("oil").open()
     end
   end, { desc = "Oil: File navigation" })
@@ -77,14 +100,20 @@ local init = function()
   })
 end
 
-M.config = function()
-  init()
-  keys()
-
+---@return oil.SetupOpts
+local function opts()
   local oil_actions = require("oil.actions")
+  local git_status = new_git_status()
 
-  ---@type oil.SetupOpts
-  local opts = {
+  ---Clear git status cache on refresh
+  local refresh = require("oil.actions").refresh
+  local orig_refresh = refresh.callback
+  refresh.callback = function(...)
+    git_status = new_git_status()
+    orig_refresh(...)
+  end
+
+  return {
     watch_for_changes = true,
     win_options = {
       signcolumn = "yes:2",
@@ -92,14 +121,17 @@ M.config = function()
     view_options = {
       show_hidden = show_hidden,
       is_hidden_file = function(name, bufnr)
-        ---https://github.com/stevearc/oil.nvim/blob/b77ed915ab1e53720a6283702816cea2695a2638/doc/recipes.md
-        ---dotfiles are always considered hidden
-        if vim.startswith(name, ".") and name ~= ".." then return true end
         local dir = require("oil").get_current_dir(bufnr)
-        ---if no local directory (e.g. for ssh connections), always show
-        if not dir then return false end
-        ---Check if file is gitignored
-        return vim.list_contains(git_ignored[dir], name)
+        local is_dotfile = vim.startswith(name, ".") and name ~= ".."
+        ---If no local directory (e.g. for ssh connections), just hide dotfiles
+        if not dir then return is_dotfile end
+        ---Dotfiles are considered hidden unless tracked
+        if is_dotfile then
+          return not git_status[dir].tracked[name]
+        else
+          ---Check if file is gitignored
+          return git_status[dir].ignored[name]
+        end
       end,
     },
     ---https://github.com/stevearc/oil.nvim/issues/201#issuecomment-1771146785
@@ -221,8 +253,12 @@ M.config = function()
       },
     },
   }
+end
 
-  require("oil").setup(opts)
+M.config = function()
+  init()
+  keys()
+  require("oil").setup(opts())
 end
 
 return M
