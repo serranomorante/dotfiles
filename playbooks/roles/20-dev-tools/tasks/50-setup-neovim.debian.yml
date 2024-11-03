@@ -5,16 +5,18 @@
     dest: ~/repos/neovim
     force: true
     depth: 1
+    single_branch: true
     version: 688b961d13bd54a14836f08c3ded3121d3fb15a0 # before cmake 3.16 requirement
 
 - name: "Neovim: apply patches to neovim"
-  ansible.builtin.shell: git apply ~/dotfiles/nvim/patches/{{ item.patch_filename }}
+  ansible.builtin.command: git apply ~/dotfiles/nvim/patches/{{ item.patch_filename }}
   args:
     chdir: ~/repos/neovim
   loop:
     - { patch_filename: folds.patch }
     - { patch_filename: msg_limit.patch }
     - { patch_filename: max_count_limit.patch }
+  changed_when: false
 
 - name: "Neovim: ensure neovim - build"
   ansible.builtin.command: make
