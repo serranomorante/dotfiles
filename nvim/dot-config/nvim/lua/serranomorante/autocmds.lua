@@ -34,22 +34,15 @@ autocmd("BufWinEnter", {
 })
 
 autocmd("BufReadPre", {
-  desc = "Disable certain functionality on very large files",
+  desc = "Mark buffer as large",
   group = augroup("large_buf", { clear = true }),
   callback = function(args)
-    ---@diagnostic disable-next-line: undefined-field
-    local ok, stats = pcall((vim.uv or vim.loop).fs_stat, args.file)
-    if not ok or not stats then return end
-    ---you can't use `nvim_buf_line_count` because this runs on BufReadPre
-    local lines_count = #vim.fn.readfile(args.file)
-    local is_large_buffer = stats.size > vim.g.max_file.size
-      or lines_count > vim.g.max_file.lines
-      or stats.size / lines_count > vim.o.synmaxcol
-    vim.b[args.buf].large_buf = is_large_buffer
-    if not is_large_buffer then return end
-    ---Prevent slow initialization of large buffers
-    vim.o.eventignore = "FileType"
-    vim.schedule(function() vim.o.eventignore = "" end)
+    local ok, is_large_file = pcall(utils.is_large_file, args.file)
+    if ok and is_large_file then
+      vim.api.nvim_buf_set_var(args.buf, "large_buf", is_large_file)
+      vim.o.eventignore = "all" -- best performance for very large files
+      vim.schedule(function() vim.o.eventignore = "" end)
+    end
   end,
 })
 

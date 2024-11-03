@@ -355,4 +355,17 @@ function M.open_quickfix_list()
   vim.cmd("normal! zz")
   require("quicker").open({ focus = false, open_cmd_mods = { split = "botright" } })
 end
+
+---Check if file is large without relying on buffers (only file path)
+---@param file string
+---@return boolean
+function M.is_large_file(file)
+  local ok, stats = pcall((vim.uv or vim.loop).fs_stat, file)
+  if not ok or not stats then error("Cannot use fs_stat") end
+  local lines_count = #vim.fn.readfile(file)
+  return stats.size > vim.g.max_file.size
+    or lines_count > vim.g.max_file.lines
+    or stats.size / lines_count > vim.o.synmaxcol
+end
+
 return M
