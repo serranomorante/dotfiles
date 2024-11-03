@@ -112,3 +112,6 @@ export PYENV_ROOT="$HOME/.pyenv"
 export PATH="/usr/bin/pyenv:$PATH"
 eval "$(pyenv init -)"
 ## END ANSIBLE MANAGED BLOCK - SETUP PYTHON
+## BEGIN ANSIBLE MANAGED BLOCK - SETUP NEOVIM
+export VIMRUNTIME="$HOME/repos/neovim/runtime"
+## END ANSIBLE MANAGED BLOCK - SETUP NEOVIM

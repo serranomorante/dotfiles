@@ -37,3 +37,19 @@
     src: ~/repos/neovim/build/bin/nvim
     dest: ~/bin/nvim
     state: link
+
+- name: "Neovim: setup startup script"
+  ansible.builtin.blockinfile:
+    dest: "{{ item.script }}"
+    create: true
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP NEOVIM"
+    mode: "744"
+    block: |
+      {% if 'bashrc' in item.script %}
+      export VIMRUNTIME="$HOME/repos/neovim/runtime"
+      {% elif 'setup_bashrc.fish' in item.script %}
+      set -gx VIMRUNTIME "$HOME/repos/neovim/runtime"
+      {% endif %}
+  loop:
+    - { script: ~/.bashrc }
+    - { script: ~/.config/fish/conf.d/setup_bashrc.fish }
