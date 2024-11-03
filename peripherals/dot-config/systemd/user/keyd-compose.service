@@ -1,0 +1,9 @@
+[Unit]
+Description=Run after keyd has started
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/setxkbmap -option compose:menu
+
+[Install]
+WantedBy=graphical-session.target
