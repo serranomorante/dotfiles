@@ -127,6 +127,8 @@ M.config = function()
   dap.defaults.fallback.switchbuf = "usevisible,usetab,uselast"
 
   ---https://github.com/mfussenegger/nvim-dap/issues/1141#issuecomment-2002575842
+  ---@param _ dap.Session
+  ---@param output_event dap.OutputEvent
   dap.defaults.fallback.on_output = function(_, output_event)
     if output_event.category == "stderr" then
       if string.find(output_event.output, "Could not read source map for file") then return end
@@ -143,7 +145,7 @@ M.config = function()
   end
 
   dap.listeners.after.event_stopped["system_notification"] = function()
-    utils.cmd({ "notify-send", "Breakpoint stopped", "--icon=dialog-information" })
+    utils.cmd({ "notify-send", string.format("Breakpoint stopped %s", vim.fn.getcwd()), "--icon=dialog-information" })
   end
 
   ---╔══════════════════════════════════════╗
