@@ -7,7 +7,7 @@ vim.api.nvim_create_autocmd({ "BufEnter", "TabEnter", "WinEnter" }, {
   buffer = buffer,
   group = group,
   callback = function()
-    vim.api.nvim_set_hl(repl_ns, "Normal", { bg = "#192335" })
+    vim.api.nvim_set_hl(repl_ns, "Normal", { link = "CustomDapReplBg" })
     vim.api.nvim_win_set_hl_ns(0, repl_ns)
   end,
 })

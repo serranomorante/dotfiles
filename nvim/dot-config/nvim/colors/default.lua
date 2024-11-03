@@ -37,6 +37,14 @@ local groups = {
   qfDirName = { link = "Directory", default = true },
   qfFileName = { link = "CursorLineNr", default = true },
   CustomOperatorPending = { bg = fg .. "Blue" },
+  CustomDapReplBg = { bg = "#192335" },
+  CustomAerialBg = { bg = "#242529" },
+  DiagnosticUnderlineError = { sp = fg .. "Red", undercurl = true },
+  DiagnosticUnderlineWarn = { sp = fg .. "Yellow", undercurl = true },
+  DiagnosticUnderlineInfo = { sp = fg .. "Cyan", undercurl = true },
+  DiagnosticUnderlineHint = { sp = fg .. "Blue", undercurl = true },
+  DiagnosticUnderlineOk = { sp = fg .. "Green", undercurl = true },
+  MsgArea = { bg = "Black" },
 }
 
 vim.g.terminal_color_0 = vim.g.terminal_color_0 or (bg .. "Grey1")
