@@ -1,4 +1,3 @@
-local constants = require("serranomorante.constants")
 local heirline_conditions = require("heirline.conditions")
 local heirline_utils = require("heirline.utils")
 local utils = require("serranomorante.utils")
@@ -20,20 +19,10 @@ M.Space = {
   provider = " ",
 }
 
----https://github.com/rebelot/heirline.nvim/blob/master/cookbook.md#crash-course-the-vimode
 M.Mode = {
-  init = function(self) self.mode = vim.fn.mode() end,
-  static = { modes = constants.modes },
-  provider = function(self)
-    ---Control the padding and make sure our string is always at least 2
-    ---characters long.
-    return " %2(" .. self.modes[self.mode][1] .. "%) "
-  end,
-  hl = function(self)
-    ---Change the foreground according to the current mode
-    if self.modes[self.mode][2] == "normal" then return { bg = "NvimLightGrey4", bold = true } end
-    return { fg = "white", bg = "NvimDarkGrey1", bold = true }
-  end,
+  init = function(self) self.mode = vim.fn.mode(1) end,
+  provider = function(self) return string.format("%%2(%s%%)", string.upper(self.mode or "")) end,
+  hl = { bold = true },
 }
 
 M.FileIcon = {
@@ -55,10 +44,9 @@ M.FileName = {
 }
 
 M.FileFlags = {
-  condition = function(self) return not heirline_conditions.buffer_matches({ filetype = { "^dap-.*" } }, self.bufnr) end,
   {
     condition = function(self) return vim.api.nvim_get_option_value("modified", { buf = self.bufnr }) end,
-    provider = "[+]",
+    provider = "%m",
     hl = { fg = "green" },
   },
   {
@@ -73,19 +61,26 @@ M.FileFlags = {
 
 M.FileNameModifier = {
   hl = function(self)
-    if heirline_conditions.buffer_matches({ filetype = { "^dap-.*" } }, self.bufnr) then return end
-    if vim.api.nvim_get_option_value("modified", { buf = self.bufnr }) then return { bold = true, underline = true } end
+    if vim.api.nvim_get_option_value("modified", { buf = self.bufnr }) then
+      return { fg = "red", bold = true, force = true }
+    end
   end,
 }
 
 M.FileNameBlock = {
   init = function(self)
     self.bufnr = vim.api.nvim_get_current_buf()
-    self.bufname = vim.api.nvim_buf_get_name(self.bufnr)
-    self.filename = vim.fn.fnamemodify(self.bufname, ":.")
-    if vim.fn.empty(self.filename) == 1 then self.filename = "[No Name]" end
-    if self.filename:match("%%") ~= nil then self.filename = utils.get_escaped_filename(self.filename) end
+    self.filename = self.parse_filename(vim.api.nvim_buf_get_name(self.bufnr))
   end,
+  static = {
+    ---@param filename string
+    parse_filename = function(filename)
+      if #filename == 0 then return "[No Name]" end
+      filename = vim.fn.fnamemodify(filename, ":.")
+      if filename:match("%%") ~= nil then filename = filename:gsub("%%", "_") end
+      return filename
+    end,
+  },
   flexible = M.priority.filename,
   heirline_utils.insert(
     M.FileIcon,
@@ -95,12 +90,7 @@ M.FileNameBlock = {
   ),
 }
 
----https://github.com/rebelot/heirline.nvim/blob/master/cookbook.md#cursor-position-ruler-and-scrollbar
 M.Ruler = {
-  -- %l = current line number
-  -- %L = number of lines in the buffer
-  -- %c = column number
-  -- %P = percentage through file of displayed window
   provider = "%P ",
 }
 
@@ -259,8 +249,7 @@ M.Indent = {
 }
 
 M.QuickfixTitle = {
-  provider = function() return vim.w.quickfix_title end,
-  hl = { bold = true },
+  provider = function() return string.format("%%q: %s", vim.api.nvim_win_get_var(0, "quickfix_title")) end,
 }
 
 local CocProgress = {

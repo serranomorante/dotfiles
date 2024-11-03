@@ -55,7 +55,7 @@ local opts = function()
   }
 
   local DAPUIStatusLine = {
-    condition = function() return conditions.is_active() and conditions.buffer_matches({ filetype = { "^dap-.*" } }) end,
+    condition = function() return conditions.buffer_matches({ filetype = { "^dap-.*" } }) end,
     components.Mode,
     components.Space,
     components.FileNameBlock,
@@ -63,7 +63,7 @@ local opts = function()
   }
 
   local QuickfixStatusLine = {
-    condition = function() return conditions.is_active() and conditions.buffer_matches({ filetype = { "qf" } }) end,
+    condition = function() return conditions.buffer_matches({ filetype = { "qf" } }) end,
     components.QuickfixTitle,
   }
 
