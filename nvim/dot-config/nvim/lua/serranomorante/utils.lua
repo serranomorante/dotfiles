@@ -273,7 +273,7 @@ function M.setup_coc_per_buffer(bufnr, on_coc_enabled)
   local coc_enabled = 0 -- disabled by default
   if vim.g.coc_service_initialized == 1 then coc_enabled = 1 end
   if M.buf_prevent_coc_attach(bufnr) then coc_enabled = 0 end
-  vim.b[bufnr].coc_enabled = coc_enabled
+  vim.api.nvim_buf_set_var(bufnr, "coc_enabled", coc_enabled)
   if on_coc_enabled ~= nil and coc_enabled == 1 then on_coc_enabled(bufnr) end
 end
 

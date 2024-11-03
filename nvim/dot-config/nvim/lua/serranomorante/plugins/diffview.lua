@@ -43,7 +43,7 @@ local opts = function()
     },
     hooks = {
       ---Fixes issue with coc.nvim
-      diff_buf_read = function(bufnr) vim.b[bufnr].coc_enabled = 0 end,
+      diff_buf_read = function(bufnr) vim.api.nvim_buf_set_var(bufnr, "coc_enabled", 0) end,
     },
   }
 end

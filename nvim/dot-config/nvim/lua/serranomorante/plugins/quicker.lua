@@ -28,6 +28,7 @@ local opts = function()
       number = true,
     },
     highlight = {
+      lsp = false,
       load_buffers = false, -- fixes issues with attaching coc keymaps
     },
     on_qf = function(bufnr)
