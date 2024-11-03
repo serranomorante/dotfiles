@@ -37,7 +37,7 @@ M.by_filetype = {
     lsp = { "marksman" },
     formatters = { "prettierd" },
     parsers = { "markdown" },
-    extensions = { "coc-markdown-preview-enhanced", "@yaegassy/coc-marksman" },
+    extensions = { "coc-markdown-preview-enhanced", "@yaegassy/coc-marksman", "coc-markdownlint" },
   },
   toml = { parsers = { "toml" } },
   tmux = { parsers = { "tmux" } },

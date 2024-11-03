@@ -46,95 +46,97 @@ function M.attach(buf)
 
   local opts_with_desc = keymapper.opts_for(buf)
 
-  coc_utils.coc_ensure_document():thenCall(function()
-    coc_utils.coc_ext_supports_method("reference"):thenCall(
-      function() vim.keymap.set("n", "grr", "<Plug>(coc-references)", opts_with_desc("Show references")) end,
-      function() notify_keymap_error("Show references") end
-    )
+  coc_utils.coc_ext_supports_method("reference"):thenCall(
+    function() vim.keymap.set("n", "grr", "<Plug>(coc-references)", opts_with_desc("Show references")) end,
+    function() notify_keymap_error("Show references") end
+  )
 
-    coc_utils.coc_ext_supports_method("definition"):thenCall(
-      function() vim.keymap.set("n", "gd", "<Plug>(coc-definition)", opts_with_desc("Show definitions")) end,
-      function() notify_keymap_error("Show definitions") end
-    )
+  coc_utils.coc_ext_supports_method("definition"):thenCall(
+    function() vim.keymap.set("n", "gd", "<Plug>(coc-definition)", opts_with_desc("Show definitions")) end,
+    function() notify_keymap_error("Show definitions") end
+  )
 
-    coc_utils.coc_ext_supports_method("implementation"):thenCall(
-      function() vim.keymap.set("n", "gI", "<Plug>(coc-implementation)", opts_with_desc("Show implementations")) end,
-      function() notify_keymap_error("Show implementations") end
-    )
+  coc_utils.coc_ext_supports_method("implementation"):thenCall(
+    function() vim.keymap.set("n", "gI", "<Plug>(coc-implementation)", opts_with_desc("Show implementations")) end,
+    function() notify_keymap_error("Show implementations") end
+  )
 
-    coc_utils.coc_ext_supports_method("typeDefinition"):thenCall(
-      function() vim.keymap.set("n", "gy", "<Plug>(coc-type-definition)", opts_with_desc("Show type definitions")) end,
-      function() notify_keymap_error("Show type definitions") end
-    )
+  coc_utils.coc_ext_supports_method("typeDefinition"):thenCall(
+    function() vim.keymap.set("n", "gy", "<Plug>(coc-type-definition)", opts_with_desc("Show type definitions")) end,
+    function() notify_keymap_error("Show type definitions") end
+  )
 
-    coc_utils.coc_ext_supports_method("codeAction"):thenCall(function()
-      vim.keymap.set("n", "gra", "<Plug>(coc-codeaction-cursor)", opts_with_desc("See available code actions"))
-      vim.keymap.set("x", "gra", "<Plug>(coc-codeaction-selected)", opts_with_desc("See available code actions"))
-    end, function() notify_keymap_error("See available code actions") end)
+  coc_utils.coc_ext_supports_method("codeAction"):thenCall(function()
+    vim.keymap.set("n", "gra", "<Plug>(coc-codeaction-cursor)", opts_with_desc("See available code actions"))
+    vim.keymap.set("x", "gra", "<Plug>(coc-codeaction-selected)", opts_with_desc("See available code actions"))
+  end, function() notify_keymap_error("See available code actions") end)
+    if utils.is_available("aerial") then
+      require("aerial").toggle()
+    else
+      coc_utils.action_async("documentSymbols", buf):catch(function(err) vim.notify(err) end)
+    end
 
-    coc_utils.coc_ext_supports_method("documentSymbol"):thenCall(function()
-      vim.keymap.set("n", "<leader>ls", function()
-        if utils.is_available("aerial") then require("aerial").toggle() end
-      end, opts_with_desc("Document symbols"))
-    end, function() notify_keymap_error("Document symbols") end)
+  coc_utils.coc_ext_supports_method("documentSymbol"):thenCall(function()
+    vim.keymap.set("n", "<leader>ls", function()
+      if utils.is_available("aerial") then require("aerial").toggle() end
+    end, opts_with_desc("Document symbols"))
+  end, function() notify_keymap_error("Document symbols") end)
 
-    coc_utils.coc_ext_supports_method("declaration"):thenCall(
-      function() vim.keymap.set("n", "gD", "<Plug>(coc-declaration)", opts_with_desc("Go to declaration")) end,
-      function() notify_keymap_error("Go to declaration") end
-    )
+  coc_utils.coc_ext_supports_method("declaration"):thenCall(
+    function() vim.keymap.set("n", "gD", "<Plug>(coc-declaration)", opts_with_desc("Go to declaration")) end,
+    function() notify_keymap_error("Go to declaration") end
+  )
 
-    coc_utils.coc_ext_supports_method("rename"):thenCall(
-      function() vim.keymap.set("n", "grn", "<Plug>(coc-rename)", opts_with_desc("Smart rename")) end,
-      function() notify_keymap_error("Smart rename") end
-    )
+  coc_utils.coc_ext_supports_method("rename"):thenCall(
+    function() vim.keymap.set("n", "grn", "<Plug>(coc-rename)", opts_with_desc("Smart rename")) end,
+    function() notify_keymap_error("Smart rename") end
+  )
 
-    coc_utils.coc_ext_supports_method("hover"):thenCall(
-      function() vim.keymap.set("n", "K", show_docs, opts_with_desc("Hover")) end,
-      function() notify_keymap_error("Hover") end
-    )
+  coc_utils.coc_ext_supports_method("hover"):thenCall(function(result)
+    if result == true then vim.keymap.set("n", "K", show_docs, opts_with_desc("Hover")) end
+  end, function() notify_keymap_error("Hover") end)
 
-    coc_utils.coc_ext_supports_method("signature"):thenCall(function()
-      vim.keymap.set(
-        "i",
-        "<C-S>",
-        function() vim.fn.CocActionAsync("showSignatureHelp") end,
-        opts_with_desc("Signature help")
-      )
-    end, function() notify_keymap_error("Signature help") end)
-
-    coc_utils.coc_ext_supports_method("inlayHint"):thenCall(
-      function()
-        vim.keymap.set(
-          "n",
-          "<leader>uH",
-          "<cmd>CocCommand document.toggleInlayHint<CR>",
-          opts_with_desc("Toggle inlay hints")
-        )
-      end,
-      function() notify_keymap_error("Toggle inlay hints") end
-    )
-
-    local coc_completion_opts = vim.tbl_extend("force", opts_with_desc("Completion"), { expr = true })
-    vim.keymap.set("i", "<C-x><C-o>", function()
-      if coc_utils.is_coc_attached(buf) then return vim.api.nvim_eval("coc#refresh()") end
-      return "<C-x><C-o>"
-    end, coc_completion_opts)
-
+  coc_utils.coc_ext_supports_method("signature"):thenCall(function()
     vim.keymap.set(
-      "n",
-      "<leader>ld",
-      function() fzf_lua.diagnostics_document() end,
-      opts_with_desc("Show document diagnostics")
+      "i",
+      "<C-S>",
+      function() vim.fn.CocActionAsync("showSignatureHelp") end,
+      opts_with_desc("Signature help")
     )
+  end, function() notify_keymap_error("Signature help") end)
 
-    vim.keymap.set("n", "gl", vim.diagnostic.open_float, opts_with_desc("Show line diagnostics")) -- ALE is required for this to work with coc
+  coc_utils.coc_ext_supports_method("inlayHint"):thenCall(
+    function()
+      vim.keymap.set(
+        "n",
+        "<leader>uH",
+        "<cmd>CocCommand document.toggleInlayHint<CR>",
+        opts_with_desc("Toggle inlay hints")
+      )
+    end,
+    function() notify_keymap_error("Toggle inlay hints") end
+  )
 
-    vim.keymap.set("n", "<leader>rS", vim.diagnostic.reset, opts_with_desc("Reset diagnostics"))
+  local coc_completion_opts = vim.tbl_extend("force", opts_with_desc("Completion"), { expr = true })
+  vim.keymap.set("i", "<C-x><C-o>", function()
+    if coc_utils.is_coc_attached(buf) then return vim.api.nvim_eval("coc#refresh()") end
+    return "<C-x><C-o>"
+  end, coc_completion_opts)
 
-    vim.keymap.set("n", "<leader>li", "<cmd>CocRestart<CR>", opts_with_desc("Restart coc service"))
+  vim.keymap.set(
+    "n",
+    "<leader>ld",
+    function() fzf_lua.diagnostics_document() end,
+    opts_with_desc("Show document diagnostics")
+  )
 
-    vim.keymap.set("n", "<leader>li", "<cmd>CocInfo<CR>", opts_with_desc("Show info"))
-  end, function() vim.notify(string.format("ensureDocument failed for buf %d", buf), vim.log.levels.WARN) end)
+  vim.keymap.set("n", "gl", vim.diagnostic.open_float, opts_with_desc("Show line diagnostics")) -- ALE is required for this to work with coc
+
+  vim.keymap.set("n", "<leader>rS", vim.diagnostic.reset, opts_with_desc("Reset diagnostics"))
+
+  vim.keymap.set("n", "<leader>li", "<cmd>CocRestart<CR>", opts_with_desc("Restart coc service"))
+
+  vim.keymap.set("n", "<leader>li", "<cmd>CocInfo<CR>", opts_with_desc("Show info"))
 end
 
 return M

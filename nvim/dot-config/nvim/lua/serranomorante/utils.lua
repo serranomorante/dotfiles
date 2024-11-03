@@ -1,4 +1,3 @@
-local tools = require("serranomorante.tools")
 local constants = require("serranomorante.constants")
 
 local M = {}
@@ -236,54 +235,13 @@ function M.refresh_codelens(args)
   if vim.g.codelens_enabled then vim.lsp.codelens.refresh({ bufnr = buf }) end
 end
 
----@param bufnr integer
----@return boolean
-function M.buf_has_coc_extension_available(bufnr)
-  bufnr = bufnr or vim.api.nvim_get_current_buf()
-  local has_extension = false
-  local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
-  local filetype_tools = ((tools.by_filetype[filetype] or {}).extensions or {})
-  for _, extension in ipairs(vim.g.coc_global_extensions or {}) do
-    if vim.list_contains(filetype_tools, extension) then has_extension = true end
-  end
-  return has_extension
-end
-
----Rules to detect if we should prevent attaching coc to this buffer
----If not already attached, this function does nothing
----@param bufnr integer
----@return boolean
-function M.buf_prevent_coc_attach(bufnr)
-  local prevent_coc_attach = false
-  if vim.wo.diff then prevent_coc_attach = true end
-  if not M.buf_has_coc_extension_available(bufnr) then prevent_coc_attach = true end
-  return prevent_coc_attach
-end
-
----Enable/disable coc per buffer based on whether passed buffer's filetype
----has coc-extensions assigned
----@param bufnr? integer
----@param on_coc_enabled? function
-function M.setup_coc_per_buffer(bufnr, on_coc_enabled)
-  bufnr = bufnr or vim.api.nvim_get_current_buf()
-  local document_is_attached = vim.g.coc_service_initialized == 1
-    and require("serranomorante.plugins.coc.utils").is_coc_attached(bufnr)
-  if document_is_attached then return end
-
-  local coc_enabled = 0 -- disabled by default
-  if vim.g.coc_service_initialized == 1 then coc_enabled = 1 end
-  if M.buf_prevent_coc_attach(bufnr) then coc_enabled = 0 end
-  vim.api.nvim_buf_set_var(bufnr, "coc_enabled", coc_enabled)
-  if on_coc_enabled ~= nil and coc_enabled == 1 then on_coc_enabled(bufnr) end
-end
-
 ---Simple setTimeout wrapper
----@param timeout integer
 ---@param callback function
-function M.set_timeout(timeout, callback)
+---@param ms integer
+function M.set_timeout(callback, ms)
   local timer = vim.uv.new_timer()
   if timer == nil then return end
-  timer:start(timeout, 0, function()
+  timer:start(ms, 0, function()
     timer:stop()
     timer:close()
     callback()
@@ -297,11 +255,36 @@ end
 function M.wait(ms)
   return require("promise")(function(resolve)
     ---@diagnostic disable-next-line: undefined-global
-    local timer = vim.loop.new_timer()
+    local timer = vim.uv.new_timer()
     timer:start(ms, 0, function()
       timer:close()
       resolve()
     end)
+  end)
+end
+
+---Wait until callback returns true or timeout
+---@param callback fun(): Promise
+---@param ms number
+---@return Promise
+function M.wait_until(callback, ms)
+  return require("async")(function()
+    local timeout = false
+    M.set_timeout(function() timeout = true end, ms)
+    ---@type boolean|nil
+    local result
+    while result ~= true and timeout == false do
+      result = await(callback())
+      await(M.wait(350))
+    end
+    local promise = require("promise")
+    if timeout == false and result == true then
+      return promise.resolve(result)
+    elseif timeout == true then
+      return promise.reject("Timeout reached")
+    else
+      return promise.reject("Unknown error")
+    end
   end)
 end
 

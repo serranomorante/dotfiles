@@ -290,7 +290,7 @@ local LspProgress = {
           #  - Done:      [client_name] title: DONE!
         ]]
         self.message = string.format("%s [%s] %s: %s", icons[kind], client_name, title, suffix_when_done)
-        if suffix_when_done ~= "" then utils.set_timeout(2000, function() events.event("ClearLspProgress") end) end
+        if suffix_when_done ~= "" then utils.set_timeout(function() events.event("ClearLspProgress") end, 2000) end
         vim.cmd.redrawstatus()
       end),
     },
