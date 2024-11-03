@@ -36,7 +36,6 @@
     when: "user_os in ['archlinux']"
     loop_control:
       loop_var: task_file
-  tags: only
 
 - block:
   - name: Ensure peripheral tools are configured

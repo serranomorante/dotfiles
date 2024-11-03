@@ -1,5 +1,6 @@
 local promise = require("promise")
 local async = require("async")
+local utils = require("serranomorante.utils")
 
 local M = {}
 
@@ -49,7 +50,7 @@ function M.coc_ext_supports_method(method, opts)
   })
 
   return async(function()
-    await(require("ufo.utils").wait(opts.timeout))
+    await(utils.wait(opts.timeout))
 
     return M.coc_action_async("hasProvider", method):thenCall(function(result)
       if result == true then return promise.resolve(result) end
@@ -70,7 +71,7 @@ function M.coc_ensure_document(opts)
   })
 
   return async(function()
-    await(require("ufo.utils").wait(opts.timeout))
+    await(utils.wait(opts.timeout))
 
     return M.coc_action_async("ensureDocument"):thenCall(function(result)
       if result == true then return promise.resolve(result) end

@@ -292,6 +292,20 @@ function M.set_timeout(timeout, callback)
   return timer
 end
 
+---Extracted from nvim-ufo
+---@param ms number
+---@return Promise
+function M.wait(ms)
+  return require("promise")(function(resolve)
+    ---@diagnostic disable-next-line: undefined-global
+    local timer = vim.loop.new_timer()
+    timer:start(ms, 0, function()
+      timer:close()
+      resolve()
+    end)
+  end)
+end
+
 ---Return an adapted filename which includes cursor's current line and column
 ---Example: <filename>:<line>:<col>
 function M.filename_with_cursor_pos()

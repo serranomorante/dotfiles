@@ -44,9 +44,9 @@ vim.opt.cursorlineopt = "number"
 vim.opt.wrapscan = false
 
 vim.opt.foldcolumn = "1"
-vim.opt.foldlevel = 99 -- set high foldlevel for nvim-ufo
+vim.opt.foldlevel = 99
 vim.opt.foldlevelstart = 99 -- start with all code unfolded
-vim.opt.foldenable = true -- enable fold for nvim-ufo
+vim.opt.foldenable = true
 vim.opt.foldopen:remove({ "hor" })
 vim.opt.fillchars:append({ eob = " ", fold = " ", foldopen = " ", foldsep = " ", foldclose = "+" })
 

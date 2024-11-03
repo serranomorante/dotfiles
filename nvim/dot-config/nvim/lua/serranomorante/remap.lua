@@ -52,13 +52,13 @@ vim.keymap.set("n", "<leader>zl", function()
   local foldopen_visible = vim.wo[winid].fillchars:gsub("foldopen: ", "foldopen:")
   vim.wo[winid].fillchars = foldopen_visible
 
-  -- Hide available folds after timout
+  ---Hide available folds after timout
   local timeout = 2000
   vim.defer_fn(function()
     local foldopen_hidden = vim.wo[winid].fillchars:gsub("foldopen:", "foldopen: ")
     vim.wo[winid].fillchars = foldopen_hidden
   end, timeout)
-end, { desc = "Ufo: Temporarily show available folds" })
+end, { desc = "Temporarily show available folds" })
 
 if vim.env.TMUX then
   ---Prepare tmux command to render all panes at the bottom based on directory

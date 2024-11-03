@@ -8,11 +8,6 @@ return {
     return {
       name = "lua-lsp",
       cmd = { binaries.lua_language_server() },
-      capabilities = {
-        textDocument = {
-          foldingRange = { dynamicRegistration = false, lineFoldingOnly = true },
-        },
-      },
       on_init = function(client)
         ---Disable semanticTokensProvider
         ---https://gist.github.com/swarn/fb37d9eefe1bc616c2a7e476c0bc0316

@@ -9,7 +9,6 @@ local plugins = {
   "statusline.heirline",
   "coc",
   "lsp",
-  "nvim-ufo",
   "undotree",
   "vim-sleuth",
   "treesitter.treesitter",
@@ -27,7 +26,6 @@ local plugins = {
   "quicker",
   "dap.nvim-dap",
   "dap.nvim-dap-virtual-text",
-  "smartyank",
   "nvim-fundo",
 }
 
