@@ -1,13 +1,11 @@
-local augroup = vim.api.nvim_create_augroup
-local autocmd = vim.api.nvim_create_autocmd
 local utils = require("serranomorante.utils")
 
-local general_settings_group = augroup("general_settings", { clear = true })
-local indent_line_group = augroup("indent_line", { clear = true })
+local general_settings_group = vim.api.nvim_create_augroup("general_settings", { clear = true })
+local indent_line_group = vim.api.nvim_create_augroup("indent_line", { clear = true })
 
-autocmd("TextYankPost", {
+vim.api.nvim_create_autocmd("TextYankPost", {
   desc = "Highlight yanked text",
-  group = augroup("highlight_yank", { clear = true }),
+  group = vim.api.nvim_create_augroup("highlight_yank", { clear = true }),
   callback = function()
     vim.highlight.on_yank({
       timeout = 300,
@@ -16,9 +14,9 @@ autocmd("TextYankPost", {
   end,
 })
 
-autocmd("BufWinEnter", {
+vim.api.nvim_create_autocmd("BufWinEnter", {
   desc = "Make q close help, man, dap floats",
-  group = augroup("q_close_windows", { clear = true }),
+  group = vim.api.nvim_create_augroup("q_close_windows", { clear = true }),
   callback = function(event)
     local buftype = vim.api.nvim_get_option_value("buftype", { buf = event.buf })
     local match = vim.tbl_contains({ "help", "nofile" }, buftype)
@@ -33,9 +31,9 @@ autocmd("BufWinEnter", {
   end,
 })
 
-autocmd("BufReadPre", {
+vim.api.nvim_create_autocmd("BufReadPre", {
   desc = "Mark buffer as large",
-  group = augroup("large_buf", { clear = true }),
+  group = vim.api.nvim_create_augroup("large_buf", { clear = true }),
   callback = function(args)
     local ok, is_large_file = pcall(utils.is_large_file, args.file)
     if ok and is_large_file then
@@ -46,32 +44,16 @@ autocmd("BufReadPre", {
   end,
 })
 
--- https://vi.stackexchange.com/a/8997
-autocmd({ "BufWinLeave", "BufWinEnter" }, {
-  desc = "Keep screen position zt,zz,zb after switching buffer",
-  group = augroup("keep_screen_position", { clear = true }),
-  callback = function(event)
-    if event.event == "BufWinLeave" then
-      vim.b.winview = vim.fn.winsaveview()
-    else
-      if vim.b.winview == nil then return end
-
-      vim.fn.winrestview(vim.b.winview)
-      vim.b.winview = nil
-    end
-  end,
-})
-
-autocmd("BufReadPost", {
+vim.api.nvim_create_autocmd("BufReadPost", {
   desc = "Update indent line on BufReadPost event",
   group = indent_line_group,
   callback = function(args)
     if vim.b[args.buf].large_buf then return end
-    vim.wo.listchars = utils.update_indent_line(vim.wo.listchars, vim.bo.shiftwidth)
+    vim.wo.listchars = utils.update_indent_line(vim.wo.listchars, vim.bo[args.buf].shiftwidth)
   end,
 })
 
-autocmd("OptionSet", {
+vim.api.nvim_create_autocmd("OptionSet", {
   desc = "Update indent line on shiftwidth change",
   group = indent_line_group,
   pattern = "shiftwidth",
@@ -85,21 +67,21 @@ autocmd("OptionSet", {
   end,
 })
 
-autocmd({ "BufWinEnter", "WinEnter" }, { -- TermOpen would only execute the callback once
+vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter" }, { -- TermOpen would only execute the callback once
   desc = "Clear hlsearch highlights when entering terminal",
   pattern = "term://*",
-  group = augroup("clear_hlsearch_on_term_open", { clear = true }),
+  group = vim.api.nvim_create_augroup("clear_hlsearch_on_term_open", { clear = true }),
   callback = vim.schedule_wrap(function() vim.cmd("nohlsearch") end),
 })
 
-autocmd("FileType", {
+vim.api.nvim_create_autocmd("FileType", {
   desc = "Enable vim syntax option only for specific filetypes",
   group = general_settings_group,
   pattern = { "qf", "undotree", "OverseerList", "OverseerForm", "aerial", "git", "oil" },
   callback = function(args) vim.api.nvim_set_option_value("syntax", args.match, { buf = args.buf }) end,
 })
 
-autocmd("CmdwinEnter", {
+vim.api.nvim_create_autocmd("CmdwinEnter", {
   desc = "Set mappings and options local to command-line window",
   group = general_settings_group,
   callback = function(args)
@@ -115,7 +97,7 @@ autocmd("CmdwinEnter", {
   end,
 })
 
-autocmd("CmdwinLeave", {
+vim.api.nvim_create_autocmd("CmdwinLeave", {
   desc = "Set mappings and options local to command-line window",
   group = general_settings_group,
   callback = function(args)
@@ -124,13 +106,7 @@ autocmd("CmdwinLeave", {
   end,
 })
 
-autocmd("FileType", {
-  desc = "Disable new line comments",
-  group = general_settings_group,
-  command = "set formatoptions-=cro",
-})
-
-autocmd({ "FocusGained", "BufEnter" }, {
+vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter" }, {
   desc = "Perform buffer reload after file changes outside vim",
   group = general_settings_group,
   callback = function()
@@ -143,13 +119,13 @@ autocmd({ "FocusGained", "BufEnter" }, {
   end,
 })
 
-autocmd("FileChangedShellPost", {
+vim.api.nvim_create_autocmd("FileChangedShellPost", {
   desc = "Notify when file changes outside vim",
   group = general_settings_group,
   callback = function() vim.notify("File changed on disk. Buffer reloaded", vim.log.levels.INFO) end,
 })
 
-autocmd("FocusGained", {
+vim.api.nvim_create_autocmd("FocusGained", {
   desc = "Redraw status on nvim focus",
   group = general_settings_group,
   command = "redrawstatus",
@@ -157,7 +133,7 @@ autocmd("FocusGained", {
 
 local guicursor = vim.api.nvim_get_option_value("guicursor", {})
 local previous_mode = nil
-autocmd({ "InsertEnter", "InsertLeave" }, {
+vim.api.nvim_create_autocmd({ "InsertEnter", "InsertLeave" }, {
   desc = "Change cursor on operator-pending mode `:help i_CTRL-O`",
   group = general_settings_group,
   callback = function()

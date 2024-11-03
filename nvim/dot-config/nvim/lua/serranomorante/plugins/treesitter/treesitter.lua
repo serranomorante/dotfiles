@@ -40,7 +40,7 @@ local opts = function()
       disable = function(_, bufnr) return vim.b[bufnr].large_buf end,
     },
     incremental_selection = {
-      enable = true,
+      enable = false,
       disable = function(_, bufnr) return vim.b[bufnr].large_buf end,
     },
     indent = {

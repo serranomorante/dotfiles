@@ -39,10 +39,9 @@ end
 function M.attach(buf)
   local fzf_lua = require("fzf-lua")
 
-  ---@param msg string
-  local notify_keymap_error = function(msg)
-    local prefix = "COC: couldn't set keymap"
-    vim.notify(prefix .. " " .. msg, vim.log.levels.WARN)
+  ---@param keymap string
+  local notify_keymap_error = function(keymap)
+    vim.notify(string.format('[COC]: keymap "%s" failed on buf %d', keymap, buf), vim.log.levels.WARN)
   end
 
   local opts_with_desc = keymapper.opts_for(buf)
@@ -135,7 +134,7 @@ function M.attach(buf)
     vim.keymap.set("n", "<leader>li", "<cmd>CocRestart<CR>", opts_with_desc("Restart coc service"))
 
     vim.keymap.set("n", "<leader>li", "<cmd>CocInfo<CR>", opts_with_desc("Show info"))
-  end, function() vim.notify("ensureDocument didn't work", vim.log.levels.WARN) end)
+  end, function() vim.notify(string.format("ensureDocument failed for buf %d", buf), vim.log.levels.WARN) end)
 end
 
 return M
