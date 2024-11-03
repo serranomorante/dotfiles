@@ -81,15 +81,6 @@ autocmd("OptionSet", {
   end,
 })
 
-autocmd("VimResized", {
-  desc = "Resize floating windows after resizing the terminal",
-  group = augroup("resize_floating_windows", { clear = true }),
-  callback = function()
-    local is_floating = vim.api.nvim_win_get_config(0).relative ~= ""
-    if is_floating then vim.api.nvim_win_set_width(0, vim.o.columns) end
-  end,
-})
-
 autocmd({ "BufWinEnter", "WinEnter" }, { -- TermOpen would only execute the callback once
   desc = "Clear hlsearch highlights when entering terminal",
   pattern = "term://*",
@@ -156,20 +147,18 @@ autocmd("FocusGained", {
   command = "redrawstatus",
 })
 
----@type table
-local default_cursor_hl = vim.api.nvim_get_hl(0, { name = "Cursor" })
-autocmd("ModeChanged", {
-  desc = "Change cursor color on operator-pending mode",
+local guicursor = vim.api.nvim_get_option_value("guicursor", {})
+local previous_mode = nil
+autocmd({ "InsertEnter", "InsertLeave" }, {
+  desc = "Change cursor on operator-pending mode `:help i_CTRL-O`",
   group = general_settings_group,
-  pattern = {
-    "i:niI", -- from insert mode to operator-pending
-    "niI:*", -- from operator-pending mode to any
-  },
-  callback = function(event)
-    if event.match == "i:niI" then
-      vim.api.nvim_set_hl(0, "Cursor", { bg = "NvimLightBlue" })
-    else
-      vim.api.nvim_set_hl(0, "Cursor", default_cursor_hl)
-    end
+  callback = function()
+    local current_mode = vim.api.nvim_get_mode().mode
+    vim.api.nvim_set_option_value(
+      "guicursor",
+      (current_mode == "niI" and previous_mode ~= current_mode) and "a:block-CustomOperatorPending" or guicursor,
+      {}
+    )
+    previous_mode = current_mode
   end,
 })

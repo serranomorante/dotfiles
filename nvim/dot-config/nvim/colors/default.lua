@@ -35,6 +35,7 @@ local groups = {
   DiffviewCursorLine = { ctermfg = 14, bg = bg .. "Grey3" },
   qfDirName = { link = "Directory", default = true },
   qfFileName = { link = "CursorLineNr", default = true },
+  CustomOperatorPending = { bg = fg .. "Blue" },
 }
 
 vim.g.terminal_color_0 = vim.g.terminal_color_0 or (bg .. "Grey1")
