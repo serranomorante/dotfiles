@@ -34,6 +34,12 @@
     single_branch: true
     version: "v{{ vscode_js_debug_version }}"
 
+- name: "Javascript language: apply custom patch"
+  ansible.builtin.command: git apply ~/dotfiles/assets/patches/vscode_js_debug_stderr.patch
+  args:
+    chdir: ~/repos/vscode-js-debug
+  changed_when: false
+
 - name: "Javascript language: install vscode-js-debug"
   ansible.builtin.shell: |
     npm install

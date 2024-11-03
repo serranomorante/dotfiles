@@ -1,0 +1,13 @@
+diff --git a/src/targets/browser/serviceWorkers.ts b/src/targets/browser/serviceWorkers.ts
+index c20118cb..cecfc64b 100644
+--- a/src/targets/browser/serviceWorkers.ts
++++ b/src/targets/browser/serviceWorkers.ts
+@@ -40,7 +40,7 @@ export class ServiceWorkerVersion {
+ 
+   addRevision(payload: Cdp.ServiceWorker.ServiceWorkerVersion) {
+     if (this._targetId && payload.targetId && this._targetId !== payload.targetId) {
+-      console.error(`${this._targetId} !== ${payload.targetId}`);
++      // console.error(`${this._targetId} !== ${payload.targetId}`);
+     }
+     if (payload.targetId) this._targetId = payload.targetId;
+     this._status = payload.status;
