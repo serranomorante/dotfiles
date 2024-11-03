@@ -14,14 +14,25 @@ local keys = function(bufnr)
   vim.keymap.set("n", "<leader>gp", function() gs.preview_hunk() end, opts_for("Git: Preview hunk"))
   vim.keymap.set({ "n", "x", "o" }, "]g", next_hunk_repeat, opts_for("Git: Next hunk"))
   vim.keymap.set({ "n", "x", "o" }, "[g", prev_hunk_repeat, opts_for("Git: Prev hunk"))
-  vim.keymap.set("n", "<leader>gh", function() gs.reset_hunk() end, opts_for("Git: Reset hunk"))
-  vim.keymap.set({ "n", "v" }, "<leader>gh", ":Gitsigns reset_hunk<CR>", opts_for("Git: Reset hunk (partial)"))
-  vim.keymap.set("n", "<leader>gH", function() gs.reset_buffer() end, opts_for("Git: Reset buffer"))
-  vim.keymap.set("n", "<leader>gS", function() gs.stage_buffer() end, opts_for("Git: Stage buffer"))
   vim.keymap.set("n", "<leader>gs", function() gs.stage_hunk() end, opts_for("Git: Stage hunk"))
-  vim.keymap.set({ "n", "v" }, "<leader>gs", ":Gitsigns stage_hunk<CR>", opts_for("Git: Stage hunk (partial)"))
+  vim.keymap.set("n", "<leader>gh", function() gs.reset_hunk() end, opts_for("Git: Reset hunk"))
+  vim.keymap.set(
+    "x",
+    "<leader>gs",
+    function() gs.stage_hunk({ vim.fn.line("."), vim.fn.line("v") }) end,
+    opts_for("Git: Stage hunk (partial)")
+  )
+  vim.keymap.set(
+    "x",
+    "<leader>gh",
+    function() gs.reset_hunk({ vim.fn.line("."), vim.fn.line("v") }) end,
+    opts_for("Git: Reset hunk (partial)")
+  )
   vim.keymap.set("n", "<leader>gu", function() gs.undo_stage_hunk() end, opts_for("Git: Unstage hunk"))
+  vim.keymap.set("n", "<leader>gS", function() gs.stage_buffer() end, opts_for("Git: Stage buffer"))
+  vim.keymap.set("n", "<leader>gH", function() gs.reset_buffer() end, opts_for("Git: Reset buffer"))
   vim.keymap.set({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>", opts_for("Git: Select hunk"))
+  vim.keymap.set("n", "<leader>td", gs.toggle_deleted, opts_for("Git: Toggle deleted"))
 end
 
 local opts = function()
