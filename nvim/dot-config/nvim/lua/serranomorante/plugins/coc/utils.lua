@@ -3,6 +3,13 @@ local async = require("async")
 
 local M = {}
 
+---Check if coc is attached to buffer
+---@param buf number?
+function M.is_coc_attached(buf)
+  local bufnr = buf or vim.api.nvim_get_current_buf()
+  return vim.b[bufnr].coc_enabled == 1
+end
+
 ---Execute `CocActionAsync` as a promise
 ---This uses `promise-async` plugin
 ---@param action string

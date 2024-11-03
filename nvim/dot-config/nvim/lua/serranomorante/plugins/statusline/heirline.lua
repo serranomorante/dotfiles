@@ -1,3 +1,5 @@
+local coc_utils = require("serranomorante.plugins.coc.utils")
+
 local M = {}
 
 local init = function()
@@ -96,11 +98,11 @@ local opts = function()
         ---Show winbar on these filetypes
         if conditions.buffer_matches({ filetype = { "oil" } }, args.buf) then return false end
         ---Show winbar if these lsp servers are ready
-        if vim.b[args.buf].coc_enabled ~= 1 and vim.tbl_count(vim.lsp.get_clients({ bufnr = args.buf })) > 0 then
+        if not coc_utils.is_coc_attached(args.buf) and vim.tbl_count(vim.lsp.get_clients({ bufnr = args.buf })) > 0 then
           return false
         end
         ---Show winbar if coc extensions are ready
-        if vim.b[args.buf].coc_enabled == 1 then return false end
+        if coc_utils.is_coc_attached(args.buf) then return false end
         return true -- hide winbar by default
       end,
     },

@@ -3,6 +3,7 @@ local heirline_conditions = require("heirline.conditions")
 local heirline_utils = require("heirline.utils")
 local utils = require("serranomorante.utils")
 local events = require("serranomorante.events")
+local coc_utils = require("serranomorante.plugins.coc.utils")
 
 local M = {}
 
@@ -263,10 +264,7 @@ M.QuickfixTitle = {
 }
 
 local CocProgress = {
-  condition = function()
-    local current_buf = vim.api.nvim_get_current_buf()
-    return vim.b[current_buf].coc_enabled == 1
-  end,
+  condition = function() return coc_utils.is_coc_attached() end,
   provider = "%{coc#status()}%{get(b:,'coc_current_function','')}",
   update = {
     "User",
@@ -311,7 +309,7 @@ local LspProgress = {
   condition = function()
     local current_buf = vim.api.nvim_get_current_buf()
     local is_attached = vim.tbl_count(vim.lsp.get_clients({ bufnr = current_buf })) > 0
-    return is_attached and vim.b[current_buf].coc_enabled ~= 1
+    return is_attached and not coc_utils.is_coc_attached(current_buf)
   end,
   provider = function(self) return self.message or "" end,
 }

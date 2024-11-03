@@ -267,7 +267,8 @@ end
 ---@param on_coc_enabled? function
 function M.setup_coc_per_buffer(bufnr, on_coc_enabled)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-  local document_is_attached = vim.g.coc_service_initialized == 1 and vim.b[bufnr].coc_enabled == 1
+  local document_is_attached = vim.g.coc_service_initialized == 1
+    and require("serranomorante.plugins.coc.utils").is_coc_attached(bufnr)
   if document_is_attached then return end
 
   local coc_enabled = 0 -- disabled by default

@@ -117,7 +117,7 @@ function M.attach(buf)
 
     local coc_completion_opts = vim.tbl_extend("force", opts_with_desc("Completion"), { expr = true })
     vim.keymap.set("i", "<C-x><C-o>", function()
-      if vim.b[buf].coc_enabled == 1 then return vim.api.nvim_eval("coc#refresh()") end
+      if coc_utils.is_coc_attached(buf) then return vim.api.nvim_eval("coc#refresh()") end
       return "<C-x><C-o>"
     end, coc_completion_opts)
 
