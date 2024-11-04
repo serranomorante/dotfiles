@@ -6,7 +6,7 @@
       - neovim-remote
     virtualenv: ~/apps/python-tools/.venv
     virtualenv_command: /usr/bin/python3 -m venv
-    state: latest
+    state: present
 
 - name: "Setup NVR tools: symlink virtualenv nvr"
   ansible.builtin.file:
@@ -20,3 +20,4 @@
   ansible.builtin.shell: |
     update-desktop-database ~/.local/share/applications
     xdg-mime default nvr_nvim_open.desktop x-scheme-handler/terminal
+  changed_when: false
