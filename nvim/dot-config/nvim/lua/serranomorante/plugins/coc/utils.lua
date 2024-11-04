@@ -27,7 +27,7 @@ function M.should_enable(bufnr)
   if vim.api.nvim_get_option_value("diff", { scope = "local" }) then
     enable = false -- prevent conflict with diffview
   end
-  if vim.api.nvim_get_option_value("buftype", { buf = bufnr }) == "nofile" then
+  if vim.list_contains({ "nowrite", "nofile" }, vim.api.nvim_get_option_value("buftype", { buf = bufnr })) then
     enable = false -- not a valid buftype
   end
   if vim.b[bufnr].coc_enabled == 1 then enable = false end -- already enabled
