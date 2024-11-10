@@ -59,6 +59,7 @@ M.by_filetype = {
       "ssh_config",
       "sxhkdrc",
       "dockerfile",
+      "mermaid",
     },
     extensions = { "coc-webview" },
   },

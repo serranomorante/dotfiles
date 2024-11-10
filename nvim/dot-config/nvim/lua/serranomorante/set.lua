@@ -71,11 +71,12 @@ vim.go.showtabline = 2
 vim.go.inccommand = "split"
 
 vim.wo.list = true
-vim.go.listchars = vim.go.listchars .. ",leadmultispace:  ,trail: "
+vim.go.listchars = vim.go.listchars .. ",leadmultispace:  ,trail: ,eol:⏎"
 vim.go.completeopt = "menuone,noselect,noinsert,popup,fuzzy"
 vim.go.pumheight = 15
 vim.go.shortmess = "atToOF"
 vim.go.showbreak = "> "
+vim.go.virtualedit = "all"
 
 vim.cmd.syntax("off")
 vim.cmd.colorscheme("default")

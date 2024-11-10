@@ -92,6 +92,7 @@ M.config = function()
   require("nvim-treesitter.configs").setup(opts())
   vim.treesitter.language.register("git_config", "systemd")
   vim.treesitter.language.register("git_config", "conf")
+  vim.treesitter.language.register("ssh_config", "sshdconfig")
 end
 
 return M
