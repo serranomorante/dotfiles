@@ -4,7 +4,7 @@ Wants=borg-backup.timer
 
 [Service]
 ## BEGIN ANSIBLE MANAGED BLOCK - SETUP BORG BACKUP
-ExecStart=/usr/bin/borg create %h/home-config-data-backups::home-config-data-archive-{now:%%Y-%%m-%%d_%%H_%%M_%%S} %h/.local/share/nvim/trailblazer %h/.local/share/nvim/dirsession %h/.local/share/nvim/fzf-lua %h/.local/share/nvim/gp %h/.cache/nvim/fundo %h/.cache/nvim/undodir %h/.cache/nvim/shadadir %h/.cache/nvim/gp %h/.local/state/nvim/shada %h/.local/share/fish/fish_history
+ExecStart=/usr/bin/borg create %h/configuration-backups::archive-{now:%%Y-%%m-%%d_%%H_%%M_%%S} %h/.local/share/nvim/trailblazer %h/.local/share/nvim/dirsession %h/.local/share/nvim/fzf-lua %h/.local/share/nvim/gp %h/.cache/nvim/fundo %h/.cache/nvim/undodir %h/.cache/nvim/shadadir %h/.cache/nvim/gp %h/.local/state/nvim/shada %h/.local/share/fish/fish_history /etc/ansible/hosts
 ## END ANSIBLE MANAGED BLOCK - SETUP BORG BACKUP
 Environment=export BORG_PASSCOMMAND='gpg --decrypt %h/borg_passphrase.gpg'
 Type=oneshot

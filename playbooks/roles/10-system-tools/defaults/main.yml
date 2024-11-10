@@ -13,14 +13,15 @@ chromium_local_extensions:
   - NewTab-Redirect
   - vimium
   - chrome-show-tab-numbers
-home_config_data_backups:
-  - .local/share/nvim/trailblazer         # trailblazer marks
-  - .local/share/nvim/dirsession          # resession
-  - .local/share/nvim/fzf-lua             # fzf lua history
-  - .local/share/nvim/gp                  # chat gpt
-  - .cache/nvim/fundo                     # nvim fundo
-  - .cache/nvim/undodir                   # undo history
-  - .cache/nvim/shadadir                  # shada file
-  - .cache/nvim/gp
-  - .local/state/nvim/shada
-  - .local/share/fish/fish_history        # fish history
+systemd_config_backups_dirs:
+  - "%h/.local/share/nvim/trailblazer"         # trailblazer marks
+  - "%h/.local/share/nvim/dirsession"          # resession
+  - "%h/.local/share/nvim/fzf-lua"             # fzf lua history
+  - "%h/.local/share/nvim/gp"                  # chat gpt
+  - "%h/.cache/nvim/fundo"                     # nvim fundo
+  - "%h/.cache/nvim/undodir"                   # undo history
+  - "%h/.cache/nvim/shadadir"                  # shada file
+  - "%h/.cache/nvim/gp"
+  - "%h/.local/state/nvim/shada"
+  - "%h/.local/share/fish/fish_history"        # fish history
+  - /etc/ansible/hosts

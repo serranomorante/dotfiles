@@ -7,18 +7,18 @@
       - borg
       - vorta
 
-- name: "Setup backup tools: ensure home-config-data-backups folder"
+- name: "Setup backup tools: ensure configuration-backups folder"
   ansible.builtin.file:
     state: directory
     recurse: true
-    path: ~/home-config-data-backups
+    path: ~/configuration-backups
 
 - name: "Setup backup tools: bootstrap borg config repo"
   ansible.builtin.shell: |
     export BORG_PASSCOMMAND='gpg --decrypt {{ ansible_env.HOME }}/borg_passphrase.gpg'
-    borg init --encryption=repokey {{ ansible_env.HOME }}/home-config-data-backups
+    borg init --encryption=repokey --make-parent-dirs {{ ansible_env.HOME }}/configuration-backups
   args:
-    creates: ~/home-config-data-backups/config
+    creates: ~/configuration-backups/config
 
 - name: "Setup backup tools: register borg path"
   ansible.builtin.command: which borg
@@ -34,7 +34,7 @@
     block: >
       ExecStart={{ borg_executable_path.stdout }}
       create
-      %h/home-config-data-backups::home-config-data-archive-{now:%%Y-%%m-%%d_%%H_%%M_%%S} %h/{{ home_config_data_backups | join(' %h/') }}
+      %h/configuration-backups::archive-{now:%%Y-%%m-%%d_%%H_%%M_%%S} {{ systemd_config_backups_dirs | join(' ') }}
     mode: "644"
 
 - name: "Setup backup tools: ensure borg backup timer"
