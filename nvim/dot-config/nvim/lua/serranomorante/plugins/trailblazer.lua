@@ -12,8 +12,10 @@ local function is_trailblazer_qf_open(any_qf)
 end
 
 local function init()
-  vim.api.nvim_set_hl(0, "TrailblazerCustomMark", { fg = "NvimDarkGrey4", bg = "NONE" })
-  vim.api.nvim_set_hl(0, "TrailblazerCustomMarkInvert", { fg = "NONE", bg = "NvimDarkGrey4" })
+  local color = "#005869"
+  vim.api.nvim_set_hl(0, "TrailblazerCustomMark", { fg = color, bg = "NONE" })
+  vim.api.nvim_set_hl(0, "TrailblazerCustomMarkInvert", { fg = "NONE", bg = color })
+  vim.api.nvim_set_hl(0, "TrailblazerSelectedStack", { fg = "NvimLightGreen", bold = true })
 
   vim.filetype.add({
     pattern = {
@@ -99,13 +101,20 @@ local function keys()
   end, { desc = "Trailblazer: Add new trail mark stack" })
 
   vim.keymap.set("n", "<A-'>", function()
-    local stacks = require("trailblazer.trails").stacks.get_sorted_stack_names()
+    local hi = require("fzf-lua.utils").ansi_from_hl
+    local stacks = require("trailblazer.trails").stacks.trail_mark_stack_list
+    local sorted_stacks = require("trailblazer.trails").stacks.get_sorted_stack_names()
     local current_stack = require("trailblazer.trails").stacks.current_trail_mark_stack_name
-    stacks = vim.tbl_filter(function(stack) return stack ~= current_stack end, stacks)
-    local trails = require("trailblazer.trails").stacks.current_trail_mark_stack
-    vim.ui.select(stacks, { prompt = current_stack .. " (" .. #trails .. ") " }, function(choice)
-      if choice then require("trailblazer").switch_trail_mark_stack(choice, false) end
-    end)
+    vim.ui.select(sorted_stacks, {
+      prompt = "Choose a stack ",
+      format_item = function(item)
+        local fitem = item
+        local count = vim.tbl_count(stacks[item] and stacks[item].stack or {})
+        if item == current_stack then fitem = hi("TrailblazerSelectedStack", " " .. fitem) end -- add icon to current stack
+        fitem = string.sub(" ", #tostring(vim.fn.index(sorted_stacks, item) + 1), 1) .. fitem -- left align
+        return count > 0 and fitem .. hi("Comment", string.format(" (%d)", count)) or fitem -- add trails count if more than zero
+      end,
+    }, require("trailblazer").switch_trail_mark_stack)
   end, { desc = "Trailblazer: Switch stack" })
 
   vim.keymap.set("n", "<A-s>", function()
