@@ -77,8 +77,8 @@ vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter" }, { -- TermOpen would o
 vim.api.nvim_create_autocmd("FileType", {
   desc = "Enable vim syntax option only for specific filetypes",
   group = general_settings_group,
-  pattern = { "qf", "undotree", "OverseerList", "OverseerForm", "aerial", "git", "oil" },
-  callback = function(args) vim.api.nvim_set_option_value("syntax", args.match, { buf = args.buf }) end,
+  pattern = "qf",
+  callback = function(args) vim.api.nvim_set_option_value("syntax", "ON", { buf = args.buf }) end,
 })
 
 vim.api.nvim_create_autocmd("CmdwinEnter", {

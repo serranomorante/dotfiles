@@ -115,6 +115,9 @@ local function opts()
 
   return {
     watch_for_changes = true,
+    buf_options = {
+      syntax = "ON",
+    },
     win_options = {
       signcolumn = "yes:2",
     },
