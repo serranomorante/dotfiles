@@ -4,3 +4,16 @@
   ansible.builtin.package:
     state: present
     name: marksman
+
+- name: "Markdown language: ensure aur packages"
+  aur:
+    use: yay
+    state: present
+    name:
+      - mermaid-cli
+      - mathjax
+
+- name: "Markdown language: ensure npm packages"
+  ansible.builtin.command: npm install --global mathjax-pandoc-filter
+  args:
+    creates: ~/.volta/bin/mathjax-pandoc-filter

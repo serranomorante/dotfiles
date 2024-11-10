@@ -37,5 +37,10 @@
   "javascript.inlayHints.enumMemberValues.enabled": true,
   // Download the compiled jar from this url and add it to the following dir
   // https://plantuml.com/download
-  "markdown-preview-enhanced.plantumlJarPath": "${userHome}/plantuml/plantuml.jar"
+  "markdown-preview-enhanced.plantumlJarPath": "${userHome}/plantuml/plantuml.jar",
+  "markdown-preview-enhanced.usePandocParser": true,
+  "markdown-preview-enhanced.pandocArguments": ["--mathjax"],
+  "markdownlint.config": {
+    "MD013": false
+  }
 }
