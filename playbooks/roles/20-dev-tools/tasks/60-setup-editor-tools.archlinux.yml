@@ -41,8 +41,11 @@
     - { folder: opt, repo: jbyuki/one-small-step-for-vimkind, name: osv }
     - { folder: opt, repo: Robitx/gp.nvim, name: gp }
 
-- name: "Editor tools: ensure universal ctags"
+- name: "Editor tools: ensure aur packages"
   aur:
     use: yay
     state: present
-    name: ctags-git
+    name:
+      - ctags-git
+      - clion-jre
+      - clion
