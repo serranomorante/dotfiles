@@ -1,0 +1,8 @@
+[Unit]
+Description=Hypexport
+Wants=hypexport.timer
+
+[Service]
+Type=oneshot
+ExecStart=%h/bin/backup-hypothesis.sh
+RemainAfterExit=yes

@@ -1,9 +1,33 @@
 ---
-- name: Ensure note-taking utility packages
-  ansible.builtin.include_tasks: "{{ task_file }}"
-  with_first_found:
-    - files: setup-note-taking-utilities.{{ user_os }}.yml
-      skip: true
-  when: "user_os in ['archlinux']"
-  loop_control:
-    loop_var: task_file
+- block:
+    - name: Ensure note-taking utility packages
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 10-setup-note-taking-utilities.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["40-10"]
+
+- block:
+    - name: Ensure HPI setup
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 20-setup-HPI.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["40-20"]
+
+- block:
+    - name: Ensure PKM exports
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 30-setup-exports.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["40-30"]

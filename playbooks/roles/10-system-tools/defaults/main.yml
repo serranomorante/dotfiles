@@ -4,12 +4,13 @@ debian_fzf_version: 0.55.0
 wacom_vendor_id: 056a
 extension_react_devtools: nipckbchhibgnbgnabineijogaiegchd
 extension_bitwarden: nngceckbapebfimnlniiiahkandclblb
-extension_show_tab_numbers: egbdjbfggjldijfoahggfipdkpijmmgd
+extension_show_tab_numbers: egbdjbfggjldijfoahggfipdkpijmmgd # local
 extension_floccus: fnaicdffflnofjppbagibeoednhnbjhg
 extension_memex: abkfbakhjpmblaafnpgjppbmioombali
-extension_new_tab_redirect: jbkaalaijhbkmaffefakjjpphiefocai
-extension_vimium: dblffdcabmecmgepoideebngccnllhlo
+extension_new_tab_redirect: jbkaalaijhbkmaffefakjjpphiefocai # local
+extension_vimium: dblffdcabmecmgepoideebngccnllhlo # local
 extension_hypothesis: bjfhmglciegochdpefhhlphglcehbmek
+extension_promnesia: dmeifochafhcoiolkeadbjgimpamfghc # local
 chromium_local_extensions:
   - NewTab-Redirect
   - vimium

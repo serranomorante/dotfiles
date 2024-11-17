@@ -1,0 +1,8 @@
+[Unit]
+Description=Promnesia index
+Wants=promnesia-index.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/bin/promnesia index
+RemainAfterExit=yes

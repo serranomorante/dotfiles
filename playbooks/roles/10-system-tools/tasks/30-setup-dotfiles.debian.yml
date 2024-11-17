@@ -52,9 +52,7 @@
   when: stow_executable is succeeded
 
 - name: "Dotfiles: apply stow"
-  ansible.builtin.shell: >
-    set -o pipefail &&
-    ~/.local/bin/stow --dotfiles fish nvim tmux
+  ansible.builtin.shell: ~/.local/bin/stow --dotfiles fish nvim tmux
   args:
     chdir: ~/dotfiles
   when: stow_executable is succeeded

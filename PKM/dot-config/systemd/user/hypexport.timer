@@ -1,0 +1,12 @@
+[Unit]
+Description=Hypexport timer
+Requires=hypexport.service
+
+[Timer]
+Persistent=true
+OnBootSec=10min
+OnUnitActiveSec=2h
+Unit=hypexport.service
+
+[Install]
+WantedBy=timers.target

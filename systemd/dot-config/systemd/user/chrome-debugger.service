@@ -4,7 +4,7 @@ After=graphical-session.target
 
 [Service]
 ## BEGIN ANSIBLE MANAGED BLOCK - SETUP CHROMIUM
-ExecStart=/usr/bin/chromium --remote-debugging-port=9222 --load-extension=%h/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,%h/repos/NewTab-Redirect,%h/repos/vimium,%h/repos/chrome-show-tab-numbers
+ExecStart=/usr/bin/chromium --remote-debugging-port=9222 --load-extension=%h/repos/promnesia/extension/dist/chrome,%h/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,%h/repos/NewTab-Redirect,%h/repos/vimium,%h/repos/chrome-show-tab-numbers
 ## END ANSIBLE MANAGED BLOCK - SETUP CHROMIUM
 
 [Install]

@@ -1,12 +1,12 @@
 [Unit]
-Description=Borg backup timer
-Requires=borg-backup.service
+Description=Browser export timer
+Requires=browserexport.service
 
 [Timer]
 Persistent=true
 OnBootSec=10min
 OnUnitActiveSec=1h
-Unit=borg-backup.service
+Unit=browserexport.service
 
 [Install]
 WantedBy=timers.target

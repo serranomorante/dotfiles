@@ -5,6 +5,12 @@
     state: present
     name: evince
 
+- name: "Other tools: ensure aur packages"
+  aur:
+    use: yay
+    state: present
+    name: ccze
+
 - name: "Other tools: ensure font directory exists"
   ansible.builtin.file:
     path: ~/.local/share/fonts/Pragmasevka_NF

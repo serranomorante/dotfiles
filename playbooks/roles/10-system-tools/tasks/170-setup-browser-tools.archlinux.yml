@@ -51,6 +51,7 @@
     - { repo: https://github.com/philc/vimium }
     - { repo: https://github.com/kg8m/chrome-show-tab-numbers }
     - { repo: https://github.com/facebook/react, version: 1460d67c5b9a0d4498b4d22e1a5a6c0ccac85fdd } # version that worked first try
+    - { repo: https://github.com/karlicoss/promnesia }
 
 - name: "Setup browser tools: check if NewTab-Redirect already patched"
   ansible.builtin.shell: |
@@ -145,6 +146,25 @@
   args:
     creates: ~/repos/react/packages/react-devtools-extensions/chrome/build/unpacked/react-devtools.crx
 
+- name: "Setup browser tools: build promnesia"
+  ansible.builtin.command: |
+    npm install
+    ~/apps/PKM/.venv/bin/python build --chrome --release
+  args:
+    chdir: ~/repos/promnesia/extension
+    creates: ~/repos/promnesia/extension/dist/chrome/manifest.json
+  ignore_errors: true
+
+- name: "Setup browser tools: build promnesia crx"
+  ansible.builtin.shell: >
+    ~/.local/share/gem/ruby/3.2.0/bin/extensionator
+    -d ~/repos/promnesia/extension/dist/chrome
+    -i ~/apps/browser-tools/chrome/extensions/identity.pem
+    -o ~/repos/promnesia/extension/dist/chrome/promnesia.crx
+  args:
+    chdir: ~/repos/promnesia/extension/dist/chrome
+    creates: ~/repos/promnesia/extension/dist/chrome/promnesia.crx
+
 - name: "Setup browser tools: create browser policy directory for all users"
   become: true
   ansible.builtin.file:
@@ -191,6 +211,9 @@
           "{{ extension_bitwarden }}": {
             "toolbar_pin": "force_pinned"
           },
+          "{{ extension_promnesia }}": {
+            "toolbar_pin": "force_pinned"
+          },
           "{{ extension_vimium }}": {
             "toolbar_pin": "force_pinned",
             "file_url_navigation_allowed": true,
@@ -229,7 +252,7 @@
     block: >
       ExecStart={{ chromium_path.stdout }}
       --remote-debugging-port=9222
-      --load-extension=%h/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,%h/repos/{{ chromium_local_extensions | join(',%h/repos/') }}
+      --load-extension=%h/repos/promnesia/extension/dist/chrome,%h/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,%h/repos/{{ chromium_local_extensions | join(',%h/repos/') }}
     mode: "644"
 
 - name: "Setup browser tools: create extensions directory for all users"
@@ -264,4 +287,4 @@
   ansible.builtin.replace:
     path: "{{ ansible_env.HOME }}/.local/share/applications/brave-browser.desktop"
     regexp: "^(Exec=).*"
-    replace: '\1brave --load-extension={{ ansible_env.HOME }}/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,{{ ansible_env.HOME }}/repos/NewTab-Redirect,{{ ansible_env.HOME }}/repos/vimium,{{ ansible_env.HOME }}/repos/chrome-show-tab-numbers %u'
+    replace: '\1brave --load-extension={{ ansible_env.HOME }}/repos/promnesia/extension/dist/chrome,{{ ansible_env.HOME }}/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,{{ ansible_env.HOME }}/repos/NewTab-Redirect,{{ ansible_env.HOME }}/repos/vimium,{{ ansible_env.HOME }}/repos/chrome-show-tab-numbers %u'

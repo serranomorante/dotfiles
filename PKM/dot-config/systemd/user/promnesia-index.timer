@@ -1,12 +1,12 @@
 [Unit]
-Description=Borg backup timer
-Requires=borg-backup.service
+Description=Promnesia index timer
+Requires=promnesia-index.service
 
 [Timer]
 Persistent=true
 OnBootSec=10min
 OnUnitActiveSec=1h
-Unit=borg-backup.service
+Unit=promnesia-index.service
 
 [Install]
 WantedBy=timers.target
