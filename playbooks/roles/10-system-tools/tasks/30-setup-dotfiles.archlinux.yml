@@ -10,13 +10,24 @@
     recurse: true
     path: ~/.config/nvim/pack/
 
-- name: "Dotfiles: unfold stow nvim link first"
-  ansible.builtin.file:
-    state: touch
-    path: ~/.config/nvim/pack/.prevent_stow_symlink # this is a hack
-
 - name: "Dotfiles: apply stow"
-  ansible.builtin.command: stow --dotfiles dunst fish gnupg kitty lazygit nvim peripherals pipewire playbooks systemd tmux wireplumber home utilities PKM
+  ansible.builtin.command: >
+    stow --dotfiles
+    dunst
+    fish
+    gnupg
+    kitty
+    lazygit
+    nvim
+    peripherals
+    pipewire
+    playbooks
+    systemd
+    tmux
+    wireplumber
+    home
+    utilities
+    PKM
   args:
     chdir: ~/dotfiles
   changed_when: false
