@@ -1,0 +1,51 @@
+{
+  "SystemShortcutBehavior": 3,
+  "ShortcutCustomizationAllowed": true,
+  "TranslateEnabled": false,
+  "HomepageIsNewTabPage": false,
+  "VideoCaptureAllowedUrls": ["https://[*.]google.com/"],
+  "ExtensionSettings": {
+    "{{ extension_show_tab_numbers }}": {
+      "allowed_permissions": [
+        "contextMenus",
+        "scripting",
+        "storage",
+        "tabGroups",
+        "tabs"
+      ],
+      "file_url_navigation_allowed": true
+    },
+    "{{ extension_new_tab_redirect }}": {
+      "allowed_permissions": ["favicon", "storage"],
+      "file_url_navigation_allowed": true
+    },
+    "{{ extension_react_devtools }}": {
+      "file_url_navigation_allowed": true
+    },
+    "{{ extension_bitwarden }}": {
+      "toolbar_pin": "force_pinned"
+    },
+    "{{ extension_promnesia }}": {
+      "toolbar_pin": "force_pinned"
+    },
+    "{{ extension_hypothesis }}": {
+      "toolbar_pin": "force_pinned"
+    },
+    "{{ extension_vimium }}": {
+      "toolbar_pin": "force_pinned",
+      "file_url_navigation_allowed": true,
+      "allowed_permissions": [
+        "tabs",
+        "bookmarks",
+        "history",
+        "storage",
+        "sessions",
+        "notifications",
+        "scripting",
+        "favicon",
+        "webNavigation",
+        "search"
+      ]
+    }
+  }
+}

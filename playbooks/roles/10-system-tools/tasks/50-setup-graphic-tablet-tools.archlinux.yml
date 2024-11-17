@@ -25,7 +25,7 @@
 
 - name: "Graphic tablet peripheral: copy sudo files"
   become: true
-  ansible.builtin.copy:
+  ansible.builtin.template:
     src: "{{ item.source }}"
     dest: "{{ item.dest }}"
     owner: root
