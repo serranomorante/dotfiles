@@ -63,7 +63,7 @@
 
 - name: "Setup browser tools: patch NewTab-Redirect extension"
   ansible.builtin.shell: |
-    git apply ~/dotfiles/playbooks/patches/chrome_extensions/{{ item }}
+    git apply ~/dotfiles/assets/patches/chrome_extensions/{{ item }}
   args:
     chdir: ~/repos/NewTab-Redirect
   loop:
@@ -80,7 +80,7 @@
 
 - name: "Setup browser tools: patch react-devtools extension"
   ansible.builtin.shell: |
-    git apply ~/dotfiles/playbooks/patches/chrome_extensions/{{ item }}
+    git apply ~/dotfiles/assets/patches/chrome_extensions/{{ item }}
   args:
     chdir: ~/repos/react
   loop:
@@ -97,7 +97,7 @@
 
 - name: "Setup browser tools: patch vimium extension"
   ansible.builtin.shell: |
-    git apply ~/dotfiles/playbooks/patches/chrome_extensions/{{ item }}
+    git apply ~/dotfiles/assets/patches/chrome_extensions/{{ item }}
   args:
     chdir: ~/repos/vimium
   loop:

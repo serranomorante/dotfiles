@@ -52,7 +52,7 @@
     version: d92867ec229ecf080f96ff53978bdf3c1c5e45e2
 
 - name: "Graphic tablet peripheral: apply custom patch to lib.ts"
-  ansible.builtin.shell: git apply ~/dotfiles/peripherals/dot-config/weylus/patches/lib.patch
+  ansible.builtin.shell: git apply ~/dotfiles/assets/patches/weylus/lib.patch
   args:
     chdir: ~/repos/Weylus
 

@@ -15,7 +15,7 @@
       - ninja
 
 - name: "Neovim: apply patches to neovim"
-  ansible.builtin.command: git apply ~/dotfiles/nvim/patches/{{ item.patch_filename }}
+  ansible.builtin.command: git apply ~/dotfiles/assets/patches/nvim/{{ item.patch_filename }}
   args:
     chdir: ~/repos/neovim
   loop:
