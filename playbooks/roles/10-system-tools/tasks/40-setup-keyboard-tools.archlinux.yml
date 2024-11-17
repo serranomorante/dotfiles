@@ -31,20 +31,13 @@
   loop_control:
     loop_var: service
 
-- name: "Keyboard peripheral: copy keyd default.conf file"
+- name: "Keyboard peripheral: copy sudo files"
   become: true
   ansible.builtin.copy:
-    src: ~/.config/keyd/default.conf
-    dest: /etc/keyd/default.conf
+    src: "{{ item.source }}"
+    dest: "{{ item.dest }}"
     owner: root
     mode: "644"
-
-- name: "Keyboard peripheral: kbdrate udev rule"
-  become: true
-  ansible.builtin.shell: >
-    set -o pipefail &&
-    echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="8087", ATTRS{idProduct}=="0029",
-    TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="kbdrate.service"' |
-    sudo tee /etc/udev/rules.d/99-kbdrate.rules
-  args:
-    creates: /etc/udev/rules.d/99-kbdrate.rules
+  loop:
+    - { source: ~/.config/keyd/default.conf, dest: /etc/keyd/default.conf }
+    - { source: ~/dotfiles/assets/udev-rules/99-kbdrate.rules, dest: /etc/udev/rules.d/99-kbdrate.rules }

@@ -11,6 +11,7 @@ vim.filetype.add({
   pattern = {
     [".*/requirements.*%.txt"] = "requirements",
     ["%.env.*"] = "sh",
+    [".*/udev%-rules/.*%.rules"] = "udevrules",
   },
 })
 

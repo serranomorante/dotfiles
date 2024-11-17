@@ -60,6 +60,7 @@ M.by_filetype = {
       "sxhkdrc",
       "dockerfile",
       "mermaid",
+      "udev"
     },
     extensions = { "coc-webview" },
   },

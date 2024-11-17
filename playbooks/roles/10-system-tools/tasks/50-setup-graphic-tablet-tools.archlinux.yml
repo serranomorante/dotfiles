@@ -23,15 +23,16 @@
     enabled: true
     masked: false
 
-- name: "Graphic tablet peripheral: wacom - add udev rule"
+- name: "Graphic tablet peripheral: copy sudo files"
   become: true
-  ansible.builtin.shell: >
-    set -o pipefail &&
-    echo 'ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="{{ wacom_vendor_id }}",
-    TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="wacom.service"' |
-    sudo tee /etc/udev/rules.d/99-wacom.rules
-  args:
-    creates: /etc/udev/rules.d/99-wacom.rules
+  ansible.builtin.copy:
+    src: "{{ item.source }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    mode: "644"
+  loop:
+    - { source: ~/dotfiles/assets/udev-rules/99-wacom.rules, dest: /etc/udev/rules.d/99-wacom.rules }
+    - { source: ~/dotfiles/assets/udev-rules/60-weylus.rules, dest: /etc/udev/rules.d/60-weylus.rules }
 
 - name: "Graphic tablet peripheral: ensure wacom service"
   ansible.builtin.systemd_service:
@@ -88,14 +89,6 @@
     append: true
     groups: uinput
     name: "{{ ansible_env.USER }}"
-
-- name: "Graphic tablet peripheral: weylus - add udev rule"
-  become: true
-  ansible.builtin.shell: >
-    set -o pipefail &&
-    echo 'KERNEL=="uinput", MODE="0660", GROUP="uinput", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/60-weylus.rules
-  args:
-    creates: /etc/udev/rules.d/60-weylus.rules
 
 - name: "Graphic tablet peripheral: ensure weylus service"
   ansible.builtin.systemd_service:
