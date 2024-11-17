@@ -1,0 +1,14 @@
+---
+- name: "Setup backup tools: ensure packages"
+  ansible.builtin.get_url:
+    url: https://github.com/borgbackup/borg/releases/download/1.4.0/borg-linux-glibc228
+    dest: ~/bin/borg
+    mode: "755"
+
+# You should generate your borg key with this command:
+# `ssh-keygen -C "$(whoami)@$(uname -n)-$(date -I)-borg" -t rsa -b 4096 -f ~/.ssh/id_rsa_borg`
+- name: "Setup backup tools: ensure borg serve in authorized_keys"
+  ansible.builtin.replace:
+    path: ~/.ssh/authorized_keys
+    regexp: '^([^c].*borg)$'
+    replace: 'command="~/bin/borg serve --restrict-to-path ~/backups",restrict \1'
