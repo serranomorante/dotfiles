@@ -105,6 +105,10 @@ local opts = function()
         border = "noborder",
         horizontal = "right:40%",
       },
+      on_create = function()
+        ---https://github.com/ibhagwan/fzf-lua/issues/532#issuecomment-1269523365
+        vim.keymap.set("t", "<C-r>", [['<C-\><C-N>"'.nr2char(getchar()).'pi']], { expr = true })
+      end,
     },
     previewers = {
       bat = { args = "--color=always --style=numbers,changes --line-range=:" .. vim.g.max_file.lines },
