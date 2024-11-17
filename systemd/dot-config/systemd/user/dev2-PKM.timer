@@ -1,0 +1,12 @@
+[Unit]
+Description=Borg dev2-PKM backup timer
+Requires=dev2-PKM.service
+
+[Timer]
+Persistent=true
+OnBootSec=10min
+OnUnitActiveSec=4h
+Unit=dev2-PKM.service
+
+[Install]
+WantedBy=timers.target

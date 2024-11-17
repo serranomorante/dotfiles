@@ -1,0 +1,12 @@
+[Unit]
+Description=Borg dev2-config-files backup timer
+Requires=dev2-config-files.service
+
+[Timer]
+Persistent=true
+OnBootSec=10min
+OnUnitActiveSec=2h
+Unit=dev2-config-files.service
+
+[Install]
+WantedBy=timers.target
