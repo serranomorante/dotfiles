@@ -1,0 +1,14 @@
+---
+- name: "[otherlinux] Dotfiles: ensure stow installed"
+  ansible.builtin.command: pkg install -y {{ item }}
+  loop:
+    - stow
+  changed_when: false
+
+- name: "Dotfiles: apply stow"
+  ansible.builtin.command: >
+    stow --dotfiles
+    gnupg
+  args:
+    chdir: ~/dotfiles
+  changed_when: false

@@ -28,8 +28,11 @@ config_files_backup_env:
   - ~/.local/share/fish/fish_history
 pkm_backup_env:
   - ~/PKM
+seedvault_main_backup_env:
+  - /storage/emulated/0/.SeedVaultAndroidBackup
 dev1_config_files_borg_repo: ssh://borg/~/backups/config-files
 dev1_pkm_borg_repo: ssh://borg/~/backups/PKM
+dev1_seedvault_borg_repo: ssh://borg/~/backups/seedvault-main
 dev2_config_files_borg_repo: /run/media/serranomorante/Data/backups/config-files
 dev2_pkm_borg_repo: /run/media/serranomorante/Data/backups/PKM
 dev3_config_files_borg_repo: /run/media/serranomorante/TOSHIBA EXT/backups/config-files

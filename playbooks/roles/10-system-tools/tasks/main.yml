@@ -5,7 +5,7 @@
       with_first_found:
         - files: 10-setup-desktop.{{ user_os }}.yml
           skip: true
-      when: "user_os in ['archlinux', 'debian']"
+      when: "user_os in ['archlinux', 'debian', 'otherlinux']"
       loop_control:
         loop_var: task_file
   tags: ["10-10"]
@@ -27,7 +27,7 @@
       with_first_found:
         - files: 30-setup-dotfiles.{{ user_os }}.yml
           skip: true
-      when: "user_os in ['archlinux', 'debian']"
+      when: "user_os in ['archlinux', 'debian', 'otherlinux']"
       loop_control:
         loop_var: task_file
   tags: [always, "10-30"]
@@ -181,7 +181,7 @@
       with_first_found:
         - files: 180-setup-backup-tools.{{ user_os }}.yml
           skip: true
-      when: "user_os in ['archlinux', 'otherlinux', 'debian']"
+      when: "user_os in ['archlinux', 'debian', 'otherlinux']"
       loop_control:
         loop_var: task_file
   tags: ["10-180"]

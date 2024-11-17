@@ -12,3 +12,12 @@
     dest: /usr/share/sddm/scripts/Xsetup
     owner: root
     mode: "744"
+
+- name: "[archlinux] Setup desktop: setup gnugp"
+  ansible.builtin.blockinfile:
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP GNUGP"
+    insertbefore: "BOF"
+    dest: ~/dotfiles/gnupg/dot-gnupg/gpg-agent.conf
+    mode: "700"
+    block: |
+      pinentry-program /usr/bin/pinentry-tty

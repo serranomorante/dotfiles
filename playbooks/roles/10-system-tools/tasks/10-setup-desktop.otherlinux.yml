@@ -1,0 +1,32 @@
+---
+- name: "[otherlinux] Setup desktop: setup packages"
+  ansible.builtin.command: pkg install -y {{ item }}
+  loop:
+    - git
+    - cronie openssh termux-services
+  changed_when: false
+
+- name: "[otherlinux] Setup desktop: ensure services"
+  ansible.builtin.command: sv-enable {{ item }}
+  loop:
+    - sshd
+    - crond
+  changed_when: false
+
+- name: "[otherlinux] Setup desktop: ensure startup"
+  ansible.builtin.copy:
+    dest: /data/data/com.termux/files/home/.termux/boot/10-start-sshd
+    content: |
+      #!/data/data/com.termux/files/usr/bin/sh
+      termux-wake-lock
+      sv-enable sshd
+    mode: "700"
+
+- name: "[otherlinux] Setup desktop: setup gnugp"
+  ansible.builtin.blockinfile:
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP GNUGP"
+    insertbefore: "BOF"
+    dest: ~/dotfiles/gnupg/dot-gnupg/gpg-agent.conf
+    mode: "700"
+    block: |
+      pinentry-program /data/data/com.termux/files/usr/bin/pinentry-tty
