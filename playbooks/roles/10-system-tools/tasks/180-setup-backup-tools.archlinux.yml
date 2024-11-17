@@ -7,6 +7,14 @@
       - borg
       - vorta
 
+- name: "Setup backup tools: ensure borg env variables in sudoers file"
+  become: true
+  ansible.builtin.blockinfile:
+    dest: /etc/sudoers
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP BORG"
+    block: Defaults env_keep += "BORG_*"
+    validate: visudo -cf %s
+
 - name: "Setup backup tools: ensure configuration-backups folder"
   ansible.builtin.file:
     state: directory
