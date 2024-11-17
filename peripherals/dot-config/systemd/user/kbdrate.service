@@ -4,6 +4,8 @@ After=plasma-workspace.target
 
 [Service]
 ExecStart=%h/bin/configure-keyboard.sh
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=%h/.Xauthority"
 
 [Install]
 WantedBy=plasma-workspace.target

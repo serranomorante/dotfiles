@@ -18,6 +18,17 @@
     state: present
     name: keyd
 
+# fix conflict between kde and xorg keyboard rate
+# verify manually with: `kcmshell6 kcm_kded` and then search "Keyboard daemon"
+# https://unix.stackexchange.com/questions/384390/kde-keyboard-repeat-delay-rate-settings-dont-work-have-no-effect
+# https://www.reddit.com/r/kde/comments/1dkroeg/workaround_when_background_services_is_missing/
+- name: "Keyboard peripheral: disable kde keyboard daemon"
+  ansible.builtin.replace:
+    path: ~/.config/kded5rc
+    after: '^\[Module-keyboard\]'
+    regexp: '^(autoload)=true'
+    replace: '\1=false'
+
 - name: "Keyboard peripheral: enable services"
   ansible.builtin.systemd_service:
     scope: "{{ service.scope }}"
