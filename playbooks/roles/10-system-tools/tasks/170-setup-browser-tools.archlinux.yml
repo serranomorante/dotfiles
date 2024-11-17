@@ -250,6 +250,7 @@
     - "{{ extension_bitwarden }}"
     - "{{ extension_floccus }}"
     - "{{ extension_memex }}"
+    - "{{ extension_hypothesis }}"
 
 - name: "Setup browser tools: copy brave desktop file to user directory"
   become: true
