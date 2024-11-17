@@ -3,6 +3,7 @@ Description=Keyboard repeat rate in tty.
 After=plasma-workspace.target
 
 [Service]
+Type=oneshot
 ExecStart=%h/bin/configure-keyboard.sh
 Environment="DISPLAY=:0"
 Environment="XAUTHORITY=%h/.Xauthority"

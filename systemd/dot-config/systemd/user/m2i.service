@@ -1,9 +1,0 @@
-[Unit]
-Description=m2i service
-
-[Service]
-ExecStart=/usr/bin/m2i
-ExecStartPre=/bin/sleep 10
-
-[Install]
-WantedBy=plasma-workspace.target
