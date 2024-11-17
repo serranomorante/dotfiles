@@ -1,0 +1,4 @@
+---
+- name: "Setup backup tools: ensure packages"
+  ansible.builtin.command: pkg install borgbackup
+  changed_when: false

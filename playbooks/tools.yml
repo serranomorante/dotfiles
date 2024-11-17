@@ -1,5 +1,5 @@
 ---
-- hosts: localhost,cloud
+- hosts: localhost,cloud,phone
   gather_facts: false
   vars:
     user_os: "{{ ansible_distribution|lower|replace(' ', '') }}"
