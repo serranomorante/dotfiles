@@ -185,3 +185,14 @@
       loop_control:
         loop_var: task_file
   tags: ["10-180"]
+
+- block:
+    - name: Setup encryption tools
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 190-setup-encryption-tools.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["10-190"]
