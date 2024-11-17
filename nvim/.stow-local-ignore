@@ -2,3 +2,4 @@
 ^/.config/nvim/pack/.*
 
 ^/patches/.*
+ \.mypy_cache.*

@@ -14,3 +14,4 @@ nvim/dot-config/nvim/lua/serranomorante/binaries.lua
 tags
 
 .mypy_cache
+__pycache__
