@@ -35,7 +35,7 @@ M.by_filetype = {
   fish = { parsers = { "fish" }, lsp = { "fish-lsp" } },
   markdown = {
     lsp = { "marksman" },
-    formatters = { "prettierd" },
+    formatters = { "mdformat" },
     parsers = { "markdown" },
     extensions = { "coc-markdown-preview-enhanced", "@yaegassy/coc-marksman", "coc-markdownlint" },
   },

@@ -1,9 +1,10 @@
 ---
-- name: "Markdown language: ensure LSP"
+- name: "Markdown language: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
-    name: marksman
+    name:
+      - marksman
 
 - name: "Markdown language: ensure aur packages"
   aur:
@@ -17,3 +18,21 @@
   ansible.builtin.command: npm install --global mathjax-pandoc-filter
   args:
     creates: ~/.volta/bin/mathjax-pandoc-filter
+
+- name: "Markdown language: ensure virtualenv packages"
+  ansible.builtin.pip:
+    name:
+      - pip
+      - mdformat
+      - mdformat-gfm
+    virtualenv: ~/apps/note-taking-tools/utilities/.venv
+    virtualenv_command: /usr/bin/python3 -m venv
+    state: present
+
+- name: "Markdown language: symlink virtualenv packages"
+  ansible.builtin.file:
+    src: ~/apps/note-taking-tools/utilities/.venv/bin/{{ item }}
+    dest: ~/bin/{{ item }}
+    state: link
+  loop:
+    - mdformat
