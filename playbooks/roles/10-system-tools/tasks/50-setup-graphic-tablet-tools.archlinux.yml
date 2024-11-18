@@ -18,7 +18,7 @@
 - name: "Graphic tablet peripheral: enable gromit-mpx service"
   ansible.builtin.systemd_service:
     scope: user
-    name: gromit-mpx
+    name: gromit-mpx.service
     state: started
     enabled: true
     masked: false
@@ -37,7 +37,7 @@
 - name: "Graphic tablet peripheral: ensure wacom service"
   ansible.builtin.systemd_service:
     scope: user
-    name: wacom
+    name: wacom.service
     state: started
     enabled: true
     masked: false
@@ -64,7 +64,7 @@
 
 - name: "Graphic tablet peripheral: register ufw status variable"
   ansible.builtin.systemd_service:
-    name: ufw
+    name: ufw.service
   register: ufw_service_status
 
 - name: "Graphic tablet peripheral: open ufw to weylus ports"
@@ -93,7 +93,7 @@
 - name: "Graphic tablet peripheral: ensure weylus service"
   ansible.builtin.systemd_service:
     scope: user
-    name: weylus
+    name: weylus.service
     state: started
     enabled: true
     masked: false

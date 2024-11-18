@@ -1,6 +1,5 @@
 [Unit]
 Description=Borg dev2-config-files backup timer
-Requires=dev2-config-files.service
 
 [Timer]
 Persistent=true

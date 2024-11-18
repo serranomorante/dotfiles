@@ -1,6 +1,5 @@
 [Unit]
 Description=Browser export timer
-Requires=browserexport.service
 
 [Timer]
 Persistent=true

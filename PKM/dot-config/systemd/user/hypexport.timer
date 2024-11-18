@@ -1,6 +1,5 @@
 [Unit]
 Description=Hypexport timer
-Requires=hypexport.service
 
 [Timer]
 Persistent=true

@@ -1,6 +1,5 @@
 [Unit]
 Description=Promnesia index timer
-Requires=promnesia-index.service
 
 [Timer]
 Persistent=true

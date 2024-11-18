@@ -1,6 +1,5 @@
 [Unit]
 Description=Borg dev3-PKM backup timer
-Requires=dev3-PKM.service
 
 [Timer]
 Persistent=true

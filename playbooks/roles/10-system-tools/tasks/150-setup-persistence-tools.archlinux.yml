@@ -8,7 +8,7 @@
 - name: "Persistence tools: enable redis service and ensure is not masked"
   become: true
   ansible.builtin.systemd_service:
-    name: redis
+    name: redis.service
     state: started
     enabled: true
     masked: false

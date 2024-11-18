@@ -9,7 +9,7 @@
   ansible.builtin.systemd_service:
     scope: user
     state: started
-    name: sxhkd
+    name: sxhkd.service
     enabled: true
     masked: false
 
@@ -32,7 +32,7 @@
 - name: "Keyboard peripheral: enable services"
   ansible.builtin.systemd_service:
     scope: "{{ service.scope }}"
-    name: "{{ service.name }}"
+    name: "{{ service.name }}.service"
     state: started
     enabled: true
     masked: false
