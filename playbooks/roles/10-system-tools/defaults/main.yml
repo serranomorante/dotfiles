@@ -15,7 +15,9 @@ chromium_local_extensions:
   - NewTab-Redirect
   - vimium
   - chrome-show-tab-numbers
-config_files_backup_env:
+
+# backup files
+config_files_backup_env: # home folder only
   - ~/.local/share/nvim/trailblazer
   - ~/.local/share/nvim/dirsession
   - ~/.local/share/nvim/fzf-lua
@@ -26,10 +28,13 @@ config_files_backup_env:
   - ~/.cache/nvim/gp
   - ~/.local/state/nvim/shada
   - ~/.local/share/fish/fish_history
+  - ~/.ssh/config
 pkm_backup_env:
   - ~/PKM
 seedvault_main_backup_env:
   - /storage/emulated/0/.SeedVaultAndroidBackup
+
+# borg repos
 dev1_config_files_borg_repo: ssh://borg/~/backups/config-files
 dev1_pkm_borg_repo: ssh://borg/~/backups/PKM
 dev1_seedvault_borg_repo: ssh://borg/~/backups/seedvault-main

@@ -54,3 +54,16 @@
     - tmux-overseer
   loop_control:
     loop_var: service
+
+- name: "Setup terminal tools: save copy of fish's default prompt"
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/fish-shell/fish-shell/refs/heads/master/share/functions/fish_prompt.fish
+    dest: ~/.config/fish/functions/fish_prompt_original.fish
+    force: true
+    mode: "644"
+
+- name: "Setup terminal tools: modify fish's default prompt name"
+  ansible.builtin.replace:
+    path: ~/.config/fish/functions/fish_prompt_original.fish
+    regexp: fish_prompt
+    replace: fish_prompt_original
