@@ -28,7 +28,7 @@ local function show_docs()
   if vim.fn.index({ "vim", "help" }, vim.bo.filetype) >= 0 then
     vim.api.nvim_command("h " .. cw)
   elseif vim.api.nvim_eval("coc#rpc#ready()") ~= 0 then
-    vim.fn.CocActionAsync("doHover")
+    coc_utils.action_async("doHover")
   else
     vim.api.nvim_command("!" .. vim.o.keywordprg .. " " .. cw)
   end
@@ -69,7 +69,7 @@ function M.attach(buf)
   vim.keymap.set(
     "i",
     "<C-S>",
-    function() vim.fn.CocActionAsync("showSignatureHelp") end,
+    function() coc_utils.action_async("showSignatureHelp") end,
     opts_with_desc("Signature help")
   )
 

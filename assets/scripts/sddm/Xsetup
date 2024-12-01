@@ -17,6 +17,8 @@ if [[ $external != "" ]]; then
     xrandr --output $external --primary --mode 3440x1440 --rate 59.97
 else
     xrandr --output $internal --primary --mode 1920x1080 --rate 120.21
+    # https://wiki.archlinux.org/title/Backlight#Xorg:_adjust_perceived_brightness_with_xrandr
+    xrandr --output $internal --brightness 0.5
 fi
 
 # Setup nvidia

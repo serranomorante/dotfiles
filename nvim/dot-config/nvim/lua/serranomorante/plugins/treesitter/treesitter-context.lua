@@ -40,6 +40,8 @@ M.config = function()
         or string.format("m`%d%s", vim.v.count1, expression)
     end, { expr = true })
   end
+
+  vim.api.nvim_set_hl(0, "TreesitterContextLineNumber", { bg = "NvimDarkGrey1" })
 end
 
 return M

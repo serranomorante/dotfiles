@@ -3,3 +3,4 @@ skip_list:
   - key-order[task] # because of my use of blocks and tags
   - name[missing] # because of my use of blocks
   - yaml[line-length] # I don't mind long lines
+  - command-instead-of-module

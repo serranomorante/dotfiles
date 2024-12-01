@@ -21,7 +21,7 @@ local keys = function()
       ---https://github.com/stevearc/conform.nvim/issues/250#issuecomment-1868544121
       if err then return vim.notify(err, vim.log.levels.WARN) end
       utils.refresh_codelens()
-      vim.notify("[Conform] format done.", vim.log.levels.INFO)
+      vim.notify("[Conform]: format done.", vim.log.levels.INFO)
     end)
   end, {
     desc = "Conform: Format file or range",

@@ -6,6 +6,7 @@ vim.filetype.add({
     [".stow-global-ignore"] = "gitignore",
     [".stow-local-ignore"] = "gitignore",
     ["dot-bashrc"] = "sh",
+    ["dot-gitconfig"] = "gitconfig",
     ["xhtml"] = "html",
   },
   pattern = {

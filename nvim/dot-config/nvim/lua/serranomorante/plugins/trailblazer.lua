@@ -142,6 +142,7 @@ local function opts()
     auto_load_trailblazer_state_on_enter = false,
     trail_options = {
       current_trail_mark_stack_sort_mode = "chron_asc",
+      current_trail_mark_mode = "global_buf_line_sorted",
       mark_symbol = "",
       newest_mark_symbol = "",
       cursor_mark_symbol = "",
