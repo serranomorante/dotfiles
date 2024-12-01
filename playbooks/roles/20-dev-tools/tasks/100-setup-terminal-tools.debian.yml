@@ -48,13 +48,11 @@
   ansible.builtin.blockinfile:
     dest: "{{ item.script }}"
     create: true
-    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP {{ item.script|basename|upper }}"
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP {{ item.script | basename | upper }}"
     block: |
       {% if 'tmux.conf' in item.script %}
       set-option -g default-shell ~/.local/bin/fish
-      {% elif 'kitty.conf' in item.script %}
-      shell ~/.local/bin/fish
       {% endif %}
+    mode: "644"
   loop:
     - { script: ~/dotfiles/tmux/dot-config/tmux/tmux.conf }
-    - { script: ~/dotfiles/kitty/dot-config/kitty/kitty.conf }

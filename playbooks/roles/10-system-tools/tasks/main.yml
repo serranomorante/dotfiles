@@ -196,3 +196,14 @@
       loop_control:
         loop_var: task_file
   tags: ["10-190"]
+
+- block:
+    - name: Setup file manager tools
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 200-setup-file-manager-tools.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["10-200"]

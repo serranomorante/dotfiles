@@ -16,7 +16,6 @@
   async: 1000
   poll: 0
   loop:
-    - { folder: start, repo: stevearc/oil.nvim, name: oil }
     - { folder: start, repo: ibhagwan/fzf-lua }
     - { folder: start, repo: kevinhwang91/promise-async } # use `typings/?.lua` on .luarc.json
     - { folder: start, repo: nvim-tree/nvim-web-devicons }
@@ -37,13 +36,13 @@
     - { folder: start, repo: rebelot/heirline.nvim, name: heirline }
     - { folder: start, repo: mbbill/undotree }
     - { folder: start, repo: stevearc/resession.nvim, name: resession }
-    - { folder: start, repo: refractalize/oil-git-status.nvim }
     - { folder: start, repo: p00f/clangd_extensions.nvim }
     - { folder: start, repo: stevearc/quicker.nvim, name: quicker }
     - { folder: start, repo: kevinhwang91/nvim-fundo, name: fundo }
     - { folder: start, repo: tpope/vim-rsi } # https://vi.stackexchange.com/a/6041
     - { folder: start, repo: wellle/tmux-complete.vim }
     - { folder: start, repo: stevearc/aerial.nvim }
+    - { folder: start, repo: luukvbaal/nnn.nvim }
     - { folder: opt, repo: jbyuki/one-small-step-for-vimkind, name: osv }
     - { folder: opt, repo: Robitx/gp.nvim, name: gp }
 

@@ -1,0 +1,69 @@
+---
+- name: "[archlinux] Setup file manager: clone packages"
+  ansible.builtin.git:
+    repo: "{{ item.repo }}"
+    dest: ~/repos/{{ item.name | default(item.repo) | basename }}
+    depth: 10
+    force: true
+    single_branch: true
+    version: "{{ item.version | default('HEAD') }}"
+  loop:
+    - { repo: https://github.com/jarun/nnn, version: v5.0 }
+
+- name: "[archlinux] Setup file manager: ensure deps"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - pkg-config
+      - ncurses
+      - imagemagick
+      - readline
+      - mpv
+      - ffmpegthumbnailer
+      - ffmpeg
+      - sshfs
+      - poppler
+      - udisks2
+
+- name: "[archlinux] Setup file manager: ensure absent deps"
+  become: true
+  ansible.builtin.package:
+    force: true
+    state: absent
+    name:
+      - xdg-desktop-portal
+      - xdg-desktop-portal-kde
+
+- name: "[archlinux] Setup file manager: ensure aur deps"
+  aur:
+    use: yay
+    state: present
+    name:
+      - pmount
+      - gnome-epub-thumbnailer
+
+- name: "[archlinux] Setup file manager: ensure absent aur deps"
+  aur:
+    use: yay
+    state: present
+    name: xdg-desktop-portal-termfilechooser-git
+
+- name: "[archlinux] Setup file manager: build nnn"
+  ansible.builtin.command: make O_NERD=1 O_GITSTATUS=1 strip install
+  environment:
+    PREFIX: "{{ ansible_env.HOME }}/.local"
+  args:
+    chdir: ~/repos/nnn
+    creates: ~/.local/bin/nnn
+
+# https://github.com/jarun/nnn/wiki/Advanced-use-cases#desktop-integration
+- name: "[archlinux] Setup file manager: install nnn plugins and desktop"
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "755"
+  loop:
+    - { src: ~/repos/nnn/plugins/preview-tui, dest: ~/.config/nnn/plugins/preview-tui }
+    - { src: ~/repos/nnn/plugins/nmount, dest: ~/.config/nnn/plugins/nmount }
+    - { src: ~/repos/nnn/misc/desktop/nnn.desktop, dest: ~/.local/share/applications/nnn.desktop }

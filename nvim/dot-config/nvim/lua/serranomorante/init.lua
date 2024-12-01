@@ -13,8 +13,6 @@ local plugins = {
   "vim-sleuth",
   "treesitter.treesitter",
   "treesitter.treesitter-context",
-  "oil",
-  "oil-git-status",
   "fzf",
   "ale",
   "blame",
@@ -27,6 +25,7 @@ local plugins = {
   "dap.nvim-dap",
   "dap.nvim-dap-virtual-text",
   "nvim-fundo",
+  "nnn",
 }
 
 for _, plugin in ipairs(plugins) do

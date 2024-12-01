@@ -41,9 +41,6 @@ local opts = function()
       dap = {
         enable_in_tab = true,
       },
-      oil = {
-        enable_in_tab = true,
-      },
       aerial = {
         enable_in_tab = true,
       },

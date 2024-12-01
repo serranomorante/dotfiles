@@ -1,12 +1,43 @@
 ---
 - name: "[archlinux] Setup terminal tools: ensure packages"
+  become: true
   ansible.builtin.package:
     name:
       - polkit # https://wiki.archlinux.org/title/Systemd/User#Automatic_start-up_of_systemd_user_instances
-      - kitty
-      - tmux
       - fish
+      - zoxide
+      - libevent
+      - bison
+      - wezterm
+      - make
     state: present
+
+- name: "[archlinux] Setup terminal tools: clone tmux"
+  ansible.builtin.git:
+    repo: https://github.com/tmux/tmux.git
+    dest: ~/repos/tmux
+    force: true
+    depth: 1
+    version: master
+
+- name: "[archlinux] Setup terminal tools: run tmux autogen"
+  ansible.builtin.command: sh autogen.sh
+  args:
+    chdir: ~/repos/tmux
+    creates: ~/repos/tmux/configure
+
+- name: "[archlinux] Setup terminal tools: configure tmux with sixel enabled"
+  ansible.builtin.command: ./configure --enable-sixel
+  args:
+    chdir: ~/repos/tmux
+    creates: ~/repos/tmux/tmux"
+
+- name: "[archlinux] Setup terminal tools: run tmux make"
+  become: true
+  ansible.builtin.shell: make && make install
+  args:
+    chdir: "{{ ansible_env.HOME }}/repos/tmux"
+    creates: /usr/local/bin/tmux
 
 - name: "[archlinux] Setup terminal tools: ensure automatic start-up of systemd user instances"
   ansible.builtin.command: loginctl enable-linger
@@ -29,17 +60,17 @@
       set -g default-terminal "xterm-256color" # wezterm uses this term by default
       set -ag terminal-overrides ",xterm-256color:RGB"
       {% endif %}
+    mode: "644"
   loop:
     - { script: ~/dotfiles/tmux/dot-config/tmux/tmux.conf }
-    - { script: ~/dotfiles/kitty/dot-config/kitty/kitty.conf }
 
-- name: "[archlinux] Setup terminal tools: fix kdeglobals"
-  ansible.builtin.blockinfile:
-    dest: ~/.config/kdeglobals
-    insertafter: '^\[General\]'
-    block: |
-      TerminalApplication=kitty
-      TerminalService=kitty.desktop
+# - name: "[archlinux] Setup terminal tools: fix kdeglobals"
+#   ansible.builtin.blockinfile:
+#     dest: ~/.config/kdeglobals
+#     insertafter: '^\[General\]'
+#     block: |
+#       TerminalApplication=kitty
+#       TerminalService=kitty.desktop
 
 - name: "[archlinux] Setup terminal tools: autostart base tmux sessions with systemd"
   ansible.builtin.systemd_service:
@@ -50,7 +81,6 @@
     masked: false
   loop:
     - tmux
-    - tmux-overseer
   loop_control:
     loop_var: service
 

@@ -131,3 +131,12 @@ export VIMRUNTIME="$HOME/repos/neovim/runtime"
 ## BEGIN ANSIBLE MANAGED BLOCK - SETUP ENCRYPTION
 export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
 ## END ANSIBLE MANAGED BLOCK - SETUP ENCRYPTION
+
+if command -v zoxide &>/dev/null; then
+    eval "$(zoxide init bash)"
+fi
+
+if command -v nnn &>/dev/null; then
+    export NNN_PLUG='p:preview-tui;l:nmount'
+    alias nnn='nnn -JRHda -Pp'
+fi

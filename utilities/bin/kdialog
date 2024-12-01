@@ -1,0 +1,12 @@
+#!/bin/sh
+
+while :; do case $1 in
+    --getsavefilename) file="$2" break ;;
+    --version) printf ""; exit ;;
+    --*) shift ;;
+    *) break ;;
+esac done
+
+file="${file##/*/}"
+
+/usr/bin/wezterm start --class picker -- tmux -L nnn new-session sh -c "nnn -JRHda -Pp -p - '$file' | awk '{ print system(\"[ -d '\''\"\$0\"'\'' ]\") ? \$0 : \$0\"/$file\" }' > /proc/$$/fd/1"

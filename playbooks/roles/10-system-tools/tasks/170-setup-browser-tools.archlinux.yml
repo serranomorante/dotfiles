@@ -187,7 +187,7 @@
     - brave
 
 - name: "[archlinux] Setup browser tools: register chromium path"
-  ansible.builtin.command: which chromium
+  ansible.builtin.command: which chromiumnnn
   register: chromium_path
   changed_when: false
 
@@ -235,4 +235,4 @@
   ansible.builtin.replace:
     path: "{{ ansible_env.HOME }}/.local/share/applications/brave-browser.desktop"
     regexp: "^(Exec=).*"
-    replace: '\1brave --load-extension={{ ansible_env.HOME }}/repos/promnesia/extension/dist/chrome,{{ ansible_env.HOME }}/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,{{ ansible_env.HOME }}/repos/NewTab-Redirect,{{ ansible_env.HOME }}/repos/vimium,{{ ansible_env.HOME }}/repos/chrome-show-tab-numbers %u'
+    replace: '\1bravennn --load-extension={{ ansible_env.HOME }}/repos/promnesia/extension/dist/chrome,{{ ansible_env.HOME }}/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,{{ ansible_env.HOME }}/repos/NewTab-Redirect,{{ ansible_env.HOME }}/repos/vimium,{{ ansible_env.HOME }}/repos/chrome-show-tab-numbers %u'
