@@ -28,7 +28,8 @@ M.attach = function(client, bufnr)
   ---@type vim.lsp.LocationOpts
   local lsp_default_opts = { on_list = on_list }
 
-  local function client_buf_supports_method(method) return client.supports_method(method, { bufnr = bufnr }) end
+  ---@param method string
+  local function client_buf_supports_method(method) return client.supports_method(method, bufnr) end
 
   local handler_data = {
     augroup = augroup,
@@ -137,6 +138,9 @@ M.attach = function(client, bufnr)
   if client_buf_supports_method(ms.textDocument_inlayHint) then
     require("serranomorante.plugins.lsp.capability_handlers.inlayhints").attach(handler_data)
   end
+
+  ---https://github.com/neovim/neovim/pull/31311
+  if client_buf_supports_method(ms.textDocument_foldingRange) then vim.wo.foldexpr = "v:lua.vim.lsp.foldexpr()" end
 end
 
 ---@param client vim.lsp.Client
@@ -144,7 +148,8 @@ end
 M.detach = function(client, bufnr)
   local client_id = client.id
   augroups.del_autocmds_for_buf(client, bufnr)
-  local function client_buf_supports_method(method) return client.supports_method(method, { bufnr = bufnr }) end
+  ---@param method string
+  local function client_buf_supports_method(method) return client.supports_method(method, bufnr) end
 
   if client_buf_supports_method(ms.textDocument_codeLens) then
     require("serranomorante.plugins.lsp.capability_handlers.codelens").detach(client_id, bufnr)
