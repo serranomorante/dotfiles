@@ -26,9 +26,8 @@
     block: |
       {% if 'tmux.conf' in item.script %}
       set-option -g default-shell {{ shell_executable.stdout }}
-      set-option -sa terminal-features ',xterm-kitty:RGB'
-      {% elif 'kitty.conf' in item.script %}
-      shell {{ shell_executable.stdout }}
+      set -g default-terminal "xterm-256color" # wezterm uses this term by default
+      set -ag terminal-overrides ",xterm-256color:RGB"
       {% endif %}
   loop:
     - { script: ~/dotfiles/tmux/dot-config/tmux/tmux.conf }
