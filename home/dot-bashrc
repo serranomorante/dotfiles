@@ -77,25 +77,21 @@ export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 # 5. trace messages (T)
 export WIREPLUMBER_DEBUG=3
 
-# Add abbreviation for vim
-if command -v nvim &> /dev/null; then
-    alias vim='nvim'
-fi
-
 if command -v fzf &>/dev/null; then
     # Set up fzf key bindings and fuzzy completion
     eval "$(fzf --bash)"
 fi
 
+# Alias nvim to include --server & --listen arguments
 if command -v nvim &>/dev/null && command -v tmux &>/dev/null && [ -n "$TMUX" ]; then
     CUSTOM_NVIM_LISTEN_ADDRESS=$(tmux show-environment CUSTOM_NVIM_LISTEN_ADDRESS 2>/dev/null | sed "s:^.*=::")
     if [ -n "$CUSTOM_NVIM_LISTEN_ADDRESS" ]; then
         if command -v nvr &> /dev/null; then
             nvr --nostart -s --servername "$CUSTOM_NVIM_LISTEN_ADDRESS"
             if [ $? -eq 0 ]; then
-                alias vim='nvim --remote-ui --server "$CUSTOM_NVIM_LISTEN_ADDRESS"'
+                alias nvim='nvim --remote-ui --server "$CUSTOM_NVIM_LISTEN_ADDRESS"'
             else
-                alias vim='nvim --listen "$CUSTOM_NVIM_LISTEN_ADDRESS"'
+                alias nvim='nvim --listen "$CUSTOM_NVIM_LISTEN_ADDRESS"'
             fi
         fi
     fi
@@ -125,9 +121,6 @@ export PYENV_ROOT="$HOME/.pyenv"
 export PATH="/usr/bin/pyenv:$PATH"
 eval "$(pyenv init -)"
 ## END ANSIBLE MANAGED BLOCK - SETUP PYTHON
-## BEGIN ANSIBLE MANAGED BLOCK - SETUP NEOVIM
-export VIMRUNTIME="$HOME/repos/neovim/runtime"
-## END ANSIBLE MANAGED BLOCK - SETUP NEOVIM
 ## BEGIN ANSIBLE MANAGED BLOCK - SETUP ENCRYPTION
 export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
 ## END ANSIBLE MANAGED BLOCK - SETUP ENCRYPTION

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+VIMRUNTIME=$HOME/repos/neovim/runtime $HOME/repos/neovim/build/bin/nvim "$@"
