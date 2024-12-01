@@ -77,6 +77,7 @@ vim.go.pumheight = 15
 vim.go.shortmess = "atToOF"
 vim.go.showbreak = "⮎ "
 vim.go.virtualedit = "all"
+vim.go.msghistory = 10000
 
 vim.cmd.syntax("off")
 vim.cmd.colorscheme("default")
