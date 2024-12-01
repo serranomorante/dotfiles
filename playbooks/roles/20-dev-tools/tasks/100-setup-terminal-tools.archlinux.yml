@@ -13,8 +13,8 @@
   changed_when: false
 
 - name: "Setup terminal tools: register default shell"
-  ansible.builtin.command: which fish
-  register: fish_executable
+  ansible.builtin.command: which bash
+  register: shell_executable
   ignore_errors: true
   changed_when: false
 
@@ -25,10 +25,10 @@
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP {{ item.script | basename | upper }}"
     block: |
       {% if 'tmux.conf' in item.script %}
-      set-option -g default-shell {{ fish_executable.stdout }}
+      set-option -g default-shell {{ shell_executable.stdout }}
       set-option -sa terminal-features ',xterm-kitty:RGB'
       {% elif 'kitty.conf' in item.script %}
-      shell {{ fish_executable.stdout }}
+      shell {{ shell_executable.stdout }}
       {% endif %}
   loop:
     - { script: ~/dotfiles/tmux/dot-config/tmux/tmux.conf }

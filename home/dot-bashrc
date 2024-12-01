@@ -26,6 +26,19 @@ fi
 
 alias grep='grep --color=auto'
 
+# https://jesrui.sdf-eu.org/remember-all-your-bash-history-forever.html
+export HISTTIMEFORMAT='%F %T '
+export HISTFILESIZE=-1
+export HISTSIZE=-1
+export HISTCONTROL=ignoredups
+export HISTIGNORE=?:??
+# append to history, don't overwrite it
+shopt -s histappend
+# attempt to save all lines of a multiple-line command in the same history entry
+shopt -s cmdhist
+# save multi-line commands to the history with embedded newlines
+shopt -s lithist
+
 # Clear a terminal screen for real
 # https://stackoverflow.com/a/5367075
 alias cls='printf "\033c"'
@@ -69,8 +82,13 @@ if command -v nvim &> /dev/null; then
     alias vim='nvim'
 fi
 
-if command -v nvim &> /dev/null && command -v tmux &> /dev/null && [ -n "$TMUX" ]; then
-    CUSTOM_NVIM_LISTEN_ADDRESS=$(tmux show-environment CUSTOM_NVIM_LISTEN_ADDRESS | sed "s:^.*=::")
+if command -v fzf &>/dev/null; then
+    # Set up fzf key bindings and fuzzy completion
+    eval "$(fzf --bash)"
+fi
+
+if command -v nvim &>/dev/null && command -v tmux &>/dev/null && [ -n "$TMUX" ]; then
+    CUSTOM_NVIM_LISTEN_ADDRESS=$(tmux show-environment CUSTOM_NVIM_LISTEN_ADDRESS 2>/dev/null | sed "s:^.*=::")
     if [ -n "$CUSTOM_NVIM_LISTEN_ADDRESS" ]; then
         if command -v nvr &> /dev/null; then
             nvr --nostart -s --servername "$CUSTOM_NVIM_LISTEN_ADDRESS"
@@ -98,11 +116,6 @@ if [ -z "$DAP_OVERRIDED_DISPLAY" ] && [ -n "$DISPLAY" ]; then
     export DAP_OVERRIDED_DISPLAY="$DISPLAY" # defaults to DISPLAY
 fi
 
-if [ -x "$(command -v fish)" ]; then
-    export AVAILABLE_SHELL="$(command -v fish)"
-else
-    export AVAILABLE_SHELL="$(command -v bash)"
-fi
 ## BEGIN ANSIBLE MANAGED BLOCK - SETUP NODE
 export VOLTA_HOME="$HOME/.volta"
 export PATH="$VOLTA_HOME/bin:$PATH"
