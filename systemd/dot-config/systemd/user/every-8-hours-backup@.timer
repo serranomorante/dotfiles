@@ -1,0 +1,11 @@
+[Unit]
+Description=Run %i backup every 8 hours
+
+[Timer]
+Persistent=true
+OnBootSec=10min
+OnUnitActiveSec=8h
+Unit=borg-backup@%i.service
+
+[Install]
+WantedBy=timers.target

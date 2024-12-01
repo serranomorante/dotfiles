@@ -1,11 +1,11 @@
 [Unit]
-Description=Borg dev1-PKM backup timer
+Description=Run %i backup every 4 hours
 
 [Timer]
 Persistent=true
 OnBootSec=10min
 OnUnitActiveSec=4h
-Unit=dev1-PKM.service
+Unit=borg-backup@%i.service
 
 [Install]
 WantedBy=timers.target
