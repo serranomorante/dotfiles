@@ -1,11 +1,11 @@
 [Unit]
-Description=Browser export timer
+Description=PKM %i export timer
 
 [Timer]
 Persistent=true
 OnBootSec=10min
-OnUnitActiveSec=1h
-Unit=browserexport.service
+OnUnitActiveSec=2h
+Unit=PKM-export@%i.service
 
 [Install]
 WantedBy=timers.target

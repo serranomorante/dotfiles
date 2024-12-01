@@ -1,11 +1,11 @@
 [Unit]
-Description=Hypexport timer
+Description=PKM %i export timer
 
 [Timer]
 Persistent=true
 OnBootSec=10min
-OnUnitActiveSec=2h
-Unit=hypexport.service
+OnUnitActiveSec=1h
+Unit=PKM-export@%i.service
 
 [Install]
 WantedBy=timers.target

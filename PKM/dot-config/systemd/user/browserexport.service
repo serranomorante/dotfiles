@@ -1,7 +1,0 @@
-[Unit]
-Description=Browser export
-Wants=browserexport.timer
-
-[Service]
-Type=oneshot
-ExecStart=%h/bin/backup-browser.sh

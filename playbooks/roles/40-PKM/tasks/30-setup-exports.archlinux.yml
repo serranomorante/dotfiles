@@ -7,6 +7,6 @@
     enabled: true
     masked: false
   loop:
-    - hypexport
-    - browserexport
+    - every-2-hours-export@hpi-hypexport
+    - every-hour-export@hpi-browserexport
     - promnesia-index

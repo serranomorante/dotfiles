@@ -1,0 +1,6 @@
+[Unit]
+Description=PKM %i export service
+
+[Service]
+Type=oneshot
+ExecStart=%h/bin/%i.sh
