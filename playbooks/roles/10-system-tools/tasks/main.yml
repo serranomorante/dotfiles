@@ -181,7 +181,7 @@
       with_first_found:
         - files: 180-setup-backup-tools.{{ user_os }}.yml
           skip: true
-      when: "user_os in ['archlinux', 'debian', 'otherlinux']"
+      when: "user_os in ['debian', 'archlinux', 'otherlinux']" # debian should be first
       loop_control:
         loop_var: task_file
   tags: ["10-180"]

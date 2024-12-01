@@ -1,9 +1,11 @@
 ---
 - name: "[otherlinux] Setup desktop: setup packages"
-  ansible.builtin.command: pkg install -y {{ item }}
-  loop:
-    - git
-    - cronie openssh termux-services
+  ansible.builtin.command: >
+    pkg install -y
+    git
+    cronie
+    openssh
+    termux-services
   changed_when: false
 
 - name: "[otherlinux] Setup desktop: ensure services"

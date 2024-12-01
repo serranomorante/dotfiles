@@ -36,12 +36,15 @@ seedvault_main_backup_env:
   - /storage/emulated/0/.SeedVaultAndroidBackup
 notes_backup_env:
   - ~/.local/share/Cryptomator/mnt/foam
+reader_annotations_backup_env:
+  - /storage/emulated/0/note
 
 # borg repos
 dev1_config_files_borg_repo: ssh://borg/~/backups/config-files
 dev1_pkm_borg_repo: ssh://borg/~/backups/PKM
 dev1_notes_borg_repo: ssh://borg/~/backups/notes
 dev1_seedvault_borg_repo: ssh://borg/~/backups/seedvault-main
+dev1_reader_annotations_borg_repo: ssh://borg/~/backups/reader-annotations
 dev2_config_files_borg_repo: /run/media/serranomorante/Data/backups/config-files
 dev2_pkm_borg_repo: /run/media/serranomorante/Data/backups/PKM
 dev2_notes_borg_repo: /run/media/serranomorante/Data/backups/notes

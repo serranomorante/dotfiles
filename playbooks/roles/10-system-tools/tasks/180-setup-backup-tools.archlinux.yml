@@ -17,10 +17,9 @@
     validate: visudo -cf %s
 
 - name: "[archlinux] Setup backup tools: init borg repos"
-  ansible.builtin.shell: |
-    export BORG_PASSCOMMAND='gpg --decrypt {{ ansible_env.HOME }}/secrets/{{ item.encrypted_passphrase_file }}'
-    export BORG_REPO='{{ item.borg_repo }}'
-    borg init --encryption=keyfile --make-parent-dirs
+  ansible.builtin.command: borg init --encryption=keyfile '{{ item.borg_repo }}'
+  environment:
+    BORG_PASSCOMMAND: gpg --decrypt {{ ansible_env.HOME }}/secrets/{{ item.encrypted_passphrase_file }}
   loop:
     - { borg_repo: "{{ dev1_config_files_borg_repo }}", encrypted_passphrase_file: staunch4647.gpg }
     - { borg_repo: "{{ dev1_pkm_borg_repo }}", encrypted_passphrase_file: feed4999.gpg }

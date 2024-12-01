@@ -1,8 +1,8 @@
 ---
 - name: "[otherlinux] Dotfiles: ensure stow installed"
-  ansible.builtin.command: pkg install -y {{ item }}
-  loop:
-    - stow
+  ansible.builtin.command: >
+    pkg install -y
+    stow
   changed_when: false
 
 - name: "[otherlinux] Dotfiles: download dotfiles"
