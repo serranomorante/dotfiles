@@ -1,5 +1,5 @@
 ---
-- name: "Vim language: ensure LSP (using aur)"
+- name: "[archlinux] Vim language: ensure LSP (using aur)"
   aur:
     use: yay
     state: present

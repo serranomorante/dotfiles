@@ -1,5 +1,5 @@
 ---
-- name: "Notification utilities: ensure several grep packages"
+- name: "[archlinux] Notification utilities: ensure several grep packages"
   ansible.builtin.package:
     state: present
     name:

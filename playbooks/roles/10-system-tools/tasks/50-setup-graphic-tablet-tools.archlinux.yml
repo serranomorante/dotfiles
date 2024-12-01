@@ -1,5 +1,5 @@
 ---
-- name: "Graphic tablet peripheral: ensure tools"
+- name: "[archlinux] Graphic tablet peripheral: ensure tools"
   become: true
   ansible.builtin.package:
     state: present
@@ -7,7 +7,7 @@
       - xf86-input-wacom
       - usbutils
 
-- name: "Graphic tablet peripheral: ensure tools (using aur)"
+- name: "[archlinux] Graphic tablet peripheral: ensure tools (using aur)"
   aur:
     use: yay
     state: present
@@ -15,7 +15,7 @@
       - gromit-mpx
       - weylus-bin
 
-- name: "Graphic tablet peripheral: enable gromit-mpx service"
+- name: "[archlinux] Graphic tablet peripheral: enable gromit-mpx service"
   ansible.builtin.systemd_service:
     scope: user
     name: gromit-mpx.service
@@ -23,7 +23,7 @@
     enabled: true
     masked: false
 
-- name: "Graphic tablet peripheral: copy sudo files"
+- name: "[archlinux] Graphic tablet peripheral: copy sudo files"
   become: true
   ansible.builtin.template:
     src: "{{ item.source }}"
@@ -34,7 +34,7 @@
     - { source: ~/dotfiles/assets/udev-rules/99-wacom.rules, dest: /etc/udev/rules.d/99-wacom.rules }
     - { source: ~/dotfiles/assets/udev-rules/60-weylus.rules, dest: /etc/udev/rules.d/60-weylus.rules }
 
-- name: "Graphic tablet peripheral: ensure wacom service"
+- name: "[archlinux] Graphic tablet peripheral: ensure wacom service"
   ansible.builtin.systemd_service:
     scope: user
     name: wacom.service
@@ -43,7 +43,7 @@
     masked: false
 
 # Setup weylus
-- name: "Graphic tablet peripheral: clone weylus"
+- name: "[archlinux] Graphic tablet peripheral: clone weylus"
   ansible.builtin.git:
     repo: https://github.com/H-M-H/Weylus.git
     dest: ~/repos/Weylus
@@ -51,23 +51,23 @@
     depth: 1
     version: d92867ec229ecf080f96ff53978bdf3c1c5e45e2
 
-- name: "Graphic tablet peripheral: apply custom patch to lib.ts"
+- name: "[archlinux] Graphic tablet peripheral: apply custom patch to lib.ts"
   ansible.builtin.shell: git apply ~/dotfiles/assets/patches/weylus/lib.patch
   args:
     chdir: ~/repos/Weylus
 
-- name: "Graphic tablet peripheral: compile weylus lib.ts"
+- name: "[archlinux] Graphic tablet peripheral: compile weylus lib.ts"
   ansible.builtin.command: tsc
   args:
     chdir: ~/repos/Weylus
     creates: ~/repos/Weylus/www/static/lib.js
 
-- name: "Graphic tablet peripheral: register ufw status variable"
+- name: "[archlinux] Graphic tablet peripheral: register ufw status variable"
   ansible.builtin.systemd_service:
     name: ufw.service
   register: ufw_service_status
 
-- name: "Graphic tablet peripheral: open ufw to weylus ports"
+- name: "[archlinux] Graphic tablet peripheral: open ufw to weylus ports"
   become: true
   ansible.builtin.shell: ufw allow {{ port }}/tcp
   when: ufw_service_status.status.ActiveState == "active"
@@ -77,20 +77,20 @@
   loop_control:
     loop_var: port
 
-- name: "Graphic tablet peripheral: weylus - ensure uinput group"
+- name: "[archlinux] Graphic tablet peripheral: weylus - ensure uinput group"
   become: true
   ansible.builtin.group:
     state: present
     name: uinput
 
-- name: "Graphic tablet peripheral: weylus - append user to group"
+- name: "[archlinux] Graphic tablet peripheral: weylus - append user to group"
   become: true
   ansible.builtin.user:
     append: true
     groups: uinput
     name: "{{ ansible_env.USER }}"
 
-- name: "Graphic tablet peripheral: ensure weylus service"
+- name: "[archlinux] Graphic tablet peripheral: ensure weylus service"
   ansible.builtin.systemd_service:
     scope: user
     name: weylus.service

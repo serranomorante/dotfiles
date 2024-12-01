@@ -1,11 +1,11 @@
 ---
-- name: "Plantuml compiled jar: Create ~/plantuml folder"
+- name: "[archlinux] Plantuml compiled jar: Create ~/plantuml folder"
   ansible.builtin.file:
     state: directory
     recurse: true
     path: ~/plantuml
 
-- name: "Plantuml compiled jar: ensure file in location"
+- name: "[archlinux] Plantuml compiled jar: ensure file in location"
   ansible.builtin.get_url:
     url: https://github.com/plantuml/plantuml/releases/download/v{{ plantuml_compiled_jar_version }}/plantuml-{{ plantuml_compiled_jar_version }}.jar
     dest: ~/plantuml/plantuml.jar

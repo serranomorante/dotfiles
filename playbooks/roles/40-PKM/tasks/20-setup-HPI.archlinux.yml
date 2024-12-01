@@ -1,5 +1,5 @@
 ---
-- name: "Setup HPI - clone packages"
+- name: "[archlinux] Setup HPI - clone packages"
   ansible.builtin.git:
     repo: "{{ item.repo }}"
     dest: ~/repos/{{ item.name | default(item.repo) | basename }}
@@ -9,13 +9,13 @@
     - { repo: https://github.com/karlicoss/open-in-editor }
     - { repo: https://github.com/karlicoss/HPI }
 
-- name: "Setup HPI - ensure packages"
+- name: "[archlinux] Setup HPI - ensure packages"
   become: true
   ansible.builtin.package:
     state: present
     name: sqlitebrowser
 
-- name: "Setup HPI - ensure virtualenv packages"
+- name: "[archlinux] Setup HPI - ensure virtualenv packages"
   ansible.builtin.pip:
     name:
       - pip
@@ -38,7 +38,7 @@
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
 
-- name: "Setup HPI - symlink virtualenv packages"
+- name: "[archlinux] Setup HPI - symlink virtualenv packages"
   ansible.builtin.file:
     src: ~/apps/PKM/.venv/bin/{{ item }}
     dest: ~/bin/{{ item }}
@@ -48,11 +48,11 @@
     - promnesia
     - browserexport
 
-- name: "Setup HPI - promnesia install server"
+- name: "[archlinux] Setup HPI - promnesia install server"
   ansible.builtin.command: promnesia install-server
   changed_when: false
 
-- name: "Setup HPI - register open_in_editor MIME handler"
+- name: "[archlinux] Setup HPI - register open_in_editor MIME handler"
   ansible.builtin.command: >
     python ~/repos/open-in-editor/open_in_editor.py --install --editor vim
   args:

@@ -1,5 +1,5 @@
 ---
-- name: "Automation utilities: ensure xdotool"
+- name: "[archlinux] Automation utilities: ensure xdotool"
   ansible.builtin.package:
     state: present
     name: xdotool

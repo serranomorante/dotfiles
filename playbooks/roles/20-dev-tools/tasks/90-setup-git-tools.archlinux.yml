@@ -1,5 +1,5 @@
 ---
-- name: "Git tools: ensure diff tools"
+- name: "[archlinux] Git tools: ensure diff tools"
   become: true
   ansible.builtin.package:
     state: present

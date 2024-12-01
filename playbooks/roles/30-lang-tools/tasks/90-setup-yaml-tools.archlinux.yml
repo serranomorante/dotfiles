@@ -1,5 +1,5 @@
 ---
-- name: "Yaml language: ensure LSP"
+- name: "[archlinux] Yaml language: ensure LSP"
   become: true
   ansible.builtin.package:
     state: present
@@ -7,7 +7,7 @@
       - yaml-language-server
       - yamllint
 
-- name: "Yaml language: ensure virtualenv packages"
+- name: "[archlinux] Yaml language: ensure virtualenv packages"
   ansible.builtin.pip:
     name:
       - pip
@@ -16,7 +16,7 @@
     virtualenv_command: /usr/bin/python3 -m venv
     state: latest
 
-- name: "Yaml language: symlink utilities"
+- name: "[archlinux] Yaml language: symlink utilities"
   ansible.builtin.file:
     src: ~/apps/lang-tools/yaml/.venv/bin/{{ item }}
     dest: ~/bin/{{ item }}

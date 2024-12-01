@@ -1,11 +1,11 @@
 ---
-- name: "Note-taking utilities: ensure packages"
+- name: "[archlinux] Note-taking utilities: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
     name: pandoc
 
-- name: "Note-taking utilities: ensure virtualenv packages"
+- name: "[archlinux] Note-taking utilities: ensure virtualenv packages"
   ansible.builtin.pip:
     name:
       - pip
@@ -14,7 +14,7 @@
     virtualenv_command: /usr/bin/python3 -m venv
     state: latest
 
-- name: "Note-taking utilities: symlink utilities"
+- name: "[archlinux] Note-taking utilities: symlink utilities"
   ansible.builtin.file:
     src: ~/apps/note-taking-tools/utilities/.venv/bin/{{ item }}
     dest: ~/bin/{{ item }}

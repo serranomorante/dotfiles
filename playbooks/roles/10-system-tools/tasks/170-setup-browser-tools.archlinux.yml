@@ -1,5 +1,5 @@
 ---
-- name: "Setup browser tools: ensure packages"
+- name: "[archlinux] Setup browser tools: ensure packages"
   become: true
   ansible.builtin.package:
     name:
@@ -7,37 +7,37 @@
       - ruby        # to install extensionator
       - jdk-openjdk # to build react-devtools
 
-- name: "Setup browser tools: ensure aur packages"
+- name: "[archlinux] Setup browser tools: ensure aur packages"
   aur:
     use: yay
     state: present
     name: brave-bin
 
-- name: "Setup browser tools: ensure folder exists"
+- name: "[archlinux] Setup browser tools: ensure folder exists"
   ansible.builtin.file:
     state: directory
     recurse: true
     path: ~/apps/browser-tools/chrome/extensions
 
-- name: "Setup browser tools: get chrome-session-dump"
+- name: "[archlinux] Setup browser tools: get chrome-session-dump"
   ansible.builtin.get_url:
     url: https://github.com/lemnos/chrome-session-dump/releases/download/v0.0.2/chrome-session-dump-linux
     dest: ~/apps/browser-tools/chrome/chrome-session-dump-linux
     force: true
     mode: "0755"
 
-- name: "Setup browser tools: symlink chrome-session-dump"
+- name: "[archlinux] Setup browser tools: symlink chrome-session-dump"
   ansible.builtin.file:
     src: ~/apps/browser-tools/chrome/chrome-session-dump-linux
     dest: ~/bin/chrome-session-dump
     state: link
 
-- name: "Setup browser tools: ensure ruby packages"
+- name: "[archlinux] Setup browser tools: ensure ruby packages"
   community.general.gem:
     name: extensionator
     state: present
 
-- name: "Setup browser tools: clone chrome extensions"
+- name: "[archlinux] Setup browser tools: clone chrome extensions"
   ansible.builtin.git:
     repo: "{{ item.repo }}"
     dest: "~/repos/{{ item.name | default(item.repo) | basename }}"
@@ -53,7 +53,7 @@
     - { repo: https://github.com/facebook/react, version: 1460d67c5b9a0d4498b4d22e1a5a6c0ccac85fdd } # version that worked first try
     - { repo: https://github.com/karlicoss/promnesia }
 
-- name: "Setup browser tools: check if NewTab-Redirect already patched"
+- name: "[archlinux] Setup browser tools: check if NewTab-Redirect already patched"
   ansible.builtin.shell: |
     git ls-files -m
   register: newtab_redirect_modified_files
@@ -61,7 +61,7 @@
     chdir: ~/repos/NewTab-Redirect
   changed_when: false
 
-- name: "Setup browser tools: patch NewTab-Redirect extension"
+- name: "[archlinux] Setup browser tools: patch NewTab-Redirect extension"
   ansible.builtin.shell: |
     git apply ~/dotfiles/assets/patches/chrome_extensions/{{ item }}
   args:
@@ -70,7 +70,7 @@
     - extension_new_tab_redirect.patch
   when: '"main.html" not in newtab_redirect_modified_files.stdout'
 
-- name: "Setup browser tools: check if react-devtools already patched"
+- name: "[archlinux] Setup browser tools: check if react-devtools already patched"
   ansible.builtin.shell: |
     git ls-files -m
   register: react_devtools_modified_files
@@ -78,7 +78,7 @@
     chdir: ~/repos/react
   changed_when: false
 
-- name: "Setup browser tools: patch react-devtools extension"
+- name: "[archlinux] Setup browser tools: patch react-devtools extension"
   ansible.builtin.shell: |
     git apply ~/dotfiles/assets/patches/chrome_extensions/{{ item }}
   args:
@@ -87,7 +87,7 @@
     - extension_react_devtools.patch
   when: '"utils.js" not in react_devtools_modified_files.stdout'
 
-- name: "Setup browser tools: check if vimium already patched"
+- name: "[archlinux] Setup browser tools: check if vimium already patched"
   ansible.builtin.shell: |
     git ls-files -m
   register: vimium_modified_files
@@ -95,7 +95,7 @@
     chdir: ~/repos/vimium
   changed_when: false
 
-- name: "Setup browser tools: patch vimium extension"
+- name: "[archlinux] Setup browser tools: patch vimium extension"
   ansible.builtin.shell: |
     git apply ~/dotfiles/assets/patches/chrome_extensions/{{ item }}
   args:
@@ -104,7 +104,7 @@
     - extension_vimium_config.patch
   when: '"settings.js" not in vimium_modified_files.stdout'
 
-- name: "Setup browser tools: prepare react-devtools"
+- name: "[archlinux] Setup browser tools: prepare react-devtools"
   ansible.builtin.shell: |
     yarn install
     yarn build-for-devtools
@@ -112,20 +112,20 @@
     creates: ~/repos/react/build/bundle-sizes.json
     chdir: ~/repos/react
 
-- name: "Setup browser tools: build chrome react-devtools extension"
+- name: "[archlinux] Setup browser tools: build chrome react-devtools extension"
   ansible.builtin.shell: |
     yarn build:chrome
   args:
     creates: ~/repos/react/packages/react-devtools-extensions/chrome/build/ReactDevTools.zip
     chdir: ~/repos/react/packages/react-devtools-extensions
 
-- name: "Setup browser tools: generate key file"
+- name: "[archlinux] Setup browser tools: generate key file"
   ansible.builtin.shell: |
     openssl genrsa -out ~/apps/browser-tools/chrome/extensions/identity.pem 2048
   args:
     creates: ~/apps/browser-tools/chrome/extensions/identity.pem
 
-- name: "Setup browser tools: build external crx"
+- name: "[archlinux] Setup browser tools: build external crx"
   ansible.builtin.shell: >
     ~/.local/share/gem/ruby/3.2.0/bin/extensionator
     -d ~/repos/{{ extension_github_repo_name }}
@@ -137,7 +137,7 @@
   loop_control:
     loop_var: extension_github_repo_name
 
-- name: "Setup browser tools: build react-devtools crx"
+- name: "[archlinux] Setup browser tools: build react-devtools crx"
   ansible.builtin.shell: >
     ~/.local/share/gem/ruby/3.2.0/bin/extensionator
     -d ~/repos/react/packages/react-devtools-extensions/chrome/build/unpacked/
@@ -146,7 +146,7 @@
   args:
     creates: ~/repos/react/packages/react-devtools-extensions/chrome/build/unpacked/react-devtools.crx
 
-- name: "Setup browser tools: build promnesia"
+- name: "[archlinux] Setup browser tools: build promnesia"
   ansible.builtin.command: |
     npm install
     ~/apps/PKM/.venv/bin/python build --chrome --release
@@ -155,7 +155,7 @@
     creates: ~/repos/promnesia/extension/dist/chrome/manifest.json
   ignore_errors: true
 
-- name: "Setup browser tools: build promnesia crx"
+- name: "[archlinux] Setup browser tools: build promnesia crx"
   ansible.builtin.shell: >
     ~/.local/share/gem/ruby/3.2.0/bin/extensionator
     -d ~/repos/promnesia/extension/dist/chrome
@@ -165,7 +165,7 @@
     chdir: ~/repos/promnesia/extension/dist/chrome
     creates: ~/repos/promnesia/extension/dist/chrome/promnesia.crx
 
-- name: "Setup browser tools: create browser policy directory for all users"
+- name: "[archlinux] Setup browser tools: create browser policy directory for all users"
   become: true
   ansible.builtin.file:
     path: /etc/{{ item }}/policies/managed
@@ -175,7 +175,7 @@
     - chromium
     - brave
 
-- name: "Setup browser tools: create chromium policy file for all users"
+- name: "[archlinux] Setup browser tools: create chromium policy file for all users"
   become: true
   ansible.builtin.template:
     src: ~/dotfiles/assets/other/browser-custom-policy.json
@@ -186,12 +186,12 @@
     - chromium
     - brave
 
-- name: "Setup browser tools: register chromium path"
+- name: "[archlinux] Setup browser tools: register chromium path"
   ansible.builtin.command: which chromium
   register: chromium_path
   changed_when: false
 
-- name: "Setup browser tools: auto generate chrome-debugger service"
+- name: "[archlinux] Setup browser tools: auto generate chrome-debugger service"
   ansible.builtin.blockinfile:
     dest: ~/dotfiles/systemd/dot-config/systemd/user/chrome-debugger.service
     create: true
@@ -203,14 +203,14 @@
       --load-extension=%h/repos/promnesia/extension/dist/chrome,%h/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,%h/repos/{{ chromium_local_extensions | join(',%h/repos/') }}
     mode: "644"
 
-- name: "Setup browser tools: create extensions directory for all users"
+- name: "[archlinux] Setup browser tools: create extensions directory for all users"
   become: true
   ansible.builtin.file:
     path: /usr/share/chromium/extensions
     state: directory
     recurse: true
 
-- name: "Setup browser tools: create extension files"
+- name: "[archlinux] Setup browser tools: create extension files"
   become: true
   ansible.builtin.copy:
     dest: /usr/share/chromium/extensions/{{ item }}.json
@@ -223,7 +223,7 @@
     - "{{ extension_memex }}"
     - "{{ extension_hypothesis }}"
 
-- name: "Setup browser tools: copy brave desktop file to user directory"
+- name: "[archlinux] Setup browser tools: copy brave desktop file to user directory"
   become: true
   ansible.builtin.copy:
     src: /usr/share/applications/brave-browser.desktop
@@ -231,7 +231,7 @@
     owner: "{{ ansible_env.USER }}"
     mode: "644"
 
-- name: "Setup browser tools: override brave desktop file"
+- name: "[archlinux] Setup browser tools: override brave desktop file"
   ansible.builtin.replace:
     path: "{{ ansible_env.HOME }}/.local/share/applications/brave-browser.desktop"
     regexp: "^(Exec=).*"

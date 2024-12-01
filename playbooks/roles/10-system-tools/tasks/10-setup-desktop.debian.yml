@@ -1,5 +1,5 @@
 ---
-- name: "Setup desktop: setup .bashrc"
+- name: "[debian] Setup desktop: setup .bashrc"
   ansible.builtin.blockinfile:
     dest: "{{ item.script }}"
     create: true

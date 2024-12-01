@@ -1,5 +1,5 @@
 ---
-- name: "Wine tools: enable multilib repository"
+- name: "[archlinux] Wine tools: enable multilib repository"
   become: true
   ansible.builtin.blockinfile:
     dest: /etc/pacman.conf
@@ -8,7 +8,7 @@
       [multilib]
       Include = /etc/pacman.d/mirrorlist
 
-- name: "Wine tools: ensure wine is installed"
+- name: "[archlinux] Wine tools: ensure wine is installed"
   become: true
   ansible.builtin.package:
     state: present
@@ -16,13 +16,13 @@
       - wine-staging
       - wine-mono
 
-- name: "Wine tools: ensure wine graphic driver"
+- name: "[archlinux] Wine tools: ensure wine graphic driver"
   become: true
   ansible.builtin.package:
     state: present
     name: lib32-nvidia-utils
 
-- name: "Wine tools: ensure wine audio drivers"
+- name: "[archlinux] Wine tools: ensure wine audio drivers"
   become: true
   ansible.builtin.package:
     state: present

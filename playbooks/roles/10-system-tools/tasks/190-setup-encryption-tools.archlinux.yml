@@ -1,5 +1,5 @@
 ---
-- name: "Setup encryption tools: enable services"
+- name: "[archlinux] Setup encryption tools: enable services"
   ansible.builtin.systemd_service:
     scope: user
     name: ssh-agent.service
@@ -8,7 +8,7 @@
     masked: false
 
 # https://wiki.archlinux.org/title/SSH_keys#Start_ssh-agent_with_systemd_user
-- name: "Setup encryption tools: setup shell startup scripts"
+- name: "[archlinux] Setup encryption tools: setup shell startup scripts"
   ansible.builtin.blockinfile:
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP ENCRYPTION"
     dest: "{{ item.script }}"

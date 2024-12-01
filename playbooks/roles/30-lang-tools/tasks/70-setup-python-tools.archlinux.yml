@@ -1,6 +1,6 @@
 ---
 # LSP
-- name: "Python language: ensure LSP - pylsp virtualenv"
+- name: "[archlinux] Python language: ensure LSP - pylsp virtualenv"
   ansible.builtin.pip:
     name:
       - pip
@@ -12,14 +12,14 @@
     virtualenv_command: /usr/bin/python3 -m venv
     state: latest
 
-- name: "Python language: ensure LSP - symlink pylsp"
+- name: "[archlinux] Python language: ensure LSP - symlink pylsp"
   ansible.builtin.file:
     src: ~/apps/lang-tools/pylsp/.venv/bin/pylsp
     dest: ~/bin/pylsp
     state: link
 
 # DAP
-- name: "Python language: ensure DAP - debugpy virtualenv"
+- name: "[archlinux] Python language: ensure DAP - debugpy virtualenv"
   ansible.builtin.pip:
     name:
       - pip
@@ -28,7 +28,7 @@
     virtualenv_command: /usr/bin/python3 -m venv
     state: latest
 
-- name: "Python language: ensure DAP - symlink debugpy"
+- name: "[archlinux] Python language: ensure DAP - symlink debugpy"
   ansible.builtin.file:
     src: ~/apps/lang-tools/debugpy/.venv/bin/debugpy
     dest: ~/bin/debugpy

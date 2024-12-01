@@ -1,5 +1,5 @@
 ---
-- name: "Javascript language: ensure LSP"
+- name: "[archlinux] Javascript language: ensure LSP"
   become: true
   ansible.builtin.package:
     state: present
@@ -7,25 +7,25 @@
       - typescript-language-server
       - tailwindcss-language-server
 
-- name: "Javascript language: ensure LSP (using aur)"
+- name: "[archlinux] Javascript language: ensure LSP (using aur)"
   aur:
     use: yay
     state: present
     name: vtsls
 
-- name: "Javascript language: ensure LINTERS"
+- name: "[archlinux] Javascript language: ensure LINTERS"
   become: true
   ansible.builtin.package:
     state: present
     name: eslint_d
 
-- name: "Javascript language: ensure FORMATTERS (using aur)"
+- name: "[archlinux] Javascript language: ensure FORMATTERS (using aur)"
   aur:
     use: yay
     state: present
     name: prettierd
 
-- name: "Javascript language: clone vscode-js-debug"
+- name: "[archlinux] Javascript language: clone vscode-js-debug"
   ansible.builtin.git:
     repo: https://github.com/microsoft/vscode-js-debug.git
     dest: ~/repos/vscode-js-debug
@@ -34,13 +34,13 @@
     single_branch: true
     version: "v{{ vscode_js_debug_version }}"
 
-- name: "Javascript language: apply custom patch"
+- name: "[archlinux] Javascript language: apply custom patch"
   ansible.builtin.command: git apply ~/dotfiles/assets/patches/vscode_js_debug_stderr.patch
   args:
     chdir: ~/repos/vscode-js-debug
   changed_when: false
 
-- name: "Javascript language: install vscode-js-debug"
+- name: "[archlinux] Javascript language: install vscode-js-debug"
   ansible.builtin.shell: |
     npm install
     npx gulp dapDebugServer

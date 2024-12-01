@@ -1,5 +1,5 @@
 ---
-- name: "Yabridge tools: ensure yabridge is installed"
+- name: "[archlinux] Yabridge tools: ensure yabridge is installed"
   become: true
   ansible.builtin.package:
     state: present

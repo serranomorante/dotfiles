@@ -1,11 +1,11 @@
 ---
-- name: "Grep utilities: ensure fzf bin"
+- name: "[debian] Grep utilities: ensure fzf bin"
   ansible.builtin.unarchive:
     src: https://github.com/junegunn/fzf/releases/download/v{{ debian_fzf_version }}/fzf-{{ debian_fzf_version }}-linux_amd64.tar.gz
     dest: ~/bin
     remote_src: true
 
-- name: "Grep utilities: ensure .fzf_history"
+- name: "[debian] Grep utilities: ensure .fzf_history"
   ansible.builtin.blockinfile:
     dest: ~/dotfiles/home/dot-fzfrc
     create: true

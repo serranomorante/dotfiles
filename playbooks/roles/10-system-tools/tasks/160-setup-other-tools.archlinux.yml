@@ -1,29 +1,29 @@
 ---
-- name: "Other tools: ensure packages"
+- name: "[archlinux] Other tools: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
     name: evince
 
-- name: "Other tools: ensure aur packages"
+- name: "[archlinux] Other tools: ensure aur packages"
   aur:
     use: yay
     state: present
     name: ccze
 
-- name: "Other tools: ensure font directory exists"
+- name: "[archlinux] Other tools: ensure font directory exists"
   ansible.builtin.file:
     path: ~/.local/share/fonts/Pragmasevka_NF
     state: directory
     mode: "775"
 
-- name: "Other tools: check font files exists"
+- name: "[archlinux] Other tools: check font files exists"
   ansible.builtin.shell: "ls ~/.local/share/fonts/Pragmasevka_NF/*ragmasevka*"
   register: font_dir_exists
   ignore_errors: true
   changed_when: false
 
-- name: "Other tools: install font"
+- name: "[archlinux] Other tools: install font"
   when: font_dir_exists is failed
   ansible.builtin.unarchive:
     src: https://github.com/shytikov/pragmasevka/releases/download/v1.6.6/Pragmasevka_NF.zip

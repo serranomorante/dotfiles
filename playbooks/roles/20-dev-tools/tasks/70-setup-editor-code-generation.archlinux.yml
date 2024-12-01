@@ -1,5 +1,5 @@
 ---
-- name: "Editor code generation: register binaries paths"
+- name: "[archlinux] Editor code generation: register binaries paths"
   ansible.builtin.command: which {{ executable }}
   register: binaries
   loop_control:
@@ -17,12 +17,12 @@
     - vscode-eslint-language-server
     - phpactor
 
-- name: "Editor code generation: register volta default node version"
+- name: "[archlinux] Editor code generation: register volta default node version"
   ansible.builtin.command: volta run --node "{{ node_system_default_version }}" which node
   register: system_default_node
   changed_when: false
 
-- name: "Editor code generation: ensure binaries code-generation"
+- name: "[archlinux] Editor code generation: ensure binaries code-generation"
   ansible.builtin.blockinfile:
     dest: ~/.config/nvim/lua/serranomorante/binaries.lua
     create: true

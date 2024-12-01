@@ -1,5 +1,5 @@
 ---
-- name: "Grep utilities: ensure several grep packages"
+- name: "[archlinux] Grep utilities: ensure several grep packages"
   ansible.builtin.package:
     state: present
     name:
@@ -7,7 +7,7 @@
       - fd
       - fzf
 
-- name: "Grep utilities: ensure .fzf_history"
+- name: "[archlinux] Grep utilities: ensure .fzf_history"
   ansible.builtin.blockinfile:
     dest: ~/dotfiles/home/dot-fzfrc
     create: true

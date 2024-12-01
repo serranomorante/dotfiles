@@ -1,5 +1,5 @@
 ---
-- name: "Nvidia tools: ensure nvidia packages"
+- name: "[archlinux] Nvidia tools: ensure nvidia packages"
   become: true
   ansible.builtin.package:
     name:

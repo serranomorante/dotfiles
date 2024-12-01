@@ -1,5 +1,5 @@
 ---
-- name: "Setup exports: ensure export & index timers"
+- name: "[archlinux] Setup exports: ensure export & index timers"
   ansible.builtin.systemd_service:
     scope: user
     name: "{{ item }}.timer"

@@ -1,11 +1,11 @@
 ---
-- name: "Persistence tools: ensure packages"
+- name: "[archlinux] Persistence tools: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
     name: redis
 
-- name: "Persistence tools: enable redis service and ensure is not masked"
+- name: "[archlinux] Persistence tools: enable redis service and ensure is not masked"
   become: true
   ansible.builtin.systemd_service:
     name: redis.service
@@ -13,7 +13,7 @@
     enabled: true
     masked: false
 
-- name: "Persistence tools: ensure virtualenv packages"
+- name: "[archlinux] Persistence tools: ensure virtualenv packages"
   ansible.builtin.pip:
     name:
       - pip
@@ -23,7 +23,7 @@
     virtualenv_command: /usr/bin/python3 -m venv
     state: latest
 
-- name: "Persistence tools: symlink virtualenv ansible"
+- name: "[archlinux] Persistence tools: symlink virtualenv ansible"
   ansible.builtin.file:
     src: ~/apps/persistence-tools/.venv/bin/{{ item.bin_name }}
     dest: ~/bin/{{ item.symlink_name }}

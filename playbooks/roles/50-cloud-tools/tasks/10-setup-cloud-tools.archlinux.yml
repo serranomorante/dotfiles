@@ -1,5 +1,5 @@
 ---
-- name: "Setup cloud tools: install client packages"
+- name: "[archlinux] Setup cloud tools: install client packages"
   become: true
   ansible.builtin.package:
     state: present

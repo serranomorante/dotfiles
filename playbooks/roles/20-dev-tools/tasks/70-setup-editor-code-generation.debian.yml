@@ -1,5 +1,5 @@
 ---
-- name: "Editor code generation: ensure binaries code-generation"
+- name: "[debian] Editor code generation: ensure binaries code-generation"
   ansible.builtin.blockinfile:
     dest: ~/.config/nvim/lua/serranomorante/binaries.lua
     create: true

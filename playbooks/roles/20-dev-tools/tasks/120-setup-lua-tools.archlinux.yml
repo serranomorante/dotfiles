@@ -1,5 +1,5 @@
 ---
-- name: "Setup lua tools: ensure packages"
+- name: "[archlinux] Setup lua tools: ensure packages"
   become: true
   ansible.builtin.package:
     state: present

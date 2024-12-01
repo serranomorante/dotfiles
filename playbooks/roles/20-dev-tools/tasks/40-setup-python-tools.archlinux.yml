@@ -1,5 +1,5 @@
 ---
-- name: "Python tools: ensure virtualenv python packages"
+- name: "[archlinux] Python tools: ensure virtualenv python packages"
   ansible.builtin.pip:
     name:
       - pip
@@ -9,7 +9,7 @@
     virtualenv_command: /usr/bin/python3 -m venv
     state: latest
 
-- name: "Python tools: symlink python tools"
+- name: "[archlinux] Python tools: symlink python tools"
   ansible.builtin.file:
     src: ~/apps/python-tools/.venv/bin/{{ item }}
     dest: ~/bin/{{ item }}

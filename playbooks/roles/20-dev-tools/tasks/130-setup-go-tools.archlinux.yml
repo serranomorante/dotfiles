@@ -1,5 +1,5 @@
 ---
-- name: "Setup go tools: ensure packages"
+- name: "[archlinux] Setup go tools: ensure packages"
   become: true
   ansible.builtin.package:
     state: present

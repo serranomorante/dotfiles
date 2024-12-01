@@ -1,12 +1,12 @@
 ---
-- name: "Neovim: ensure Neovim - clone"
+- name: "[archlinux] Neovim: ensure Neovim - clone"
   ansible.builtin.git:
     repo: https://github.com/neovim/neovim.git
     dest: ~/repos/neovim
     force: true
     single_branch: true
 
-- name: "Neovim: ensure neovim build dependencies"
+- name: "[archlinux] Neovim: ensure neovim build dependencies"
   become: true
   ansible.builtin.package:
     state: present
@@ -14,7 +14,7 @@
       - cmake
       - ninja
 
-- name: "Neovim: apply patches to neovim"
+- name: "[archlinux] Neovim: apply patches to neovim"
   ansible.builtin.command: git apply ~/dotfiles/assets/patches/nvim/{{ item.patch_filename }}
   args:
     chdir: ~/repos/neovim
@@ -23,7 +23,7 @@
     - { patch_filename: max_count_limit.patch }
   changed_when: false
 
-- name: "Neovim: ensure neovim - build"
+- name: "[archlinux] Neovim: ensure neovim - build"
   ansible.builtin.command: make
   environment:
     CMAKE_BUILD_TYPE: RelWithDebInfo
@@ -31,13 +31,13 @@
     chdir: ~/repos/neovim
     creates: ~/repos/neovim/build/bin/nvim
 
-- name: "Neovim: ensure symlink neovim"
+- name: "[archlinux] Neovim: ensure symlink neovim"
   ansible.builtin.file:
     src: ~/repos/neovim/build/bin/nvim
     dest: ~/bin/nvim
     state: link
 
-- name: "Neovim: setup startup script"
+- name: "[archlinux] Neovim: setup startup script"
   ansible.builtin.blockinfile:
     dest: "{{ item.script }}"
     create: true

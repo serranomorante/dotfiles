@@ -1,5 +1,5 @@
 ---
-- name: "Chrome tools: ensure chrome as debugger service"
+- name: "[archlinux] Chrome tools: ensure chrome as debugger service"
   ansible.builtin.systemd_service:
     scope: user
     name: chrome-debugger.service

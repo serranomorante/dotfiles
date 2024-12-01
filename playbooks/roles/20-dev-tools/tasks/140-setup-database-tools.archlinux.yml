@@ -1,11 +1,11 @@
 ---
-- name: "Setup database tools: ensure packages"
+- name: "[archlinux] Setup database tools: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
     name: dbeaver
 
-- name: "Setup database tools: ensure aur packages"
+- name: "[archlinux] Setup database tools: ensure aur packages"
   aur:
     use: yay
     state: present

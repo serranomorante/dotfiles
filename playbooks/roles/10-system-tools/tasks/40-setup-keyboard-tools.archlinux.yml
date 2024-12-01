@@ -1,11 +1,11 @@
 ---
-- name: "Keyboard peripheral: ensure sxhkd is present"
+- name: "[archlinux] Keyboard peripheral: ensure sxhkd is present"
   become: true
   ansible.builtin.package:
     state: present
     name: sxhkd
 
-- name: "Keyboard peripheral: enable service sxhkd and ensure is not masked"
+- name: "[archlinux] Keyboard peripheral: enable service sxhkd and ensure is not masked"
   ansible.builtin.systemd_service:
     scope: user
     state: started
@@ -13,7 +13,7 @@
     enabled: true
     masked: false
 
-- name: "Keyboard peripheral: ensure keyd is present"
+- name: "[archlinux] Keyboard peripheral: ensure keyd is present"
   ansible.builtin.package:
     state: present
     name: keyd
@@ -22,14 +22,14 @@
 # verify manually with: `kcmshell6 kcm_kded` and then search "Keyboard daemon"
 # https://unix.stackexchange.com/questions/384390/kde-keyboard-repeat-delay-rate-settings-dont-work-have-no-effect
 # https://www.reddit.com/r/kde/comments/1dkroeg/workaround_when_background_services_is_missing/
-- name: "Keyboard peripheral: disable kde keyboard daemon"
+- name: "[archlinux] Keyboard peripheral: disable kde keyboard daemon"
   ansible.builtin.replace:
     path: ~/.config/kded5rc
     after: '^\[Module-keyboard\]'
     regexp: '^(autoload)=true'
     replace: '\1=false'
 
-- name: "Keyboard peripheral: enable services"
+- name: "[archlinux] Keyboard peripheral: enable services"
   ansible.builtin.systemd_service:
     scope: "{{ service.scope }}"
     name: "{{ service.name }}.service"
@@ -42,7 +42,7 @@
   loop_control:
     loop_var: service
 
-- name: "Keyboard peripheral: copy sudo files"
+- name: "[archlinux] Keyboard peripheral: copy sudo files"
   become: true
   ansible.builtin.copy:
     src: "{{ item.source }}"

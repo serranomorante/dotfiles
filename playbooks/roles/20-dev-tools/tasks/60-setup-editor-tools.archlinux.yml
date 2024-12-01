@@ -1,11 +1,11 @@
 ---
-- name: "Dotfiles: ensure nvim pack folder"
+- name: "[archlinux] Dotfiles: ensure nvim pack folder"
   ansible.builtin.file:
     state: directory
     recurse: true
     path: ~/.config/nvim/pack/
 
-- name: "Editor tools: ensure nvim plugins"
+- name: "[archlinux] Editor tools: ensure nvim plugins"
   ansible.builtin.git:
     repo: https://github.com/{{ item.repo }}
     dest: ~/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}
@@ -47,7 +47,7 @@
     - { folder: opt, repo: jbyuki/one-small-step-for-vimkind, name: osv }
     - { folder: opt, repo: Robitx/gp.nvim, name: gp }
 
-- name: "Editor tools: ensure aur packages"
+- name: "[archlinux] Editor tools: ensure aur packages"
   aur:
     use: yay
     state: present

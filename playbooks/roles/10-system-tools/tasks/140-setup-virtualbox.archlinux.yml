@@ -1,5 +1,5 @@
 ---
-- name: "Setup virtualbox: ensure packages"
+- name: "[archlinux] Setup virtualbox: ensure packages"
   aur:
     use: yay
     state: present
@@ -9,13 +9,13 @@
       - virtualbox-guest-iso # https://wiki.archlinux.org/title/VirtualBox#Guest_additions
 
 # https://wiki.archlinux.org/title/VirtualBox#Accessing_host_USB_devices_in_guest
-- name: "Setup virtualbox: ensure vboxusers group"
+- name: "[archlinux] Setup virtualbox: ensure vboxusers group"
   become: true
   ansible.builtin.group:
     state: present
     name: vboxusers
 
-- name: "Setup virtualbox: append user to group"
+- name: "[archlinux] Setup virtualbox: append user to group"
   become: true
   ansible.builtin.user:
     append: true

@@ -1,5 +1,5 @@
 ---
-- name: "HTML language: ensure LSP (using aur)"
+- name: "[archlinux] HTML language: ensure LSP (using aur)"
   aur:
     use: yay
     state: present

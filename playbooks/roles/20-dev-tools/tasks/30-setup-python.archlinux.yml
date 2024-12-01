@@ -1,7 +1,6 @@
 ---
-
 # https://github.com/pyenv/pyenv/wiki#suggested-build-environment
-- name: "Setup python: ensure build dependencies"
+- name: "[archlinux] Setup python: ensure build dependencies"
   ansible.builtin.package:
     state: present
     name:
@@ -12,12 +11,12 @@
       - xz
       - tk
 
-- name: "Setup python: register pyenv binary"
+- name: "[archlinux] Setup python: register pyenv binary"
   ansible.builtin.command: which pyenv
   register: pyenv_executable
   changed_when: false
 
-- name: "Setup python: ensure startup setup scripts"
+- name: "[archlinux] Setup python: ensure startup setup scripts"
   ansible.builtin.blockinfile:
     dest: "{{ item.script }}"
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP PYTHON"
@@ -37,12 +36,12 @@
     - { script: ~/dotfiles/home/dot-bashrc }
     - { script: ~/dotfiles/fish/dot-config/fish/conf.d/setup_bashrc.fish }
 
-- name: "Setup python: ensure python versions"
+- name: "[archlinux] Setup python: ensure python versions"
   ansible.builtin.shell: pyenv install --skip-existing {{ item }}
   ignore_errors: true
   loop:
     - 3.11.2
     - 3.11.3
 
-- name: "Setup python: ensure python system default"
+- name: "[archlinux] Setup python: ensure python system default"
   ansible.builtin.shell: pyenv global 3.11.3
