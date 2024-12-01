@@ -13,6 +13,12 @@
     - crond
   changed_when: false
 
+- name: "[otherlinux] Setup desktop: ensure boot folder"
+  ansible.builtin.file:
+    path: /data/data/com.termux/files/home/.termux/boot
+    state: directory
+    mode: "755"
+
 - name: "[otherlinux] Setup desktop: ensure startup"
   ansible.builtin.copy:
     dest: /data/data/com.termux/files/home/.termux/boot/10-start-sshd
