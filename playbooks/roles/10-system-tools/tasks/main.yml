@@ -27,7 +27,7 @@
       with_first_found:
         - files: 30-setup-dotfiles.{{ user_os }}.yml
           skip: true
-      when: "user_os in ['archlinux', 'debian', 'otherlinux']"
+      when: "user_os in ['archlinux', 'debian', 'otherlinux', 'macosx']"
       loop_control:
         loop_var: task_file
   tags: [always, "10-30"]

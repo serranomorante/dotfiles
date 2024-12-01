@@ -1,0 +1,59 @@
+---
+- name: "[macos] Dotfiles: register stow exists"
+  ansible.builtin.command: ~/.local/bin/stow --version
+  register: stow_executable
+  ignore_errors: true
+  changed_when: false
+
+- name: "[macos] Dotfiles: ensure stow folder exists"
+  ansible.builtin.file:
+    state: directory
+    recurse: true
+    path: ~/apps/stow
+  when: stow_executable is failed
+
+- name: "[macos] Dotfiles: unzip, unrar, unarchive stow"
+  ansible.builtin.unarchive:
+    src: https://ftp.gnu.org/gnu/stow/stow-{{ macos_stow_version }}.tar.gz
+    dest: ~/apps/stow
+    remote_src: true
+  when: stow_executable is failed
+
+- name: "[macos] Dotfiles: configure stow"
+  ansible.builtin.shell: ./configure --prefix="$HOME/.local"
+  args:
+    chdir: ~/apps/stow/stow-{{ macos_stow_version }}
+  when: stow_executable is failed
+  changed_when: false
+
+- name: "[macos] Dotfiles: build stow"
+  ansible.builtin.command: make
+  args:
+    chdir: ~/apps/stow/stow-{{ macos_stow_version }}
+  when: stow_executable is failed
+  changed_when: false
+
+- name: "[macos] Dotfiles: install stow"
+  ansible.builtin.command: make install
+  args:
+    chdir: ~/apps/stow/stow-{{ macos_stow_version }}
+  when: stow_executable is failed
+  changed_when: false
+
+- name: "[macos] Dotfiles: download dotfiles"
+  ansible.builtin.git:
+    repo: https://github.com/serranomorante/dotfiles.git
+    dest: ~/dotfiles
+    force: true
+    depth: 1
+    version: main
+
+- name: "[macos] Dotfiles: apply stow"
+  ansible.builtin.command: >
+    ~/.local/bin/stow --dotfiles
+    fish
+    nvim
+    tmux
+  args:
+    chdir: ~/dotfiles
+  changed_when: false

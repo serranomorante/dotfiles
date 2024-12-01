@@ -60,7 +60,7 @@
       with_first_found:
         - files: 60-setup-editor-tools.{{ user_os }}.yml
           skip: true
-      when: "user_os in ['archlinux', 'debian']"
+      when: "user_os in ['archlinux', 'debian', 'macosx']"
       loop_control:
         loop_var: task_file
   tags: ["20-60"]

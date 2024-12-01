@@ -1,5 +1,6 @@
 ---
 debian_stow_version: 2.4.1
+macos_stow_version: 2.4.1
 debian_fzf_version: 0.55.0
 wacom_vendor_id: 056a
 extension_react_devtools: nipckbchhibgnbgnabineijogaiegchd
