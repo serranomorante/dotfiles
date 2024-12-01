@@ -31,3 +31,14 @@
       loop_control:
         loop_var: task_file
   tags: ["40-30"]
+
+- block:
+    - name: Ensure reading tools
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 40-setup-reading-tools.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["40-40"]

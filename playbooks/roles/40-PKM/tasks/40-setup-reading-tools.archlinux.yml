@@ -1,0 +1,6 @@
+---
+- name: "[archlinux] Setup reading tools: ensure aur packages"
+  aur:
+    use: yay
+    state: present
+    name: foliate
