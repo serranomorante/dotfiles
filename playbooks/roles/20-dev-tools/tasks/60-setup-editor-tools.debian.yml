@@ -1,4 +1,10 @@
 ---
+- name: "Dotfiles: ensure nvim pack folder"
+  ansible.builtin.file:
+    state: directory
+    recurse: true
+    path: ~/.config/nvim/pack/
+
 - name: "Editor tools: ensure nvim plugins"
   ansible.builtin.git:
     repo: https://github.com/{{ item.repo }}
@@ -41,8 +47,8 @@
     - { folder: opt, repo: jbyuki/one-small-step-for-vimkind, name: osv }
     - { folder: opt, repo: Robitx/gp.nvim, name: gp }
 
-- name: "Editor tools: clone universal ctags"
-  ansible.builtin.git: 
+- name: "[debian] Editor tools: clone universal ctags"
+  ansible.builtin.git:
     repo: https://github.com/universal-ctags/ctags.git
     dest: ~/repos/ctags
     depth: 1

@@ -5,8 +5,16 @@
     - stow
   changed_when: false
 
-- name: "Dotfiles: apply stow"
-  ansible.builtin.command: >
+- name: "[otherlinux] Dotfiles: download dotfiles"
+  ansible.builtin.git:
+    repo: https://github.com/serranomorante/dotfiles.git
+    dest: ~/dotfiles
+    force: true
+    depth: 1
+    version: main
+
+- name: "[otherlinux] Dotfiles: apply stow"
+  ansible.builtin.shell: >
     stow --dotfiles
     gnupg
   args:

@@ -1,58 +1,59 @@
 ---
-- name: "Dotfiles: register stow exists"
+- name: "[debian] Dotfiles: register stow exists"
   ansible.builtin.command: ~/.local/bin/stow --version
   register: stow_executable
   ignore_errors: true
   changed_when: false
 
-- name: "Dotfiles: ensure stow folder exists"
+- name: "[debian] Dotfiles: ensure stow folder exists"
   ansible.builtin.file:
     state: directory
     recurse: true
     path: ~/apps/stow
   when: stow_executable is failed
 
-- name: "Dotfiles: unzip, unrar, unarchive stow"
+- name: "[debian] Dotfiles: unzip, unrar, unarchive stow"
   ansible.builtin.unarchive:
     src: https://ftp.gnu.org/gnu/stow/stow-{{ debian_stow_version }}.tar.gz
     dest: ~/apps/stow
     remote_src: true
   when: stow_executable is failed
 
-- name: "Dotfiles: configure stow"
+- name: "[debian] Dotfiles: configure stow"
   ansible.builtin.shell: ./configure --prefix="$HOME/.local"
   args:
     chdir: ~/apps/stow/stow-{{ debian_stow_version }}
   when: stow_executable is failed
-
-- name: "Dotfiles: build stow"
-  ansible.builtin.shell: make
-  args:
-    chdir: ~/apps/stow/stow-{{ debian_stow_version }}
-  when: stow_executable is failed
-
-- name: "Dotfiles: install stow"
-  ansible.builtin.shell: make install
-  args:
-    chdir: ~/apps/stow/stow-{{ debian_stow_version }}
-  when: stow_executable is failed
-
-- name: "Dotfiles: register stow exists"
-  ansible.builtin.command: ~/.local/bin/stow --version
-  register: stow_executable
-  ignore_errors: true
   changed_when: false
 
-- name: "Dotfiles: download dotfiles"
+- name: "[debian] Dotfiles: build stow"
+  ansible.builtin.command: make
+  args:
+    chdir: ~/apps/stow/stow-{{ debian_stow_version }}
+  when: stow_executable is failed
+  changed_when: false
+
+- name: "[debian] Dotfiles: install stow"
+  ansible.builtin.command: make install
+  args:
+    chdir: ~/apps/stow/stow-{{ debian_stow_version }}
+  when: stow_executable is failed
+  changed_when: false
+
+- name: "[debian] Dotfiles: download dotfiles"
   ansible.builtin.git:
     repo: https://github.com/serranomorante/dotfiles.git
     dest: ~/dotfiles
     force: true
     depth: 1
-  when: stow_executable is succeeded
+    version: main
 
-- name: "Dotfiles: apply stow"
-  ansible.builtin.shell: ~/.local/bin/stow --dotfiles fish nvim tmux
+- name: "[debian] Dotfiles: apply stow"
+  ansible.builtin.command: >
+    ~/.local/bin/stow --dotfiles
+    fish
+    nvim
+    tmux
   args:
     chdir: ~/dotfiles
-  when: stow_executable is succeeded
+  changed_when: false

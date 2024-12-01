@@ -1,16 +1,10 @@
 ---
-- name: "Dotfiles: ensure stow installed"
+- name: "[archlinux] Dotfiles: ensure stow installed"
   ansible.builtin.package:
     state: present
     name: stow
 
-- name: "Dotfiles: ensure nvim pack folder"
-  ansible.builtin.file:
-    state: directory
-    recurse: true
-    path: ~/.config/nvim/pack/
-
-- name: "Dotfiles: apply stow"
+- name: "[archlinux] Dotfiles: apply stow"
   ansible.builtin.command: >
     stow --dotfiles
     dunst
