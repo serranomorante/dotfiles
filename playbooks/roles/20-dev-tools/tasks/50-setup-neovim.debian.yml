@@ -25,22 +25,3 @@
   args:
     chdir: ~/repos/neovim
     creates: ~/repos/neovim/build/bin/nvim
-
-- name: "[debian] Neovim: ensure symlink neovim"
-  ansible.builtin.file:
-    src: ~/repos/neovim/build/bin/nvim
-    dest: ~/bin/nvim
-    state: link
-
-- name: "[debian] Neovim: setup startup script"
-  ansible.builtin.blockinfile:
-    dest: "{{ item.script }}"
-    create: true
-    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP NEOVIM"
-    mode: "744"
-    block: |
-      {% if 'bashrc' in item.script %}
-      alias vim="VIMRUNTIME=$HOME/repos/neovim/runtime $HOME/repos/neovim/build/bin/nvim"
-      {% endif %}
-  loop:
-    - { script: ~/.bashrc }
