@@ -13,6 +13,11 @@
     owner: root
     mode: "744"
 
+- name: "[archlinux] Setup desktop: register pinentry"
+  ansible.builtin.command: which pinentry-tty
+  register: pinentry_tty_path
+  changed_when: false
+
 - name: "[archlinux] Setup desktop: setup gnugp"
   ansible.builtin.blockinfile:
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP GNUGP"
@@ -20,4 +25,4 @@
     dest: ~/dotfiles/gnupg/dot-gnupg/gpg-agent.conf
     mode: "700"
     block: |
-      pinentry-program /usr/bin/pinentry-tty
+      pinentry-program {{ pinentry_tty_path.stdout }}

@@ -7,10 +7,25 @@
     depth: 1
     version: main
 
+# https://superuser.com/a/1407685
+- name: "[otherlinux] Setup desktop: setup .bashrc"
+  ansible.builtin.blockinfile:
+    dest: "{{ item.script }}"
+    create: true
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP DESKTOP"
+    block: |
+      {% if 'bashrc' in item.script %}
+      export GPG_TTY=$(tty)
+      {% endif %}
+    mode: "744"
+  loop:
+    - { script: ~/.bashrc }
+
 - name: "[otherlinux] Setup desktop: setup packages"
   ansible.builtin.command: >
     pkg install -y
     git
+    which
     cronie
     openssh
     termux-services
@@ -38,6 +53,11 @@
       sv-enable sshd
     mode: "700"
 
+- name: "[otherlinux] Setup desktop: register pinentry"
+  ansible.builtin.command: which pinentry-tty
+  register: pinentry_tty_path
+  changed_when: false
+
 - name: "[otherlinux] Setup desktop: setup gnugp"
   ansible.builtin.blockinfile:
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP GNUGP"
@@ -45,4 +65,10 @@
     dest: ~/dotfiles/gnupg/dot-gnupg/gpg-agent.conf
     mode: "700"
     block: |
-      pinentry-program /data/data/com.termux/files/usr/bin/pinentry-tty
+      pinentry-program {{ pinentry_tty_path.stdout }}
+  when: pinentry_tty_path is succeeded
+
+# https://www.reddit.com/r/termux/comments/11blc9u/comment/j9z97pp
+- name: "[otherlinux] Setup desktop: force gpg-agent changes to take effect"
+  ansible.builtin.command: gpgconf --kill gpg-agent
+  changed_when: false

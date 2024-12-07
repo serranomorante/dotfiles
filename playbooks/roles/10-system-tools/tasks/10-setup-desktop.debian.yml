@@ -16,5 +16,6 @@
       {% if 'bashrc' in item.script %}
       export PATH="$HOME/.local/bin:$PATH"
       {% endif %}
+    mode: "744"
   loop:
     - { script: ~/.bashrc }

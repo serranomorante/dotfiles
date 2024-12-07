@@ -8,7 +8,7 @@
       when: "user_os in ['archlinux', 'debian', 'otherlinux']"
       loop_control:
         loop_var: task_file
-  tags: ["10-10"]
+  tags: [always, "10-10"]
 
 - block:
     - name: Ensure ansible aur module is installed
