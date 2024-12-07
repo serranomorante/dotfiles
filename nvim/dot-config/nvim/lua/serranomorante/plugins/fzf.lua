@@ -107,7 +107,12 @@ local opts = function()
       },
       on_create = function()
         ---https://github.com/ibhagwan/fzf-lua/issues/532#issuecomment-1269523365
-        vim.keymap.set("t", "<C-r>", [['<C-\><C-N>"'.nr2char(getchar()).'pi']], { expr = true })
+        vim.keymap.set(
+          "t",
+          "<C-r>",
+          [['<C-\><C-N>"'.nr2char(getchar()).'pi']],
+          { expr = true, buffer = vim.api.nvim_get_current_buf() }
+        )
       end,
     },
     previewers = {
