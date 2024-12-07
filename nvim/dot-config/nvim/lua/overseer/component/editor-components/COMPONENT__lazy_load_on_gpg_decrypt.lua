@@ -1,6 +1,7 @@
 ---@type overseer.ComponentDefinition
 return {
   name = "editor-components: lazy load plugin after gpg decryption",
+  desc = "Component to lazy load plugin after gpg decryption",
   params = {
     parser = {
       desc = "Parser definition to extract values from output",

@@ -53,43 +53,6 @@ vim.keymap.set("n", "<leader>zl", function()
   vim.defer_fn(function() vim.wo[winid].fillchars = vim.wo[winid].fillchars .. ",foldopen: " end, 2000)
 end, { desc = "Temporarily show available folds" })
 
-if vim.env.TMUX then
-  ---Prepare tmux command to render all panes at the bottom based on directory
-  ---@param dir string
-  ---@return nil|string[]
-  local function new_pane_on_dir(dir)
-    local cmd = string.format("tmux split-window -c %s", dir)
-    local split_window = utils
-      .cmd({
-        "tmux",
-        "display",
-        "-p",
-        "#{?#{==:#{window_panes},1},#{l:" .. cmd .. " -v -l 30%},#{l:" .. cmd .. " -h}}",
-      })
-      :gsub("\n", "")
-    local window_zoomed_flag = utils
-      .cmd({ "tmux", "display", "-p", "#{?#{==:#{window_zoomed_flag},1},#{l:tmux resize-pane -Z},}" })
-      :gsub("\n", "")
-    if window_zoomed_flag ~= nil and #window_zoomed_flag > 0 then utils.cmd(vim.split(window_zoomed_flag, " ")) end
-    if split_window == "" or split_window == nil then return end
-    return vim.split(split_window .. " -t {bottom-right}", " ")
-  end
-
-  vim.keymap.set("n", "<leader>pf", function()
-    local dir = vim.fn.getcwd()
-    if vim.bo.filetype == "oil" then dir = require("oil").get_current_dir() end
-    local result = new_pane_on_dir(dir)
-    if result then utils.cmd(result) end
-  end, { desc = "TMUX: new pane in cwd" })
-
-  vim.keymap.set("n", "<leader>pF", function()
-    local dir = vim.fn.fnamemodify(vim.fn.resolve(vim.fn.expand("%")), ":p:h")
-    if vim.bo.filetype == "oil" then dir = require("oil").get_current_dir() end
-    local result = new_pane_on_dir(dir)
-    if result then utils.cmd(result) end
-  end, { desc = "TMUX: new pane on file directory" })
-end
-
 vim.keymap.set("n", "u", function()
   events.event("Undo")
   return "u"

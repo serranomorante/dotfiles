@@ -51,57 +51,6 @@ function M.cmd(cmd, show_error)
   return success and result:gsub("[\27\155][][()#;?%d]*[A-PRZcf-ntqry=><~]", "") or nil
 end
 
---- Get the first worktree that a file belongs to (from a predefined list of worktrees only)
---- Very useful for `.dotfiles` repository
----
---- Thanks AstroNvim!!
---- https://astronvim.com/Recipes/detached_git_worktrees
----
----@param path string? the file to check, defaults to the current file
----@param worktrees table<string, string>[]? an array like table of worktrees with entries `toplevel` and `gitdir`, default retrieves from `vim.g.git_worktrees`
----@return table<string, string>|nil # a table specifying the `toplevel` and `gitdir` of a worktree or nil if not found
-function M.file_worktree(path, worktrees)
-  worktrees = worktrees or vim.g.git_worktrees
-  if not worktrees then return end
-  path = path or vim.fn.resolve(vim.fn.expand("%"))
-
-  if vim.startswith(path, "oil:") then path = path:gsub("oil:", "") end
-
-  for _, worktree in pairs(worktrees) do
-    if
-      M.cmd({
-        "git",
-        "--work-tree",
-        worktree.toplevel,
-        "--git-dir",
-        worktree.gitdir,
-        "ls-files",
-        "--error-unmatch",
-        path,
-      }, false)
-    then
-      return worktree
-    end
-  end
-end
-
----Toggle global LSP inlay hints
-function M.toggle_inlay_hints()
-  if vim.lsp.inlay_hint then
-    ---@diagnostic disable-next-line: missing-parameter
-    local is_enabled = not vim.lsp.inlay_hint.is_enabled()
-    vim.lsp.inlay_hint.enable(is_enabled)
-    return is_enabled
-  end
-  return false
-end
-
---- Toggle LSP codelens
-function M.toggle_codelens()
-  vim.g.codelens_enabled = not vim.g.codelens_enabled
-  if not vim.g.codelens_enabled then vim.lsp.codelens.clear() end
-end
-
 function M.bool2str(bool) return bool and "on" or "off" end
 
 --- Helper function to check if any active LSP clients given a filter provide a specific capability
@@ -193,10 +142,6 @@ function M.feedkeys(keys, mode)
   mode = mode or "n"
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(keys, true, false, true), mode, true)
 end
-
----Replace `%` char from filenames
----@param filename string
-function M.get_escaped_filename(filename) return filename:gsub("%%", "_") end
 
 ---Enhances neovim's native commentstring
 ---Thanks: https://github.com/folke/ts-comments.nvim
@@ -311,13 +256,6 @@ function M.wrap_overseer_args_with_tmux(cmd, session_name)
   }
   vim.list_extend(args, cmd)
   return args
-end
-
-function M.check_quickfix_list_open()
-  for _, win in pairs(vim.fn.getwininfo()) do
-    if win["quickfix"] == 1 then return true end
-  end
-  return false
 end
 
 function M.next_qf_item()
