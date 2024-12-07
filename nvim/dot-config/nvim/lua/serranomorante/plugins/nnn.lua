@@ -51,7 +51,13 @@ local function opts()
 end
 
 local function keys()
-  vim.keymap.set({ "n", "t" }, "<leader>e", "<cmd>NnnPicker %:p:h<CR>", { desc = "NNN: toggle picker" })
+  vim.keymap.set({ "n", "t" }, "<leader>e", function()
+    if vim.bo.filetype == "nnn" then
+      return "q" -- make sure to clear the tmux session
+    else
+      return "<cmd>NnnPicker %:p<CR>"
+    end
+  end, { desc = "NNN: toggle picker", expr = true })
 end
 
 function M.config()
