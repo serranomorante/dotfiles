@@ -32,7 +32,11 @@
     - { borg_repo: "{{ dev3_notes_borg_repo }}", encrypted_passphrase_file: clench9629.gpg }
   changed_when: false
   register: result
-  failed_when: '"stderr" in result and "A repository already exists" not in result.stderr and "gpg: encrypted with" not in result.stderr'
+  failed_when:
+    - '"stderr" in result'
+    - '"A repository already exists" not in result.stderr'
+    - '"gpg: encrypted with" not in result.stderr'
+    - '"The parent path of the repo directory" not in result.stderr' # fixes HDD drives not being available
 
 - name: "[archlinux] Setup backup tools: create backup scripts from template"
   ansible.builtin.template:

@@ -15,7 +15,12 @@
     - { borg_repo: "{{ dev1_reader_annotations_borg_repo }}", encrypted_passphrase_file: unreeling3484.gpg }
   changed_when: false
   register: result
-  failed_when: '"stderr" in result and "A repository already exists" not in result.stderr and "gpg: encrypted with" not in result.stderr and "No such file or directory" not in result.stderr and "store it at safe place" not in result.stderr'
+  failed_when:
+    - '"stderr" in result'
+    - '"A repository already exists" not in result.stderr'
+    - '"gpg: encrypted with" not in result.stderr'
+    - '"No such file or directory" not in result.stderr'
+    - '"store it at safe place" not in result.stderr'
 
 - name: "[otherlinux] Setup backup tools: ensure bin folder"
   ansible.builtin.file:
