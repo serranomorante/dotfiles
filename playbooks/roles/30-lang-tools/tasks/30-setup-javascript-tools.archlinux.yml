@@ -3,9 +3,7 @@
   become: true
   ansible.builtin.package:
     state: present
-    name:
-      - typescript-language-server
-      - tailwindcss-language-server
+    name: tailwindcss-language-server
 
 - name: "[archlinux] Javascript language: ensure LSP (using aur)"
   aur:
@@ -32,7 +30,7 @@
     depth: 1
     force: true
     single_branch: true
-    version: "v{{ vscode_js_debug_version }}"
+    version: v{{ vscode_js_debug_version }}
 
 - name: "[archlinux] Javascript language: apply custom patch"
   ansible.builtin.command: git apply ~/dotfiles/assets/patches/vscode_js_debug_stderr.patch
