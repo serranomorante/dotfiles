@@ -40,14 +40,6 @@
   when: stow_executable is failed
   changed_when: false
 
-- name: "[debian] Dotfiles: download dotfiles"
-  ansible.builtin.git:
-    repo: https://github.com/serranomorante/dotfiles.git
-    dest: ~/dotfiles
-    force: true
-    depth: 1
-    version: main
-
 - name: "[debian] Dotfiles: apply stow"
   ansible.builtin.command: >
     ~/.local/bin/stow --dotfiles

@@ -1,4 +1,12 @@
 ---
+- name: "[debian] Setup desktop: download dotfiles"
+  ansible.builtin.git:
+    repo: https://github.com/serranomorante/dotfiles.git
+    dest: ~/dotfiles
+    force: true
+    depth: 1
+    version: main
+
 - name: "[debian] Setup desktop: setup .bashrc"
   ansible.builtin.blockinfile:
     dest: "{{ item.script }}"
