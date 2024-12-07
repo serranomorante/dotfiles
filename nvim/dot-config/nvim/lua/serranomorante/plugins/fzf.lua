@@ -102,6 +102,7 @@ local opts = function()
       preview = {
         wrap = "wrap",
         default = "bat", -- better performance than treesitter
+        hidden = "hidden",
         border = "noborder",
         horizontal = "right:40%",
       },
