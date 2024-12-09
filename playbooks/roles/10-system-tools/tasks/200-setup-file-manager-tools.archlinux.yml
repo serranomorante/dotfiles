@@ -25,6 +25,7 @@
       - sshfs
       - poppler
       - udisks2
+      - ueberzug
 
 - name: "[archlinux] Setup file manager: ensure absent deps"
   become: true
