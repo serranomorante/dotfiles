@@ -57,8 +57,8 @@
     block: |
       {% if 'tmux.conf' in item.script %}
       set-option -g default-shell {{ shell_executable.stdout }}
-      set -g default-terminal "xterm-256color" # wezterm uses this term by default
-      set -ag terminal-overrides ",xterm-256color:RGB"
+      set-option -g default-terminal "xterm-256color" # wezterm uses this term by default
+      set-option -ag terminal-overrides ",xterm-256color:RGB"
       {% endif %}
     mode: "644"
   loop:
