@@ -38,7 +38,8 @@ local mappings = {
 local function opts()
   return {
     picker = {
-      cmd = string.format("tmux -L nnn -f %s new-session nnn -JRHda -Pp", vim.env.HOME .. "/.config/tmux/nnn.conf"),
+      cmd = string.format("tmux -L nnn -f %s new-session nnn -JRHdaA -Pp", vim.env.HOME .. "/.config/tmux/nnn.conf"),
+      tabs = false,
       style = {
         width = 999,
         height = 999,
