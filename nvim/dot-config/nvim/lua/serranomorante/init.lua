@@ -23,7 +23,6 @@ local plugins = {
   "diffview",
   "quicker",
   "dap.nvim-dap",
-  "dap.nvim-dap-virtual-text",
   "nvim-fundo",
   "nnn",
 }

@@ -20,7 +20,6 @@ neovim_plugins:
   - { folder: start, repo: LeonHeidelbach/trailblazer.nvim, name: trailblazer }
   - { folder: start, repo: tpope/vim-sleuth }
   - { folder: start, repo: mfussenegger/nvim-dap, name: dap }
-  - { folder: start, repo: theHamsta/nvim-dap-virtual-text }
   - { folder: start, repo: rebelot/heirline.nvim, name: heirline }
   - { folder: start, repo: mbbill/undotree }
   - { folder: start, repo: stevearc/resession.nvim, name: resession }
