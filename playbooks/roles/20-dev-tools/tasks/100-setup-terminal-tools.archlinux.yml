@@ -72,18 +72,6 @@
       TerminalApplication=kitty
       TerminalService=kitty.desktop
 
-- name: "[archlinux] Setup terminal tools: autostart base tmux sessions with systemd"
-  ansible.builtin.systemd_service:
-    scope: user
-    name: "{{ service }}.service"
-    state: started
-    enabled: true
-    masked: false
-  loop:
-    - tmux
-  loop_control:
-    loop_var: service
-
 - name: "[archlinux] Setup terminal tools: save copy of fish's default prompt"
   ansible.builtin.get_url:
     url: https://raw.githubusercontent.com/fish-shell/fish-shell/refs/heads/master/share/functions/fish_prompt.fish
