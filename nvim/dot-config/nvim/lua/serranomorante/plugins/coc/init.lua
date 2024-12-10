@@ -59,7 +59,7 @@ function M.start(_, opts)
   vim.api.nvim_buf_set_var(opts.bufnr, "coc_enabled", 1)
   vim.cmd.CocStart()
 
-  utils.wait_until(coc_utils.extension_ready, 5000):thenCall(
+  utils.wait_until(function() return coc_utils.extension_ready(opts.bufnr) end, 7000):thenCall(
     function() event_handlers.attach(opts.bufnr) end,
     function(err) vim.notify(string.format("[COC]: failed to attach buf %d. %s", opts.bufnr, err), vim.log.levels.WARN) end
   )

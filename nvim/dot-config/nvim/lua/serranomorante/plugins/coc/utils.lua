@@ -97,19 +97,21 @@ end
 
 ---Check if provider feature is supported
 ---@param method CocProviderFeature
+---@param bufnr number?
 ---@return Promise
-function M.supports_provider_feature(method) return M.action_async("hasProvider", method) end
+function M.supports_provider_feature(method, bufnr) return M.action_async("hasProvider", method, bufnr) end
 
 ---Check if there's any extension ready. This might take some time.
+---@param bufnr number
 ---@return Promise
-function M.extension_ready()
+function M.extension_ready(bufnr)
   return async(function()
-    local base_support = await(M.supports_provider_feature("hover"))
-      or await(M.supports_provider_feature("reference"))
-      or await(M.supports_provider_feature("definition"))
-      or await(M.supports_provider_feature("semanticTokens"))
+    local base_support = await(M.supports_provider_feature("hover", bufnr))
+      or await(M.supports_provider_feature("reference", bufnr))
+      or await(M.supports_provider_feature("definition", bufnr))
+      or await(M.supports_provider_feature("semanticTokens", bufnr))
 
-    return M.action_async("ensureDocument"):thenCall(function(result)
+    return M.action_async("ensureDocument", bufnr):thenCall(function(result)
       if result == true and base_support == true then return promise.resolve(result) end
       return promise.resolve(false)
     end, function(err) return promise.reject(err) end)
