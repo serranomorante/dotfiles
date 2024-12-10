@@ -20,20 +20,12 @@
   ansible.builtin.command: borg init --encryption=keyfile '{{ item.borg_repo }}'
   environment:
     BORG_PASSCOMMAND: gpg --decrypt {{ ansible_env.HOME }}/secrets/{{ item.encrypted_passphrase_file }}
-  loop:
-    - { borg_repo: "{{ dev1_config_files_borg_repo }}", encrypted_passphrase_file: staunch4647.gpg }
-    - { borg_repo: "{{ dev1_pkm_borg_repo }}", encrypted_passphrase_file: feed4999.gpg }
-    - { borg_repo: "{{ dev1_notes_borg_repo }}", encrypted_passphrase_file: clench9629.gpg }
-    - { borg_repo: "{{ dev2_config_files_borg_repo }}", encrypted_passphrase_file: staunch4647.gpg }
-    - { borg_repo: "{{ dev2_pkm_borg_repo }}", encrypted_passphrase_file: feed4999.gpg }
-    - { borg_repo: "{{ dev2_notes_borg_repo }}", encrypted_passphrase_file: clench9629.gpg }
-    - { borg_repo: "{{ dev3_config_files_borg_repo }}", encrypted_passphrase_file: staunch4647.gpg }
-    - { borg_repo: "{{ dev3_pkm_borg_repo }}", encrypted_passphrase_file: feed4999.gpg }
-    - { borg_repo: "{{ dev3_notes_borg_repo }}", encrypted_passphrase_file: clench9629.gpg }
+  loop: "{{ borg_init_repos }}"
   changed_when: false
   register: result
   failed_when:
     - '"stderr" in result'
+    - '"Connection refused" not in result.stderr'
     - '"A repository already exists" not in result.stderr'
     - '"gpg: encrypted with" not in result.stderr'
     - '"The parent path of the repo directory" not in result.stderr' # fixes HDD drives not being available

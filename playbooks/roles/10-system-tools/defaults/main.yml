@@ -52,3 +52,15 @@ dev2_notes_borg_repo: /run/media/serranomorante/Data/backups/notes
 dev3_config_files_borg_repo: /run/media/serranomorante/TOSHIBA EXT/backups/config-files
 dev3_pkm_borg_repo: /run/media/serranomorante/TOSHIBA EXT/backups/PKM
 dev3_notes_borg_repo: /run/media/serranomorante/TOSHIBA EXT/backups/notes
+
+# borg init repos
+borg_init_repos:
+  - { borg_repo: "{{ dev1_config_files_borg_repo }}", encrypted_passphrase_file: staunch4647.gpg }
+  - { borg_repo: "{{ dev1_pkm_borg_repo }}", encrypted_passphrase_file: feed4999.gpg }
+  - { borg_repo: "{{ dev1_notes_borg_repo }}", encrypted_passphrase_file: clench9629.gpg }
+  - { borg_repo: "{{ dev2_config_files_borg_repo }}", encrypted_passphrase_file: staunch4647.gpg }
+  - { borg_repo: "{{ dev2_pkm_borg_repo }}", encrypted_passphrase_file: feed4999.gpg }
+  - { borg_repo: "{{ dev2_notes_borg_repo }}", encrypted_passphrase_file: clench9629.gpg }
+  - { borg_repo: "{{ dev3_config_files_borg_repo }}", encrypted_passphrase_file: staunch4647.gpg }
+  - { borg_repo: "{{ dev3_pkm_borg_repo }}", encrypted_passphrase_file: feed4999.gpg }
+  - { borg_repo: "{{ dev3_notes_borg_repo }}", encrypted_passphrase_file: clench9629.gpg }
