@@ -9,4 +9,4 @@ esac done
 
 file="${file##/*/}"
 
-/usr/bin/wezterm start --class picker -- tmux -L nnn new-session sh -c "nnn -JRHda -Pp -p - '$file' | awk '{ print system(\"[ -d '\''\"\$0\"'\'' ]\") ? \$0 : \$0\"/$file\" }' > /proc/$$/fd/1"
+/usr/bin/kitty --class picker tmux -L nnn new-session sh -c "nnn -JRHdaA -Pp -p - '$file' | awk '{ print system(\"[ -d '\''\"\$0\"'\'' ]\") ? \$0 : \$0\"/$file\" }' > /proc/$$/fd/1"

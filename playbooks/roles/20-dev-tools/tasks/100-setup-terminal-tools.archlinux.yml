@@ -8,7 +8,7 @@
       - zoxide
       - libevent
       - bison
-      - wezterm
+      - kitty
       - make
     state: present
 
@@ -57,20 +57,20 @@
     block: |
       {% if 'tmux.conf' in item.script %}
       set-option -g default-shell {{ shell_executable.stdout }}
-      set-option -g default-terminal "xterm-256color" # wezterm uses this term by default
-      set-option -ag terminal-overrides ",xterm-256color:RGB"
+      set-option -g default-terminal "xterm-kitty"
+      set-option -ag terminal-overrides ",xterm-kitty:RGB"
       {% endif %}
     mode: "644"
   loop:
     - { script: ~/dotfiles/tmux/dot-config/tmux/tmux.conf }
 
-# - name: "[archlinux] Setup terminal tools: fix kdeglobals"
-#   ansible.builtin.blockinfile:
-#     dest: ~/.config/kdeglobals
-#     insertafter: '^\[General\]'
-#     block: |
-#       TerminalApplication=kitty
-#       TerminalService=kitty.desktop
+- name: "[archlinux] Setup terminal tools: fix kdeglobals"
+  ansible.builtin.blockinfile:
+    dest: ~/.config/kdeglobals
+    insertafter: '^\[General\]'
+    block: |
+      TerminalApplication=kitty
+      TerminalService=kitty.desktop
 
 - name: "[archlinux] Setup terminal tools: autostart base tmux sessions with systemd"
   ansible.builtin.systemd_service:

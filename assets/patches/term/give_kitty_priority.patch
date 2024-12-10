@@ -1,0 +1,45 @@
+diff --git a/plugins/preview-tui b/plugins/preview-tui
+index 860a93a..5f6b5dd 100755
+--- a/plugins/preview-tui
++++ b/plugins/preview-tui
+@@ -146,10 +146,10 @@ pidkill() {
+ }
+ 
+ start_preview() {
+-    if [ -e "${TMUX%%,*}" ] && tmux -V | grep -q '[ -][3456789]\.'; then
+-        NNN_TERMINAL=tmux
+-        exists mpv && tmux display -p '#{client_termfeatures}' | grep -q 'sixel' && ENVVARS+=("NNN_PREVIEWVIDEO=sixel")
+-    elif [ -n "$KITTY_LISTEN_ON" ]; then
++    # if [ -e "${TMUX%%,*}" ] && tmux -V | grep -q '[ -][3456789]\.'; then
++    #     NNN_TERMINAL=tmux
++    #     exists mpv && tmux display -p '#{client_termfeatures}' | grep -q 'sixel' && ENVVARS+=("NNN_PREVIEWVIDEO=sixel")
++    if [ -n "$KITTY_LISTEN_ON" ]; then
+         NNN_TERMINAL=kitty
+         exists mpv && ENVVARS+=("NNN_PREVIEWVIDEO=kitty")
+     elif [ -n "$WEZTERM_PANE" ]; then
+@@ -179,10 +179,10 @@ start_preview() {
+     esac
+ 
+     case "$NNN_TERMINAL" in
+-        tmux) # tmux splits are inverted
+-            ENVVARS=("${ENVVARS[@]/#/-e}")
+-            if [ "$NNN_SPLIT" = "v" ]; then split="h"; else split="v"; fi
+-            tmux split-window -l"$NNN_SPLITSIZE"% "${ENVVARS[@]}" -d"$split" -p"$NNN_SPLITSIZE" "$0" "$1" ;;
++        # tmux) # tmux splits are inverted
++        #     ENVVARS=("${ENVVARS[@]/#/-e}")
++        #     if [ "$NNN_SPLIT" = "v" ]; then split="h"; else split="v"; fi
++        #     tmux split-window -l"$NNN_SPLITSIZE"% "${ENVVARS[@]}" -d"$split" -p"$NNN_SPLITSIZE" "$0" "$1" ;;
+         kitty) # Setting the layout for the new window. It will be restored after the script ends.
+             ENVVARS=("${ENVVARS[@]/#/--env=}")
+             kitty @ goto-layout splits
+@@ -446,8 +446,8 @@ image_preview() {
+     exec >/dev/tty
+     if [ "$NNN_TERMINAL" = "kitty" ] && [[ "$NNN_PREVIEWIMGPROG" == +(|icat) ]]; then
+         kitty +kitten icat --silent --scale-up --place "$1"x"$2"@0x0 --transfer-mode=stream --stdin=no "$3" &
+-    elif [ "$NNN_TERMINAL" = "tmux" ] && [[ -n "$KITTY_LISTEN_ON" ]] && [[ "$NNN_PREVIEWIMGPROG" == +(|icat) ]]; then
+-        kitty +kitten icat --silent --scale-up --place "$(($1 - 1))x$(($2 - 1))"@0x0 --transfer-mode=memory --stdin=no "$3" &
++    # elif [ "$NNN_TERMINAL" = "tmux" ] && [[ -n "$KITTY_LISTEN_ON" ]] && [[ "$NNN_PREVIEWIMGPROG" == +(|icat) ]]; then
++    #     kitty +kitten icat --silent --scale-up --place "$(($1 - 1))x$(($2 - 1))"@0x0 --transfer-mode=memory --stdin=no "$3" &
+     elif [ "$NNN_TERMINAL" = "wezterm" ] && [[ "$NNN_PREVIEWIMGPROG" == +(|imgcat) ]]; then
+         wezterm imgcat "$3" &
+     elif exists ueberzug && [[ "$NNN_PREVIEWIMGPROG" == +(|ueberzug) ]]; then
