@@ -2,7 +2,7 @@ local utils = require("serranomorante.utils")
 
 vim.g.mapleader = " "
 
-vim.o.guicursor = "n:block-Cursor/lCursor,a:blinkwait700-blinkoff400-blinkon250-Cursor/lCursor,o:hor25-Cursor/lCursor"
+vim.go.guicursor = "n:block-Cursor/lCursor,a:blinkwait700-blinkoff400-blinkon250-Cursor/lCursor,o:hor25-Cursor/lCursor"
 
 ---@type string
 ---@diagnostic disable-next-line: assign-type-mismatch
@@ -12,8 +12,8 @@ local shadadir = utils.join_paths(cache_path, "shadadir")
 if not utils.is_directory(undodir) then vim.fn.mkdir(undodir, "p") end
 if not utils.is_directory(shadadir) then vim.fn.mkdir(shadadir, "p") end
 
-vim.o.viewoptions = vim.o.viewoptions:gsub(",curdir", "")
-vim.o.diffopt = vim.o.diffopt .. ",linematch:60"
+vim.go.viewoptions = vim.o.viewoptions:gsub(",curdir", "")
+vim.go.diffopt = vim.o.diffopt .. ",linematch:60"
 
 vim.wo.number = true
 vim.bo.expandtab = true
