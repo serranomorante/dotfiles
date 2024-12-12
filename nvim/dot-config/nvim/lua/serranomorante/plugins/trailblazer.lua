@@ -7,8 +7,7 @@ local group = vim.api.nvim_create_augroup("trailblazer-custom-config", { clear =
 ---Check if trailblazer quickfix window is open
 ---@param any_qf boolean? Check if any qf window is open (not only trailblazer)
 local function is_trailblazer_qf_open(any_qf)
-  if require("trailblazer.trails").list.get_trailblazer_quickfix_buf(any_qf) then return true end
-  return false
+  return require("trailblazer.trails").list.get_trailblazer_quickfix_buf(any_qf)
 end
 
 local function init()
@@ -28,8 +27,10 @@ local function init()
     group = group,
     pattern = "qf",
     callback = function()
-      local list = require("trailblazer.trails.list")
-      if is_trailblazer_qf_open() then list.register_quickfix_keybindings(list.config.quickfix_mappings) end
+      if is_trailblazer_qf_open() then
+        local list = require("trailblazer.trails.list")
+        list.register_quickfix_keybindings(list.config.quickfix_mappings)
+      end
     end,
   })
 end
@@ -40,13 +41,6 @@ local function keys()
     "<A-l>",
     function() require("trailblazer").new_trail_mark() end,
     { desc = "Trailblazer: toggle trail mark" }
-  )
-
-  vim.keymap.set(
-    { "n", "v" },
-    "<A-b>",
-    function() require("trailblazer").track_back() end,
-    { desc = "Trailblazer: Move to the last global trail mark and remove it from the trail mark stack" }
   )
 
   vim.keymap.set({ "n", "v" }, "<A-j>", function()
@@ -124,7 +118,7 @@ local function keys()
     vim.ui.select(modes, { prompt = current_mode .. " " }, function(choice)
       if choice then require("trailblazer").set_trail_mark_select_mode(choice, false) end
     end)
-  end)
+  end, { desc = "Trailblazer: Select mode" })
 
   vim.keymap.set("n", '<A-">', function()
     local stacks = require("trailblazer.trails").stacks.get_sorted_stack_names()
