@@ -3,4 +3,6 @@
   aur:
     use: yay
     state: present
-    name: foliate
+    name:
+      - foliate
+      - libreoffice-still
