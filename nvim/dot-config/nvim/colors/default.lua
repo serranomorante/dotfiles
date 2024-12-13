@@ -45,6 +45,10 @@ local groups = {
   DiagnosticUnderlineHint = { sp = fg .. "Blue", undercurl = true },
   DiagnosticUnderlineOk = { sp = fg .. "Green", undercurl = true },
   MsgArea = { bg = "Black" },
+  ["@markup.heading.2.markdown"] = { fg = fg .. "Green", bg = bg .. "Green", bold = true },
+  ["@markup.heading.3.markdown"] = { fg = fg .. "Blue", bg = bg .. "Blue", bold = true },
+  ["@markup.heading.4.markdown"] = { fg = fg .. "Yellow", bg = bg .. "Yellow", bold = true },
+  ["@markup.heading.5.markdown"] = { fg = fg .. "Cyan", bg = bg .. "Cyan", bold = true },
 }
 
 vim.g.terminal_color_0 = vim.g.terminal_color_0 or (bg .. "Grey1")
