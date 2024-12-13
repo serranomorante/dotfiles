@@ -43,7 +43,6 @@
 - name: "[debian] Dotfiles: apply stow"
   ansible.builtin.command: >
     ~/.local/bin/stow --dotfiles
-    fish
     nvim
     tmux
   args:

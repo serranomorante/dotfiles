@@ -8,16 +8,14 @@
   ansible.builtin.command: >
     stow --dotfiles
     dunst
-    fish
     gnupg
     lazygit
     nvim
     peripherals
-    pipewire
+    audio
     playbooks
     systemd
     tmux
-    wireplumber
     home
     utilities
     term
