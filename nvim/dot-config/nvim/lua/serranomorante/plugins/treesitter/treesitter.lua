@@ -90,6 +90,22 @@ end
 
 M.config = function()
   require("nvim-treesitter.configs").setup(opts())
+
+  ---@class CustomParserInfo: ParserInfo
+  ---@field org ParserInfo
+  ---@type CustomParserInfo
+  local parser_config = require("nvim-treesitter.parsers").get_parser_configs()
+
+  parser_config.org = {
+    install_info = {
+      url = "https://github.com/milisims/tree-sitter-org",
+      revision = "main",
+      files = { "src/parser.c", "src/scanner.c" },
+    },
+    filetype = "org",
+    maintainers = { "@milisims" },
+  }
+
   vim.treesitter.language.register("git_config", "systemd")
   vim.treesitter.language.register("git_config", "conf")
   vim.treesitter.language.register("ssh_config", "sshdconfig")
