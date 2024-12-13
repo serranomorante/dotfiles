@@ -33,7 +33,7 @@ return {
       },
       components = {
         { "on_output_parse", problem_matcher = "$tsc-watch" },
-        { "on_result_diagnostics_quickfix", open = true, close = true },
+        "on_result_diagnostics_quickfix",
         "default",
       },
     }
