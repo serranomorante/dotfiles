@@ -7,7 +7,7 @@ Main technologies:
 - [fish](https://fishshell.com/docs/current/tutorial.html). Shell
 - [tmux](https://github.com/tmux/tmux). Terminal multiplexer
 - [dwm](https://dwm.suckless.org/). Window manager
-- [m2i](https://gitlab.com/enetheru/midi2input). Use midi to control your system
+- ~~[m2i](https://gitlab.com/enetheru/midi2input). Use midi to control your system~~
 - [gromit-mpx](https://github.com/bk138/gromit-mpx). Draw on top of your screen
 - [keyd](https://github.com/rvaiya/keyd). A key remapping daemon for linux
 - [pipewire](https://github.com/rvaiya/keyd). Multimedia processing graphs
@@ -17,7 +17,7 @@ Main technologies:
 
 Necesary dependencies for my workflow
 
-- [IosevkaTerm Nerd Font](https://github.com/ryanoasis/nerd-fonts/tree/master/patched-fonts/IosevkaTerm)
+- [Pragmasevka Nerd Font](https://github.com/shytikov/pragmasevka)
 - [feh](https://wiki.archlinux.org/title/feh). Set your system wallpaper programatically
 - [jq](https://man.archlinux.org/man/jq.1.en). Command-line JSON processor
 - [xgetres](https://aur.archlinux.org/packages/xgetres). Get entries from .Xresources
@@ -26,7 +26,7 @@ Necesary dependencies for my workflow
 
 ## Plans
 
-- **Add m2i's config files**. Still in progress
+- ~~**Add m2i's config files**. Still in progress~~ Changed my mind, I only want to use the keyboard to control my system.
 - **Add wireplumber's config files**. :white_check_mark: ~Still in progress~
 - **Add pipewire's config files**. :white_check_mark: ~Still in progress~
 
