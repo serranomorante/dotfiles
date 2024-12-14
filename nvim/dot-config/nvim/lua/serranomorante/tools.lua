@@ -20,7 +20,7 @@ M.by_filetype = {
     extensions = { "coc-json" },
   },
   yaml = { parsers = { "yaml" }, extensions = { "coc-yaml", "@yaegassy/coc-ansible" } },
-  c = { lsp = { "clangd" }, parsers = { "cpp" } },
+  c = { lsp = { "clangd" }, parsers = { "cpp" }, extensions = { "coc-clangd" } },
   python = {
     lsp = { "python-lsp-server" },
     dap = { "debugpy" },
@@ -60,7 +60,7 @@ M.by_filetype = {
       "sxhkdrc",
       "dockerfile",
       "mermaid",
-      "udev"
+      "udev",
     },
     extensions = { "coc-webview" },
   },

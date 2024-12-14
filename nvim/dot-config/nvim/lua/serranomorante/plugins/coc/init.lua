@@ -22,6 +22,7 @@ local init = function()
     tools.by_filetype.markdown,
     tools.by_filetype.json,
     tools.by_filetype.yaml,
+    tools.by_filetype.c,
     tools.by_filetype.all
   )
   vim.b.coc_force_attach = 1
