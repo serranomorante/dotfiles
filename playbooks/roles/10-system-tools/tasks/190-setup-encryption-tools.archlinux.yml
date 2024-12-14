@@ -17,9 +17,6 @@
     block: |
       {% if 'dot-bashrc' in item.script %}
       export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
-      {% elif 'setup_bashrc.fish' in item.script %}
-      set -gx SSH_AUTH_SOCK "$XDG_RUNTIME_DIR/ssh-agent.socket"
       {% endif %}
   loop:
     - { script: ~/dotfiles/home/dot-bashrc }
-    - { script: ~/dotfiles/fish/dot-config/fish/conf.d/setup_bashrc.fish }

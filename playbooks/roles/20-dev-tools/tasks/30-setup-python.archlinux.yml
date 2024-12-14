@@ -26,15 +26,9 @@
       export PYENV_ROOT="$HOME/.pyenv"
       export PATH="{{ pyenv_executable.stdout }}:$PATH"
       eval "$(pyenv init -)"
-      {% elif 'setup_bashrc.fish' in item.script %}
-      set -gx PYENV_ROOT "$HOME/.pyenv"
-      set -gx PATH "{{ pyenv_executable.stdout }}:$PATH"
-      {% elif 'fish.config' in item.script %}
-      command -q pyenv; and pyenv init - | source
       {% endif %}
   loop:
     - { script: ~/dotfiles/home/dot-bashrc }
-    - { script: ~/dotfiles/fish/dot-config/fish/conf.d/setup_bashrc.fish }
 
 - name: "[archlinux] Setup python: ensure python versions"
   ansible.builtin.shell: pyenv install --skip-existing {{ item }}

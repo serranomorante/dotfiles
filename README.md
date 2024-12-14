@@ -4,7 +4,6 @@ Main technologies:
 
 - [kitty](https://github.com/kovidgoyal/kitty). Terminal emulator
 - [neovim](https://neovim.io/). Text editor
-- [fish](https://fishshell.com/docs/current/tutorial.html). Shell
 - [tmux](https://github.com/tmux/tmux). Terminal multiplexer
 - [dwm](https://dwm.suckless.org/). Window manager
 - ~~[m2i](https://gitlab.com/enetheru/midi2input). Use midi to control your system~~

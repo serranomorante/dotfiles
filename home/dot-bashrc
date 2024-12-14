@@ -2,12 +2,6 @@
 # ~/.bashrc
 #
 
-# All this file will be source by bass fish plugin in config.fish
-# ---------------------------------------------------------------
-
-# The line below is commented because it wasn't working with
-# bass fish plugin.
-
 # If not running interactively, don't do anything
 # [[ $- != *i* ]] && return
 
