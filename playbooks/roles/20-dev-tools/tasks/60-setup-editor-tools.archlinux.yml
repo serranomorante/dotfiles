@@ -1,21 +1,20 @@
 ---
-- name: "[archlinux] Dotfiles: ensure nvim pack folder"
-  ansible.builtin.file:
-    state: directory
-    recurse: true
-    path: ~/.config/nvim/pack/
-
 - name: "[archlinux] Editor tools: ensure nvim plugins"
   ansible.builtin.git:
     repo: https://github.com/{{ item.repo }}
     dest: ~/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}
     single_branch: true
-    depth: 10
+    depth: 1
     version: "{{ item.version | default('HEAD') }}"
-    force: true
   async: 1000
   poll: 0
   loop: "{{ neovim_plugins }}"
+
+- name: "[archlinux] Editor tools: install coc.nvim"
+  ansible.builtin.command: npm ci
+  args:
+    chdir: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim
+    creates: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim/build/index.js
 
 - name: "[archlinux] Editor tools: ensure aur packages"
   aur:
@@ -31,3 +30,38 @@
     state: present
     name: clion
     aur_only: true
+
+- name: "[archlinux] Editor tools: create treesitter tempdir"
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: treesitter_tempdir
+  register: treesitter_tempdir
+
+- name: "[archlinux] Editor tools: download treesitter CLI"
+  ansible.builtin.get_url:
+    url: https://github.com/tree-sitter/tree-sitter/releases/download/v0.24.4/tree-sitter-linux-x64.gz
+    dest: "{{ treesitter_tempdir.path }}/"
+    force: true
+    mode: "755"
+
+- name: "[archlinux] Editor tools: uncompress treesitter (.gz no supported)"
+  ansible.builtin.command: gunzip -d {{ treesitter_tempdir.path }}/tree-sitter-linux-x64.gz
+  args:
+    creates: "{{ treesitter_tempdir.path }}/tree-sitter-linux-x64"
+
+- name: "[archlinux] Editor tools: install treesitter CLI"
+  ansible.builtin.copy:
+    src: "{{ treesitter_tempdir.path }}/tree-sitter-linux-x64"
+    dest: ~/bin/tree-sitter
+    mode: "755"
+
+- name: "[archlinux] Editor tools: clone treesitter parsers"
+  ansible.builtin.git:
+    repo: "{{ item.repo }}"
+    dest: ~/repos/{{ item.name | default(item.repo) | basename }}
+    version: "{{ item.version | default('HEAD') }}"
+    depth: 1
+    force: true
+    single_branch: true
+  loop:
+    - { repo: https://github.com/tree-sitter/tree-sitter-typescript, version: "dcbbd9406a63fd1e0a42c90ab9451c6127ebd4b3" }
