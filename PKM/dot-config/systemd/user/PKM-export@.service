@@ -1,3 +1,5 @@
+# [Service] Called by a timer (or by systemctl --user restart) to execute an export script
+# For example, browser history export or hypothesis exports.
 [Unit]
 Description=PKM %i export service
 

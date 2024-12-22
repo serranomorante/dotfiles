@@ -8,5 +8,5 @@
     masked: false
   loop:
     - every-2-hours-export@hpi-hypexport
-    - every-hour-export@hpi-browserexport
+    - every-8-hours-export@hpi-browserexport
     - promnesia-index

@@ -1,3 +1,4 @@
+# [Timer] Export browser history, hypothesis data, etc every hour
 [Unit]
 Description=PKM %i export timer
 

@@ -1,3 +1,4 @@
+# [Timer] Perform a promnesia index on a timer basis
 [Unit]
 Description=Promnesia index timer
 

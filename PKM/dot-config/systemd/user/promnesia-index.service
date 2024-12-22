@@ -1,6 +1,6 @@
+# [Service] Called by a timer (or by systemctl --user restart) to perform a promnesia index
 [Unit]
 Description=Promnesia index
-Wants=promnesia-index.service
 
 [Service]
 Type=oneshot

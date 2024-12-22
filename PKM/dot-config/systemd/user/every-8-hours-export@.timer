@@ -1,11 +1,11 @@
-# [Timer] Export browser history, hypothesis data, etc every 2 hours
+# [Timer] Export browser history, hypothesis data, etc every 8 hours
 [Unit]
 Description=PKM %i export timer
 
 [Timer]
 Persistent=true
-OnBootSec=10min
-OnUnitActiveSec=2h
+OnBootSec=1h
+OnUnitActiveSec=8h
 Unit=PKM-export@%i.service
 
 [Install]
