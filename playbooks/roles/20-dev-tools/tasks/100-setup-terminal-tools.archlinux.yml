@@ -17,7 +17,7 @@
     dest: ~/repos/tmux
     force: true
     depth: 1
-    version: master
+    version: "{{ tmux_version }}"
 
 - name: "[archlinux] Setup terminal tools: run tmux autogen"
   ansible.builtin.command: sh autogen.sh
