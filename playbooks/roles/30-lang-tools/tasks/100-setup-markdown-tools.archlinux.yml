@@ -10,7 +10,10 @@
   aur:
     use: yay
     state: present
-    name: mathjax
+    name:
+      - mathjax
+      - texlive # necessary to make pdflatex work
+    aur_only: true
 
 - name: "[archlinux] Markdown language: ensure npm packages"
   ansible.builtin.command: npm install --global {{ item.package }}
@@ -26,6 +29,7 @@
       - pip
       - mdformat
       - mdformat-gfm
+      - mdformat_footnote
     virtualenv: ~/apps/note-taking-tools/utilities/.venv
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
