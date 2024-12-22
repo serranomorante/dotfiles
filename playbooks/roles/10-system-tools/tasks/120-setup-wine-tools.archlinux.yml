@@ -16,12 +16,6 @@
       - wine-staging
       - wine-mono
 
-- name: "[archlinux] Wine tools: ensure wine graphic driver"
-  become: true
-  ansible.builtin.package:
-    state: present
-    name: lib32-nvidia-utils
-
 - name: "[archlinux] Wine tools: ensure wine audio drivers"
   become: true
   ansible.builtin.package:

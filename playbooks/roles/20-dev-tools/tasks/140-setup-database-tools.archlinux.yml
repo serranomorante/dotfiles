@@ -3,6 +3,11 @@
   aur:
     use: yay
     state: present
-    name:
-      - datagrip-jre
-      - datagrip
+    name: datagrip-jre
+
+- name: "[archlinux] Editor tools: ensure aur packages (v2)"
+  aur:
+    use: yay
+    state: present
+    name: datagrip
+    aur_only: true
