@@ -81,31 +81,6 @@ vim.api.nvim_create_autocmd("FileType", {
   callback = function(args) vim.api.nvim_set_option_value("syntax", "ON", { buf = args.buf }) end,
 })
 
-vim.api.nvim_create_autocmd("CmdwinEnter", {
-  desc = "Set mappings and options local to command-line window",
-  group = general_settings_group,
-  callback = function(args)
-    vim.api.nvim_set_option_value("syntax", "vim", { buf = args.buf })
-    if vim.b[args.buf].saved_complete == nil then
-      vim.api.nvim_buf_set_var(
-        args.buf,
-        "saved_complete",
-        vim.api.nvim_get_option_value("complete", { buf = args.buf })
-      )
-    end
-    vim.api.nvim_set_option_value("complete", ".,t", { buf = args.buf })
-  end,
-})
-
-vim.api.nvim_create_autocmd("CmdwinLeave", {
-  desc = "Set mappings and options local to command-line window",
-  group = general_settings_group,
-  callback = function(args)
-    if vim.b[args.buf].saved_complete == nil then return end
-    vim.api.nvim_set_option_value("complete", vim.b[args.buf].saved_complete, { buf = args.buf })
-  end,
-})
-
 vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter" }, {
   desc = "Perform buffer reload after file changes outside vim",
   group = general_settings_group,
