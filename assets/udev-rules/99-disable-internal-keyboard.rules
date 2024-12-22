@@ -1,0 +1,3 @@
+KERNEL=="event*", ATTRS{name}=="{{ ansible_internal_keyboard_name_1 }}", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+KERNEL=="event*", ATTRS{name}=="{{ ansible_internal_keyboard_name_2 }}", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+KERNEL=="event*", ATTRS{name}=="{{ ansible_internal_keyboard_name_3 }}", ENV{LIBINPUT_IGNORE_DEVICE}="1"

@@ -44,11 +44,18 @@
 
 - name: "[archlinux] Keyboard peripheral: copy sudo files"
   become: true
-  ansible.builtin.copy:
+  ansible.builtin.template:
     src: "{{ item.source }}"
     dest: "{{ item.dest }}"
     owner: root
     mode: "644"
   loop:
-    - { source: ~/.config/keyd/default.conf, dest: /etc/keyd/default.conf }
     - { source: ~/dotfiles/assets/udev-rules/99-kbdrate.rules, dest: /etc/udev/rules.d/99-kbdrate.rules }
+    - { source: ~/dotfiles/assets/udev-rules/99-disable-internal-keyboard.rules, dest: /etc/udev/rules.d/99-disable-internal-keyboard.rules }
+
+- name: "[archlinux] Keyboard peripheral: setup keyd default.conf"
+  become: true
+  ansible.builtin.template:
+    src: ~/dotfiles/assets/other/keyd-default.conf
+    dest: /etc/keyd/default.conf
+    mode: "644"
