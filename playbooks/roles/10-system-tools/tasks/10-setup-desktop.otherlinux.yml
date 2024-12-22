@@ -50,6 +50,7 @@
     content: |
       #!/data/data/com.termux/files/usr/bin/sh
       termux-wake-lock
+      gpgconf --launch gpg-agent
       sv-enable sshd
     mode: "700"
 
