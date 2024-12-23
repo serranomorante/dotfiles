@@ -1,10 +1,4 @@
 ---
-- name: "[archlinux] Other tools: ensure packages"
-  become: true
-  ansible.builtin.package:
-    state: present
-    name: evince
-
 - name: "[archlinux] Other tools: ensure aur packages"
   aur:
     use: yay

@@ -3,9 +3,7 @@
   become: true
   ansible.builtin.package:
     state: present
-    name:
-      - borg
-      - vorta
+    name: borg
 
 # https://borgbackup.readthedocs.io/en/stable/quickstart.html#pitfalls-with-shell-variables-and-environment-variables
 - name: "[archlinux] Setup backup tools: ensure borg env variables in sudoers file"

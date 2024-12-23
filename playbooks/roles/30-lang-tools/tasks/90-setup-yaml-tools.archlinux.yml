@@ -3,9 +3,7 @@
   become: true
   ansible.builtin.package:
     state: present
-    name:
-      - yaml-language-server
-      - yamllint
+    name: yamllint
 
 - name: "[archlinux] Yaml language: ensure virtualenv packages"
   ansible.builtin.pip:

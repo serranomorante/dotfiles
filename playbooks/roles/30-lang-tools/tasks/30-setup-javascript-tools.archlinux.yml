@@ -1,16 +1,4 @@
 ---
-- name: "[archlinux] Javascript language: ensure LSP"
-  become: true
-  ansible.builtin.package:
-    state: present
-    name: tailwindcss-language-server
-
-- name: "[archlinux] Javascript language: ensure LSP (using aur)"
-  aur:
-    use: yay
-    state: present
-    name: vtsls
-
 - name: "[archlinux] Javascript language: ensure LINTERS"
   become: true
   ansible.builtin.package:
