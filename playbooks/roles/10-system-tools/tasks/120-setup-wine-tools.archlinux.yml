@@ -1,4 +1,5 @@
 ---
+# https://wiki.archlinux.org/title/Official_repositories#Enabling_multilib
 - name: "[archlinux] Wine tools: enable multilib repository"
   become: true
   ansible.builtin.blockinfile:
@@ -16,8 +17,31 @@
       - wine-staging
       - wine-mono
 
-- name: "[archlinux] Wine tools: ensure wine audio drivers"
+# https://wiki.archlinux.org/title/Steam#Installation
+- name: "[archlinux] Wine tools: ensure wine 32bit drivers"
   become: true
   ansible.builtin.package:
     state: present
-    name: lib32-pipewire
+    name:
+      - lib32-pipewire
+      - lib32-nvidia-utils
+
+- name: "[archlinux] Wine tools: ensure aur packages"
+  aur:
+    use: yay
+    state: present
+    name: steam
+    aur_only: true
+
+- name: "[archlinux] Wine tools: ensure sysctl conf"
+  become: true
+  ansible.builtin.copy:
+    src: ~/dotfiles/assets/other/sysctl-80-gamecompatibility.conf
+    dest: /etc/sysctl.d/80-gamecompatibility.conf
+    owner: root
+    mode: "644"
+
+- name: "[archlinux] Wine tools: apply sysctl changes without rebooting"
+  become: true
+  ansible.builtin.command: sysctl --system
+  changed_when: false
