@@ -6,9 +6,7 @@
     loop_var: executable
   loop:
     - lua-language-server
-    - vtsls
     - pylsp
-    - tailwindcss-language-server
     - clangd
     - fish-lsp
     - vscode-html-language-server

@@ -66,17 +66,6 @@
   tags: ["20-60"]
 
 - block:
-    - name: Ensure editor code-generation
-      ansible.builtin.include_tasks: "{{ task_file }}"
-      with_first_found:
-        - files: 70-setup-editor-code-generation.{{ user_os }}.yml
-          skip: true
-      when: "user_os in ['archlinux', 'debian']"
-      loop_control:
-        loop_var: task_file
-  tags: ["20-70"]
-
-- block:
     - name: Ensure plantuml compiled jar is in location
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
