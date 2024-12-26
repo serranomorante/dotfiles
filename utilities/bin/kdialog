@@ -9,4 +9,4 @@ esac done
 
 file="${file##/*/}"
 
-/usr/bin/kitty --class picker sh -c "nnn -JRHdaA -p - '$file' | awk '{ print system(\"[ -d '\''\"\$0\"'\'' ]\") ? \$0 : \$0\"/$file\" }' > /proc/$$/fd/1"
+kitty --class picker sh -c "nnn -JRHda -p - '$file' | awk '{ print system(\"[ -d '\''\"\$0\"'\'' ]\") ? \$0 : \$0\"/$file\" }' > /proc/$$/fd/1"

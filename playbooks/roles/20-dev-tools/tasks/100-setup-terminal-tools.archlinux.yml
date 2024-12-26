@@ -7,9 +7,24 @@
       - zoxide
       - libevent
       - bison
-      - kitty
       - make
     state: present
+
+- name: "[archlinux] Setup terminal tools: install kitty nightly"
+  ansible.builtin.shell: >
+    set -o pipefail &&
+    curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin \
+      installer=nightly launch=n
+  changed_when: false
+
+- name: "[archlinux] Setup terminal tools: symlink kitty nightly"
+  ansible.builtin.file:
+    src: ~/.local/kitty.app/bin/{{ item }}
+    dest: ~/bin/{{ item }}
+    state: link
+  loop:
+    - kitty
+    - kitten
 
 - name: "[archlinux] Setup terminal tools: clone tmux"
   ansible.builtin.git:
