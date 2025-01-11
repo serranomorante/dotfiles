@@ -31,6 +31,9 @@ local opts = function()
       lsp = false,
       load_buffers = false, -- fixes issues with attaching coc keymaps
     },
+    follow = {
+      enabled = true,
+    },
     on_qf = function(bufnr)
       vim.keymap.set("n", ">", function()
         local ok, _ = pcall(vim.cmd.cnewer)
