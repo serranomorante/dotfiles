@@ -1,3 +1,9 @@
 #!/usr/bin/env bash
 
-VIMRUNTIME=$HOME/repos/neovim/runtime $HOME/repos/neovim/build/bin/nvim "$@"
+# Make it work with sudo
+ORIGINAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+if [ -z "$ORIGINAL_HOME" ]; then
+  ORIGINAL_HOME=$HOME
+fi
+
+VIMRUNTIME="$ORIGINAL_HOME/repos/neovim/runtime" "$ORIGINAL_HOME/repos/neovim/build/bin/nvim" "$@"

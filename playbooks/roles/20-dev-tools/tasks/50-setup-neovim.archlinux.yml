@@ -31,3 +31,10 @@
   args:
     chdir: ~/repos/neovim
     creates: ~/repos/neovim/build/bin/nvim
+
+- name: "[archlinux] Neovim: ensure neovim - link to sudo"
+  become: true
+  ansible.builtin.file:
+    state: link
+    src: "{{ ansible_env.HOME }}/bin/nvim"
+    dest: /usr/bin/nvim

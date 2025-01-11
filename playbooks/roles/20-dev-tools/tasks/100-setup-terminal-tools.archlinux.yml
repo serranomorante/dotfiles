@@ -8,6 +8,7 @@
       - libevent
       - bison
       - make
+      - kitty-terminfo
     state: present
 
 - name: "[archlinux] Setup terminal tools: install kitty nightly"
