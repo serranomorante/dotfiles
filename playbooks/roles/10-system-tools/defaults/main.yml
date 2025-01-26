@@ -45,6 +45,9 @@ notes_backup_env:
   - ~/.local/share/Cryptomator/mnt/foam
 reader_annotations_backup_env:
   - /storage/emulated/0/note
+root_backup_env:
+  - /etc/hosts
+  - /etc/ansible/hosts
 
 # borg repos
 dev1_config_files_borg_repo: ssh://borg/~/backups/config-files
@@ -52,12 +55,15 @@ dev1_pkm_borg_repo: ssh://borg/~/backups/PKM
 dev1_notes_borg_repo: ssh://borg/~/backups/notes
 dev1_seedvault_borg_repo: ssh://borg/~/backups/seedvault-main
 dev1_reader_annotations_borg_repo: ssh://borg/~/backups/reader-annotations
+dev1_root_borg_repo: ssh://borg/~/backups/root-backup
 dev2_config_files_borg_repo: /run/media/serranomorante/Data/backups/config-files
 dev2_pkm_borg_repo: /run/media/serranomorante/Data/backups/PKM
 dev2_notes_borg_repo: /run/media/serranomorante/Data/backups/notes
+dev2_root_borg_repo: /run/media/serranomorante/Data/backups/root-backup
 dev3_config_files_borg_repo: /run/media/serranomorante/TOSHIBA EXT/backups/config-files
 dev3_pkm_borg_repo: /run/media/serranomorante/TOSHIBA EXT/backups/PKM
 dev3_notes_borg_repo: /run/media/serranomorante/TOSHIBA EXT/backups/notes
+dev3_root_borg_repo: /run/media/serranomorante/TOSHIBA EXT/backups/root-backup
 
 # borg init repos
 borg_init_repos:
@@ -70,3 +76,8 @@ borg_init_repos:
   - { borg_repo: "{{ dev3_config_files_borg_repo }}", encrypted_passphrase_file: staunch4647.gpg }
   - { borg_repo: "{{ dev3_pkm_borg_repo }}", encrypted_passphrase_file: feed4999.gpg }
   - { borg_repo: "{{ dev3_notes_borg_repo }}", encrypted_passphrase_file: clench9629.gpg }
+
+borg_init_root_repos:
+  - { borg_repo: "{{ dev1_root_borg_repo }}", encrypted_passphrase_file: eloquence1688.gpg }
+  - { borg_repo: "{{ dev2_root_borg_repo }}", encrypted_passphrase_file: eloquence1688.gpg }
+  - { borg_repo: "{{ dev3_root_borg_repo }}", encrypted_passphrase_file: eloquence1688.gpg }

@@ -8,7 +8,7 @@ export BORG_RELOCATED_REPO_ACCESS_IS_OK=yes
 export BORG_REPO='{{ borg_repo }}'
 
 # See the section "Passphrase notes" for more infos.
-export BORG_PASSCOMMAND='gpg --decrypt {{ ansible_env.HOME }}/secrets/{{ borg_pass }}'
+export BORG_PASSCOMMAND='gpg --homedir {{ ansible_env.HOME }}/.gnupg --decrypt {{ ansible_env.HOME }}/secrets/{{ borg_pass }}'
 
 # some helpers and error handling:
 info() { printf "\n%s %s\n\n" "$( date )" "$*" >&2; }
