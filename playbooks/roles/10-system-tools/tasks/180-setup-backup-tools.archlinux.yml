@@ -65,3 +65,30 @@
     - { service: every-hour-backup@dev3-config-files }
     - { service: every-8-hours-backup@dev3-PKM }
     - { service: every-4-hours-backup@dev3-notes }
+
+- name: "[archlinux] Setup database tools: ensure keyfiles backup folder"
+  ansible.builtin.file:
+    path: ~/secrets/backup-borg-keyfiles
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Setup backup tools: backup keyfile"
+  ansible.builtin.command: >
+    borg key export "{{ item.borg_repo }}"
+    '~/secrets/backup-borg-keyfiles/{{ item.borg_repo | regex_replace("[^A-Za-z0-9]", "_") }}'
+  environment:
+    BORG_PASSCOMMAND: gpg --decrypt {{ ansible_env.HOME }}/secrets/{{ item.encrypted_passphrase_file }}
+  changed_when: false
+  loop: "{{ borg_init_repos }}"
+
+- name: "[archlinux] Setup backup tools: register timestamp"
+  ansible.builtin.command: "date +%Y-%m-%d%H-%M-%S"
+  changed_when: false
+  register: tstamp
+
+- name: "[archlinux] Setup backup tools: archive the keyfiles"
+  ansible.builtin.shell: tar -czvf ../keyfiles-{{ user_os }}-{{ tstamp.stdout }}.tar.gz * --remove-files
+  ignore_errors: true
+  changed_when: false
+  args:
+    chdir: "~/secrets/backup-borg-keyfiles"
