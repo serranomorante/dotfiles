@@ -12,8 +12,9 @@ local mappings = {
         io.close(read)
         local options = {
           ---https://github.com/ibhagwan/fzf-lua/wiki/Options#grep-providers-options
-          search = " -- " .. vim.fn.fnamemodify(dir or "", ":~"),
+          search = " -- ",
           no_esc = true, -- Do not escape regex characters
+          cwd = vim.fn.fnamemodify(dir or "", ":~"),
         }
         require("fzf-lua").live_grep(options)
       end
