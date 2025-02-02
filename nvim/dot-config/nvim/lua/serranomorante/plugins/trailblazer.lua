@@ -97,15 +97,16 @@ local function keys()
   vim.keymap.set("n", "<A-'>", function()
     local hi = require("fzf-lua.utils").ansi_from_hl
     local stacks = require("trailblazer.trails").stacks.trail_mark_stack_list
-    local sorted_stacks = require("trailblazer.trails").stacks.get_sorted_stack_names()
+    local stacks_names = vim.tbl_keys(stacks)
     local current_stack = require("trailblazer.trails").stacks.current_trail_mark_stack_name
-    vim.ui.select(sorted_stacks, {
+    table.sort(stacks_names, function(a) return a == current_stack end)
+    vim.ui.select(stacks_names, {
       prompt = "Choose a stack ",
       format_item = function(item)
         local fitem = item
         local count = vim.tbl_count(stacks[item] and stacks[item].stack or {})
         if item == current_stack then fitem = hi("TrailblazerSelectedStack", " " .. fitem) end -- add icon to current stack
-        fitem = string.sub(" ", #tostring(vim.fn.index(sorted_stacks, item) + 1), 1) .. fitem -- left align
+        fitem = string.sub(" ", #tostring(vim.fn.index(stacks_names, item) + 1), 1) .. fitem -- left align
         return count > 0 and fitem .. hi("Comment", string.format(" (%d)", count)) or fitem -- add trails count if more than zero
       end,
     }, require("trailblazer").switch_trail_mark_stack)
