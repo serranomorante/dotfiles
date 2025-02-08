@@ -34,8 +34,8 @@ shopt -s cmdhist
 shopt -s lithist
 
 # Clear a terminal screen for real
-# https://stackoverflow.com/a/5367075
-alias cls='printf "\033c"'
+# https://askubuntu.com/a/684887
+alias cls='clear && echo -en "\e[3J"'
 
 # path env variables
 # This fixes poetry not being found

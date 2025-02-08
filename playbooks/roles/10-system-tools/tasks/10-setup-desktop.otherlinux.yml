@@ -16,6 +16,7 @@
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP DESKTOP"
     block: |
       {% if 'bashrc' in item.script %}
+      alias cls='clear && echo -en "\e[3J"'
       export GPG_TTY=$(tty)
       export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
       {% endif %}
