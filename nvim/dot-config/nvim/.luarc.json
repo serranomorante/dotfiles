@@ -24,6 +24,7 @@
     "$HOME/.local/share/nvim/site/pack/plugins/start/conform/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/start/heirline/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/start/nvim-treesitter/lua",
-    "$HOME/.local/share/nvim/site/pack/plugins/opt/gp"
+    "$HOME/.local/share/nvim/site/pack/plugins/opt/gp",
+    "$HOME/.local/share/nvim/site/pack/plugins/opt/ufo/lua"
   ]
 }

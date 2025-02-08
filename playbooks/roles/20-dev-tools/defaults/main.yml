@@ -30,5 +30,6 @@ neovim_plugins:
   - { folder: start, repo: wellle/tmux-complete.vim }
   - { folder: start, repo: stevearc/aerial.nvim }
   - { folder: start, repo: luukvbaal/nnn.nvim }
+  - { folder: opt, repo: kevinhwang91/nvim-ufo, name: ufo }
   - { folder: opt, repo: jbyuki/one-small-step-for-vimkind, name: osv }
   - { folder: opt, repo: Robitx/gp.nvim, name: gp }

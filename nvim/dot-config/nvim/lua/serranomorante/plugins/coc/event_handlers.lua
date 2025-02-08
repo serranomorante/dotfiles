@@ -39,6 +39,8 @@ end
 function M.attach(buf)
   local fzf_lua = require("fzf-lua")
   local opts_with_desc = keymapper.opts_for(buf)
+  vim.cmd.packadd("ufo")
+  require("serranomorante.plugins.nvim-ufo").config()
 
   vim.keymap.set("n", "grr", "<Plug>(coc-references)", opts_with_desc("Show references"))
 
