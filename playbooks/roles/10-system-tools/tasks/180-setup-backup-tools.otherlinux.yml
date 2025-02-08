@@ -1,9 +1,6 @@
 ---
 - name: "[otherlinux] Setup backup tools: ensure packages"
-  ansible.builtin.command: >
-    pkg install -y
-    gnupg
-    borgbackup
+  ansible.builtin.command: pkg install -y borgbackup
   changed_when: false
 
 - block:

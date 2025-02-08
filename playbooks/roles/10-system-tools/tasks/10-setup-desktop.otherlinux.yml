@@ -26,8 +26,9 @@
     pkg install -y
     git
     which
+    gnupg
     cronie
-    openssh
+    pinentry
     termux-services
   changed_when: false
 
