@@ -81,3 +81,16 @@ borg_init_root_repos:
   - { borg_repo: "{{ dev1_root_borg_repo }}", encrypted_passphrase_file: eloquence1688.gpg }
   - { borg_repo: "{{ dev2_root_borg_repo }}", encrypted_passphrase_file: eloquence1688.gpg }
   - { borg_repo: "{{ dev3_root_borg_repo }}", encrypted_passphrase_file: eloquence1688.gpg }
+
+borg__ignore_these_errors:
+  # From archlinux devices
+  - '"stderr" in result'
+  - '"Connection refused" not in result.stderr'
+  - '"A repository already exists" not in result.stderr'
+  - '"gpg: encrypted with" not in result.stderr'
+  - '"The parent path of the repo directory" not in result.stderr' # fixes HDD drives not being available
+  - '"does not exist" not in result.stderr'
+  # From otherlinux devices
+  - '"No such file or directory" not in result.stderr'
+  - '"store it at safe place" not in result.stderr'
+  - '"The parent path of the repo directory" not in result.stderr' # fixes HDD drives not being available
