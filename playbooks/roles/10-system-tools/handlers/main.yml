@@ -1,0 +1,13 @@
+---
+# https://www.reddit.com/r/termux/comments/11blc9u/comment/j9z97pp
+- name: Restart gpg agent
+  ansible.builtin.command: |
+    gpgconf --kill gpg-agent
+    gpg-agent --daemon --use-standard-socket
+  changed_when: false
+  listen: "restart gpg services"
+
+- name: Restart gpg tty
+  ansible.builtin.command: gpg-connect-agent updatestartuptty /bye >/dev/null
+  changed_when: false
+  listen: "restart gpg services"
