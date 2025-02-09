@@ -65,3 +65,17 @@
     single_branch: true
   loop:
     - { repo: https://github.com/tree-sitter/tree-sitter-typescript, version: "dcbbd9406a63fd1e0a42c90ab9451c6127ebd4b3" }
+
+# Create this entry kdewallet/neovim/intelephense using kwalletmanager
+- name: "[archlinux] Editor tools: setup intelephense key if available"
+  ansible.builtin.shell: |
+    mkdir -p ~/intelephense
+    {{ kwallet_query_cmd }} && echo "$({{ kwallet_query_cmd }})" > ~/intelephense/licence.txt
+  vars:
+    folder_entry: intelephense
+    wallet_name: kdewallet
+    folder_name: neovim
+    kwallet_query_cmd: kwallet-query -r {{ folder_entry }} {{ wallet_name }} -f {{ folder_name }}
+  args:
+    creates: ~/intelephense/licence.txt
+  ignore_errors: true

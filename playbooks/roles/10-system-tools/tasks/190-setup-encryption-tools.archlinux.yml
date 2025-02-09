@@ -1,4 +1,12 @@
 ---
+- name: "[archlinux] Setup encryption tools: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - kwallet
+      - kwalletmanager
+
 - name: "[archlinux] Setup encryption tools: enable services"
   ansible.builtin.systemd_service:
     scope: user
