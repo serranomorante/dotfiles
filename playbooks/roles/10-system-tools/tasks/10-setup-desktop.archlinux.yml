@@ -21,7 +21,7 @@
 - name: "[archlinux] Setup desktop: setup gnugp"
   ansible.builtin.blockinfile:
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP GNUGP"
-    insertbefore: "BOF"
+    insertafter: "EOF"
     dest: ~/dotfiles/gnupg/dot-gnupg/gpg-agent.conf
     mode: "700"
     block: |
