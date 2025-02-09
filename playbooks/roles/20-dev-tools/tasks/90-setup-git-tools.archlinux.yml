@@ -3,4 +3,6 @@
   become: true
   ansible.builtin.package:
     state: present
-    name: git-delta
+    name:
+      - difftastic
+      - git-delta

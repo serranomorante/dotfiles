@@ -16,7 +16,7 @@ git:
   paging:
     colorArg: always
     # uncomment if you want to use difftastic
-    # externalDiffCommand: difft --color=always
+    externalDiffCommand: difft --color=always
     useConfig: true
 # based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
 os:
