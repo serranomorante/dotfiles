@@ -26,3 +26,5 @@
     mode: "700"
     block: |
       pinentry-program {{ pinentry_tty_path.stdout }}
+      default-cache-ttl 34560000
+      max-cache-ttl 34560000

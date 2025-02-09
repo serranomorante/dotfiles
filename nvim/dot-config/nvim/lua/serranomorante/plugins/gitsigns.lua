@@ -31,7 +31,7 @@ local keys = function(bufnr)
   vim.keymap.set("n", "<leader>gu", function() gs.undo_stage_hunk() end, opts_for("Unstage hunk"))
   vim.keymap.set("n", "<leader>gS", function() gs.stage_buffer() end, opts_for("Stage buffer"))
   vim.keymap.set("n", "<leader>gH", function() gs.reset_buffer() end, opts_for("Reset buffer"))
-  vim.keymap.set({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>", opts_for("Select hunk"))
+  vim.keymap.set({ "o", "x" }, "ih", "<cmd>Gitsigns select_hunk<CR>", opts_for("Select hunk"))
   vim.keymap.set("n", "<leader>td", gs.toggle_deleted, opts_for("Toggle deleted"))
 end
 

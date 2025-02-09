@@ -21,6 +21,7 @@
     use: yay
     state: present
     name:
+      - watchman-bin
       - ctags-git
       - clion-jre
 
