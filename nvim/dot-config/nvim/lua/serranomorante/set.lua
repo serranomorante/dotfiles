@@ -28,7 +28,7 @@ vim.go.backup = false
 vim.go.shada = "'100,<0,%0,:10,/10,s500,h"
 vim.go.shadafile = utils.join_paths(shadadir, "nvim.shada")
 vim.go.undodir = undodir
-vim.bo.undofile = true
+vim.o.undofile = true
 vim.go.jumpoptions = "stack,view"
 
 vim.go.scrolloff = 4
