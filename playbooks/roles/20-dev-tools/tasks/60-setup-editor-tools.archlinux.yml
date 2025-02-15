@@ -5,7 +5,7 @@
     dest: ~/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}
     single_branch: true
     force: true
-    depth: 1
+    depth: 100
     version: "{{ item.version | default('HEAD') }}"
   async: 1000
   poll: 0

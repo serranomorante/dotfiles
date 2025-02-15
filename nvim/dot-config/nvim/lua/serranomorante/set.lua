@@ -25,7 +25,7 @@ vim.go.showmode = false
 vim.o.swapfile = false
 vim.go.backup = false
 
-vim.go.shada = "'100,<0,%0,:10,/10,s500,h"
+vim.go.shada = "'100,<0,%0,:1000,/1000,s500,h"
 vim.go.shadafile = utils.join_paths(shadadir, "nvim.shada")
 vim.go.undodir = undodir
 vim.o.undofile = true
