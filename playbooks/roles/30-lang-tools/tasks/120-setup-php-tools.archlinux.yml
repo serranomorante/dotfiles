@@ -1,6 +1,57 @@
 ---
-- name: "[archlinux] PHP language: ensure LSP (using aur)"
+- name: "[archlinux] PHP language: ensure packages"
   aur:
     use: yay
     state: present
-    name: phpactor
+    name:
+      - php
+      - php-pgsql
+      - php-xsl
+      - php-gd
+      - php-sodium
+      - php-redis
+      - composer
+      - xdebug
+
+- name: "[archlinux] PHP language: ensure packages (using aur)"
+  aur:
+    use: yay
+    state: present
+    name:
+      - phpactor
+      - vscode-php-debug
+      - symfony-cli
+
+- name: "[archlinux] PHP language: enable extensions"
+  become: true
+  ansible.builtin.replace:
+    path: /etc/php/php.ini
+    regexp: '^;extension={{ item }}$'
+    replace: 'extension={{ item }}'
+  loop:
+    - gd
+    - iconv
+    - intl
+    - pdo_pgsql
+    - pgsql
+    - sodium
+    - xsl
+    - red
+
+- name: "[archlinux] PHP language: enable redis extension"
+  become: true
+  ansible.builtin.replace:
+    path: /etc/php/conf.d/redis.ini
+    regexp: '^;extension=redis$'
+    replace: 'extension=redis'
+
+- name: "[archlinux] PHP language: add xdebug options"
+  become: true
+  ansible.builtin.blockinfile:
+    dest: /etc/php/conf.d/xdebug.ini
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP XDEBUG"
+    insertafter: "EOF"
+    block: |
+      zend_extension=xdebug.so
+      xdebug.mode = debug
+      xdebug.start_with_request = yes

@@ -47,7 +47,7 @@ M.by_filetype = {
   html = { parsers = { "html" } },
   xml = { parsers = { "xml" } },
   css = { parsers = { "css", "scss" }, extensions = { "coc-css" } },
-  php = { parsers = { "php" } },
+  php = { parsers = { "php" }, extensions = { "coc-phpls" } },
   all = {
     parsers = {
       "regex",
