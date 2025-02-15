@@ -30,6 +30,11 @@ os:
 promptToReturnFromSubprocess: false
 notARepository: 'quit'
 customCommands:
+  # From local branches, compare selected branch against checked out branch
+  - key: "D"
+    description: "Custom: Compare selected branch against checked out branch"
+    context: "localBranches"
+    command: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart -c "DiffviewFileHistory --range=HEAD...{{ .SelectedLocalBranch.Name }} --right-only --no-merges" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
   # From commits, search the whole history for an expression in a file (case-sensitive)
   - key : '<c-a>'
     description: 'Custom: Search the whole history (from a ref and down) for an expression in a file'
