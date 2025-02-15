@@ -37,6 +37,10 @@ M.attach = function(client, bufnr)
     client = client,
   }
 
+  if client_buf_supports_method(ms.textDocument_hover) then
+    vim.keymap.set("n", "K", function() vim.lsp.buf.hover({ border = "single" }) end, opts_with_desc("Hover"))
+  end
+
   if client_buf_supports_method(ms.textDocument_references) then
     vim.keymap.set(
       "n",
