@@ -89,3 +89,7 @@
   loop:
     - { cwd: ~/.local/share/nvim/site/pack/plugins/opt/gp, patch_filename: gp_nvim.patch }
   changed_when: false
+
+- name: "[archlinux] Editor tools: generate helptags"
+  ansible.builtin.command: nvim --headless -c "helptags ALL" -c "quit"
+  changed_when: false
