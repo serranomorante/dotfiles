@@ -75,8 +75,12 @@ vim.go.shortmess = "atToOF"
 vim.go.showbreak = "⮎ "
 vim.go.virtualedit = "all"
 vim.go.messagesopt = "hit-enter,history:10000"
+vim.go.wildmode = "lastused,full"
+vim.go.wildcharm = ("\t"):byte()
 
 vim.cmd.syntax("off")
 vim.cmd.colorscheme("default")
 
 vim.filetype.get_option = utils.hijack_commentstring_get_option()
+
+vim.go.grepprg = "rg --vimgrep"

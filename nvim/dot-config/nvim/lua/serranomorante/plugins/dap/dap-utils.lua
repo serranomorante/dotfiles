@@ -2,6 +2,15 @@ local utils = require("serranomorante.utils")
 
 local M = {}
 
+---@param callback fun(buf: number, breakpoint: dap.SourceBreakpoint)
+function M.breakpoints_iter(callback)
+  for buf, buf_breakpoints in pairs(require("dap.breakpoints").get()) do
+    for _, breakpoint in pairs(buf_breakpoints) do
+      callback(buf, breakpoint)
+    end
+  end
+end
+
 ---Choose a path to debug relative to project files (like package.json)
 ---Specially useful for monorepo setups
 ---@param files string[]

@@ -249,12 +249,17 @@ M.Indent = {
 }
 
 M.QuickfixTitle = {
+  condition = function() return vim.w[0].quickfix_title ~= nil end,
   provider = function() return string.format("%%q: %s", vim.api.nvim_win_get_var(0, "quickfix_title")) end,
 }
 
 local CocProgress = {
   condition = function() return coc_utils.is_coc_attached() end,
-  provider = "%{coc#status()}%{get(b:,'coc_current_function','')}",
+  provider = function()
+    local ok, status = pcall(vim.api.nvim_eval, "coc#status()")
+    if not ok then return "" end
+    return status .. "%{get(b:,'coc_current_function','')}"
+  end,
   update = {
     "User",
     pattern = "CocStatusChange",

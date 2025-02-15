@@ -37,7 +37,6 @@ end
 ---Called when coc.nvim successfully attaches to a document (buffer)
 ---@param buf integer
 function M.attach(buf)
-  local fzf_lua = require("fzf-lua")
   local opts_with_desc = keymapper.opts_for(buf)
   vim.cmd.packadd("ufo")
   require("serranomorante.plugins.nvim-ufo").config()
@@ -85,13 +84,6 @@ function M.attach(buf)
     if coc_utils.is_coc_attached(buf) then return vim.api.nvim_eval("coc#refresh()") end
     return "<C-x><C-o>"
   end, vim.tbl_extend("force", opts_with_desc("Completion"), { expr = true }))
-
-  vim.keymap.set(
-    "n",
-    "<leader>ld",
-    function() fzf_lua.diagnostics_document() end,
-    opts_with_desc("Show document diagnostics")
-  )
 
   vim.keymap.set("n", "gl", vim.diagnostic.open_float, opts_with_desc("Show line diagnostics")) -- ALE is required for this to work with coc
 

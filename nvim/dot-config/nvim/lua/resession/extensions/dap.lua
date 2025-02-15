@@ -2,20 +2,18 @@
 local M = {}
 
 M.on_save = function()
+  local dap_utils = require("serranomorante.plugins.dap.dap-utils")
   local breakpoints = {}
-
-  for buf, buf_breakpoints in pairs(require("dap.breakpoints").get()) do
-    for _, breakpoint in pairs(buf_breakpoints) do
-      local fname = vim.api.nvim_buf_get_name(buf)
-      table.insert(breakpoints, {
-        filename = fname,
-        line = breakpoint.line,
-        condition = breakpoint.condition,
-        logMessage = breakpoint.logMessage,
-        hitCondition = breakpoint.hitCondition,
-      })
-    end
-  end
+  dap_utils.breakpoints_iter(function(buf, breakpoint)
+    local fname = vim.api.nvim_buf_get_name(buf)
+    table.insert(breakpoints, {
+      filename = fname,
+      line = breakpoint.line,
+      condition = breakpoint.condition,
+      logMessage = breakpoint.logMessage,
+      hitCondition = breakpoint.hitCondition,
+    })
+  end)
 
   return {
     breakpoints = breakpoints,

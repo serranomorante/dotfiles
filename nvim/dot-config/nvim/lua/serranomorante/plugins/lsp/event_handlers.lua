@@ -22,7 +22,6 @@ end
 ---@param client vim.lsp.Client
 ---@param bufnr integer
 M.attach = function(client, bufnr)
-  local fzf_lua = require("fzf-lua")
   local augroup = augroups.get_augroup(client)
   local opts_with_desc = keymapper.opts_for(bufnr)
   ---@type vim.lsp.LocationOpts
@@ -74,24 +73,6 @@ M.attach = function(client, bufnr)
       "gy",
       function() vim.lsp.buf.type_definition(lsp_default_opts) end,
       opts_with_desc("Show type definitions")
-    )
-  end
-
-  if client_buf_supports_method(ms.textDocument_diagnostic) then
-    vim.keymap.set(
-      "n",
-      "<leader>ld",
-      function() fzf_lua.diagnostics_document() end,
-      opts_with_desc("Show document diagnostics")
-    )
-  end
-
-  if client_buf_supports_method(ms.workspace_diagnostic) then
-    vim.keymap.set(
-      "n",
-      "<leader>lD",
-      function() fzf_lua.diagnostics_workspace() end,
-      opts_with_desc("Show workspace diagnostics")
     )
   end
 

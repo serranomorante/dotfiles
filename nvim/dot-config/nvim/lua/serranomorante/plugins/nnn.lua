@@ -1,3 +1,6 @@
+local constants = require("serranomorante.constants")
+local utils = require("serranomorante.utils")
+
 local M = {}
 
 ---https://github.com/luukvbaal/nnn.nvim?tab=readme-ov-file#mappings
@@ -10,13 +13,9 @@ local mappings = {
 
       if read ~= nil then
         io.close(read)
-        local options = {
-          ---https://github.com/ibhagwan/fzf-lua/wiki/Options#grep-providers-options
-          search = " -- ",
-          no_esc = true, -- Do not escape regex characters
-          search_paths = { vim.fn.fnamemodify(dir or "", ":~") },
-        }
-        require("fzf-lua").live_grep(options)
+        utils.feedkeys(
+          (":Grep '' %s" .. constants.POSITION_CURSOR_BETWEEN_QUOTES):format(vim.fn.fnamemodify(dir or "", ":~"))
+        )
       end
     end,
   },
@@ -28,9 +27,9 @@ local mappings = {
 
       if read ~= nil then
         io.close(read)
-        require("fzf-lua").files({
-          cwd = vim.fn.fnamemodify(dir or "", ":.:~"),
-        })
+        utils.feedkeys(
+          (":Find '' %s" .. constants.POSITION_CURSOR_BETWEEN_QUOTES):format(vim.fn.fnamemodify(dir or "", ":.:~"))
+        )
       end
     end,
   },

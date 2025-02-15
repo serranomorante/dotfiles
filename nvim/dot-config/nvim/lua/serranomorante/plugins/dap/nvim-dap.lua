@@ -84,6 +84,25 @@ local keys = function()
     end,
     { desc = 'DAP: Toggle "sessions" in floating window' }
   )
+  vim.keymap.set("n", "<leader>df", function()
+    local breakpoints = {}
+    dap_utils.breakpoints_iter(function(buf, breakpoint)
+      local cond, log, hit = breakpoint.condition, breakpoint.logMessage, breakpoint.hitCondition
+      local text
+      if cond then text = "condition=" .. cond end
+      if log then text = "log=" .. log end
+      if hit then text = "hit=" .. hit end
+      table.insert(breakpoints, {
+        bufnr = buf,
+        lnum = breakpoint.line,
+        text = text,
+      })
+    end)
+    if vim.tbl_count(breakpoints) > 0 then
+      vim.fn.setqflist({}, "r", { title = "Find results", items = breakpoints or {} })
+      require("serranomorante.plugins.quicker").toggle_qf()
+    end
+  end, { desc = "DAP: List breakpoints" })
 end
 
 local init = function()

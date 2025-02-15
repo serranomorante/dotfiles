@@ -1,3 +1,4 @@
+local constants = require("serranomorante.constants")
 local utils = require("serranomorante.utils")
 local events = require("serranomorante.events")
 
@@ -78,3 +79,13 @@ vim.keymap.set({ "n", "x", "o" }, "'", "`", { desc = "Make single quote act like
 
 vim.keymap.set("n", "<A-j>", utils.next_qf_item, { desc = "Next quickfix list item" })
 vim.keymap.set("n", "<A-k>", utils.prev_qf_item, { desc = "Prev quickfix list item" })
+
+vim.keymap.set("n", "<leader>ff", ":Find ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES, { desc = "Find files" })
+vim.keymap.set("n", "<leader>fw", ":Grep ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES, { desc = "Grep text" })
+vim.keymap.set("n", "<leader>fb", ":b <Tab><Tab>", { desc = "Open recent buffers in wildmenu" }) -- will go directly to the second most recent buffer
+vim.keymap.set("n", "<leader>fc", ":Grep '\\b<C-r><C-w>\\b'", { desc = "Grep word under cursor" })
+vim.keymap.set({ "x", "v" }, "<leader>fv", function()
+  local start_pos, end_pos, mode = vim.fn.getpos("v"), vim.fn.getpos("."), vim.fn.mode()
+  local region = vim.fn.getregion(start_pos, end_pos, { type = mode })
+  return (":<C-u>Grep '%s'"):format(region[1])
+end, { desc = "Find visual selection", expr = true })
