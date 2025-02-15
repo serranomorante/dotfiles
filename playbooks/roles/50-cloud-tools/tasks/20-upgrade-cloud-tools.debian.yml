@@ -1,21 +1,24 @@
 ---
 - name: "[debian] Upgrade cloud tools: stop tools"
-  ansible.builtin.shell: app-{{ cloud_tool }} stop
+  ansible.builtin.command: app-{{ cloud_tool }} stop
   loop: "{{ cloud_tools }}"
   loop_control:
     loop_var: cloud_tool
+  changed_when: false
   tags: [never, slow]
 
 - name: "[debian] Upgrade cloud tools: upgrade tools"
-  ansible.builtin.shell: app-{{ cloud_tool }} upgrade
+  ansible.builtin.command: app-{{ cloud_tool }} upgrade
   loop: "{{ cloud_tools }}"
   loop_control:
     loop_var: cloud_tool
+  changed_when: false
   tags: [never, slow]
 
 - name: "[debian] Upgrade cloud tools: start tools"
-  ansible.builtin.shell: app-{{ cloud_tool }} start
+  ansible.builtin.command: app-{{ cloud_tool }} start
   loop: "{{ cloud_tools }}"
   loop_control:
     loop_var: cloud_tool
+  changed_when: false
   tags: [never, slow]

@@ -12,6 +12,7 @@
     single_branch: true
     depth: 1
     force: true
+    version: master
   when: fish_lsp_available is failed
 
 - name: "[archlinux] Fish language: register yarn_1_22_22_exists var"
@@ -21,14 +22,16 @@
   changed_when: false
 
 - name: "[archlinux] Fish language: ensure LSP - prepare fish-lsp dependencies"
-  ansible.builtin.shell: volta install yarn@1.22.22 # needed by the fish-lsp package
+  ansible.builtin.command: volta install yarn@1.22.22 # needed by the fish-lsp package
   when: yarn_1_22_22_exists is failed and fish_lsp_available is failed
+  changed_when: false
 
 - name: "[archlinux] Fish language: ensure LSP - install fish-lsp"
-  ansible.builtin.shell: yarn install
+  ansible.builtin.command: yarn install
   args:
     chdir: ~/repos/fish-lsp
   when: fish_lsp_available is failed
+  changed_when: false
 
 - name: "[archlinux] Fish language: ensure LSP - symlink fish-lsp"
   ansible.builtin.file:

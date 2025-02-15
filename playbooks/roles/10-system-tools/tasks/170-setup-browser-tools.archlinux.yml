@@ -24,7 +24,7 @@
     url: https://github.com/lemnos/chrome-session-dump/releases/download/v0.0.2/chrome-session-dump-linux
     dest: ~/apps/browser-tools/chrome/chrome-session-dump-linux
     force: true
-    mode: "0755"
+    mode: "755"
 
 - name: "[archlinux] Setup browser tools: symlink chrome-session-dump"
   ansible.builtin.file:
@@ -69,6 +69,7 @@
   loop:
     - extension_new_tab_redirect.patch
   when: '"main.html" not in newtab_redirect_modified_files.stdout'
+  changed_when: false
 
 - name: "[archlinux] Setup browser tools: check if react-devtools already patched"
   ansible.builtin.shell: |
@@ -86,6 +87,7 @@
   loop:
     - extension_react_devtools.patch
   when: '"utils.js" not in react_devtools_modified_files.stdout'
+  changed_when: false
 
 - name: "[archlinux] Setup browser tools: check if vimium already patched"
   ansible.builtin.shell: |
@@ -103,6 +105,7 @@
   loop:
     - extension_vimium_config.patch
   when: '"settings.js" not in vimium_modified_files.stdout'
+  changed_when: false
 
 - name: "[archlinux] Setup browser tools: prepare react-devtools"
   ansible.builtin.shell: |

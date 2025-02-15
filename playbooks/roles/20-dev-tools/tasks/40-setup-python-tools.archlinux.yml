@@ -7,7 +7,7 @@
       - poetry
     virtualenv: ~/apps/python-tools/.venv
     virtualenv_command: /usr/bin/python3 -m venv
-    state: latest
+    state: present
 
 - name: "[archlinux] Python tools: symlink python tools"
   ansible.builtin.file:

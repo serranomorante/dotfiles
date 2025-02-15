@@ -4,5 +4,6 @@
     dest: ~/.config/nvim/lua/serranomorante/binaries.lua
     create: true
     marker: "-- {mark} ANSIBLE MANAGED BLOCK"
+    mode: "644"
     block: |
       return {}

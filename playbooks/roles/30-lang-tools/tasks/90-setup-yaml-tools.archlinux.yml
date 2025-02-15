@@ -12,7 +12,7 @@
       - ansible-lint
     virtualenv: ~/apps/lang-tools/yaml/.venv
     virtualenv_command: /usr/bin/python3 -m venv
-    state: latest
+    state: present
 
 - name: "[archlinux] Yaml language: symlink utilities"
   ansible.builtin.file:

@@ -9,5 +9,6 @@
   ansible.builtin.blockinfile:
     dest: ~/dotfiles/home/dot-fzfrc
     create: true
+    mode: "644"
     block: |
       --history={{ ansible_env.HOME }}/.fzf_history

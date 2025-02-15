@@ -59,3 +59,4 @@
     src: ~/dotfiles/assets/other/keyd-default.conf
     dest: /etc/keyd/default.conf
     mode: "644"
+  notify: "10-system-tools : Restart keyd"

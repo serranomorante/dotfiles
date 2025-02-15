@@ -52,9 +52,10 @@
     version: d92867ec229ecf080f96ff53978bdf3c1c5e45e2
 
 - name: "[archlinux] Graphic tablet peripheral: apply custom patch to lib.ts"
-  ansible.builtin.shell: git apply ~/dotfiles/assets/patches/weylus/lib.patch
+  ansible.builtin.command: git apply ~/dotfiles/assets/patches/weylus/lib.patch
   args:
     chdir: ~/repos/Weylus
+  changed_when: false
 
 - name: "[archlinux] Graphic tablet peripheral: compile weylus lib.ts"
   ansible.builtin.command: tsc
@@ -69,13 +70,14 @@
 
 - name: "[archlinux] Graphic tablet peripheral: open ufw to weylus ports"
   become: true
-  ansible.builtin.shell: ufw allow {{ port }}/tcp
+  ansible.builtin.command: ufw allow {{ port }}/tcp
   when: ufw_service_status.status.ActiveState == "active"
   loop:
     - 1701
     - 9001
   loop_control:
     loop_var: port
+  changed_when: false
 
 - name: "[archlinux] Graphic tablet peripheral: weylus - ensure uinput group"
   become: true

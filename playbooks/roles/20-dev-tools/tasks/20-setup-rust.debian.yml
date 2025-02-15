@@ -25,6 +25,7 @@
     dest: "{{ item.script }}"
     create: true
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP RUST"
+    mode: "744"
     block: |
       {% if 'bashrc' in item.script %}
       export PATH="$HOME/apps/lang-tools/rust/rust-{{ rust_version }}-x86_64-unknown-linux-gnu/rustc/bin:$PATH"

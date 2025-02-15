@@ -10,7 +10,7 @@
       - python-lsp-ruff # disables pycodestyle, pyflakes, mccabe, autopep8, yapf
     virtualenv: ~/apps/lang-tools/pylsp/.venv
     virtualenv_command: /usr/bin/python3 -m venv
-    state: latest
+    state: present
 
 - name: "[archlinux] Python language: ensure LSP - symlink pylsp"
   ansible.builtin.file:
@@ -26,7 +26,7 @@
       - debugpy
     virtualenv: ~/apps/lang-tools/debugpy/.venv
     virtualenv_command: /usr/bin/python3 -m venv
-    state: latest
+    state: present
 
 - name: "[archlinux] Python language: ensure DAP - symlink debugpy"
   ansible.builtin.file:

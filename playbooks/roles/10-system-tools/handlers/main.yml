@@ -11,3 +11,8 @@
   ansible.builtin.command: gpg-connect-agent updatestartuptty /bye >/dev/null
   changed_when: false
   listen: "restart gpg services"
+
+- name: Restart keyd
+  become: true
+  ansible.builtin.command: keyd reload
+  changed_when: false
