@@ -27,12 +27,15 @@ if ! tmux has-session -t=$selected_name 2> /dev/null; then
     tmux new-session -ds $selected_name -c $selected_path -x "$(tput cols)" -y "$(tput lines)"
     # set per-session env to define an nvim pipe
     tmux setenv -t $selected_name CUSTOM_NVIM_LISTEN_ADDRESS "/tmp/$selected_path_escaped"
-    # open lazygit on a new window using TERM=xterm-256color to fix truecolor issues
-    # see https://github.com/jesseduffield/lazygit/issues/3362#issuecomment-2172789530
-    tmux new-window -t "=$selected_name:1" -c $selected_path
-    tmux send-keys -t "=$selected_name:1" "TERM=xterm-256color lazygit" Enter
-    # go back to first window
-    tmux select-window -t "=$selected_name:{start}"
+    # Check if current or parent directory is a git repository
+    if [ -d "$selected_path/.git" ] || (cd "$selected_path" && git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
+      # open lazygit on a new window using TERM=xterm-256color to fix truecolor issues
+      # see https://github.com/jesseduffield/lazygit/issues/3362#issuecomment-2172789530
+      tmux new-window -t "=$selected_name:1" -c "$selected_path"
+      tmux send-keys -t "=$selected_name:1" "TERM=xterm-256color lazygit" Enter
+      # go back to first window
+      tmux select-window -t "=$selected_name:{start}"
+    fi
 fi
 
 tmux switch-client -t $selected_name
