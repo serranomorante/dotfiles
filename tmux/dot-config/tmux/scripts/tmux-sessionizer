@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# https://github.com/ThePrimeagen/.dotfiles/blob/master/bin/.local/scripts/tmux-sessionizer
-
 if [[ $# -eq 1 ]]; then
     selected_path=$1
 else
@@ -13,29 +11,33 @@ if [[ -z $selected_path ]]; then
 fi
 
 selected_name=$(basename "$selected_path" | tr . _)
+# Create a unique identifier from the full path
+unique_id=$(echo -n "$selected_path" | sha256sum | head -c 8)
+# Combine the directory name and unique identifier for the session name
+session_identifier="${selected_name}_${unique_id}"
+
 selected_path_escaped=$(echo $selected_path | sed -e 's/[]\/$*.^[]/_/g')
 tmux_running=$(pgrep tmux)
 
 if [[ -z $TMUX ]] && [[ -z $tmux_running ]]; then
     # create a new session when tmux is not running
-    tmux new-session -s $selected_name -c $selected_path
+    tmux new-session -s $session_identifier -c $selected_path
     exit 0
 fi
 
-if ! tmux has-session -t=$selected_name 2> /dev/null; then
+if ! tmux has-session -t=$session_identifier 2> /dev/null; then
     # create new session in detached mode
-    tmux new-session -ds $selected_name -c $selected_path -x "$(tput cols)" -y "$(tput lines)"
+    tmux new-session -ds $session_identifier -c $selected_path -x "$(tput cols)" -y "$(tput lines)"
     # set per-session env to define an nvim pipe
-    tmux setenv -t $selected_name CUSTOM_NVIM_LISTEN_ADDRESS "/tmp/$selected_path_escaped"
+    tmux setenv -t $session_identifier CUSTOM_NVIM_LISTEN_ADDRESS "/tmp/$selected_path_escaped"
     # Check if current or parent directory is a git repository
     if [ -d "$selected_path/.git" ] || (cd "$selected_path" && git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
       # open lazygit on a new window using TERM=xterm-256color to fix truecolor issues
-      # see https://github.com/jesseduffield/lazygit/issues/3362#issuecomment-2172789530
-      tmux new-window -t "=$selected_name:1" -c "$selected_path"
-      tmux send-keys -t "=$selected_name:1" "TERM=xterm-256color lazygit" Enter
+      tmux new-window -t "=$session_identifier:1" -c "$selected_path"
+      tmux send-keys -t "=$session_identifier:1" "TERM=xterm-256color lazygit" Enter
       # go back to first window
-      tmux select-window -t "=$selected_name:{start}"
+      tmux select-window -t "=$session_identifier:{start}"
     fi
 fi
 
-tmux switch-client -t $selected_name
+tmux switch-client -t $session_identifier
