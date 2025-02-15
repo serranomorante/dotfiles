@@ -8,6 +8,7 @@ vim.filetype.add({
     ["dot-bashrc"] = "sh",
     ["dot-gitconfig"] = "gitconfig",
     ["xhtml"] = "html",
+    ["dap.log"] = "sh",
   },
   pattern = {
     [".*/requirements.*%.txt"] = "requirements",

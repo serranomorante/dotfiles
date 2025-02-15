@@ -219,6 +219,14 @@ M.config = function()
     end
   end
 
+  if binaries.php_dap_executable() then
+    dap.adapters.php = {
+      type = "executable",
+      command = "node",
+      args = { binaries.php_dap_executable() },
+    }
+  end
+
   ---╔══════════════════════════════════════╗
   ---║           Configurations             ║
   ---╚══════════════════════════════════════╝
@@ -325,6 +333,16 @@ M.config = function()
       args = {},
       env = {},
       terminalKind = "integrated",
+    },
+  }
+
+  dap.configurations.php = {
+    {
+      type = "php",
+      request = "launch",
+      name = "Listen for Xdebug",
+      port = 9003,
+      log = true,
     },
   }
 
