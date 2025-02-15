@@ -75,12 +75,11 @@ function M.attach(buf)
     opts_with_desc("Signature help")
   )
 
-  vim.keymap.set(
-    "n",
-    "<leader>uH",
-    "<cmd>CocCommand document.toggleInlayHint<CR>",
-    opts_with_desc("Toggle inlay hints")
-  )
+  vim.keymap.set("n", "<leader>uH", function()
+    vim.g.coc_inlay_hints = not vim.g.coc_inlay_hints
+    vim.notify(string.format("Inlay hints %s", utils.bool2str(vim.g.coc_inlay_hints)), vim.log.levels.INFO)
+    return "<cmd>CocCommand document.toggleInlayHint<CR>"
+  end, vim.tbl_extend("force", opts_with_desc("Toggle inlay hints"), { expr = true }))
 
   vim.keymap.set("i", "<C-x><C-o>", function()
     if coc_utils.is_coc_attached(buf) then return vim.api.nvim_eval("coc#refresh()") end
