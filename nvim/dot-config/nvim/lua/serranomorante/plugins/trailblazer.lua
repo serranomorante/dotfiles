@@ -35,68 +35,64 @@ local function init()
 end
 
 local function keys()
-  vim.keymap.set(
-    { "n", "v" },
-    "<A-l>",
-    function() require("trailblazer").new_trail_mark() end,
-    { desc = "Trailblazer: toggle trail mark" }
-  )
+  local trailblazer = require("trailblazer")
+  local trails = require("trailblazer.trails")
+
+  vim.keymap.set({ "n", "v" }, "<A-l>", trailblazer.new_trail_mark, { desc = "Trailblazer: toggle trail mark" })
 
   vim.keymap.set({ "n", "v" }, "<A-j>", function()
-    local trails = require("trailblazer.trails")
     if is_trailblazer_qf_open(true) and not is_trailblazer_qf_open() then return utils.next_qf_item() end
     if #trails.stacks.current_trail_mark_stack == 0 then return vim.notify("Marks empty", vim.log.levels.WARN) end
-    require("trailblazer").switch_trail_mark_stack(trails.stacks.current_trail_mark_stack_name, false) -- fixes trails getting stuck
-    require("trailblazer").move_to_nearest(vim.api.nvim_get_current_buf(), "fpath_down", "lin_char_dist")
+    trailblazer.switch_trail_mark_stack(trails.stacks.current_trail_mark_stack_name, false) -- fixes trails getting stuck
+    trailblazer.move_to_nearest(vim.api.nvim_get_current_buf(), "fpath_down", "lin_char_dist")
   end, { desc = "Trailblazer: Move to the next global trail mark" })
 
   vim.keymap.set({ "n", "v" }, "<A-k>", function()
-    local trails = require("trailblazer.trails")
     if is_trailblazer_qf_open(true) and not is_trailblazer_qf_open() then return utils.prev_qf_item() end
     if #trails.stacks.current_trail_mark_stack == 0 then return vim.notify("Marks empty", vim.log.levels.WARN) end
-    require("trailblazer").switch_trail_mark_stack(trails.stacks.current_trail_mark_stack_name, false) -- fixes trails getting stuck
-    require("trailblazer").move_to_nearest(vim.api.nvim_get_current_buf(), "fpath_up", "lin_char_dist")
+    trailblazer.switch_trail_mark_stack(trails.stacks.current_trail_mark_stack_name, false) -- fixes trails getting stuck
+    trailblazer.move_to_nearest(vim.api.nvim_get_current_buf(), "fpath_up", "lin_char_dist")
   end, { desc = "Trailblazer: Move to the previous global trail mark" })
 
   vim.keymap.set({ "n", "v" }, "<A-m>", function()
-    require("trailblazer").toggle_trail_mark_list("quickfix")
+    trailblazer.toggle_trail_mark_list("quickfix")
     if is_trailblazer_qf_open() then vim.cmd.wincmd({ args = { "p" } }) end
   end, { desc = "Trailblazer: Toggle a global list of all trail marks" })
 
   vim.keymap.set(
     { "n", "v" },
     "<A-S>",
-    function() require("trailblazer").delete_all_trail_marks() end,
+    trailblazer.delete_all_trail_marks,
     { desc = "Trailblazer: Delete all trail marks globally" }
   )
 
   vim.keymap.set(
     { "n", "v" },
     "<A-.>",
-    function() require("trailblazer").switch_to_next_trail_mark_stack() end,
+    trailblazer.switch_to_next_trail_mark_stack,
     { desc = "Trailblazer: Switch to the next trail mark stack" }
   )
 
   vim.keymap.set(
     { "n", "v" },
     "<A-,>",
-    function() require("trailblazer").switch_to_previous_trail_mark_stack() end,
+    trailblazer.switch_to_previous_trail_mark_stack,
     { desc = "Trailblazer: Switch to the previous trail mark stack" }
   )
 
   vim.keymap.set("n", "<A-`>", function()
     vim.ui.input({ prompt = "Stack Name: " }, function(input)
       if not input then return end
-      require("trailblazer").switch_trail_mark_stack(input, false)
-      require("trailblazer").new_trail_mark()
+      trailblazer.switch_trail_mark_stack(input, false)
+      trailblazer.new_trail_mark()
       utils.cmd({ "notify-send", input, "--icon=bookmarks" })
     end)
   end, { desc = "Trailblazer: Add new trail mark stack" })
 
   vim.keymap.set("n", "<A-'>", function()
-    local stacks = require("trailblazer.trails").stacks.trail_mark_stack_list
+    local stacks = trails.stacks.trail_mark_stack_list
+    local current_stack = trails.stacks.current_trail_mark_stack_name
     local stacks_names = vim.tbl_keys(stacks)
-    local current_stack = require("trailblazer.trails").stacks.current_trail_mark_stack_name
     table.sort(stacks_names, function(a) return a == current_stack end)
 
     vim.ui.select(stacks_names, {
@@ -109,25 +105,25 @@ local function keys()
         return count > 0 and fitem .. string.format(" (%d)", count) or fitem -- add trails count if more than zero
       end,
     }, function(choice)
-      if choice then require("trailblazer").switch_trail_mark_stack(choice, false) end
+      if choice then trailblazer.switch_trail_mark_stack(choice, false) end
     end)
   end, { desc = "Trailblazer: Switch stack" })
 
   vim.keymap.set("n", "<A-s>", function()
-    local modes = require("trailblazer.trails").config.custom.available_trail_mark_modes
-    local current_mode = require("trailblazer.trails").config.custom.current_trail_mark_mode
+    local modes = trails.config.custom.available_trail_mark_modes
+    local current_mode = trails.config.custom.current_trail_mark_mode
     modes = vim.tbl_filter(function(mode) return mode ~= current_mode end, modes)
     vim.ui.select(modes, { prompt = current_mode .. " " }, function(choice)
-      if choice then require("trailblazer").set_trail_mark_select_mode(choice, false) end
+      if choice then trailblazer.set_trail_mark_select_mode(choice, false) end
     end)
   end, { desc = "Trailblazer: Select mode" })
 
   vim.keymap.set("n", '<A-">', function()
-    local stacks = require("trailblazer.trails").stacks.get_sorted_stack_names()
-    local current_stack = require("trailblazer.trails").stacks.current_trail_mark_stack_name
+    local stacks = trails.stacks.get_sorted_stack_names()
+    local current_stack = trails.stacks.current_trail_mark_stack_name
     stacks = vim.tbl_filter(function(stack) return stack ~= current_stack end, stacks)
     vim.ui.select(stacks, { prompt = "Delete stack " }, function(choice)
-      if choice then require("trailblazer").delete_trail_mark_stack(choice) end
+      if choice then trailblazer.delete_trail_mark_stack(choice) end
     end)
   end, { desc = "Trailblazer: Delete stack" })
 end
