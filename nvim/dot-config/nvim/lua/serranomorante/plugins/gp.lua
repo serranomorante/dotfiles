@@ -96,6 +96,26 @@ local function base_opts()
     chat_conceal_model_params = false,
     default_command_agent = AGENTS_ENUM.CodeGPT4o,
     default_chat_agent = AGENTS_ENUM.ChatGPT4o,
+    hooks = {
+      ---@param gp Gp
+      ---@param params table
+      CodeReview = function(gp, params)
+        local template = "I have the following code from {{filename}}:\n\n"
+          .. "```{{filetype}}\n{{selection}}\n```\n\n"
+          .. "Please analyze for code smells and suggest improvements."
+        local agent = gp.get_chat_agent()
+        gp.Prompt(params, gp.Target.enew("markdown"), agent, template)
+      end,
+      ---@param gp Gp
+      ---@param params table
+      Explain = function(gp, params)
+        local template = "I have the following code from {{filename}}:\n\n"
+          .. "```{{filetype}}\n{{selection}}\n```\n\n"
+          .. "Please respond by explaining the code above."
+        local agent = gp.get_chat_agent()
+        gp.Prompt(params, gp.Target.enew("markdown"), agent, template)
+      end,
+    },
   }
 end
 
