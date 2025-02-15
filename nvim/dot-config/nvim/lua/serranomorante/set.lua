@@ -43,9 +43,6 @@ vim.wo.foldlevel = 99
 vim.wo.foldenable = true
 vim.go.foldopen = vim.go.foldopen:gsub(",hor", "")
 vim.go.fillchars = "eob: ,fold: ,foldopen: ,foldsep: ,foldclose:+"
-vim.wo.foldmethod = "expr"
-vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
-vim.wo.foldtext = ""
 
 vim.go.splitright = true
 vim.go.splitbelow = true

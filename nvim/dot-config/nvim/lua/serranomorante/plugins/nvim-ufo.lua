@@ -13,15 +13,21 @@ local provider_by_filetype = {
 ---@param bufnr number
 ---@return Promise
 local function enhance_selector(bufnr)
+  local ufo = require("ufo")
+  ---@param err string
+  ---@param provider_name UfoProviderEnum
   local function handle_fallback_exception(err, provider_name)
     if type(err) == "string" and err:match("UfoFallbackException") then
-      return require("ufo").getFolds(bufnr, provider_name)
+      return ufo.getFolds(bufnr, provider_name)
     else
       return require("promise").reject(err)
     end
   end
 
-  return require("ufo").getFolds(bufnr, "lsp"):catch(function(err) return handle_fallback_exception(err, "indent") end)
+  return ufo
+    .getFolds(bufnr, "lsp")
+    :catch(function(err) return handle_fallback_exception(err, "treesitter") end)
+    :catch(function(err) return handle_fallback_exception(err, "indent") end)
 end
 
 local function keys()
