@@ -35,6 +35,7 @@ local opts = function()
     },
     file_history_panel = {
       win_config = {
+        height = 5,
         win_opts = {
           number = true,
           cursorlineopt = "line,number",
