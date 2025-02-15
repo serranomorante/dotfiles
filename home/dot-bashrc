@@ -125,5 +125,5 @@ fi
 
 if command -v nnn &>/dev/null; then
     export NNN_PLUG='p:preview-tui;l:nmount'
-    alias nnn='nnn -JRHdaA'
+    alias nnn='nnn -JRHdaA -Tt'
 fi
