@@ -1,6 +1,7 @@
 ---
 # https://github.com/pyenv/pyenv/wiki#suggested-build-environment
 - name: "[archlinux] Setup python: ensure build dependencies"
+  become: true
   ansible.builtin.package:
     state: present
     name:
@@ -10,6 +11,7 @@
       - zlib
       - xz
       - tk
+      - uv
 
 - name: "[archlinux] Setup python: register pyenv binary"
   ansible.builtin.command: which pyenv

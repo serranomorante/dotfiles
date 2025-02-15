@@ -11,6 +11,11 @@
       - kitty-terminfo
     state: present
 
+- name: "[archlinux] Setup terminal tools: ensure isd"
+  ansible.builtin.command: uv tool install --python=3.12 isd-tui
+  args:
+    creates: ~/.local/bin/isd
+
 - name: "[archlinux] Setup terminal tools: install kitty nightly"
   ansible.builtin.shell: >
     set -o pipefail &&
