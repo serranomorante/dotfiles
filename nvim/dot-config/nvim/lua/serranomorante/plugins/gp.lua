@@ -16,7 +16,6 @@ local function keys()
   ---Chat commands
   vim.keymap.set({ "n", "i" }, "<C-g>c", "<cmd>GpChatNew<cr>", opts_with_desc("New Chat"))
   vim.keymap.set({ "n", "i" }, "<C-g>t", "<cmd>GpChatToggle<cr>", opts_with_desc("Toggle Chat"))
-  vim.keymap.set({ "n", "i" }, "<C-g>f", "<cmd>GpChatFinder<cr>", opts_with_desc("Chat Finder"))
 
   vim.keymap.set("v", "<C-g>c", ":<C-u>'<,'>GpChatNew<cr>", opts_with_desc("Visual Chat New"))
   vim.keymap.set("v", "<C-g>p", ":<C-u>'<,'>GpChatPaste<cr>", opts_with_desc("Visual Chat Paste"))
