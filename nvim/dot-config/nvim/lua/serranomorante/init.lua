@@ -13,7 +13,6 @@ local plugins = {
   "vim-sleuth",
   "treesitter.treesitter",
   "treesitter.treesitter-context",
-  "fzf",
   "ale",
   "blame",
   "conform",

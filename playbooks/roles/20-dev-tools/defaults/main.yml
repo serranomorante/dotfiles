@@ -7,7 +7,6 @@ debian_fish_shell_version: 3.5.1
 archlinux_neovim_version: master
 debian_neovim_version: 688b961d13bd # before cmake 3.16 requirement
 neovim_plugins:
-  - { folder: start, repo: ibhagwan/fzf-lua }
   - { folder: start, repo: kevinhwang91/promise-async } # use `typings/?.lua` on .luarc.json
   - { folder: start, repo: nvim-tree/nvim-web-devicons }
   - { folder: start, repo: neoclide/coc.nvim, version: master }
