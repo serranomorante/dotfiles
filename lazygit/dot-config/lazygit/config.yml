@@ -4,6 +4,7 @@ gui:
   expandFocusedSidePanel: true
   expandedSidePanelWeight: 5
   skipRewordInEditorWarning: true
+  showDivergenceFromBaseBranch: "arrowAndNumber"
   filterMode: "fuzzy"
 # based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md#default
 keybinding:
