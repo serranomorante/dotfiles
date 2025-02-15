@@ -1,24 +1,36 @@
 local M = {}
 
-local function keys()
-  vim.keymap.set(
-    "n",
-    "<leader>qf",
-    function()
-      require("quicker").toggle({
-        focus = false,
-        open_cmd_mods = { split = "botright" },
-      })
-    end,
-    { desc = "Quicker: toggle quickfix list" }
-  )
+local QF_HEIGHT = 5
 
-  vim.keymap.set(
-    "n",
-    "<leader>ql",
-    function() require("quicker").toggle({ focus = false, loclist = true }) end,
-    { desc = "Quicker: toggle location list" }
-  )
+function M.open_qf()
+  require("quicker").open({
+    focus = false,
+    ---@diagnostic disable-next-line: missing-fields
+    open_cmd_mods = { split = "botright" },
+    height = QF_HEIGHT,
+  })
+end
+
+function M.toggle_qf()
+  require("quicker").toggle({
+    focus = false,
+    ---@diagnostic disable-next-line: missing-fields
+    open_cmd_mods = { split = "botright" },
+    height = QF_HEIGHT,
+  })
+end
+
+function M.toggle_lqf()
+  require("quicker").toggle({
+    focus = false,
+    loclist = true,
+    height = QF_HEIGHT,
+  })
+end
+
+local function keys()
+  vim.keymap.set("n", "<leader>qf", M.toggle_qf, { desc = "Quicker: toggle quickfix list" })
+  vim.keymap.set("n", "<leader>ql", M.toggle_lqf, { desc = "Quicker: toggle location list" })
 end
 
 ---@return quicker.SetupOptions

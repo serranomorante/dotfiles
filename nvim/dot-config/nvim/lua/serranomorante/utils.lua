@@ -274,7 +274,7 @@ function M.nvim_started_without_args() return vim.fn.argc(-1) == 0 and not vim.g
 function M.open_quickfix_list()
   vim.cmd.cfirst()
   vim.cmd("normal! zz")
-  require("quicker").open({ focus = false, open_cmd_mods = { split = "botright" } })
+  require("serranomorante.plugins.quicker").open_qf()
 end
 
 ---Check if file is large without relying on buffers (only file path)
