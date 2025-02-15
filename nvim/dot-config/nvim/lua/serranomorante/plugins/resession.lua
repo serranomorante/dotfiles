@@ -77,6 +77,13 @@ M.config = function()
       end
     end,
   })
+
+  ---https://github.com/stevearc/resession.nvim/commit/271a6fd7afa90142be59fca3a5c3b9865e40e6b9
+  vim.api.nvim_create_autocmd("StdinReadPre", {
+    desc = "Set global variable when loading from stdin",
+    group = group,
+    callback = function() vim.g.using_stdin = true end,
+  })
 end
 
 return M
