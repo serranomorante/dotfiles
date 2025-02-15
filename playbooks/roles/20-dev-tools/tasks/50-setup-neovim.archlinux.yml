@@ -5,7 +5,7 @@
     dest: ~/repos/neovim
     force: true
     single_branch: true
-    version: master
+    version: "{{ archlinux_neovim_version }}"
 
 - name: "[archlinux] Neovim: ensure neovim build dependencies"
   become: true

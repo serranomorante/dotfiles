@@ -6,7 +6,7 @@
     force: true
     depth: 1
     single_branch: true
-    version: 688b961d13bd54a14836f08c3ded3121d3fb15a0 # before cmake 3.16 requirement
+    version: "{{ debian_neovim_version }}"
 
 - name: "[debian] Neovim: apply patches to neovim"
   ansible.builtin.command: git apply ~/dotfiles/assets/patches/nvim/{{ item.patch_filename }}
