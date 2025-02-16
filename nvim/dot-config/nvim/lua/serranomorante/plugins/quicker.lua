@@ -1,6 +1,6 @@
 local M = {}
 
-local QF_HEIGHT = 5
+local QF_HEIGHT = 6
 
 function M.open_qf()
   require("quicker").open({
@@ -8,6 +8,7 @@ function M.open_qf()
     ---@diagnostic disable-next-line: missing-fields
     open_cmd_mods = { split = "botright" },
     height = QF_HEIGHT,
+    max_height = QF_HEIGHT,
   })
 end
 
@@ -17,6 +18,7 @@ function M.toggle_qf()
     ---@diagnostic disable-next-line: missing-fields
     open_cmd_mods = { split = "botright" },
     height = QF_HEIGHT,
+    max_height = QF_HEIGHT,
   })
 end
 
@@ -25,6 +27,7 @@ function M.toggle_lqf()
     focus = false,
     loclist = true,
     height = QF_HEIGHT,
+    max_height = QF_HEIGHT,
   })
 end
 
