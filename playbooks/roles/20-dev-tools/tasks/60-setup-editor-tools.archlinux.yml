@@ -24,14 +24,6 @@
     name:
       - watchman-bin
       - ctags-git
-      - clion-jre
-
-- name: "[archlinux] Editor tools: ensure aur packages (v2)"
-  aur:
-    use: yay
-    state: present
-    name: clion
-    aur_only: true
 
 - name: "[archlinux] Editor tools: create treesitter tempdir"
   ansible.builtin.tempfile:

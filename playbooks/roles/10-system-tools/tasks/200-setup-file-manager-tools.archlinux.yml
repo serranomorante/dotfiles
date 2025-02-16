@@ -52,12 +52,6 @@
       - pmount
       - gnome-epub-thumbnailer
 
-- name: "[archlinux] Setup file manager: ensure absent aur deps"
-  aur:
-    use: yay
-    state: present
-    name: xdg-desktop-portal-termfilechooser-git
-
 - name: "[archlinux] Setup file manager: build nnn"
   ansible.builtin.command: make O_NERD=1 O_GITSTATUS=1 strip install
   environment:
