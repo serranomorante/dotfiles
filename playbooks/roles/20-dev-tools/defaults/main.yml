@@ -12,12 +12,12 @@ neovim_plugins:
   - { folder: start, repo: neoclide/coc.nvim, version: master }
   - { folder: start, repo: stevearc/overseer.nvim, name: overseer }
   - { folder: start, repo: kevinhwang91/nvim-treesitter }
-  - { folder: start, repo: nvim-treesitter/nvim-treesitter-context }
+  - { folder: start, repo: nvim-treesitter/nvim-treesitter-context, name: treesitter-context }
   - { folder: start, repo: nvim-treesitter/nvim-treesitter-textobjects }
   - { folder: start, repo: dense-analysis/ale }
-  - { folder: start, repo: FabijanZulj/blame.nvim }
+  - { folder: start, repo: FabijanZulj/blame.nvim, name: blame }
   - { folder: start, repo: stevearc/conform.nvim, name: conform }
-  - { folder: start, repo: sindrets/diffview.nvim }
+  - { folder: start, repo: sindrets/diffview.nvim, name: diffview }
   - { folder: start, repo: lewis6991/gitsigns.nvim, name: gitsigns }
   - { folder: start, repo: LeonHeidelbach/trailblazer.nvim, name: trailblazer }
   - { folder: start, repo: tpope/vim-sleuth }

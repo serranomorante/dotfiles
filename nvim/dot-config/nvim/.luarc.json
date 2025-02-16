@@ -23,7 +23,12 @@
     "$HOME/.local/share/nvim/site/pack/plugins/start/heirline/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/start/nvim-treesitter/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/start/gitsigns/lua",
-    "$HOME/.local/share/nvim/site/pack/plugins/opt/gp",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/blame/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/diffview/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/treesitter-context/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/nvim-treesitter-textobjects/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/nvim-web-devicons/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/opt/gp/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/opt/ufo/lua"
   ]
 }
