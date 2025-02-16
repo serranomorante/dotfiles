@@ -18,10 +18,13 @@ vim.api.nvim_create_autocmd("BufWinEnter", {
   desc = "Make q close help, man, dap floats, etc",
   group = vim.api.nvim_create_augroup("q_close_windows", { clear = true }),
   callback = function(args)
+    if not vim.g.q_close_windows then vim.g.q_close_windows = {} end
+    if vim.g.q_close_windows[args.buf] then return end
     for _, map in ipairs(vim.api.nvim_buf_get_keymap(args.buf, "n")) do
       if map.lhs == "q" then return end
     end
     if vim.list_contains({ "help", "nofile", "quickfix", "prompt", "nowrite" }, vim.bo[args.buf].buftype) then
+      vim.g.q_close_windows[args.buf] = true
       vim.keymap.set("n", "q", "<cmd>close<CR>", {
         desc = "Close window with q",
         buffer = args.buf,
@@ -37,6 +40,7 @@ vim.api.nvim_create_autocmd("BufReadPre", {
   group = vim.api.nvim_create_augroup("large_buf", { clear = true }),
   callback = function(args)
     if vim.list_contains({ "help", "nofile", "quickfix", "prompt" }, vim.bo[args.buf].buftype) then return end
+    if vim.b[args.buf].large_buf then return end
     local ok, is_large_file = pcall(utils.is_large_file, args.file)
     if ok and is_large_file then
       vim.api.nvim_buf_set_var(args.buf, "large_buf", is_large_file)
