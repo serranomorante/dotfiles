@@ -15,15 +15,16 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 })
 
 vim.api.nvim_create_autocmd("BufWinEnter", {
-  desc = "Make q close help, man, dap floats",
+  desc = "Make q close help, man, dap floats, etc",
   group = vim.api.nvim_create_augroup("q_close_windows", { clear = true }),
-  callback = function(event)
-    local buftype = vim.api.nvim_get_option_value("buftype", { buf = event.buf })
-    local match = vim.tbl_contains({ "help", "nofile" }, buftype)
-    if match and vim.fn.maparg("q", "n") == "" then
-      vim.keymap.set("n", "q", "<cmd>close<cr>", {
-        desc = "Close window",
-        buffer = event.buf,
+  callback = function(args)
+    for _, map in ipairs(vim.api.nvim_buf_get_keymap(args.buf, "n")) do
+      if map.lhs == "q" then return end
+    end
+    if vim.list_contains({ "help", "nofile", "quickfix", "prompt", "nowrite" }, vim.bo[args.buf].buftype) then
+      vim.keymap.set("n", "q", "<cmd>close<CR>", {
+        desc = "Close window with q",
+        buffer = args.buf,
         silent = true,
         nowait = true,
       })
@@ -35,6 +36,7 @@ vim.api.nvim_create_autocmd("BufReadPre", {
   desc = "Mark buffer as large",
   group = vim.api.nvim_create_augroup("large_buf", { clear = true }),
   callback = function(args)
+    if vim.list_contains({ "help", "nofile", "quickfix", "prompt" }, vim.bo[args.buf].buftype) then return end
     local ok, is_large_file = pcall(utils.is_large_file, args.file)
     if ok and is_large_file then
       vim.api.nvim_buf_set_var(args.buf, "large_buf", is_large_file)

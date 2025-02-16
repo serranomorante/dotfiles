@@ -6,21 +6,23 @@ local M = {}
 
 ---Use K to show documentation in preview window
 ---https://github.com/neoclide/coc.nvim?tab=readme-ov-file#example-lua-configuration
-local function show_docs()
+---@param buf integer
+local function show_docs(buf)
   ---K do nothing if already on floating window
   if vim.api.nvim_win_get_config(0).relative ~= "" then return end
   ---K focus floating window if present
   if vim.api.nvim_eval("coc#float#has_float()") ~= 0 then
     vim.cmd('execute "normal \\<Plug>(coc-float-jump)"')
     vim.schedule(function()
-      if vim.fn.maparg("q", "n") == "" then
-        vim.keymap.set("n", "q", "<cmd>close<cr>", {
-          desc = "Close window",
-          buffer = vim.api.nvim_get_current_buf(),
-          silent = true,
-          nowait = true,
-        })
+      for _, map in ipairs(vim.api.nvim_buf_get_keymap(buf, "n")) do
+        if map.lhs == "q" then return end
       end
+      vim.keymap.set("n", "q", "<cmd>close<CR>", {
+        desc = "Close window with q",
+        buffer = buf,
+        silent = true,
+        nowait = true,
+      })
     end)
     return
   end
@@ -65,7 +67,7 @@ function M.attach(buf)
 
   vim.keymap.set("n", "grn", "<Plug>(coc-rename)", opts_with_desc("Smart rename"))
 
-  vim.keymap.set("n", "K", show_docs, opts_with_desc("Hover"))
+  vim.keymap.set("n", "K", function() show_docs(buf) end, opts_with_desc("Hover"))
 
   vim.keymap.set(
     "i",
