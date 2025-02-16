@@ -28,7 +28,6 @@ neovim_plugins:
   - { folder: start, repo: stevearc/quicker.nvim, name: quicker }
   - { folder: start, repo: kevinhwang91/nvim-fundo, name: fundo }
   - { folder: start, repo: tpope/vim-rsi } # https://vi.stackexchange.com/a/6041
-  - { folder: start, repo: wellle/tmux-complete.vim }
   - { folder: start, repo: stevearc/aerial.nvim }
   - { folder: start, repo: luukvbaal/nnn.nvim }
   - { folder: opt, repo: kevinhwang91/nvim-ufo, name: ufo }
