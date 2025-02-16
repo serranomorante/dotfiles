@@ -1,5 +1,7 @@
 local M = {}
 
+local FILE_HISTORY_PANEL_HEIGHT = 6
+
 local keys = function()
   vim.keymap.set("n", "<leader>vd", "<cmd>DiffviewOpen<CR>", { desc = "Diffview: compare against current index" })
   vim.keymap.set(
@@ -10,9 +12,19 @@ local keys = function()
   )
 end
 
+local function init()
+  vim.api.nvim_create_autocmd("BufWinLeave", {
+    desc = "Fix issue with file history panel height after closing options panel",
+    group = vim.api.nvim_create_augroup("diffview-options-panel", { clear = true }),
+    pattern = "DiffviewFHOptionPanel",
+    callback = function() vim.api.nvim_win_set_height(0, FILE_HISTORY_PANEL_HEIGHT) end,
+  })
+end
+
 local opts = function()
   return {
-    watch_index = false,
+    show_help_hints = false,
+    watch_index = true,
     default_args = {
       DiffviewFileHistory = { "--no-merges" },
     },
@@ -35,7 +47,7 @@ local opts = function()
     },
     file_history_panel = {
       win_config = {
-        height = 5,
+        height = FILE_HISTORY_PANEL_HEIGHT,
         win_opts = {
           number = true,
           cursorlineopt = "line,number",
@@ -50,6 +62,7 @@ local opts = function()
 end
 
 M.config = function()
+  init()
   keys()
   require("diffview").setup(opts())
 end
