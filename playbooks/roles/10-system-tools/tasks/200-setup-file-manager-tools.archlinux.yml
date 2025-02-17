@@ -8,7 +8,7 @@
     single_branch: true
     version: "{{ item.version | default('HEAD') }}"
   loop:
-    - { repo: https://github.com/jarun/nnn, version: v5.0 }
+    - { repo: https://github.com/jarun/nnn, version: master }
 
 - name: "[archlinux] Setup file manager: patch plugins"
   ansible.builtin.command: git apply {{ item.patch }}
@@ -50,12 +50,13 @@
   notify: handler_restart_xdg_desktop_portal_termfilechooser
 
 - name: "[archlinux] Setup file manager: build nnn"
-  ansible.builtin.command: make O_NERD=1 O_GITSTATUS=1 strip install
+  ansible.builtin.command: make O_NERD=1 strip install
   environment:
     PREFIX: "{{ ansible_env.HOME }}/.local"
   args:
     chdir: ~/repos/nnn
     creates: ~/.local/bin/nnn
+
 
 # https://github.com/jarun/nnn/wiki/Advanced-use-cases#desktop-integration
 - name: "[archlinux] Setup file manager: install nnn plugins and desktop"
@@ -66,4 +67,16 @@
   loop:
     - { src: ~/repos/nnn/plugins/preview-tui, dest: ~/.config/nnn/plugins/preview-tui }
     - { src: ~/repos/nnn/plugins/nmount, dest: ~/.config/nnn/plugins/nmount }
+    - { src: ~/repos/nnn/plugins/umounttree, dest: ~/.config/nnn/plugins/umounttree }
+    - { src: ~/repos/nnn/plugins/dragdrop, dest: ~/.config/nnn/plugins/dragdrop }
     - { src: ~/repos/nnn/misc/desktop/nnn.desktop, dest: ~/.local/share/applications/nnn.desktop }
+
+- name: "[archlinux] Setup file manager: get nnn external plugin"
+  ansible.builtin.copy:
+    dest: ~/.config/nnn/plugins/cdto
+    content: |
+      #!/usr/bin/env sh
+      printf "cd to: "
+      read -r dir
+      printf "%s" "0c$dir" > "$NNN_PIPE"
+    mode: "755"

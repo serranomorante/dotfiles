@@ -125,7 +125,7 @@ if command -v zoxide &>/dev/null; then
     eval "$(zoxide init bash)"
 fi
 
-export NNN_PLUG='p:preview-tui;l:cdto;f:!open_in_nvim.sh nnn_search Find*;g:!open_in_nvim.sh nnn_search Grep*'
+export NNN_PLUG='s:!bash -i*;p:preview-tui;l:cdto;f:!open_in_nvim.sh nnn_search Find*;g:!open_in_nvim.sh nnn_search Grep*'
 export NNN_TRASH="trash"
 if command -v nnn &>/dev/null; then
     alias nnn='nnn -JRHdaAo -Tt'
