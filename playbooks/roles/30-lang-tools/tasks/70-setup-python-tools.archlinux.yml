@@ -1,6 +1,5 @@
 ---
-# LSP
-- name: "[archlinux] Python language: ensure LSP - pylsp virtualenv"
+- name: "[archlinux] Python language: ensure pylsp venv"
   ansible.builtin.pip:
     name:
       - pip
@@ -12,14 +11,7 @@
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
 
-- name: "[archlinux] Python language: ensure LSP - symlink pylsp"
-  ansible.builtin.file:
-    src: ~/apps/lang-tools/pylsp/.venv/bin/pylsp
-    dest: ~/bin/pylsp
-    state: link
-
-# DAP
-- name: "[archlinux] Python language: ensure DAP - debugpy virtualenv"
+- name: "[archlinux] Python language: ensure debugpy venv"
   ansible.builtin.pip:
     name:
       - pip
@@ -28,8 +20,21 @@
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
 
-- name: "[archlinux] Python language: ensure DAP - symlink debugpy"
+- name: "[archlinux] Python language: ensure python tools"
+  ansible.builtin.pip:
+    name:
+      - pip
+      - cookiecutter
+    virtualenv: ~/apps/lang-tools/python-tools/.venv
+    virtualenv_command: /usr/bin/python3 -m venv
+    state: present
+
+- name: "[archlinux] Python language: ensure symlinks"
   ansible.builtin.file:
-    src: ~/apps/lang-tools/debugpy/.venv/bin/debugpy
-    dest: ~/bin/debugpy
-    state: "link"
+    src: ~/apps/lang-tools/{{ item.dir }}/.venv/bin/{{ item.bin }}
+    dest: ~/bin/{{ item.bin }}
+    state: link
+  loop:
+    - { dir: python-tools, bin: cookiecutter }
+    - { dir: debugpy, bin: debugpy }
+    - { dir: pylsp, bin: pylsp }
