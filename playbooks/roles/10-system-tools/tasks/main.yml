@@ -49,7 +49,7 @@
       with_first_found:
         - files: 50-setup-graphic-tablet-tools.{{ user_os }}.yml
           skip: true
-      when: "user_os in ['archlinux']"
+      when: "user_os in ['archlinux', 'macosx']"
       loop_control:
         loop_var: task_file
   tags: ["10-50"]
