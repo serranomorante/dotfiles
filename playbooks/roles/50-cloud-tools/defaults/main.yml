@@ -1,5 +1,6 @@
 ---
 cloud_tools:
+  - plex
   - wireguard
   - syncthing
   - overseerr
@@ -11,8 +12,6 @@ cloud_tools:
   - jdownloader2
   - flaresolverr
   - nextcloud
-  - plex
   - prowlarr
   - radarr
-  - emby
   - tautulli
