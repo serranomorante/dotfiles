@@ -31,3 +31,4 @@
   loop:
     - { bin_name: ansible, symlink_name: vansible }
     - { bin_name: ansible-playbook, symlink_name: vansible-playbook }
+    - { bin_name: ansible-vault, symlink_name: vansible-vault }

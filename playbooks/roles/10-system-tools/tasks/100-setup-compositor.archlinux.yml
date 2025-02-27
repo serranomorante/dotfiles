@@ -1,4 +1,42 @@
 ---
+- name: "[archlinux] Compositor: remove packages"
+  become: true
+  ansible.builtin.command: pacman -Rdd --noconfirm kwin
+  register: result
+  failed_when:
+    - '"stderr" in result'
+    - '"target not found" not in result.stderr'
+    - result.rc != 0
+  changed_when: false
+
+- name: "[archlinux] Compositor: ensure mask kwin service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: plasma-kwin_x11.service
+    state: stopped
+    enabled: false
+    masked: true
+
+- name: "[archlinux] Compositor: install dwm"
+  become: true
+  ansible.builtin.command: make install
+  args:
+    chdir: "{{ ansible_env.HOME }}/pjs/dwm"
+  register: make_result
+  changed_when: make_result.rc == 0
+
+- name: "[archlinux] Compositor: installsdf"
+  ansible.builtin.command: kwriteconfig6 --file startkderc --group General --key systemdBoot true
+  changed_when: false
+
+- name: "[archlinux] Compositor: ensure dwm service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: plasma-wm.service
+    state: started
+    enabled: true
+    masked: false
+
 - name: "[archlinux] Compositor: ensure picom"
   ansible.builtin.package:
     state: present
