@@ -5,3 +5,11 @@
     name:
       - dunst
       - libnotify
+
+- name: "[archlinux] Notification utilities: ensure dunst service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: dunst.service
+    state: started
+    enabled: true
+    masked: false

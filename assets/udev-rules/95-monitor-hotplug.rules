@@ -1,0 +1,7 @@
+#Rule for executing commands when an external screen is plugged in.
+#Credits go to: http://unix.stackexchange.com/questions/4489/a-tool-for-automatically-applying-randr-configuration-when-external-display-is-p
+#TODO: optimize later
+#Get envs with `udevadm monitor --environment --udev`
+
+KERNEL=="card0", ACTION=="add|remove|unbind", SUBSYSTEM=="drm", RUN+="/bin/sh /usr/local/bin/hotplug_monitor.sh"
+ACTION=="add|remove|unbind", SUBSYSTEM=="usb", RUN+="/bin/sh /usr/local/bin/hotplug_monitor.sh"

@@ -5,24 +5,4 @@
 snixembed --fork
 
 # Save output into file
-exec >/home/serranomorante/xsetup.out 2>&1
-
-# Setup monitors
-internal=$(xrandr | grep "DP.* connected" | cut -d " " -f 1)
-external=$(xrandr | grep "HDMI.* connected" | cut -d " " -f 1)
-if [[ $external != "" ]]; then
-    # Turn off internal screen
-    xrandr --output $internal --off
-    # Set external monitor as primary
-    xrandr --output $external --primary --mode 3440x1440 --rate 59.97
-else
-    xrandr --output $internal --primary --mode 1920x1080 --rate 120.21
-    # https://wiki.archlinux.org/title/Backlight#Xorg:_adjust_perceived_brightness_with_xrandr
-    xrandr --output $internal --brightness 0.5
-fi
-
-# Setup nvidia
-# Set a max limit on the graphics gpu
-nvidia-smi -lgc 139,300
-# Under-clock the graphics memory
-nvidia-settings -a "GPUMemoryTransferRateOffset[0x3]=-2000" -c :0
+exec >{{ ansible_env.HOME }}/xsetup.out 2>&1

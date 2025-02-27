@@ -7,9 +7,17 @@
 
 - name: "[archlinux] Setup desktop: copy sddm Xsetup script"
   become: true
-  ansible.builtin.copy:
-    src: ~/dotfiles/assets/scripts/sddm/Xsetup
+  ansible.builtin.template:
+    src: "{{ ansible_env.HOME }}/dotfiles/assets/scripts/sddm/Xsetup"
     dest: /usr/share/sddm/scripts/Xsetup
+    owner: root
+    mode: "744"
+
+- name: "[archlinux] Setup desktop: copy monitor hotplug script"
+  become: true
+  ansible.builtin.template:
+    src: "{{ ansible_env.HOME }}/dotfiles/assets/scripts/screen/hotplug_monitor.sh"
+    dest: /usr/local/bin/hotplug_monitor.sh
     owner: root
     mode: "744"
 

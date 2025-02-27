@@ -16,3 +16,8 @@
   become: true
   ansible.builtin.command: keyd reload
   changed_when: false
+
+- name: Reload udev rules
+  become: true
+  ansible.builtin.command: udevadm control --reload-rules
+  changed_when: false
