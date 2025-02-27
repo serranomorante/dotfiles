@@ -4,6 +4,11 @@
     state: present
     name: stow
 
+- name: "[archlinux] Dotfiles: remove problematic files"
+  ansible.builtin.file:
+    state: absent
+    path: ~/.config/gromit-mpx.ini
+
 - name: "[archlinux] Dotfiles: apply stow"
   ansible.builtin.command: >
     stow --dotfiles
