@@ -7,15 +7,15 @@ return {
   name = task_name,
   desc = "Refresh ctags",
   builder = function()
-    local session_name = task_name .. vim.fn.fnameescape(vim.v.servername)
+    local command = {
+      "ctags",
+      "--recurse",
+      "--exclude=.git",
+      "--exclude=node_modules",
+    }
     return {
       cmd = { "tmux" },
-      args = utils.wrap_overseer_args_with_tmux({
-        "ctags",
-        "--recurse",
-        "--exclude=.git",
-        "--exclude=node_modules",
-      }, session_name),
+      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name }),
       components = {
         {
           "restart_on_save",

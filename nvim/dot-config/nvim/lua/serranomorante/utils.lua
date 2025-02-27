@@ -241,9 +241,14 @@ function M.filename_with_cursor_pos()
   return ("%s:%s:%s"):format(bufname, line, col)
 end
 
+---@class TmuxWrapperOpts
+---@field cwd? string
+---@field session_name string
+
 ---@param cmd table
----@param session_name string
-function M.wrap_overseer_args_with_tmux(cmd, session_name)
+---@param opts? TmuxWrapperOpts
+function M.wrap_overseer_args_with_tmux(cmd, opts)
+  opts = opts or {}
   local args = {
     "-L", -- use different tmux server for overseer tasks
     "overseer",
@@ -251,9 +256,14 @@ function M.wrap_overseer_args_with_tmux(cmd, session_name)
     vim.env.HOME .. "/.config/tmux/tmuxnvim.conf",
     "new-session",
     "-A", -- attach in session exists
-    "-s", -- session name
-    session_name,
   }
+  if opts.cwd then vim.list_extend(args, {
+    "-c",
+    opts.cwd,
+  }) end
+  if opts.session_name then
+    vim.list_extend(args, { "-s", opts.session_name .. vim.fn.fnameescape(vim.v.servername) })
+  end
   vim.list_extend(args, cmd)
   return args
 end

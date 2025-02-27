@@ -11,17 +11,17 @@ return {
   desc = "Build active file into executable of the same name without extension",
   builder = function()
     local precalculated_vars = variables.precalculate_vars()
-    local session_name = task_name .. vim.fn.fnameescape(vim.v.servername)
+    local command = {
+      "/usr/bin/gcc",
+      "-fdiagnostics-color=always",
+      "-g",
+      precalculated_vars.file,
+      "-o",
+      precalculated_vars.fileDirname .. "/" .. precalculated_vars.fileBasenameNoExtension,
+    }
     return {
       cmd = { "tmux" },
-      args = utils.wrap_overseer_args_with_tmux({
-        "/usr/bin/gcc",
-        "-fdiagnostics-color=always",
-        "-g",
-        precalculated_vars.file,
-        "-o",
-        precalculated_vars.fileDirname .. "/" .. precalculated_vars.fileBasenameNoExtension,
-      }, session_name),
+      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name }),
       components = {
         "defaults_without_notification",
       },

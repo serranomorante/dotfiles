@@ -8,10 +8,10 @@ local task_name = "vscode-tasks-tsc-build"
 return {
   name = task_name,
   builder = function()
-    local session_name = task_name .. vim.fn.fnameescape(vim.v.servername)
+    local command = { "tsc" }
     return {
       cmd = { "tmux" },
-      args = utils.wrap_overseer_args_with_tmux({ "tsc" }, session_name),
+      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name }),
       components = {
         { "on_output_parse", problem_matcher = "$tsc" },
         "on_result_diagnostics",

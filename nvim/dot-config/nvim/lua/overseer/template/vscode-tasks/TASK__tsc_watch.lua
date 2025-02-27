@@ -11,8 +11,6 @@ return {
   name = task_name,
   desc = "Watch a typescript project using the tsconfig.json from the current buffer's directory",
   builder = function()
-    local session_name = task_name .. vim.fn.fnameescape(vim.v.servername)
-
     local tsconfig = vim.fs.find("tsconfig.json", {
       stop = vim.fn.getcwd() .. "/..",
       type = "file",
@@ -24,10 +22,10 @@ return {
       tsconfig = vim.tbl_count(tsconfig) ~= 0 and tsconfig[1] or nil,
       option = "watch",
     })
-
+    local command = vim.list_extend(task_opts.cmd, { "--pretty", "false" })
     return {
       cmd = { "tmux" },
-      args = utils.wrap_overseer_args_with_tmux(vim.list_extend(task_opts.cmd, { "--pretty", "false" }), session_name),
+      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name }),
       env = {
         NO_COLOR = "1",
       },
