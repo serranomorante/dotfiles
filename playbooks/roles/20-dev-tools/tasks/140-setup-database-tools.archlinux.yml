@@ -3,11 +3,38 @@
   aur:
     use: yay
     state: present
-    name: datagrip-jre
+    name:
+      - datagrip-jre
+      - postgresql
 
-- name: "[archlinux] Editor tools: ensure aur packages (v2)"
+- name: "[archlinux] Setup database tools: ensure aur packages (v2)"
   aur:
     use: yay
     state: present
     name: datagrip
     aur_only: true
+
+- name: "[archlinux] Setup database tools: ensure database cluster folder"
+  become: true
+  ansible.builtin.file:
+    state: directory
+    path: ~/apps/db/postgresql/data
+    recurse: true
+    owner: postgres
+    group: postgres
+
+- name: "[archlinux] Setup database tools: register if initialized"
+  become: true
+  ansible.builtin.stat:
+    path: /var/lib/postgres/data/pg_hba.conf
+  register: postgres_cluster_data
+
+- name: "[archlinux] Setup database tools: initdb"
+  become: true
+  become_user: postgres
+  ansible.builtin.command:
+    initdb --locale=C.UTF-8 --encoding=UTF8 -D /var/lib/postgres/data --data-checksums
+  args:
+    creates: /var/lib/postgres/data/pg_hba.conf
+  notify: "20-dev-tools : Ensure postgres service"
+  when: not postgres_cluster_data.stat.exists
