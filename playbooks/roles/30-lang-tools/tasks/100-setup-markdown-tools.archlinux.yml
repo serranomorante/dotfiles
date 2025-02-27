@@ -37,6 +37,8 @@
       - mdformat
       - mdformat-gfm
       - mdformat_footnote
+      - mdformat-frontmatter
+      - mdformat-web
     virtualenv: ~/apps/note-taking-tools/utilities/.venv
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
