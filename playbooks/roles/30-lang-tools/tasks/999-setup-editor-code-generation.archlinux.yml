@@ -7,6 +7,9 @@
   loop:
     - lua-language-server
     - pylsp
+    - gopls
+    - gofmt
+    - dlv
     - clangd
     - fish-lsp
     - vscode-html-language-server
@@ -37,5 +40,6 @@
         cppdbg_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7" end,
         bashdb_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/bash-debug-adapter" end,
         php_dap_executable = function() return "/usr/lib/node_modules/php-debug/out/phpDebug.js" end,
-        debugpy_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/debugpy/.venv/bin/python" end
+        debugpy_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/debugpy/.venv/bin/python" end,
+        go_dap_executable = function() return vim.env.HOME .. "/repos/vscode-go/extension/dist/debugAdapter.js" end
       }

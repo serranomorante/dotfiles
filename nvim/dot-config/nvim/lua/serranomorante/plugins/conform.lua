@@ -41,6 +41,7 @@ local function opts()
       c = { lsp_format = "fallback" },
       python = { lsp_format = "fallback" },
       lua = ft_tools.lua.fmts,
+      go = gen_fmt(ft_tools.go.fmts, { stop_after_first = true }),
       sh = gen_fmt(ft_tools.bash.fmts, { stop_after_first = true }),
       bash = gen_fmt(ft_tools.bash.fmts, { stop_after_first = true }),
       json = gen_fmt(ft_tools.json.fmts, { stop_after_first = true }),

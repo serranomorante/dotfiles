@@ -1,0 +1,25 @@
+---
+- name: "[archlinux] Go language: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - gopls
+      - delve
+
+- name: "[archlinux] Go language: clone vscode-go"
+  ansible.builtin.git:
+    repo: https://github.com/golang/vscode-go
+    dest: ~/repos/vscode-go
+    depth: 1
+    force: true
+    single_branch: true
+    version: release-v0.44
+
+- name: "[archlinux] Go language: install vscode-go"
+  ansible.builtin.shell: |
+    npm install
+    npm run compile
+  args:
+    chdir: ~/repos/vscode-go/extension
+  changed_when: false

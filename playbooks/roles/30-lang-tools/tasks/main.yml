@@ -132,6 +132,17 @@
   tags: ["30-130"]
 
 - block:
+    - name: Ensure go tools
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 140-setup-go-tools.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["30-140"]
+
+- block:
     - name: Ensure editor code-generation
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:

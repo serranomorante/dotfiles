@@ -49,6 +49,7 @@ M.by_filetype = {
   xml = { parsers = { "xml" } },
   css = { parsers = { "css", "scss" }, extensions = { "coc-css" } },
   php = { parsers = { "php" }, extensions = { "coc-phpls" } },
+  go = { fmts = { "gofmt" }, lsp = { "gopls" }, parsers = { "go" } },
   all = {
     parsers = {
       "disassembly",

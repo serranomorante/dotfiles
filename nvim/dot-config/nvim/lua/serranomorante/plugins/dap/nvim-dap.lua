@@ -238,11 +238,19 @@ M.config = function()
     end
   end
 
-  if binaries.php_dap_executable() then
+  if vim.fn.executable(binaries.php_dap_executable()) == 1 then
     dap.adapters.php = {
       type = "executable",
       command = "node",
       args = { binaries.php_dap_executable() },
+    }
+  end
+
+  if vim.fn.executable(binaries.go_dap_executable()) == 1 then
+    dap.adapters.go = {
+      type = "executable",
+      command = "node",
+      args = { binaries.go_dap_executable() },
     }
   end
 
@@ -362,6 +370,17 @@ M.config = function()
       name = "Listen for Xdebug",
       port = 9003,
       log = true,
+    },
+  }
+
+  dap.configurations.go = {
+    {
+      type = "go",
+      name = "Debug",
+      request = "launch",
+      showLog = false,
+      program = "${file}",
+      dlvToolPath = binaries.dlv(),
     },
   }
 
