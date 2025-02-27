@@ -37,7 +37,7 @@ M.by_filetype = {
     lsp = { "marksman" },
     formatters = { "mdformat" },
     parsers = { "markdown" },
-    extensions = { "coc-markdown-preview-enhanced", "@yaegassy/coc-marksman", "coc-markdownlint" },
+    extensions = { "@yaegassy/coc-marksman", "coc-markdownlint" },
   },
   toml = { parsers = { "toml" } },
   tmux = { parsers = { "tmux" } },
@@ -62,7 +62,6 @@ M.by_filetype = {
       "mermaid",
       "udev",
     },
-    extensions = { "coc-webview" },
   },
 }
 

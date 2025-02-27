@@ -1,13 +1,20 @@
-local coc_utils = require("serranomorante.plugins.coc.utils")
+local utils = require("serranomorante.utils")
+
+local task_name = "editor-tasks-open-markdown-preview"
 
 ---@type overseer.TemplateDefinition
 return {
-  name = "editor-tasks-open-markdown-preview",
+  name = task_name,
   desc = "Open markdown preview",
   builder = function()
+    local file = vim.fn.expand("%:p")
+    local command = { ("lowdown -Tterm %s | less -R"):format(file) }
     return {
-      cmd = { "nvr" },
-      args = { "--servername", vim.v.servername, "-c", "CocCommand markdown-preview-enhanced.openPreview" },
+      cmd = { "tmux" },
+      args = utils.wrap_overseer_args_with_tmux(command, task_name .. file),
+      env = {
+        LESS = "-N",
+      },
       components = {
         "unique",
         "defaults_without_notification",
@@ -16,8 +23,7 @@ return {
   end,
   condition = {
     callback = function(search)
-      if not coc_utils.is_coc_attached() then return false end
-      return vim.list_contains({ "markdown" }, search.filetype)
+      return vim.fn.executable("lowdown") == 1 and vim.list_contains({ "markdown" }, search.filetype)
     end,
   },
 }

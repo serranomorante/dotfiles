@@ -28,6 +28,15 @@ local keys = function()
     "<cmd>OverseerTaskAction<CR>",
     { desc = "Overseer: Select a task to run an action on" }
   )
+  vim.keymap.set("n", "<leader>lm", function()
+    local overseer = require("overseer")
+    local task_spec = require("overseer.template.editor-tasks.TASK__open_markdown_preview")
+    overseer.run_template({ name = task_spec.name }, function(task)
+      if not task then return end
+      require("overseer").run_action(task, "open float")
+      if vim.bo.buftype == "terminal" then vim.cmd.startinsert() end
+    end)
+  end, { desc = "Open markdown preview" })
 end
 
 local opts = function()

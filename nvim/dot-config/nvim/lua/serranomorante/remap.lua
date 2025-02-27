@@ -89,3 +89,8 @@ vim.keymap.set({ "x", "v" }, "<leader>fv", function()
   local region = vim.fn.getregion(start_pos, end_pos, { type = mode })
   return (":<C-u>Grep '%s'"):format(region[1])
 end, { desc = "Find visual selection", expr = true })
+
+vim.keymap.set("t", "<leader>lm", function()
+  utils.feedkeys("<C-\\><C-n>", "t")
+  return "<cmd>close<CR>"
+end, { desc = "Close terminal window", expr = true, nowait = true, silent = true })

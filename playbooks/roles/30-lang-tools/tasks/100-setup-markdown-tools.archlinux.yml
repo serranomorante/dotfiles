@@ -27,6 +27,7 @@
     creates: ~/.volta/bin/{{ item.package }}
   loop:
     - { package: "@mermaid-js/mermaid-cli" }
+    - { package: "mermaid-filter" }
     - { package: "mathjax-pandoc-filter" }
 
 - name: "[archlinux] Markdown language: ensure virtualenv packages"
