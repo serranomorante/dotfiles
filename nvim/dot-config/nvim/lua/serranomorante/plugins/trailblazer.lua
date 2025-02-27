@@ -122,7 +122,7 @@ local function keys()
     local stacks = trails.stacks.get_sorted_stack_names()
     local current_stack = trails.stacks.current_trail_mark_stack_name
     stacks = vim.tbl_filter(function(stack) return stack ~= current_stack end, stacks)
-    vim.ui.select(stacks, { prompt = "Delete stack " }, function(choice)
+    vim.ui.select(stacks, { prompt = "[WARNING] Delete a stack " }, function(choice)
       if choice then trailblazer.delete_trail_mark_stack(choice) end
     end)
   end, { desc = "Trailblazer: Delete stack" })
