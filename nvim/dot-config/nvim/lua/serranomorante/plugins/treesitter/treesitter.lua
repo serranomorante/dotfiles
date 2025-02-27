@@ -7,6 +7,7 @@ local opts = function()
   return {
     ensure_installed = utils.merge_tools(
       "treesitter",
+      tools.by_filetype.asm,
       tools.by_filetype.javascript,
       tools.by_filetype.go,
       tools.by_filetype.c,

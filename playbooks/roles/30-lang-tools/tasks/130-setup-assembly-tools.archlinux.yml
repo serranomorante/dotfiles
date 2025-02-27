@@ -1,0 +1,6 @@
+---
+- name: "[archlinux] Assembly language: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: nasm

@@ -3,6 +3,7 @@ local M = {}
 ---Don't add nvim-lspconfig names like `tsserver` here
 ---@type table<string, ToolEnsureInstall>
 M.by_filetype = {
+  asm = { parsers = { "asm" } },
   javascript = {
     formatters = { "eslint_d", "prettierd" },
     linters = { "eslint_d" },
@@ -50,6 +51,7 @@ M.by_filetype = {
   php = { parsers = { "php" }, extensions = { "coc-phpls" } },
   all = {
     parsers = {
+      "disassembly",
       "regex",
       "git_config",
       "git_rebase",
