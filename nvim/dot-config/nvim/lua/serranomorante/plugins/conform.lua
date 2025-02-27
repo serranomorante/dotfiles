@@ -28,21 +28,28 @@ local keys = function()
   })
 end
 
+---@param fmts string[]
+---@param opts table
+---@return conform.FiletypeFormatter
+local function gen_fmt(fmts, opts) return vim.tbl_extend("force", fmts, opts) end
+
 local function opts()
+  local ft_tools = tools.by_filetype
+  ---@type conform.setupOpts
   return {
     formatters_by_ft = {
       c = { lsp_format = "fallback" },
-      lua = tools.by_filetype.lua.formatters,
       python = { lsp_format = "fallback" },
-      javascript = { stop_after_first = true, unpack(tools.by_filetype.javascript.formatters) },
-      typescript = { stop_after_first = true, unpack(tools.by_filetype.typescript.formatters) },
-      javascriptreact = { stop_after_first = true, unpack(tools.by_filetype.javascriptreact.formatters) },
-      typescriptreact = { stop_after_first = true, unpack(tools.by_filetype.typescriptreact.formatters) },
-      sh = { stop_after_first = true, unpack(tools.by_filetype.bash.formatters) },
-      bash = { stop_after_first = true, unpack(tools.by_filetype.bash.formatters) },
-      json = { stop_after_first = true, unpack(tools.by_filetype.json.formatters) },
-      jsonc = { stop_after_first = true, unpack(tools.by_filetype.json.formatters) },
-      markdown = { stop_after_first = true, unpack(tools.by_filetype.markdown.formatters) },
+      lua = ft_tools.lua.fmts,
+      sh = gen_fmt(ft_tools.bash.fmts, { stop_after_first = true }),
+      bash = gen_fmt(ft_tools.bash.fmts, { stop_after_first = true }),
+      json = gen_fmt(ft_tools.json.fmts, { stop_after_first = true }),
+      jsonc = gen_fmt(ft_tools.json.fmts, { stop_after_first = true }),
+      markdown = gen_fmt(ft_tools.markdown.fmts, { stop_after_first = true }),
+      javascript = gen_fmt(ft_tools.javascript.fmts, { stop_after_first = true }),
+      typescript = gen_fmt(ft_tools.typescript.fmts, { stop_after_first = true }),
+      javascriptreact = gen_fmt(ft_tools.javascriptreact.fmts, { stop_after_first = true }),
+      typescriptreact = gen_fmt(ft_tools.typescriptreact.fmts, { stop_after_first = true }),
     },
     default_format_opts = {
       lsp_format = "never",

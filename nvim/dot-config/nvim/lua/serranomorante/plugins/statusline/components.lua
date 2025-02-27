@@ -62,7 +62,7 @@ M.FileFlags = {
 M.FileNameModifier = {
   hl = function(self)
     if vim.api.nvim_get_option_value("modified", { buf = self.bufnr }) then
-      return { fg = "red", bold = true, force = true }
+      return { fg = "grey", bold = true, force = true }
     end
   end,
 }

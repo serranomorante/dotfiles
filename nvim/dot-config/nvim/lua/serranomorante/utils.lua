@@ -74,7 +74,7 @@ function M.del_buffer_autocmd(augroup, bufnr)
   if cmds_found then vim.tbl_map(function(cmd) vim.api.nvim_del_autocmd(cmd.id) end, cmds) end
 end
 
----@alias GeneralToolType "formatters"|"lsp"|"linters"|"dap"|"extra"
+---@alias GeneralToolType "fmts"|"lsp"|"linters"|"dap"|"extra"
 ---@alias TreesitterToolType "parsers"
 ---@alias CocToolType "extensions"
 ---@alias ToolEnsureInstall table<GeneralToolType|TreesitterToolType|CocToolType, string[]|table[]>
@@ -85,7 +85,7 @@ end
 ---@return string[] # A flat array of tools without duplicates
 function M.merge_tools(installer_type, ...)
   installer_type = installer_type or "general"
-  local general_tool_type = { "formatters", "lsp", "linters", "dap", "extra" }
+  local general_tool_type = { "fmts", "lsp", "linters", "dap", "extra" }
   local treesitter_tool_type = { "parsers" }
   local coc_tool_type = { "extensions" }
   local tool_type_by_installer = {

@@ -5,7 +5,7 @@ local M = {}
 M.by_filetype = {
   asm = { parsers = { "asm" } },
   javascript = {
-    formatters = { "eslint_d", "prettierd" },
+    fmts = { "eslint_d", "prettierd" },
     linters = { "eslint_d" },
     lsp = { "typescript-language-server", "tailwindcss-language-server", "vtsls" },
     dap = {
@@ -14,9 +14,9 @@ M.by_filetype = {
     parsers = { "javascript", "typescript", "tsx", "jsdoc" },
     extensions = { "coc-tsserver", "@yaegassy/coc-tailwindcss3" },
   },
-  lua = { formatters = { "stylua" }, lsp = { "lua-language-server" }, parsers = { "lua", "luap", "luadoc" } },
+  lua = { fmts = { "stylua" }, lsp = { "lua-language-server" }, parsers = { "lua", "luap", "luadoc" } },
   json = {
-    formatters = { "prettierd" },
+    fmts = { "prettierd" },
     parsers = { "json", "jsonc" },
     extensions = { "coc-json" },
   },
@@ -28,7 +28,7 @@ M.by_filetype = {
     parsers = { "requirements" },
   },
   bash = {
-    formatters = { "beautysh" },
+    fmts = { "beautysh" },
     lsp = { "bash-language-server" },
     dap = { "bash-debug-adapter" },
     parsers = { "bash" },
@@ -36,7 +36,7 @@ M.by_filetype = {
   fish = { parsers = { "fish" }, lsp = { "fish-lsp" } },
   markdown = {
     lsp = { "marksman" },
-    formatters = { "mdformat" },
+    fmts = { "mdformat" },
     parsers = { "markdown" },
     extensions = { "@yaegassy/coc-marksman", "coc-markdownlint" },
   },
