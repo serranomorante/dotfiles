@@ -92,8 +92,7 @@ local function keys()
   vim.keymap.set("n", "<A-'>", function()
     local stacks = trails.stacks.trail_mark_stack_list
     local current_stack = trails.stacks.current_trail_mark_stack_name
-    local stacks_names = vim.tbl_keys(stacks)
-    table.sort(stacks_names, function(a) return a == current_stack end)
+    local stacks_names = trails.stacks.get_sorted_stack_names("alpha_asc")
 
     vim.ui.select(stacks_names, {
       prompt = "Choose a stack ",
@@ -119,7 +118,7 @@ local function keys()
   end, { desc = "Trailblazer: Select mode" })
 
   vim.keymap.set("n", '<A-">', function()
-    local stacks = trails.stacks.get_sorted_stack_names()
+    local stacks = trails.stacks.get_sorted_stack_names("alpha_asc")
     local current_stack = trails.stacks.current_trail_mark_stack_name
     stacks = vim.tbl_filter(function(stack) return stack ~= current_stack end, stacks)
     vim.ui.select(stacks, { prompt = "[WARNING] Delete a stack " }, function(choice)
@@ -133,7 +132,7 @@ local function opts()
     auto_save_trailblazer_state_on_exit = false,
     auto_load_trailblazer_state_on_enter = false,
     trail_options = {
-      current_trail_mark_stack_sort_mode = "chron_asc",
+      current_trail_mark_stack_sort_mode = "alpha_asc",
       current_trail_mark_mode = "global_buf_line_sorted",
       mark_symbol = "",
       newest_mark_symbol = "",
