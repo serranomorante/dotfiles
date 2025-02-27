@@ -32,6 +32,9 @@ local opts = function()
       default = {
         winbar_info = true,
       },
+      merge_tool = {
+        layout = "diff4_mixed",
+      },
       file_history = {
         winbar_info = true,
       },
