@@ -1,9 +1,22 @@
 ---
 - name: "[archlinux] Setup desktop: ensure packages"
+  # https://www.youtube.com/watch?v=JRdYSGh-g3s
   become: true
   ansible.builtin.package:
     state: present
-    name: sddm
+    name:
+      - xorg
+      - xorg-xinit
+      - plasma
+      - sddm
+      - dolphin
+      # - kde-applications
+
+- name: "[archlinux] Setup desktop: remove packages"
+  become: true
+  ansible.builtin.package:
+    state: absent
+    name: wacomtablet
 
 - name: "[archlinux] Setup desktop: copy sddm Xsetup script"
   become: true
@@ -14,6 +27,18 @@
     mode: "744"
 
 - name: "[archlinux] Setup desktop: ensure sddm service"
+  become: true
+  ansible.builtin.systemd_service:
+    scope: system
+    name: "{{ item.name }}"
+    state: "{{ item.state }}"
+    enabled: "{{ item.enabled }}"
+    masked: "{{ item.masked }}"
+  loop:
+    - { name: sddm.service, state: started, enabled: true, masked: false }
+    - { name: NetworkManager-wait-online.service, state: stopped, enabled: false, masked: true }
+
+- name: "[archlinux] Setup desktop: copy monitor hotplug script"
   become: true
   ansible.builtin.systemd_service:
     scope: system

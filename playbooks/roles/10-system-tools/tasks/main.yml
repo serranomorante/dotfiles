@@ -219,3 +219,14 @@
       loop_control:
         loop_var: task_file
   tags: ["10-200"]
+
+- block:
+    - name: Setup audio tools
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 210-setup-audio-tools.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["10-210"]

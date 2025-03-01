@@ -1,0 +1,41 @@
+---
+- name: "[archlinux] Setup audio tools: ensure no package conflicts"
+  become: true
+  ansible.builtin.package:
+    state: absent
+    name:
+      - plasma-pa
+      - pulseaudio
+
+- name: "[archlinux] Setup audio tools: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - pipewire
+      - lib32-pipewire
+      - pipewire-docs
+      - pipewire-audio
+      - pipewire-alsa
+      - pipewire-pulse
+      - pipewire-jack
+      - lib32-pipewire-jack
+      - wireplumber
+      - plasma-pa
+
+- name: "[archlinux] Setup audio tools: ensure services"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: "{{ item.name }}"
+    state: "{{ item.state }}"
+    enabled: "{{ item.enabled }}"
+    masked: "{{ item.masked }}"
+  loop:
+    - { name: pipewire.socket, state: started, enabled: true, masked: false}
+    - { name: pipewire-pulse.socket, state: started, enabled: true, masked: false}
+
+- name: "[archlinux] Setup audio tools: mask for sddm"
+  # https://wiki.archlinux.org/title/PipeWire#Device_volume_for_SDDM_users_is_not_restored_on_login
+  become: true
+  ansible.builtin.command: systemctl --user -M sddm@ mask pipewire.socket
+  changed_when: false
