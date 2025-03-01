@@ -50,6 +50,8 @@ reader_annotations_backup_env:
 root_backup_env:
   - /etc/hosts
   - /etc/ansible/hosts
+  - /etc/default/grub
+  - /etc/udev/udev.conf
 bw_backup_env:
   - ~/bw
 
