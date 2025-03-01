@@ -3,5 +3,5 @@
 #TODO: optimize later
 #Get envs with `udevadm monitor --environment --udev`
 
-KERNEL=="card0", ACTION=="add|remove|unbind", SUBSYSTEM=="drm", RUN+="/bin/sh /usr/local/bin/hotplug_monitor.sh"
-ACTION=="add|remove|unbind", SUBSYSTEM=="usb", RUN+="/bin/sh /usr/local/bin/hotplug_monitor.sh"
+KERNEL=="card0", ACTION=="add|remove|unbind", SUBSYSTEM=="drm", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="setup-displays.service"
+ACTION=="add|remove|unbind", SUBSYSTEM=="usb", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="setup-displays.service"

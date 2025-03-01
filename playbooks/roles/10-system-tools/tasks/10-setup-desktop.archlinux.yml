@@ -13,13 +13,17 @@
     owner: root
     mode: "744"
 
-- name: "[archlinux] Setup desktop: copy monitor hotplug script"
+- name: "[archlinux] Setup desktop: ensure sddm service"
   become: true
-  ansible.builtin.template:
-    src: "{{ ansible_env.HOME }}/dotfiles/assets/scripts/screen/hotplug_monitor.sh"
-    dest: /usr/local/bin/hotplug_monitor.sh
-    owner: root
-    mode: "744"
+  ansible.builtin.systemd_service:
+    scope: system
+    name: "{{ item.name }}"
+    state: "{{ item.state }}"
+    enabled: "{{ item.enabled }}"
+    masked: "{{ item.masked }}"
+  loop:
+    - { name: sddm.service, state: started, enabled: true, masked: false }
+    - { name: NetworkManager-wait-online.service, state: stopped, enabled: false, masked: true }
 
 - name: "[archlinux] Setup desktop: register pinentry"
   ansible.builtin.command: which pinentry-tty

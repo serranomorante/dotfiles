@@ -1,8 +1,3 @@
 #!/bin/sh
 # Xsetup - run as root before the login dialog appears
 # This file should be copied into /usr/share/sddm/scripts/Xsetup
-
-snixembed --fork
-
-# Save output into file
-exec >{{ ansible_env.HOME }}/xsetup.out 2>&1

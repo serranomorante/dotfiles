@@ -1,0 +1,7 @@
+[Unit]
+Description=Setup displays
+
+[Service]
+ExecStart=%h/bin/setup-displays.sh
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=%h/.Xauthority"
