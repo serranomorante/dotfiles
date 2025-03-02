@@ -2,6 +2,8 @@
 debian_stow_version: 2.4.1
 macos_stow_version: 2.4.1
 debian_fzf_version: 0.55.0
+debian_rg_version: 14.0.3
+debian_fd_version: 10.1.0
 wacom_vendor_id: 056a
 ansible_internal_keyboard_name_1: AT Translated Set 2 keyboard
 ansible_internal_keyboard_name_2: ITE Tech. Inc. ITE Device(8910) Keyboard

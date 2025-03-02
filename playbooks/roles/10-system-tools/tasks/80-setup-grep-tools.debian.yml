@@ -12,3 +12,29 @@
     mode: "644"
     block: |
       --history={{ ansible_env.HOME }}/.fzf_history
+
+- name: "[debian] Grep utilities: ensure ripgrep"
+  ansible.builtin.unarchive:
+    src: https://github.com/BurntSushi/ripgrep/releases/download/{{ debian_rg_version }}/ripgrep-{{ debian_rg_version }}-x86_64-unknown-linux-musl.tar.gz
+    dest: ~/bin
+    remote_src: true
+
+- name: "[debian] Grep utilities: symlink ripgrep"
+  ansible.builtin.file:
+    src: ~/bin/ripgrep-{{ debian_rg_version }}-x86_64-unknown-linux-musl/rg
+    dest: ~/bin/rg
+    state: link
+    mode: "744"
+
+- name: "[debian] Grep utilities: ensure fd"
+  ansible.builtin.unarchive:
+    src: https://github.com/sharkdp/fd/releases/download/v{{ debian_fd_version }}/fd-v{{ debian_fd_version }}-x86_64-unknown-linux-musl.tar.gz
+    dest: ~/bin
+    remote_src: true
+
+- name: "[debian] Grep utilities: symlink fd"
+  ansible.builtin.file:
+    src: ~/bin/fd-v{{ debian_fd_version }}-x86_64-unknown-linux-musl/fd
+    dest: ~/bin/fd
+    state: link
+    mode: "744"
