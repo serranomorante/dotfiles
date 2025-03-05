@@ -45,6 +45,7 @@
   "javascript.inlayHints.propertyDeclarationTypes.enabled": true,
   "javascript.inlayHints.functionLikeReturnTypes.enabled": true,
   "javascript.inlayHints.enumMemberValues.enabled": true,
+  "tsserver.useLocalTsdk": true,
   "markdownlint.config": {
     "MD013": false
   },
