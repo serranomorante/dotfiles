@@ -1,7 +1,11 @@
 [Unit]
 Description=Setup displays
+After=graphical-session.target
 
 [Service]
 ExecStart=%h/bin/setup-displays.sh
 Environment="DISPLAY=:0"
 Environment="XAUTHORITY=%h/.Xauthority"
+
+[Install]
+WantedBy=graphical-session.target

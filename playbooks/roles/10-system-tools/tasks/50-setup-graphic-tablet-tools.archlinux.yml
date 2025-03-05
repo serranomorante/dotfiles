@@ -101,3 +101,11 @@
     state: started
     enabled: true
     masked: false
+
+- name: "[archlinux] Graphic tablet: ensure setup-displays service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: setup-displays.service
+    state: started
+    enabled: true
+    masked: false
