@@ -31,5 +31,10 @@ xsetwacom --set "${stylus_name}" Mode "Relative"
 xsetwacom --set "${stylus_name}" Button 2 "pan"
 xsetwacom --set "${stylus_name}" "PanScrollThreshold" 200
 
-# Decelerate pointer speed (from 1.0 to 1.8)
-xinput set-prop "${stylus}" "${speed_prop_id}" 1.8
+full_window_size=$(xrandr -q | grep -Po '\bcurrent\b\s(\d+)\sx\s(\d+)')
+x_window_size=$(echo $full_window_size | awk '{print $2}')
+y_window_size=$(echo $full_window_size | awk '{print $4}')
+speed=$(awk "BEGIN {print $x_window_size/$y_window_size}")
+
+# Decelerate pointer speed
+xinput set-prop "${stylus}" "${speed_prop_id}" "$speed"

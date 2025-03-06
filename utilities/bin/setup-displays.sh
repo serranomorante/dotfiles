@@ -27,3 +27,5 @@ fi
 
 # Reset wallpaper
 /usr/bin/feh --bg-scale --recursive --verbose --randomize ~/.wallpapers/
+# Re-apply wacom config
+wacom-config.sh
