@@ -54,6 +54,10 @@ root_backup_env:
   - /etc/ansible/hosts
   - /etc/default/grub
   - /etc/udev/udev.conf
+  - /etc/default/cpupower
+  - /etc/sysctl.d/99-sysctl.conf
+  - /etc/sysctl.d/90-max_user_watches.conf
+  - /etc/security/limits.d/95-pipewire.conf
 bw_backup_env:
   - ~/bw
 

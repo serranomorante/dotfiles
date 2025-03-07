@@ -22,10 +22,14 @@
       - lib32-pipewire-jack
       - wireplumber
       - plasma-pa
+      - realtime-privileges
+      - base-devel
+      - cpupower
+      - linux-rt-lts
 
 - name: "[archlinux] Setup audio tools: ensure services"
   ansible.builtin.systemd_service:
-    scope: user
+    scope: "{{ item.scope | default('user') }}"
     name: "{{ item.name }}"
     state: "{{ item.state }}"
     enabled: "{{ item.enabled }}"
@@ -33,9 +37,32 @@
   loop:
     - { name: pipewire.socket, state: started, enabled: true, masked: false}
     - { name: pipewire-pulse.socket, state: started, enabled: true, masked: false}
+    - { scope: system, name: cpupower.service, state: started, enabled: true, masked: false }
+
 
 - name: "[archlinux] Setup audio tools: mask for sddm"
   # https://wiki.archlinux.org/title/PipeWire#Device_volume_for_SDDM_users_is_not_restored_on_login
   become: true
   ansible.builtin.command: systemctl --user -M sddm@ mask pipewire.socket
   changed_when: false
+
+- name: "[archlinux] Setup audio tools: create pipewire group"
+  become: true
+  ansible.builtin.group:
+    name: pipewire
+
+- name: "[archlinux] Setup audio tools: add user to realtime and audio groups"
+  become: true
+  ansible.builtin.user:
+    append: true
+    groups:
+      - realtime
+      - audio
+      - pipewire
+    name: "{{ ansible_env.USER }}"
+
+- name: "[archlinux] Setup audio tools: increase REAPER ui scale"
+  ansible.builtin.replace:
+    path: ~/.config/REAPER/reaper.ini
+    regexp: '^ui_scale=[^\s]*'
+    replace: 'ui_scale=1.2'
