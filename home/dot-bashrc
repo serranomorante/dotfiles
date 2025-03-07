@@ -40,6 +40,7 @@ alias cls='clear && echo -en "\e[3J"'
 # path env variables
 # This fixes poetry not being found
 export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/share/yabridge:$PATH"
 # Make ~/bin take priority over ~/.local/bin
 export PATH="$HOME/bin:$PATH"
 # Add pynvim to path
