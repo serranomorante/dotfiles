@@ -39,6 +39,7 @@ config_files_backup_env: # home folder only
   - ~/.local/share/fish/fish_history
   - ~/.ssh/config
   - ~/.bash_history
+  - ~/.config/REAPER
 pkm_backup_env:
   - ~/PKM
 seedvault_main_backup_env:
