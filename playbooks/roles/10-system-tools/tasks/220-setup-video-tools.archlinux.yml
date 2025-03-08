@@ -1,0 +1,70 @@
+---
+- name: "[archlinux] Setup video tools: ensure video-tools folder"
+  ansible.builtin.file:
+    path: ~/apps/video-tools
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Setup video tools: download aur package"
+  ansible.builtin.unarchive:
+    src: https://aur.archlinux.org/cgit/aur.git/snapshot/davinci-resolve.tar.gz
+    dest: ~/apps/video-tools/
+    remote_src: true
+    creates: ~/apps/video-tools/davinci-resolve/PKGBUILD
+
+- name: "[archlinux] Setup video tools: ensure packages"
+  # https://github.com/Ashark/davinci-resolve-checker?tab=readme-ov-file#installation
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - mesa
+      - expac
+      - mesa-utils
+      - python-distro
+      - opencl-nvidia
+      - lib32-opencl-nvidia
+
+- name: "[archlinux] Setup video tools: ensure aur packages"
+  aur:
+    use: yay
+    state: present
+    name: rocm-opencl-runtime
+
+- name: "[archlinux] Setup video tools: ensure pip deps for davinci-resolve-checker"
+  ansible.builtin.pip:
+    name:
+      - distro
+      - pylspci
+    virtualenv: ~/apps/video-tools/.venv
+    virtualenv_command: /usr/bin/python3 -m venv
+    state: present
+
+- name: "[archlinux] Setup video tools: clone davinci-resolve-checker repo"
+  ansible.builtin.git:
+    repo: https://github.com/Ashark/davinci-resolve-checker
+    dest: ~/repos/davinci-resolve-checker
+    version: master
+    single_branch: true
+    depth: 1
+
+- name: "[archlinux] Setup video tools: extract deps from aur package"
+  # https://bbs.archlinux.org/viewtopic.php?id=251411
+  ansible.builtin.command: sed -n 's/.*depends = //p' .SRCINFO
+  args:
+    chdir: ~/apps/video-tools/davinci-resolve
+  register: davinci_resolve_deps
+  changed_when: false
+
+- name: "[archlinux] Setup video tools: install davinci-resolve deps"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: "{{ davinci_resolve_deps.stdout | regex_findall('(.*)\n') }}"
+  when: davinci_resolve_deps is success
+
+- name: "[archlinux] Setup video tools: install davinci-resolve"
+  aur:
+    use: makepkg
+    name: davinci-resolve
+    local_pkgbuild: ~/apps/video-tools/davinci-resolve

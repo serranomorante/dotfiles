@@ -4,3 +4,4 @@
   ansible.builtin.package:
     name:
       - nvidia-lts
+      - nvidia-utils

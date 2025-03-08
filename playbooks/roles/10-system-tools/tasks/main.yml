@@ -230,3 +230,14 @@
       loop_control:
         loop_var: task_file
   tags: ["10-210"]
+
+- block:
+    - name: Setup video tools
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 220-setup-video-tools.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["10-220"]
