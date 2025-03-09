@@ -14,7 +14,7 @@ index d27ffb5..cfd7ca3 100644
 -    <link rel="stylesheet" href="css/common.css" type="text/css">
 -    <script type="text/javascript" src="js/vendor/angular/angular-loader.min.js"></script>
 -    <script type="text/javascript" src="js/vendor/angular/angular.min.js"></script>
-+    <meta http-equiv="refresh" content="0;URL=https://en.wikipedia.org/wiki/Wikipedia:Contact_us">
++    <meta http-equiv="refresh" content="0;URL=https://developer.wikimedia.org/">
  </head>
 -<body>
 -
