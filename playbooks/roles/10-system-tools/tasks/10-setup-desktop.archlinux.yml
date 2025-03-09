@@ -5,6 +5,7 @@
   ansible.builtin.package:
     state: present
     name:
+      - linux-lts
       - xorg
       - xorg-xinit
       - plasma

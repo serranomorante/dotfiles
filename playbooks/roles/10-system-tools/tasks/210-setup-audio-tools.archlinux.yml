@@ -25,7 +25,6 @@
       - realtime-privileges
       - base-devel
       - cpupower
-      - linux-rt-lts
 
 - name: "[archlinux] Setup audio tools: ensure services"
   ansible.builtin.systemd_service:

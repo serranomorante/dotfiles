@@ -4,4 +4,7 @@
   ansible.builtin.package:
     name:
       - nvidia-lts
+      - nvidia-prime
+      - nvidia-settings
+      - nvidia-prime-rtd3pm
       - nvidia-utils

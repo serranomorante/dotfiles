@@ -60,6 +60,8 @@ root_backup_env:
   - /etc/sysctl.d/90-max_user_watches.conf
   - /etc/security/limits.d/95-pipewire.conf
   - /etc/makepkg.conf
+  - /etc/mkinitcpio.conf
+  - /etc/X11/xorg.conf.d/80-igpu-primary-egpu-offload.conf
 bw_backup_env:
   - ~/bw
 
