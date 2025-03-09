@@ -3,7 +3,9 @@
   aur:
     use: yay
     state: present
-    name: ccze
+    name:
+      - ccze
+      - jdownloader2
 
 - name: "[archlinux] Other tools: ensure font directory exists"
   ansible.builtin.file:
