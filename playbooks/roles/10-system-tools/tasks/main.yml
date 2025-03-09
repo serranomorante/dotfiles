@@ -241,3 +241,15 @@
       loop_control:
         loop_var: task_file
   tags: ["10-220"]
+
+- block:
+    - name: Setup last
+      # Tasks that should be executed last on this role
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 999-setup-last.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: [always, "10-999"]

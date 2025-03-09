@@ -1,0 +1,9 @@
+---
+- name: "[archlinux] Setup last: remove conflicting packages"
+  become: true
+  ansible.builtin.package:
+    force: true
+    state: absent
+    name:
+      - xdg-desktop-portal
+      - xdg-desktop-portal-kde

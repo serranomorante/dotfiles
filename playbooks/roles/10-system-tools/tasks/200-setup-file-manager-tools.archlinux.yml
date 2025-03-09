@@ -38,15 +38,6 @@
       - fuse2
       - dragon
 
-- name: "[archlinux] Setup file manager: ensure absent deps"
-  become: true
-  ansible.builtin.package:
-    force: true
-    state: absent
-    name:
-      - xdg-desktop-portal
-      - xdg-desktop-portal-kde
-
 - name: "[archlinux] Setup file manager: ensure aur deps"
   aur:
     use: yay
