@@ -25,3 +25,7 @@
 - name: Sync yabridge plugins
   ansible.builtin.command: yabridgectl sync
   changed_when: false
+
+- name: Update desktop database
+  ansible.builtin.command: update-desktop-database ~/.local/share/applications
+  changed_when: false

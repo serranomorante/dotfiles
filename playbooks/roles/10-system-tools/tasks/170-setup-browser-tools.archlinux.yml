@@ -239,6 +239,7 @@
     path: "{{ ansible_env.HOME }}/.local/share/applications/brave-browser.desktop"
     regexp: "^(Exec=).*"
     replace: '\1bravennn --load-extension={{ ansible_env.HOME }}/repos/promnesia/extension/dist/chrome,{{ ansible_env.HOME }}/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,{{ ansible_env.HOME }}/repos/NewTab-Redirect,{{ ansible_env.HOME }}/repos/vimium,{{ ansible_env.HOME }}/repos/chrome-show-tab-numbers %u'
+  notify: "10-system-tools : Update desktop database"
 
 - name: "[archlinux] Setup browser tools: clean packages"
   become: true
