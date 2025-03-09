@@ -127,3 +127,7 @@ super + {z,c,v}
 # Toggle dunst notifications history
 super + n
     dunstctl history-pop  
+
+# Map button 2 to scroll with easystroke
+button2
+    easystroke send Scroll
