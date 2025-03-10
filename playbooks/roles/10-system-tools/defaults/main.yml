@@ -6,6 +6,7 @@ debian_rg_version: 14.0.3
 debian_fd_version: 10.1.0
 wacom_vendor_id: 056a
 ansible_hhkb_keyboard_id: 04fe:0021
+ansible_mx_keys_keyboard_id: 046d:408a
 ansible_internal_keyboard_name_1: AT Translated Set 2 keyboard
 ansible_internal_keyboard_name_2: ITE Tech. Inc. ITE Device(8910) Keyboard
 ansible_internal_keyboard_name_3: Ideapad extra buttons
