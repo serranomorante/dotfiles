@@ -13,7 +13,6 @@ ansible_internal_keyboard_name_3: Ideapad extra buttons
 ansible_internal_keyboard_device_1: 0001:0001 # this line is required to disable internal keyboard
 ansible_internal_keyboard_device_2: 048d:c100 # this line is required to disable internal keyboard
 extension_react_devtools: nipckbchhibgnbgnabineijogaiegchd
-extension_bitwarden: nngceckbapebfimnlniiiahkandclblb
 extension_show_tab_numbers: egbdjbfggjldijfoahggfipdkpijmmgd # local
 extension_floccus: fnaicdffflnofjppbagibeoednhnbjhg
 extension_memex: abkfbakhjpmblaafnpgjppbmioombali

@@ -22,9 +22,6 @@
     "{{ extension_react_devtools }}": {
       "file_url_navigation_allowed": true
     },
-    "{{ extension_bitwarden }}": {
-      "toolbar_pin": "force_pinned"
-    },
     "{{ extension_promnesia }}": {
       "toolbar_pin": "force_pinned"
     },

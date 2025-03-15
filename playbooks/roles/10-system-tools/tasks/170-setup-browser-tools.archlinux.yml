@@ -221,7 +221,6 @@
       { "external_update_url": "https://clients2.google.com/service/update2/crx" }
     mode: "644"
   loop:
-    - "{{ extension_bitwarden }}"
     - "{{ extension_floccus }}"
     - "{{ extension_memex }}"
     - "{{ extension_hypothesis }}"
