@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Bitwarden Dekstop
+Exec=bitwarden %u
+Type=Application
+Terminal=false
+MimeType=x-scheme-handler/bitwarden;
+X-Desktop-File-Install-Version=0.28

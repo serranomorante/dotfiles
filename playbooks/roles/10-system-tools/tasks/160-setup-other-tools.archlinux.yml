@@ -25,3 +25,29 @@
     src: https://github.com/shytikov/pragmasevka/releases/download/v1.6.6/Pragmasevka_NF.zip
     dest: ~/.local/share/fonts/Pragmasevka_NF
     remote_src: true
+
+- name: "[archlinux] Other tools: ensure security tools folder"
+  ansible.builtin.file:
+    path: ~/apps/security-tools
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Other tools: install bitwarden"
+  ansible.builtin.get_url:
+    url: https://bitwarden.com/download/?app=desktop&platform=linux&variant=appimage
+    dest: ~/apps/security-tools/bitwarden
+    force: true
+    mode: "755"
+
+- name: "[archlinux] Other tools: symlink bitwarden"
+  ansible.builtin.file:
+    state: link
+    src: ~/apps/security-tools/bitwarden
+    dest: ~/bin/bitwarden
+
+- name: "[archlinux] Other tools: prepare .desktop and mimetype"
+  ansible.builtin.shell: |
+    update-desktop-database ~/.local/share/applications
+    xdg-mime default bitwarden.desktop x-scheme-handler/bitwarden
+  changed_when: false
+  notify: "10-system-tools : Update desktop database"
