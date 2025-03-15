@@ -8,11 +8,16 @@
   register: texlive_group_pkgs
 
 - name: "[archlinux] Markdown language: ensure aur texlive"
-  aur:
-    use: yay
+  become: true
+  ansible.builtin.package:
     state: present
-    name: "{{ texlive_group_pkgs.stdout }}" # necessary to make pdflatex work
-    aur_only: true
+    name: "{{ texlive_group_pkgs.stdout | regex_findall('(.*)\n') }}" # necessary to make pdflatex work
+
+- name: "[archlinux] Markdown language: ensure xelatex is installed"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: texlive-xetex
 
 - name: "[archlinux] Markdown language: ensure aur packages"
   aur:
