@@ -10,3 +10,11 @@
     - every-2-hours-export@hpi-hypexport
     - every-8-hours-export@hpi-browserexport
     - promnesia-index
+
+- name: "[archlinux] Setup exports: ensure services"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: promnesia.service
+    state: started
+    enabled: true
+    masked: false

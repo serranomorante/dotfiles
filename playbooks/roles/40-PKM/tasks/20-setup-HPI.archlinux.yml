@@ -48,10 +48,6 @@
     - promnesia
     - browserexport
 
-- name: "[archlinux] Setup HPI - promnesia install server"
-  ansible.builtin.command: promnesia install-server
-  changed_when: false
-
 - name: "[archlinux] Setup HPI - register open_in_editor MIME handler"
   ansible.builtin.command: >
     python ~/repos/open-in-editor/open_in_editor.py --install --editor vim
