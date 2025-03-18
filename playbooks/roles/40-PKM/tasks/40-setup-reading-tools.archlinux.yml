@@ -3,5 +3,4 @@
   aur:
     use: yay
     state: present
-    name:
-      - foliate
+    name: firefox
