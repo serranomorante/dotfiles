@@ -24,6 +24,7 @@ local init = function()
     tools.by_filetype.yaml,
     tools.by_filetype.css,
     tools.by_filetype.php,
+    tools.by_filetype.vue,
     tools.by_filetype.c,
     tools.by_filetype.all
   )

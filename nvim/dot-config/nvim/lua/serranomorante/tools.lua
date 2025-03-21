@@ -11,8 +11,8 @@ M.by_filetype = {
     dap = {
       "js-debug-adapter", -- or { "js-debug-adapter", version = "v1.82.0" },
     },
-    parsers = { "javascript", "typescript", "tsx", "jsdoc" },
-    extensions = { "coc-tsserver", "@yaegassy/coc-tailwindcss3" },
+    parsers = { "javascript", "typescript", "tsx", "jsdoc", "vue" },
+    extensions = { "coc-tsserver", "@yaegassy/coc-tailwindcss3", "@yaegassy/coc-volar" },
   },
   lua = { fmts = { "stylua" }, lsp = { "lua-language-server" }, parsers = { "lua", "luap", "luadoc" } },
   json = {
@@ -69,6 +69,7 @@ M.by_filetype = {
 }
 
 ---Make sure all possible filetypes that a tool can handle are considered here
+M.by_filetype.vue = vim.deepcopy(M.by_filetype.javascript)
 M.by_filetype.tsx = vim.deepcopy(M.by_filetype.javascript)
 M.by_filetype.typescript = vim.deepcopy(M.by_filetype.javascript)
 M.by_filetype.typescriptreact = vim.deepcopy(M.by_filetype.javascript)
