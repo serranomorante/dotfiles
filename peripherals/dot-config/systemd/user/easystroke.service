@@ -1,0 +1,9 @@
+[Unit]
+Description=Start easystroke service
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/local/bin/easystroke
+
+[Install]
+WantedBy=graphical-session.target

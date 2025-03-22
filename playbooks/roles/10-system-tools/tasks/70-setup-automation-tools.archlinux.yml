@@ -2,6 +2,40 @@
 - name: "[archlinux] Automation utilities: ensure xdotool"
   ansible.builtin.package:
     state: present
+    name: xdotool
+
+- name: "[archlinux] Automation utilities: ensure easystroke deps"
+  become: true
+  ansible.builtin.package:
+    state: present
     name:
-      - xdotool
-      - easystroke
+      - boost
+      - intltool
+      - boost-libs
+      - xorg-server-devel
+      - libxtst
+      - gtkmm3
+      - dbus-glib
+
+- name: "[archlinux] Automation utilities: clone easystroke"
+  ansible.builtin.git:
+    repo: https://github.com/MRWITEK/easystroke
+    dest: ~/repos/easystroke
+    version: master
+    depth: 1
+    single_branch: true
+
+- name: "[archlinux] Automation utilities: install easystroke"
+  become: true
+  ansible.builtin.shell: make && make install
+  args:
+    creates: "{{ ansible_env.HOME }}/repos/easystroke/easystroke"
+    chdir: "{{ ansible_env.HOME }}/repos/easystroke"
+
+- name: "[archlinux] Automation utilities: ensure easystroke service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: easystroke.service
+    state: started
+    enabled: true
+    masked: false
