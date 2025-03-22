@@ -5,6 +5,7 @@ PartOf=graphical-session.target
 
 [Service]
 Type=oneshot
+ExecStartPre=/usr/bin/sleep 0.15
 ExecStart=%h/bin/wacom-config.sh
 
 [Install]
