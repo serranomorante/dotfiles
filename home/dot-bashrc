@@ -72,7 +72,7 @@ export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
 # 3. informational messages (I)
 # 4. debug messages (D)
 # 5. trace messages (T)
-export WIREPLUMBER_DEBUG=3
+export WIREPLUMBER_DEBUG=0
 
 if command -v fzf &>/dev/null; then
     # Set up fzf key bindings and fuzzy completion
