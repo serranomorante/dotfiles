@@ -1,9 +1,12 @@
 [Unit]
 Description=Start easystroke service
-After=graphical-session.target
+After=plasma-workspace.target
 
 [Service]
 ExecStart=/usr/local/bin/easystroke -v
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=%h/.Xauthority"
+Restart=always
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=plasma-workspace.target

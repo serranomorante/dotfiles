@@ -21,7 +21,8 @@
   ansible.builtin.git:
     repo: https://github.com/MRWITEK/easystroke
     dest: ~/repos/easystroke
-    version: master
+    version: "{{ arch_easystroke_version }}"
+    force: true
     depth: 1
     single_branch: true
 
