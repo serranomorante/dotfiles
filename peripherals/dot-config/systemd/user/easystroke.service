@@ -3,7 +3,7 @@ Description=Start easystroke service
 After=graphical-session.target
 
 [Service]
-ExecStart=/usr/local/bin/easystroke
+ExecStart=/usr/local/bin/easystroke -v
 
 [Install]
 WantedBy=graphical-session.target

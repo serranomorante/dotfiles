@@ -130,4 +130,4 @@ super + n
 
 # Map button 2 to scroll with easystroke
 button2
-    easystroke send Scroll
+    easystroke -v send Scroll
