@@ -75,6 +75,8 @@ M.by_filetype.typescript = vim.deepcopy(M.by_filetype.javascript)
 M.by_filetype.typescriptreact = vim.deepcopy(M.by_filetype.javascript)
 M.by_filetype.javascriptreact = vim.deepcopy(M.by_filetype.javascript)
 
+M.by_filetype.cpp = vim.deepcopy(M.by_filetype.c)
+
 M.by_filetype.scss = vim.deepcopy(M.by_filetype.css)
 
 M.by_filetype.jsonc = vim.deepcopy(M.by_filetype.json)
