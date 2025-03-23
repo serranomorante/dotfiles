@@ -5,6 +5,12 @@
     state: directory
     mode: "755"
 
+- name: "[archlinux] Setup video tools: ensure required zip"
+  ansible.builtin.get_url:
+    url: https://swr.cloud.blackmagicdesign.com/DaVinciResolve/v{{ arch_davinci_resolve_version }}/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip?verify={{ davinci_resolve_download_key }}
+    dest: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+    mode: "755"
+
 - name: "[archlinux] Setup video tools: download aur package"
   ansible.builtin.unarchive:
     src: https://aur.archlinux.org/cgit/aur.git/snapshot/davinci-resolve.tar.gz
