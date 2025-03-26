@@ -49,5 +49,7 @@
   "markdownlint.config": {
     "MD013": false
   },
-  "ansible.validation.lint.arguments": "-c ~/.config/nvim/lua/serranomorante/plugins/coc/ansible-lint-dev.yaml"
+  "ansible.validation.lint.arguments": "-c ~/.config/nvim/lua/serranomorante/plugins/coc/ansible-lint-dev.yaml",
+  "html.filetypes": ["html", "javascript"],
+  "html-css-support.enabledLanguages": ["html", "javascript"]
 }
