@@ -11,6 +11,7 @@
       - plasma
       - sddm
       - dolphin
+      - arch-install-scripts # to get genfstab
       # - kde-applications
 
 - name: "[archlinux] Setup desktop: remove packages"
