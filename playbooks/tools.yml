@@ -3,6 +3,7 @@
   gather_facts: false
   vars:
     user_os: "{{ ansible_distribution|lower|replace(' ', '') }}"
+    xorg_display_env_vars: DISPLAY=:0 XAUTHORITY={{ ansible_env.HOME }}/.Xauthority
   roles:
     - 10-system-tools       # general system packages
     - 20-dev-tools          # editors, editor plugins, terminal tools
