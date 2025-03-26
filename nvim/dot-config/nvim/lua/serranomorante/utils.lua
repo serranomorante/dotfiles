@@ -244,6 +244,7 @@ end
 ---@class TmuxWrapperOpts
 ---@field cwd? string
 ---@field session_name string
+---@field include_binary boolean
 
 ---@param cmd table
 ---@param opts? TmuxWrapperOpts
@@ -257,6 +258,7 @@ function M.wrap_overseer_args_with_tmux(cmd, opts)
     "new-session",
     "-A", -- attach in session exists
   }
+  if opts.include_binary then table.insert(args, 1, "tmux") end
   if opts.cwd then vim.list_extend(args, {
     "-c",
     opts.cwd,

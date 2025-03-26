@@ -24,6 +24,12 @@ local keys = function()
   )
   vim.keymap.set(
     "n",
+    "<leader>oa",
+    "<cmd>OverseerQuickAction open float insertmode<CR>",
+    { desc = "Overseer: Run open float action on the most recent task" }
+  )
+  vim.keymap.set(
+    "n",
     "<leader>os",
     "<cmd>OverseerTaskAction<CR>",
     { desc = "Overseer: Select a task to run an action on" }
@@ -44,13 +50,25 @@ local opts = function()
     ---Disable the automatic patch and do it manually on nvim-dap config
     ---https://github.com/stevearc/overseer.nvim/blob/master/doc/third_party.md#dap
     dap = false,
-    templates = { "builtin", "vscode-tasks", "editor-tasks", "debugging-tasks" },
+    templates = { "builtin", "vscode-tasks", "editor-tasks", "debugging-tasks", "system-tasks" },
     task_list = {
       direction = "left",
     },
     task_win = {
       border = "single",
       padding = 0,
+    },
+    actions = {
+      ["open float insertmode"] = {
+        desc = "Open float in insert mode",
+        condition = function(task) return task:get_bufnr() end,
+        run = function(task)
+          task:open_output("float")
+          vim.defer_fn(function()
+            if vim.bo.buftype == "terminal" then vim.cmd.startinsert() end
+          end, 200)
+        end,
+      },
     },
     component_aliases = {
       defaults_without_notification = {
