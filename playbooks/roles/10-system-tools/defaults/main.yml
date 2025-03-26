@@ -15,6 +15,7 @@ ansible_internal_keyboard_device_1: 0001:0001 # this line is required to disable
 ansible_internal_keyboard_device_2: 048d:c100 # this line is required to disable internal keyboard
 extension_react_devtools: nipckbchhibgnbgnabineijogaiegchd
 extension_show_tab_numbers: egbdjbfggjldijfoahggfipdkpijmmgd # local
+extension_chrome_regex_search: bpelaihoicobbkgmhcbikncnpacdbknn
 extension_floccus: fnaicdffflnofjppbagibeoednhnbjhg
 extension_memex: abkfbakhjpmblaafnpgjppbmioombali
 extension_new_tab_redirect: jbkaalaijhbkmaffefakjjpphiefocai # local
