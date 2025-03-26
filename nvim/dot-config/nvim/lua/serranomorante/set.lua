@@ -48,7 +48,7 @@ vim.go.splitright = true
 vim.go.splitbelow = true
 
 vim.g.markdown_fenced_languages = { "html", "javascript", "typescript", "css", "scss", "vim", "lua", "json", "yaml" }
-vim.g.max_file = { size = 1024 * 500, lines = 5000 } -- set global limits for large files
+vim.g.max_file = { size = 1024 * 500, lines = 10000 } -- set global limits for large files
 vim.g.codelens_enabled = true
 vim.g.python_host_skip_check = 1 -- improve buffer startup time (supposedly)
 
