@@ -26,8 +26,7 @@ fi
 # https://support.wacom.com/hc/en-us/articles/1500006340122-What-is-Absolute-Positioning
 xsetwacom --set "${stylus_name}" Mode "Relative"
 
-# Scroll using easystroke
-xsetwacom --set "${stylus_name}" Button 2 "button 2" # button 2 will be catched by sxhkd
+xsetwacom --set "${stylus_name}" Button 2 "pan" # scroll using button 2 of the stylus
 xsetwacom --set "${stylus_name}" Button 3 "button 3" # x11 right click button
 
 full_window_size=$(xrandr -q | grep -Po '\bcurrent\b\s(\d+)\sx\s(\d+)')
