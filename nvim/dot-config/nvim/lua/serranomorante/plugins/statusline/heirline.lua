@@ -38,6 +38,7 @@ local opts = function()
 
     components.DAPMessages,
     components.Space,
+    components.Overseer,
     components.LspProgress,
     components.Align,
 
