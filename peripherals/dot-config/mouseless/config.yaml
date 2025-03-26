@@ -1,4 +1,11 @@
+# systemd ExecStartPre will replace these with their /dev/input/<id>
+devices:
+  - "keyd virtual keyboard"
+  - "PFU Limited HHKB-Hybrid Keyboard"
+  - "Logitech MX Keys"
+
 # fix keyboard rate
+# https://github.com/jbensmann/mouseless/issues/7
 startCommand: "xset r rate 220 30"
 
 # the default speed for mouse movement and scrolling

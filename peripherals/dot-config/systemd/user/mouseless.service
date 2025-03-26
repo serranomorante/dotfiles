@@ -3,6 +3,9 @@ Description=mouseless
 After=graphical-session.target
 
 [Service]
+ExecStartPre=%h/bin/setup-mouseless-devices.sh "keyd virtual keyboard"
+ExecStartPre=%h/bin/setup-mouseless-devices.sh "PFU Limited HHKB-Hybrid Keyboard"
+ExecStartPre=%h/bin/setup-mouseless-devices.sh "Logitech MX Keys"
 ExecStart=/usr/local/bin/mouseless --config %h/.config/mouseless/config.yaml
 
 [Install]
