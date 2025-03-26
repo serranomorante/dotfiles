@@ -1,0 +1,9 @@
+[Unit]
+Description=mouseless
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/local/bin/mouseless --config %h/.config/mouseless/config.yaml
+
+[Install]
+WantedBy=graphical-session.target

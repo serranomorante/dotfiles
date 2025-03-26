@@ -1,0 +1,42 @@
+# fix keyboard rate
+startCommand: "xset r rate 220 30"
+
+# the default speed for mouse movement and scrolling
+baseMouseSpeed: 750.0
+baseScrollSpeed: 20.0
+
+# the rest of the config defines the layers with their bindings
+layers:
+  # the first layer is active at start
+  - name: initial
+    bindings:
+      # activate mouse layer
+      leftalt+rightalt: layer mouse
+  # a layer for mouse movement
+  - name: mouse
+    # when true, keys that are not mapped keep their original meaning
+    passThrough: false
+    # https://superuser.com/a/1593924
+    enterCommand: "show_mouseless_osd.sh"
+    exitCommand: "hide_mouseless_osd.sh"
+    bindings:
+      # quit mouse layer
+      q: layer initial
+      # move cursor right
+      l: move  1  0
+      # move cursor left
+      h: move -1  0
+      # move cursor down
+      j: move  0  1
+      # move cursor up
+      k: move  0 -1
+      p: scroll up
+      n: scroll down
+      u: scroll left
+      o: scroll right
+      w: speed 4.0
+      e: speed 0.3
+      r: speed 0.1
+      f: button left
+      d: button middle
+      s: button right

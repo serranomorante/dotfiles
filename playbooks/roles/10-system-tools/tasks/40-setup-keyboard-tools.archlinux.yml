@@ -81,3 +81,73 @@
     dest: /etc/keyd/default.conf
     mode: "644"
   notify: "10-system-tools : Restart keyd"
+
+- name: "[archlinux] Keyboard peripheral: clone mouseless"
+  ansible.builtin.git:
+    repo: https://github.com/jbensmann/mouseless
+    dest: ~/external/repos/mouseless
+    version: main
+    force: true
+    single_branch: true
+    depth: 1
+
+- name: "[archlinux] Keyboard peripheral: build mouseless"
+  ansible.builtin.command: go build -ldflags="-s -w" .
+  args:
+    chdir: ~/external/repos/mouseless
+    creates: ~/external/repos/mouseless/mouseless
+
+- name: "[archlinux] Keyboard peripheral: ensure mouseless udev rule"
+  # https://github.com/jbensmann/mouseless?tab=readme-ov-file#run-without-root-privileges
+  become: true
+  ansible.builtin.template:
+    src: ~/dotfiles/assets/udev-rules/99-user.rules
+    dest: /etc/udev/rules.d/99-{{ ansible_env.USER }}.rules
+    mode: "644"
+  notify: "10-system-tools : Reload udev rules"
+
+- name: "[archlinux] Keyboard peripheral: link mouseless"
+  become: true
+  ansible.builtin.file:
+    src: "{{ ansible_env.HOME }}/external/repos/mouseless/mouseless"
+    dest: /usr/local/bin/mouseless
+    state: link
+    mode: "755"
+  notify: "10-system-tools : Ensure mouseless service"
+
+- name: "[archlinux] Keyboard peripheral: ensure warpd dependencies"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - libxi
+      - libxinerama
+      - libxft
+      - libxfixes
+      - libxtst
+      - libx11
+      - libxkbcommon
+
+- name: "[archlinux] Keyboard peripheral: clone warpd"
+  ansible.builtin.git:
+    repo: https://github.com/gmnz/warpd
+    dest: ~/external/repos/warpd
+    version: effea402ec8668bb2bc5c5117800d16d0d9d349a # fix build
+    force: true
+    single_branch: true
+    depth: 1
+
+- name: "[archlinux] Keyboard peripheral: patch warpd"
+  ansible.builtin.command: git apply ~/dotfiles/assets/patches/warpd/horizontal_scroll.patch
+  args:
+    chdir: ~/external/repos/warpd
+  changed_when: false
+
+- name: "[archlinux] Keyboard peripheral: install warpd"
+  become: true
+  ansible.builtin.shell: make && make install
+  environment:
+    DISABLE_WAYLAND: true
+  args:
+    chdir: "{{ ansible_env.HOME }}/external/repos/warpd"
+    creates: /usr/local/bin/warpd

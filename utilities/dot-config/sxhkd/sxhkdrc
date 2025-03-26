@@ -126,4 +126,7 @@ super + {z,c,v}
 
 # Toggle dunst notifications history
 super + n
-    dunstctl history-pop  
+    dunstctl history-pop
+
+super + alt + x
+    warpd --hint --oneshot
