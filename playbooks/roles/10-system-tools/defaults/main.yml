@@ -66,6 +66,7 @@ root_backup_env:
   - /etc/mkinitcpio.conf
   - /etc/fstab
   - /etc/X11/xorg.conf.d/80-igpu-primary-egpu-offload.conf
+  - /var/log/pacman.log
 bw_backup_env:
   - ~/bw
 
