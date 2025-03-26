@@ -42,6 +42,13 @@
   loop_control:
     loop_var: service
 
+- name: "[archlinux] Keyboard peripheral: ensure xinput dir"
+  become: true
+  ansible.builtin.file:
+    state: directory
+    recurse: true
+    path: /etc/X11/xinit/xinput.d
+
 - name: "[archlinux] Keyboard peripheral: copy sudo files"
   become: true
   ansible.builtin.template:
@@ -52,6 +59,20 @@
   loop:
     - { source: ~/dotfiles/assets/udev-rules/99-kbdrate.rules, dest: /etc/udev/rules.d/99-kbdrate.rules }
     - { source: ~/dotfiles/assets/udev-rules/99-disable-internal-keyboard.rules, dest: /etc/udev/rules.d/99-disable-internal-keyboard.rules }
+    - { source: ~/dotfiles/assets/other/composekey_xim, dest: /etc/X11/xinit/xinput.d/xim }
+
+- name: "[archlinux] Keyboard peripheral: create symlink"
+  become: true
+  ansible.builtin.file:
+    src: /etc/X11/xinit/xinput.d/xim
+    dest: /etc/X11/xinit/xinput.d/en_US.UTF-8
+    state: link
+
+- name: "[archlinux] Keyboard peripheral: create another symlink"
+  ansible.builtin.file:
+    src: /usr/share/X11/locale/en_US.UTF-8/Compose
+    dest: ~/.XCompose
+    state: link
 
 - name: "[archlinux] Keyboard peripheral: setup keyd default.conf"
   become: true
