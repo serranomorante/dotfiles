@@ -266,7 +266,14 @@ M.config = function()
       # running nvim-dap sessions (that use those ports) and start a new one (my workflow, don't pay too much attention to this).
     ]]
 
-  local javascript_project_files = { "tsconfig.json", "package.json", "jsconfig.json", ".git" }
+  local JS_ROOT_FILES = {
+    "index.html", -- correctly detect `public` folder
+    "tsconfig.json",
+    "package.json",
+    "jsconfig.json",
+    ".git",
+  }
+
   for _, language in ipairs(constants.javascript_aliases) do
     dap.configurations[language] = {
       {
@@ -276,7 +283,7 @@ M.config = function()
         port = 9222, -- Start chrome with `google-chrome-stable --remote-debugging-port=9222`
         sourceMaps = true,
         protocol = "inspector",
-        webRoot = function() return dap_utils.pick_workspace_relative_to_file(javascript_project_files) end,
+        webRoot = function() return dap_utils.pick_workspace_relative_to_file(JS_ROOT_FILES) end,
         pauseForSourceMap = false, -- https://github.com/microsoft/vscode-js-debug/blob/main/OPTIONS.md#pauseforsourcemap-5
         urlFilter = function()
           ---Pick a specific tab to debug
@@ -306,7 +313,7 @@ M.config = function()
             end)
           end)
         end,
-        cwd = function() return dap_utils.pick_workspace_relative_to_file(javascript_project_files) end,
+        cwd = function() return dap_utils.pick_workspace_relative_to_file(JS_ROOT_FILES) end,
         trace = LOG_IS_TRACE,
       },
       --- Next.js server "launch" is not included here because it can be too specific depending on the project
@@ -381,6 +388,25 @@ M.config = function()
       showLog = false,
       program = "${file}",
       dlvToolPath = binaries.dlv(),
+    },
+  }
+
+  dap.configurations.python = {
+    {
+      type = "python",
+      request = "launch",
+      name = "Python",
+      program = "${file}",
+      pythonPath = function()
+        local cwd = vim.fn.getcwd()
+        if vim.fn.executable(cwd .. "/.venv/bin/python") == 1 then
+          return cwd .. "/.venv/bin/python"
+        elseif vim.fn.executable(cwd .. "/venv/bin/python") == 1 then
+          return cwd .. "/venv/bin/python"
+        else
+          return "/usr/bin/python"
+        end
+      end,
     },
   }
 
