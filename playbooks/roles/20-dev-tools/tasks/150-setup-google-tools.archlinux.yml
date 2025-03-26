@@ -1,0 +1,14 @@
+---
+- name: "[archlinux] Setup google: ensure packages"
+  # You should do: `gcloud init` after
+  aur:
+    use: yay
+    state: present
+    name: google-cloud-cli
+
+- name: "[archlinux] Setup google: ensure bin packages"
+  # You should do `firebase login` after
+  ansible.builtin.get_url:
+    url: https://firebase.tools/bin/linux/latest
+    dest: ~/bin/firebase
+    mode: "755"

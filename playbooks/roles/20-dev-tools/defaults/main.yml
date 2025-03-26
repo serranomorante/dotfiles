@@ -11,7 +11,7 @@ neovim_plugins:
   - { folder: start, repo: nvim-tree/nvim-web-devicons }
   - { folder: start, repo: neoclide/coc.nvim, version: master }
   - { folder: start, repo: stevearc/overseer.nvim, name: overseer }
-  - { folder: start, repo: kevinhwang91/nvim-treesitter }
+  - { folder: start, repo: nvim-treesitter/nvim-treesitter }
   - { folder: start, repo: nvim-treesitter/nvim-treesitter-context, name: treesitter-context }
   - { folder: start, repo: nvim-treesitter/nvim-treesitter-textobjects }
   - { folder: start, repo: dense-analysis/ale }

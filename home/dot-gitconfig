@@ -46,3 +46,5 @@
     hunk-header-file-style = Gray bold ul
     hunk-header-style = file line-number syntax
 
+[includeIf "gitdir:~/external/work/cf/**"]
+    path = ~/external/work/cf/.gitconfig

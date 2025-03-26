@@ -26,6 +26,9 @@
   loop:
     - { script: ~/dotfiles/home/dot-bashrc }
 
-- name: "[archlinux] Setup node: volta node install system version"
-  ansible.builtin.command: "volta install node@{{ node_system_default_version }}"
+- name: "[archlinux] Setup node: install node versions"
+  ansible.builtin.command: "volta install node@{{ item }}"
   changed_when: false
+  loop:
+    - "{{ node_system_default_version }}"
+    - 21

@@ -141,3 +141,14 @@
       loop_control:
         loop_var: task_file
   tags: ["20-140"]
+
+- block:
+    - name: Setup google tools
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 150-setup-google-tools.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["20-150"]
