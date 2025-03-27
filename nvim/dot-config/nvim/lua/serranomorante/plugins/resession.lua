@@ -12,7 +12,7 @@ local function opts()
 
   return {
     load_detail = false,
-    ---removed options: cmdheight, diff
+    ---removed options: diff
     options = {
       "binary",
       "bufhidden",

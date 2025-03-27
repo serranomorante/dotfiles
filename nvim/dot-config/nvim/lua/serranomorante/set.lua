@@ -77,6 +77,7 @@ vim.go.virtualedit = "all"
 vim.go.messagesopt = "hit-enter,history:10000"
 vim.go.wildmode = "lastused,full"
 vim.go.wildcharm = ("\t"):byte()
+vim.go.cmdheight = 1
 
 vim.cmd.syntax("off")
 vim.cmd.colorscheme("default")
