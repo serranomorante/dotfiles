@@ -1,4 +1,5 @@
 #!/bin/sh
 
-xset r rate 220 30
+# https://www.reddit.com/r/Ubuntu/comments/n4qgfe/my_solution_to_get_faster_keyboard_key_input/
+xset r rate 190 50
 setxkbmap -option compose:menu
