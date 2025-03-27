@@ -4,12 +4,13 @@ device=$(libinput list-devices | grep -i "$1" -A10 | grep 'Capabilities.*keyboar
 
 if [ -z "$device" ]; then
   echo "device not found"
-  exit 1
+  sed -i "/^  - \"$1\"$/d" ~/.config/mouseless/config.yaml
+  exit 0
 fi
 
 echo "device found: $device"
 
-sed -i.bak "/- \"$1\"/s|\"$1\"|\"$device\"|" ~/.config/mouseless/config.yaml
+sed -i "/^  - \"$1\"$/s|\"$1\"|\"$device\"|" ~/.config/mouseless/config.yaml
 
 if grep -q "$device" ~/.config/mouseless/config.yaml; then
   echo "Config updated successfully: '$1' replaced with '$device'"
