@@ -14,6 +14,8 @@ vim.filetype.add({
     [".*/requirements.*%.txt"] = "requirements",
     ["%.env.*"] = "sh",
     [".*/udev%-rules/.*%.rules"] = "udevrules",
+    [".*/keyd/.*%.conf"] = "gitignore",
+    [".*keyd.*%.conf"] = "gitignore",
   },
 })
 
