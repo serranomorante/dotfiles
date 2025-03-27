@@ -28,3 +28,4 @@
   args:
     chdir: ~/dotfiles
   changed_when: false
+  notify: "10-system-tools : Ensure mypaint service"

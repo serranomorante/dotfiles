@@ -37,3 +37,11 @@
     state: started
     enabled: true
     masked: false
+
+- name: Ensure mypaint service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: mypaint.service
+    state: started
+    enabled: true
+    masked: false
