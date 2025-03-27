@@ -10,7 +10,13 @@ startCommand: "xset r rate 220 30"
 
 # the default speed for mouse movement and scrolling
 baseMouseSpeed: 750.0
-baseScrollSpeed: 20.0
+baseScrollSpeed: 10.0
+
+mouseAccelerationTime: 300.0
+mouseAccelerationCurve: 2.0
+
+mouseDecelerationTime: 100.0
+mouseDecelerationCurve: 1.0
 
 # the rest of the config defines the layers with their bindings
 layers:
@@ -39,13 +45,14 @@ layers:
       j: move  0  1
       # move cursor up
       k: move  0 -1
+      # r: reload-config
       p: scroll up
       n: scroll down
       u: scroll left
       o: scroll right
       w: speed 4.0
       e: speed 0.3
-      r: speed 0.1
+      space: speed 0.1
       f: button left
       d: button middle
       s: button right
