@@ -1,18 +1,4 @@
 ---
-- name: "[archlinux] Keyboard peripheral: ensure sxhkd is present"
-  become: true
-  ansible.builtin.package:
-    state: present
-    name: sxhkd
-
-- name: "[archlinux] Keyboard peripheral: enable service sxhkd and ensure is not masked"
-  ansible.builtin.systemd_service:
-    scope: user
-    state: started
-    name: sxhkd.service
-    enabled: true
-    masked: false
-
 - name: "[archlinux] Keyboard peripheral: ensure keyd is present"
   ansible.builtin.package:
     state: present

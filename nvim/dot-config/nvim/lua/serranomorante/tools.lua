@@ -60,7 +60,6 @@ M.by_filetype = {
       "gitignore",
       "rst",
       "ssh_config",
-      "sxhkdrc",
       "dockerfile",
       "mermaid",
       "udev",
