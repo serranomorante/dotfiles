@@ -12,6 +12,7 @@
       - sddm
       - dolphin
       - arch-install-scripts # to get genfstab
+      - kcalc
       # - kde-applications
 
 - name: "[archlinux] Setup desktop: ensure mypaint"
