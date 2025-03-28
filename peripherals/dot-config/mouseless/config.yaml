@@ -3,13 +3,14 @@ devices:
   - "keyd virtual keyboard"
   - "PFU Limited HHKB-Hybrid Keyboard"
   - "Logitech MX Keys"
+  - "HHKB-Hybrid_1 Keyboard"
 
 # fix keyboard rate
 # https://github.com/jbensmann/mouseless/issues/7
 startCommand: "configure-keyboard.sh"
 
 # the default speed for mouse movement and scrolling
-baseMouseSpeed: 750.0
+baseMouseSpeed: 850.0
 baseScrollSpeed: 10.0
 
 mouseAccelerationTime: 300.0
