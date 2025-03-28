@@ -13,7 +13,7 @@ M.overseer_status = {
   ["FAILURE"] = { "F", "red" },
   ["CANCELED"] = { "C", "gray" },
   ["SUCCESS"] = { "S", "green" },
-  ["RUNNING"] = { "R", "cyan" },
+  ["RUNNING"] = { "R", "#05c0cc" },
 }
 
 ---https://github.com/folke/ts-comments.nvim

@@ -246,6 +246,7 @@ local function OverseerTasksForStatus(status)
   return {
     condition = function(self) return self.tasks[status] end,
     provider = function(self) return string.format("%s%d", self.status[status][1], #self.tasks[status]) end,
+    hl = function(self) return { fg = self.status[status][2], bold = true } end,
   }
 end
 
