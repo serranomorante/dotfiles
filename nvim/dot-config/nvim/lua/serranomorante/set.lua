@@ -37,6 +37,7 @@ vim.go.isfname = vim.go.isfname .. ",@-@"
 vim.wo.cursorline = true
 vim.wo.cursorlineopt = "number"
 vim.go.wrapscan = false
+vim.wo.wrap = false
 
 vim.wo.foldcolumn = "1"
 vim.wo.foldlevel = 99
