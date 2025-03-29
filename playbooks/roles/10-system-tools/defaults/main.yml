@@ -23,6 +23,7 @@ extension_new_tab_redirect: jbkaalaijhbkmaffefakjjpphiefocai # local
 extension_vimium: dblffdcabmecmgepoideebngccnllhlo # local
 extension_hypothesis: bjfhmglciegochdpefhhlphglcehbmek
 extension_promnesia: dmeifochafhcoiolkeadbjgimpamfghc # local
+wine_photoshop_installer_path: "{{ ansible_env.HOME }}/external/Downloads/Photoshop/Photoshop.exe"
 chromium_local_extensions:
   - NewTab-Redirect
   - vimium
