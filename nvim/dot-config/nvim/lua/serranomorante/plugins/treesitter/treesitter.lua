@@ -111,6 +111,7 @@ M.config = function()
   vim.treesitter.language.register("git_config", "systemd")
   vim.treesitter.language.register("git_config", "conf")
   vim.treesitter.language.register("ssh_config", "sshdconfig")
+  vim.treesitter.language.register("git_config", "cfg")
 end
 
 return M
