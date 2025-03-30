@@ -15,12 +15,6 @@
       - kcalc
       # - kde-applications
 
-- name: "[archlinux] Setup desktop: ensure mypaint"
-  ansible.builtin.get_url:
-    url: https://github.com/mypaint/mypaint-appimage/releases/download/continuous/MyPaint-v{{ arch_mypaint_version }}-no-translations.AppImage
-    dest: ~/bin/mypaint
-    mode: "755"
-
 - name: "[archlinux] Setup desktop: remove packages"
   become: true
   ansible.builtin.package:
