@@ -143,6 +143,17 @@
   tags: ["10-130"]
 
 - block:
+    - name: Setup virtualbox tools
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 140-setup-virtualbox.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["10-140"]
+
+- block:
     - name: Setup persistence tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
