@@ -130,3 +130,28 @@ if command -v nnn &>/dev/null; then
     export NNN_PLUG='p:preview-tui;l:nmount'
     alias nnn='nnn -JRHdaA -Tt'
 fi
+
+# https://github.com/jarun/nnn/wiki/Basic-use-cases#sync-subshell-pwd
+nnn_cd()
+{
+    if ! [ -z "$NNN_PIPE" ]; then
+        printf "%s\0" "0c${PWD}" > "${NNN_PIPE}" !&
+    fi  
+}
+
+trap nnn_cd EXIT
+
+export DJANGO_READ_DOT_ENV_FILE=True
+
+# Have less display colours
+# from: https://wiki.archlinux.org/index.php/Color_output_in_console#man
+export LESS_TERMCAP_mb=$'\e[1;31m'     # begin bold
+export LESS_TERMCAP_md=$'\e[1;33m'     # begin blink
+export LESS_TERMCAP_so=$'\e[01;44;37m' # begin reverse video
+export LESS_TERMCAP_us=$'\e[01;37m'    # begin underline
+export LESS_TERMCAP_me=$'\e[0m'        # reset bold/blink
+export LESS_TERMCAP_se=$'\e[0m'        # reset reverse video
+export LESS_TERMCAP_ue=$'\e[0m'        # reset underline
+export GROFF_NO_SGR=1                  # for konsole and gnome-terminal
+# https://stackoverflow.com/a/19871578/5353461
+export MANPAGER='less -s -M +Gg'
