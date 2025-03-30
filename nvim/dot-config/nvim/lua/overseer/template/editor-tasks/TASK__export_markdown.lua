@@ -24,11 +24,9 @@ return {
     if vim.fn.filereadable(fullhrule) == 1 then table.insert(args, ("--include-in-header=%s"):format(fullhrule)) end
     if vim.fn.filereadable(bib_file) == 1 then table.insert(args, ("--bibliography=%s"):format(bib_file)) end
 
-    local command = vim.list_extend({ "pandoc" }, vim.list_extend(args, { input, "-o", output }))
-
     return {
-      cmd = { "tmux" },
-      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name .. input }),
+      cmd = { "pandoc" },
+      args = vim.list_extend(args, { input, "-o", output }),
       components = {
         "unique",
         "default",

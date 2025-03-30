@@ -8,10 +8,9 @@ return {
   desc = "Open markdown preview",
   builder = function()
     local file = vim.fn.expand("%:p")
-    local command = { ("lowdown -Tterm %s | less -R"):format(file) }
+    local command = ("lowdown -Tterm %s | less -R"):format(file)
     return {
-      cmd = { "tmux" },
-      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name .. file }),
+      cmd = command,
       env = {
         LESS = "-N",
       },

@@ -241,35 +241,6 @@ function M.filename_with_cursor_pos()
   return ("%s:%s:%s"):format(bufname, line, col)
 end
 
----@class TmuxWrapperOpts
----@field cwd? string
----@field session_name string
----@field include_binary boolean
-
----@param cmd table
----@param opts? TmuxWrapperOpts
-function M.wrap_overseer_args_with_tmux(cmd, opts)
-  opts = opts or {}
-  local args = {
-    "-L", -- use different tmux server for overseer tasks
-    "overseer",
-    "-f", -- use tmux config that disables statusbar
-    vim.env.HOME .. "/.config/tmux/tmuxnvim.conf",
-    "new-session",
-    "-A", -- attach in session exists
-  }
-  if opts.include_binary then table.insert(args, 1, "tmux") end
-  if opts.cwd then vim.list_extend(args, {
-    "-c",
-    opts.cwd,
-  }) end
-  if opts.session_name then
-    vim.list_extend(args, { "-s", opts.session_name .. vim.fn.fnameescape(vim.v.servername) })
-  end
-  vim.list_extend(args, cmd)
-  return args
-end
-
 function M.next_qf_item()
   local ok, _ = pcall(vim.cmd.cnext)
   if not ok then return vim.notify("No more items", vim.log.levels.WARN) end

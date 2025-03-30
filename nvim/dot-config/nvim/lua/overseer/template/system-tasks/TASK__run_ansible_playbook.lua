@@ -45,10 +45,7 @@ return {
       ),
     }
     return {
-      cmd = vim.fn.join(
-        utils.wrap_overseer_args_with_tmux(args, { session_name = task_name, include_binary = true }),
-        " "
-      ),
+      cmd = vim.fn.join(args, " "),
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
     }
   end,
