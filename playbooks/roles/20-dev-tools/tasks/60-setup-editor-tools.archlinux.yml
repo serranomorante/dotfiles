@@ -11,11 +11,11 @@
   poll: 0
   loop: "{{ neovim_plugins }}"
 
-- name: "[archlinux] Editor tools: install coc.nvim"
-  ansible.builtin.command: npm ci
-  args:
-    chdir: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim
-    creates: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim/build/index.js
+# - name: "[archlinux] Editor tools: install coc.nvim"
+#   ansible.builtin.command: npm ci
+#   args:
+#     chdir: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim
+#     creates: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim/build/index.js
 
 - name: "[archlinux] Editor tools: ensure aur packages"
   aur:
