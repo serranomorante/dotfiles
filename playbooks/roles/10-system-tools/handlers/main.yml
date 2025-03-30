@@ -38,6 +38,15 @@
     enabled: true
     masked: false
 
+- name: Ensure readline-mode-notify.service
+  become: true
+  ansible.builtin.systemd_service:
+    scope: system
+    name: readline-mode-notify.service
+    state: started
+    enabled: true
+    masked: false
+
 - name: Ensure mypaint service
   ansible.builtin.systemd_service:
     scope: user

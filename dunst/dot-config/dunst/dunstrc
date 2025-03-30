@@ -22,9 +22,9 @@
     ### Geometry ###
 
     # dynamic width from 0 to 300
-    # width = (0, 300)
+    width = (0, 300)
     # constant width of 300
-    width = 300
+    # width = 300
 
     # The maximum height of a single notification, excluding the frame.
     height = (0, 300)
@@ -399,6 +399,16 @@
     body = "^Memex"
     skip_display = true
     history_ignore = true
+
+[mouseless_mode]
+    summary = "^Mouseless"
+    history_ignore = true
+    hide_text = true
+
+[readline_mode]
+    summary = "^Readline Mode"
+    history_ignore = true
+    hide_text = true
 
 # Shell-like globbing will get expanded.
 #

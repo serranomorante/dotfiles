@@ -68,6 +68,17 @@
     mode: "644"
   notify: "10-system-tools : Restart keyd"
 
+- name: "[archlinux] Keyboard peripheral: setup services"
+  become: true
+  ansible.builtin.template:
+    src: ~/dotfiles/assets/services/{{ item }}
+    dest: /etc/systemd/system/{{ item }}
+    owner: root
+    mode: "644"
+  loop:
+    - readline-mode-notify.service
+  notify: "10-system-tools : Ensure readline-mode-notify.service"
+
 - name: "[archlinux] Keyboard peripheral: clone mouseless"
   ansible.builtin.git:
     repo: https://github.com/jbensmann/mouseless

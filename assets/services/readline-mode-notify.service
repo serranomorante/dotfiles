@@ -1,0 +1,14 @@
+[Unit]
+Description=Notify readline mode
+After=graphical-session.target
+
+[Service]
+ExecStart={{ ansible_env.HOME }}/dotfiles/assets/scripts/keyd/readline-mode-watcher.sh
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY={{ ansible_env.HOME }}/.Xauthority"
+Environment="HOME={{ ansible_env.HOME }}"
+User=root
+Group=root
+
+[Install]
+WantedBy=graphical-session.target

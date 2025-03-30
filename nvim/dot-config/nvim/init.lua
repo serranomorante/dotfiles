@@ -12,6 +12,7 @@ vim.filetype.add({
   pattern = {
     [".*/requirements.*%.txt"] = "requirements",
     ["%.env.*"] = "sh",
+    [".*%.service"] = "systemd",
     [".*/udev%-rules/.*%.rules"] = "udevrules",
     [".*/keyd/.*%.conf"] = "gitignore",
     [".*keyd.*%.conf"] = "gitignore",

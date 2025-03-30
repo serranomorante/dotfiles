@@ -5,11 +5,11 @@ id="$(gdbus call --session \
   --dest org.freedesktop.Notifications \
   --object-path /org/freedesktop/Notifications \
   --method org.freedesktop.Notifications.Notify \
-  show_mouseless_osd \
-  0 \
-  utilities-terminal \
-  "Mouseless" \
-  "Mouse mode enabled" \
+  show_readline_osd \
+  1 \
+  accessories-dictionary \
+  "Readline Mode" \
+  "Readline mode enabled" \
   [] \
   {} \
   0
@@ -17,4 +17,4 @@ id="$(gdbus call --session \
 id="${id##* }"
 id="${id%,)}"
 
-redis-cli set mouseless_mode_notification_id $id
+redis-cli set readline_mode_notification_id $id
