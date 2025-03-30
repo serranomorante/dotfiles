@@ -3,7 +3,6 @@ Description=Open mypaint on start
 After=graphical-session.target
 
 [Service]
-Type=oneshot
 ExecStart=%h/bin/mypaint
 
 [Install]

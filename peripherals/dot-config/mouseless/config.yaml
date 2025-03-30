@@ -10,7 +10,7 @@ devices:
 startCommand: "configure-keyboard.sh"
 
 # the default speed for mouse movement and scrolling
-baseMouseSpeed: 850.0
+baseMouseSpeed: 950.0
 baseScrollSpeed: 10.0
 
 mouseAccelerationTime: 300.0

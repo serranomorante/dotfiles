@@ -1,6 +1,6 @@
 local M = {}
 
-local keys = function()
+local function keys()
   vim.keymap.set("n", "<leader>oo", "<cmd>OverseerToggle<CR>", { desc = "Overseer: Toggle the overseer window" })
   vim.keymap.set("n", "<leader>or", "<cmd>OverseerRun<CR>", { desc = "Overseer: Run a task from a template" })
   vim.keymap.set("n", "<leader>oc", "<cmd>OverseerRunCmd<CR>", { desc = "Overseer: Run a raw shell command" })
@@ -45,8 +45,10 @@ local keys = function()
   end, { desc = "Open markdown preview" })
 end
 
-local opts = function()
+local function opts()
+  ---@type overseer.Config
   return {
+    strategy = "jobstart",
     ---Disable the automatic patch and do it manually on nvim-dap config
     ---https://github.com/stevearc/overseer.nvim/blob/master/doc/third_party.md#dap
     dap = false,

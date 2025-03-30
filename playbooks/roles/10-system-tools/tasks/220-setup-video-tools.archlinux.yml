@@ -10,6 +10,7 @@
     url: https://swr.cloud.blackmagicdesign.com/DaVinciResolve/v{{ arch_davinci_resolve_version }}/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip?verify={{ davinci_resolve_download_key }}
     dest: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
     mode: "755"
+  ignore_errors: true
 
 - name: "[archlinux] Setup video tools: download aur package"
   ansible.builtin.unarchive:

@@ -64,7 +64,7 @@ function M.bool2str(bool) return bool and "on" or "off" end
 ---@return boolean # Whether or not any of the clients provide the capability
 function M.has_capability(capability, filter)
   for _, client in pairs(vim.lsp.get_clients(filter)) do
-    if client.supports_method(capability) then return true end
+    if client:supports_method(capability) then return true end
   end
   return false
 end
