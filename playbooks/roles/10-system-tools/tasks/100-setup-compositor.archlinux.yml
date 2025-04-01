@@ -36,3 +36,10 @@
     state: started
     enabled: true
     masked: false
+
+- name: "[archlinux] Compositor: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: picom
+  notify: "10-system-tools : Ensure compositor service"

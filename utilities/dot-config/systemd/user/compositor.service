@@ -1,0 +1,9 @@
+[Unit]
+Description=Start X compositor
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/picom --config=%h/.config/picom/picom.conf
+
+[Install]
+WantedBy=graphical-session.target

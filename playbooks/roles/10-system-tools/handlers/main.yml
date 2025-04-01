@@ -54,3 +54,11 @@
     state: started
     enabled: true
     masked: false
+
+- name: Ensure compositor service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: compositor.service
+    state: started
+    enabled: true
+    masked: false
