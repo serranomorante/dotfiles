@@ -10,7 +10,11 @@ local CHOICES = {
     "10-170-setup-browser-tools",
     "10-180-setup-backup-tools,10-181-setup-root-backup-tools",
   },
+  [HOME .. "/dotfiles/utilities"] = {
+    "10-100-setup-compositor",
+  },
   [HOME .. "/dotfiles/playbooks"] = {
+    "10-100-setup-compositor",
     "20-60-setup-editor-tools",
   },
 }
