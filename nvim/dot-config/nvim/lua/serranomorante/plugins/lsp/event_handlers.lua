@@ -124,6 +124,21 @@ M.attach = function(client, bufnr)
     require("serranomorante.plugins.lsp.capability_handlers.inlayhints").attach(handler_data)
   end
 
+  if client_buf_supports_method(ms.textDocument_signatureHelp) then
+    vim.keymap.set(
+      "n",
+      "grs",
+      function() vim.lsp.buf.signature_help({ border = "single", focusable = false }) end,
+      opts_with_desc("Signature Help")
+    )
+    vim.keymap.set(
+      "i",
+      "<c-a>",
+      function() vim.lsp.buf.signature_help({ border = "single", focusable = false }) end,
+      opts_with_desc("Signature Help")
+    )
+  end
+
   ---https://github.com/neovim/neovim/pull/31311
   if client_buf_supports_method(ms.textDocument_foldingRange) then
     vim.cmd.packadd("ufo")

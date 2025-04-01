@@ -15,6 +15,8 @@
   "diagnostic.messageTarget": "float",
   "coc.preferences.useQuickfixForLocations": true,
   "hover.floatConfig": { "border": true, "focusable": true },
+  "suggest.floatConfig": { "highlight": "CocFloatingSuggest" },
+  "signature.floatConfig": { "border": true, "focusable": false },
   "diagnostic.floatConfig": { "border": true, "focusable": true },
   "diagnostic.enableMessage": "jump",
   "coc.preferences.promptInput": false,

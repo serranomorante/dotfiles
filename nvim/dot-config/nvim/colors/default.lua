@@ -35,6 +35,7 @@ local groups = {
   BqfPreviewThumb = { link = "PmenuSel" },
   ---Diffview
   DiffviewCursorLine = { ctermfg = 14, bg = bg .. "Grey3" },
+  CocFloatingSuggest = { bg = bg .. "Grey3" },
   qfDirName = { link = "Directory", default = true },
   qfFileName = { link = "CursorLineNr", default = true },
   CustomOperatorPending = { bg = fg .. "Blue" },
