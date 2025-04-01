@@ -1,5 +1,3 @@
-local utils = require("serranomorante.utils")
-
 local task_name = "editor-tasks-export-markdown"
 
 ---@type overseer.TemplateDefinition

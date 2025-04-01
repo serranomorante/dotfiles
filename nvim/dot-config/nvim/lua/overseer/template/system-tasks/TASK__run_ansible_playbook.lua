@@ -1,5 +1,3 @@
-local utils = require("serranomorante.utils")
-
 local task_name = "run-ansible-playbook"
 local HOME = vim.env.HOME
 local CWD = vim.fn.getcwd()
