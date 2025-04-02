@@ -16,9 +16,26 @@ local CHOICES = {
     "60-10-for-my-eyes-only",
   },
   [HOME .. "/dotfiles/playbooks"] = {
+    "10-10-setup-desktop",
     "10-100-setup-compositor",
+    "10-120-setup-wine-tools",
+    "10-140-setup-virtualbox",
+    "10-170-setup-browser-tools",
+    "10-180-setup-backup-tools,10-181-setup-root-backup-tools",
     "20-60-setup-editor-tools",
+    "40-20-setup-HPI",
+    "40-30-setup-exports",
+    "all",
+    "never",
   },
+}
+
+---Maps os names to sshd_config names
+local OS_TO_SSHD_CONFIG = {
+  archlinux = "localhost",
+  debian = "cloud",
+  otherlinux = "phone",
+  macosx = "macos",
 }
 
 ---@type overseer.TemplateDefinition
@@ -33,6 +50,22 @@ return {
       optional = false,
       order = 1,
     },
+    os = {
+      desc = "OS",
+      type = "enum",
+      choices = { "archlinux", "debian", "otherlinux" },
+      optional = false,
+      default = "archlinux",
+      order = 2,
+    },
+    skip_tags = {
+      desc = "Ignore the ansible always tag",
+      type = "enum",
+      choices = { "always", "never" },
+      default = "always",
+      optional = true,
+      order = 3,
+    },
   },
   builder = function(params)
     local args = {
@@ -40,7 +73,7 @@ return {
       "-K",
       ("%s/dotfiles/playbooks/tools.yml"):format(HOME),
       "-l",
-      "localhost",
+      OS_TO_SSHD_CONFIG[params.os],
       "--tags",
       string.format(
         '"%s"',
@@ -50,6 +83,7 @@ return {
         )
       ),
     }
+    if params.skip_tags then vim.list_extend(args, { "--skip-tags", params.skip_tags }) end
     return {
       cmd = vim.fn.join(args, " "),
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
