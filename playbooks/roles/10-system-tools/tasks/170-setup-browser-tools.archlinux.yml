@@ -225,6 +225,7 @@
     - "{{ extension_memex }}"
     - "{{ extension_hypothesis }}"
     - "{{ extension_chrome_regex_search }}"
+    - "{{ extension_monolith }}"
 
 - name: "[archlinux] Setup browser tools: copy brave desktop file to user directory"
   become: true

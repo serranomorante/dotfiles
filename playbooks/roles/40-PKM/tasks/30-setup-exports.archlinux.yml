@@ -18,3 +18,9 @@
     state: started
     enabled: true
     masked: false
+
+- name: "[archlinux] Setup exports: ensure services"
+  become: true
+  ansible.builtin.package:
+    name: monolith
+    state: present
