@@ -4,6 +4,7 @@ local FILE_HISTORY_PANEL_HEIGHT = 6
 
 local keys = function()
   vim.keymap.set("n", "<leader>vd", "<cmd>DiffviewOpen<CR>", { desc = "Diffview: compare against current index" })
+  vim.keymap.set("n", "<leader>vz", ":DiffviewFileHistory -S=", { desc = "Diffview: search in git history" })
   vim.keymap.set(
     "n",
     "<leader>vf",
