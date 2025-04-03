@@ -1,6 +1,5 @@
 ---
 cloud_tools:
-  - mariadb
   - plex
   - wireguard
   - syncthing

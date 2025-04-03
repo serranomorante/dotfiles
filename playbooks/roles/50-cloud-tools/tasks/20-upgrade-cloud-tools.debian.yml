@@ -1,24 +1,27 @@
 ---
-- name: "[debian] Upgrade cloud tools: stop tools"
-  ansible.builtin.command: app-{{ cloud_tool }} stop
-  loop: "{{ cloud_tools }}"
-  loop_control:
-    loop_var: cloud_tool
+- name: "[debian] Upgrade cloud tools: stop mariadb"
+  ansible.builtin.command: app-mariadb stop
   changed_when: false
-  tags: [never, slow]
+
+- name: "[debian] Upgrade cloud tools: upgrade mariadb"
+  ansible.builtin.command: app-mariadb upgrade --password '{{ debian_mariadb_password }}'
+  changed_when: false
+
+- name: "[debian] Upgrade cloud tools: start mariadb"
+  ansible.builtin.command: app-mariadb start
+  changed_when: false
+
+- name: "[debian] Upgrade cloud tools: stop tools"
+  ansible.builtin.command: app-{{ item }} stop
+  loop: "{{ cloud_tools }}"
+  changed_when: false
 
 - name: "[debian] Upgrade cloud tools: upgrade tools"
-  ansible.builtin.command: app-{{ cloud_tool }} upgrade
+  ansible.builtin.command: app-{{ item }} upgrade
   loop: "{{ cloud_tools }}"
-  loop_control:
-    loop_var: cloud_tool
   changed_when: false
-  tags: [never, slow]
 
 - name: "[debian] Upgrade cloud tools: start tools"
-  ansible.builtin.command: app-{{ cloud_tool }} start
+  ansible.builtin.command: app-{{ item }} start
   loop: "{{ cloud_tools }}"
-  loop_control:
-    loop_var: cloud_tool
   changed_when: false
-  tags: [never, slow]

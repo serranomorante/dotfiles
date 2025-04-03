@@ -8,7 +8,7 @@
       when: "user_os in ['archlinux']"
       loop_control:
         loop_var: task_file
-  tags: ["50-10"]
+  tags: [never, "50-10"]
 
 - block:
     - name: "Cloud tools: upgrade cloud tools"
