@@ -6,6 +6,7 @@ debian_rg_version: 14.0.3
 debian_fd_version: 10.1.0
 arch_mypaint_version: 2.1.0-alpha-400-g90b36db-2021-05-04_18.41
 arch_davinci_resolve_version: 19.1.4
+arch_fuse_version: 3.16.2-1
 wacom_vendor_id: 056a
 ansible_hhkb_keyboard_id: 04fe:0021 # same id for hhkb_1, hhkb_2, etc
 ansible_mx_keys_keyboard_id: 046d:408a
