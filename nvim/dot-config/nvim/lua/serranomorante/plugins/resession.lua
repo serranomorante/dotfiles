@@ -41,21 +41,20 @@ local function opts()
   }
 end
 
-M.config = function()
+function M.config()
   local resession = require("resession")
   resession.setup(opts())
 
   local group = vim.api.nvim_create_augroup("resession_custom_group", { clear = true })
-  local cwd = vim.fn.getcwd()
 
   vim.api.nvim_create_autocmd("VimEnter", {
     desc = "Load a dir-specific session when you open Neovim",
     group = group,
     callback = function()
       ---https://github.com/stevearc/resession.nvim?tab=readme-ov-file#create-one-session-per-directory
-      if utils.nvim_started_without_args() then
+      if utils.nvim_started_without_args() and not utils.cwd_is_home() then
         ---Save these to a different directory, so our manual sessions don't get polluted
-        resession.load(cwd, { dir = "dirsession", silence_errors = true, reset = true })
+        resession.load(vim.fn.getcwd(), { dir = "dirsession", silence_errors = true, reset = true })
       end
     end,
     nested = true,
@@ -65,7 +64,9 @@ M.config = function()
     desc = "Save a dir-specific session when you close Neovim",
     group = group,
     callback = function()
-      if utils.nvim_started_without_args() then resession.save(cwd, { dir = "dirsession", notify = false }) end
+      if utils.nvim_started_without_args() and not utils.cwd_is_home() then
+        resession.save(vim.fn.getcwd(), { dir = "dirsession", notify = false })
+      end
     end,
   })
 

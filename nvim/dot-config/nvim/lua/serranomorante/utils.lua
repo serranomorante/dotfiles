@@ -254,6 +254,9 @@ end
 ---Check if nvim was started with no args and without reading from stdin
 function M.nvim_started_without_args() return vim.fn.argc(-1) == 0 and not vim.g.using_stdin end
 
+---Check if current cwd is home
+function M.cwd_is_home() return vim.fn.getcwd() == vim.env.HOME end
+
 function M.open_quickfix_list()
   vim.cmd.cfirst()
   vim.cmd("normal! zz")
