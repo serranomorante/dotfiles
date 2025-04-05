@@ -1,4 +1,4 @@
-- name: Ensure hypothesis self-hosted service
+- name: handler_ensure_hypothesis_self_hosted_service
   ansible.builtin.systemd_service:
     scope: user
     name: hypothesis-self-hosted.service

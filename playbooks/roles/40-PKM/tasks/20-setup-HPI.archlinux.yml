@@ -94,7 +94,7 @@
     chdir: ~/external/repos/h
   changed_when: "'commands succeeded' in ensure_h_services_result.stdout"
   notify:
-    - "40-PKM : Ensure hypothesis self-hosted service"
+    - "40-PKM : handler_ensure_hypothesis_self_hosted_service"
 
 - name: "[archlinux] Setup HPI - ensure hypothesis user"
   # These credentials will not be used on production environments
@@ -165,7 +165,7 @@
     src: ~/repos/hypothesis-extension/settings/chrome-dev.json
     dest: ~/repos/hypothesis-extension/settings/custom-dev.json
     mode: "644"
-  notify: Ensure hypothesis oauth client id
+  notify: handler_ensure_hypothesis_oauth_client_id
 
 - name: "[archlinux] Setup HPI: ensure oauth client id"
   ansible.builtin.meta: flush_handlers

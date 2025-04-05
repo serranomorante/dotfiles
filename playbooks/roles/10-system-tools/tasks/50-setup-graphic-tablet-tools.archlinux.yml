@@ -34,7 +34,7 @@
     - { source: ~/dotfiles/assets/udev-rules/99-wacom.rules, dest: /etc/udev/rules.d/99-wacom.rules }
     - { source: ~/dotfiles/assets/udev-rules/60-weylus.rules, dest: /etc/udev/rules.d/60-weylus.rules }
     - { source: ~/dotfiles/assets/udev-rules/95-monitor-hotplug.rules, dest: /etc/udev/rules.d/95-monitor-hotplug.rules }
-  notify: "10-system-tools : Reload udev rules"
+  notify: "10-system-tools : handler_reload_udev_rules"
 
 - name: "[archlinux] Graphic tablet peripheral: ensure wacom service"
   ansible.builtin.systemd_service:
@@ -116,4 +116,4 @@
     url: https://github.com/mypaint/mypaint-appimage/releases/download/continuous/MyPaint-v{{ arch_mypaint_version }}-no-translations.AppImage
     dest: ~/bin/mypaint
     mode: "755"
-  notify: "10-system-tools : Ensure mypaint service"
+  notify: "10-system-tools : handler_ensure_mypaint_service"

@@ -50,4 +50,4 @@
     update-desktop-database ~/.local/share/applications
     xdg-mime default bitwarden.desktop x-scheme-handler/bitwarden
   changed_when: false
-  notify: "10-system-tools : Update desktop database"
+  notify: "10-system-tools : handler_update_desktop_database"

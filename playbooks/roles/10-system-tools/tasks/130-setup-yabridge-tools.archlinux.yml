@@ -34,4 +34,4 @@
     src: ~/apps/audio-tools/yabridgectl/yabridgectl
     dest: ~/.local/share/yabridge/yabridgectl
     state: link
-  notify: "10-system-tools : Sync yabridge plugins"
+  notify: "10-system-tools : handler_sync_yabridge_plugins"
