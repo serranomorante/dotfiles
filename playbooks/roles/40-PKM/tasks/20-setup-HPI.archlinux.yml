@@ -154,11 +154,20 @@
     dest: "~/repos/{{ item.name | default(item.repo) | basename }}"
     version: "{{ item.version | default('HEAD') }}"
     depth: 1
+    force: true
     single_branch: true
   register: result
-  failed_when: '"msg" in result and "Local modifications exist in the destination" not in result.msg'
   loop:
     - { repo: https://github.com/hypothesis/browser-extension, name: hypothesis-extension }
+
+- name: "[archlinux] Setup HPI: patch hypothesis extension"
+  ansible.posix.patch:
+    src: ~/dotfiles/assets/patches/chrome_extensions/{{ item }}
+    basedir: ~/repos/hypothesis-extension
+    strip: 1
+  loop:
+    - extension_hypothesis_delete_welcome.patch
+    - extension_hypothesis_active_by_default.patch
 
 - name: "[archlinux] Setup HPI: generate hypothesis extension custom-dev.json"
   ansible.builtin.copy:
@@ -167,13 +176,11 @@
     mode: "644"
   notify: handler_ensure_hypothesis_oauth_client_id
 
-- name: "[archlinux] Setup HPI: ensure oauth client id"
+- name: "[archlinux] Setup HPI: force handler_ensure_hypothesis_oauth_client_id trigger"
   ansible.builtin.meta: flush_handlers
 
 - name: "[archlinux] Setup HPI: prepare hypothesis extension"
-  ansible.builtin.shell: >
-    yarn install &&
-    make build SETTINGS_FILE=settings/custom-dev.json
+  ansible.builtin.command: make build SETTINGS_FILE=settings/custom-dev.json
   args:
     creates: ~/repos/hypothesis-extension/build/manifest.json
     chdir: ~/repos/hypothesis-extension
