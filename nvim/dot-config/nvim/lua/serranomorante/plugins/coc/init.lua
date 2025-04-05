@@ -65,10 +65,15 @@ function M.start(_, opts)
   vim.cmd.CocStart()
 
   local WAIT_MS = 20000 -- some servers can take a really long time
-  utils.wait_until(function() return coc_utils.extension_ready(opts.bufnr) end, WAIT_MS):thenCall(
-    function() event_handlers.attach(opts.bufnr) end,
-    function(err) vim.notify(string.format("[COC]: failed to attach buf %d. %s", opts.bufnr, err), vim.log.levels.WARN) end
-  )
+  utils
+    .wait_until(function() return coc_utils.extension_ready(opts.bufnr) end, WAIT_MS)
+    :thenCall(
+      function() event_handlers.attach(opts.bufnr) end,
+      function(err)
+        vim.notify(string.format("[COC]: failed to attach buf %d. %s", opts.bufnr, err), vim.log.levels.WARN)
+      end
+    )
+    :finally(function() require("serranomorante.plugins.nvim-ufo").config() end)
 end
 
 return M

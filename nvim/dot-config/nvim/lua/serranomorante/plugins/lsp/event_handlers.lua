@@ -141,7 +141,6 @@ M.attach = function(client, bufnr)
 
   ---https://github.com/neovim/neovim/pull/31311
   if client_buf_supports_method(ms.textDocument_foldingRange) then
-    vim.cmd.packadd("ufo")
     require("serranomorante.plugins.nvim-ufo").config()
   end
 end

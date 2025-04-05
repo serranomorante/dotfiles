@@ -56,6 +56,7 @@ M.config = function()
       if client then
         require("serranomorante.plugins.lsp.event_handlers").attach(client, args.buf)
       else
+        require("serranomorante.plugins.nvim-ufo").config()
         vim.notify("Cannot find client " .. client_id, vim.log.levels.ERROR)
       end
     end,

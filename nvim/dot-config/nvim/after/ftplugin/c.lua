@@ -8,4 +8,6 @@ if coc_utils.should_enable(bufnr) then
   require("serranomorante.plugins.coc").start(nil, { bufnr = bufnr })
 elseif lsp_utils.should_enable(bufnr) then
   lsp.start(require("serranomorante.plugins.lsp.configs.clangd").config(bufnr), { bufnr = bufnr })
+else
+  require("serranomorante.plugins.nvim-ufo").config()
 end

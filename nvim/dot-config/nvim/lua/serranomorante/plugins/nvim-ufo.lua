@@ -66,6 +66,7 @@ local function opts()
 end
 
 function M.config()
+  vim.cmd.packadd("ufo")
   keys()
   require("ufo").setup(opts())
 end
