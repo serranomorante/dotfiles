@@ -1,8 +1,10 @@
+---@diagnostic disable: missing-fields
+
 local M = {}
 
 local FILE_HISTORY_PANEL_HEIGHT = 6
 
-local keys = function()
+local function keys()
   vim.keymap.set("n", "<leader>vd", "<cmd>DiffviewOpen<CR>", { desc = "Diffview: compare against current index" })
   vim.keymap.set("n", "<leader>vz", ":DiffviewFileHistory -S=", { desc = "Diffview: search in git history" })
   vim.keymap.set(
@@ -22,7 +24,8 @@ local function init()
   })
 end
 
-local opts = function()
+local function opts()
+  ---@type DiffviewConfig
   return {
     show_help_hints = false,
     watch_index = true,
@@ -59,13 +62,16 @@ local opts = function()
       },
     },
     hooks = {
-      ---Fixes issue with coc.nvim
-      diff_buf_read = function(bufnr) vim.api.nvim_buf_set_var(bufnr, "coc_enabled", 0) end,
+      diff_buf_read = function(bufnr)
+        ---fixes issue with coc.nvim
+        vim.api.nvim_buf_set_var(bufnr, "coc_enabled", 0)
+      end,
+      diff_buf_win_enter = function(_, winid) vim.wo[winid].wrap = true end,
     },
   }
 end
 
-M.config = function()
+function M.config()
   init()
   keys()
   require("diffview").setup(opts())
