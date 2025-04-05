@@ -16,7 +16,7 @@
       - docker
       - docker-compose
       # - kde-applications
-  notify: "10-system-tools : Ensure docker service"
+  notify: "10-system-tools : handler_ensure_docker_service"
 
 - name: "[archlinux] Setup desktop: remove packages"
   become: true

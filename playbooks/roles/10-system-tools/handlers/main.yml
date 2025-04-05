@@ -1,36 +1,36 @@
 ---
 # https://www.reddit.com/r/termux/comments/11blc9u/comment/j9z97pp
-- name: Restart gpg agent
+- name: handler_restart_gpg_agent
   ansible.builtin.command: |
     gpgconf --kill gpg-agent
     gpg-agent --daemon --use-standard-socket
   changed_when: false
-  listen: "restart gpg services"
+  listen: handlergroup_restart_gpg_services
 
-- name: Restart gpg tty
+- name: handler_restart_gpg_tty
   ansible.builtin.command: gpg-connect-agent updatestartuptty /bye >/dev/null
   changed_when: false
-  listen: "restart gpg services"
+  listen: handlergroup_restart_gpg_services
 
-- name: Restart keyd
+- name: handler_restart_keyd
   become: true
   ansible.builtin.command: keyd reload
   changed_when: false
 
-- name: Reload udev rules
+- name: handler_reload_udev_rules
   become: true
   ansible.builtin.command: udevadm control --reload-rules
   changed_when: false
 
-- name: Sync yabridge plugins
+- name: handler_sync_yabridge_plugins
   ansible.builtin.command: yabridgectl sync
   changed_when: false
 
-- name: Update desktop database
+- name: handler_update_desktop_database
   ansible.builtin.command: update-desktop-database ~/.local/share/applications
   changed_when: false
 
-- name: Ensure mouseless service
+- name: handler_ensure_mouseless_service
   ansible.builtin.systemd_service:
     scope: user
     name: mouseless.service
@@ -38,7 +38,7 @@
     enabled: true
     masked: false
 
-- name: Ensure readline-mode-notify.service
+- name: handler_ensure_readline_mode_notify_service
   become: true
   ansible.builtin.systemd_service:
     scope: system
@@ -47,7 +47,7 @@
     enabled: true
     masked: false
 
-- name: Ensure mypaint service
+- name: handler_ensure_mypaint_service
   ansible.builtin.systemd_service:
     scope: user
     name: mypaint.service
@@ -55,7 +55,7 @@
     enabled: true
     masked: false
 
-- name: Ensure compositor service
+- name: handler_ensure_compositor_service
   ansible.builtin.systemd_service:
     scope: user
     name: compositor.service
@@ -63,7 +63,7 @@
     enabled: true
     masked: false
 
-- name: Ensure docker service
+- name: handler_ensure_docker_service
   become: true
   ansible.builtin.systemd_service:
     scope: system
@@ -72,14 +72,14 @@
     enabled: true
     masked: false
 
-- name: Ensure hypothesis oauth client id
+- name: handler_ensure_hypothesis_oauth_client_id
   ansible.builtin.replace:
     path: ~/repos/hypothesis-extension/settings/custom-dev.json
     regexp: '^\{'
     replace: '{\n  "oauthClientId": "{{ ansible_facts.hypothesis_oauth_client_id | default(None) }}",'
   when: ansible_facts.hypothesis_oauth_client_id is not undefined
 
-- name: Generate chrome-debugger service
+- name: handler_generate_chrome_debugger_service
   ansible.builtin.blockinfile:
     dest: ~/dotfiles/systemd/dot-config/systemd/user/chrome-debugger.service
     create: true
@@ -91,9 +91,9 @@
       --load-extension=%h/repos/hypothesis-extension/build,%h/repos/promnesia/extension/dist/chrome,%h/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,%h/repos/{{ chromium_local_extensions | join(',%h/repos/') }}
     mode: "644"
 
-- name: Ensure brave desktop file
+- name: handler_ensure_brave_desktop_file
   ansible.builtin.replace:
     path: ~/.local/share/applications/brave-browser.desktop
     regexp: "^(Exec=).*"
     replace: '\1bravennn --load-extension={{ ansible_env.HOME }}/repos/hypothesis-extension/build,{{ ansible_env.HOME }}/repos/promnesia/extension/dist/chrome,{{ ansible_env.HOME }}/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,{{ ansible_env.HOME }}/repos/NewTab-Redirect,{{ ansible_env.HOME }}/repos/vimium,{{ ansible_env.HOME }}/repos/chrome-show-tab-numbers %u'
-  notify: "10-system-tools : Update desktop database"
+  notify: "10-system-tools : handler_update_desktop_database"

@@ -42,4 +42,4 @@
   ansible.builtin.package:
     state: present
     name: picom
-  notify: "10-system-tools : Ensure compositor service"
+  notify: "10-system-tools : handler_ensure_compositor_service"

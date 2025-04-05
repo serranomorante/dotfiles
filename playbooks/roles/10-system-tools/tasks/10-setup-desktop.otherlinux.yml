@@ -65,7 +65,7 @@
       max-cache-ttl 34560000
       enable-ssh-support
   when: pinentry_tty_path is succeeded
-  notify: "10-system-tools : restart gpg services"
+  notify: "10-system-tools : handlergroup_restart_gpg_services"
 
 - name: "[otherlinux] Setup desktop: ensure startup"
   ansible.builtin.copy:

@@ -36,5 +36,5 @@
     initdb --locale=C.UTF-8 --encoding=UTF8 -D /var/lib/postgres/data --data-checksums
   args:
     creates: /var/lib/postgres/data/pg_hba.conf
-  # notify: "20-dev-tools : Ensure postgres service"
+  # notify: "20-dev-tools : handler_ensure_postgres_service"
   when: not postgres_cluster_data.stat.exists
