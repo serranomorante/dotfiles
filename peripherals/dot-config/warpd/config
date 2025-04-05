@@ -2,5 +2,5 @@ hint_exit: esc
 hint_size: 30
 hint_border_radius: 5
 hint_chars: abcdefghijklmnopqrstuvwxyz
-hint_bgcolor: #ffde0095
+hint_bgcolor: #fedb2cbd
 hint_fgcolor: #000000
