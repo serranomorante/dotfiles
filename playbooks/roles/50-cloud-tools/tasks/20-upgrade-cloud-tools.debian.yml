@@ -4,7 +4,7 @@
   changed_when: false
 
 - name: "[debian] Upgrade cloud tools: upgrade mariadb"
-  ansible.builtin.command: app-mariadb upgrade --password '{{ debian_mariadb_password }}'
+  ansible.builtin.command: app-mariadb upgrade --password '{{ debian_mariadb_password | default(None) }}'
   changed_when: false
 
 - name: "[debian] Upgrade cloud tools: start mariadb"
