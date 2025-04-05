@@ -22,10 +22,12 @@ extension_floccus: fnaicdffflnofjppbagibeoednhnbjhg
 extension_memex: abkfbakhjpmblaafnpgjppbmioombali
 extension_new_tab_redirect: jbkaalaijhbkmaffefakjjpphiefocai # local
 extension_vimium: dblffdcabmecmgepoideebngccnllhlo # local
-extension_hypothesis: bjfhmglciegochdpefhhlphglcehbmek
 extension_promnesia: dmeifochafhcoiolkeadbjgimpamfghc # local
 extension_monolith: koalogomkahjlabefiglodpnhhkokekg
+local_hypothesis_extension: oaefmonehnpgpgggcnifjffikgfchbgp
 wine_photoshop_installer_path: "{{ ansible_env.HOME }}/external/Downloads/Photoshop/Photoshop.exe"
+
+# Only add your local extension here if the `manifest.json` file is in the root of the repo
 chromium_local_extensions:
   - NewTab-Redirect
   - vimium

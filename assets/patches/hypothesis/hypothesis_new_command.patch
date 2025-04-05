@@ -1,0 +1,40 @@
+diff --git a/h/cli/commands/authclient.py b/h/cli/commands/authclient.py
+index f0b1244..62ef96b 100644
+--- a/h/cli/commands/authclient.py
++++ b/h/cli/commands/authclient.py
+@@ -58,3 +58,16 @@ def add(ctx, name, authority, type_, redirect_uri, grant_type):  # noqa: PLR0913
+         message += f"\nClient Secret: {secret}"
+ 
+     click.echo(message)
++
++@authclient.command()
++@click.option("--name", prompt=True, help="The name of the client")
++@click.pass_context
++def find(ctx, name):
++    """Find fist OAuth client by name."""
++    request = ctx.obj["bootstrap"]()
++
++    exists = models.AuthClient.get_by_name(request.db, name)
++    if not exists:
++        click.echo("Auth client not found")
++        return
++    click.echo(f"Client ID: {exists.id}")
+diff --git a/h/models/auth_client.py b/h/models/auth_client.py
+index bf3dca8..1e8a7b3 100644
+--- a/h/models/auth_client.py
++++ b/h/models/auth_client.py
+@@ -117,5 +117,14 @@ class AuthClient(Base, Timestamps):
+         nullable=False,
+     )
+ 
++    @classmethod
++    def get_by_name(cls, session, name):
++        """Fetch first OAuth client by name."""
++        return (
++            session.query(cls)
++            .filter(cls.name == name)
++            .first()
++        )
++
+     def __repr__(self):
+         return f"AuthClient(id={self.id!r})"

@@ -1,0 +1,7 @@
+- name: Ensure hypothesis self-hosted service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: hypothesis-self-hosted.service
+    state: started
+    enabled: true
+    masked: false

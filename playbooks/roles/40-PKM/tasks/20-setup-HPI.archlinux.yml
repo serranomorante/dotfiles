@@ -53,3 +53,138 @@
     python ~/repos/open-in-editor/open_in_editor.py --install --editor vim
   args:
     creates: ~/.local/share/applications/open_in_editor.desktop
+
+- name: "[archlinux] Setup HPI - clone h"
+  ansible.builtin.git:
+    repo: "{{ item }}"
+    dest: ~/external/repos/{{ item | basename }}
+    version: main
+    depth: 1
+    force: true
+    single_branch: true
+  loop:
+    - https://github.com/hypothesis/h # because I want to self-host
+
+- name: "[archlinux] Setup HPI - patch hypothesis h"
+  ansible.posix.patch:
+    src: ~/dotfiles/assets/patches/hypothesis/{{ item }}
+    basedir: ~/external/repos/h
+    strip: 1
+  loop:
+    - hypothesis_h.patch
+    - hypothesis_new_command.patch
+
+- name: "[archlinux] Setup HPI - register docker dbs network exists"
+  # The docker-compose file of the h repo needs this network to exist
+  ansible.builtin.shell: >
+    set -o pipefail &&
+    docker network ls --filter name=dbs --format 'json' | wc -l
+  register: docker_network_dbs_exists
+  changed_when: false
+
+- name: "[archlinux] Setup HPI - create dbs network"
+  ansible.builtin.command: docker network create dbs
+  changed_when: false
+  when: docker_network_dbs_exists.stdout == "0"
+
+- name: "[archlinux] Setup HPI - ensure h services"
+  ansible.builtin.shell: make services && make db
+  register: ensure_h_services_result
+  args:
+    chdir: ~/external/repos/h
+  changed_when: "'commands succeeded' in ensure_h_services_result.stdout"
+  notify:
+    - "40-PKM : Ensure hypothesis self-hosted service"
+
+- name: "[archlinux] Setup HPI - ensure hypothesis user"
+  # These credentials will not be used on production environments
+  ansible.builtin.command: >
+    tox -qe dev -- sh bin/hypothesis --dev user add
+      --username hypothesis
+      --email hypothesis@hypothes.is
+      --password hypothesis
+  args:
+    chdir: ~/external/repos/h
+  register: ensure_hypothesis_user_result
+  changed_when: "'commands succeeded' in ensure_hypothesis_user_result.stdout"
+  failed_when:
+    - "'stdout' in ensure_hypothesis_user_result"
+    - "'duplicate key value violates unique constraint' not in ensure_hypothesis_user_result.stdout"
+    - "'commands succeeded' not in ensure_hypothesis_user_result.stdout"
+
+- name: "[archlinux] Setup HPI - ensure admin user"
+  ansible.builtin.command: tox -qe dev -- sh bin/hypothesis --dev user admin hypothesis
+  register: ensure_admin_user_result
+  changed_when: "'commands succeeded' in ensure_admin_user_result.stdout"
+  args:
+    chdir: ~/external/repos/h
+
+- name: "[archlinux] Setup HPI - register authclient exists"
+  # You must apply the `hypothesis_new_command.patch` patch first.
+  ansible.builtin.command: >
+    tox -qe dev -- sh bin/hypothesis --dev authclient find
+      --name "Chrome Extension"
+  register: register_auth_client_exists_result
+  args:
+    chdir: ~/external/repos/h
+  changed_when: false
+
+- name: "[archlinux] Setup HPI - create new OAuth client"
+  ansible.builtin.command: >
+    tox -qe dev -- sh bin/hypothesis --dev authclient add
+      --name "Chrome Extension"
+      --authority "localhost"
+      --type "public"
+      --redirect-uri "chrome-extension://{{ local_hypothesis_extension }}"
+      --grant-type "authorization_code"
+  register: create_new_oauth_client_result
+  args:
+    chdir: ~/external/repos/h
+  when: "'Auth client not found' in register_auth_client_exists_result.stdout"
+  changed_when: "'commands succeeded' in create_new_oauth_client_result.stdout"
+
+- name: "[archlinux] Setup HPI - set_fact hypothesis client id"
+  ansible.builtin.set_fact:
+    hypothesis_oauth_client_id: "{{ create_new_oauth_client_result.stdout | default(register_auth_client_exists_result.stdout) | regex_search('Client ID: ([\\w-]*)', '\\1') | first }}"
+    cacheable: true
+
+- name: "[archlinux] Setup HPI: clone hypothesis browser extension"
+  ansible.builtin.git:
+    repo: "{{ item.repo }}"
+    dest: "~/repos/{{ item.name | default(item.repo) | basename }}"
+    version: "{{ item.version | default('HEAD') }}"
+    depth: 1
+    single_branch: true
+  register: result
+  failed_when: '"msg" in result and "Local modifications exist in the destination" not in result.msg'
+  loop:
+    - { repo: https://github.com/hypothesis/browser-extension, name: hypothesis-extension }
+
+- name: "[archlinux] Setup HPI: generate hypothesis extension custom-dev.json"
+  ansible.builtin.copy:
+    src: ~/repos/hypothesis-extension/settings/chrome-dev.json
+    dest: ~/repos/hypothesis-extension/settings/custom-dev.json
+    mode: "644"
+  notify: Ensure hypothesis oauth client id
+
+- name: "[archlinux] Setup HPI: ensure oauth client id"
+  ansible.builtin.meta: flush_handlers
+
+- name: "[archlinux] Setup HPI: prepare hypothesis extension"
+  ansible.builtin.shell: >
+    yarn install &&
+    make build SETTINGS_FILE=settings/custom-dev.json
+  args:
+    creates: ~/repos/hypothesis-extension/build/manifest.json
+    chdir: ~/repos/hypothesis-extension
+
+- name: "[archlinux] Setup HPI: build hypothesis external crx"
+  # We have to do this because the `manifest.json` file is not on the root of the repo
+  # Important: the `*.crx` file has to be at the same level of the `manifest.json` file
+  ansible.builtin.shell: >
+    ~/.local/share/gem/ruby/3.2.0/bin/extensionator
+    -d ~/repos/hypothesis-extension/build
+    -i ~/apps/browser-tools/chrome/extensions/identity.pem
+    -o ~/repos/hypothesis-extension/build/hypothesis.crx
+  args:
+    creates: ~/repos/hypothesis-extension/build/hypothesis.crx

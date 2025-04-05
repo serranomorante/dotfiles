@@ -13,7 +13,10 @@
       - dolphin
       - arch-install-scripts # to get genfstab
       - kcalc
+      - docker
+      - docker-compose
       # - kde-applications
+  notify: "10-system-tools : Ensure docker service"
 
 - name: "[archlinux] Setup desktop: remove packages"
   become: true
