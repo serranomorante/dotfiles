@@ -25,7 +25,7 @@
     "{{ extension_promnesia }}": {
       "toolbar_pin": "force_pinned"
     },
-    "{{ extension_hypothesis }}": {
+    "{{ local_hypothesis_extension }}": {
       "toolbar_pin": "force_pinned"
     },
     "{{ extension_vimium }}": {

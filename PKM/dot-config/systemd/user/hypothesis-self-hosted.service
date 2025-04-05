@@ -1,0 +1,11 @@
+[Unit]
+Description=Hypothesis self hosted
+After=graphical-session.target
+
+[Service]
+WorkingDirectory=%h/external/repos/h
+ExecStart=make dev
+Restart=always
+
+[Install]
+WantedBy=graphical-session.target

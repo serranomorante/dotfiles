@@ -63,6 +63,7 @@ M.by_filetype = {
       "dockerfile",
       "mermaid",
       "udev",
+      "make",
     },
   },
 }

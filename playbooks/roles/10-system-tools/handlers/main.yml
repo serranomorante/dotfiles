@@ -62,3 +62,38 @@
     state: started
     enabled: true
     masked: false
+
+- name: Ensure docker service
+  become: true
+  ansible.builtin.systemd_service:
+    scope: system
+    name: docker.service
+    state: started
+    enabled: true
+    masked: false
+
+- name: Ensure hypothesis oauth client id
+  ansible.builtin.replace:
+    path: ~/repos/hypothesis-extension/settings/custom-dev.json
+    regexp: '^\{'
+    replace: '{\n  "oauthClientId": "{{ ansible_facts.hypothesis_oauth_client_id }}",'
+  when: ansible_facts.hypothesis_oauth_client_id is not undefined
+
+- name: Generate chrome-debugger service
+  ansible.builtin.blockinfile:
+    dest: ~/dotfiles/systemd/dot-config/systemd/user/chrome-debugger.service
+    create: true
+    insertafter: '^\[Service\]'
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP CHROMIUM"
+    block: >
+      ExecStart={{ ansible_env.HOME }}/bin/chromiumnnn
+      --remote-debugging-port=9222
+      --load-extension=%h/repos/hypothesis-extension/build,%h/repos/promnesia/extension/dist/chrome,%h/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,%h/repos/{{ chromium_local_extensions | join(',%h/repos/') }}
+    mode: "644"
+
+- name: Ensure brave desktop file
+  ansible.builtin.replace:
+    path: ~/.local/share/applications/brave-browser.desktop
+    regexp: "^(Exec=).*"
+    replace: '\1bravennn --load-extension={{ ansible_env.HOME }}/repos/hypothesis-extension/build,{{ ansible_env.HOME }}/repos/promnesia/extension/dist/chrome,{{ ansible_env.HOME }}/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,{{ ansible_env.HOME }}/repos/NewTab-Redirect,{{ ansible_env.HOME }}/repos/vimium,{{ ansible_env.HOME }}/repos/chrome-show-tab-numbers %u'
+  notify: "10-system-tools : Update desktop database"

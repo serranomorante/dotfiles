@@ -1,0 +1,56 @@
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 3391c7b..a7690e0 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -8,6 +8,7 @@ services:
+       interval: 1s
+     environment:
+       POSTGRES_HOST_AUTH_METHOD: trust
++    restart: always
+     networks:
+       - dbs
+   elasticsearch:
+@@ -20,11 +21,13 @@ services:
+         start_period: 1m
+     environment:
+       - discovery.type=single-node
++    restart: always
+   rabbit:
+     image: rabbitmq:3.12-management-alpine
+     ports:
+       - '127.0.0.1:5672:5672'
+       - '127.0.0.1:15672:15672'
++    restart: always
+ networks:
+   # This external network allows FDW connections between H, LMS and report DBs.
+   # To avoid having unnecessary dependencies between the projects
+diff --git a/h/views/admin/oauthclients.py b/h/views/admin/oauthclients.py
+index 3db99fe..62a7da9 100644
+--- a/h/views/admin/oauthclients.py
++++ b/h/views/admin/oauthclients.py
+@@ -45,10 +45,12 @@ class AuthClientCreateController:
+         # Set useful defaults for new clients.
+         self.form.set_appstruct(
+             {
++                "name": "Chrome Extension",
+                 "authority": self.request.default_authority,
+                 "grant_type": GrantType.authorization_code,
+                 "response_type": ResponseType.code,
+                 "trusted": False,
++                "redirect_url": "chrome-extension://oaefmonehnpgpgggcnifjffikgfchbgp"
+             }
+         )
+         return self._template_context()
+diff --git a/h/views/client.py b/h/views/client.py
+index 16a8eb4..0e23fa2 100644
+--- a/h/views/client.py
++++ b/h/views/client.py
+@@ -14,7 +14,7 @@ from h.util.uri import origin, render_url_template
+ 
+ # Default URL for the client, which points to the latest version of the client
+ # that was published to npm.
+-DEFAULT_CLIENT_URL = "https://cdn.hypothes.is/hypothesis"
++DEFAULT_CLIENT_URL = "http://localhost:5000"
+ 
+ 
+ def _client_url(request):

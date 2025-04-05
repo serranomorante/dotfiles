@@ -141,6 +141,7 @@
     loop_var: extension_github_repo_name
 
 - name: "[archlinux] Setup browser tools: build react-devtools crx"
+  # We have to do this because the `manifest.json` file is not on the root of the repo
   ansible.builtin.shell: >
     ~/.local/share/gem/ruby/3.2.0/bin/extensionator
     -d ~/repos/react/packages/react-devtools-extensions/chrome/build/unpacked/
@@ -189,23 +190,6 @@
     - chromium
     - brave
 
-- name: "[archlinux] Setup browser tools: register chromium path"
-  ansible.builtin.command: which chromiumnnn
-  register: chromium_path
-  changed_when: false
-
-- name: "[archlinux] Setup browser tools: auto generate chrome-debugger service"
-  ansible.builtin.blockinfile:
-    dest: ~/dotfiles/systemd/dot-config/systemd/user/chrome-debugger.service
-    create: true
-    insertafter: '^\[Service\]'
-    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP CHROMIUM"
-    block: >
-      ExecStart={{ chromium_path.stdout }}
-      --remote-debugging-port=9222
-      --load-extension=%h/repos/promnesia/extension/dist/chrome,%h/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,%h/repos/{{ chromium_local_extensions | join(',%h/repos/') }}
-    mode: "644"
-
 - name: "[archlinux] Setup browser tools: create extensions directory for all users"
   become: true
   ansible.builtin.file:
@@ -223,7 +207,6 @@
   loop:
     - "{{ extension_floccus }}"
     - "{{ extension_memex }}"
-    - "{{ extension_hypothesis }}"
     - "{{ extension_chrome_regex_search }}"
     - "{{ extension_monolith }}"
 
@@ -235,16 +218,16 @@
     owner: "{{ ansible_env.USER }}"
     mode: "644"
 
-- name: "[archlinux] Setup browser tools: override brave desktop file"
-  ansible.builtin.replace:
-    path: "{{ ansible_env.HOME }}/.local/share/applications/brave-browser.desktop"
-    regexp: "^(Exec=).*"
-    replace: '\1bravennn --load-extension={{ ansible_env.HOME }}/repos/promnesia/extension/dist/chrome,{{ ansible_env.HOME }}/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,{{ ansible_env.HOME }}/repos/NewTab-Redirect,{{ ansible_env.HOME }}/repos/vimium,{{ ansible_env.HOME }}/repos/chrome-show-tab-numbers %u'
-  notify: "10-system-tools : Update desktop database"
-
 - name: "[archlinux] Setup browser tools: clean packages"
   become: true
   ansible.builtin.package:
     force: true
     state: absent
     name: jdk-openjdk
+
+- name: "[archlinux] Setup browser tools: run handlers"
+  ansible.builtin.command: echo
+  changed_when: true
+  notify:
+    - Generate chrome-debugger service
+    - Ensure brave desktop file
