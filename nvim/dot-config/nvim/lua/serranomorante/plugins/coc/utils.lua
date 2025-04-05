@@ -11,7 +11,7 @@ function M.has_extension_available(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   local has_extension = false
   local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
-  local filetype_tools = ((tools.by_filetype[filetype] or {}).extensions or {})
+  local filetype_tools = vim.tbl_get(tools.by_filetype, filetype, "extensions") or {}
   for _, extension in ipairs(vim.g.coc_global_extensions or {}) do
     if has_extension == false then has_extension = vim.list_contains(filetype_tools, extension) end
   end
