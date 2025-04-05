@@ -30,19 +30,3 @@
     append: true
     groups: vboxusers
     name: "{{ ansible_env.USER }}"
-
-- name: "[archlinux] Setup virtualbox: clone fuse3 arch package"
-  ansible.builtin.git:
-    repo: https://gitlab.archlinux.org/archlinux/packaging/packages/fuse3
-    dest: ~/external/repos/fuse3
-    version: "{{ arch_fuse_version }}"
-    force: true
-    single_branch: true
-    depth: 1
-
-- name: "[archlinux] Setup virtualbox: downgrade fuse3 arch package"
-  aur:
-    use: makepkg
-    name: fuse3
-    state: present
-    local_pkgbuild: ~/external/repos/fuse3
