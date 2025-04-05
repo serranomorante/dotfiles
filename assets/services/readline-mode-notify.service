@@ -1,6 +1,6 @@
 [Unit]
 Description=Notify readline mode
-After=graphical-session.target
+After=graphical.target
 
 [Service]
 ExecStart={{ ansible_env.HOME }}/dotfiles/assets/scripts/keyd/readline-mode-watcher.sh
@@ -11,4 +11,4 @@ User=root
 Group=root
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=graphical.target
