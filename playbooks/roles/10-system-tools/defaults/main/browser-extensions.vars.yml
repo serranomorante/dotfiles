@@ -1,0 +1,17 @@
+---
+extension_react_devtools: nipckbchhibgnbgnabineijogaiegchd
+extension_show_tab_numbers: egbdjbfggjldijfoahggfipdkpijmmgd # local
+extension_chrome_regex_search: bpelaihoicobbkgmhcbikncnpacdbknn
+extension_floccus: fnaicdffflnofjppbagibeoednhnbjhg
+extension_memex: abkfbakhjpmblaafnpgjppbmioombali
+extension_new_tab_redirect: jbkaalaijhbkmaffefakjjpphiefocai # local
+extension_vimium: dblffdcabmecmgepoideebngccnllhlo # local
+extension_promnesia: dmeifochafhcoiolkeadbjgimpamfghc # local
+extension_monolith: koalogomkahjlabefiglodpnhhkokekg
+local_hypothesis_extension: oaefmonehnpgpgggcnifjffikgfchbgp
+
+# Only add your local extension here if the `manifest.json` file is in the root of the repo
+chromium_local_extensions:
+  - NewTab-Redirect
+  - vimium
+  - chrome-show-tab-numbers
