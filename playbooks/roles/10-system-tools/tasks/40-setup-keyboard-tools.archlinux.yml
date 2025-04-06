@@ -68,10 +68,17 @@
     mode: "644"
   notify: "10-system-tools : handler_restart_keyd"
 
+- name: "[archlinux] Keyboard peripheral: prepare readline-mode-notify script"
+  become: true
+  ansible.builtin.template:
+    src: "{{ ansible_env.HOME }}/dotfiles/assets/scripts/keyd/readline-mode-watcher.sh"
+    dest: /usr/local/bin/readline-mode-watcher.sh
+    mode: "755"
+
 - name: "[archlinux] Keyboard peripheral: setup services"
   become: true
   ansible.builtin.template:
-    src: ~/dotfiles/assets/services/{{ item }}
+    src: "{{ ansible_env.HOME }}/dotfiles/assets/services/{{ item }}"
     dest: /etc/systemd/system/{{ item }}
     owner: root
     mode: "644"

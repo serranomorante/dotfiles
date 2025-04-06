@@ -6,7 +6,7 @@ id="$(gdbus call --session \
   --object-path /org/freedesktop/Notifications \
   --method org.freedesktop.Notifications.Notify \
   show_readline_osd \
-  1 \
+  0 \
   accessories-dictionary \
   "Readline Mode" \
   "Readline mode enabled" \

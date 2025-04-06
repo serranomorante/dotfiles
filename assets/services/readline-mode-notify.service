@@ -3,7 +3,7 @@ Description=Notify readline mode
 After=graphical.target
 
 [Service]
-ExecStart={{ ansible_env.HOME }}/dotfiles/assets/scripts/keyd/readline-mode-watcher.sh
+ExecStart=/usr/local/bin/readline-mode-watcher.sh
 Environment="DISPLAY=:0"
 Environment="XAUTHORITY={{ ansible_env.HOME }}/.Xauthority"
 Environment="HOME={{ ansible_env.HOME }}"
