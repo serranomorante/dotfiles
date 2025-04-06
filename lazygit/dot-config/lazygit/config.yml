@@ -21,11 +21,11 @@ git:
     useConfig: true
 # based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
 os:
-  edit: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
-  editAtLine: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote {{filename}} -cc "1tabnext" -c "{{line}}" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
-  editAtLineAndWait: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote-wait {{filename}} -cc "1tabnext" -c "{{line}}" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+  edit: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote {{filename}} | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+  editAtLine: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote {{filename}} -c "{{line}}" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+  editAtLineAndWait: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote-wait {{filename}} -c "{{line}}" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
   editInTerminal: false
-  open: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote {{filename}} -cc "1tabnext" | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
+  open: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart --remote {{filename}} | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
   openDirInEditor: 'nvr --servername $CUSTOM_NVIM_LISTEN_ADDRESS --nostart {{dir}} | tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_index},0},#{window_zoomed_flag}}" "resize-pane -Z" "" \; select-pane -t {top-left}'
 promptToReturnFromSubprocess: false
 notARepository: 'quit'
