@@ -13,3 +13,19 @@
     state: started
     enabled: true
     masked: false
+
+- name: "[archlinux] Notification utilities: ensure dbus-1 servics folder"
+  # See: https://dunst-project.org/faq/
+  ansible.builtin.file:
+    path: ~/.local/share/dbus-1/services
+    state: directory
+    recurse: true
+
+- name: "[archlinux] Notification utilities: ensure dunst as default notification daemon"
+  # See: https://dunst-project.org/faq/
+  # And: https://github.com/dunst-project/dunst/issues/363
+  ansible.builtin.file:
+    src: /usr/share/dbus-1/services/{{ default_notification_daemon | default('org.knopwob.dunst.service') }}
+    dest: "{{ ansible_env.HOME }}/.local/share/dbus-1/services/org.freedesktop.Notifications.service"
+    state: link
+    force: true
