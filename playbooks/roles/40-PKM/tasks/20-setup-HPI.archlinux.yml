@@ -38,6 +38,18 @@
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
 
+- name: "[archlinux] Setup HPI - ensure hypothesis domain points to local instance"
+  ansible.builtin.replace:
+    path: ~/apps/PKM/.venv/lib/python3.13/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
+    regexp: '(domain=)None\,'
+    replace: '\1"localhost:5000",'
+
+- name: "[archlinux] Setup HPI - replace https"
+  ansible.builtin.replace:
+    path: ~/apps/PKM/.venv/lib/python3.13/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
+    regexp: 'https'
+    replace: 'http'
+
 - name: "[archlinux] Setup HPI - symlink virtualenv packages"
   ansible.builtin.file:
     src: ~/apps/PKM/.venv/bin/{{ item }}
