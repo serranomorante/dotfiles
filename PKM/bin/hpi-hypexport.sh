@@ -7,8 +7,8 @@ set -euo pipefail
 HOME_DIR="${HOME}" # Or replace with `$h` if it's a valid variable
 
 # Decrypt credentials
-username=$(gpg --decrypt "${HOME_DIR}/hypothesis_username.gpg" 2>/dev/null || { echo "Failed to decrypt username."; exit 1; })
-token=$(gpg --decrypt "${HOME_DIR}/hypothesis_token.gpg" 2>/dev/null || { echo "Failed to decrypt token."; exit 1; })
+username=$(gpg --decrypt "${HOME_DIR}/secrets/hypothesis_username.gpg" 2>/dev/null || { echo "Failed to decrypt username."; exit 1; })
+token=$(gpg --decrypt "${HOME_DIR}/secrets/hypothesis_token.gpg" 2>/dev/null || { echo "Failed to decrypt token."; exit 1; })
 
 # Function to get timestamp
 timestamp() {
