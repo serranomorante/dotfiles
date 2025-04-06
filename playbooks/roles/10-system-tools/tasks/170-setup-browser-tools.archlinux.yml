@@ -40,12 +40,14 @@
 - name: "[archlinux] Setup browser tools: clone chrome extensions"
   ansible.builtin.git:
     repo: "{{ item.repo }}"
-    dest: "~/repos/{{ item.name | default(item.repo) | basename }}"
+    dest: ~/repos/{{ item.name | default(item.repo) | basename }}
     version: "{{ item.version | default('HEAD') }}"
-    depth: 10
+    depth: 1
     single_branch: true
-  register: result
-  failed_when: '"msg" in result and "Local modifications exist in the destination" not in result.msg'
+  register: var_clone_chrome_extensions
+  failed_when:
+    - "'msg' in var_clone_chrome_extensions"
+    - "'Local modifications exist in the destination' not in var_clone_chrome_extensions.msg"
   loop:
     - { repo: https://github.com/jimschubert/NewTab-Redirect }
     - { repo: https://github.com/philc/vimium }
@@ -89,23 +91,11 @@
   when: '"utils.js" not in react_devtools_modified_files.stdout'
   changed_when: false
 
-- name: "[archlinux] Setup browser tools: check if vimium already patched"
-  ansible.builtin.shell: |
-    git ls-files -m
-  register: vimium_modified_files
-  args:
-    chdir: ~/repos/vimium
-  changed_when: false
-
 - name: "[archlinux] Setup browser tools: patch vimium extension"
-  ansible.builtin.shell: |
-    git apply ~/dotfiles/assets/patches/chrome_extensions/{{ item }}
-  args:
-    chdir: ~/repos/vimium
-  loop:
-    - extension_vimium_config.patch
-  when: '"settings.js" not in vimium_modified_files.stdout'
-  changed_when: false
+  ansible.posix.patch:
+    src: ~/dotfiles/assets/patches/chrome_extensions/extension_vimium_config.patch
+    basedir: ~/repos/vimium
+    strip: 1
 
 - name: "[archlinux] Setup browser tools: prepare react-devtools"
   ansible.builtin.shell: |
