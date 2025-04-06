@@ -1,5 +1,5 @@
 diff --git a/lib/settings.js b/lib/settings.js
-index 1df45451..b2138278 100644
+index 1df45451..f333a38a 100644
 --- a/lib/settings.js
 +++ b/lib/settings.js
 @@ -2,7 +2,7 @@
@@ -7,7 +7,7 @@ index 1df45451..b2138278 100644
    scrollStepSize: 60,
    smoothScroll: true,
 -  keyMappings: "# Insert your preferred key mappings here.",
-+  keyMappings: "# Insert your preferred key mappings here.\n\nmap K previousTab\nmap J nextTab\n\nunmap d\nunmap u\nmap <c-d> scrollPageDown\nmap <c-u> scrollPageUp",
++  keyMappings: "# Insert your preferred key mappings here.\n\nmap K previousTab\nmap J nextTab\n\n# Unmaps\nunmap d\nunmap u\nunmap f\nunmap F\n\nmap <c-d> scrollPageDown\nmap <c-u> scrollPageUp\nmap z LinkHints.activateMode action=hover\nmap <c-]> passNextKey",
    linkHintCharacters: "sadfjklewcmpgh",
    linkHintNumbers: "0123456789",
    filterLinkHints: false,
