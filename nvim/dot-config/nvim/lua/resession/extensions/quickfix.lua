@@ -33,11 +33,4 @@ M.is_win_supported = function(winid, bufnr) return vim.bo[bufnr].buftype == "qui
 
 M.save_win = function(winid) return {} end
 
-M.load_win = function(winid, config)
-  vim.api.nvim_set_current_win(winid)
-  vim.cmd("copen")
-  vim.api.nvim_win_close(winid, true)
-  return vim.api.nvim_get_current_win()
-end
-
 return M
