@@ -25,8 +25,12 @@
     "{{ extension_promnesia }}": {
       "toolbar_pin": "force_pinned"
     },
+    "{{ extension_monolith }}": {
+      "toolbar_pin": "force_pinned"
+    },
     "{{ local_hypothesis_extension }}": {
       "toolbar_pin": "force_pinned",
+      "file_url_navigation_allowed": true,
       "allowed_permissions": [
         "scripting",
         "storage",
@@ -34,7 +38,6 @@
       ]
     },
     "{{ extension_vimium }}": {
-      "toolbar_pin": "force_pinned",
       "file_url_navigation_allowed": true,
       "allowed_permissions": [
         "tabs",
