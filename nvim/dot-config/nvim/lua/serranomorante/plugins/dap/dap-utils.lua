@@ -29,8 +29,10 @@ function M.pick_workspace_relative_to_file(files)
       if dirname == "" then return workspaceFolder end
       return workspaceFolder .. dirname
     end, paths)
-    vim.ui.select(items, { label = workspaceFolder }, function(choice)
-      if choice then coroutine.resume(dap_run_co, choice) end
+
+    if vim.tbl_count(items) == 0 then return coroutine.resume(dap_run_co, require("dap").ABORT) end
+    vim.ui.input({ prompt = "Root: ", default = items[1], completion = "file" }, function(input)
+      if input then coroutine.resume(dap_run_co, input) end
     end)
   end)
 end
