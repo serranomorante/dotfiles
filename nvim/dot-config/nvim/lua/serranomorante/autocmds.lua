@@ -127,3 +127,10 @@ vim.api.nvim_create_autocmd({ "InsertEnter", "InsertLeave" }, {
     previous_mode = current_mode
   end,
 })
+
+vim.api.nvim_create_autocmd("FileType", {
+  desc = "Enable wrap on some filetypes",
+  pattern = "help",
+  group = general_settings_group,
+  command = "set wrap",
+})
