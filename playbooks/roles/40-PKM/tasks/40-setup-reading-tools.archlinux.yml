@@ -3,4 +3,6 @@
   aur:
     use: yay
     state: present
-    name: firefox
+    name:
+      - firefox
+      - xournalpp
