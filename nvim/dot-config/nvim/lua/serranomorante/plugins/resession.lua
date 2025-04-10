@@ -61,6 +61,8 @@ function M.config()
       if utils.nvim_started_without_args() and not utils.cwd_is_home() then
         ---Save these to a different directory, so our manual sessions don't get polluted
         resession.load(vim.fn.getcwd(), { dir = "dirsession" })
+        ---hack: force BufReadPost on split window at startup. Fixes treesitter highlight on split window
+        vim.cmd("wincmd w | wincmd p")
       end
     end,
     nested = true,
