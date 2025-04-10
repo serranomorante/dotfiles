@@ -221,19 +221,23 @@ function M.config()
   trailblazer.setup(opts())
 
   vim.schedule(function()
-    local common = require("trailblazer.trails.common")
-    local original_method = common.focus_win_and_buf
-    ---@diagnostic disable-next-line: duplicate-set-field
-    common.focus_win_and_buf = function() return true end -- https://github.com/LeonHeidelbach/trailblazer.nvim/discussions/51#discussion-6054353
-    trailblazer.load_trailblazer_state_from_file()
-    common.focus_win_and_buf = original_method
+    if utils.nvim_started_without_args() and not utils.cwd_is_home() then
+      local common = require("trailblazer.trails.common")
+      local original_method = common.focus_win_and_buf
+      ---@diagnostic disable-next-line: duplicate-set-field
+      common.focus_win_and_buf = function() return true end -- https://github.com/LeonHeidelbach/trailblazer.nvim/discussions/51#discussion-6054353
+      trailblazer.load_trailblazer_state_from_file()
+      common.focus_win_and_buf = original_method
+    end
   end)
 
   vim.api.nvim_create_autocmd("VimLeavePre", {
     desc = "Save a dir-specific session when you close Neovim",
     group = group,
     callback = function()
-      if utils.nvim_started_without_args() then trailblazer.save_trailblazer_state_to_file(nil, nil, false) end
+      if utils.nvim_started_without_args() and not utils.cwd_is_home() then
+        trailblazer.save_trailblazer_state_to_file(nil, nil, false)
+      end
     end,
   })
 end
