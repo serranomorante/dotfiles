@@ -75,12 +75,15 @@
   ignore_errors: true
 
 - name: "[archlinux] Editor tools: apply patches to nvim plugins"
-  ansible.builtin.command: git apply ~/dotfiles/assets/patches/nvim/{{ item.patch_filename }}
-  args:
-    chdir: "{{ item.cwd }}"
+  ansible.posix.patch:
+    src: ~/dotfiles/assets/patches/nvim/{{ item.patch }}
+    basedir: "{{ item.cwd }}"
+    strip: 1
   loop:
-    - { cwd: ~/.local/share/nvim/site/pack/plugins/opt/gp, patch_filename: gp_nvim.patch }
-  changed_when: false
+    - cwd: ~/.local/share/nvim/site/pack/plugins/opt/gp
+      patch: gp_nvim.patch
+    - cwd: ~/.local/share/nvim/site/pack/plugins/start/trailblazer
+      patch: trailblazer.patch
 
 - name: "[archlinux] Editor tools: generate helptags"
   ansible.builtin.command: nvim --headless -c "helptags ALL" -c "quit"
