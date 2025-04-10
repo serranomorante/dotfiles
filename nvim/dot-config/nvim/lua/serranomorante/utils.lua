@@ -109,14 +109,14 @@ function M.merge_tools(installer_type, ...)
   return merge_result
 end
 
----Check if buffer belongs to a cwd
----@param bufnr integer
+---Check if file belongs to a cwd
+---@param filename string
 ---@param cwd string? Uses current if no cwd is passed
 ---@return boolean
-function M.buf_inside_cwd(bufnr, cwd)
+function M.file_inside_cwd(filename, cwd)
   local dir = cwd or vim.fn.getcwd()
   dir = dir:sub(-1) ~= "/" and dir .. "/" or dir
-  return vim.startswith(vim.api.nvim_buf_get_name(bufnr), dir)
+  return vim.startswith(filename, dir) and vim.fn.filereadable(filename) == 1
 end
 
 ---Get the indent char string for a given shiftwidth

@@ -3,7 +3,6 @@ local utils = require("serranomorante.utils")
 local M = {}
 
 local function opts()
-  local resession = require("resession")
   ---@type overseer.ListTaskOpts
   local overseer_ext_conf = {
     enable_in_tab = true,
@@ -25,7 +24,14 @@ local function opts()
       "winfixwidth",
       "cmdheight",
     },
-    buf_filter = function(bufnr) return utils.buf_inside_cwd(bufnr) and resession.default_buf_filter(bufnr) end,
+    buf_filter = function(bufnr)
+      local buftype = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
+      local filename = vim.api.nvim_buf_get_name(bufnr)
+      local is_valid = utils.file_inside_cwd(filename)
+      if not vim.api.nvim_get_option_value("buflisted", { buf = bufnr }) then is_valid = false end
+      if buftype == "help" or string.match(filename, "%/runtime%/doc%/") then is_valid = true end
+      return is_valid
+    end,
     extensions = {
       quickfix = {
         enable_in_tab = true,
@@ -54,7 +60,7 @@ function M.config()
       ---https://github.com/stevearc/resession.nvim?tab=readme-ov-file#create-one-session-per-directory
       if utils.nvim_started_without_args() and not utils.cwd_is_home() then
         ---Save these to a different directory, so our manual sessions don't get polluted
-        resession.load(vim.fn.getcwd(), { dir = "dirsession", silence_errors = true, reset = true })
+        resession.load(vim.fn.getcwd(), { dir = "dirsession" })
       end
     end,
     nested = true,
