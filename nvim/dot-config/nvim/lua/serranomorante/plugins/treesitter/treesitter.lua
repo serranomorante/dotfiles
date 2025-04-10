@@ -3,7 +3,7 @@ local tools = require("serranomorante.tools")
 
 local M = {}
 
-local opts = function()
+local function opts()
   return {
     ensure_installed = utils.merge_tools(
       "treesitter",

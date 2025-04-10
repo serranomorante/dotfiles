@@ -53,6 +53,7 @@ M.by_filetype = {
   all = {
     parsers = {
       "disassembly",
+      "query",
       "regex",
       "git_config",
       "git_rebase",

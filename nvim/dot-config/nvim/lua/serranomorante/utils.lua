@@ -7,6 +7,11 @@ local M = {}
 ---@return boolean available # Whether the plugin is available
 function M.is_available(plugin) return package.loaded[plugin] ~= nil end
 
+---Get the installation path of a plugin
+---@param plugin string
+---@return string Empty if path doesn't exists
+function M.installation_path(plugin) return vim.fn.finddir(plugin, vim.fn.stdpath("data") .. "/site/pack/plugins/*/") end
+
 --- Call function if a condition is met
 ---@param func function # The function to run
 ---@param condition boolean # Wether to run the function or not
