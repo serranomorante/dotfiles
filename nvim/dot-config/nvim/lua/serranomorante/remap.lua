@@ -74,6 +74,7 @@ vim.keymap.set("n", "<C-S-e>", "zl", { desc = "Scroll right horizontally" })
 vim.keymap.set("n", "<C-S-y>", "zh", { desc = "Scroll left horizontally" })
 vim.keymap.set("n", "<C-S-d>", "50zl", { desc = "Scroll right horizontally +50" })
 vim.keymap.set("n", "<C-S-u>", "50zh", { desc = "Scroll left horizontally +50" })
+vim.keymap.set("n", "z.", "<cmd>normal! zszH<CR>", { desc = "Horizontally center cursor position" })
 
 vim.keymap.set({ "n", "x", "o" }, "'", "`", { desc = "Make single quote act like backtick" })
 
@@ -87,6 +88,7 @@ vim.keymap.set(
   ":Grep ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES,
   { desc = "Grep text [You must escape single quotes and pipes]" }
 )
+vim.keymap.set("n", "<leader>fh", ":helpgrep ", { desc = "Grep on vim help pages" })
 vim.keymap.set("n", "<leader>fb", ":b <Tab><Tab>", { desc = "Open recent buffers in wildmenu" }) -- will go directly to the second most recent buffer
 vim.keymap.set("n", "<leader>fc", ":Grep '\\b<C-r><C-w>\\b'", { desc = "Grep word under cursor" })
 vim.keymap.set({ "x", "v" }, "<leader>fv", function()
