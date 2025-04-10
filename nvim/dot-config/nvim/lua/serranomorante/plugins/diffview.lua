@@ -16,9 +16,10 @@ local function keys()
 end
 
 local function init()
+  local group = vim.api.nvim_create_augroup("diffview-options-panel", { clear = true })
   vim.api.nvim_create_autocmd("BufWinLeave", {
     desc = "Fix issue with file history panel height after closing options panel",
-    group = vim.api.nvim_create_augroup("diffview-options-panel", { clear = true }),
+    group = group,
     pattern = "DiffviewFHOptionPanel",
     callback = function() vim.api.nvim_win_set_height(0, FILE_HISTORY_PANEL_HEIGHT) end,
   })
@@ -62,9 +63,15 @@ local function opts()
       },
     },
     hooks = {
+      ---Remember: diffview will not give you the filehistorypanel's bufnr. That's why you have
+      ---to use `0` instead of `bufnr`.
       diff_buf_read = function(bufnr)
-        ---fixes issue with coc.nvim
+        ---fix coc.nvim lsp error on diff window
         vim.api.nvim_buf_set_var(bufnr, "coc_enabled", 0)
+        ---make sure file history panel is selected before next commands
+        vim.cmd("3wincmd w")
+        ---force cursor position on first history item
+        if vim.api.nvim_buf_get_name(0):match("DiffviewFileHistoryPanel") then vim.cmd("normal jk") end
       end,
       diff_buf_win_enter = function(_, winid) vim.wo[winid].wrap = true end,
     },
