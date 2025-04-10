@@ -22,7 +22,7 @@ function M.pick_workspace_relative_to_file(files)
       stop = workspaceFolder .. "..",
       type = "file",
       upward = true,
-      path = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":h:h"),
+      path = vim.fs.dirname(vim.api.nvim_buf_get_name(0)),
     })
     local items = vim.tbl_map(function(path)
       local dirname = vim.fn.fnamemodify(path, ":p:h"):sub(#workspaceFolder + 1, -1)
