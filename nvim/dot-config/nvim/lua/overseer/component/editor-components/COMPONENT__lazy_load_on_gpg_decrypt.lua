@@ -64,7 +64,6 @@ return {
         local winbuf = vim.api.nvim_win_get_buf(0)
         local buftype = vim.api.nvim_get_option_value("buftype", { buf = winbuf })
         if buftype == "terminal" then vim.api.nvim_win_close(0, true) end
-        vim.cmd.packadd(params.plugin)
         local opts = { [params.plugin_opt_name] = decrypted_content[params.parser_capture_group_name] }
         require("serranomorante.plugins." .. params.plugin).config(nil, opts)
       end,

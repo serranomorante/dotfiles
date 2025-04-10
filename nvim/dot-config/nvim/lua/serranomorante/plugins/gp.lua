@@ -1,7 +1,12 @@
 ---This plugin is loaded by the following overseer task: overseer/template/editor-tasks/TASK__decrypt_gpg_load_plugin.lua:3
 ---Read more: https://github.com/serranomorante/.dotfiles/commit/fec9579bc10538b1ee88e81d7ffb81f522405dfe
 
+local utils = require("serranomorante.utils")
+
 local M = {}
+
+M.PLUGIN = "gp"
+M.LOADED = false
 
 local function opts_with_desc(desc)
   return {
@@ -121,8 +126,20 @@ end
 ---@param _ any reserved
 ---@param opts GpConfig
 function M.config(_, opts)
+  local path = utils.installation_path(M.PLUGIN)
+  if path == "" then
+    vim.notify(string.format("%s not installed", M.PLUGIN), vim.log.levels.WARN)
+    return
+  end
+
+  if string.match(path, "%/opt%/") and not M.LOADED then
+    vim.notify(string.format("%s was lazy loaded", M.PLUGIN))
+    vim.cmd.packadd(M.PLUGIN)
+    M.LOADED = true
+  end
+
   keys()
-  require("gp").setup(vim.tbl_deep_extend("force", base_opts(), opts))
+  require(M.PLUGIN).setup(vim.tbl_deep_extend("force", base_opts(), opts))
 end
 
 return M
