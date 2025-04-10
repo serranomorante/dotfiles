@@ -7,7 +7,7 @@ end
 ---@return TSContext.UserConfig
 local function opts()
   return {
-    max_lines = 1,
+    max_lines = 4,
     trim_scope = "inner", -- outer
     separator = "—",
     on_attach = function(bufnr)
