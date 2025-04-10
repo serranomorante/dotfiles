@@ -81,7 +81,12 @@ vim.keymap.set("n", "<A-j>", utils.next_qf_item, { desc = "Next quickfix list it
 vim.keymap.set("n", "<A-k>", utils.prev_qf_item, { desc = "Prev quickfix list item" })
 
 vim.keymap.set("n", "<leader>ff", ":Find ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES, { desc = "Find files" })
-vim.keymap.set("n", "<leader>fw", ":Grep ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES, { desc = "Grep text" })
+vim.keymap.set(
+  "n",
+  "<leader>fw",
+  ":Grep ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES,
+  { desc = "Grep text [You must escape single quotes and pipes]" }
+)
 vim.keymap.set("n", "<leader>fb", ":b <Tab><Tab>", { desc = "Open recent buffers in wildmenu" }) -- will go directly to the second most recent buffer
 vim.keymap.set("n", "<leader>fc", ":Grep '\\b<C-r><C-w>\\b'", { desc = "Grep word under cursor" })
 vim.keymap.set({ "x", "v" }, "<leader>fv", function()
