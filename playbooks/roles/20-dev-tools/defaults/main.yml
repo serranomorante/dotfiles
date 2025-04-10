@@ -7,29 +7,71 @@ debian_fish_shell_version: 3.5.1
 archlinux_neovim_version: master
 debian_neovim_version: 688b961d13bd # before cmake 3.16 requirement
 neovim_plugins:
-  - { folder: start, repo: kevinhwang91/promise-async } # use `typings/?.lua` on .luarc.json
-  - { folder: start, repo: nvim-tree/nvim-web-devicons }
-  - { folder: start, repo: neoclide/coc.nvim, version: release }
-  - { folder: start, repo: stevearc/overseer.nvim, name: overseer }
-  - { folder: start, repo: nvim-treesitter/nvim-treesitter }
-  - { folder: start, repo: nvim-treesitter/nvim-treesitter-context, name: treesitter-context }
-  - { folder: start, repo: nvim-treesitter/nvim-treesitter-textobjects }
-  - { folder: start, repo: dense-analysis/ale }
-  - { folder: start, repo: FabijanZulj/blame.nvim, name: blame }
-  - { folder: start, repo: stevearc/conform.nvim, name: conform }
-  - { folder: start, repo: sindrets/diffview.nvim, name: diffview }
-  - { folder: start, repo: lewis6991/gitsigns.nvim, name: gitsigns }
-  - { folder: start, repo: LeonHeidelbach/trailblazer.nvim, name: trailblazer }
-  - { folder: start, repo: tpope/vim-sleuth }
-  - { folder: start, repo: mfussenegger/nvim-dap, name: dap }
-  - { folder: start, repo: rebelot/heirline.nvim, name: heirline }
-  - { folder: start, repo: mbbill/undotree }
-  - { folder: start, repo: stevearc/resession.nvim, name: resession }
-  - { folder: start, repo: stevearc/quicker.nvim, name: quicker }
-  - { folder: start, repo: kevinhwang91/nvim-fundo, name: fundo }
-  - { folder: start, repo: tpope/vim-rsi } # https://vi.stackexchange.com/a/6041
-  - { folder: start, repo: stevearc/aerial.nvim }
-  - { folder: start, repo: luukvbaal/nnn.nvim }
-  - { folder: opt, repo: kevinhwang91/nvim-ufo, name: ufo }
-  - { folder: opt, repo: jbyuki/one-small-step-for-vimkind, name: osv }
-  - { folder: opt, repo: Robitx/gp.nvim, name: gp }
+  - folder: start
+    repo: kevinhwang91/promise-async  # use `typings/?.lua` on .luarc.json
+  - folder: start
+    repo: nvim-tree/nvim-web-devicons
+  - folder: start
+    repo: neoclide/coc.nvim
+    version: release
+  - folder: start
+    repo: stevearc/overseer.nvim
+    name: overseer
+  - folder: start
+    repo: nvim-treesitter/nvim-treesitter
+  - folder: start
+    repo: nvim-treesitter/nvim-treesitter-context
+    name: treesitter-context
+  - folder: start
+    repo: nvim-treesitter/nvim-treesitter-textobjects
+  - folder: start
+    repo: dense-analysis/ale
+  - folder: start
+    repo: FabijanZulj/blame.nvim
+    name: blame
+  - folder: start
+    repo: stevearc/conform.nvim
+    name: conform
+  - folder: start
+    repo: sindrets/diffview.nvim
+    name: diffview
+  - folder: start
+    repo: lewis6991/gitsigns.nvim
+    name: gitsigns
+  - folder: start
+    repo: LeonHeidelbach/trailblazer.nvim
+    name: trailblazer
+  - folder: start
+    repo: tpope/vim-sleuth
+  - folder: start
+    repo: mfussenegger/nvim-dap
+    name: dap
+  - folder: start
+    repo: rebelot/heirline.nvim
+    name: heirline
+  - folder: start
+    repo: mbbill/undotree
+  - folder: start
+    repo: stevearc/resession.nvim
+    name: resession
+  - folder: start
+    repo: stevearc/quicker.nvim
+    name: quicker
+  - folder: start
+    repo: kevinhwang91/nvim-fundo
+    name: fundo
+  - folder: start
+    repo: tpope/vim-rsi # https://vi.stackexchange.com/a/6041
+  - folder: start
+    repo: stevearc/aerial.nvim
+  - folder: start
+    repo: luukvbaal/nnn.nvim
+  - folder: opt
+    repo: kevinhwang91/nvim-ufo
+    name: ufo
+  - folder: opt
+    repo: jbyuki/one-small-step-for-vimkind
+    name: osv
+  - folder: opt
+    repo: Robitx/gp.nvim
+    name: gp
