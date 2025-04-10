@@ -5,6 +5,7 @@ local M = {}
 local provider_by_filetype = {
   vim = "indent",
   python = "indent",
+  html = "indent",
   git = "",
   nofile = "",
 }

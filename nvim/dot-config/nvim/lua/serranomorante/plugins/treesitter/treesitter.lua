@@ -41,7 +41,11 @@ local function opts()
     },
     indent = {
       enable = true,
-      disable = function(_, bufnr) return vim.b[bufnr].large_buf end,
+      disable = function(_, bufnr)
+        if vim.api.nvim_get_option_value("filetype", { buf = bufnr }) == "html" then return true end
+        local ok, large_buf = pcall(vim.api.nvim_buf_get_var, bufnr, "large_buf")
+        return ok and large_buf
+      end,
     },
     textobjects = {
       select = {
