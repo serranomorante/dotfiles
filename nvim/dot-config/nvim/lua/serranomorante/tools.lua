@@ -20,7 +20,7 @@ M.by_filetype = {
     parsers = { "json", "jsonc" },
     extensions = { "coc-json" },
   },
-  yaml = { parsers = { "yaml" }, extensions = { "coc-yaml", "@yaegassy/coc-ansible" } },
+  yaml = { fmts = { "ansible-lint" }, parsers = { "yaml" }, extensions = { "coc-yaml", "@yaegassy/coc-ansible" } },
   c = { lsp = { "clangd" }, parsers = { "cpp" }, extensions = { "coc-clangd" } },
   python = {
     lsp = { "python-lsp-server" },

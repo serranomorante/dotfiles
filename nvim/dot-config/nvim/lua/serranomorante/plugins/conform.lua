@@ -3,6 +3,15 @@ local utils = require("serranomorante.utils")
 
 local M = {}
 
+M.PLUGIN = "conform"
+
+---@type conform.DefaultFormatOpts
+local FORMAT_OPTS = {
+  async = true,
+  timeout_ms = 5000, -- we still have to use this for the `formatexpr` to work, maybe a bug?
+  lsp_format = "never",
+}
+
 local function init()
   ---https://github.com/stevearc/conform.nvim/pull/238#issuecomment-1846253082
   vim.api.nvim_create_autocmd("FileType", {
@@ -10,30 +19,23 @@ local function init()
     pattern = vim.tbl_keys(require("conform").formatters_by_ft),
     group = vim.api.nvim_create_augroup("conform_formatexpr", { clear = true }),
     callback = function(args)
-      vim.bo[args.buf].formatexpr = [[v:lua.require'conform'.formatexpr({ 'lsp_format': 'never' })]]
+      vim.bo[args.buf].formatexpr = string.format("v:lua.require'conform'.formatexpr(%s)", vim.fn.string(FORMAT_OPTS))
     end,
   })
 end
 
-local keys = function()
-  vim.keymap.set({ "n", "v" }, "<leader>lf", function()
-    require("conform").format(nil, function(err)
-      ---https://github.com/stevearc/conform.nvim/issues/250#issuecomment-1868544121
-      if err then return vim.notify(err, vim.log.levels.WARN) end
-      utils.refresh_codelens()
-      vim.notify("[Conform]: format done.", vim.log.levels.INFO)
-    end)
-  end, {
+local function keys()
+  vim.keymap.set({ "n", "v" }, "<leader>lf", function() require("conform").format(FORMAT_OPTS) end, {
     desc = "Conform: Format file or range",
   })
 end
 
 ---@param fmts string[]
----@param opts table
+---@param opts conform.DefaultFiletypeFormatOpts?
 ---@return conform.FiletypeFormatter
-local function gen_fmt(fmts, opts) return vim.tbl_extend("force", fmts, opts) end
+local function gen_fmt(fmts, opts) return vim.tbl_extend("force", fmts, opts or {}) end
 
-local function opts()
+function M.opts()
   local ft_tools = tools.by_filetype
   ---@type conform.setupOpts
   return {
@@ -52,18 +54,43 @@ local function opts()
       typescript = gen_fmt(ft_tools.typescript.fmts, { stop_after_first = true }),
       javascriptreact = gen_fmt(ft_tools.javascriptreact.fmts, { stop_after_first = true }),
       typescriptreact = gen_fmt(ft_tools.typescriptreact.fmts, { stop_after_first = true }),
+      ["yaml.ansible"] = gen_fmt(vim.tbl_get(ft_tools, "yaml.ansible").fmts),
     },
-    default_format_opts = {
-      lsp_format = "never",
-    },
+    default_format_opts = FORMAT_OPTS,
     log_level = vim.log.levels[vim.env.CONFORM_LOG_LEVEL or "ERROR"],
   }
 end
 
-M.config = function()
+function M.config()
   init()
   keys()
-  require("conform").setup(opts())
+
+  local conform = require(M.PLUGIN)
+  conform.setup(M.opts())
+
+  local format = conform.format
+  ---Patch `conform.format(...)` to always have a callback, even on `conform.formatexpr()` calls.
+  ---@param opts? conform.FormatOpts
+  ---@param callback? fun(err: nil|string, did_edit: nil|boolean) Called once formatting has completed
+  ---@return boolean True if any formatters were attempted
+  local function format_patch(opts, callback)
+    _ = callback
+    vim.notify("[Conform]: formatting...", vim.log.levels.WARN)
+    return format(opts, function(err)
+      ---https://github.com/stevearc/conform.nvim/issues/250#issuecomment-1868544121
+      if err then return vim.notify(err, vim.log.levels.WARN) end
+      utils.refresh_codelens()
+      vim.notify("[Conform]: format done.", vim.log.levels.INFO)
+    end)
+  end
+  conform.format = format_patch
+
+  conform.formatters["ansible-lint"] = {
+    prepend_args = {
+      "--config-file",
+      vim.fn.stdpath("config") .. "/lua/serranomorante/plugins/coc/ansible-lint-dev.yaml",
+    },
+  }
 end
 
 return M
