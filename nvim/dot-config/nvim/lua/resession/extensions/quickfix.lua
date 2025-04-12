@@ -33,4 +33,12 @@ function M.is_win_supported(winid, bufnr) return vim.bo[bufnr].buftype == "quick
 
 function M.save_win(winid) return {} end
 
+function M.load_win(winid, config)
+  if vim.fn.winnr("$") == 1 then return vim.api.nvim_get_current_win() end -- fixes unwanted fullscreen qf list
+  vim.api.nvim_set_current_win(winid)
+  vim.cmd("copen")
+  vim.api.nvim_win_close(winid, true)
+  return vim.api.nvim_get_current_win()
+end
+
 return M
