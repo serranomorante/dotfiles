@@ -1,19 +1,12 @@
 ---
-# LSP
-- name: "[archlinux] Bash language: ensure LSP"
+- name: "[archlinux] Bash language: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
-    name: bash-language-server
+    name:
+      - shfmt
+      - bash-language-server
 
-# FORMATTERS
-- name: "[archlinux] Bash language: ensure FORMATTERS (using aur)"
-  aur:
-    use: yay
-    state: present
-    name: beautysh
-
-# DAP
 - name: "[archlinux] Bash language: ensure DAP - bash-debug-adapter folder exists"
   ansible.builtin.file:
     path: ~/apps/lang-tools/bash-debug-adapter

@@ -43,7 +43,7 @@ local function opts()
       lua = ft_tools.lua.fmts,
       html = gen_fmt(ft_tools.html.fmts, { stop_after_first = true }),
       go = gen_fmt(ft_tools.go.fmts, { stop_after_first = true }),
-      sh = gen_fmt(ft_tools.bash.fmts, { stop_after_first = true }),
+      sh = gen_fmt(ft_tools.sh.fmts, { stop_after_first = true }),
       bash = gen_fmt(ft_tools.bash.fmts, { stop_after_first = true }),
       json = gen_fmt(ft_tools.json.fmts, { stop_after_first = true }),
       jsonc = gen_fmt(ft_tools.json.fmts, { stop_after_first = true }),

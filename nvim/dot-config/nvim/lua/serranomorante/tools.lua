@@ -28,7 +28,7 @@ M.by_filetype = {
     parsers = { "requirements" },
   },
   bash = {
-    fmts = { "beautysh" },
+    fmts = { "shfmt" },
     lsp = { "bash-language-server" },
     dap = { "bash-debug-adapter" },
     parsers = { "bash" },
@@ -83,6 +83,8 @@ M.by_filetype.javascriptreact = vim.deepcopy(M.by_filetype.javascript)
 M.by_filetype.cpp = vim.deepcopy(M.by_filetype.c)
 
 M.by_filetype.scss = vim.deepcopy(M.by_filetype.css)
+
+M.by_filetype.sh = vim.deepcopy(M.by_filetype.bash)
 
 M.by_filetype.jsonc = vim.deepcopy(M.by_filetype.json)
 M.by_filetype["yaml.ansible"] = vim.deepcopy(M.by_filetype.yaml)
