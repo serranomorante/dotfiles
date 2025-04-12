@@ -4,3 +4,11 @@
     use: yay
     state: present
     name: vscode-langservers-extracted
+
+- name: "[archlinux] HTML language: ensure superhtml"
+  ansible.builtin.unarchive:
+    src: https://github.com/kristoff-it/superhtml/releases/download/v{{ arch_superhtml_version }}/x86_64-linux-musl.tar.gz
+    dest: ~/bin
+    remote_src: true
+    creates: ~/bin/superhtml
+    extra_opts: ["--strip-components=2", "--show-stored-names"]

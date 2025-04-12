@@ -45,7 +45,11 @@ M.by_filetype = {
   gitcommit = { parsers = { "gitcommit" } },
   diff = { parsers = { "diff" } },
   vim = { parsers = { "vim", "vimdoc" }, lsp = { "vim-language-server" } },
-  html = { parsers = { "html" }, extensions = { "coc-html", "coc-html-css-support" } },
+  html = {
+    fmts = { "prettierd", "superhtml" },
+    parsers = { "html" },
+    extensions = { "coc-html", "coc-html-css-support" },
+  },
   xml = { parsers = { "xml" } },
   css = { parsers = { "css", "scss" }, extensions = { "coc-css" } },
   php = { parsers = { "php" }, extensions = { "coc-phpls" } },
