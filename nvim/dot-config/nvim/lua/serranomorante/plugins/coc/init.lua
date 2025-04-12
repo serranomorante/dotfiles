@@ -35,7 +35,7 @@ local function init()
   local ok, override_node = pcall(binaries.system_default_node)
   if ok and override_node then vim.g.coc_node_path = override_node end
 
-  vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
+  vim.api.nvim_create_autocmd({ "BufReadPre", "BufNewFile" }, {
     desc = "Disable coc on all buffers by default (before FileType event)",
     group = coc_custom_group,
     callback = function(args) vim.api.nvim_buf_set_var(args.buf, "coc_enabled", 0) end,
