@@ -43,6 +43,7 @@ local function opts()
       number = true,
     },
     highlight = {
+      treesitter = false,
       lsp = false,
       load_buffers = false, -- fixes issues with attaching coc keymaps
     },

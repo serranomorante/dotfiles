@@ -13,8 +13,8 @@ setlocal cursorlineopt=line
 let b:current_syntax = 'qf'
 
 " Prevent quicker.nvim hl overrides
-hi QuickFixHeaderHard gui=bold
-hi QuickFixHeaderSoft gui=bold
-hi QuickFixFilename gui=bold
-hi QuickFixFilenameInvalid gui=bold
-hi QuickFixLineNr gui=bold
+hi QuickFixHeaderHard gui=nocombine
+hi QuickFixHeaderSoft gui=nocombine
+hi QuickFixFilename gui=nocombine
+hi QuickFixFilenameInvalid gui=nocombine
+hi QuickFixLineNr gui=nocombine
