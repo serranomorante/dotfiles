@@ -7,6 +7,13 @@
   changed_when: false
   register: texlive_group_pkgs
 
+- name: "[archlinux] Markdown language: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - marksman
+
 - name: "[archlinux] Markdown language: ensure aur texlive"
   become: true
   ansible.builtin.package:

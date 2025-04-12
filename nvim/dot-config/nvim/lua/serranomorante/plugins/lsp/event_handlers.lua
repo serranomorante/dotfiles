@@ -139,10 +139,7 @@ M.attach = function(client, bufnr)
     )
   end
 
-  ---https://github.com/neovim/neovim/pull/31311
-  if client_buf_supports_method(ms.textDocument_foldingRange) then
-    require("serranomorante.plugins.nvim-ufo").config()
-  end
+  require("serranomorante.plugins.nvim-ufo").config()
 end
 
 ---@param client vim.lsp.Client

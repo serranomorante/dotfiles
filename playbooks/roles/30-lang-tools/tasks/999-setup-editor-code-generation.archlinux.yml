@@ -17,6 +17,7 @@
     - vscode-json-language-server
     - vscode-eslint-language-server
     - phpactor
+    - marksman
   changed_when: false
 
 - name: "[archlinux] Editor code generation: register volta default node version"
