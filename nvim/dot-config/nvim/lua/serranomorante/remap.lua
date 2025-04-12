@@ -36,7 +36,6 @@ vim.keymap.set("n", "te", "<cmd>tabedit<CR>", { desc = "New tab" })
 vim.keymap.set("n", "tc", "<cmd>tabclose<CR>", { desc = "Close tab" })
 vim.keymap.set("n", "<leader>zf", function()
   -- https://github.com/pocco81/true-zen.nvim/blob/2b9e210e0d1a735e1fa85ec22190115dffd963aa/lua/true-zen/focus.lua#L11-L15
-  if vim.fn.winnr("$") == 1 then return vim.notify("there is only one window open", vim.log.levels.INFO) end
   vim.cmd("tab split")
 end, { desc = "Zen: Focus split on new tab" })
 
