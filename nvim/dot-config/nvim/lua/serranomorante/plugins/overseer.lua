@@ -83,7 +83,7 @@ local function opts()
   }
 end
 
-M.config = function()
+function M.config()
   keys()
   require("overseer").setup(opts())
 end

@@ -3,7 +3,7 @@ local tools = require("serranomorante.tools")
 
 local M = {}
 
-M.config = function()
+function M.config()
   vim.g.ale_use_global_executables = 1
   vim.g.ale_use_neovim_diagnostics_api = 1
   vim.g.ale_detail_to_floating_preview = 1

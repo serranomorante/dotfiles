@@ -1,6 +1,6 @@
 local M = {}
 
-local init = function()
+local function init()
   ---undotree window width
   vim.g.undotree_SplitWidth = 30
   ---if set, let undotree window get focus after being opened, otherwise
@@ -8,9 +8,9 @@ local init = function()
   vim.g.undotree_SetFocusWhenToggle = 1
 end
 
-local keys = function() vim.keymap.set("n", "<leader>uu", vim.cmd.UndotreeToggle, { desc = "Toggle undotree" }) end
+local function keys() vim.keymap.set("n", "<leader>uu", vim.cmd.UndotreeToggle, { desc = "Toggle undotree" }) end
 
-M.config = function()
+function M.config()
   init()
   keys()
 end

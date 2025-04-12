@@ -127,7 +127,7 @@ local init = function()
   })
 end
 
-M.config = function()
+function M.config()
   init()
   keys()
   local dap = require("dap")

@@ -39,7 +39,7 @@ local keys = function(bufnr)
   vim.keymap.set("n", "<leader>td", gs.preview_hunk_inline, opts_for("Toggle deleted"))
 end
 
-local opts = function()
+local function opts()
   return {
     worktrees = vim.g.git_worktrees,
     attach_to_untracked = true,
@@ -49,6 +49,6 @@ local opts = function()
   }
 end
 
-M.config = function() require("gitsigns").setup(opts()) end
+function M.config() require("gitsigns").setup(opts()) end
 
 return M

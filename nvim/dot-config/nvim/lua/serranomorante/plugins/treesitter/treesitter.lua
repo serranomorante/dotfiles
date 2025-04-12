@@ -94,7 +94,7 @@ local function opts()
   }
 end
 
-M.config = function()
+function M.config()
   require("nvim-treesitter.configs").setup(opts())
 
   ---@class CustomParserInfo: ParserInfo

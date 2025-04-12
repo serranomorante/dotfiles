@@ -37,7 +37,7 @@ local function keys()
 end
 
 ---@return quicker.SetupOptions
-local opts = function()
+local function opts()
   return {
     opts = {
       number = true,
@@ -82,7 +82,7 @@ local opts = function()
   }
 end
 
-M.config = function()
+function M.config()
   keys()
   require("quicker").setup(opts())
 end

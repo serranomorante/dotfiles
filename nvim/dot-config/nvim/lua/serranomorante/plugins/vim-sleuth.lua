@@ -5,6 +5,6 @@ local init = function()
   vim.g.sleuth_oil_heuristics = 0
 end
 
-M.config = function() init() end
+function M.config() init() end
 
 return M

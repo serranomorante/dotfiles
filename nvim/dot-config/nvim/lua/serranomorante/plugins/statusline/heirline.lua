@@ -2,7 +2,7 @@ local coc_utils = require("serranomorante.plugins.coc.utils")
 
 local M = {}
 
-local init = function()
+local function init()
   ---Force triggering `disable_winbar_cb` as the default events are not enough for my setup
   ---These are the default events: "VimEnter", "UIEnter", "BufWinEnter", "FileType", "TermOpen"
   local function trigger_winbar_cb() vim.api.nvim_exec_autocmds("FileType", { group = "Heirline_init_winbar" }) end
@@ -21,7 +21,7 @@ local init = function()
   })
 end
 
-local opts = function()
+local function opts()
   local conditions = require("heirline.conditions")
   local components = require("serranomorante.plugins.statusline.components")
   local winbar_components = require("serranomorante.plugins.statusline.winbar-components")
@@ -110,7 +110,7 @@ local opts = function()
   }
 end
 
-M.config = function()
+function M.config()
   init()
   require("heirline").setup(opts())
 end

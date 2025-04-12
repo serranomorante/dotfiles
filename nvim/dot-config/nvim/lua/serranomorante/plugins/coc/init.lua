@@ -42,7 +42,7 @@ local init = function()
   })
 end
 
-M.config = function()
+function M.config()
   init()
 
   vim.api.nvim_create_autocmd("VimLeavePre", {
