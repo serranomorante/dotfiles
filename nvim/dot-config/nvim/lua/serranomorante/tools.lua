@@ -36,6 +36,7 @@ M.by_filetype = {
   fish = { parsers = { "fish" }, lsp = { "fish-lsp" } },
   markdown = {
     lsp = { "marksman" },
+    linters = { "markdownlint" },
     fmts = { "mdformat" },
     parsers = { "markdown" },
   },

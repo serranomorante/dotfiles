@@ -11,8 +11,7 @@
   become: true
   ansible.builtin.package:
     state: present
-    name:
-      - marksman
+    name: marksman
 
 - name: "[archlinux] Markdown language: ensure aur texlive"
   become: true
@@ -36,11 +35,12 @@
 - name: "[archlinux] Markdown language: ensure npm packages"
   ansible.builtin.command: npm install --global {{ item.package }}
   args:
-    creates: ~/.volta/bin/{{ item.package }}
+    creates: ~/.volta/bin/{{ item.name | default(item.package) }}
   loop:
-    - { package: "@mermaid-js/mermaid-cli" }
-    - { package: "mermaid-filter" }
-    - { package: "mathjax-pandoc-filter" }
+    - { package: "@mermaid-js/mermaid-cli", name: mmdc }
+    - { package: mermaid-filter }
+    - { package: mathjax-pandoc-filter }
+    - { package: markdownlint-cli, name: markdownlint }
 
 - name: "[archlinux] Markdown language: ensure virtualenv packages"
   ansible.builtin.pip:
