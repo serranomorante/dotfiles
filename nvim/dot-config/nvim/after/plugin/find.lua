@@ -11,7 +11,6 @@ end
 
 vim.api.nvim_create_user_command("Find", "find <args>", { force = true, nargs = "?", complete = complete })
 
-_G.user = _G.user or {}
 _G.user.findfunc = function(cmd_arg)
   local files = complete(cmd_arg)
   vim.schedule(function() send_to_qf(files) end)
