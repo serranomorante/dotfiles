@@ -4,7 +4,7 @@ local M = {}
 
 ---@param bufnr integer
 ---@return fun(string): vim.keymap.set.Opts
-M.opts_for = function(bufnr)
+function M.opts_for(bufnr)
   return function(desc)
     return {
       buffer = bufnr,

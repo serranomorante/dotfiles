@@ -56,7 +56,7 @@ local M = {}
 
 ---@param client vim.lsp.Client
 ---@param bufnr integer
-M.enable = function(client, bufnr)
+function M.enable(client, bufnr)
   local keymapper = require("serranomorante.plugins.lsp.keymapper")
   local opts_with_desc = keymapper.opts_for(bufnr)
 
@@ -97,7 +97,7 @@ end
 ---@param client vim.lsp.Client
 ---@param augroup integer
 ---@param bufnr integer
-M.enable_completion_documentation = function(client, augroup, bufnr)
+function M.enable_completion_documentation(client, augroup, bufnr)
   vim.api.nvim_create_autocmd("CompleteChanged", {
     group = augroup,
     buffer = bufnr,

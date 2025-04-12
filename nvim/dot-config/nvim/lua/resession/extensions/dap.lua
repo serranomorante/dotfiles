@@ -1,7 +1,7 @@
 ---@type resession.Extension
 local M = {}
 
-M.on_save = function()
+function M.on_save()
   local dap_utils = require("serranomorante.plugins.dap.dap-utils")
   local breakpoints = {}
   dap_utils.breakpoints_iter(function(buf, breakpoint)
@@ -20,7 +20,7 @@ M.on_save = function()
   }
 end
 
-M.on_post_load = function(data)
+function M.on_post_load(data)
   if data.breakpoints == nil or #data.breakpoints == 0 then
     return -- No breakpoints to load, no need to load dap plugin
   end

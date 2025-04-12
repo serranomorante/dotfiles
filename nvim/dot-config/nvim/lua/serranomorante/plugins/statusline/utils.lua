@@ -9,14 +9,14 @@ function M.update_events(opts)
   if not vim.islist(opts) then opts = { opts } end
   return function(self)
     if not rawget(self, "once") then
-      local clear_cache = function() self._win_cache = nil end
+      local function clear_cache() self._win_cache = nil end
       for _, event in pairs(opts) do
         local event_opts = { callback = clear_cache }
         if type(event) == "table" then
           event_opts.pattern = event.pattern
           if event.callback then
             local callback = event.callback
-            event_opts.callback = function(args)
+            function event_opts.callback(args)
               clear_cache()
               callback(self, args)
             end

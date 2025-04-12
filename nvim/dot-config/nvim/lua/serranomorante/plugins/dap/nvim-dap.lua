@@ -7,7 +7,7 @@ local M = {}
 
 local LOG_IS_TRACE = vim.env.DAP_LOG_LEVEL == "TRACE" or false
 
-local keys = function()
+local function keys()
   vim.keymap.set(
     "n",
     "<leader>db",
@@ -105,7 +105,7 @@ local keys = function()
   end, { desc = "DAP: List breakpoints" })
 end
 
-local init = function()
+local function init()
   vim.fn.sign_define("DapBreakpoint", { text = "⬤", texthl = "DapBreakpoint", priority = 21 })
   vim.fn.sign_define("DapBreakpointCondition", { text = " ", texthl = "DapBreakpoint", priority = 21 })
   vim.fn.sign_define("DapBreakpointRejected", { text = " ", texthl = "DapBreakpoint", priority = 21 })
@@ -143,7 +143,7 @@ function M.config()
   ---https://github.com/mfussenegger/nvim-dap/issues/1141#issuecomment-2002575842
   ---@param _ dap.Session
   ---@param output_event dap.OutputEvent
-  dap.defaults.fallback.on_output = function(_, output_event)
+  function dap.defaults.fallback.on_output(_, output_event)
     if output_event.category == "stderr" then
       if string.find(output_event.output, "Could not read source map for file") then return end
     elseif output_event.category == "telemetry" then
@@ -209,7 +209,7 @@ function M.config()
   end
 
   if vim.fn.executable(binaries.debugpy_dap_executable()) == 1 then
-    dap.adapters.python = function(cb, config)
+    function dap.adapters.python(cb, config)
       if config.request == "attach" then
         ---@diagnostic disable-next-line: undefined-field
         local port = (config.connect or config).port

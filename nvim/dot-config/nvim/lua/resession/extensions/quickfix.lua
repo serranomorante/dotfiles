@@ -1,6 +1,6 @@
 local M = {}
 
-M.on_save = function()
+function M.on_save()
   local quickfix_list = vim.fn.getqflist({ all = true })
   local items = vim.tbl_map(
     function(item)
@@ -27,10 +27,10 @@ M.on_save = function()
   }
 end
 
-M.on_pre_load = function(data) vim.fn.setqflist({}, "r", { title = data.title, items = data.items or {} }) end
+function M.on_pre_load(data) vim.fn.setqflist({}, "r", { title = data.title, items = data.items or {} }) end
 
-M.is_win_supported = function(winid, bufnr) return vim.bo[bufnr].buftype == "quickfix" end
+function M.is_win_supported(winid, bufnr) return vim.bo[bufnr].buftype == "quickfix" end
 
-M.save_win = function(winid) return {} end
+function M.save_win(winid) return {} end
 
 return M

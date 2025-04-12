@@ -1,6 +1,6 @@
 local M = {}
 
-local keys = function(bufnr)
+local function keys(bufnr)
   ---@param desc string
   local function opts_for(desc) return { buffer = bufnr, desc = "Git: " .. desc } end
 

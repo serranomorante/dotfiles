@@ -1,6 +1,6 @@
 local M = {}
 
-local keys = function()
+local function keys()
   vim.keymap.set(
     "n",
     "<leader>ls",
@@ -9,7 +9,7 @@ local keys = function()
   )
 end
 
-local opts = function()
+local function opts()
   return {
     show_guides = true,
     filter_kind = false,
@@ -45,7 +45,7 @@ local opts = function()
   }
 end
 
-M.config = function()
+function M.config()
   keys()
   require("aerial").setup(opts())
 end

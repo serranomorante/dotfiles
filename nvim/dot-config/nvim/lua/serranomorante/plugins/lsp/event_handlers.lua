@@ -21,7 +21,7 @@ end
 
 ---@param client vim.lsp.Client
 ---@param bufnr integer
-M.attach = function(client, bufnr)
+function M.attach(client, bufnr)
   local augroup = augroups.get_augroup(client)
   local opts_with_desc = keymapper.opts_for(bufnr)
   ---@type vim.lsp.LocationOpts
@@ -144,7 +144,7 @@ end
 
 ---@param client vim.lsp.Client
 ---@param bufnr integer
-M.detach = function(client, bufnr)
+function M.detach(client, bufnr)
   local client_id = client.id
   augroups.del_autocmds_for_buf(client, bufnr)
   ---@param method string

@@ -21,7 +21,7 @@ vim.api.nvim_create_user_command(
 )
 
 ---@param cmd_arg string
-_G.user.findfunc = function(cmd_arg)
+function _G.user.findfunc(cmd_arg)
   local files = find(cmd_arg)
   vim.schedule(function() send_to_qf(files) end)
   return files

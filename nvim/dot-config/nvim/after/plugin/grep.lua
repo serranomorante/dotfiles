@@ -7,7 +7,7 @@ vim.api.nvim_create_user_command(
 )
 
 ---@param args string
-_G.user.GenerateGrepCommand = function(args)
+function _G.user.GenerateGrepCommand(args)
   args = args:gsub("\\'", "\\x27") -- escape single quotes
   return "grep -e " .. args
 end

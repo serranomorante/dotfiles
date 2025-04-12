@@ -8,7 +8,7 @@ local binaries = require("serranomorante.binaries")
 
 local coc_custom_group = vim.api.nvim_create_augroup("coc_custom_config", { clear = true })
 
-local init = function()
+local function init()
   vim.g.coc_start_at_startup = 0
   vim.g.coc_user_config = vim.fn.stdpath("config") .. "/lua/serranomorante/plugins/coc"
   vim.g.coc_config_home = vim.fn.stdpath("config") .. "/lua/serranomorante/plugins/coc"
