@@ -8,6 +8,10 @@ M.lua_aliases = { "lua" }
 M.markdown_aliases = { "markdown" }
 M.json_aliases = { "json", "jsonc" }
 M.bash_aliases = { "sh", "bash" }
+M.fish_aliases = { "fish" }
+M.html_aliases = { "html", "htm" }
+M.php_aliases = { "php" }
+M.go_aliases = { "go" }
 
 M.overseer_status = {
   ["FAILURE"] = { "F", "red" },

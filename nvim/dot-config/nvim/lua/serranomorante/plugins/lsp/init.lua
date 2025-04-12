@@ -1,32 +1,12 @@
 local M = {}
 
----Useful for example when deciding if to attach LSP client to that buffer
----@param bufnr integer buffer to check. 0 for current
----@return boolean true if the buffer represents a real, readable file
-local function is_buf_readable_file(bufnr)
-  local bufname = vim.api.nvim_buf_get_name(bufnr)
-  return vim.fn.filereadable(bufname) == 1
-end
+local function init()
+  vim.lsp.config("*", {
+    roor_markers = {
+      ".git",
+    },
+  })
 
----Same arguments as vim.lsp.start
----@param config vim.lsp.ClientConfig Configuration for the server.
----@param opts vim.lsp.start.Opts? Optional keyword arguments
----@return integer? client_id
-M.start = function(config, opts)
-  opts = opts or {}
-  opts.bufnr = opts.bufnr or vim.api.nvim_get_current_buf()
-  if not is_buf_readable_file(opts.bufnr) then return end
-
-  local made_config = require("serranomorante.plugins.lsp.capabilities").merge_capabilities(config)
-  if not made_config.root_dir then made_config.root_dir = vim.uv.os_tmpdir() end
-
-  local client_id = vim.lsp.start(made_config, opts)
-  if not client_id then vim.notify("Cannot start lsp: " .. made_config.cmd[1], vim.log.levels.WARN) end
-
-  return client_id
-end
-
-local init = function()
   ---See: https://github.com/VonHeikemen/lsp-zero.nvim/blob/dev-v3/doc/md/guides/under-the-hood.md
   ---See: https://github.com/mfussenegger/nvim-lint/issues/340#issuecomment-1676438571
   vim.diagnostic.config({
@@ -44,7 +24,7 @@ local init = function()
   })
 end
 
-M.config = function()
+function M.config()
   init()
 
   local group = vim.api.nvim_create_augroup("personal-lsp", { clear = true })

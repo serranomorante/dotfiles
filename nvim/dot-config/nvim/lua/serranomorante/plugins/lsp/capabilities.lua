@@ -2,7 +2,7 @@ local M = {}
 
 ---@param config vim.lsp.ClientConfig
 ---@return vim.lsp.ClientConfig
-M.merge_capabilities = function(config)
+function M.merge_capabilities(config)
   local nvim = vim.lsp.protocol.make_client_capabilities()
 
   local default = {
