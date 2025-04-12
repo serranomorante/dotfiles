@@ -5,7 +5,6 @@ vim.g.mapleader = " "
 vim.go.guicursor = "n:block-Cursor/lCursor,a:blinkwait700-blinkoff400-blinkon250-Cursor/lCursor,o:hor25-Cursor/lCursor"
 
 ---@type string
----@diagnostic disable-next-line: assign-type-mismatch
 local cache_path = vim.fn.stdpath("cache")
 local undodir = utils.join_paths(cache_path, "undodir")
 local shadadir = utils.join_paths(cache_path, "shadadir")

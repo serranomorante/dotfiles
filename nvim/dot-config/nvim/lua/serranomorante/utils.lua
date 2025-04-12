@@ -204,8 +204,8 @@ end
 ---@return Promise
 function M.wait(ms)
   return require("promise")(function(resolve)
-    ---@diagnostic disable-next-line: undefined-global
     local timer = vim.uv.new_timer()
+    assert(timer)
     timer:start(ms, 0, function()
       timer:close()
       resolve()

@@ -26,7 +26,6 @@ function M.config()
   }
 
   function dap.adapters.nlua(callback, config)
-    ---@diagnostic disable-next-line: undefined-field
     callback({ type = "server", host = config.host or "127.0.0.1", port = config.port or 8086 })
   end
 
