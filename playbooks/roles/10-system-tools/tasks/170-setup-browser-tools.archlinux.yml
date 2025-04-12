@@ -3,8 +3,8 @@
   become: true
   ansible.builtin.package:
     name:
-      - chromium    # gives the user more control from the cli
-      - ruby        # to install extensionator
+      - chromium # gives the user more control from the cli
+      - ruby # to install extensionator
       - jdk-openjdk # to build react-devtools
 
 - name: "[archlinux] Setup browser tools: ensure aur packages"

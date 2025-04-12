@@ -1,0 +1,35 @@
+---
+- name: "[macosx] Graphic tablet peripheral: ensure rust"
+  ansible.builtin.shell: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -y | sh
+  changed_when: false
+
+- name: "[macosx] Graphic tablet peripheral: ensure nasm"
+  ansible.builtin.command: /usr/local/bin/brew install nasm make gcc
+
+- name: "[macosx] Graphic tablet peripheral: ensure cmake"
+  ansible.builtin.command: /usr/local/bin/brew install cmake --cask
+
+- name: "[macosx] Graphic tablet peripheral: ensure typescript"
+  ansible.builtin.command: "{{ ansible_env.HOME }}/.volta/bin/npm install typescript -g"
+  changed_when: false
+
+- name: "[macosx] Graphic tablet peripheral: ensure repos folder"
+  ansible.builtin.file:
+    state: directory
+    path: "{{ ansible_env.HOME }}/repos"
+    mode: "755"
+
+- name: "[macosx] Graphic tablet peripheral: clone patched weylus"
+  ansible.builtin.git:
+    repo: https://github.com/P1YU5H-50N1/Weylus
+    dest: "{{ ansible_env.HOME }}/repos/Weylus"
+    force: true
+    depth: 1
+    version: no_cursor_found_fix_macos
+
+- name: "[macosx] Graphic tablet peripheral: build weylus"
+  # doesn't work
+  ansible.builtin.command: cargo build
+  args:
+    chdir: "{{ ansible_env.HOME }}/repos/Weylus"
+    # creates: "{{ ansible_env.HOME }}/repos/Weylus"

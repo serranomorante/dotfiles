@@ -11,9 +11,9 @@
 - name: "[archlinux] Keyboard peripheral: disable kde keyboard daemon"
   ansible.builtin.replace:
     path: ~/.config/kded5rc
-    after: '^\[Module-keyboard\]'
-    regexp: '^(autoload)=true'
-    replace: '\1=false'
+    after: "^\\[Module-keyboard\\]"
+    regexp: "^(autoload)=true"
+    replace: "\\1=false"
 
 - name: "[archlinux] Keyboard peripheral: enable services"
   ansible.builtin.systemd_service:

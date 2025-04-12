@@ -34,8 +34,8 @@
     enabled: "{{ item.enabled }}"
     masked: "{{ item.masked }}"
   loop:
-    - { name: pipewire.socket, state: started, enabled: true, masked: false}
-    - { name: pipewire-pulse.socket, state: started, enabled: true, masked: false}
+    - { name: pipewire.socket, state: started, enabled: true, masked: false }
+    - { name: pipewire-pulse.socket, state: started, enabled: true, masked: false }
     - { scope: system, name: cpupower.service, state: started, enabled: true, masked: false }
 
 
@@ -63,5 +63,5 @@
 - name: "[archlinux] Setup audio tools: increase REAPER ui scale"
   ansible.builtin.replace:
     path: ~/.config/REAPER/reaper.ini
-    regexp: '^ui_scale=[^\s]*'
-    replace: 'ui_scale=1.2'
+    regexp: "^ui_scale=[^\\s]*"
+    replace: "ui_scale=1.2"

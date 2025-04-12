@@ -4,7 +4,7 @@
   become: true
   ansible.builtin.blockinfile:
     dest: /etc/pacman.conf
-    insertafter: '(?m)^#\[multilib\]\n#Include'
+    insertafter: "(?m)^#\\[multilib\\]\\n#Include"
     block: |
       [multilib]
       Include = /etc/pacman.d/mirrorlist

@@ -1,3 +1,4 @@
+---
 # backup files
 config_files_backup_env: # home folder only
   - ~/.local/share/nvim/trailblazer

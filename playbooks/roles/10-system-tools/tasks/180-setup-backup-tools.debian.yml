@@ -10,5 +10,5 @@
 - name: "[debian] Setup backup tools: ensure borg serve in authorized_keys"
   ansible.builtin.replace:
     path: ~/.ssh/authorized_keys
-    regexp: '^([^c].*borg)$'
+    regexp: "^([^c].*borg)$"
     replace: 'command="~/bin/borg serve --restrict-to-path ~/backups",restrict \1'

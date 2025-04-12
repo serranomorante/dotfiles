@@ -87,7 +87,7 @@
 - name: "[archlinux] Setup terminal tools: fix kdeglobals"
   ansible.builtin.blockinfile:
     dest: ~/.config/kdeglobals
-    insertafter: '^\[General\]'
+    insertafter: "^\\[General\\]"
     block: |
       TerminalApplication=kitty
       TerminalService=kitty.desktop

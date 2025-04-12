@@ -26,8 +26,8 @@
   become: true
   ansible.builtin.replace:
     path: /etc/php/php.ini
-    regexp: '^;extension={{ item }}$'
-    replace: 'extension={{ item }}'
+    regexp: "^;extension={{ item }}$"
+    replace: "extension={{ item }}"
   loop:
     - gd
     - iconv
@@ -42,8 +42,8 @@
   become: true
   ansible.builtin.replace:
     path: /etc/php/conf.d/redis.ini
-    regexp: '^;extension=redis$'
-    replace: 'extension=redis'
+    regexp: "^;extension=redis$"
+    replace: "extension=redis"
 
 - name: "[archlinux] PHP language: add xdebug options"
   become: true

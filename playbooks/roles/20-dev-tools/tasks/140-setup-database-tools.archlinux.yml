@@ -32,8 +32,7 @@
 - name: "[archlinux] Setup database tools: initdb"
   become: true
   become_user: postgres
-  ansible.builtin.command:
-    initdb --locale=C.UTF-8 --encoding=UTF8 -D /var/lib/postgres/data --data-checksums
+  ansible.builtin.command: initdb --locale=C.UTF-8 --encoding=UTF8 -D /var/lib/postgres/data --data-checksums
   args:
     creates: /var/lib/postgres/data/pg_hba.conf
   # notify: "20-dev-tools : handler_ensure_postgres_service"
