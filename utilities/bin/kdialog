@@ -12,4 +12,4 @@ while :; do case $1 in
 
 file="${file##/*/}"
 
-kitty --class picker sh -c "nnn -JRHdaA -Tt -p - '$file' | awk '{ print system(\"[ -d '\''\"\$0\"'\'' ]\") ? \$0 : \$0\"/$file\" }' > /proc/$$/fd/1"
+kitty --class picker sh -c "nnn -JRHdaAo -Tt -p - '$file' | awk '{ print system(\"[ -d '\''\"\$0\"'\'' ]\") ? \$0 : \$0\"/$file\" }' > /proc/$$/fd/1"

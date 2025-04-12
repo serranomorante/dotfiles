@@ -38,7 +38,7 @@ local mappings = {
 local function opts()
   return {
     picker = {
-      cmd = "nnn -JRHdaA -Tt",
+      cmd = "nnn -JRHdaAo -Tt",
       tabs = false,
       style = {
         width = 999,

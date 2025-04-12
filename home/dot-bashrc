@@ -128,7 +128,7 @@ fi
 
 if command -v nnn &>/dev/null; then
     export NNN_PLUG='p:preview-tui;l:nmount'
-    alias nnn='nnn -JRHdaA -Tt'
+    alias nnn='nnn -JRHdaAo -Tt'
 fi
 
 # https://github.com/jarun/nnn/wiki/Basic-use-cases#sync-subshell-pwd
