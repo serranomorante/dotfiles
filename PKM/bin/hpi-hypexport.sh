@@ -7,8 +7,14 @@ set -euo pipefail
 HOME_DIR="${HOME}" # Or replace with `$h` if it's a valid variable
 
 # Decrypt credentials
-username=$(gpg --decrypt "${HOME_DIR}/secrets/hypothesis_username.gpg" 2>/dev/null || { echo "Failed to decrypt username."; exit 1; })
-token=$(gpg --decrypt "${HOME_DIR}/secrets/hypothesis_token.gpg" 2>/dev/null || { echo "Failed to decrypt token."; exit 1; })
+username=$(gpg --decrypt "${HOME_DIR}/secrets/hypothesis_username.gpg" 2>/dev/null || {
+  echo "Failed to decrypt username."
+  exit 1
+})
+token=$(gpg --decrypt "${HOME_DIR}/secrets/hypothesis_token.gpg" 2>/dev/null || {
+  echo "Failed to decrypt token."
+  exit 1
+})
 
 # Function to get timestamp
 timestamp() {
@@ -23,7 +29,7 @@ if [[ -n $username && -n $token ]]; then
   TEMP_FILE="$(mktemp)" # Create a temporary file
 
   # Redirect output to the temporary file
-  if ~/apps/PKM/.venv/bin/python -m hypexport.export --username "$username" --token "$token" > "$TEMP_FILE"; then
+  if ~/apps/PKM/.venv/bin/python -m hypexport.export --username "$username" --token "$token" >"$TEMP_FILE"; then
     mv "$TEMP_FILE" "$EXPORT_FILE"
     echo "Export completed successfully and written to $EXPORT_FILE"
   else

@@ -6,9 +6,9 @@
 # Dependencies: xdotool
 
 LINK="$1"
-SERVERNAME=/tmp/_home_serranomorante_repos_gems # should be same as `v:servername` of your nvim instance.
+SERVERNAME=/tmp/_home_serranomorante_repos_gems          # should be same as `v:servername` of your nvim instance.
 FILENAME=$(echo $LINK | sed -E 's/^.*?:([^:]+):.*/\1/g') # extract the filename part
-LINE=$(echo $LINK | sed -E 's/^.*:(.*)/\1/g') # extract the line number part
+LINE=$(echo $LINK | sed -E 's/^.*:(.*)/\1/g')            # extract the line number part
 # The next line does the following:
 # 1. Targets your specific neovim instance (by the servername)
 # 2. Focus the first tab of your targeted nvim instance

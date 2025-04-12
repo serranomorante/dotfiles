@@ -1,18 +1,19 @@
 #!/bin/sh
 
 tty="$(tty)"
-id="$(gdbus call --session \
-  --dest org.freedesktop.Notifications \
-  --object-path /org/freedesktop/Notifications \
-  --method org.freedesktop.Notifications.Notify \
-  show_mouseless_osd \
-  0 \
-  utilities-terminal \
-  "Mouseless" \
-  "Mouse mode enabled" \
-  [] \
-  {} \
-  0
+id="$(
+  gdbus call --session \
+    --dest org.freedesktop.Notifications \
+    --object-path /org/freedesktop/Notifications \
+    --method org.freedesktop.Notifications.Notify \
+    show_mouseless_osd \
+    0 \
+    utilities-terminal \
+    "Mouseless" \
+    "Mouse mode enabled" \
+    [] \
+    {} \
+    0
 )"
 id="${id##* }"
 id="${id%,)}"
