@@ -60,7 +60,7 @@ function M.config()
       ---https://github.com/stevearc/resession.nvim?tab=readme-ov-file#create-one-session-per-directory
       if utils.nvim_started_without_args() and not utils.cwd_is_home() then
         ---Save these to a different directory, so our manual sessions don't get polluted
-        resession.load(vim.fn.getcwd(), { dir = "dirsession" })
+        resession.load(vim.fn.getcwd(), { dir = "dirsession", silence_errors = true })
         ---hack: force BufReadPost on split window at startup. Fixes treesitter highlight on split window
         vim.cmd("wincmd w | wincmd p")
       end

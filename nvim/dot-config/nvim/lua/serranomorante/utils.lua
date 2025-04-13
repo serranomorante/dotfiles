@@ -2,6 +2,23 @@ local constants = require("serranomorante.constants")
 
 local M = {}
 
+---Writes a Grep/Find command into vim's command-line with
+---nnn's hovered dir prepopulated
+---@param search_type 'Grep'|'Find'
+---@param filepath string
+function M.nnn_search_in_dir(search_type, filepath)
+  local search_dir = vim.fn.fnamemodify(filepath or "", ":p:~:h")
+  if vim.fn.isdirectory(vim.fn.expand(search_dir)) ~= 1 then
+    local msg = '[NNN] %s search aborted. Directory "%s" not found'
+    return vim.notify(string.format(msg, search_type, search_dir), vim.log.levels.WARN)
+  end
+  ---Wait until terminal closes
+  vim.defer_fn(function()
+    M.feedkeys(string.format(":%s '' %s", search_type, search_dir), "n")
+    M.feedkeys(constants.POSITION_CURSOR_BETWEEN_QUOTES, "n")
+  end, 200)
+end
+
 ---Check if a plugin has been loaded
 ---@param plugin string # The name of the plugin. It should be the same as the one you use in `require(plugin name)`
 ---@return boolean available # Whether the plugin is available

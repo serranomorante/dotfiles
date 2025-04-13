@@ -1,6 +1,10 @@
 local M = {}
 
 local function keys()
+  local overseer = require("overseer")
+  local nnn_explorer = require("overseer.template.editor-tasks.TASK__nnn_explorer")
+  local open_markdown_preview = require("overseer.template.editor-tasks.TASK__open_markdown_preview")
+
   vim.keymap.set("n", "<leader>oo", "<cmd>OverseerToggle<CR>", { desc = "Overseer: Toggle the overseer window" })
   vim.keymap.set("n", "<leader>or", "<cmd>OverseerRun<CR>", { desc = "Overseer: Run a task from a template" })
   vim.keymap.set("n", "<leader>oc", "<cmd>OverseerRunCmd<CR>", { desc = "Overseer: Run a raw shell command" })
@@ -34,21 +38,36 @@ local function keys()
     "<cmd>OverseerTaskAction<CR>",
     { desc = "Overseer: Select a task to run an action on" }
   )
-  vim.keymap.set("n", "<leader>lm", function()
-    local overseer = require("overseer")
-    local task_spec = require("overseer.template.editor-tasks.TASK__open_markdown_preview")
-    overseer.run_template({ name = task_spec.name }, function(task)
-      if not task then return end
-      require("overseer").run_action(task, "open float")
-      if vim.bo.buftype == "terminal" then vim.cmd.startinsert() end
-    end)
-  end, { desc = "Open markdown preview" })
+
+  vim.keymap.set(
+    "n",
+    "<leader>lm",
+    function() overseer.run_template({ name = open_markdown_preview.name }) end,
+    { desc = "Open markdown preview" }
+  )
+
+  vim.keymap.set("n", "<leader>e", function()
+    overseer.run_template(
+      { name = nnn_explorer.name, params = { startdir = vim.fn.expand("%:p") } },
+      ---@param task overseer.Task
+      function(task)
+        vim.api.nvim_create_autocmd("WinLeave", {
+          group = vim.api.nvim_create_augroup("nnn.explorer", { clear = true }),
+          callback = function(args)
+            local ok, task_id = pcall(vim.api.nvim_buf_get_var, args.buf, "overseer_task")
+            if ok and task_id == task.id then task:dispose(true) end
+          end,
+        })
+      end,
+      { desc = "Toggle explorer" }
+    )
+  end)
 end
 
 local function opts()
   ---@type overseer.Config
   return {
-    strategy = "jobstart",
+    strategy = "terminal",
     ---Disable the automatic patch and do it manually on nvim-dap config
     ---https://github.com/stevearc/overseer.nvim/blob/master/doc/third_party.md#dap
     dap = false,

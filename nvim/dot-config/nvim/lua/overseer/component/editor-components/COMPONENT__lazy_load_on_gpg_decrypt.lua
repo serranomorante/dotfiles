@@ -43,12 +43,7 @@ return {
         if vim.islist(data) and data ~= nil then
           for _, line in ipairs(data) do
             local is_passphrase_prompt = string.match(line, "Passphrase:")
-            if is_passphrase_prompt ~= nil then
-              overseer.run_action(task, "open float")
-              vim.defer_fn(function()
-                if vim.api.nvim_get_option_value("buftype", { buf = 0 }) == "terminal" then vim.cmd("startinsert") end
-              end, 300)
-            end
+            if is_passphrase_prompt ~= nil then overseer.run_action(task, "open float") end
           end
         end
       end,

@@ -134,3 +134,9 @@ vim.api.nvim_create_autocmd("FileType", {
   group = general_settings_group,
   command = "set wrap",
 })
+
+vim.api.nvim_create_autocmd("TermOpen", {
+  desc = "Enter terminal in insert mode",
+  group = general_settings_group,
+  command = "startinsert",
+})

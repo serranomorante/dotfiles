@@ -13,6 +13,7 @@ return {
         LESS = "-N",
       },
       components = {
+        { "open_output", direction = "float", on_start = "always", focus = true },
         "unique",
         "defaults_without_notification",
       },
