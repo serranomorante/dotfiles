@@ -22,7 +22,7 @@ seedvault_main_backup_env:
 phone_photos_backup_env:
   - /storage/emulated/0/DCIM/Camera
 notes_backup_env:
-  - ~/.local/share/Cryptomator/mnt/foam
+  - ~/external/notes/foam
 reader_annotations_backup_env:
   - /storage/emulated/0/note
 root_backup_env:
