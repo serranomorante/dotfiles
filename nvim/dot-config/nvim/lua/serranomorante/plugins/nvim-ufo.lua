@@ -6,7 +6,7 @@ local provider_by_filetype = {
   vim = "indent",
   python = "indent",
   html = "indent",
-  markdown = "indent",
+  markdown = "treesitter",
   git = "",
   nofile = "",
 }
