@@ -142,8 +142,6 @@ function M.enable_completion_documentation(client, augroup, bufnr)
               if vim.tbl_isempty(wininfo) or not vim.api.nvim_win_is_valid(wininfo.winid) then return end
 
               vim.api.nvim_win_set_config(wininfo.winid, { border = "rounded" })
-              vim.wo[wininfo.winid].conceallevel = 2
-              vim.wo[wininfo.winid].concealcursor = "n"
 
               if not vim.api.nvim_buf_is_valid(wininfo.bufnr) then return end
 

@@ -35,6 +35,7 @@ vim.go.jumpoptions = "stack,view"
 vim.go.scrolloff = 4
 vim.wo.signcolumn = "auto:2-4"
 vim.go.isfname = vim.go.isfname .. ",@-@"
+vim.wo.conceallevel = 0
 vim.wo.cursorline = true
 vim.wo.cursorlineopt = "number"
 vim.go.wrapscan = false
