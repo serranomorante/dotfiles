@@ -2,8 +2,10 @@ local utils = require("serranomorante.utils")
 
 local M = {}
 
-function M.on_save()
-  local quickfix_list = vim.fn.getqflist({ all = true })
+---Get a quickfix list by stack nr
+---@param nr integer Stack number
+local function getqflist_stack(nr)
+  local quickfix_list = vim.fn.getqflist({ all = true, nr = nr })
   local items = vim.tbl_map(
     function(item)
       return {
@@ -31,8 +33,24 @@ function M.on_save()
   }
 end
 
-function M.on_pre_load(data)
-  vim.fn.setqflist({}, "r", { title = data.title, items = data.items or {}, context = data.context })
+function M.on_save()
+  local chistory = vim.api.nvim_exec2("chistory", { output = true })
+  local stacks = {}
+  for i = 1, #vim.split(chistory.output, "\n") do
+    table.insert(stacks, getqflist_stack(i))
+  end
+  return stacks
+end
+
+---@param qf_stacks any[]
+function M.on_pre_load(qf_stacks)
+  if not vim.islist(qf_stacks) then
+    local msg = "[quickfix on_pre_load] Expected list, received: %s. Is data corrupted?"
+    return vim.api.nvim_echo({ { msg:format(type(qf_stacks)), "DiagnosticWarn" } }, true, {})
+  end
+  for _, data in pairs(qf_stacks or {}) do
+    vim.fn.setqflist({}, " ", data)
+  end
 end
 
 function M.is_win_supported(winid, bufnr) return vim.bo[bufnr].buftype == "quickfix" end
