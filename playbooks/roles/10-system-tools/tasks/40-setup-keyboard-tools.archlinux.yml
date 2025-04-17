@@ -15,18 +15,23 @@
     regexp: "^(autoload)=true"
     replace: "\\1=false"
 
-- name: "[archlinux] Keyboard peripheral: enable services"
+- name: "[archlinux] Keyboard peripheral: setup keyd default.conf"
+  become: true
+  ansible.builtin.template:
+    src: ~/dotfiles/assets/other/keyd-default.conf
+    dest: /etc/keyd/default.conf
+    mode: "644"
+  notify:
+    - "10-system-tools : handler_ensure_keyd_service"
+    - "10-system-tools : handler_restart_keyd"
+
+- name: "[archlinux] Keyboard peripheral: enable kbdrate services"
   ansible.builtin.systemd_service:
-    scope: "{{ service.scope }}"
-    name: "{{ service.name }}.service"
+    scope: user
+    name: kbdrate.service
     state: started
     enabled: true
     masked: false
-  loop:
-    - { name: keyd, scope: system }
-    - { name: kbdrate, scope: user }
-  loop_control:
-    loop_var: service
 
 - name: "[archlinux] Keyboard peripheral: ensure xinput dir"
   become: true
@@ -59,14 +64,6 @@
     src: /usr/share/X11/locale/en_US.UTF-8/Compose
     dest: ~/.XCompose
     state: link
-
-- name: "[archlinux] Keyboard peripheral: setup keyd default.conf"
-  become: true
-  ansible.builtin.template:
-    src: ~/dotfiles/assets/other/keyd-default.conf
-    dest: /etc/keyd/default.conf
-    mode: "644"
-  notify: "10-system-tools : handler_restart_keyd"
 
 - name: "[archlinux] Keyboard peripheral: prepare readline-mode-notify script"
   become: true

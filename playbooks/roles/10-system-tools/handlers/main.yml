@@ -12,10 +12,19 @@
   changed_when: false
   listen: handlergroup_restart_gpg_services
 
+- name: handler_ensure_keyd_service
+  become: true
+  ansible.builtin.systemd_service:
+    scope: system
+    name: keyd.service
+    state: started
+    enabled: true
+    masked: false
+
 - name: handler_restart_keyd
   become: true
   ansible.builtin.command: keyd reload
-  changed_when: false
+  changed_when: true
 
 - name: handler_reload_udev_rules
   become: true
