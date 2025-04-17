@@ -2,10 +2,6 @@
 
 # Description: Interact with neovim server from other applications
 #
-# Details:
-#   We use `nvim` for simple edit files as this offers more performance
-#   We use `nvr` for more complicated interactions that need before and after commands and wait edit files.
-#
 # Debugging tips:
 #   Use `exec >/tmp/open_in_nvim.out 2>&1` to log output into file. You can then run
 #   `watch -n 1 -d cat /tmp/open_in_nvim.out` to see the logs in realtime.
@@ -19,19 +15,19 @@ custom_edit="lua vim.cmd.edit({ \"$1\", mods = { emsg_silent = true }})" # don't
 
 case $app in
 nnn_search)
-    nvr --servername $servername -c ":lua require'serranomorante.utils'.nnn_search_in_dir('$1', '$PWD/$nnn')"
+    nvr --servername $servername --nostart -c ":lua require'serranomorante.utils'.nnn_search_in_dir('$1', '$PWD/$nnn')"
     nvim --server $servername --remote-send '<C-\><C-n><C-q>'
     ;;
 nnn_explorer)
     nvim --server $servername --remote-send '<C-\><C-n><C-q>'
-    nvim --server $servername --remote "$1"
+    nvr --servername $servername --nostart -c "$custom_edit"
     ;;
 git_editor)
     eval $focus_tmux_pane
     nvr --servername $servername --nostart --remote-tab-wait-silent "$1"
     ;;
 lazygit_edit)
-    nvim --server $servername --remote "$1" | eval $focus_tmux_pane
+    nvr --servername $servername --nostart -c "$custom_edit" | eval $focus_tmux_pane
     ;;
 lazygit_edit_at_line)
     nvr --servername $servername --nostart -cc "$custom_edit" -c "$2" | eval $focus_tmux_pane
@@ -40,7 +36,7 @@ lazygit_edit_at_line_and_wait)
     nvr --servername $servername --nostart --remote-wait "$1" -c "$2" | eval $focus_tmux_pane
     ;;
 lazygit_open)
-    nvim --server $servername --remote "$1" | eval $focus_tmux_pane
+    nvr --servername $servername --nostart -c "$custom_edit" | eval $focus_tmux_pane
     ;;
 lazygit_open_dir_in_editor)
     nvr --servername $servername --nostart "$1" | eval $focus_tmux_pane
