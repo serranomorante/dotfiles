@@ -49,6 +49,10 @@ return {
     return {
       cmd = vim.fn.join(args, " "),
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
+      components = {
+        { "open_output", direction = "float", on_start = "always", focus = true },
+        "default",
+      },
     }
   end,
 }

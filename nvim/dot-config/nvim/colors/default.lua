@@ -18,6 +18,8 @@ local groups = {
   LspInlayHint = { link = "CursorColumn" },
   TabLineSel = { fg = "White", bg = bg .. "Grey2" },
   Folded = { bg = bg .. "Grey3" },
+  MatchParen = { bg = bg .. "Grey3" },
+  MatchWord = { bg = bg .. "Grey3" },
   ---LSP
   LspCodeLens = { link = "Comment" },
   ---DAP
