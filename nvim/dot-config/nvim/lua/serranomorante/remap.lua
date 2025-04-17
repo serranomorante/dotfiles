@@ -113,14 +113,19 @@ vim.keymap.set("t", "<leader>lm", function()
 end, { desc = "Close terminal window", expr = true, nowait = true, silent = true })
 
 ---Quickfix keymaps
-vim.keymap.set("n", "<leader>qf", utils.toggle_qflist, { desc = "Toggle quickfix list" })
+vim.keymap.set("n", "<leader>qf", function()
+  if vim.fn.getcmdwintype() ~= "" then
+    return vim.api.nvim_echo({ { "Cannot open quickfix list from command-line window", "DiagnosticWarn" } }, false, {})
+  end
+  utils.toggle_qflist()
+end, { desc = "Toggle quickfix list" })
 
-vim.keymap.set(
-  "n",
-  "<leader>ql",
-  function() utils.toggle_qflist({ loclist = true }) end,
-  { desc = "Open location list" }
-)
+vim.keymap.set("n", "<leader>ql", function()
+  if vim.fn.getcmdwintype() ~= "" then
+    return vim.api.nvim_echo({ { "Cannot open loclist from command-line window", "DiagnosticWarn" } }, false, {})
+  end
+  utils.toggle_qflist({ loclist = true })
+end, { desc = "Open location list" })
 
 vim.keymap.set("n", "<A-j>", utils.next_qf_item, { desc = "Next quickfix list item" })
 vim.keymap.set("n", "<A-k>", utils.prev_qf_item, { desc = "Prev quickfix list item" })
