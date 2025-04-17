@@ -5,7 +5,11 @@ local events = require("serranomorante.events")
 -- Toggle wrap
 vim.keymap.set("n", "<leader>uw", function()
   vim.wo.wrap = not vim.wo.wrap
-  vim.notify("Wrap " .. utils.bool2str(vim.wo.wrap))
+  vim.api.nvim_echo(
+    { { "Wrap " }, { utils.bool2str(vim.wo.wrap), vim.wo.wrap and "DiagnosticOk" or "Comment" } },
+    false,
+    {}
+  )
 end, { desc = "Toggle wrap" })
 
 -- New file
@@ -64,10 +68,15 @@ vim.keymap.set("n", "<C-r>", function()
 end, { expr = true })
 
 vim.keymap.set("n", "<leader>yy", function()
-  local filename_with_cursor_pos = utils.filename_with_cursor_pos()
-  vim.fn.setreg("+", filename_with_cursor_pos)
-  vim.notify("Copied " .. filename_with_cursor_pos, vim.log.levels.INFO)
-end, { desc = "Copy <filename>:<line>:<col>" })
+  local bufname, line, col = utils.get_cursor_position()
+  vim.fn.setreg("+", string.format("%s:%s:%s", bufname, line, col))
+  local part_1, part_2, part_3 = 'Yanked! "%s', ":%s:%s", '"'
+  vim.api.nvim_echo({
+    { part_1:format(bufname), "DiagnosticInfo" },
+    { part_2:format(line, col), "DiffText" },
+    { part_3, "DiagnosticInfo" },
+  }, false, {})
+end, { desc = "Yank <filename>:<line>:<col>" })
 
 vim.keymap.set("n", "<C-S-e>", "zl", { desc = "Scroll right horizontally" })
 vim.keymap.set("n", "<C-S-y>", "zh", { desc = "Scroll left horizontally" })

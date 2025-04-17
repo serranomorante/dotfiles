@@ -18,12 +18,16 @@ function _G.user.findfunc(cmd_arg)
   local files = find(cmd_arg)
   local files_count = vim.tbl_count(files)
   if files_count > 0 then
-    local message = string.format("[Find] %d results: %s", files_count, cmd_arg)
+    local msg = "[Find] %d results: %s"
     vim.schedule(function()
       local items = vim.tbl_map(function(item) return { filename = item } end, files)
-      vim.fn.setqflist({}, " ", { title = message, items = items or {}, context = { name = "user.find" } })
+      vim.fn.setqflist(
+        {},
+        " ",
+        { title = msg:format(files_count, cmd_arg), items = items or {}, context = { name = "user.find" } }
+      )
     end)
-    vim.notify(message, vim.log.levels.INFO)
+    vim.api.nvim_echo({ { msg:format(files_count, cmd_arg), "DiagnosticOk" } }, false, {})
   end
   return files
 end

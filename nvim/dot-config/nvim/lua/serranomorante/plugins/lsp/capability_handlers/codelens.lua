@@ -35,7 +35,10 @@ return {
 
     vim.keymap.set("n", "<leader>uL", function()
       codelens_is_enabled = not codelens_is_enabled
-      vim.notify(string.format("CodeLens %s", utils.bool2str(codelens_is_enabled)), vim.log.levels.INFO)
+      vim.api.nvim_echo({
+        { "CodeLens " },
+        { utils.bool2str(codelens_is_enabled), codelens_is_enabled and "DiagnosticOk" or "Comment" },
+      }, false, {})
       return codelens_is_enabled and vim.lsp.codelens.refresh({ bufnr = bufnr })
         or vim.lsp.codelens.clear(client.id, bufnr)
     end, opts_with_desc("Toggle codelens"))

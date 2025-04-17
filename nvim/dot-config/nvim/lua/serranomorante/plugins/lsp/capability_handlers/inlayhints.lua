@@ -10,7 +10,14 @@ return {
 
     vim.keymap.set("n", "<leader>uH", function()
       inlayhints_is_enabled = not inlayhints_is_enabled
-      vim.notify(string.format("Inlay hints %s", utils.bool2str(inlayhints_is_enabled)), vim.log.levels.INFO)
+      vim.api.nvim_echo(
+        {
+          { "Inlay hints " },
+          { utils.bool2str(inlayhints_is_enabled), inlayhints_is_enabled and "DiagnosticOk" or "Comment" },
+        },
+        false,
+        {}
+      )
 
       vim.lsp.inlay_hint.enable(inlayhints_is_enabled)
     end, opts_with_desc("Toggle inlay hints"))

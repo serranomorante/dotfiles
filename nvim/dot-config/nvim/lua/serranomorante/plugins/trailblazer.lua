@@ -34,6 +34,8 @@ local function init()
   })
 end
 
+local function echo_marks_empty() vim.api.nvim_echo({ { "Marks empty", "DiagnosticWarn" } }, false, {}) end
+
 local function keys()
   local trailblazer = require("trailblazer")
   local trails = require("trailblazer.trails")
@@ -42,14 +44,14 @@ local function keys()
 
   vim.keymap.set({ "n", "v" }, "<A-j>", function()
     if is_trailblazer_qf_open(true) and not is_trailblazer_qf_open() then return utils.next_qf_item() end
-    if #trails.stacks.current_trail_mark_stack == 0 then return vim.notify("Marks empty", vim.log.levels.WARN) end
+    if #trails.stacks.current_trail_mark_stack == 0 then return echo_marks_empty() end
     trailblazer.switch_trail_mark_stack(trails.stacks.current_trail_mark_stack_name, false) -- fixes trails getting stuck
     trailblazer.move_to_nearest(vim.api.nvim_get_current_buf(), "fpath_down", "lin_char_dist")
   end, { desc = "Trailblazer: Move to the next global trail mark" })
 
   vim.keymap.set({ "n", "v" }, "<A-k>", function()
     if is_trailblazer_qf_open(true) and not is_trailblazer_qf_open() then return utils.prev_qf_item() end
-    if #trails.stacks.current_trail_mark_stack == 0 then return vim.notify("Marks empty", vim.log.levels.WARN) end
+    if #trails.stacks.current_trail_mark_stack == 0 then return echo_marks_empty() end
     trailblazer.switch_trail_mark_stack(trails.stacks.current_trail_mark_stack_name, false) -- fixes trails getting stuck
     trailblazer.move_to_nearest(vim.api.nvim_get_current_buf(), "fpath_up", "lin_char_dist")
   end, { desc = "Trailblazer: Move to the previous global trail mark" })

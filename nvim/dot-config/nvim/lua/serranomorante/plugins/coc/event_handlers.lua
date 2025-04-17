@@ -57,7 +57,9 @@ function M.attach(buf)
     if utils.is_available("aerial") then
       require("aerial").toggle()
     else
-      coc_utils.action_async("documentSymbols", buf):catch(function(err) vim.notify(err) end)
+      coc_utils
+        .action_async("documentSymbols", buf)
+        :catch(function(err) vim.api.nvim_echo({ { err } }, false, { err = true }) end)
     end
   end, opts_with_desc("Document symbols"))
 
@@ -76,7 +78,10 @@ function M.attach(buf)
 
   vim.keymap.set("n", "<leader>uH", function()
     vim.g.coc_inlay_hints = not vim.g.coc_inlay_hints
-    vim.notify(string.format("Inlay hints %s", utils.bool2str(vim.g.coc_inlay_hints)), vim.log.levels.INFO)
+    vim.api.nvim_echo({
+      { "Inlay hints " },
+      { utils.bool2str(vim.g.coc_inlay_hints), vim.g.coc_inlay_hints and "DiagnosticOk" or "Comment" },
+    }, false, {})
     return "<cmd>CocCommand document.toggleInlayHint<CR>"
   end, vim.tbl_extend("force", opts_with_desc("Toggle inlay hints"), { expr = true }))
 

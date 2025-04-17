@@ -51,7 +51,7 @@ return {
       on_complete = function(self, task, status, result)
         local decrypted_content = unpack(self.parser:get_result())
         if decrypted_content == nil then
-          vim.notify("Couldn't decrypt gpg content", vim.log.levels.ERROR)
+          vim.api.nvim_echo({ { "Couldn't decrypt gpg content" } }, false, { err = true })
           return
         end
 

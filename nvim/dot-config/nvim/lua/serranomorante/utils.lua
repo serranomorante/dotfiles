@@ -10,7 +10,7 @@ function M.nnn_search_in_dir(search_type, filepath)
   local search_dir = vim.fn.fnamemodify(filepath or "", ":p:~:h")
   if vim.fn.isdirectory(vim.fn.expand(search_dir)) ~= 1 then
     local msg = '[NNN] %s search aborted. Directory "%s" not found'
-    return vim.notify(string.format(msg, search_type, search_dir), vim.log.levels.WARN)
+    return vim.api.nvim_echo({ { msg:format(search_type, search_dir) } }, false, { err = true })
   end
   ---Wait until terminal closes
   vim.defer_fn(function()
@@ -68,7 +68,8 @@ function M.cmd(cmd, show_error)
   local result = vim.fn.system(cmd)
   local success = vim.api.nvim_get_vvar("shell_error") == 0
   if not success and (show_error == nil or show_error) then
-    vim.api.nvim_err_writeln(("Error running command %s\nError message:\n%s"):format(table.concat(cmd, " "), result))
+    local msg = "Error running command %s\nError message:\n%s"
+    vim.api.nvim_echo({ { msg:format(table.concat(cmd, " ")) } }, false, { err = true })
   end
   return success and result:gsub("[\27\155][][()#;?%d]*[A-PRZcf-ntqry=><~]", "") or nil
 end
@@ -256,21 +257,22 @@ function M.wait_until(callback, ms)
 end
 
 ---Return an adapted filename which includes cursor's current line and column
----Example: <filename>:<line>:<col>
-function M.filename_with_cursor_pos()
+function M.get_cursor_position()
   local bufname = vim.api.nvim_buf_get_name(0)
   local line, col = unpack(vim.api.nvim_win_get_cursor(0))
-  return ("%s:%s:%s"):format(bufname, line, col)
+  return bufname, line, col
 end
+
+local function echo_no_more_items() vim.api.nvim_echo({ { "No more items", "DiagnosticWarn" } }, false, {}) end
 
 function M.next_qf_item()
   local ok, _ = pcall(vim.cmd.cnext)
-  if not ok then return vim.notify("No more items", vim.log.levels.WARN) end
+  if not ok then return echo_no_more_items() end
 end
 
 function M.prev_qf_item()
   local ok, _ = pcall(vim.cmd.cprev)
-  if not ok then return vim.notify("No more items", vim.log.levels.WARN) end
+  if not ok then return echo_no_more_items() end
 end
 
 ---Check if nvim was started with no args and without reading from stdin

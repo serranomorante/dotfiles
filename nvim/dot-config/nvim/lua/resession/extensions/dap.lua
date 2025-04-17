@@ -38,9 +38,11 @@ function M.on_post_load(data)
       if breakpoint.logMessage then bopts.log_message = breakpoint.logMessage end
       if breakpoint.hitCondition then bopts.hit_condition = breakpoint.hitCondition end
       require("dap.breakpoints").set(bopts, buf, breakpoint.line)
-      vim.notify(("Restoring breakpoint at buf %s line %s"):format(buf, breakpoint.line), vim.log.levels.DEBUG)
+      local msg = "Restoring breakpoint at buf %s line %s"
+      vim.api.nvim_echo({ { msg:format(buf, breakpoint.line), "Comment" } }, false, {})
     else
-      vim.notify(("Could not restore breakpoint at buf %s line %s"):format(buf, breakpoint.line), vim.log.levels.WARN)
+      local msg = "Could not restore breakpoint at buf %s line %s"
+      vim.api.nvim_echo({ { msg:format(buf, breakpoint.line) } }, false, { err = true })
     end
   end
 end

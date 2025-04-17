@@ -103,7 +103,7 @@ vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter" }, {
 vim.api.nvim_create_autocmd("FileChangedShellPost", {
   desc = "Notify when file changes outside vim",
   group = general_settings_group,
-  callback = function() vim.notify("File changed on disk. Buffer reloaded", vim.log.levels.INFO) end,
+  callback = function() vim.api.nvim_echo({ { "File changed on disk. Buffer reloaded", "Comment" } }, false, {}) end,
 })
 
 vim.api.nvim_create_autocmd("FocusGained", {

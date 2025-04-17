@@ -9,11 +9,14 @@ local function grep(command_args)
   local json_content = vim.json.decode(string.format("[%s]", content), { luanil = { object = true } })
 
   local items, count = utils.rg_json_to_qfitems(json_content)
-  if count == 0 then return vim.notify(string.format("[Grep] No results: %s", args), vim.log.levels.ERROR) end
+  if count == 0 then
+    local msg = "[Grep] No results: %s"
+    return vim.api.nvim_echo({ { msg:format(args) } }, false, { err = true })
+  end
 
-  local message = string.format("[Grep] %d results: %s", count, args)
-  vim.notify(message, vim.log.levels.INFO)
-  vim.fn.setqflist({}, " ", { title = message, items = items, context = { name = "user.grep" } })
+  local msg = "[Grep] %d results: %s"
+  vim.api.nvim_echo({ { msg:format(count, args), "DiagnosticOk" } }, false, {})
+  vim.fn.setqflist({}, " ", { title = msg:format(count, args), items = items, context = { name = "user.grep" } })
   vim.cmd.cfirst({ mods = { emsg_silent = true } })
 end
 

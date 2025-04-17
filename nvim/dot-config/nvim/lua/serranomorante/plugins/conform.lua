@@ -75,12 +75,12 @@ function M.config()
   ---@return boolean True if any formatters were attempted
   local function format_patch(opts, callback)
     _ = callback
-    vim.notify("[Conform]: formatting...", vim.log.levels.WARN)
+    vim.api.nvim_echo({ { "[Conform]: formatting...", "DiagnosticInfo" } }, false, {})
     return format(opts, function(err)
       ---https://github.com/stevearc/conform.nvim/issues/250#issuecomment-1868544121
       if err then return vim.notify(err, vim.log.levels.WARN) end
       utils.refresh_codelens()
-      vim.notify("[Conform]: format done.", vim.log.levels.INFO)
+      vim.api.nvim_echo({ { "[Conform]: format done.", "DiagnosticOk" } }, false, {})
     end)
   end
   conform.format = format_patch

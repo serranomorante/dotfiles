@@ -128,12 +128,13 @@ end
 function M.config(_, opts)
   local path = utils.installation_path(M.PLUGIN)
   if path == "" then
-    vim.notify(string.format("%s not installed", M.PLUGIN), vim.log.levels.WARN)
-    return
+    local msg = 'Plugin "%s" not installed'
+    return vim.api.nvim_echo({ { msg:format(M.PLUGIN) } }, false, { err = true })
   end
 
   if string.match(path, "%/opt%/") and not M.LOADED then
-    vim.notify(string.format("%s was lazy loaded", M.PLUGIN))
+    local msg = 'Plugin "%s" was lazy loaded'
+    vim.api.nvim_echo({ { msg:format(M.PLUGIN), "DiagnosticOk" } }, false, {})
     vim.cmd.packadd(M.PLUGIN)
     M.LOADED = true
   end

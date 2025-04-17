@@ -2,15 +2,20 @@ vim.go.quickfixtextfunc = "v:lua.user.QuickfixTextFunc"
 
 local function init() vim.wo.wrap = false end
 
+local function echo_stack_warn(direction)
+  local msg = "At the %s of the quickfix stack"
+  vim.api.nvim_echo({ { msg:format(direction), "DiagnosticWarn" } }, false, {})
+end
+
 ---@param opts table
 local function keys(opts)
   vim.keymap.set("n", ">", function()
     local ok, _ = pcall(vim.cmd.cnewer)
-    if not ok then return vim.notify("At the top of the quickfix stack", vim.log.levels.WARN) end
+    if not ok then return echo_stack_warn("top") end
   end, { desc = "Go to next quickfix in history", nowait = true, buffer = opts.buf })
   vim.keymap.set("n", "<", function()
     local ok, _ = pcall(vim.cmd.colder)
-    if not ok then return vim.notify("At the bottom of the quickfix stack", vim.log.levels.WARN) end
+    if not ok then return echo_stack_warn("bottom") end
   end, { desc = "Go to previous quickfix in history", nowait = true, buffer = opts.buf })
 end
 
