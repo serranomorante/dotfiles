@@ -98,9 +98,11 @@ local function keys()
         text = text,
       })
     end)
-    if vim.tbl_count(breakpoints) > 0 then
-      vim.fn.setqflist({}, "r", { title = "Find results", items = breakpoints or {} })
-      require("serranomorante.plugins.quicker").toggle_qf()
+    local breakpoints_count = vim.tbl_count(breakpoints)
+    if breakpoints_count > 0 then
+      local qf_title = string.format("[DAP] %d breakpoints found", breakpoints_count)
+      vim.fn.setqflist({}, " ", { title = qf_title, items = breakpoints or {} })
+      vim.cmd.copen({ mods = { split = "botright" } })
     end
   end, { desc = "DAP: List breakpoints" })
 end

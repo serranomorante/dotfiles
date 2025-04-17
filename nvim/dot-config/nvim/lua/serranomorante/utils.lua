@@ -282,7 +282,7 @@ function M.cwd_is_home() return vim.fn.getcwd() == vim.env.HOME end
 function M.open_quickfix_list()
   vim.cmd.cfirst()
   vim.cmd("normal! zz")
-  require("serranomorante.plugins.quicker").open_qf()
+  vim.cmd.copen({ mods = { split = "botright" } })
 end
 
 ---Check if file is large without relying on buffers (only file path)

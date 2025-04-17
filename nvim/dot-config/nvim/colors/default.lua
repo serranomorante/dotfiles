@@ -14,7 +14,7 @@ local fg = bg == "NvimDark" and "NvimLight" or "NvimDark"
 local groups = {
   ---Builtin
   DiffChange = { bg = bg .. "Grey3" },
-  QuickFixLine = { ctermfg = "NONE", fg = "NONE", bold = true, bg = bg .. "Blue" },
+  QuickFixLine = { ctermfg = "NONE", fg = "NONE", bg = "#1e2e4a" },
   LspInlayHint = { link = "CursorColumn" },
   TabLineSel = { fg = "White", bg = bg .. "Grey2" },
   Folded = { bg = bg .. "Grey3" },
@@ -33,13 +33,13 @@ local groups = {
   OverseerField = { fg = fg .. "Cyan" },
   OverseerComponent = { fg = fg .. "Yellow" },
   OverseerTask = { fg = fg .. "Blue" },
-  ---nvim-bqf
-  BqfPreviewThumb = { link = "PmenuSel" },
   ---Diffview
   DiffviewCursorLine = { ctermfg = 14, bg = bg .. "Grey3" },
   CocFloatingSuggest = { bg = bg .. "Grey3" },
   qfDirName = { link = "Directory", default = true },
   qfFileName = { link = "CursorLineNr", default = true },
+  qfSubmatch = { fg = fg .. "Red" },
+  qfSeparatorLeft = { fg = bg .. "Grey4" },
   CustomOperatorPending = { bg = fg .. "Blue" },
   CustomDapReplBg = { bg = "#192335" },
   CustomAerialBg = { bg = "#242529" },

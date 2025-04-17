@@ -55,9 +55,6 @@ neovim_plugins:
     repo: stevearc/resession.nvim
     name: resession
   - folder: start
-    repo: stevearc/quicker.nvim
-    name: quicker
-  - folder: start
     repo: kevinhwang91/nvim-fundo
     name: fundo
   - folder: start

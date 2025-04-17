@@ -17,6 +17,7 @@ function M.on_save()
         text = item.text,
         type = item.type,
         valid = item.valid,
+        user_data = item.user_data,
       }
     end,
     quickfix_list.items

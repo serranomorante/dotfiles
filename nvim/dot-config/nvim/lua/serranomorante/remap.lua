@@ -77,9 +77,6 @@ vim.keymap.set("n", "z.", "<cmd>normal! zszH<CR>", { desc = "Horizontally center
 
 vim.keymap.set({ "n", "x", "o" }, "'", "`", { desc = "Make single quote act like backtick" })
 
-vim.keymap.set("n", "<A-j>", utils.next_qf_item, { desc = "Next quickfix list item" })
-vim.keymap.set("n", "<A-k>", utils.prev_qf_item, { desc = "Prev quickfix list item" })
-
 vim.keymap.set("n", "<leader>ff", ":Find ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES, { desc = "Find files" })
 vim.keymap.set(
   "n",
@@ -100,3 +97,33 @@ vim.keymap.set("t", "<leader>lm", function()
   utils.feedkeys("<C-\\><C-n>", "t")
   return "<cmd>close<CR>"
 end, { desc = "Close terminal window", expr = true, nowait = true, silent = true })
+
+---Quickfix keymaps
+vim.keymap.set("n", "<leader>qf", function()
+  if vim.bo.filetype == "qf" then return "<cmd>cclose<CR>" end
+  for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if vim.bo[vim.api.nvim_win_get_buf(winid)].filetype == "qf" then return "<cmd>cclose<CR>" end
+  end
+  return "<cmd>botright copen<CR>"
+end, { desc = "Toggle quickfix list", expr = true })
+
+vim.keymap.set("n", "<leader>ql", function()
+  if vim.bo.filetype == "qf" then return "<cmd>lclose<CR>" end
+  for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if vim.bo[vim.api.nvim_win_get_buf(winid)].filetype == "qf" then return "<cmd>lclose<CR>" end
+  end
+  return "<cmd>botright lopen<CR>"
+end, { desc = "Open location list" })
+
+vim.keymap.set("n", ">", function()
+  local ok, _ = pcall(vim.cmd.cnewer)
+  if not ok then return vim.notify("At the top of the quickfix stack", vim.log.levels.WARN) end
+end, { desc = "Go to next quickfix in history", nowait = true })
+
+vim.keymap.set("n", "<", function()
+  local ok, _ = pcall(vim.cmd.colder)
+  if not ok then return vim.notify("At the bottom of the quickfix stack", vim.log.levels.WARN) end
+end, { desc = "Go to previous quickfix in history", nowait = true })
+
+vim.keymap.set("n", "<A-j>", utils.next_qf_item, { desc = "Next quickfix list item" })
+vim.keymap.set("n", "<A-k>", utils.prev_qf_item, { desc = "Prev quickfix list item" })
