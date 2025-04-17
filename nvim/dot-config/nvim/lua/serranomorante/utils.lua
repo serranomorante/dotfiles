@@ -297,4 +297,48 @@ function M.is_large_file(file)
     or stats.size / lines_count > vim.o.synmaxcol
 end
 
+---@class RGMatch
+---@field text string
+
+---@class RGSubmatch
+---@field match RGMatch
+---@field start integer
+---@field end integer
+
+---@class RGPath
+---@field text string
+
+---@class RGData
+---@field path RGPath
+---@field lines RGPath
+---@field line_number integer
+---@field absolute_offset integer
+---@field submatches RGSubmatch[]
+
+---@class RGContent
+---@field type "begin"|"match"|"end"
+---@field data RGData
+
+---RipGrep json output to quickfix list items
+---@param json RGContent[]
+function M.rg_json_to_qfitems(json)
+  ---@type vim.quickfix.entry[]
+  local entries = {}
+  for _, item in pairs(json) do
+    ---Inner loop is required due to: https://github.com/BurntSushi/ripgrep/issues/1983
+    ---and https://github.com/BurntSushi/ripgrep/issues/2779
+    for _, submatch in pairs(item.data.submatches or {}) do
+      table.insert(entries, {
+        text = item.data.lines.text,
+        filename = item.data.path.text,
+        lnum = item.data.line_number,
+        col = submatch.start + 1,
+        end_col = submatch["end"],
+        user_data = { match = submatch.match.text },
+      })
+    end
+  end
+  return entries, vim.tbl_count(entries)
+end
+
 return M

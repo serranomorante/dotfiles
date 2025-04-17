@@ -7,7 +7,6 @@ web:*.{html,css,js}*
 lock:*-lock.{json,yaml}
 
 --pcre2
---multiline
 --column
 --line-number
 --no-heading

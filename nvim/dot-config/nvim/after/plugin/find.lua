@@ -1,12 +1,5 @@
 ---You must escape pipes `:Find 'file(-\|_)one' ...`
 
----Send find results to quickfix list
----@param items string[]
-local function send_to_qf(items)
-  local files = vim.tbl_map(function(item) return { filename = item } end, items)
-  vim.fn.setqflist({}, "r", { title = "Find results", items = files or {} })
-end
-
 ---Use `fd` to perform the file and directory search
 ---@param arg_lead string
 local function find(arg_lead)
@@ -23,7 +16,15 @@ vim.api.nvim_create_user_command(
 ---@param cmd_arg string
 function _G.user.findfunc(cmd_arg)
   local files = find(cmd_arg)
-  vim.schedule(function() send_to_qf(files) end)
+  local files_count = vim.tbl_count(files)
+  if files_count > 0 then
+    local message = string.format("[Find] %d results: %s", files_count, cmd_arg)
+    vim.schedule(function()
+      local items = vim.tbl_map(function(item) return { filename = item } end, files)
+      vim.fn.setqflist({}, " ", { title = message, items = items or {} })
+    end)
+    vim.notify(message, vim.log.levels.INFO)
+  end
   return files
 end
 
