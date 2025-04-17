@@ -1,3 +1,5 @@
+local utils = require("serranomorante.utils")
+
 local M = {}
 
 function M.on_save()
@@ -37,7 +39,7 @@ function M.save_win(winid) return {} end
 function M.load_win(winid, config)
   if vim.fn.winnr("$") == 1 then return vim.api.nvim_get_current_win() end -- fixes unwanted fullscreen qf list
   vim.api.nvim_set_current_win(winid)
-  vim.cmd("copen")
+  utils.open_qflist()
   vim.api.nvim_win_close(winid, true)
   return vim.api.nvim_get_current_win()
 end

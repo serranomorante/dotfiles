@@ -279,10 +279,30 @@ function M.nvim_started_without_args() return vim.fn.argc(-1) == 0 and not vim.g
 ---Check if current cwd is home
 function M.cwd_is_home() return vim.fn.getcwd() == vim.env.HOME end
 
-function M.open_quickfix_list()
-  vim.cmd.cfirst()
-  vim.cmd("normal! zz")
-  vim.cmd.copen({ mods = { split = "botright" } })
+---@class OpenQfList
+---@field loclist? boolean
+---@field height? integer
+---@field focus? boolean
+
+---Open quickfix list
+---@param opts OpenQfList?
+function M.open_qflist(opts)
+  opts = vim.tbl_deep_extend("force", { focus = false, loclist = false, height = 7 }, opts or {})
+  local copen_opts = { mods = { split = "botright" } }
+  if opts.height then copen_opts.count = opts.height end
+  if opts.loclist then return vim.cmd.lopen(copen_opts) end
+  vim.cmd.copen(copen_opts)
+  if not opts.focus then vim.cmd.wincmd({ args = { "p" } }) end
+end
+
+---Toggle quickfix list
+---@param opts OpenQfList?
+function M.toggle_qflist(opts)
+  if vim.bo.filetype == "qf" then return vim.cmd.cclose() end
+  for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if vim.bo[vim.api.nvim_win_get_buf(winid)].filetype == "qf" then return vim.cmd.cclose() end
+  end
+  M.open_qflist(opts)
 end
 
 ---Check if file is large without relying on buffers (only file path)

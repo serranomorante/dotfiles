@@ -102,7 +102,7 @@ local function keys()
     if breakpoints_count > 0 then
       local qf_title = string.format("[DAP] %d breakpoints found", breakpoints_count)
       vim.fn.setqflist({}, " ", { title = qf_title, items = breakpoints or {} })
-      vim.cmd.copen({ mods = { split = "botright" } })
+      utils.open_qflist()
     end
   end, { desc = "DAP: List breakpoints" })
 end

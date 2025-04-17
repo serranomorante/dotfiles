@@ -104,21 +104,14 @@ vim.keymap.set("t", "<leader>lm", function()
 end, { desc = "Close terminal window", expr = true, nowait = true, silent = true })
 
 ---Quickfix keymaps
-vim.keymap.set("n", "<leader>qf", function()
-  if vim.bo.filetype == "qf" then return "<cmd>cclose<CR>" end
-  for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-    if vim.bo[vim.api.nvim_win_get_buf(winid)].filetype == "qf" then return "<cmd>cclose<CR>" end
-  end
-  return "<cmd>botright copen<CR>"
-end, { desc = "Toggle quickfix list", expr = true })
+vim.keymap.set("n", "<leader>qf", utils.toggle_qflist, { desc = "Toggle quickfix list" })
 
-vim.keymap.set("n", "<leader>ql", function()
-  if vim.bo.filetype == "qf" then return "<cmd>lclose<CR>" end
-  for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-    if vim.bo[vim.api.nvim_win_get_buf(winid)].filetype == "qf" then return "<cmd>lclose<CR>" end
-  end
-  return "<cmd>botright lopen<CR>"
-end, { desc = "Open location list" })
+vim.keymap.set(
+  "n",
+  "<leader>ql",
+  function() utils.toggle_qflist({ loclist = true }) end,
+  { desc = "Open location list" }
+)
 
 vim.keymap.set("n", ">", function()
   local ok, _ = pcall(vim.cmd.cnewer)

@@ -16,7 +16,8 @@ local M = {}
 local function on_list(options)
   ---@diagnostic disable-next-line: param-type-mismatch
   vim.fn.setqflist({}, " ", options)
-  utils.open_quickfix_list()
+  vim.cmd.cfirst({ mods = { emsg_silent = true } })
+  utils.open_qflist()
 end
 
 ---@param client vim.lsp.Client
