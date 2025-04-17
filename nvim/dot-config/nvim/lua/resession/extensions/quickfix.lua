@@ -26,11 +26,14 @@ function M.on_save()
   )
   return {
     title = quickfix_list.title,
+    context = quickfix_list.context,
     items = items,
   }
 end
 
-function M.on_pre_load(data) vim.fn.setqflist({}, "r", { title = data.title, items = data.items or {} }) end
+function M.on_pre_load(data)
+  vim.fn.setqflist({}, "r", { title = data.title, items = data.items or {}, context = data.context })
+end
 
 function M.is_win_supported(winid, bufnr) return vim.bo[bufnr].buftype == "quickfix" end
 

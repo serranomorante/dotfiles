@@ -21,7 +21,7 @@ function _G.user.findfunc(cmd_arg)
     local message = string.format("[Find] %d results: %s", files_count, cmd_arg)
     vim.schedule(function()
       local items = vim.tbl_map(function(item) return { filename = item } end, files)
-      vim.fn.setqflist({}, " ", { title = message, items = items or {} })
+      vim.fn.setqflist({}, " ", { title = message, items = items or {}, context = { name = "user.find" } })
     end)
     vim.notify(message, vim.log.levels.INFO)
   end

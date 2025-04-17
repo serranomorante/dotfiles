@@ -86,3 +86,4 @@ vim.cmd.colorscheme("default")
 vim.filetype.get_option = utils.hijack_commentstring_get_option()
 
 vim.go.grepprg = "rg --vimgrep"
+vim.go.chistory = 20

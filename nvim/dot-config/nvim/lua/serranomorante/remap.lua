@@ -113,15 +113,5 @@ vim.keymap.set(
   { desc = "Open location list" }
 )
 
-vim.keymap.set("n", ">", function()
-  local ok, _ = pcall(vim.cmd.cnewer)
-  if not ok then return vim.notify("At the top of the quickfix stack", vim.log.levels.WARN) end
-end, { desc = "Go to next quickfix in history", nowait = true })
-
-vim.keymap.set("n", "<", function()
-  local ok, _ = pcall(vim.cmd.colder)
-  if not ok then return vim.notify("At the bottom of the quickfix stack", vim.log.levels.WARN) end
-end, { desc = "Go to previous quickfix in history", nowait = true })
-
 vim.keymap.set("n", "<A-j>", utils.next_qf_item, { desc = "Next quickfix list item" })
 vim.keymap.set("n", "<A-k>", utils.prev_qf_item, { desc = "Prev quickfix list item" })

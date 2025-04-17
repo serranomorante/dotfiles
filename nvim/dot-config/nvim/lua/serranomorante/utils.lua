@@ -354,7 +354,7 @@ function M.rg_json_to_qfitems(json)
         lnum = item.data.line_number,
         col = submatch.start + 1,
         end_col = submatch["end"],
-        user_data = { match = submatch.match.text },
+        user_data = { submatch = submatch.match.text },
       })
     end
   end

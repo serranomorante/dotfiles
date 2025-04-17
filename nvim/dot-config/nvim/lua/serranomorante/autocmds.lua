@@ -140,30 +140,3 @@ vim.api.nvim_create_autocmd("TermOpen", {
   group = general_settings_group,
   command = "startinsert",
 })
-
-vim.api.nvim_create_autocmd("FileType", {
-  desc = "Highlight submatches of quickfixlist",
-  group = general_settings_group,
-  pattern = "qf",
-  callback = function()
-    vim.wo.wrap = false
-    local cmd = [[
-      syntax clear
-      %s
-      syntax match qfFileName oneline "^[^\|]*\ze" nextgroup=qfSeparatorLeft
-      syntax match qfDirName oneline "^\S*/\ze[^\|]*" nextgroup=qfFileName
-      syntax match qfFileName oneline "[^\|]*\ze" contained nextgroup=qfSeparatorLeft
-      syntax match qfSeparatorLeft oneline "|[^\|]*|" contained
-      setlocal cursorline
-      setlocal cursorlineopt=line
-      let b:current_syntax = 'qf'
-    ]]
-    local submatches = {}
-    for index, entry in pairs(vim.fn.getqflist()) do
-      if not entry.user_data or not entry.user_data.match then break end
-      if index > 1000 then break end
-      table.insert(submatches, string.format([[syn match qfSubmatch /\V\%%%dl%s/]], index, entry.user_data.match))
-    end
-    vim.cmd(string.format(cmd, vim.fn.join(submatches, "\n")))
-  end,
-})

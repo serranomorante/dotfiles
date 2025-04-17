@@ -14,7 +14,7 @@ local function helpgrep(command_args)
 
   local message = string.format("[Helpgrep] %d results: %s", count, args)
   vim.notify(message, vim.log.levels.INFO)
-  vim.fn.setqflist({}, " ", { title = message, items = items })
+  vim.fn.setqflist({}, " ", { title = message, items = items, context = { name = "user.helpgrep" } })
   vim.cmd.cfirst({ mods = { emsg_silent = true } })
 end
 
