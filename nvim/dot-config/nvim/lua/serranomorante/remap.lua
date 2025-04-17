@@ -84,7 +84,12 @@ vim.keymap.set(
   ":Grep ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES,
   { desc = "Grep text [You must escape single quotes and pipes]" }
 )
-vim.keymap.set("n", "<leader>fh", ":helpgrep ", { desc = "Grep on vim help pages" })
+vim.keymap.set(
+  "n",
+  "<leader>fh",
+  ":Helpgrep ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES,
+  { desc = "Grep on vim help pages" }
+)
 vim.keymap.set("n", "<leader>fb", ":b <Tab><Tab>", { desc = "Open recent buffers in wildmenu" }) -- will go directly to the second most recent buffer
 vim.keymap.set("n", "<leader>fc", ":Grep '\\b<C-r><C-w>\\b'", { desc = "Grep word under cursor" })
 vim.keymap.set({ "x", "v" }, "<leader>fv", function()
