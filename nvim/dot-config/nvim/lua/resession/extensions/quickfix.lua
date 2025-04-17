@@ -37,7 +37,8 @@ function M.on_save()
   local chistory = vim.api.nvim_exec2("chistory", { output = true })
   local stacks = {}
   for i = 1, #vim.split(chistory.output, "\n") do
-    table.insert(stacks, getqflist_stack(i))
+    local stack = getqflist_stack(i)
+    if vim.tbl_count(stack.items) > 0 then table.insert(stacks, stack) end
   end
   return stacks
 end
