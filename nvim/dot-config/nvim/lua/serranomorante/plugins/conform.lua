@@ -55,6 +55,7 @@ function M.opts()
       javascriptreact = gen_fmt(ft_tools.javascriptreact.fmts, { stop_after_first = true }),
       typescriptreact = gen_fmt(ft_tools.typescriptreact.fmts, { stop_after_first = true }),
       ["yaml.ansible"] = gen_fmt(vim.tbl_get(ft_tools, "yaml.ansible").fmts),
+      _ = { "auto_indent" },
     },
     default_format_opts = FORMAT_OPTS,
     log_level = vim.log.levels[vim.env.CONFORM_LOG_LEVEL or "ERROR"],
@@ -90,6 +91,19 @@ function M.config()
       "--config-file",
       vim.fn.stdpath("config") .. "/lua/serranomorante/plugins/coc/ansible-lint-dev.yaml",
     },
+  }
+
+  ---Custom formatter to auto indent buffer.
+  ---Indents with neovim's builtin indentation `=`.
+  ---Saves and restores cursor position in ` mark.
+  ---https://github.com/stevearc/conform.nvim/issues/255
+  conform.formatters.auto_indent = {
+    format = function(_, ctx, _, callback)
+      ---no range, use whole buffer otherwise use selection
+      local cmd = ctx.range == nil and "gg=G" or "="
+      vim.cmd.normal({ "m`" .. cmd .. "``", bang = true })
+      callback()
+    end,
   }
 end
 
