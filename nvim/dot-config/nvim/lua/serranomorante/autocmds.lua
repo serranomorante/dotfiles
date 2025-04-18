@@ -23,7 +23,12 @@ vim.api.nvim_create_autocmd("BufWinEnter", {
     for _, map in ipairs(vim.api.nvim_buf_get_keymap(args.buf, "n")) do
       if map.lhs == "q" then return end
     end
-    if vim.list_contains({ "help", "nofile", "quickfix", "prompt", "nowrite" }, vim.bo[args.buf].buftype) then
+    local buftype = vim.api.nvim_get_option_value("buftype", { buf = args.buf })
+    local filetype = vim.api.nvim_get_option_value("filetype", { buf = args.buf })
+    if
+      vim.list_contains({ "help", "nofile", "quickfix", "prompt", "nowrite" }, buftype)
+      or vim.list_contains({ "help", "qf" }, filetype)
+    then
       vim.g.q_close_windows[args.buf] = true
       vim.keymap.set("n", "q", "<cmd>close<CR>", {
         desc = "Close window with q",
