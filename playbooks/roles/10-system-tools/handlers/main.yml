@@ -109,3 +109,27 @@
       ansible_env.HOME }}/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,{{ ansible_env.HOME }}/repos/NewTab-Redirect,{{ ansible_env.HOME }}/repos/vimium,{{
       ansible_env.HOME }}/repos/chrome-show-tab-numbers %u"
   notify: "10-system-tools : handler_update_desktop_database"
+
+- name: handler_build_mouseless
+  ansible.builtin.command: go build -ldflags="-s -w" .
+  args:
+    chdir: ~/external/repos/mouseless
+  changed_when: true
+  notify: handler_ensure_mouseless_service
+
+- name: handler_ensure_mouseless_udev_rules
+  # https://github.com/jbensmann/mouseless?tab=readme-ov-file#run-without-root-privileges
+  become: true
+  ansible.builtin.template:
+    src: ~/dotfiles/assets/udev-rules/99-user.rules
+    dest: /etc/udev/rules.d/99-{{ ansible_env.USER }}.rules
+    mode: "644"
+  notify: handler_reload_udev_rules
+
+- name: handler_link_mouseless_binary
+  become: true
+  ansible.builtin.file:
+    src: "{{ ansible_env.HOME }}/external/repos/mouseless/mouseless"
+    dest: /usr/local/bin/mouseless
+    state: link
+    mode: "755"
