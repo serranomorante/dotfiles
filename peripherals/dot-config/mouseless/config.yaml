@@ -36,6 +36,7 @@ layers:
     bindings:
       # quit mouse layer
       q: layer initial
+      esc: layer initial
       # also quit mouse layer but this is used by keyd only
       leftctrl+rightctrl: layer initial
       # move cursor right
