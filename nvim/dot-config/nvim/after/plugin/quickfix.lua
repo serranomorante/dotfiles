@@ -75,7 +75,7 @@ function _G.user.QuickfixTextFunc(info)
       qf_prefix = qf_prefix_format:format(filename, lnum, col, qf_type)
       qf_final = qf_prefix .. item.text
       ---perf: avoid dealing with submatches after N rows
-      if vim.list_contains({ "user.grep", "user.helpgrep" }, context.name) and i < 999 then
+      if vim.list_contains({ "user.grep", "user.helpgrep" }, context.name) and i < 999 and col >= 0 then
         qf_syntax_region = qf_syntax_region_format:format(i, #qf_prefix + item.col, i, #qf_prefix + item.end_col + 1)
         table.insert(syntax_entries, qf_syntax_region)
       end
