@@ -1,7 +1,6 @@
 {
   "SystemShortcutBehavior": 3,
   "ShortcutCustomizationAllowed": true,
-  "TranslateEnabled": false,
   "HomepageIsNewTabPage": false,
   "VideoCaptureAllowedUrls": ["https://[*.]google.com/"],
   "ExtensionSettings": {
