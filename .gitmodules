@@ -1,0 +1,3 @@
+[submodule "for-my-eyes-only"]
+	path = for-my-eyes-only
+	url = git@github.com:serranomorante/for-my-eyes-only.git

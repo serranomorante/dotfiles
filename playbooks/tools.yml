@@ -10,6 +10,7 @@
     - 30-lang-tools         # lang dependencies, lsp, dap, syntax, linters, formatters
     - 40-PKM                # Personal Knowledge Management
     - 50-cloud-tools        #
+    - ../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only
     # - 60-music-tools      # DAWs, VSTs, pipewire, etc
     # - 70-browsing-tools   # browsers, etc
     # - 80-recording-tools  # obs, etc

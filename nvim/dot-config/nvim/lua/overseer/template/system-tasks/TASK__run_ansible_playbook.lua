@@ -11,6 +11,9 @@ local CHOICES = {
   [HOME .. "/dotfiles/utilities"] = {
     "10-100-setup-compositor",
   },
+  [HOME .. "/dotfiles/for-my-eyes-only"] = {
+    "60-10-for-my-eyes-only",
+  },
   [HOME .. "/dotfiles/playbooks"] = {
     "10-100-setup-compositor",
     "20-60-setup-editor-tools",
