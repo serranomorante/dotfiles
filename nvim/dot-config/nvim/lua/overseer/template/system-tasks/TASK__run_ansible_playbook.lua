@@ -58,13 +58,19 @@ return {
       default = "archlinux",
       order = 2,
     },
+    force_handlers = {
+      desc = "Force running handlers",
+      type = "boolean",
+      optional = true,
+      order = 3,
+    },
     skip_tags = {
       desc = "Ignore the ansible always tag",
       type = "enum",
       choices = { "always", "never" },
       default = "always",
       optional = true,
-      order = 3,
+      order = 4,
     },
   },
   builder = function(params)
@@ -84,6 +90,7 @@ return {
       ),
     }
     if params.skip_tags then vim.list_extend(args, { "--skip-tags", params.skip_tags }) end
+    if params.force_handlers then table.insert(args, "--force-handlers") end
     return {
       cmd = vim.fn.join(args, " "),
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
