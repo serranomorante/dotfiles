@@ -63,5 +63,5 @@
 - name: "[archlinux] Setup audio tools: increase REAPER ui scale"
   ansible.builtin.replace:
     path: ~/.config/REAPER/reaper.ini
-    regexp: "^ui_scale=[^\\s]*"
-    replace: "ui_scale=1.2"
+    regexp: "^(ui_?scale)=[^\\s]*"
+    replace: "\\1=1.2"
