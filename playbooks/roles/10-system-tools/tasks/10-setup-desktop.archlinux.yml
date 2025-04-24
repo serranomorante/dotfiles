@@ -11,6 +11,9 @@
       - plasma
       - sddm
       - dolphin
+      - dolphin-plugins
+      - ark
+      - unrar
       - arch-install-scripts # to get genfstab
       - kcalc
       - docker
