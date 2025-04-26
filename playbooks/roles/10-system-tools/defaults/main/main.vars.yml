@@ -6,5 +6,4 @@ debian_rg_version: 14.0.3
 debian_fd_version: 10.1.0
 arch_davinci_resolve_version: 19.1.4
 davinci_resolve_download_key: foo
-wine_photoshop_installer_path: "{{ ansible_env.HOME }}/external/Downloads/Photoshop/Photoshop.exe"
 arch_mypaint_version: 2.1.0-alpha-400-g90b36db-2021-05-04_18.41

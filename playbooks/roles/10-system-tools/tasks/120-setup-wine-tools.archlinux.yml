@@ -48,29 +48,3 @@
   become: true
   ansible.builtin.command: sysctl --system
   changed_when: false
-
-- name: "[archlinux] Wine tools: setup prefixes"
-  ansible.builtin.command: winecfg -v {{ item.winver | default('win10') }}
-  environment:
-    WINEPREFIX: "{{ item.path }}"
-    WINEARCH: "{{ item.architecture }}"
-  args:
-    creates: "{{ item.path }}/system.reg"
-  loop:
-    - { path: "{{ ansible_env.HOME }}/external/.wine-win64-photo-editing", architecture: win64, winver: win7 }
-
-- name: "[archlinux] Wine tools: ensure winetricks for .wine-win64-photo-editing"
-  # https://gist.github.com/ansulev/0f9a1449d40d63ed8251c84d61156411?permalink_comment_id=4740493
-  ansible.builtin.command: >
-    winetricks atmlib gdiplus msxml3 msxml6 vcrun2005 vcrun2005sp1 vcrun2008 ie6 fontsmooth-rgb gecko
-  environment:
-    WINEPREFIX: "{{ ansible_env.HOME }}/external/.wine-win64-photo-editing"
-  args:
-    creates: ~/external/.wine-win64-photo-editing/drive_c/windows/system32/gecko/plugin/npmshtml.dll
-
-- name: "[archlinux] Wine tools: ensure photoshop"
-  ansible.builtin.command: wine start /unix '{{ wine_photoshop_installer_path }}'
-  environment:
-    WINEPREFIX: "{{ ansible_env.HOME }}/external/.wine-win64-photo-editing"
-  args:
-    creates: ~/.local/share/applications/wine/Programs/Photoshop.desktop
