@@ -5,5 +5,4 @@ ansible_mx_keys_keyboard_id: 046d:408a
 ansible_internal_keyboard_name_1: AT Translated Set 2 keyboard
 ansible_internal_keyboard_name_2: ITE Tech. Inc. ITE Device(8910) Keyboard
 ansible_internal_keyboard_name_3: Ideapad extra buttons
-ansible_internal_keyboard_device_1: 0001:0001 # this line is required to disable internal keyboard
-ansible_internal_keyboard_device_2: 048d:c100 # this line is required to disable internal keyboard
+ansible_internal_keyboard_device_1: 048d:c100

@@ -4,6 +4,7 @@ devices:
   - "PFU Limited HHKB-Hybrid Keyboard"
   - "Logitech MX Keys"
   - "HHKB-Hybrid_1 Keyboard"
+  - "ITE Tech. Inc. ITE Device(8910) Wireless Radio Control"
 
 # fix keyboard rate
 # https://github.com/jbensmann/mouseless/issues/7
