@@ -1,11 +1,10 @@
-[Install]
-WantedBy=plasma-workspace.target
-
 [Unit]
 Description=Plasma Custom Window Manager
 Before=plasma-workspace.target
 
 [Service]
 ExecStart=/usr/local/bin/dwm
-Slice=session.slice
-Restart=on-success
+Restart=on-failure
+
+[Install]
+WantedBy=plasma-workspace.target
