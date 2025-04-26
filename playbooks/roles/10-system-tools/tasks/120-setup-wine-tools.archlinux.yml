@@ -17,6 +17,7 @@
       - wine-staging
       - wine-mono
       - lutris
+      - libxcomposite
 
 # https://wiki.archlinux.org/title/Steam#Installation
 - name: "[archlinux] Wine tools: ensure wine 32bit drivers"
@@ -26,6 +27,7 @@
     name:
       - lib32-pipewire
       - lib32-nvidia-utils
+      - lib32-libxcomposite
 
 - name: "[archlinux] Wine tools: ensure aur packages"
   aur:
