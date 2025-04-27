@@ -54,9 +54,8 @@ layers:
       u: scroll left
       o: scroll right
       r: speed 20.0
-      w: speed 4.0
-      e: speed 0.3
-      space: speed 0.1
+      w: speed 2.0
+      v: speed 0.2
       f: button left
       d: button middle
       s: button right
