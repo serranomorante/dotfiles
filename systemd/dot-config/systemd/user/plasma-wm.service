@@ -1,10 +1,10 @@
 [Unit]
 Description=Plasma Custom Window Manager
-Before=plasma-workspace.target
+Before=graphical-session.target
 
 [Service]
 ExecStart=/usr/local/bin/dwm
 Restart=on-failure
 
 [Install]
-WantedBy=plasma-workspace.target
+WantedBy=graphical-session.target
