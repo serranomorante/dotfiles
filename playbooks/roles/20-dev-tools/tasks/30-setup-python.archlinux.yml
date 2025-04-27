@@ -42,5 +42,5 @@
   changed_when: false
 
 - name: "[archlinux] Setup python: ensure python system default"
-  ansible.builtin.command: pyenv global 3.11.3
+  ansible.builtin.command: pyenv global system
   changed_when: false
