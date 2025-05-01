@@ -2,36 +2,8 @@
 - name: "[archlinux] Yabridge tools: ensure yabridge is installed"
   become: true
   ansible.builtin.package:
-    state: absent
+    state: present
     name:
       - yabridge
       - yabridgectl
-
-- name: "[archlinux] Yabridge tools: ensure audio-tools folder"
-  ansible.builtin.file:
-    path: ~/apps/audio-tools
-    state: directory
-    mode: "755"
-
-- name: "[archlinux] Yabridge tools: unarchive yabridge files"
-  ansible.builtin.unarchive:
-    src: "{{ item }}"
-    dest: ~/apps/audio-tools/
-  loop:
-    - ~/apps/audio-tools/yabridge-5.1.1-18-gbe52c36a.tar.gz.zip
-    - ~/apps/audio-tools/yabridgectl-5.1.1-18-gbe52c36a.tar.gz.zip
-    - ~/apps/audio-tools/yabridge-5.1.1-18-gbe52c36a.tar.gz
-    - ~/apps/audio-tools/yabridgectl-5.1.1-18-gbe52c36a.tar.gz
-
-- name: "[archlinux] Yabridge tools: link yabridge dir"
-  ansible.builtin.file:
-    src: ~/apps/audio-tools/yabridge
-    dest: ~/.local/share/yabridge
-    state: link
-
-- name: "[archlinux] Yabridge tools: link yabridgectl"
-  ansible.builtin.file:
-    src: ~/apps/audio-tools/yabridgectl/yabridgectl
-    dest: ~/.local/share/yabridge/yabridgectl
-    state: link
   notify: "10-system-tools : handler_sync_yabridge_plugins"

@@ -9,12 +9,26 @@
       [multilib]
       Include = /etc/pacman.d/mirrorlist
 
+- name: "[archlinux] Wine tools: register current wine version"
+  ansible.builtin.command: which wine
+  changed_when: false
+  register: var_which_wine
+
+- name: "[archlinux] Wine tools: downgrade wine"
+  # https://github.com/robbert-vdh/yabridge/issues/382
+  become: true
+  ansible.builtin.command: downgrade --ignore always --prefer-cache 'wine-staging={{ arch_wine_staging_version }}' -- --noconfirm
+  environment:
+    DOWNGRADE_FROM_ALA: 1
+  changed_when: true
+  when: "'wine-9.21 (Staging)' not in var_which_wine.stdout"
+
 - name: "[archlinux] Wine tools: ensure wine is installed"
   become: true
   ansible.builtin.package:
     state: present
     name:
-      - wine-staging
+      - winetricks
       - wine-mono
       - lutris
       - libxcomposite

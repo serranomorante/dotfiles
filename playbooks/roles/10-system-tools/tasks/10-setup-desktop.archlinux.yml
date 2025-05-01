@@ -24,6 +24,12 @@
       # - kde-applications
   notify: "10-system-tools : handler_ensure_docker_service"
 
+- name: "[archlinux] Setup desktop: ensure aur packages"
+  aur:
+    use: yay
+    state: present
+    name: downgrade
+
 - name: "[archlinux] Setup desktop: remove packages"
   become: true
   ansible.builtin.package:
@@ -77,3 +83,12 @@
       pinentry-program {{ pinentry_tty_path.stdout }}
       default-cache-ttl 34560000
       max-cache-ttl 34560000
+
+- name: "[archlinux] Setup desktop: ignore packages from pacman"
+  become: true
+  ansible.builtin.blockinfile:
+    dest: /etc/pacman.conf
+    insertafter: "^\\[options\\]"
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - IGNORE PACKAGES"
+    block: |
+      IgnorePkg = wine-staging davinci-resolve

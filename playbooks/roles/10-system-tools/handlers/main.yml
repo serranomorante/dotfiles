@@ -32,7 +32,7 @@
   changed_when: false
 
 - name: handler_sync_yabridge_plugins
-  ansible.builtin.command: yabridgectl sync
+  ansible.builtin.command: yabridgectl sync --prune
   changed_when: false
 
 - name: handler_update_desktop_database
