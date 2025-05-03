@@ -83,7 +83,7 @@ function M.enable(client, bufnr)
   ---if there's none, use buffer completion
   vim.keymap.set("i", "<C-Space>", function()
     if next(vim.lsp.get_clients({ bufnr = bufnr, id = client.id })) then
-      vim.lsp.completion.trigger()
+      if vim.lsp.completion.trigger then vim.lsp.completion.trigger() end
     else
       if vim.bo.omnifunc == "" then
         utils.feedkeys("<C-x><C-n>")
