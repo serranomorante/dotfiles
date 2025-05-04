@@ -12,6 +12,7 @@ keybinding:
     quit: <disabled>
 # based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Custom_Pagers.md#delta
 git:
+  autoForwardBranches: none
   branchLogCmd: "git log --graph --color=always --abbrev-commit --decorate --date=relative --pretty=medium --oneline {{branchName}} --"
   autoStageResolvedConflicts: false
   paging:
