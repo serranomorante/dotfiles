@@ -1,0 +1,5 @@
+[Unit]
+Description=cursor indicator
+
+[Service]
+ExecStart=%h/bin/cursor_indicator %i

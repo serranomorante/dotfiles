@@ -19,3 +19,5 @@ id="${id##* }"
 id="${id%,)}"
 
 redis-cli set mouseless_mode_notification_id $id
+
+systemctl --user start cursor_indicator@red.service

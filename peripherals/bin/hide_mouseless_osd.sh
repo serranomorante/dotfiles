@@ -7,3 +7,5 @@ gdbus call --session \
   --object-path /org/freedesktop/Notifications \
   --method org.freedesktop.Notifications.CloseNotification \
   "$id"
+
+systemctl --user stop cursor_indicator@red.service

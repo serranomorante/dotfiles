@@ -132,3 +132,23 @@
   args:
     chdir: "{{ ansible_env.HOME }}/external/repos/warpd"
     creates: /usr/local/bin/warpd
+
+- name: "[archlinux] Keyboard peripheral: clone cursor indicator"
+  ansible.builtin.git:
+    repo: https://gitlab.com/qurn/cursor_indicator
+    dest: ~/external/repos/cursor_indicator
+    version: master
+
+- name: "[archlinux] Keyboard peripheral: make cursor indicator"
+  ansible.builtin.command: >
+    cc cursor_indicator.c -o cursor_indicator  -lX11 -lXext -lXfixes -I/usr/include/freetype2
+  args:
+    chdir: ~/external/repos/cursor_indicator
+    creates: ~/external/repos/cursor_indicator/cursor_indicator
+
+- name: "[archlinux] Keyboard peripheral: symlink cursor indicator"
+  ansible.builtin.file:
+    src: ~/external/repos/cursor_indicator/cursor_indicator
+    dest: ~/bin/cursor_indicator
+    state: link
+    mode: "755"
