@@ -77,7 +77,7 @@
     - path: "{{ arch_reaper_wine_setup.wine_prefix }}"
 
 - name: "[archlinux] Wine tools: install reaper"
-  ansible.builtin.command: wine start /unix '{{ arch_reaper_wine_setup.backup_path }}/reaper738_x64-install.exe'
+  ansible.builtin.command: wine start /unix '{{ arch_reaper_wine_setup.backup_path }}/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe'
   environment:
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
   args:
