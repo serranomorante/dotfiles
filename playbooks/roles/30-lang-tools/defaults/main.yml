@@ -3,3 +3,4 @@ cpptools_version: v1.21.6
 bash_debug_adapter_version: 0.3.7
 vscode_js_debug_version: 1.96.0
 arch_superhtml_version: 0.5.3
+noise_suppression_for_voice: "1.10"

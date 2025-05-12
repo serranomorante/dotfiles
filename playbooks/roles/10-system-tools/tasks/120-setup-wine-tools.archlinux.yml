@@ -163,3 +163,9 @@
     src: ~/dotfiles/assets/scripts/reaper/alternate_position.lua
     dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/serranomorante/AppData/Roaming/REAPER/Scripts/custom/"
     mode: "644"
+
+- name: "[archlinux] Wine tools: get noise suppression for voice"
+  ansible.builtin.unarchive:
+    src: https://github.com/werman/noise-suppression-for-voice/releases/download/v{{ noise_suppression_for_voice }}/win-rnnoise.zip
+    dest: ~/external/Downloads
+    remote_src: true
