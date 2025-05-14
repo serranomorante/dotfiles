@@ -72,6 +72,13 @@ return {
       optional = true,
       order = 4,
     },
+    verbose = {
+      desc = "Verbose",
+      type = "enum",
+      choices = { "v", "vv", "vvv", "vvvv", "vvvvv" },
+      optional = true,
+      order = 5,
+    },
   },
   builder = function(params)
     local args = {
@@ -91,6 +98,7 @@ return {
     }
     if params.skip_tags then vim.list_extend(args, { "--skip-tags", params.skip_tags }) end
     if params.force_handlers then table.insert(args, "--force-handlers") end
+    if params.verbose then table.insert(args, params.verbose) end
     return {
       cmd = vim.fn.join(args, " "),
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
