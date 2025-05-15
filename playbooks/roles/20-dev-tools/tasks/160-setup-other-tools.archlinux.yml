@@ -1,0 +1,6 @@
+---
+- name: "[archlinux] Setup other tools: ensure packages"
+  aur:
+    use: yay
+    state: present
+    name: postman-bin

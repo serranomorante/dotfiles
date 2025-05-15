@@ -152,3 +152,14 @@
       loop_control:
         loop_var: task_file
   tags: ["20-150"]
+
+- block:
+    - name: Setup other tools
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 160-setup-other-tools.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["20-160"]
