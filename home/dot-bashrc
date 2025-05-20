@@ -126,6 +126,7 @@ if command -v zoxide &>/dev/null; then
 fi
 
 export NNN_PLUG='p:preview-tui;l:cdto;f:!open_in_nvim.sh nnn_search Find*;g:!open_in_nvim.sh nnn_search Grep*'
+export NNN_TRASH="trash"
 if command -v nnn &>/dev/null; then
     alias nnn='nnn -JRHdaAo -Tt'
 fi

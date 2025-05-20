@@ -16,6 +16,7 @@
       - unrar
       - arch-install-scripts # to get genfstab
       - kcalc
+      - trash-cli
       - docker
       - docker-compose
       - kronometer

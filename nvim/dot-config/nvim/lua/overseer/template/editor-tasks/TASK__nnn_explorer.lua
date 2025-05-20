@@ -24,6 +24,7 @@ function M.builder(params)
       EDITOR = "open_in_nvim.sh nnn_explorer",
       VISUAL = "open_in_nvim.sh nnn_explorer",
       NNN_OPENER = "open_in_nvim.sh nnn_explorer",
+      NNN_TRASH = "trash",
       CUSTOM_NVIM_LISTEN_ADDRESS = vim.v.servername,
       TERM = vim.env.TERM,
     },
