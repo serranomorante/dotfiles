@@ -47,23 +47,3 @@ index e23fa74..4502fa9 100644
  		} else if (config_input_match(ev, "accelerator")) {
  			if (ev->pressed)
  				mouse_fast();
-diff --git a/src/scroll.c b/src/scroll.c
-index 3416c9d..a85137c 100644
---- a/src/scroll.c
-+++ b/src/scroll.c
-@@ -81,7 +81,13 @@ void scroll_accelerate(int _direction)
- 	if (v == 0) {
- 		d = 0;
- 		traveled = 0;
--		v = v0;
-+
-+		int scroll_faster = 1;
-+		if (direction == SCROLL_RIGHT || direction == SCROLL_LEFT) {
-+			scroll_faster = 4;
-+		}
-+
-+		v = v0 * scroll_faster;
- 	}
- }
- 
-

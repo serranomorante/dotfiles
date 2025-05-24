@@ -111,24 +111,27 @@
 
 - name: "[archlinux] Keyboard peripheral: clone warpd"
   ansible.builtin.git:
-    repo: https://github.com/gmnz/warpd
+    repo: https://github.com/rvaiya/warpd
     dest: ~/external/repos/warpd
-    version: effea402ec8668bb2bc5c5117800d16d0d9d349a # fix build
+    version: master
     force: true
     single_branch: true
     depth: 1
 
 - name: "[archlinux] Keyboard peripheral: patch warpd"
-  ansible.builtin.command: git apply ~/dotfiles/assets/patches/warpd/horizontal_scroll.patch
-  args:
-    chdir: ~/external/repos/warpd
-  changed_when: false
+  ansible.posix.patch:
+    src: ~/dotfiles/assets/patches/warpd/{{ item }}
+    basedir: ~/external/repos/warpd
+    strip: 1
+  loop:
+    - horizontal_scroll.patch
+    - typo.patch
 
 - name: "[archlinux] Keyboard peripheral: install warpd"
   become: true
   ansible.builtin.shell: make && make install
   environment:
-    DISABLE_WAYLAND: true
+    DISABLE_WAYLAND: "true"
   args:
     chdir: "{{ ansible_env.HOME }}/external/repos/warpd"
     creates: /usr/local/bin/warpd
