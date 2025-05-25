@@ -83,6 +83,13 @@
   args:
     creates: ~/external/.wine-win64-reaper/drive_c/Program Files/REAPER (x64)/reaper.exe
 
+- name: "[archlinux] Wine tools: wait reaper install"
+  ansible.builtin.wait_for:
+    path: ~/external/.wine-win64-reaper/drive_c/Program Files/REAPER (x64)/reaper.exe
+    msg: Timeout waiting for REAPER to finish installation
+    delay: 5
+    timeout: 300
+
 - name: "[archlinux] Wine tools: clone wineasio"
   ansible.builtin.git:
     repo: https://github.com/wineasio/wineasio
@@ -115,3 +122,28 @@
   environment:
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
   changed_when: false
+
+- name: "[archlinux] Wine tools: get sws extension"
+  ansible.builtin.get_url:
+    url: https://www.sws-extension.org/download/featured/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe
+    dest: ~/external/Downloads
+    mode: "755"
+
+- name: "[archlinux] Wine tools: install sws extension"
+  ansible.builtin.command: wine start /unix '{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe'
+  environment:
+    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  args:
+    creates: ~/external/.wine-win64-reaper/drive_c/users/serranomorante/AppData/Roaming/REAPER/UserPlugins/reaper_sws-x64.dll
+
+- name: "[archlinux] Wine tools: ensure custom script folder"
+  ansible.builtin.file:
+    state: directory
+    recurse: true
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/serranomorante/AppData/Roaming/REAPER/Scripts/custom"
+
+- name: "[archlinux] Wine tools: copy custom script"
+  ansible.builtin.copy:
+    src: ~/dotfiles/assets/scripts/reaper/alternate_position.lua
+    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/serranomorante/AppData/Roaming/REAPER/Scripts/custom/"
+    mode: "644"

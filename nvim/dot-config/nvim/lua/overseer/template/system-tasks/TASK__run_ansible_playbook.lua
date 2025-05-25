@@ -5,6 +5,7 @@ local CHOICES = {
   ---These choices will only show get cwd is assets
   [HOME .. "/dotfiles/assets"] = {
     "10-40-setup-keyboard-tools",
+    "10-120-setup-wine-tools",
     "10-170-setup-browser-tools",
     "10-180-setup-backup-tools,10-181-setup-root-backup-tools",
   },
