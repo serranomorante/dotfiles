@@ -3,6 +3,7 @@
   ansible.builtin.git:
     repo: https://github.com/serranomorante/dotfiles.git
     dest: ~/dotfiles
+    recursive: false
     force: true
     depth: 1
     version: main
