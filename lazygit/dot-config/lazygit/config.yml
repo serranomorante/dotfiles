@@ -37,7 +37,7 @@ customCommands:
     context: "localBranches"
     command: 'open_in_nvim.sh lazygit_compare_branch "{{.SelectedLocalBranch.Name}}"'
   # From commits, search the whole history for an expression in a file (case-sensitive)
-  - key : '<c-a>'
+  - key: '<c-a>'
     description: 'Custom: Search the whole history (from a ref and down) for an expression in a file'
     command: "git checkout {{index .PromptResponses 3}}"
     context: 'commits,subCommits'
@@ -67,7 +67,7 @@ customCommands:
     command: 'open_in_nvim.sh lazygit_open_merge_tool "{{.SelectedFile.Name}}"'
     context: "files"
     loadingText: "loading DiffviewOpen"
-    subprocess: true
+    output: terminal
   # From commits, extract diff into /tmp/<sha>.patch file
   - key: '<c-q>'
     command: git diff {{.SelectedCommit.Sha}}^! > /tmp/{{.SelectedCommit.Sha}}.patch
@@ -79,19 +79,19 @@ customCommands:
     command: 'open_in_nvim.sh lazygit_open_difftool "{{.SelectedFile.Name}}"'
     context: "files"
     loadingText: "loading DiffviewOpen"
-    subprocess: true
+    output: terminal
   # From commits, push a specific commit (and any preceding)
   - key: 'P'
     description: 'Custom: Force push a specific commit (and any preceding)'
     command: "git push --force {{.SelectedRemote.Name}} {{.SelectedCommit.Sha}}:{{.SelectedLocalBranch.Name}}"
     context: "commits"
     loadingText: "Pushing commit..."
-    stream: true
     prompts:
       - type: "confirm"
         key: "Confirm"
         title: "Force push specific commit"
         body: "Are you sure you want to force push?"
+    output: log
   # From commits, open as a PR review
   - key: 'D'
     description: 'Custom: Diff commit against parent commit'
