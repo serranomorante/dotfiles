@@ -61,8 +61,6 @@ neovim_plugins:
     repo: tpope/vim-rsi # https://vi.stackexchange.com/a/6041
   - folder: start
     repo: stevearc/aerial.nvim
-  - folder: start
-    repo: luukvbaal/nnn.nvim
   - folder: opt
     repo: kevinhwang91/nvim-ufo
     name: ufo
