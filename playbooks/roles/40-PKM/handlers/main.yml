@@ -6,3 +6,11 @@
     state: started
     enabled: true
     masked: false
+
+- name: handler_ensure_hypothesis_bouncer_self_hosted_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: hypothesis-bouncer-self-hosted.service
+    state: started
+    enabled: true
+    masked: false

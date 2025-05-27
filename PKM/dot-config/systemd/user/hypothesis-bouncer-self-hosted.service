@@ -1,0 +1,13 @@
+[Unit]
+Description=Hypothesis bouncer self hosted
+After=graphical-session.target
+
+[Service]
+WorkingDirectory=%h/external/repos/bouncer
+Environment="CHROME_EXTENSION_ID=oaefmonehnpgpgggcnifjffikgfchbgp" # this id is replaced by ansible task
+Environment="HYPOTHESIS_URL=http://localhost:5000"
+ExecStart=make dev
+Restart=always
+
+[Install]
+WantedBy=graphical-session.target

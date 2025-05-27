@@ -76,6 +76,7 @@
     single_branch: true
   loop:
     - https://github.com/hypothesis/h # because I want to self-host
+    - https://github.com/hypothesis/bouncer
 
 - name: "[archlinux] Setup HPI - patch hypothesis h"
   ansible.posix.patch:
@@ -107,6 +108,13 @@
   changed_when: "'commands succeeded' in ensure_h_services_result.stdout"
   notify:
     - "40-PKM : handler_ensure_hypothesis_self_hosted_service"
+
+- name: "[archlinux] Setup HPI - add CHROME_EXTENSION_ID env to bouncer"
+  ansible.builtin.replace:
+    path: ~/dotfiles/PKM/dot-config/systemd/user/hypothesis-bouncer-self-hosted.service
+    regexp: '(^Environment="CHROME_EXTENSION_ID=).*'
+    replace: '\1{{ local_hypothesis_extension }}" # this id is replaced by ansible task'
+  notify: "40-PKM : handler_ensure_hypothesis_bouncer_self_hosted_service"
 
 - name: "[archlinux] Setup HPI - ensure hypothesis user"
   # These credentials will not be used on production environments
