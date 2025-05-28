@@ -12,5 +12,12 @@
         "{{ reaper_mcp_server_setup.projects_dir }}"
       ]
     },
+    "Figma": {
+      "command": "{{ figma_mcp_server_setup.exe_path }}",
+      "args": [
+        "--figma-api-key={{ figma_mcp_server_setup.personal_key.stdout }}",
+        "--stdio"
+      ]
+    }
   }
 }

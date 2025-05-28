@@ -10,6 +10,17 @@
   changed_when: true
   when: mcp_hub_installed.failed
 
+- name: "[archlinux] Setup ai tools: register figma-developer-mcp installed"
+  ansible.builtin.command: which figma-developer-mcp
+  changed_when: false
+  ignore_errors: true
+  register: figma_developer_mcp
+
+- name: "[archlinux] Setup ai tools: ensure figma-developer-mcp"
+  ansible.builtin.command: npm install -g figma-developer-mcp@latest
+  changed_when: true
+  when: figma_developer_mcp.failed
+
 - name: "[archlinux] Setup ai tools: clone reaper mcp"
   ansible.builtin.git:
     repo: https://github.com/dschuler36/reaper-mcp-server
@@ -21,6 +32,11 @@
   args:
     creates: "{{ reaper_mcp_server_setup.repo_path }}/.venv/bin/activate"
     chdir: "{{ reaper_mcp_server_setup.repo_path }}"
+
+- name: "[archlinux] Setup ai tools: register figma api key"
+  ansible.builtin.shell: gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt ~/secrets/mcp-cf-figma.gpg 2>/dev/null
+  changed_when: true
+  register: mcp_server_figma_key
 
 - name: "[archlinux] Setup ai tools: generate servers.json"
   ansible.builtin.template:
