@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "reaper": {
+      "command": "{{ reaper_mcp_server_setup.repo_path }}/.venv/bin/uv",
+      "args": [
+        "--directory",
+        "{{ reaper_mcp_server_setup.repo_path }}",
+        "run",
+        "-m",
+        "reaper_mcp_server.server",
+        "--reaper-projects-dir",
+        "{{ reaper_mcp_server_setup.projects_dir }}"
+      ]
+    },
+  }
+}

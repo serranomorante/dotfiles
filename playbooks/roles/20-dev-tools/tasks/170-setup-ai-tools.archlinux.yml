@@ -9,3 +9,26 @@
   ansible.builtin.command: npm install -g mcp-hub@latest
   changed_when: true
   when: mcp_hub_installed.failed
+
+- name: "[archlinux] Setup ai tools: clone reaper mcp"
+  ansible.builtin.git:
+    repo: https://github.com/dschuler36/reaper-mcp-server
+    dest: "{{ reaper_mcp_server_setup.repo_path }}"
+    version: main
+
+- name: "[archlinux] Setup ai tools: ensure reaper-mcp-server"
+  ansible.builtin.shell: uv venv --seed && uv pip install . && uv pip install uv
+  args:
+    creates: "{{ reaper_mcp_server_setup.repo_path }}/.venv/bin/activate"
+    chdir: "{{ reaper_mcp_server_setup.repo_path }}"
+
+- name: "[archlinux] Setup ai tools: generate servers.json"
+  ansible.builtin.template:
+    src: mcphub_servers.json
+    dest: ~/.config/mcphub/servers.json
+    mode: "644"
+
+- name: "[archlinux] Setup ai tools: restart server list"
+  ansible.builtin.command: >
+    nvim --headless -c "lua require("mcphub").get_hub_instance():restart()" -c "quit"
+  changed_when: false

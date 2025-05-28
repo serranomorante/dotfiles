@@ -1,0 +1,4 @@
+---
+reaper_mcp_server_setup:
+  repo_path: "{{ ansible_env.HOME }}/external/repos/reaper-mcp-server"
+  projects_dir: "{{ ansible_env.HOME }}/external/audio-pjs"
