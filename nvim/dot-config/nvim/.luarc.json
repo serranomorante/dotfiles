@@ -27,6 +27,9 @@
     "$HOME/.local/share/nvim/site/pack/plugins/start/treesitter-context/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/start/nvim-treesitter-textobjects/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/start/nvim-web-devicons/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/plenary/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/mcphub/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/opt/codecompanion/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/opt/gp/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/opt/ufo/lua"
   ]

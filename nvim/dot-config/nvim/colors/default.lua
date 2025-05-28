@@ -42,6 +42,7 @@ local groups = {
   qfSeparatorLeft = { fg = bg .. "Grey4" },
   CustomOperatorPending = { bg = fg .. "Blue" },
   CustomDapReplBg = { bg = "#192335" },
+  CustomAIChatBg = { bg = "#323a50" },
   CustomAerialBg = { bg = "#242529" },
   DiagnosticUnderlineError = { sp = fg .. "Red", undercurl = true },
   DiagnosticUnderlineWarn = { sp = fg .. "Yellow", undercurl = true },

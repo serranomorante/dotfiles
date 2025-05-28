@@ -8,6 +8,15 @@ archlinux_neovim_version: master
 debian_neovim_version: 688b961d13bd # before cmake 3.16 requirement
 neovim_plugins:
   - folder: start
+    repo: nvim-lua/plenary.nvim
+    name: plenary
+  - folder: start
+    repo: ravitemer/mcphub.nvim
+    name: mcphub
+  - folder: start
+    repo: olimorris/codecompanion.nvim
+    name: codecompanion
+  - folder: start
     repo: kevinhwang91/promise-async # use `typings/?.lua` on .luarc.json
   - folder: start
     repo: nvim-tree/nvim-web-devicons
