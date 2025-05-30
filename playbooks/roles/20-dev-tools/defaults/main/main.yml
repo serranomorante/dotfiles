@@ -8,6 +8,9 @@ archlinux_neovim_version: master
 debian_neovim_version: 688b961d13bd # before cmake 3.16 requirement
 neovim_plugins:
   - folder: start
+    repo: folke/snacks.nvim
+    name: snacks
+  - folder: start
     repo: nvim-lua/plenary.nvim
     name: plenary
   - folder: start
