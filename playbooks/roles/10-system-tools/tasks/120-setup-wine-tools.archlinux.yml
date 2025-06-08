@@ -82,6 +82,9 @@
     - path: "{{ arch_reaper_wine_setup.wine_prefix }}"
       architecture: win64
       winver: win7
+    - path: "{{ arch_gather_wine_setup.wine_prefix }}"
+      architecture: win64
+      winver: win7
 
 - name: "[archlinux] Wine tools: setup prefixes DPI"
   # https://forum.winehq.org/viewtopic.php?t=34980
@@ -169,3 +172,16 @@
     src: https://github.com/werman/noise-suppression-for-voice/releases/download/v{{ noise_suppression_for_voice }}/win-rnnoise.zip
     dest: ~/external/Downloads
     remote_src: true
+
+- name: "[archlinux] Wine tools: get gather town"
+  ansible.builtin.get_url:
+    url: https://downloads.gather.town/desktop/Gather-{{ arch_gather_wine_setup.version }}-Setup.exe
+    dest: ~/Downloads
+    mode: "755"
+
+- name: "[archlinux] Wine tools: install gather town"
+  ansible.builtin.command: wine start /unix '{{ arch_gather_wine_setup.backup_path }}/Gather-{{ arch_gather_wine_setup.version }}-Setup.exe'
+  environment:
+    WINEPREFIX: "{{ arch_gather_wine_setup.wine_prefix }}"
+  args:
+    creates: "{{ arch_gather_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/Gather/config.json"
