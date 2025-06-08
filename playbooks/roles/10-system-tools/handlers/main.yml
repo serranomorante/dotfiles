@@ -133,3 +133,17 @@
     dest: /usr/local/bin/mouseless
     state: link
     mode: "755"
+
+- name: handler_save_iptables
+  become: true
+  ansible.builtin.command: iptables-save -f /etc/iptables/iptables.rules
+  changed_when: false
+
+- name: handler_ensure_iptables_service
+  become: true
+  ansible.builtin.systemd_service:
+    scope: system
+    name: iptables.service
+    state: started
+    enabled: true
+    masked: false
