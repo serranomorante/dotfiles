@@ -14,6 +14,8 @@ local CHOICES = {
   },
   [HOME .. "/dotfiles/for-my-eyes-only"] = {
     "60-10-for-my-eyes-only",
+    "60-20-for-my-eyes-only",
+    "60-30-for-my-eyes-only",
   },
   [HOME .. "/dotfiles/playbooks"] = {
     "10-10-setup-desktop",
