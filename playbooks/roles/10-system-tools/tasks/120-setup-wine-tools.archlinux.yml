@@ -14,20 +14,21 @@
   changed_when: false
   register: var_which_wine
 
-- name: "[archlinux] Wine tools: downgrade wine"
-  # https://github.com/robbert-vdh/yabridge/issues/382
-  become: true
-  ansible.builtin.command: downgrade --ignore always --prefer-cache 'wine-staging={{ arch_wine_staging_version }}' -- --noconfirm
-  environment:
-    DOWNGRADE_FROM_ALA: "1"
-  changed_when: true
-  when: "'wine-9.21 (Staging)' not in var_which_wine.stdout"
+# - name: "[archlinux] Wine tools: downgrade wine"
+#   # https://github.com/robbert-vdh/yabridge/issues/382
+#   become: true
+#   ansible.builtin.command: downgrade --ignore always --prefer-cache 'wine-staging={{ arch_wine_staging_version }}' -- --noconfirm
+#   environment:
+#     DOWNGRADE_FROM_ALA: "1"
+#   changed_when: true
+#   when: "'wine-9.21 (Staging)' not in var_which_wine.stdout"
 
 - name: "[archlinux] Wine tools: ensure wine is installed"
   become: true
   ansible.builtin.package:
     state: present
     name:
+      - wine-staging
       - winetricks
       - wine-mono
       - lutris
@@ -81,10 +82,10 @@
   loop:
     - path: "{{ arch_reaper_wine_setup.wine_prefix }}"
       architecture: win64
-      winver: win7
+      winver: win10
     - path: "{{ arch_gather_wine_setup.wine_prefix }}"
       architecture: win64
-      winver: win7
+      winver: win10
 
 - name: "[archlinux] Wine tools: setup prefixes DPI"
   # https://forum.winehq.org/viewtopic.php?t=34980
@@ -101,6 +102,12 @@
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
   args:
     creates: ~/external/.wine-win64-reaper/drive_c/Program Files/REAPER (x64)/reaper.exe
+
+# - name: "[archlinux] Wine tools: it might help (it might not) for the constant crashes"
+#   ansible.builtin.command: winetricks -q corefonts directplay
+#   environment:
+#     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+#   changed_when: true
 
 - name: "[archlinux] Wine tools: wait reaper install"
   ansible.builtin.wait_for:
@@ -133,14 +140,23 @@
       suffix_dest: /lib/wine/x86_64-windows/wineasio64.dll
     - suffix_src: /build64/wineasio64.dll.so
       suffix_dest: /lib/wine/x86_64-unix/wineasio64.dll.so
+    - suffix_src: /build64/wineasio64.dll
+      suffix_dest: /usr/lib/wine/x86_64-windows/wineasio64.dll
+    - suffix_src: /build64/wineasio64.dll.so
+      suffix_dest: /usr/lib/wine/x86_64-unix/wineasio64.dll.so
+  ignore_errors: true
 
 - name: "[archlinux] Wine tools: register wineasio"
-  ansible.builtin.command: wineasio-register
-  args:
-    chdir: ~/external/repos/wineasio
+  ansible.builtin.command: wine regsvr32 {{ item }}
   environment:
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
-  changed_when: false
+  loop:
+    - /lib/wine/x86_64-windows/wineasio64.dll
+    - /lib/wine/x86_64-unix/wineasio64.dll.so
+    - /usr/lib/wine/x86_64-windows/wineasio64.dll
+    - /usr/lib/wine/x86_64-unix/wineasio64.dll.so
+  changed_when: true
+  ignore_errors: true
 
 - name: "[archlinux] Wine tools: get sws extension"
   ansible.builtin.get_url:
