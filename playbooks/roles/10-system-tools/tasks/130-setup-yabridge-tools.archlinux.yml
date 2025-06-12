@@ -1,9 +1,1 @@
 ---
-- name: "[archlinux] Yabridge tools: ensure yabridge is installed"
-  become: true
-  ansible.builtin.package:
-    state: present
-    name:
-      - yabridge
-      - yabridgectl
-  notify: "10-system-tools : handler_sync_yabridge_plugins"

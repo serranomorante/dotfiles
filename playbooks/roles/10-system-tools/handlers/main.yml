@@ -31,10 +31,6 @@
   ansible.builtin.command: udevadm control --reload-rules
   changed_when: false
 
-- name: handler_sync_yabridge_plugins
-  ansible.builtin.command: yabridgectl sync --prune
-  changed_when: false
-
 - name: handler_update_desktop_database
   ansible.builtin.command: update-desktop-database ~/.local/share/applications
   changed_when: false
