@@ -4,5 +4,4 @@
     use: yay
     state: present
     name:
-      - firefox
       - xournalpp

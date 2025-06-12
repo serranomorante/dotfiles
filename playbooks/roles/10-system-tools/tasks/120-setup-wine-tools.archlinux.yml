@@ -31,7 +31,6 @@
       - wine-staging
       - winetricks
       - wine-mono
-      - lutris
       - libxcomposite
 
 # https://wiki.archlinux.org/title/Steam#Installation
