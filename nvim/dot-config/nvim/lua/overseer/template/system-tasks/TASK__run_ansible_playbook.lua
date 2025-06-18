@@ -1,3 +1,4 @@
+local utils = require("serranomorante.utils")
 local task_name = "run-ansible-playbook"
 local HOME = vim.env.HOME
 local CWD = vim.fn.getcwd()
@@ -25,6 +26,7 @@ local CHOICES = {
     "10-140-setup-virtualbox",
     "10-170-setup-browser-tools",
     "10-180-setup-backup-tools,10-181-setup-root-backup-tools",
+    "20-50-setup-neovim",
     "20-60-setup-editor-tools",
     "40-20-setup-HPI",
     "40-30-setup-exports",
@@ -91,8 +93,7 @@ return {
       "-l",
       OS_TO_SSHD_CONFIG[params.os],
       "--tags",
-      string.format(
-        '"%s"',
+      utils.wrap_in_single_quotes(
         vim.fn.join(
           vim.tbl_map(function(item) return item:gsub("([^-]*-[^-]*).*", "%1") end, vim.fn.split(params.task_id, ",")),
           ","
@@ -102,11 +103,14 @@ return {
     if params.skip_tags then vim.list_extend(args, { "--skip-tags", params.skip_tags }) end
     if params.force_handlers then table.insert(args, "--force-handlers") end
     if params.verbose then table.insert(args, params.verbose) end
+    local tmux_args = {
+      session_name = task_name,
+      include_binary = true,
+      cwd = vim.env.HOME .. "/dotfiles/playbooks",
+    }
+    local final = vim.fn.join(utils.wrap_overseer_args_with_tmux(args, tmux_args), " ")
     return {
-      cmd = vim.fn.join(
-        utils.wrap_overseer_args_with_tmux(args, { session_name = task_name, include_binary = true }),
-        " "
-      ),
+      cmd = final,
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
       components = {
         { "open_output", direction = "float", on_start = "always", focus = true },

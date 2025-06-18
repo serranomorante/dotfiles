@@ -268,7 +268,8 @@ local function echo_no_more_items() vim.api.nvim_echo({ { "No more items", "Diag
 ---@class TmuxWrapperOpts
 ---@field cwd? string
 ---@field session_name string
----@field include_binary boolean
+---@field include_binary? boolean
+---@field retain_shell? boolean
 
 ---@param cmd table
 ---@param opts? TmuxWrapperOpts
@@ -283,16 +284,26 @@ function M.wrap_overseer_args_with_tmux(cmd, opts)
     "-A", -- attach in session exists
   }
   if opts.include_binary then table.insert(args, 1, "tmux") end
-  if opts.cwd then vim.list_extend(args, {
-    "-c",
-    opts.cwd,
-  }) end
+  if opts.cwd then vim.list_extend(args, { "-c", M.wrap_in_single_quotes(opts.cwd) }) end
   if opts.session_name then
-    vim.list_extend(args, { "-s", opts.session_name .. vim.fn.fnameescape(vim.v.servername) })
+    vim.list_extend(args, { "-s", M.wrap_in_single_quotes(opts.session_name .. vim.fn.fnameescape(vim.v.servername)) })
+  end
+  ---Don't exit after command execution
+  if opts.retain_shell then
+    table.insert(args, "sh")
+    table.insert(args, "-c")
+    table.insert(args, '"')
   end
   vim.list_extend(args, cmd)
+  if opts.retain_shell then
+    table.insert(args, ";")
+    table.insert(args, "exec bash")
+    table.insert(args, '"')
+  end
   return args
 end
+
+function M.wrap_in_single_quotes(str) return string.format("'%s'", str) end
 
 function M.next_qf_item()
   local ok, _ = pcall(vim.cmd.cnext)
