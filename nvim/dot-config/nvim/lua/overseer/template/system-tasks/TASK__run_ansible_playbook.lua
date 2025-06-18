@@ -103,7 +103,10 @@ return {
     if params.force_handlers then table.insert(args, "--force-handlers") end
     if params.verbose then table.insert(args, params.verbose) end
     return {
-      cmd = vim.fn.join(args, " "),
+      cmd = vim.fn.join(
+        utils.wrap_overseer_args_with_tmux(args, { session_name = task_name, include_binary = true }),
+        " "
+      ),
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
       components = {
         { "open_output", direction = "float", on_start = "always", focus = true },

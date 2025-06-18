@@ -30,10 +30,10 @@ return {
     },
   },
   builder = function(params)
-    local args = { "--decrypt", utils.join_paths(vim.env.HOME, "openai_api_key.asc") }
+    local command = { "gpg", "--decrypt", utils.join_paths(vim.env.HOME, "openai_api_key.asc") }
     return {
-      cmd = { "gpg" },
-      args = args,
+      cmd = { "tmux" },
+      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name }),
       components = {
         {
           "editor-components.COMPONENT__lazy_load_on_gpg_decrypt",

@@ -1,3 +1,4 @@
+local utils = require("serranomorante.utils")
 local task_name = "editor-tasks-open-markdown-preview"
 
 ---@type overseer.TemplateDefinition
@@ -6,9 +7,10 @@ return {
   desc = "Open markdown preview",
   builder = function()
     local file = vim.fn.expand("%:p")
-    local command = ("lowdown -Tterm %s | less -R"):format(file)
+    local command = { ("lowdown -Tterm %s | less -R"):format(file) }
     return {
-      cmd = command,
+      cmd = { "tmux" },
+      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name .. file }),
       env = {
         LESS = "-N",
       },
