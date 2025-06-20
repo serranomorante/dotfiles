@@ -146,7 +146,7 @@
   ignore_errors: true
 
 - name: "[archlinux] Wine tools: register wineasio"
-  ansible.builtin.command: wine regsvr32 {{ item }}
+  ansible.builtin.command: wine regsvr32 /s {{ item }}
   environment:
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
   loop:
