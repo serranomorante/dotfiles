@@ -122,6 +122,12 @@
     depth: 1
     version: master
 
+- name: "[archlinux] Wine tools: make 32bit wineasio"
+  ansible.builtin.command: make 32
+  args:
+    chdir: ~/external/repos/wineasio
+    creates: ~/external/repos/wineasio/build32/wineasio32.dll
+
 - name: "[archlinux] Wine tools: make 64bit wineasio"
   ansible.builtin.command: make 64
   args:
@@ -135,6 +141,7 @@
     dest: "{{ item.suffix_dest }}"
     mode: "644"
   loop:
+    # 64 bit
     - suffix_src: /build64/wineasio64.dll
       suffix_dest: /lib/wine/x86_64-windows/wineasio64.dll
     - suffix_src: /build64/wineasio64.dll.so
@@ -143,6 +150,15 @@
       suffix_dest: /usr/lib/wine/x86_64-windows/wineasio64.dll
     - suffix_src: /build64/wineasio64.dll.so
       suffix_dest: /usr/lib/wine/x86_64-unix/wineasio64.dll.so
+    # 32 bit
+    - suffix_src: /build32/wineasio32.dll
+      suffix_dest: /lib/wine/i386-windows/wineasio32.dll
+    - suffix_src: /build32/wineasio32.dll.so
+      suffix_dest: /lib/wine/i386-unix/wineasio32.dll.so
+    - suffix_src: /build32/wineasio32.dll
+      suffix_dest: /usr/lib/wine/i386-windows/wineasio32.dll
+    - suffix_src: /build32/wineasio32.dll.so
+      suffix_dest: /usr/lib/wine/i386-unix/wineasio32.dll.so
   ignore_errors: true
 
 - name: "[archlinux] Wine tools: register wineasio"
@@ -150,10 +166,16 @@
   environment:
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
   loop:
+    # 64 bit
     - /lib/wine/x86_64-windows/wineasio64.dll
     - /lib/wine/x86_64-unix/wineasio64.dll.so
     - /usr/lib/wine/x86_64-windows/wineasio64.dll
     - /usr/lib/wine/x86_64-unix/wineasio64.dll.so
+    # 32 bit
+    - /lib/wine/i386-windows/wineasio32.dll
+    - /lib/wine/i386-unix/wineasio32.dll.so
+    - /usr/lib/wine/i386-windows/wineasio32.dll
+    - /usr/lib/wine/i386-unix/wineasio32.dll.so
   changed_when: true
   ignore_errors: true
 
