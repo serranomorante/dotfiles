@@ -106,6 +106,7 @@
 #   ansible.builtin.command: winetricks -q corefonts directplay
 #   environment:
 #     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+#     WINEARCH: "{{ arch_reaper_wine_setup.architecture | default('win64') }}"
 #   changed_when: true
 
 - name: "[archlinux] Wine tools: wait reaper install"
