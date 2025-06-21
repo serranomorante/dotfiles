@@ -9,6 +9,7 @@
       - xorg
       - xorg-xinit
       - plasma
+      - plasma-x11-session
       - sddm
       - dolphin
       - dolphin-plugins
