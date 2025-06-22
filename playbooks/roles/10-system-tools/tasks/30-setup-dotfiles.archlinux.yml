@@ -7,7 +7,11 @@
 - name: "[archlinux] Dotfiles: remove problematic files"
   ansible.builtin.file:
     state: absent
-    path: ~/.config/gromit-mpx.ini
+    path: "{{ item }}"
+  loop:
+    - ~/.config/gromit-mpx.ini
+    - ~/.config/mimeapps.list
+    - ~/.local/share/applications/wine-protocol-dreamtonics-svstudio2.desktop
 
 - name: "[archlinux] Dotfiles: apply stow"
   ansible.builtin.command: >
@@ -25,6 +29,7 @@
     utilities
     term
     PKM
+    for-my-eyes-only
   args:
     chdir: ~/dotfiles
   changed_when: false
