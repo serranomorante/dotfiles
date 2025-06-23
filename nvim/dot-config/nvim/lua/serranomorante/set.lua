@@ -32,7 +32,6 @@ vim.go.undodir = undodir
 vim.o.undofile = true
 vim.go.jumpoptions = "stack,view"
 
-vim.go.scrolloff = 4
 vim.wo.signcolumn = "auto:2-4"
 vim.go.isfname = vim.go.isfname .. ",@-@"
 vim.wo.conceallevel = 0
