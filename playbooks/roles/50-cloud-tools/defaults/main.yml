@@ -11,7 +11,7 @@ cloud_tools:
   - bazarr
   - jdownloader2
   - flaresolverr
-  - nextcloud
   - prowlarr
   - radarr
   - tautulli
+  - nextcloud
