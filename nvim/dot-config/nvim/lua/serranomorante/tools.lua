@@ -54,6 +54,7 @@ M.by_filetype = {
   css = { parsers = { "css", "scss" }, extensions = { "coc-css" } },
   php = { parsers = { "php" }, extensions = { "coc-phpls" } },
   go = { fmts = { "gofmt" }, lsp = { "gopls" }, parsers = { "go" } },
+  svelte = { parsers = { "svelte" } },
   all = {
     parsers = {
       "disassembly",
