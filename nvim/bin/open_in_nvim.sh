@@ -11,7 +11,7 @@ focus_tmux_pane='tmux select-window -t {start}\; if-shell -F "#{&&:#{>:#{pane_in
 servername=$(echo $CUSTOM_NVIM_LISTEN_ADDRESS)
 
 shift
-custom_edit="lua vim.cmd.edit({ \"$1\", mods = { emsg_silent = true }})" # don't use `nvr --remote` because it doesn't respect shortmess
+custom_edit="lua vim.cmd.edit({ [[$1]], mods = { emsg_silent = true }})" # don't use `nvr --remote` because it doesn't respect shortmess
 
 case $app in
 nnn_search)

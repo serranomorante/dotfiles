@@ -22,11 +22,11 @@ git:
     useConfig: true
 # based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
 os:
-  edit: 'open_in_nvim.sh lazygit_edit "{{filename}}"'
-  editAtLine: 'open_in_nvim.sh lazygit_edit_at_line "{{filename}}" "{{line}}"'
-  editAtLineAndWait: 'open_in_nvim.sh lazygit_edit_at_line_and_wait "{{filename}}" "{{line}}"'
+  edit: 'open_in_nvim.sh lazygit_edit "$(printf %q {{filename}})"'
+  editAtLine: 'open_in_nvim.sh lazygit_edit_at_line "$(printf %q {{filename}})" "{{line}}"'
+  editAtLineAndWait: 'open_in_nvim.sh lazygit_edit_at_line_and_wait "$(printf %q {{filename}})" "{{line}}"'
   editInTerminal: false
-  open: 'open_in_nvim.sh lazygit_open "{{filename}}"'
+  open: 'open_in_nvim.sh lazygit_open "$(printf %q {{filename}})"'
   openDirInEditor: 'open_in_nvim.sh lazygit_open_dir_in_editor "{{dir}}"'
 promptToReturnFromSubprocess: false
 notARepository: 'quit'
@@ -64,7 +64,7 @@ customCommands:
   # From files, open mergetool (DiffviewOpen)
   - key: "M"
     description: 'Custom: Open mergetool'
-    command: 'open_in_nvim.sh lazygit_open_merge_tool "{{.SelectedFile.Name}}"'
+    command: 'open_in_nvim.sh lazygit_open_merge_tool "$(printf %q {{.SelectedFile.Name}})"'
     context: "files"
     loadingText: "loading DiffviewOpen"
     output: terminal
@@ -76,7 +76,7 @@ customCommands:
   # From files, open difftool (DiffviewOpen)
   - key: "<c-t>"
     description: 'Custom: Open difftool'
-    command: 'open_in_nvim.sh lazygit_open_difftool "{{.SelectedFile.Name}}"'
+    command: 'open_in_nvim.sh lazygit_open_difftool "$(printf %q {{.SelectedFile.Name}})"'
     context: "files"
     loadingText: "loading DiffviewOpen"
     output: terminal
@@ -113,5 +113,5 @@ customCommands:
   # From commitFiles, compare (difftool) with local copy
   - key: 'f'
     description: 'Custom: Compare (difftool) with local copy'
-    command: 'open_in_nvim.sh lazygit_diff_with_local_copy "{{.SelectedCommitFile.Name}}" "{{.SelectedCommit.Sha}}"'
+    command: 'open_in_nvim.sh lazygit_diff_with_local_copy "$(printf %q {{.SelectedCommitFile.Name}})" "{{.SelectedCommit.Sha}}"'
     context: 'commitFiles'
