@@ -50,13 +50,14 @@ function M.opts()
       json = gen_fmt(ft_tools.json.fmts, { stop_after_first = true }),
       jsonc = gen_fmt(ft_tools.json.fmts, { stop_after_first = true }),
       markdown = gen_fmt(ft_tools.markdown.fmts, { stop_after_first = true }),
-      javascript = gen_fmt(ft_tools.javascript.fmts, { stop_after_first = true }),
-      typescript = gen_fmt(ft_tools.typescript.fmts, { stop_after_first = true }),
-      javascriptreact = gen_fmt(ft_tools.javascriptreact.fmts, { stop_after_first = true }),
-      typescriptreact = gen_fmt(ft_tools.typescriptreact.fmts, { stop_after_first = true }),
+      javascript = gen_fmt(ft_tools.javascript.fmts, { stop_after_first = false }),
+      typescript = gen_fmt(ft_tools.typescript.fmts, { stop_after_first = false }),
+      javascriptreact = gen_fmt(ft_tools.javascriptreact.fmts, { stop_after_first = false }),
+      typescriptreact = gen_fmt(ft_tools.typescriptreact.fmts, { stop_after_first = false }),
       ["yaml.ansible"] = gen_fmt(vim.tbl_get(ft_tools, "yaml.ansible").fmts),
       _ = { "auto_indent" },
     },
+    notify_on_error = false,
     default_format_opts = FORMAT_OPTS,
     log_level = vim.log.levels[vim.env.CONFORM_LOG_LEVEL or "ERROR"],
   }
@@ -79,7 +80,7 @@ function M.config()
     vim.api.nvim_echo({ { "[Conform]: formatting...", "DiagnosticInfo" } }, false, {})
     return format(opts, function(err)
       ---https://github.com/stevearc/conform.nvim/issues/250#issuecomment-1868544121
-      if err then return vim.notify(err, vim.log.levels.WARN) end
+      if err then return vim.api.nvim_echo({ { "[Conform]: format done with errors", "DiagnosticWarn" } }, true, {}) end
       utils.refresh_codelens()
       vim.api.nvim_echo({ { "[Conform]: format done.", "DiagnosticOk" } }, false, {})
     end)
