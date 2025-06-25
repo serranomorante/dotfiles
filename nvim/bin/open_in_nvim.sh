@@ -27,9 +27,13 @@ git_editor)
     nvr --servername $servername --nostart --remote-tab-wait-silent "$1"
     ;;
 lazygit_edit)
+    # exec >~/open-in-nvim.out 2>&1
+    # echo "$1"
     nvr --servername $servername --nostart -c "$custom_edit" | eval $focus_tmux_pane
     ;;
 lazygit_edit_at_line)
+    # exec >~/open-in-nvim.out 2>&1
+    # echo "$1"
     nvr --servername $servername --nostart -cc "$custom_edit" -c "$2" | eval $focus_tmux_pane
     ;;
 lazygit_edit_at_line_and_wait)
