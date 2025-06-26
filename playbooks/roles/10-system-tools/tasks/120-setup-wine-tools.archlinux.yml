@@ -84,7 +84,7 @@
     creates: "{{ item.path }}/system.reg"
   loop:
     - path: "{{ arch_reaper_wine_setup.wine_prefix }}"
-      architecture: win64
+      architecture: wow64
       winver: win10
     - path: "{{ arch_gather_wine_setup.wine_prefix }}"
       architecture: win64

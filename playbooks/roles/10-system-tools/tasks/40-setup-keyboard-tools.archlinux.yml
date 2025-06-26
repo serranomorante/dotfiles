@@ -140,6 +140,7 @@
   ansible.builtin.git:
     repo: https://gitlab.com/qurn/cursor_indicator
     dest: ~/external/repos/cursor_indicator
+    force: true
     version: master
 
 - name: "[archlinux] Keyboard peripheral: make cursor indicator"
