@@ -11,6 +11,8 @@
   loop:
     - ~/.config/gromit-mpx.ini
     - ~/.config/mimeapps.list
+    - ~/.config/ktrashrc
+    - ~/.config/kiorc
     - ~/.local/share/applications/wine-protocol-dreamtonics-svstudio2.desktop
 
 - name: "[archlinux] Dotfiles: apply stow"
