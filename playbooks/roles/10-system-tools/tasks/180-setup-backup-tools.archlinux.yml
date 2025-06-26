@@ -44,14 +44,17 @@
         - { service: every-hour-backup@dev1-config-files }
         - { service: every-8-hours-backup@dev1-PKM }
         - { service: every-4-hours-backup@dev1-notes }
+        - { service: every-4-hours-backup@dev1-audio-pjs }
         - { service: every-8-hours-backup@dev1-bw-backup }
         - { service: every-hour-backup@dev2-config-files }
         - { service: every-8-hours-backup@dev2-PKM }
         - { service: every-4-hours-backup@dev2-notes }
+        - { service: every-4-hours-backup@dev2-audio-pjs }
         - { service: every-8-hours-backup@dev2-bw-backup }
         - { service: every-hour-backup@dev3-config-files }
         - { service: every-8-hours-backup@dev3-PKM }
         - { service: every-4-hours-backup@dev3-notes }
+        - { service: every-4-hours-backup@dev3-audio-pjs }
         - { service: every-8-hours-backup@dev3-bw-backup }
 
     - name: "[archlinux] Setup backup tools: ensure keyfiles backup folder"
