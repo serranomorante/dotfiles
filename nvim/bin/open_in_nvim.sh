@@ -24,7 +24,7 @@ nnn_explorer)
     ;;
 git_editor)
     eval $focus_tmux_pane
-    nvr --servername $servername --nostart --remote-tab-wait-silent "$1"
+    nvr --servername $servername --nostart --remote-tab-wait-silent "$@"
     ;;
 lazygit_edit)
     # exec >~/open-in-nvim.out 2>&1
