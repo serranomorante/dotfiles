@@ -27,7 +27,7 @@ return {
 
     return {
       cmd = { "tmux" },
-      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name .. input }),
+      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name .. input, cwd = vim.fn.getcwd() }),
       components = {
         "unique",
         "default",

@@ -21,6 +21,7 @@ local CHOICES = {
   },
   [HOME .. "/dotfiles/playbooks"] = {
     "10-10-setup-desktop",
+    "10-30-setup-dotfiles",
     "10-100-setup-compositor",
     "10-120-setup-wine-tools",
     "10-140-setup-virtualbox",
@@ -73,7 +74,6 @@ return {
       desc = "Ignore the ansible always tag",
       type = "enum",
       choices = { "always", "never" },
-      default = "always",
       optional = true,
       order = 4,
     },
@@ -107,6 +107,7 @@ return {
       session_name = task_name,
       include_binary = true,
       cwd = vim.env.HOME .. "/dotfiles/playbooks",
+      retain_shell = true
     }
     local final = vim.fn.join(utils.wrap_overseer_args_with_tmux(args, tmux_args), " ")
     return {

@@ -64,7 +64,7 @@ local function keys()
   vim.keymap.set(
     "n",
     "<leader>dR",
-    function() require("dap").repl.open({ wrap = false, number = true }, "rightbelow 50 vsplit") end,
+    function() require("dap").repl.toggle({ wrap = false, number = true }, "rightbelow 50 vsplit") end,
     { desc = "DAP: Toggle REPL" }
   )
   vim.keymap.set("n", "<leader>dS", function() require("dap").run_to_cursor() end, { desc = "DAP: Run To Cursor" })
