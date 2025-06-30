@@ -25,7 +25,7 @@
   register: make_result
   changed_when: make_result.rc == 0
 
-- name: "[archlinux] Compositor: installsdf"
+- name: "[archlinux] Compositor: kwriteconfig6"
   ansible.builtin.command: kwriteconfig6 --file startkderc --group General --key systemdBoot true
   changed_when: false
 

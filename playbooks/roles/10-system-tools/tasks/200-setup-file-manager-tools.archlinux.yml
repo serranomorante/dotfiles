@@ -45,6 +45,9 @@
     name:
       - pmount
       - gnome-epub-thumbnailer
+      - xdg-desktop-portal-termfilechooser-hunkyburrito-git
+  changed_when: true
+  notify: handler_restart_xdg_desktop_portal_termfilechooser
 
 - name: "[archlinux] Setup file manager: build nnn"
   ansible.builtin.command: make O_NERD=1 O_GITSTATUS=1 strip install

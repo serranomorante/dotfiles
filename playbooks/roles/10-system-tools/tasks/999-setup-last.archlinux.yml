@@ -5,5 +5,4 @@
     force: true
     state: absent
     name:
-      - xdg-desktop-portal
-      - xdg-desktop-portal-kde
+      - xdg-desktop-portal-cosmic

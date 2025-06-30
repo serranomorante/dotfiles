@@ -1,2 +1,2 @@
 #!/bin/sh
-XDG_CURRENT_DESKTOP=KDE brave "$@"
+GTK_USE_PORTAL=1 XDG_CURRENT_DESKTOP=KDE brave "$@"

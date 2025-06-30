@@ -10,6 +10,7 @@
       - xorg-xinit
       - plasma
       - plasma-x11-session
+      - plasma-integration
       - sddm
       - dolphin
       - dolphin-plugins

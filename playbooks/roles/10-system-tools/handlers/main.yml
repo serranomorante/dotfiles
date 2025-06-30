@@ -143,3 +143,11 @@
     state: started
     enabled: true
     masked: false
+
+- name: handler_restart_xdg_desktop_portal_termfilechooser
+  ansible.builtin.systemd_service:
+    scope: user
+    name: xdg-desktop-portal-termfilechooser.service
+    state: restarted
+    enabled: true
+    masked: false
