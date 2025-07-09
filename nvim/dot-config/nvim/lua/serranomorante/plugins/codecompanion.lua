@@ -40,6 +40,9 @@ local function opts()
         auto_scroll = false,
       },
     },
+    diff = {
+      enabled = false,
+    },
     adapters = {
       openai = function()
         return require("codecompanion.adapters").extend("openai", {
