@@ -40,6 +40,7 @@ local function opts()
     components.Space,
     components.Overseer,
     components.LspProgress,
+    components.AIProgress,
     components.Align,
 
     components.LSPActive,

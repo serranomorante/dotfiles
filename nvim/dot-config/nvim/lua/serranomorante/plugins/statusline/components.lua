@@ -287,6 +287,28 @@ M.QuickfixTitle = {
   provider = function() return string.format("%%q: %s", vim.api.nvim_win_get_var(0, "quickfix_title")) end,
 }
 
+M.AIProgress = {
+  static = {
+    processing = false,
+  },
+  update = {
+    "User",
+    pattern = "CodeCompanionRequest*",
+    callback = function(self, args)
+      if args.match == "CodeCompanionRequestStarted" then
+        self.processing = true
+      elseif args.match == "CodeCompanionRequestFinished" then
+        self.processing = false
+      end
+      vim.cmd.redrawstatus()
+    end,
+  },
+  {
+    condition = function(self) return self.processing end,
+    provider = " ",
+  },
+}
+
 local CocProgress = {
   condition = function() return coc_utils.is_coc_attached() end,
   provider = function()
