@@ -5,7 +5,7 @@
     state: present
     name:
       - ccze
-      - jdownloader2
+      - yt-dlp
 
 - name: "[archlinux] Other tools: ensure font directory exists"
   ansible.builtin.file:
