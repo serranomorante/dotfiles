@@ -105,6 +105,15 @@
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
   args:
     creates: ~/external/.wine-win64-reaper/drive_c/Program Files/REAPER (x64)/reaper.exe
+  register: var_install_reaper
+
+- name: "[archlinux] Wine tools: wait for reaper install"
+  ansible.builtin.wait_for:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/Program Files/REAPER (x64)/reaper.exe"
+    msg: Timeout waiting for reaper to finish installation
+    delay: 5
+    timeout: 300
+  when: var_install_reaper.changed
 
 - name: "[archlinux] Wine tools: it might help (it might not) for the constant crashes"
   ansible.builtin.command: winetricks -q corefonts vd=1920x1080
@@ -112,6 +121,12 @@
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
     WINEARCH: "{{ arch_reaper_wine_setup.architecture | default('win64') }}"
   changed_when: true
+  register: var_reaper_winetricks_setup
+  notify: handler_kill_reaper_wineserver
+
+- name: flush_handlers
+  ansible.builtin.meta: flush_handlers
+  when: var_reaper_winetricks_setup.changed
 
 - name: "[archlinux] Wine tools: wait reaper install"
   ansible.builtin.wait_for:

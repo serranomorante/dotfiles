@@ -151,3 +151,13 @@
     state: restarted
     enabled: true
     masked: false
+
+- name: handler_kill_reaper_wineserver
+  ansible.builtin.command: wineserver -k
+  changed_when: true
+  environment:
+    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  register: var_kill_reaper_wineserver
+  failed_when:
+    - var_kill_reaper_wineserver.rc != 0
+    - var_kill_reaper_wineserver.rc != 1
