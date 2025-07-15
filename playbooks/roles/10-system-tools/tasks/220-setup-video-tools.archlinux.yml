@@ -5,6 +5,11 @@
     state: directory
     mode: "755"
 
+- name: "[archlinux] Setup video tools: fix permission denied issue with davinci install"
+  ansible.builtin.file:
+    path: ~/temp/makepkg/davinci-resolve
+    state: absent
+
 - name: "[archlinux] Setup video tools: ensure required zip"
   ansible.builtin.get_url:
     url: https://swr.cloud.blackmagicdesign.com/DaVinciResolve/v{{ arch_davinci_resolve_version }}/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip?verify={{

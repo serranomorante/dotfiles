@@ -92,4 +92,4 @@
     insertafter: "^\\[options\\]"
     marker: "## {mark} ANSIBLE MANAGED BLOCK - IGNORE PACKAGES"
     block: |
-      IgnorePkg = wine-staging davinci-resolve
+      # IgnorePkg = wine-staging davinci-resolve
