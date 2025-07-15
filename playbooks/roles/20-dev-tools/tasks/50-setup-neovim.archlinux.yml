@@ -21,7 +21,6 @@
     chdir: ~/repos/neovim
   loop:
     - { patch_filename: folds.patch }
-    - { patch_filename: max_count_limit.patch }
   changed_when: false
 
 - name: "[archlinux] Neovim: ensure neovim - build"

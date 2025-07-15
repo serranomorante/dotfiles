@@ -15,7 +15,6 @@
   loop:
     - { patch_filename: folds.patch }
     - { patch_filename: msg_limit.patch }
-    - { patch_filename: max_count_limit.patch }
   changed_when: false
 
 - name: "[debian] Neovim: ensure neovim - build"

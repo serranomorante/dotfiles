@@ -48,6 +48,7 @@ vim.go.fillchars = "eob: ,fold: ,foldopen: ,foldsep: ,foldclose:+"
 
 vim.go.splitright = true
 vim.go.splitbelow = true
+vim.go.maxsearchcount = 5000
 
 vim.g.markdown_fenced_languages = { "html", "javascript", "typescript", "css", "scss", "vim", "lua", "json", "yaml" }
 vim.g.max_file = { size = 1024 * 500, lines = 10000 } -- set global limits for large files
