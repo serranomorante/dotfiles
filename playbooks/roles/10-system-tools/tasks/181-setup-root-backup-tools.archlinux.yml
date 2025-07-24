@@ -17,8 +17,8 @@
         mode: "744"
         owner: root
       vars:
-        borg_repo: "{{ item.repo }}"
-        borg_pass: "{{ item.pass_file }}"
+        borg_repo: "{{ item.borg_repo }}"
+        borg_pass: "{{ item.encrypted_passphrase_file }}"
         files: "{{ item.files }}"
       loop: "{{ archlinux_borg_root_repos_env }}"
 
@@ -55,10 +55,10 @@
     - name: "[archlinux] Setup root backup tools: backup keyfile"
       become: true
       ansible.builtin.command: >
-        borg key export "{{ item.repo }}"
-        '{{ ansible_env.HOME }}/secrets/backup-borg-root-keyfiles/{{ item.repo | regex_replace("[^A-Za-z0-9]", "_") }}'
+        borg key export "{{ item.borg_repo }}"
+        '{{ ansible_env.HOME }}/secrets/backup-borg-root-keyfiles/{{ item.borg_repo | regex_replace("[^A-Za-z0-9]", "_") }}'
       environment:
-        BORG_PASSCOMMAND: gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt {{ ansible_env.HOME }}/secrets/{{ item.pass_file }}
+        BORG_PASSCOMMAND: gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt {{ ansible_env.HOME }}/secrets/{{ item.encrypted_passphrase_file }}
       changed_when: false
       loop: "{{ archlinux_borg_root_repos_env }}"
 
