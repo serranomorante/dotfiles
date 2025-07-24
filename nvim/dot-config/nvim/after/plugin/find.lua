@@ -15,6 +15,10 @@ vim.api.nvim_create_user_command(
 
 ---@param cmd_arg string
 function _G.user.findfunc(cmd_arg)
+  if cmd_arg == "''" then
+    vim.api.nvim_echo({ { "Empty search pattern" } }, false, { err = true })
+    return {}
+  end
   local files = find(cmd_arg)
   local files_count = vim.tbl_count(files)
   if files_count > 0 then

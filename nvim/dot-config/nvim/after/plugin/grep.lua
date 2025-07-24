@@ -4,6 +4,7 @@ local utils = require("serranomorante.utils")
 
 ---@param command_args vim.api.keyset.create_user_command.command_args
 local function grep(command_args)
+  if command_args.args == "''" then return vim.api.nvim_echo({ { "Empty search pattern" } }, false, { err = true }) end
   local args = command_args.args:gsub("\\'", "\\x27") -- escape single quotes
   local content = vim.fn.join(vim.fn.systemlist(string.format("rg -e %s --json", args)), ",")
   local json_content = vim.json.decode(string.format("[%s]", content), { luanil = { object = true } })
