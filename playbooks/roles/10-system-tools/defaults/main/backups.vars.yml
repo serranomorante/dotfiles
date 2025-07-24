@@ -43,6 +43,10 @@ root_backup_env:
   - /var/log/pacman.log
   - /var/log/journal
   - /etc/pacman.conf
+  - /etc/X11/xorg.conf.d/10-nvidia-drm-outputclass.conf
+  - /etc/udev/rules.d/80-nvidia-pm.rules
+  - /usr/share/applications/DaVinciResolve.desktop
+  - /etc/modprobe.d/blacklist-nouveau.conf
 bw_backup_env:
   - ~/bw
 

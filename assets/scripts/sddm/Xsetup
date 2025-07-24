@@ -1,3 +1,6 @@
 #!/bin/sh
 # Xsetup - run as root before the login dialog appears
 # This file should be copied into /usr/share/sddm/scripts/Xsetup
+
+xrandr --setprovideroutputsource modesetting NVIDIA-0
+xrandr --auto
