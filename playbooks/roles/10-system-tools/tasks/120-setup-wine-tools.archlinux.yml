@@ -242,3 +242,26 @@
     WINEPREFIX: "{{ arch_gather_wine_setup.wine_prefix }}"
   args:
     creates: "{{ arch_gather_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/Gather/config.json"
+
+- name: "[archlinux] Wine tools: get youlean loudness meter 2 vst"
+  ansible.builtin.unarchive:
+    src: https://download.youlean.co/wp-content/uploads/2025/07/Youlean-Loudness-Meter-2-V2.5.12-Windows.zip
+    dest: ~/external/Downloads
+    remote_src: true
+    creates: "{{ arch_youlean_loudness_wine_setup.backup_path }}/Youlean Loudness Meter 2 - V2.5.12 Installer.exe"
+
+- name: "[archlinux] Wine tools: install youlean loudness meter 2 vst"
+  ansible.builtin.command: wine start /unix '{{ arch_youlean_loudness_wine_setup.backup_path }}/Youlean Loudness Meter 2 - V{{ arch_youlean_loudness_wine_setup.version }} Installer.exe'
+  environment:
+    WINEPREFIX: "{{ arch_youlean_loudness_wine_setup.wine_prefix }}"
+  args:
+    creates: "{{ arch_youlean_loudness_wine_setup.wine_prefix }}/drive_c/Program Files (x86)/Steinberg/Vstplugins/Youlean Loudness Meter 2.dll"
+  register: var_install_youlean_loudness
+
+- name: "[archlinux] Wine tools: wait for youlean loudness install"
+  ansible.builtin.wait_for:
+    path: "{{ arch_youlean_loudness_wine_setup.wine_prefix }}/drive_c/Program Files (x86)/Steinberg/Vstplugins/Youlean Loudness Meter 2.dll"
+    msg: Timeout waiting for reaper to finish installation
+    delay: 5
+    timeout: 300
+  when: var_install_youlean_loudness

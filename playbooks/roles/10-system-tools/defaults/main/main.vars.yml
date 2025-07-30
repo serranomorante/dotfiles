@@ -15,6 +15,10 @@ arch_reaper_wine_setup:
   version: 740
   backup_path: ~/external/Downloads
   wine_prefix: "{{ ansible_env.HOME }}/external/.wine-win64-reaper"
+arch_youlean_loudness_wine_setup:
+  version: 2.5.12
+  backup_path: ~/external/Downloads/Youlean Loudness Meter 2 - V2.5.12 - Windows
+  wine_prefix: "{{ ansible_env.HOME }}/external/.wine-win64-reaper"
 arch_gather_wine_setup:
   version: 1.32.0
   backup_path: ~/Downloads
