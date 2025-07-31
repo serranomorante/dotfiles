@@ -22,7 +22,6 @@
     use: yay
     state: present
     name:
-      - watchman-bin
       - ctags-git
 
 - name: "[archlinux] Editor tools: create treesitter tempdir"
