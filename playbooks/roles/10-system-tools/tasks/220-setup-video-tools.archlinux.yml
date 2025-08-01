@@ -34,15 +34,19 @@
       - mesa
       - expac
       - mesa-utils
+      - lib32-mesa-utils
+      - lib32-opencl-mesa
+      - handbrake-cli
       - python-distro
       - opencl-nvidia
       - lib32-opencl-nvidia
+      - mingw-w64
 
 - name: "[archlinux] Setup video tools: ensure aur packages"
   aur:
     use: yay
     state: present
-    name: rocm-opencl-runtime
+    name: opencl-amd
 
 - name: "[archlinux] Setup video tools: ensure pip deps for davinci-resolve-checker"
   ansible.builtin.pip:
