@@ -41,6 +41,7 @@
       - opencl-nvidia
       - lib32-opencl-nvidia
       - mingw-w64
+      - blender
 
 - name: "[archlinux] Setup video tools: ensure aur packages"
   aur:
