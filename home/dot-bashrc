@@ -131,6 +131,8 @@ if command -v nnn &>/dev/null; then
     alias nnn='nnn -JRHdaAo -Tt'
 fi
 
+[ -n "$NNNLVL" ] && PS1="N$NNNLVL $PS1"
+
 # https://github.com/jarun/nnn/wiki/Basic-use-cases#sync-subshell-pwd
 nnn_cd() {
     if ! [ -z "$NNN_PIPE" ]; then
