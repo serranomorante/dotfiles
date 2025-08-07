@@ -43,3 +43,13 @@
     state: present
     name: picom
   notify: "10-system-tools : handler_ensure_compositor_service"
+
+- name: "[archlinux] Compositor: clone picom shaders"
+  ansible.builtin.git:
+    repo: "{{ item.repo }}"
+    dest: ~/external/repos/{{ item.name | default(item.repo) | basename }}
+    version: "{{ item.version | default('HEAD') }}"
+    single_branch: true
+    depth: 1
+  loop:
+    - repo: https://github.com/ikz87/picom-shaders
