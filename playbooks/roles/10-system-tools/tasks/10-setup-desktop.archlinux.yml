@@ -30,7 +30,9 @@
   aur:
     use: yay
     state: present
-    name: downgrade
+    name:
+      - downgrade
+      - ttf-ms-win11-auto
 
 - name: "[archlinux] Setup desktop: remove packages"
   become: true
