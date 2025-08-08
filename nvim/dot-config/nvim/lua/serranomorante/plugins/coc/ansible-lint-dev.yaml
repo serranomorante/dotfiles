@@ -6,3 +6,4 @@ skip_list:
   - yaml[line-length] # I don't mind long lines
   - command-instead-of-module
   - ignore-errors
+  - no-handler

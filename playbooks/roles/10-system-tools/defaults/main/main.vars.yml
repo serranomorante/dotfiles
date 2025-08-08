@@ -5,16 +5,18 @@ debian_fzf_version: 0.55.0
 debian_rg_version: 14.0.3
 debian_fd_version: 10.1.0
 arch_davinci_resolve_version: 20.0.1
-arch_wine_staging_version: 9.21
+arch_nvidia_libs_version: 0.8.5
+arch_wine_staging_version: 10.8-2
 davinci_resolve_download_key: foo
 arch_mypaint_version: 2.1.0-alpha-400-g90b36db-2021-05-04_18.41
 arch_reaper_sws_extension_setup:
   version: 2.14.0.3
   backup_path: ~/external/Downloads
 arch_reaper_wine_setup:
-  version: 740
+  version: 742
   backup_path: ~/external/Downloads
   wine_prefix: "{{ ansible_env.HOME }}/external/.wine-win64-reaper"
+  architecture: win64 # wow64 will fail for some plugins
 arch_youlean_loudness_wine_setup:
   version: 2.5.12
   backup_path: ~/external/Downloads/Youlean Loudness Meter 2 - V2.5.12 - Windows
@@ -23,3 +25,7 @@ arch_gather_wine_setup:
   version: 1.32.0
   backup_path: ~/Downloads
   wine_prefix: "{{ ansible_env.HOME }}/external/.wine-win64-gather-town"
+
+arch_wine_prefixes:
+  - "{{ arch_reaper_wine_setup }}"
+  - "{{ arch_gather_wine_setup }}"

@@ -14,21 +14,20 @@
   changed_when: false
   register: var_which_wine
 
-# - name: "[archlinux] Wine tools: downgrade wine"
-#   # https://github.com/robbert-vdh/yabridge/issues/382
-#   become: true
-#   ansible.builtin.command: downgrade --ignore always --prefer-cache 'wine-staging={{ arch_wine_staging_version }}' -- --noconfirm
-#   environment:
-#     DOWNGRADE_FROM_ALA: "1"
-#   changed_when: true
-#   when: "'wine-9.21 (Staging)' not in var_which_wine.stdout"
+- name: "[archlinux] Wine tools: downgrade wine"
+  # https://github.com/robbert-vdh/yabridge/issues/382
+  become: true
+  ansible.builtin.command: downgrade --ignore always --prefer-cache 'wine-staging={{ arch_wine_staging_version }}' -- --noconfirm
+  environment:
+    DOWNGRADE_FROM_ALA: "1"
+  changed_when: true
+  when: "'wine-10.8 (Staging)' not in var_which_wine.stdout"
 
 - name: "[archlinux] Wine tools: ensure wine is installed"
   become: true
   ansible.builtin.package:
     state: present
     name:
-      - wine-staging
       - winetricks
       - wine-mono
       - libxcomposite
@@ -75,20 +74,22 @@
     dest: ~/external/Downloads
     mode: "755"
 
+- name: force handler
+  ansible.builtin.command: echo
+  changed_when: true
+  notify: handler_kill_reaper_wineserver
+
+- name: flush_handlers
+  ansible.builtin.meta: flush_handlers
+
 - name: "[archlinux] Wine tools: setup prefixes"
   ansible.builtin.command: winecfg -v {{ item.winver | default('win10') }}
   environment:
-    WINEPREFIX: "{{ item.path }}"
-    WINEARCH: "{{ item.architecture }}"
+    WINEPREFIX: "{{ item.wine_prefix }}"
+    WINEARCH: "{{ item.architecture | default('win64') }}"
   args:
-    creates: "{{ item.path }}/system.reg"
-  loop:
-    - path: "{{ arch_reaper_wine_setup.wine_prefix }}"
-      architecture: wow64
-      winver: win10
-    - path: "{{ arch_gather_wine_setup.wine_prefix }}"
-      architecture: win64
-      winver: win10
+    creates: "{{ item.wine_prefix }}/system.reg"
+  loop: "{{ arch_wine_prefixes }}"
 
 - name: "[archlinux] Wine tools: setup prefixes DPI"
   # https://forum.winehq.org/viewtopic.php?t=34980
@@ -114,19 +115,6 @@
     delay: 5
     timeout: 300
   when: var_install_reaper.changed
-
-- name: "[archlinux] Wine tools: it might help (it might not) for the constant crashes"
-  ansible.builtin.command: winetricks -q corefonts vd=1920x1080
-  environment:
-    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
-    WINEARCH: "{{ arch_reaper_wine_setup.architecture | default('win64') }}"
-  changed_when: true
-  register: var_reaper_winetricks_setup
-  notify: handler_kill_reaper_wineserver
-
-- name: flush_handlers
-  ansible.builtin.meta: flush_handlers
-  when: var_reaper_winetricks_setup.changed
 
 - name: "[archlinux] Wine tools: wait reaper install"
   ansible.builtin.wait_for:
