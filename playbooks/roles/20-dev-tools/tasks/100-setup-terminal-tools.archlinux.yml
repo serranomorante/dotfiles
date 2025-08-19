@@ -11,10 +11,15 @@
       - kitty-terminfo
     state: present
 
-- name: "[archlinux] Setup terminal tools: ensure isd"
-  ansible.builtin.command: uv tool install --python=3.12 isd-tui
+- name: "[archlinux] Setup terminal tools: uv ensure packages"
+  ansible.builtin.command: uv tool install --python=3.12 {{ item.package_name }}
   args:
-    creates: ~/.local/bin/isd
+    creates: "{{ item.creates }}"
+  loop:
+    - package_name: isd-tui
+      creates: ~/.local/bin/isd
+    - package_name: vectorcode
+      creates: ~/.local/bin/vectorcode
 
 - name: "[archlinux] Setup terminal tools: install kitty nightly"
   ansible.builtin.shell: >

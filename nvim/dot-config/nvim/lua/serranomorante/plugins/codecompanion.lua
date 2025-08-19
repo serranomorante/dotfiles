@@ -44,6 +44,13 @@ local function opts()
       enabled = false,
     },
     adapters = {
+      gemini = function()
+        return require("codecompanion.adapters").extend("gemini", {
+          env = {
+            api_key = "cmd: gpg --decrypt ~/secrets/gemini_api_key.gpg 2>/dev/null",
+          },
+        })
+      end,
       openai = function()
         return require("codecompanion.adapters").extend("openai", {
           opts = {
@@ -85,16 +92,27 @@ local function opts()
           },
           completion = {
             modes = {
-              i = "<C-x><C-\\>"
-            }
-          }
-        }
+              i = "<C-x><C-\\>",
+            },
+          },
+        },
       },
       inline = {
-        adapter = "anthropic",
+        adapter = "gemini",
       },
     },
     extensions = {
+      vectorcode = {
+        tool_group = {
+          enabled = true,
+        },
+      },
+      history = {
+        enabled = true,
+        title_generation_opts = {
+          model = "gpt-3.5-turbo",
+        },
+      },
       mcphub = {
         callback = "mcphub.extensions.codecompanion",
         opts = {

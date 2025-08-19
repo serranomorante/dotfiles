@@ -76,6 +76,11 @@ neovim_plugins:
   - folder: start
     repo: HakonHarnes/img-clip.nvim
     name: img-clip
+  - folder: start
+    repo: ravitemer/codecompanion-history.nvim
+  - folder: start
+    repo: Davidyz/VectorCode
+    name: vectorcode
   - folder: opt
     repo: kevinhwang91/nvim-ufo
     name: ufo
