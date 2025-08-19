@@ -122,6 +122,51 @@ local function opts()
         },
       },
     },
+    prompt_library = {
+      ["Write jsdocs"] = {
+        strategy = "inline",
+        description = "Write jsdoc documentation",
+        opts = {
+          short_name = "docs",
+        },
+        prompts = {
+          {
+            role = "user",
+            content = "Write a jsdoc for this method and add a brief description (2 lines max). Leave a 1 line space between description and jsdoc",
+          },
+        },
+      },
+      ["Generate a Commit Message"] = {
+        strategy = "inline",
+        description = "Generate a commit message",
+        opts = {
+          index = 10,
+          is_default = true,
+          is_slash_cmd = true,
+          short_name = "commit",
+          auto_submit = true,
+        },
+        prompts = {
+          {
+            role = "user",
+            content = function()
+              return string.format(
+                [[You are an expert at following the Conventional Commit specification. Given the git diff listed below, please generate a commit message for me:
+
+                ```diff
+                %s
+                ```
+                ]],
+                vim.fn.system("git diff --no-ext-diff --staged")
+              )
+            end,
+            opts = {
+              contains_code = true,
+            },
+          },
+        },
+      },
+    },
   }
 end
 
