@@ -39,6 +39,7 @@ M.by_filetype = {
     linters = { "markdownlint" },
     fmts = { "mdformat" },
     parsers = { "markdown" },
+    extensions = { "coc-markdown-preview-enhanced", "@yaegassy/coc-marksman", "coc-markdownlint" },
   },
   toml = { parsers = { "toml" } },
   tmux = { parsers = { "tmux" } },
@@ -71,6 +72,7 @@ M.by_filetype = {
       "udev",
       "make",
     },
+    extensions = { "coc-webview" },
   },
 }
 

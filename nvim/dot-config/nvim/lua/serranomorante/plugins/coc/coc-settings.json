@@ -41,6 +41,11 @@
   "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
   "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
   "typescript.inlayHints.enumMemberValues.enabled": true,
+  // Download the compiled jar from this url and add it to the following dir
+  // https://plantuml.com/download
+  "markdown-preview-enhanced.plantumlJarPath": "${userHome}/plantuml/plantuml.jar",
+  "markdown-preview-enhanced.usePandocParser": true,
+  "markdown-preview-enhanced.pandocArguments": ["--mathjax"],
   "javascript.inlayHints.parameterNames.enabled": "all",
   "javascript.inlayHints.parameterTypes.enabled": true,
   "javascript.inlayHints.variableTypes.enabled": true,
