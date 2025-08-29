@@ -43,36 +43,38 @@ local function opts()
     diff = {
       enabled = false,
     },
-    adapters = {
-      gemini = function()
-        return require("codecompanion.adapters").extend("gemini", {
-          env = {
-            api_key = "cmd: gpg --decrypt ~/secrets/gemini_api_key.gpg 2>/dev/null",
-          },
-        })
-      end,
-      openai = function()
-        return require("codecompanion.adapters").extend("openai", {
-          opts = {
-            stream = true,
-          },
-          env = {
-            api_key = "cmd: gpg --decrypt ~/openai_api_key.asc 2>/dev/null",
-          },
-          schema = {
-            model = {
-              default = function() return "gpt-4.1" end,
+    http = {
+      adapters = {
+        gemini = function()
+          return require("codecompanion.adapters").extend("gemini", {
+            env = {
+              api_key = "cmd: gpg --decrypt ~/secrets/gemini_api_key.gpg 2>/dev/null",
             },
-          },
-        })
-      end,
-      anthropic = function()
-        return require("codecompanion.adapters").extend("anthropic", {
-          env = {
-            api_key = "cmd: gpg --decrypt ~/secrets/anthropic_api_key.gpg 2>/dev/null",
-          },
-        })
-      end,
+          })
+        end,
+        openai = function()
+          return require("codecompanion.adapters").extend("openai", {
+            opts = {
+              stream = true,
+            },
+            env = {
+              api_key = "cmd: gpg --decrypt ~/openai_api_key.asc 2>/dev/null",
+            },
+            schema = {
+              model = {
+                default = function() return "gpt-4.1" end,
+              },
+            },
+          })
+        end,
+        anthropic = function()
+          return require("codecompanion.adapters").extend("anthropic", {
+            env = {
+              api_key = "cmd: gpg --decrypt ~/secrets/anthropic_api_key.gpg 2>/dev/null",
+            },
+          })
+        end,
+      },
     },
     strategies = {
       chat = {
