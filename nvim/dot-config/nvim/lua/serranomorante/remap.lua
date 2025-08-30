@@ -129,3 +129,12 @@ end, { desc = "Open location list" })
 
 vim.keymap.set("n", "<A-j>", utils.next_qf_item, { desc = "Next quickfix list item" })
 vim.keymap.set("n", "<A-k>", utils.prev_qf_item, { desc = "Prev quickfix list item" })
+
+vim.keymap.set("n", "<leader>t", function()
+  utils.feedkeys("gg")
+  local search_pattern = "/\\V- [ ] "
+  utils.feedkeys(search_pattern .. "<CR>")
+  local count = vim.fn.searchcount()
+  local random = utils.get_random_number({ total = count.total })
+  utils.feedkeys(("gg%sn<C-l>"):format(random))
+end, { desc = "Go to random todo item" })

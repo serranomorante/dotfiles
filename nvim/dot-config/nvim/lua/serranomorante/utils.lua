@@ -263,6 +263,18 @@ function M.get_cursor_position()
   return bufname, line, col
 end
 
+---@class GetRandomNumberOpts
+---@field total number
+
+---@param opts? GetRandomNumberOpts
+---@return number|nil
+function M.get_random_number(opts)
+  opts = opts or {}
+  local cmd = "py import random; print(random.randint(0, %s))"
+  local random = vim.api.nvim_exec2(cmd:format(opts.total or 9), { output = true })
+  return tonumber(random.output)
+end
+
 local function echo_no_more_items() vim.api.nvim_echo({ { "No more items", "DiagnosticWarn" } }, false, {}) end
 
 ---@class TmuxWrapperOpts
