@@ -51,6 +51,8 @@ function M.attach(buf)
 
   vim.keymap.set("n", "gra", "<Plug>(coc-codeaction-cursor)", opts_with_desc("See available code actions"))
 
+  vim.keymap.set("n", "grf", "<Plug>(coc-codeaction-source)", opts_with_desc("See available code actions"))
+
   vim.keymap.set("x", "gra", "<Plug>(coc-codeaction-selected)", opts_with_desc("See available code actions"))
 
   vim.keymap.set("n", "<leader>ls", function()
