@@ -263,16 +263,17 @@ function M.get_cursor_position()
   return bufname, line, col
 end
 
----@class GetRandomNumberOpts
----@field total number
-
----@param opts? GetRandomNumberOpts
----@return number|nil
-function M.get_random_number(opts)
-  opts = opts or {}
-  local cmd = "py import random; print(random.randint(0, %s))"
-  local random = vim.api.nvim_exec2(cmd:format(opts.total or 9), { output = true })
-  return tonumber(random.output)
+---Grep with ripgrep
+---@param search string
+---@return RGContent[]
+function M.grep_with_rg(search)
+  if search == "''" then
+    vim.api.nvim_echo({ { "Empty search pattern" } }, false, { err = true })
+    return {}
+  end
+  local args = search:gsub("\\'", "\\x27") -- escape single quotes
+  local content = vim.fn.join(vim.fn.systemlist(string.format("rg -e %s --json", args)), ",")
+  return vim.json.decode(string.format("[%s]", content), { luanil = { object = true } })
 end
 
 local function echo_no_more_items() vim.api.nvim_echo({ { "No more items", "DiagnosticWarn" } }, false, {}) end

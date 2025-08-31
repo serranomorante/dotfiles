@@ -4,20 +4,19 @@ local utils = require("serranomorante.utils")
 
 ---@param command_args vim.api.keyset.create_user_command.command_args
 local function grep(command_args)
-  if command_args.args == "''" then return vim.api.nvim_echo({ { "Empty search pattern" } }, false, { err = true }) end
-  local args = command_args.args:gsub("\\'", "\\x27") -- escape single quotes
-  local content = vim.fn.join(vim.fn.systemlist(string.format("rg -e %s --json", args)), ",")
-  local json_content = vim.json.decode(string.format("[%s]", content), { luanil = { object = true } })
-
-  local items, count = utils.rg_json_to_qfitems(json_content)
+  local items, count = utils.rg_json_to_qfitems(utils.grep_with_rg(command_args.args))
   if count == 0 then
     local msg = "[Grep] No results: %s"
-    return vim.api.nvim_echo({ { msg:format(args) } }, false, { err = true })
+    return vim.api.nvim_echo({ { msg:format(command_args.args) } }, false, { err = true })
   end
 
   local msg = "[Grep] %d results: %s"
-  vim.api.nvim_echo({ { msg:format(count, args), "DiagnosticOk" } }, false, {})
-  vim.fn.setqflist({}, " ", { title = msg:format(count, args), items = items, context = { name = "user.grep" } })
+  vim.api.nvim_echo({ { msg:format(count, command_args.args), "DiagnosticOk" } }, false, {})
+  vim.fn.setqflist(
+    {},
+    " ",
+    { title = msg:format(count, command_args.args), items = items, context = { name = "user.grep" } }
+  )
   vim.cmd.cfirst({ mods = { emsg_silent = true } })
 end
 
