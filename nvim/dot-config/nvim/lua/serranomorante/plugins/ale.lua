@@ -25,7 +25,6 @@ function M.config()
     javascriptreact = { "eslint" },
     typescript = { "eslint" },
     typescriptreact = { "eslint" },
-    markdown = tools.by_filetype.markdown.linters,
     python = tools.by_filetype.python.linters,
   }
 end
