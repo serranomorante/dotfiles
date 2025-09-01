@@ -17,6 +17,7 @@ local CHOICES = {
     "60-10-for-my-eyes-only",
     "60-20-for-my-eyes-only",
     "60-30-for-my-eyes-only",
+    "60-40-for-my-eyes-only",
     "70-10-for-my-eyes-only",
   },
   [HOME .. "/dotfiles/playbooks"] = {
@@ -107,7 +108,7 @@ return {
       session_name = task_name,
       include_binary = true,
       cwd = vim.env.HOME .. "/dotfiles/playbooks",
-      retain_shell = true
+      retain_shell = true,
     }
     local final = vim.fn.join(utils.wrap_overseer_args_with_tmux(args, tmux_args), " ")
     return {
