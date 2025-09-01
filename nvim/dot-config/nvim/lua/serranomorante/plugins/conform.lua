@@ -50,6 +50,7 @@ function M.opts()
       json = gen_fmt(ft_tools.json.fmts, { stop_after_first = true }),
       jsonc = gen_fmt(ft_tools.json.fmts, { stop_after_first = true }),
       markdown = gen_fmt(ft_tools.markdown.fmts, { stop_after_first = true }),
+      vue = gen_fmt(ft_tools.vue.fmts, { stop_after_first = false }),
       javascript = gen_fmt(ft_tools.javascript.fmts, { stop_after_first = false }),
       typescript = gen_fmt(ft_tools.typescript.fmts, { stop_after_first = false }),
       javascriptreact = gen_fmt(ft_tools.javascriptreact.fmts, { stop_after_first = false }),
