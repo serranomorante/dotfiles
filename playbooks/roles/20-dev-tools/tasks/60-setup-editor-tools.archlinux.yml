@@ -87,3 +87,7 @@
 - name: "[archlinux] Editor tools: generate helptags"
   ansible.builtin.command: nvim --headless -c "helptags ALL" -c "quit"
   changed_when: false
+
+- name: "[archlinux] Editor tools: update treesitter parsers"
+  ansible.builtin.command: nvim --headless -c "TSUpdate" -c "quit"
+  changed_when: false

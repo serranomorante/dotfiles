@@ -31,11 +31,13 @@ neovim_plugins:
     name: overseer
   - folder: start
     repo: nvim-treesitter/nvim-treesitter
+    version: main
   - folder: start
     repo: nvim-treesitter/nvim-treesitter-context
     name: treesitter-context
   - folder: start
     repo: nvim-treesitter/nvim-treesitter-textobjects
+    version: main
   - folder: start
     repo: dense-analysis/ale
   - folder: start

@@ -3,9 +3,161 @@ local tools = require("serranomorante.tools")
 
 local M = {}
 
-local function opts()
-  return {
-    ensure_installed = utils.merge_tools(
+local function keys()
+  local ts_select = require("nvim-treesitter-textobjects.select")
+  local ts_move = require("nvim-treesitter-textobjects.move")
+  --- SELECT
+  vim.keymap.set(
+    { "x", "o" },
+    "ak",
+    function() ts_select.select_textobject("@block.outer") end,
+    { desc = "Treesitter: around block" }
+  )
+  vim.keymap.set(
+    { "x", "o" },
+    "ik",
+    function() ts_select.select_textobject("@block.inner") end,
+    { desc = "Treesitter: inside block" }
+  )
+  vim.keymap.set(
+    { "x", "o" },
+    "ac",
+    function() ts_select.select_textobject("@class.outer") end,
+    { desc = "Treesitter: around class" }
+  )
+  vim.keymap.set(
+    { "x", "o" },
+    "ic",
+    function() ts_select.select_textobject("@class.inner") end,
+    { desc = "Treesitter: inside class" }
+  )
+  vim.keymap.set(
+    { "x", "o" },
+    "a?",
+    function() ts_select.select_textobject("@conditional.outer") end,
+    { desc = "Treesitter: around conditional" }
+  )
+  vim.keymap.set(
+    { "x", "o" },
+    "i?",
+    function() ts_select.select_textobject("@conditional.inner") end,
+    { desc = "Treesitter: inside conditional" }
+  )
+  vim.keymap.set(
+    { "x", "o" },
+    "af",
+    function() ts_select.select_textobject("@function.outer") end,
+    { desc = "Treesitter: around function" }
+  )
+  vim.keymap.set(
+    { "x", "o" },
+    "if",
+    function() ts_select.select_textobject("@function.inner") end,
+    { desc = "Treesitter: inside function" }
+  )
+  vim.keymap.set(
+    { "x", "o" },
+    "al",
+    function() ts_select.select_textobject("@loop.outer") end,
+    { desc = "Treesitter: around loop" }
+  )
+  vim.keymap.set(
+    { "x", "o" },
+    "il",
+    function() ts_select.select_textobject("@loop.inner") end,
+    { desc = "Treesitter: inside loop" }
+  )
+  vim.keymap.set(
+    { "x", "o" },
+    "aa",
+    function() ts_select.select_textobject("@parameter.outer") end,
+    { desc = "Treesitter: around argument" }
+  )
+  vim.keymap.set(
+    { "x", "o" },
+    "ia",
+    function() ts_select.select_textobject("@parameter.inner") end,
+    { desc = "Treesitter: inside argument" }
+  )
+
+  --- MOVE
+  vim.keymap.set(
+    { "n", "x", "o" },
+    "]k",
+    function() ts_move.goto_next_start("@block.outer") end,
+    { desc = "Treesitter: Next block start" }
+  )
+  vim.keymap.set(
+    { "n", "x", "o" },
+    "]f",
+    function() ts_move.goto_next_start("@function.outer") end,
+    { desc = "Treesitter: Next function start" }
+  )
+  vim.keymap.set(
+    { "n", "x", "o" },
+    "]a",
+    function() ts_move.goto_next_start("@parameter.inner") end,
+    { desc = "Treesitter: Next argument start" }
+  )
+  vim.keymap.set(
+    { "n", "x", "o" },
+    "]K",
+    function() ts_move.goto_next_end("@block.outer") end,
+    { desc = "Treesitter: Next block end" }
+  )
+  vim.keymap.set(
+    { "n", "x", "o" },
+    "]F",
+    function() ts_move.goto_next_end("@function.outer") end,
+    { desc = "Treesitter: Next function end" }
+  )
+  vim.keymap.set(
+    { "n", "x", "o" },
+    "]A",
+    function() ts_move.goto_next_end("@parameter.inner") end,
+    { desc = "Treesitter: Next argument end" }
+  )
+  vim.keymap.set(
+    { "n", "x", "o" },
+    "[k",
+    function() ts_move.goto_previous_start("@block.outer") end,
+    { desc = "Treesitter: Previous block start" }
+  )
+  vim.keymap.set(
+    { "n", "x", "o" },
+    "[f",
+    function() ts_move.goto_previous_start("@function.outer") end,
+    { desc = "Treesitter: Previous function start" }
+  )
+  vim.keymap.set(
+    { "n", "x", "o" },
+    "[a",
+    function() ts_move.goto_previous_start("@parameter.inner") end,
+    { desc = "Treesitter: Previous argument start" }
+  )
+  vim.keymap.set(
+    { "n", "x", "o" },
+    "[K",
+    function() ts_move.goto_previous_end("@block.outer") end,
+    { desc = "Treesitter: Previous block end" }
+  )
+  vim.keymap.set(
+    { "n", "x", "o" },
+    "[F",
+    function() ts_move.goto_previous_end("@function.outer") end,
+    { desc = "Treesitter: Previous function end" }
+  )
+  vim.keymap.set(
+    { "n", "x", "o" },
+    "[A",
+    function() ts_move.goto_previous_end("@parameter.inner") end,
+    { desc = "Treesitter: Previous argument end" }
+  )
+end
+
+function M.config()
+  require("nvim-treesitter").install(
+    utils.merge_tools(
       "treesitter",
       tools.by_filetype.asm,
       tools.by_filetype.javascript,
@@ -30,88 +182,15 @@ local function opts()
       tools.by_filetype.php,
       tools.by_filetype.svelte,
       tools.by_filetype.all
-    ),
-    highlight = {
-      enable = true,
-      disable = function(_, bufnr) return vim.b[bufnr].large_buf end,
-      additional_vim_regex_highlighting = { "html" },
-    },
-    incremental_selection = {
-      enable = false,
-      disable = function(_, bufnr) return vim.b[bufnr].large_buf end,
-    },
-    indent = {
-      enable = true,
-      disable = function(_, bufnr)
-        if vim.api.nvim_get_option_value("filetype", { buf = bufnr }) == "html" then return true end
-        local ok, large_buf = pcall(vim.api.nvim_buf_get_var, bufnr, "large_buf")
-        return ok and large_buf
-      end,
-    },
-    textobjects = {
-      select = {
-        enable = true,
-        lookahead = true,
-        keymaps = {
-          ["ak"] = { query = "@block.outer", desc = "Treesitter: around block" },
-          ["ik"] = { query = "@block.inner", desc = "Treesitter: inside block" },
-          ["ac"] = { query = "@class.outer", desc = "Treesitter: around class" },
-          ["ic"] = { query = "@class.inner", desc = "Treesitter: inside class" },
-          ["a?"] = { query = "@conditional.outer", desc = "Treesitter: around conditional" },
-          ["i?"] = { query = "@conditional.inner", desc = "Treesitter: inside conditional" },
-          ["af"] = { query = "@function.outer", desc = "Treesitter: around function" },
-          ["if"] = { query = "@function.inner", desc = "Treesitter: inside function" },
-          ["al"] = { query = "@loop.outer", desc = "Treesitter: around loop" },
-          ["il"] = { query = "@loop.inner", desc = "Treesitter: inside loop" },
-          ["aa"] = { query = "@parameter.outer", desc = "Treesitter: around argument" },
-          ["ia"] = { query = "@parameter.inner", desc = "Treesitter: inside argument" },
-        },
-      },
-      move = {
-        enable = true,
-        set_jumps = true,
-        goto_next_start = {
-          ["]k"] = { query = "@block.outer", desc = "Treesitter: Next block start" },
-          ["]f"] = { query = "@function.outer", desc = "Treesitter: Next function start" },
-          ["]a"] = { query = "@parameter.inner", desc = "Treesitter: Next argument start" },
-        },
-        goto_next_end = {
-          ["]K"] = { query = "@block.outer", desc = "Treesitter: Next block end" },
-          ["]F"] = { query = "@function.outer", desc = "Treesitter: Next function end" },
-          ["]A"] = { query = "@parameter.inner", desc = "Treesitter: Next argument end" },
-        },
-        goto_previous_start = {
-          ["[k"] = { query = "@block.outer", desc = "Treesitter: Previous block start" },
-          ["[f"] = { query = "@function.outer", desc = "Treesitter: Previous function start" },
-          ["[a"] = { query = "@parameter.inner", desc = "Treesitter: Previous argument start" },
-        },
-        goto_previous_end = {
-          ["[K"] = { query = "@block.outer", desc = "Treesitter: Previous block end" },
-          ["[F"] = { query = "@function.outer", desc = "Treesitter: Previous function end" },
-          ["[A"] = { query = "@parameter.inner", desc = "Treesitter: Previous argument end" },
-        },
-      },
-    },
-  }
-end
+    )
+  )
 
-function M.config()
-  require("nvim-treesitter.configs").setup(opts())
+  require("nvim-treesitter-textobjects").setup({
+    select = { lookahead = true },
+    move = { set_jumps = true },
+  })
 
-  ---@class CustomParserInfo: ParserInfo
-  ---@field org ParserInfo
-  ---@type CustomParserInfo
-  local parser_config = require("nvim-treesitter.parsers").get_parser_configs()
-
-  parser_config.org = {
-    install_info = {
-      url = "https://github.com/milisims/tree-sitter-org",
-      revision = "main",
-      files = { "src/parser.c", "src/scanner.c" },
-    },
-    filetype = "org",
-    maintainers = { "@milisims" },
-  }
+  keys()
 
   vim.treesitter.language.register("git_config", "systemd")
   vim.treesitter.language.register("git_config", "conf")

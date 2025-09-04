@@ -3,20 +3,14 @@ local M = {}
 local function keys(bufnr)
   ---@param desc string
   local function opts_for(desc) return { buffer = bufnr, desc = "Git: " .. desc } end
-
   local gs = require("gitsigns")
-  local ts_repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
-  local next_hunk_repeat, prev_hunk_repeat = ts_repeat_move.make_repeatable_move_pair(
-    function() gs.nav_hunk("next") end,
-    function() gs.nav_hunk("prev") end
-  )
 
   vim.keymap.set("n", "<leader>gl", function() gs.blame_line() end, opts_for("Blame line"))
   vim.keymap.set("n", "<leader>gL", function() gs.blame_line({ full = true }) end, opts_for("Blame full buffer"))
   vim.keymap.set("n", "<leader>gd", function() gs.diffthis() end, opts_for("Diff this"))
   vim.keymap.set("n", "<leader>gp", function() gs.preview_hunk() end, opts_for("Preview hunk"))
-  vim.keymap.set({ "n", "x", "o" }, "]g", next_hunk_repeat, opts_for("Next hunk"))
-  vim.keymap.set({ "n", "x", "o" }, "[g", prev_hunk_repeat, opts_for("Prev hunk"))
+  vim.keymap.set({ "n", "x", "o" }, "]g", function() gs.nav_hunk("next") end, opts_for("Next hunk"))
+  vim.keymap.set({ "n", "x", "o" }, "[g", function() gs.nav_hunk("prev") end, opts_for("Prev hunk"))
   vim.keymap.set({ "n", "x", "o" }, "]G", function() gs.nav_hunk("last") end, opts_for("First hunk"))
   vim.keymap.set({ "n", "x", "o" }, "[G", function() gs.nav_hunk("first") end, opts_for("Last hunk"))
   vim.keymap.set("n", "<leader>gs", function() gs.stage_hunk() end, opts_for("Stage hunk"))

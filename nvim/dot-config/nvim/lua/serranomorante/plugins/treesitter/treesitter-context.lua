@@ -22,7 +22,7 @@ function M.config()
   require("treesitter-context").setup(opts())
 
   ---https://github.com/nvim-treesitter/nvim-treesitter-textobjects?tab=readme-ov-file#text-objects-move
-  local ts_repeat_move = require("nvim-treesitter.textobjects.repeatable_move")
+  local ts_repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
   vim.keymap.set({ "n", "x", "o" }, ";", function()
     vim.cmd([[normal! ]] .. "m`") -- set mark
     ts_repeat_move.repeat_last_move()

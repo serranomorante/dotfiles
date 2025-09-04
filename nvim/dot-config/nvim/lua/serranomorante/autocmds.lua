@@ -145,3 +145,9 @@ vim.api.nvim_create_autocmd("TermOpen", {
   group = general_settings_group,
   command = "startinsert",
 })
+
+vim.api.nvim_create_autocmd("FileType", {
+  desc = "Enable syntax highlighting",
+  group = general_settings_group,
+  callback = function() pcall(vim.treesitter.start) end,
+})
