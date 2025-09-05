@@ -89,6 +89,3 @@ neovim_plugins:
   - folder: opt
     repo: jbyuki/one-small-step-for-vimkind
     name: osv
-  - folder: opt
-    repo: Robitx/gp.nvim
-    name: gp

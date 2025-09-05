@@ -79,8 +79,6 @@
     basedir: "{{ item.cwd }}"
     strip: 1
   loop:
-    - cwd: ~/.local/share/nvim/site/pack/plugins/opt/gp
-      patch: gp_nvim.patch
     - cwd: ~/.local/share/nvim/site/pack/plugins/start/trailblazer
       patch: trailblazer.patch
 
