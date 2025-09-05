@@ -10,7 +10,7 @@ arch_wine_staging_version: 10.8-2
 davinci_resolve_download_key: foo
 arch_mypaint_version: 2.1.0-alpha-400-g90b36db-2021-05-04_18.41
 arch_reaper_sws_extension_setup:
-  version: 2.14.0.3
+  version: 2.14.0.6
   backup_path: ~/external/Downloads
 arch_reaper_wine_setup:
   version: 742
