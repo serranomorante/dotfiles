@@ -15,7 +15,7 @@ xrandr --output $internal --primary --mode "1920x1080f" --rate 120.21
 # xrandr --output $internal --set "PRIME Synchronization" 1
 
 if [[ $external != "" ]]; then
-   xrandr --output $external --mode 3440x1440 --rate 59.97 --right-of $internal --brightness 0.5
+   xrandr --output $external --mode 3440x1440 --rate 59.97 --right-of $internal
    # Notify the system
    /usr/bin/notify-send "[external] $external connected"
    # Under-clock the graphics memory to save energy
