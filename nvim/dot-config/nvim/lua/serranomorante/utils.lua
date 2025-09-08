@@ -1,4 +1,5 @@
 local constants = require("serranomorante.constants")
+local tools = require("serranomorante.tools")
 
 local M = {}
 
@@ -414,6 +415,17 @@ function M.rg_json_to_qfitems(json)
     end
   end
   return entries, vim.tbl_count(entries)
+end
+
+---Treesitter compatible filetypes
+---Basically, filetypes that have treesitter parsers
+---@return string[]
+function M.ts_compatible_filetypes()
+  local filetypes = {}
+  for filetype, tooling in pairs(tools.by_filetype) do
+    if vim.tbl_count(tooling.parsers) > 0 then table.insert(filetypes, filetype) end
+  end
+  return filetypes
 end
 
 return M

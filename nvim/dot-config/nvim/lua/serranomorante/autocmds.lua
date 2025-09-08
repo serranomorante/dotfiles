@@ -2,6 +2,7 @@ local utils = require("serranomorante.utils")
 
 local general_settings_group = vim.api.nvim_create_augroup("general_settings", { clear = true })
 local indent_line_group = vim.api.nvim_create_augroup("indent_line", { clear = true })
+local syntax_highlighting_group = vim.api.nvim_create_augroup("ts_highlighting", { clear = true })
 
 vim.api.nvim_create_autocmd("TextYankPost", {
   desc = "Highlight yanked text",
@@ -85,13 +86,6 @@ vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter" }, { -- TermOpen would o
   callback = vim.schedule_wrap(function() vim.cmd("nohlsearch") end),
 })
 
-vim.api.nvim_create_autocmd("FileType", {
-  desc = "Enable vim syntax option only for specific filetypes",
-  group = general_settings_group,
-  pattern = "qf",
-  callback = function(args) vim.api.nvim_set_option_value("syntax", "ON", { buf = args.buf }) end,
-})
-
 vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter" }, {
   desc = "Perform buffer reload after file changes outside vim",
   group = general_settings_group,
@@ -146,8 +140,18 @@ vim.api.nvim_create_autocmd("TermOpen", {
   command = "startinsert",
 })
 
+local treesitter_filetypes = utils.ts_compatible_filetypes()
+local regex_filetypes = { "qf", "html" }
 vim.api.nvim_create_autocmd("FileType", {
   desc = "Enable syntax highlighting",
-  group = general_settings_group,
-  callback = function() pcall(vim.treesitter.start) end,
+  group = syntax_highlighting_group,
+  callback = function(args)
+    local filetype = vim.api.nvim_get_option_value("filetype", { buf = args.buf })
+    ---Enable treesitter syntax highlighting
+    if vim.list_contains(treesitter_filetypes, filetype) then vim.treesitter.start() end
+    ---Enable regex syntax highlighting
+    if vim.list_contains(regex_filetypes, filetype) then
+      vim.api.nvim_set_option_value("syntax", "ON", { buf = args.buf })
+    end
+  end,
 })
