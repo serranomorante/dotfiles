@@ -146,6 +146,7 @@ vim.api.nvim_create_autocmd("FileType", {
   desc = "Enable syntax highlighting",
   group = syntax_highlighting_group,
   callback = function(args)
+    if vim.b[args.buf].large_buf then return end
     local filetype = vim.api.nvim_get_option_value("filetype", { buf = args.buf })
     ---Enable treesitter syntax highlighting
     if vim.list_contains(treesitter_filetypes, filetype) then vim.treesitter.start() end
