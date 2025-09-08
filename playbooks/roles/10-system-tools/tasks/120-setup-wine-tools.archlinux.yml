@@ -73,6 +73,7 @@
     url: https://www.reaper.fm/files/7.x/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe
     dest: ~/external/Downloads
     mode: "755"
+  register: var_new_reaper_version_downloaded
 
 - name: force handler
   ansible.builtin.command: echo
@@ -104,9 +105,9 @@
   ansible.builtin.command: wine start /unix '{{ arch_reaper_wine_setup.backup_path }}/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe'
   environment:
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
-  args:
-    creates: ~/external/.wine-win64-reaper/drive_c/Program Files/REAPER (x64)/reaper.exe
+  changed_when: true
   register: var_install_reaper
+  when: var_new_reaper_version_downloaded.changed
 
 - name: "[archlinux] Wine tools: wait for reaper install"
   ansible.builtin.wait_for:
@@ -192,13 +193,14 @@
     url: https://www.sws-extension.org/download/featured/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe
     dest: ~/external/Downloads
     mode: "755"
+  register: var_new_sws_extension_version_downloaded
 
 - name: "[archlinux] Wine tools: install sws extension"
   ansible.builtin.command: wine start /unix '{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe'
   environment:
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
-  args:
-    creates: ~/external/.wine-win64-reaper/drive_c/users/serranomorante/AppData/Roaming/REAPER/UserPlugins/reaper_sws-x64.dll
+  changed_when: true
+  when: var_new_sws_extension_version_downloaded.changed
 
 - name: "[archlinux] Wine tools: ensure custom script folder"
   ansible.builtin.file:
