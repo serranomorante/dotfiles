@@ -6,6 +6,7 @@
     name:
       - xf86-input-wacom
       - usbutils
+      - gimp
 
 - name: "[archlinux] Graphic tablet peripheral: ensure tools (using aur)"
   aur:
