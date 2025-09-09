@@ -57,6 +57,7 @@ M.by_filetype = {
   go = { fmts = { "gofmt" }, lsp = { "gopls" }, parsers = { "go" } },
   svelte = { parsers = { "svelte" } },
   sshconfig = { parsers = { "ssh_config" } },
+  kitty = { parsers = { "file:kitty" } },
   ---No specific filetype
   all = {
     parsers = {

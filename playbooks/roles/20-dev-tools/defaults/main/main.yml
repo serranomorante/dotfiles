@@ -89,3 +89,14 @@ neovim_plugins:
   - folder: opt
     repo: jbyuki/one-small-step-for-vimkind
     name: osv
+treesitter_parsers:
+  - repo: https://github.com/tree-sitter/tree-sitter-typescript
+    # in case of monorepo
+    build_folder: typescript
+    filetype: typescript
+  - repo: https://github.com/tree-sitter/tree-sitter-typescript
+    # in case of monorepo
+    build_folder: tsx
+    filetype: tsx
+  - repo: https://github.com/OXY2DEV/tree-sitter-kitty
+    filetype: kitty

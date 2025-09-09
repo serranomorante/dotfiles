@@ -1,5 +1,7 @@
 ^/dot-config/nvim/pack/.*
 ^/.config/nvim/pack/.*
+^/.config/nvim/parser/.*
+^/.config/nvim/queries/.*
 
 ^/patches/.*
  \.mypy_cache.*

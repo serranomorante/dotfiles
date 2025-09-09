@@ -10,6 +10,7 @@ vim.filetype.add({
     ["dap.log"] = "sh",
     ["conform.log"] = "gitconfig",
     ["tox.ini"] = "gitconfig",
+    ["kitty.conf"] = "kitty",
   },
   pattern = {
     [".*/requirements.*%.txt"] = "requirements",

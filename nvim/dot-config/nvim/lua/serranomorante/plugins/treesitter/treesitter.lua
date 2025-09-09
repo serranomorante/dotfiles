@@ -198,6 +198,23 @@ function M.config()
   vim.treesitter.language.register("vue", "html")
   vim.treesitter.language.register("ssh_config", "sshdconfig")
   vim.treesitter.language.register("git_config", "cfg")
+
+  vim.api.nvim_create_autocmd("User", {
+    pattern = "TSUpdate",
+    callback = function()
+      for filetype, tool in pairs({ kitty = tools.by_filetype.kitty }) do
+        for _, parser in ipairs(tool.parsers) do
+          if parser:sub(1, #"file:") == "file:" then -- "file:" is only from my dotfiles
+            require("nvim-treesitter.parsers")[filetype] = {
+              install_info = {
+                path = "~/.config/nvim/parser/",
+              },
+            }
+          end
+        end
+      end
+    end,
+  })
 end
 
 return M

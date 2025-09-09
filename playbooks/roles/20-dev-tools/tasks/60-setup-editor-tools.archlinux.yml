@@ -51,13 +51,42 @@
 - name: "[archlinux] Editor tools: clone treesitter parsers"
   ansible.builtin.git:
     repo: "{{ item.repo }}"
-    dest: ~/repos/{{ item.name | default(item.repo) | basename }}
+    dest: ~/repos/{{ item.repo | basename }}
     version: "{{ item.version | default('HEAD') }}"
     depth: 1
     force: true
     single_branch: true
+  loop: "{{ treesitter_parsers }}"
+
+- name: "[archlinux] Editor tools: build treesitter parsers"
+  ansible.builtin.command: tree-sitter build -o ~/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
+  args:
+    creates: ~/repos/{{ item.repo | basename }}/{{ item.filetype }}
+    chdir: ~/repos/{{ item.repo | basename }}/{{ item.build_folder | default(None) }}
+  loop: "{{ treesitter_parsers }}"
+
+- name: "[archlinux] Editor tools: ensure nvim treesitter folders"
+  ansible.builtin.file:
+    path: ~/.config/nvim/{{ item }}
+    state: directory
+    mode: "755"
   loop:
-    - { repo: https://github.com/tree-sitter/tree-sitter-typescript, version: "dcbbd9406a63fd1e0a42c90ab9451c6127ebd4b3" }
+    - parser
+    - queries
+
+- name: "[archlinux] Editor tools: copy treesitter parsers to nvim"
+  ansible.builtin.copy:
+    src: ~/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
+    dest: ~/.config/nvim/parser/{{ item.filetype }}.so
+    mode: "755"
+  loop: "{{ treesitter_parsers }}"
+
+- name: "[archlinux] Editor tools: copy treesitter queries to nvim"
+  ansible.builtin.copy:
+    src: ~/repos/{{ item.repo | basename }}/queries/
+    dest: ~/.config/nvim/queries/{{ item.filetype }}/
+    mode: "755"
+  loop: "{{ treesitter_parsers }}"
 
 # Create this entry kdewallet/neovim/intelephense using kwalletmanager
 - name: "[archlinux] Editor tools: setup intelephense key if available"

@@ -101,7 +101,7 @@ end
 ---@alias GeneralToolType "fmts"|"lsp"|"linters"|"dap"|"extra"
 ---@alias TreesitterToolType "parsers"
 ---@alias CocToolType "extensions"
----@alias ToolEnsureInstall table<GeneralToolType|TreesitterToolType|CocToolType, string[]|table[]>
+---@alias ToolEnsureInstall table<GeneralToolType|TreesitterToolType|CocToolType, string[]>
 
 ---Merges an array of `ToolEnsureInstall` specs into 1 flat array of strings
 ---@param installer_type? "general"|"treesitter"|"coc" Default is "general"
