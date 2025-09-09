@@ -56,6 +56,8 @@ M.by_filetype = {
   php = { parsers = { "php" }, extensions = { "coc-phpls" } },
   go = { fmts = { "gofmt" }, lsp = { "gopls" }, parsers = { "go" } },
   svelte = { parsers = { "svelte" } },
+  sshconfig = { parsers = { "ssh_config" } },
+  ---No specific filetype
   all = {
     parsers = {
       "disassembly",
@@ -66,7 +68,6 @@ M.by_filetype = {
       "gitattributes",
       "gitignore",
       "rst",
-      "ssh_config",
       "dockerfile",
       "mermaid",
       "udev",
