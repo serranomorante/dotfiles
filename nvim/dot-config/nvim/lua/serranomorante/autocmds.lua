@@ -149,7 +149,10 @@ vim.api.nvim_create_autocmd("FileType", {
     if vim.b[args.buf].large_buf then return end
     local filetype = vim.api.nvim_get_option_value("filetype", { buf = args.buf })
     ---Enable treesitter syntax highlighting
-    if vim.list_contains(treesitter_filetypes, filetype) then vim.treesitter.start() end
+    if vim.list_contains(treesitter_filetypes, filetype) then
+      vim.treesitter.start()
+      vim.api.nvim_set_option_value("indentexpr", "v:lua.require'nvim-treesitter'.indentexpr()", { buf = args.buf })
+    end
     ---Enable regex syntax highlighting
     if vim.list_contains(regex_filetypes, filetype) then
       vim.api.nvim_set_option_value("syntax", "ON", { buf = args.buf })
