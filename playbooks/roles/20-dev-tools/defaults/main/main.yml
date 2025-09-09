@@ -4,7 +4,7 @@ node_system_default_version: 20.13.1
 rust_version: 1.75.0
 tmux_version: 3.5a
 debian_fish_shell_version: 3.5.1
-archlinux_neovim_version: skipahead # syntax highlighting issue with commit: 5edbabdbec0ac3fba33be8afc008845130158583
+archlinux_neovim_version: master
 debian_neovim_version: 688b961d13bd # before cmake 3.16 requirement
 neovim_plugins:
   - folder: start

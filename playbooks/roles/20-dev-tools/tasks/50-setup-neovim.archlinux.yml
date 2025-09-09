@@ -1,7 +1,7 @@
 ---
 - name: "[archlinux] Neovim: ensure Neovim - clone"
   ansible.builtin.git:
-    repo: https://github.com/bfredl/neovim
+    repo: https://github.com/neovim/neovim
     dest: ~/repos/neovim
     force: true
     single_branch: true
