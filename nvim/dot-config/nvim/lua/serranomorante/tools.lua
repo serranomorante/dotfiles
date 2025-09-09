@@ -89,6 +89,8 @@ M.by_filetype.scss = vim.deepcopy(M.by_filetype.css)
 
 M.by_filetype.sh = vim.deepcopy(M.by_filetype.bash)
 
+M.by_filetype.codecompanion = vim.deepcopy(M.by_filetype.markdown)
+
 M.by_filetype.jsonc = vim.deepcopy(M.by_filetype.json)
 M.by_filetype["yaml.ansible"] = vim.deepcopy(M.by_filetype.yaml)
 

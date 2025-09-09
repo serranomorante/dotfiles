@@ -78,7 +78,7 @@ local function opts()
     },
     strategies = {
       chat = {
-        adapter = "openai",
+        adapter = "gemini",
         tools = {
           opts = {
             auto_submit_errors = false,
