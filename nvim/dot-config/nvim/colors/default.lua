@@ -20,6 +20,7 @@ local groups = {
   Folded = { bg = bg .. "Grey3" },
   MatchParen = { bg = bg .. "Grey3" },
   MatchWord = { bg = bg .. "Grey3" },
+  Number = { fg = "Yellow" },
   ---LSP
   LspCodeLens = { link = "Comment" },
   ---DAP
