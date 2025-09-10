@@ -82,7 +82,7 @@ vim.go.wildmode = "lastused,full"
 vim.go.wildcharm = ("\t"):byte()
 vim.go.cmdheight = 1
 
-vim.cmd.syntax("off")
+vim.cmd.syntax("manual")
 vim.cmd.colorscheme("default")
 
 vim.filetype.get_option = utils.hijack_commentstring_get_option()
