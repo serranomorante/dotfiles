@@ -1,0 +1,9 @@
+[Unit]
+Description=Start remind
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/remind -z '-knotify-send %%s &' %h/.config/remind/reminders.rem
+
+[Install]
+WantedBy=graphical-session.target

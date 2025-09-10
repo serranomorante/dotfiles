@@ -3,8 +3,16 @@
   ansible.builtin.package:
     state: present
     name:
+      - remind
       - dunst
       - libnotify
+  notify: handler_restart_remind_service
+
+- name: "[archlinux] Notification utilities: ensure aur packages"
+  aur:
+    use: yay
+    state: present
+    name: tcllib
 
 - name: "[archlinux] Notification utilities: ensure dunst service"
   ansible.builtin.systemd_service:

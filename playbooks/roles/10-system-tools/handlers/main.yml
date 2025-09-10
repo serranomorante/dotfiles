@@ -161,3 +161,11 @@
   failed_when:
     - var_kill_reaper_wineserver.rc != 0
     - var_kill_reaper_wineserver.rc != 1
+
+- name: handler_restart_remind_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: remind.service
+    state: started
+    enabled: true
+    masked: false

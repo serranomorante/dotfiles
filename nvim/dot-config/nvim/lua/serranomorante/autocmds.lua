@@ -2,7 +2,6 @@ local utils = require("serranomorante.utils")
 
 local general_settings_group = vim.api.nvim_create_augroup("general_settings", { clear = true })
 local indent_line_group = vim.api.nvim_create_augroup("indent_line", { clear = true })
-local syntax_highlighting_group = vim.api.nvim_create_augroup("ts_highlighting", { clear = true })
 
 vim.api.nvim_create_autocmd("TextYankPost", {
   desc = "Highlight yanked text",
@@ -141,10 +140,10 @@ vim.api.nvim_create_autocmd("TermOpen", {
 })
 
 local treesitter_filetypes = utils.ts_compatible_filetypes()
-local regex_filetypes = { "qf", "html" }
+local regex_filetypes = { "qf", "html", "remind" }
 vim.api.nvim_create_autocmd("FileType", {
   desc = "Enable syntax highlighting",
-  group = syntax_highlighting_group,
+  group = vim.api.nvim_create_augroup("ts_highlighting", { clear = true }),
   callback = function(args)
     if vim.b[args.buf].large_buf then return end
     local filetype = vim.api.nvim_get_option_value("filetype", { buf = args.buf })
@@ -158,4 +157,11 @@ vim.api.nvim_create_autocmd("FileType", {
       vim.api.nvim_set_option_value("syntax", "ON", { buf = args.buf })
     end
   end,
+})
+
+vim.api.nvim_create_autocmd("BufWritePost", {
+  desc = "Refresh remind database on every :w",
+  group = vim.api.nvim_create_augroup("remind_update", { clear = true }),
+  pattern = vim.env.HOME .. "/external/notes/*",
+  callback = vim.schedule_wrap(function() vim.cmd.RemindUpdate() end),
 })

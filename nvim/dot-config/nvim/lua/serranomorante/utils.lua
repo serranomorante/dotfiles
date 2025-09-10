@@ -70,7 +70,7 @@ function M.cmd(cmd, show_error)
   local success = vim.api.nvim_get_vvar("shell_error") == 0
   if not success and (show_error == nil or show_error) then
     local msg = "Error running command %s\nError message:\n%s"
-    vim.api.nvim_echo({ { msg:format(table.concat(cmd, " ")) } }, false, { err = true })
+    vim.api.nvim_echo({ { msg:format(table.concat(cmd, " "), result) } }, false, { err = true })
   end
   return success and result:gsub("[\27\155][][()#;?%d]*[A-PRZcf-ntqry=><~]", "") or nil
 end
@@ -428,6 +428,35 @@ function M.ts_compatible_filetypes()
     if vim.tbl_count(tooling.parsers) > 0 then table.insert(filetypes, filetype) end
   end
   return filetypes
+end
+
+---@param dirname string
+---@param perms? number
+function M.mkdir(dirname, perms)
+  if not perms then
+    perms = 493 -- 0755
+  end
+  if not M.exists(dirname) then
+    local parent = vim.fn.fnamemodify(dirname, ":h")
+    if not M.exists(parent) then M.mkdir(parent) end
+    vim.uv.fs_mkdir(dirname, perms)
+  end
+end
+
+---@param filename string
+---@param contents string
+function M.write_file(filename, contents)
+  M.mkdir(vim.fn.fnamemodify(filename, ":h"))
+  local fd = assert(vim.uv.fs_open(filename, "w", 420)) -- 0644
+  vim.uv.fs_write(fd, contents)
+  vim.uv.fs_close(fd)
+end
+
+---@param filepath string
+---@return boolean
+function M.exists(filepath)
+  local stat = vim.uv.fs_stat(filepath)
+  return stat ~= nil and stat.type ~= nil
 end
 
 return M

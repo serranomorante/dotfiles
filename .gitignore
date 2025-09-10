@@ -18,3 +18,4 @@ __pycache__
 fish/dot-config/fish/functions/fish_prompt_original.fish
 nvim/dot-config/nvim/parser
 nvim/dot-config/nvim/queries
+utilities/dot-config/remind
