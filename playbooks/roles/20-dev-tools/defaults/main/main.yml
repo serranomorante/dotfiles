@@ -7,6 +7,10 @@ debian_fish_shell_version: 3.5.1
 archlinux_neovim_version: master
 debian_neovim_version: 688b961d13bd # before cmake 3.16 requirement
 neovim_plugins:
+  # themes
+  - folder: start
+    repo: scottmckendry/cyberdream.nvim
+  # plugins
   - folder: start
     repo: folke/snacks.nvim
     name: snacks
