@@ -347,7 +347,8 @@ function M.open_qflist(opts)
   local copen_opts = { mods = { split = "botright" } }
   if opts.height then copen_opts.count = opts.height end
   if opts.loclist then return vim.cmd.lopen(copen_opts) end
-  vim.cmd.copen(copen_opts)
+  local ok, error = pcall(vim.cmd.copen, copen_opts)
+  if not ok then vim.api.nvim_echo({ { vim.fn.string(error), "DiagnosticWarn" } }, false, {}) end
   if not opts.focus then vim.cmd.wincmd({ args = { "p" } }) end
 end
 
