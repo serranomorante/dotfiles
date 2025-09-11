@@ -266,15 +266,16 @@ end
 
 ---Grep with ripgrep
 ---@param search string
----@return RGContent[]
-function M.grep_with_rg(search)
-  if search == "''" then
-    vim.api.nvim_echo({ { "Empty search pattern" } }, false, { err = true })
-    return {}
-  end
-  local args = search:gsub("\\'", "\\x27") -- escape single quotes
-  local content = vim.fn.join(vim.fn.systemlist(string.format("rg -e %s --json", args)), ",")
-  return vim.json.decode(string.format("[%s]", content), { luanil = { object = true } })
+---@param opts table?
+---@return string|RGContent[]|number
+function M.grep_with_rg(search, opts)
+  opts = opts or {}
+  if search == "''" then return vim.api.nvim_echo({ { "Empty search pattern" } }, false, { err = true }) end
+  local grep_cmd = "rg -e " .. search:gsub("\\'", "\\x27") -- escape single quotes
+  if opts.json then grep_cmd = string.format("%s %s", grep_cmd, "--json") end
+  local content = vim.fn.join(vim.fn.systemlist(grep_cmd), ",")
+  if opts.json then return vim.json.decode(string.format("[%s]", content), { luanil = { object = true } }) end
+  return content
 end
 
 local function echo_no_more_items() vim.api.nvim_echo({ { "No more items", "DiagnosticWarn" } }, false, {}) end

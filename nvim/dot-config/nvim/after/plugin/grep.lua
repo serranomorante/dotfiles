@@ -4,7 +4,7 @@ local utils = require("serranomorante.utils")
 
 ---@param command_args vim.api.keyset.create_user_command.command_args
 local function grep(command_args)
-  local items, count = utils.rg_json_to_qfitems(utils.grep_with_rg(command_args.args))
+  local items, count = utils.rg_json_to_qfitems(utils.grep_with_rg(command_args.args, { json = true }))
   if count == 0 then
     local msg = "[Grep] No results: %s"
     return vim.api.nvim_echo({ { msg:format(command_args.args) } }, false, { err = true })
