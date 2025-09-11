@@ -3,6 +3,7 @@
   ansible.builtin.git:
     repo: https://github.com/serranomorante/dotfiles.git
     dest: ~/dotfiles
+    recursive: false
     force: true
     depth: 1
     version: main
@@ -17,6 +18,7 @@
     block: |
       {% if 'bashrc' in item.script %}
       alias cls='clear && echo -en "\e[3J"'
+      export PATH="$HOME/bin:$PATH"
       export GPG_TTY=$(tty)
       export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
       {% endif %}
@@ -25,6 +27,7 @@
     - { script: ~/.bashrc }
 
 - name: "[otherlinux] Setup desktop: setup packages"
+  # termux-api == termux-notification
   ansible.builtin.command: >
     pkg install -y
     git
@@ -33,7 +36,57 @@
     cronie
     pinentry
     termux-services
+    termux-api
+    remind
   changed_when: false
+
+- name: "[otherlinux] Setup desktop: ensure folders"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  vars:
+    pkg: remind
+  loop:
+    - /data/data/com.termux/files/home/.termux/boot
+    - /data/data/com.termux/files/usr/var/service/{{ pkg }}/log # $PREFIX
+    - /data/data/com.termux/files/home/.config/remind/
+
+- name: "[otherlinux] Setup desktop: link remind"
+  ansible.builtin.file:
+    src: /data/data/com.termux/files/usr/share/termux-services/svlogger
+    dest: /data/data/com.termux/files/usr/var/service/{{ pkg }}/log/run
+    state: link
+    force: true
+    mode: "755"
+  vars:
+    pkg: remind
+
+- name: "[otherlinux] Setup desktop: create reminders.rem file"
+  ansible.builtin.copy:
+    dest: /data/data/com.termux/files/home/.config/remind/reminders.rem
+    content: "REM MSG Test"
+    force: false
+    mode: "700"
+
+- name: "[otherlinux] Setup desktop: create rem script"
+  ansible.builtin.copy:
+    dest: /data/data/com.termux/files/home/bin/rem
+    content: |
+      #!/bin/sh
+      /data/data/com.termux/files/usr/bin/remind '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-ktermux-notification --title %s &' -a -q /data/data/com.termux/files/home/.config/remind/reminders.rem
+    mode: "755"
+
+- name: "[otherlinux] Setup desktop: add remind service"
+  ansible.builtin.copy:
+    dest: /data/data/com.termux/files/usr/var/service/{{ pkg }}/run
+    content: |
+      #!/bin/sh
+      exec 2>&1
+      exec /data/data/com.termux/files/usr/bin/{{ pkg }} -z '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-ktermux-notification --title %s &' /data/data/com.termux/files/home/.config/remind/reminders.rem
+    mode: "700"
+  vars:
+    pkg: remind
 
 - name: "[otherlinux] Setup desktop: ensure services"
   ansible.builtin.command: sv-enable {{ item }}
@@ -75,5 +128,6 @@
       termux-wake-lock
       gpgconf --launch gpg-agent
       sv-enable sshd
+      sv-enable remind
       eval `ssh-agent -s`
     mode: "700"
