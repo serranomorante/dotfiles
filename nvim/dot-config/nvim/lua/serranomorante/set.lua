@@ -12,7 +12,6 @@ if not utils.is_directory(undodir) then vim.fn.mkdir(undodir, "p") end
 if not utils.is_directory(shadadir) then vim.fn.mkdir(shadadir, "p") end
 
 vim.go.viewoptions = vim.o.viewoptions:gsub(",curdir", "")
-vim.go.diffopt = vim.o.diffopt .. ",linematch:60"
 
 vim.wo.number = true
 vim.bo.expandtab = true
