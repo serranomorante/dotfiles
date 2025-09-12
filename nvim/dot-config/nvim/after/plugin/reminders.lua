@@ -22,11 +22,13 @@ local function remind_update()
     ---Removes msg on POP-OMIT-CONTEXT
     if remind_match:match("POP%-OMIT%-CONTEXT MSG") then remind_match = remind_match:sub(1, #"  POP-OMIT-CONTEXT") end
     ---Removes double MSG
-    local _, count = remind_match:gsub("MSG", "")
-    if count > 1 then
+    if select(2, remind_match:gsub("MSG", "")) > 1 then
       local start = remind_match:find("MSG", remind_match:find("MSG") + 2)
       remind_match = remind_match:sub(1, start - 2) -- 2 due to the 2 space indent on each line
     end
+    ---Add substitution filters when necessary
+    remind_match = remind_match .. " %b"
+    if remind_match:match(" AT ") then remind_match = remind_match .. " %1" end
     table.insert(items, remind_match)
   end
   utils.write_file(PATH, vim.fn.join(items, "\n"))
