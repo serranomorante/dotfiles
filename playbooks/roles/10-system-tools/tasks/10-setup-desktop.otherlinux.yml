@@ -74,7 +74,7 @@
     dest: /data/data/com.termux/files/home/bin/rem
     content: |
       #!/bin/sh
-      /data/data/com.termux/files/usr/bin/remind '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-ktermux-notification --title %s &' -a -q /data/data/com.termux/files/home/.config/remind/reminders.rem
+      /data/data/com.termux/files/usr/bin/remind '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-ktermux-notification --content %s &' -a -q /data/data/com.termux/files/home/.config/remind/reminders.rem
     mode: "755"
 
 - name: "[otherlinux] Setup desktop: add remind service"
@@ -83,7 +83,7 @@
     content: |
       #!/bin/sh
       exec 2>&1
-      exec /data/data/com.termux/files/usr/bin/{{ pkg }} -z '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-ktermux-notification --title %s &' /data/data/com.termux/files/home/.config/remind/reminders.rem
+      exec /data/data/com.termux/files/usr/bin/{{ pkg }} -z '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-ktermux-notification --content %s &' /data/data/com.termux/files/home/.config/remind/reminders.rem
     mode: "700"
   vars:
     pkg: remind
