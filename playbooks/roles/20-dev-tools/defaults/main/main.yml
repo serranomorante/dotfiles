@@ -30,7 +30,6 @@ neovim_plugins:
     repo: nvim-tree/nvim-web-devicons
   - folder: start
     repo: neoclide/coc.nvim
-    version: release
   - folder: start
     repo: stevearc/overseer.nvim
     name: overseer

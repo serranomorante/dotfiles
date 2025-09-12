@@ -10,12 +10,22 @@
   async: 1000
   poll: 0
   loop: "{{ neovim_plugins }}"
+  register: var_async_clone_nvim_plugins
 
-# - name: "[archlinux] Editor tools: install coc.nvim"
-#   ansible.builtin.command: npm ci
-#   args:
-#     chdir: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim
-#     creates: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim/build/index.js
+- name: "[archlinux] Editor tools: wait for async clone nvim plugins"
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: var_job_result
+  until: var_job_result is finished
+  retries: 100
+  delay: 10
+  loop: "{{ var_async_clone_nvim_plugins.results }}"
+
+- name: "[archlinux] Editor tools: install coc.nvim"
+  ansible.builtin.command: npm ci
+  args:
+    chdir: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim
+    creates: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim/build/index.js
 
 - name: "[archlinux] Editor tools: ensure aur packages"
   aur:
