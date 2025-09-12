@@ -23,17 +23,18 @@
     - { patch_filename: folds.patch }
   changed_when: false
 
+- name: "[archlinux] Neovim: remove .deps"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - ~/repos/neovim/.deps
+    # - ~/repos/neovim/build
+
 - name: "[archlinux] Neovim: ensure neovim - build"
-  ansible.builtin.command: make
-  environment:
-    CMAKE_BUILD_TYPE: RelWithDebInfo
+  ansible.builtin.shell: >
+    make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_INSTALL_PREFIX={{ ansible_env.HOME }}/.local &&
+    make install
   args:
     chdir: ~/repos/neovim
     creates: ~/repos/neovim/build/bin/nvim
-
-- name: "[archlinux] Neovim: ensure neovim - link to sudo"
-  become: true
-  ansible.builtin.file:
-    state: link
-    src: "{{ ansible_env.HOME }}/bin/nvim"
-    dest: /usr/bin/nvim
