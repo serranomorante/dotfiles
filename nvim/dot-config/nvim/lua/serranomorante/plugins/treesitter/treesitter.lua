@@ -182,6 +182,7 @@ function M.config()
       tools.by_filetype.php,
       tools.by_filetype.svelte,
       tools.by_filetype.sshconfig,
+      tools.by_filetype.gitignore,
       tools.by_filetype.all
     )
   )

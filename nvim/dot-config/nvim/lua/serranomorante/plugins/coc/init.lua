@@ -28,6 +28,7 @@ local function init()
     tools.by_filetype.vue,
     tools.by_filetype.c,
     tools.by_filetype.sshconfig,
+    tools.by_filetype.gitignore,
     tools.by_filetype.all
   )
   vim.b.coc_force_attach = 1

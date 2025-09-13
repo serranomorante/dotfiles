@@ -58,6 +58,7 @@ M.by_filetype = {
   svelte = { parsers = { "svelte" } },
   sshconfig = { parsers = { "ssh_config" } },
   kitty = { parsers = { "file:kitty" } },
+  gitignore = { parsers = { "gitignore" } },
   ---No specific filetype
   all = {
     parsers = {
@@ -67,7 +68,6 @@ M.by_filetype = {
       "git_config",
       "git_rebase",
       "gitattributes",
-      "gitignore",
       "rst",
       "dockerfile",
       "mermaid",
