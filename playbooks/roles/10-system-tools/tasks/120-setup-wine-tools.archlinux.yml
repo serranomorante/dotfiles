@@ -216,7 +216,7 @@
 
 - name: "[archlinux] Wine tools: get noise suppression for voice"
   ansible.builtin.unarchive:
-    src: https://github.com/werman/noise-suppression-for-voice/releases/download/v{{ noise_suppression_for_voice }}/win-rnnoise.zip
+    src: https://github.com/werman/noise-suppression-for-voice/releases/download/v{{ noise_suppression_for_voice_version }}/win-rnnoise.zip
     dest: ~/external/Downloads
     remote_src: true
 
