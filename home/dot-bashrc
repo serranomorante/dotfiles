@@ -85,7 +85,7 @@ if command -v nvim &>/dev/null && command -v tmux &>/dev/null && [ -n "$TMUX" ];
         if command -v nvr &>/dev/null; then
             nvr --nostart -s --servername "$CUSTOM_NVIM_LISTEN_ADDRESS"
             if [ $? -eq 0 ]; then
-                alias nvim='nvim --remote-ui --server "$CUSTOM_NVIM_LISTEN_ADDRESS"'
+                alias nvim='nvim --server "$CUSTOM_NVIM_LISTEN_ADDRESS"'
             else
                 alias nvim='nvim --listen "$CUSTOM_NVIM_LISTEN_ADDRESS"'
             fi
