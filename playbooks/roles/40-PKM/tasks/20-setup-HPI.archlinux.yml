@@ -217,3 +217,8 @@
     -o ~/repos/hypothesis-extension/build/hypothesis.crx
   args:
     creates: ~/repos/hypothesis-extension/build/hypothesis.crx
+
+- name: "[archlinux] Setup HPI: run handlers"
+  ansible.builtin.command: echo
+  changed_when: true
+  notify: handler_ensure_backup_hypothesis_sql_service

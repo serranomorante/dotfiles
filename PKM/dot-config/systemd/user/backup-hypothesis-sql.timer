@@ -1,0 +1,12 @@
+# [Timer] Backup hypothesis sql
+[Unit]
+Description=Backup hypothesis sql
+
+[Timer]
+Persistent=true
+OnBootSec=1h
+OnUnitActiveSec=8h
+Unit=backup-hypothesis-sql.service
+
+[Install]
+WantedBy=timers.target
