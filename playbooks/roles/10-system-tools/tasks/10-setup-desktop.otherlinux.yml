@@ -38,6 +38,7 @@
     termux-services
     termux-api
     remind
+    ossp-uuid
   changed_when: false
 
 - name: "[otherlinux] Setup desktop: ensure folders"
@@ -71,11 +72,18 @@
 
 - name: "[otherlinux] Setup desktop: create rem script"
   ansible.builtin.copy:
-    dest: /data/data/com.termux/files/home/bin/rem
+    dest: /data/data/com.termux/files/home/bin/{{ item.name }}
     content: |
       #!/bin/sh
-      /data/data/com.termux/files/usr/bin/remind '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-ktermux-notification --content %s &' -a -q /data/data/com.termux/files/home/.config/remind/reminders.rem
+      {{ item.content }}
     mode: "755"
+  loop:
+    - name: rem
+      content: /data/data/com.termux/files/usr/bin/remind '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-knotify %s' -a -q /data/data/com.termux/files/home/.config/remind/reminders.rem
+    - name: notify
+      content: |
+        sleep 1
+        termux-notification --content "$@"
 
 - name: "[otherlinux] Setup desktop: add remind service"
   ansible.builtin.copy:
@@ -83,7 +91,7 @@
     content: |
       #!/bin/sh
       exec 2>&1
-      exec /data/data/com.termux/files/usr/bin/{{ pkg }} -z '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-ktermux-notification --content %s &' /data/data/com.termux/files/home/.config/remind/reminders.rem
+      exec /data/data/com.termux/files/usr/bin/{{ pkg }} -z '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-knotify %s' /data/data/com.termux/files/home/.config/remind/reminders.rem
     mode: "700"
   vars:
     pkg: remind
