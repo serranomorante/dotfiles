@@ -14,6 +14,7 @@
     name:
       - cmake
       - ninja
+      - ccache # recommended here: https://github.com/neovim/neovim/issues/26979#issuecomment-1885240317
 
 - name: "[archlinux] Neovim: apply patches to neovim"
   ansible.builtin.command: git apply ~/dotfiles/assets/patches/nvim/{{ item.patch_filename }}
@@ -24,17 +25,21 @@
   changed_when: false
 
 - name: "[archlinux] Neovim: remove .deps"
+  become: true
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
   loop:
-    - ~/repos/neovim/.deps
+    - "{{ ansible_env.HOME }}/repos/neovim/.deps"
+    - /usr/local/share/nvim/runtime
     # - ~/repos/neovim/build
 
 - name: "[archlinux] Neovim: ensure neovim - build"
   ansible.builtin.shell: >
     make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_INSTALL_PREFIX={{ ansible_env.HOME }}/.local &&
     make install
+  environment:
+    CCACHE_DISABLE: true
   args:
     chdir: ~/repos/neovim
     creates: ~/repos/neovim/build/bin/nvim
