@@ -180,7 +180,7 @@
   loop:
     - repo: https://github.com/hypothesis/browser-extension
       name: hypothesis-extension
-      version: "v1.1667.0"
+      version: "v{{ hypothesis_browser_extension_version }}"
 
 - name: "[archlinux] Setup HPI: patch hypothesis extension"
   ansible.posix.patch:
