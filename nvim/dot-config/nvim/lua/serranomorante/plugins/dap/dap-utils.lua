@@ -45,7 +45,7 @@ function M.pick_url_filter_from_tabs()
       local choice_as_pattern = url:gsub("^https?://([^%/]*).*", "%1*")
       return choice_as_pattern
     end, vim.split(urls or "", "\n", { trimempty = true }))
-    vim.ui.select(items, { label = "Pick url filter" }, function(choice)
+    vim.ui.select(items, { prompt = "Pick url filter" }, function(choice)
       if choice then coroutine.resume(dap_run_co, choice) end
     end)
   end)

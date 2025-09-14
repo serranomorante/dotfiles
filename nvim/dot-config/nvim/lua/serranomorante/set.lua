@@ -88,3 +88,5 @@ vim.filetype.get_option = utils.hijack_commentstring_get_option()
 
 vim.go.grepprg = "rg --vimgrep"
 vim.go.chistory = 20
+
+vim.ui.select = utils.select

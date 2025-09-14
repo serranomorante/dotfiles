@@ -13,9 +13,6 @@ neovim_plugins:
     repo: scottmckendry/cyberdream.nvim
   # plugins
   - folder: start
-    repo: folke/snacks.nvim
-    name: snacks
-  - folder: start
     repo: nvim-lua/plenary.nvim
     name: plenary
   - folder: start

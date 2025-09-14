@@ -459,4 +459,97 @@ function M.exists(filepath)
   return stat ~= nil and stat.type ~= nil
 end
 
+---@class FzfOpts
+---@field source string
+---@field options? string[]
+---@field prompt? string
+---@field sink? fun(entry: string)
+---@field sinklist? fun(entry:string[])
+
+---https://elanmed.dev/blog/native-fzf-in-neovim
+---@param opts FzfOpts
+function M.fzf(opts)
+  opts.options = opts.options or {}
+  local tempname = vim.fn.tempname()
+
+  local editor_height = vim.o.lines - 1
+  local border_height = 2
+
+  local listed = false
+  local scratch = true
+  local term_bufnr = vim.api.nvim_create_buf(listed, scratch)
+  vim.api.nvim_set_option_value("filetype", "fzf", { buf = term_bufnr })
+  local term_winnr = vim.api.nvim_open_win(term_bufnr, true, {
+    relative = "editor",
+    row = editor_height,
+    col = 0,
+    width = vim.o.columns,
+    height = math.floor(editor_height / 2 - border_height),
+    border = "rounded",
+    title = opts.prompt or "Fzf term",
+  })
+  vim.wo[term_winnr].number = false
+  vim.wo[term_winnr].relativenumber = false
+  vim.wo[term_winnr].signcolumn = "no"
+  vim.wo[term_winnr].scrollbind = false
+  vim.wo[term_winnr].cursorbind = false
+
+  local cmd = ("%s | fzf %s > %s"):format(opts.source, table.concat(opts.options, " "), tempname)
+  vim.fn.jobstart(cmd, {
+    term = true,
+    on_exit = function()
+      vim.api.nvim_win_close(term_winnr, true)
+      local temp_content = vim.fn.readfile(tempname)
+      if #temp_content > 0 then
+        if opts.sink then
+          opts.sink(temp_content[1])
+        elseif opts.sinklist then
+          opts.sinklist(temp_content)
+        end
+      end
+
+      vim.fn.delete(tempname)
+    end,
+  })
+end
+
+---Custom select to override builtin one
+---@generic T
+---@param items T[] Arbitrary items
+---@param opts? {prompt?: string, format_item?: (fun(item: T): string), kind?: string}
+---@param on_choice fun(item?: T, idx?: number)
+function M.select(items, opts, on_choice)
+  opts = opts or {}
+
+  local function adapted_items()
+    local choices = {}
+    for idx, item in ipairs(items) do
+      local text = (opts.format_item or tostring)(item)
+      table.insert(choices, string.format("%d: %s", idx, text))
+    end
+    return choices
+  end
+
+  local source = table.concat({
+    "echo",
+    string.format("'for _, item in ipairs(%s) do io.write(item .. \"\\n\") end'", vim.inspect(adapted_items())),
+    "|",
+    "nvim",
+    "--clean",
+    "--headless",
+    "-l",
+    "-",
+  }, " ")
+
+  M.fzf({
+    source = source,
+    prompt = opts.prompt,
+    ---@param entry string
+    sink = function(entry)
+      local idx = entry:gsub(":.*", "")
+      on_choice(items[tonumber(idx)], tonumber(idx))
+    end,
+  })
+end
+
 return M

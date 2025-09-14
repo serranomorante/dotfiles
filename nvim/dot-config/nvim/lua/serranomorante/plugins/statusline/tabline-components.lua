@@ -14,6 +14,7 @@ local TablineFileNameBlock = {
     if vim.fn.empty(self.filename) == 1 then self.filename = "[No Name]" end
     if heirline_conds.buffer_matches({ filetype = { "oil" } }, self.bufnr) then self.filename = "File Explorer" end
     if heirline_conds.buffer_matches({ filetype = { "codecompanion" } }, self.bufnr) then self.filename = "AI" end
+    if heirline_conds.buffer_matches({ filetype = { "fzf" } }, self.bufnr) then self.filename = "FZF" end
   end,
   hl = function(self) return self.is_active and "TabLineSel" or "TabLine" end,
   heirline_utils.insert(
