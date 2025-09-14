@@ -17,6 +17,7 @@ config_files_backup_env: # home folder only
   - ~/.config/REAPER
 pkm_backup_env:
   - ~/PKM
+  - ~/.local/share/promnesia
 seedvault_main_backup_env:
   - /storage/emulated/0/.SeedVaultAndroidBackup
 phone_photos_backup_env:
