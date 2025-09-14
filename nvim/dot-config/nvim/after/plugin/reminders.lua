@@ -41,7 +41,9 @@ local function remind_update()
 end
 
 local function remind()
-  vim.fn.system("/usr/bin/remind '-i$OnceFile=\"~/.config/remind/oncefile\"' '-knotify-send %s &' -a -q " .. PATH)
+  local cmd = "remind '-i$OnceFile=\"~/.config/remind/oncefile\"' '-knotify-send %s &' -a -q "
+  local content = vim.fn.system(cmd .. PATH)
+  if content then return vim.api.nvim_echo({ { content, "DiagnosticWarn" } }, false, {}) end
 end
 
 vim.api.nvim_create_user_command(

@@ -270,10 +270,17 @@ end
 ---@return string|RGContent[]|number
 function M.grep_with_rg(search, opts)
   opts = opts or {}
-  if search == "''" then return vim.api.nvim_echo({ { "Empty search pattern" } }, false, { err = true }) end
+  if search == "''" then
+    vim.api.nvim_echo({ { "Empty search pattern" } }, false, { err = true })
+    return {}
+  end
   local grep_cmd = "rg -e " .. search:gsub("\\'", "\\x27") -- escape single quotes
   if opts.json then grep_cmd = string.format("%s %s", grep_cmd, "--json") end
   local content = vim.fn.join(vim.fn.systemlist(grep_cmd), ",")
+  if vim.api.nvim_get_vvar("shell_error") > 0 then
+    vim.api.nvim_echo({ { content } }, false, { err = true })
+    return {}
+  end
   if opts.json then return vim.json.decode(string.format("[%s]", content), { luanil = { object = true } }) end
   return content
 end

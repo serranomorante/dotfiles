@@ -100,7 +100,12 @@ vim.keymap.set(
   { desc = "Grep on vim help pages" }
 )
 vim.keymap.set("n", "<leader>fb", ":b <Tab><Tab>", { desc = "Open recent buffers in wildmenu" }) -- will go directly to the second most recent buffer
-vim.keymap.set("n", "<leader>fc", ":Grep '\\b<C-r><C-w>\\b'", { desc = "Grep word under cursor" })
+vim.keymap.set(
+  "n",
+  "<leader>fc",
+  ":Grep '<C-r><C-w>\\b'" .. constants.POSITION_CURSOR_BETWEEN_QUOTES .. "\\b",
+  { desc = "Grep word under cursor" }
+)
 vim.keymap.set({ "x", "v" }, "<leader>fv", function()
   local start_pos, end_pos, mode = vim.fn.getpos("v"), vim.fn.getpos("."), vim.fn.mode()
   local region = vim.fn.getregion(start_pos, end_pos, { type = mode })
