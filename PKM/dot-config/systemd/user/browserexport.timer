@@ -1,0 +1,12 @@
+# [Timer] Export browser history
+[Unit]
+Description=Perform a browserexport and merge afterwards
+
+[Timer]
+Persistent=true
+OnBootSec=1h
+OnUnitActiveSec=8h
+Unit=browserexport.service
+
+[Install]
+WantedBy=timers.target

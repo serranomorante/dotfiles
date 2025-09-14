@@ -1,4 +1,5 @@
 # [Timer] Export browser history, hypothesis data, etc every 2 hours
+# %i is the name of a script that should be located at ~/bin
 [Unit]
 Description=PKM %i export timer
 

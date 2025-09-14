@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# backs up browser databases to cache and merges all visits into a JSON file
+
+set -o pipefail
+set -ex
+
+epoch() {
+  date +"%s"
+}
+
+main() {
+  local tmpdir tmpfile browsing_dir
+  tmpdir="$(mktemp -d)"
+  browsing_dir="$HOME/PKM/data/browsing" || exit $?
+  if [[ ! -d "$browsing_dir" ]]; then
+    exit 1
+  fi
+  tmpfile="${tmpdir}/browsing-$(epoch).jsonl.gz"
+  browserexport --debug merge --json --stream "${browsing_dir}/"* | gzip --best | sponge "${tmpfile}"
+  rm -v "${browsing_dir}/"*
+  mv -v "${tmpfile}" "${browsing_dir}"
+  du "${browsing_dir}"
+  visit_count="$(hpi query my.browser.export.history | jq length | numfmt --grouping)"
+  notify-send "browsing has ${visit_count} visits"
+}
+
+main || exit $?

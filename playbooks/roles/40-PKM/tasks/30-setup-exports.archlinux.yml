@@ -8,8 +8,8 @@
     masked: false
   loop:
     - every-2-hours-export@hpi-hypexport
-    - every-8-hours-export@hpi-browserexport
     - promnesia-index
+    - browserexport
 
 - name: "[archlinux] Setup exports: ensure services"
   ansible.builtin.systemd_service:

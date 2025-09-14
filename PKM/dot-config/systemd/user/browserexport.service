@@ -1,0 +1,8 @@
+# [Service] Called by a timer (or by systemctl --user restart) to perform a browserexport
+[Unit]
+Description=Perform a browserexport and merge afterwards
+
+[Service]
+Type=oneshot
+ExecStart=%h/bin/hpi-browserexport.sh
+ExecStartPost=%h/bin/merge-browser-history

@@ -15,7 +15,9 @@
       - dolphin
       - dolphin-plugins
       - ark
+      - moreutils
       - unrar
+      - jq
       - arch-install-scripts # to get genfstab
       - kcalc
       - trash-cli
