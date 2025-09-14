@@ -13,7 +13,7 @@
     dest: ~/repos/vscode-go
     depth: 1
     single_branch: true
-    version: release-v0.44
+    version: release-v{{ vscode_go_version }}
 
 - name: "[archlinux] Go language: install vscode-go"
   ansible.builtin.shell: |

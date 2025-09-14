@@ -15,3 +15,5 @@ chromium_local_extensions:
   - NewTab-Redirect
   - vimium
   - chrome-show-tab-numbers
+
+facebook_react_extension_version: 1460d67c5b9a0d4498b4d22e1a5a6c0ccac85fdd

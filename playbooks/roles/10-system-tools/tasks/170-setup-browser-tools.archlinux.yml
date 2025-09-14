@@ -49,11 +49,12 @@
     - "'msg' in var_clone_chrome_extensions"
     - "'Local modifications exist in the destination' not in var_clone_chrome_extensions.msg"
   loop:
-    - { repo: https://github.com/jimschubert/NewTab-Redirect }
-    - { repo: https://github.com/philc/vimium }
-    - { repo: https://github.com/kg8m/chrome-show-tab-numbers }
-    - { repo: https://github.com/facebook/react, version: 1460d67c5b9a0d4498b4d22e1a5a6c0ccac85fdd } # version that worked first try
-    - { repo: https://github.com/karlicoss/promnesia }
+    - repo: https://github.com/jimschubert/NewTab-Redirect
+    - repo: https://github.com/philc/vimium
+    - repo: https://github.com/kg8m/chrome-show-tab-numbers
+    - repo: https://github.com/facebook/react
+      version: "{{ facebook_react_extension_version }}"
+    - repo: https://github.com/karlicoss/promnesia
 
 - name: "[archlinux] Setup browser tools: check if NewTab-Redirect already patched"
   ansible.builtin.shell: |

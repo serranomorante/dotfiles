@@ -25,7 +25,7 @@
     dest: "{{ ansible_env.HOME }}/repos/Weylus"
     force: true
     depth: 1
-    version: no_cursor_found_fix_macos
+    version: "{{ macos_weylus_version }}"
 
 - name: "[macosx] Graphic tablet peripheral: build weylus"
   # doesn't work
