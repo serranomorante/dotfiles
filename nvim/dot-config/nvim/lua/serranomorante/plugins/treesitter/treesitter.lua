@@ -203,7 +203,7 @@ function M.config()
   vim.api.nvim_create_autocmd("User", {
     pattern = "TSUpdate",
     callback = function()
-      for filetype, tool in pairs({ kitty = tools.by_filetype.kitty }) do
+      for filetype, tool in pairs({ kitty = tools.by_filetype.kitty, org = tools.by_filetype.org }) do
         for _, parser in ipairs(tool.parsers) do
           if parser:sub(1, #"file:") == "file:" then -- "file:" is only from my dotfiles
             require("nvim-treesitter.parsers")[filetype] = {

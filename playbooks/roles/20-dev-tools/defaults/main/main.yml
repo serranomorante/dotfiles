@@ -101,3 +101,5 @@ treesitter_parsers:
     filetype: tsx
   - repo: https://github.com/OXY2DEV/tree-sitter-kitty
     filetype: kitty
+  - repo: https://github.com/milisims/tree-sitter-org
+    filetype: org
