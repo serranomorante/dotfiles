@@ -13,7 +13,7 @@ SOURCES = [
     Source(hypothesis.index),
     Source(
         auto.index,
-        "~/.local/share/Cryptomator/mnt/foam",
+        "~/external/notes/foam",
         ignored=[
             "*.html",
             "*.yaml",

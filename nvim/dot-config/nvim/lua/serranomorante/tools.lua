@@ -25,7 +25,7 @@ M.by_filetype = {
   python = {
     lsp = { "python-lsp-server" },
     dap = { "debugpy" },
-    parsers = { "requirements" },
+    parsers = { "python", "requirements" },
   },
   bash = {
     fmts = { "shfmt" },
