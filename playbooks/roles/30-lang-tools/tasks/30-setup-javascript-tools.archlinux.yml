@@ -28,7 +28,7 @@
 
 - name: "[archlinux] Javascript language: install vscode-js-debug"
   ansible.builtin.shell: |
-    npm install
+    npm ci
     npx gulp dapDebugServer
   args:
     chdir: ~/repos/vscode-js-debug
