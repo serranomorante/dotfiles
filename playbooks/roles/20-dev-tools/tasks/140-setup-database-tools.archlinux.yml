@@ -3,16 +3,7 @@
   aur:
     use: yay
     state: present
-    name:
-      - datagrip-jre
-      - postgresql
-
-- name: "[archlinux] Setup database tools: ensure aur packages (v2)"
-  aur:
-    use: yay
-    state: present
-    name: datagrip
-    aur_only: true
+    name: postgresql
 
 - name: "[archlinux] Setup database tools: ensure database cluster folder"
   become: true
