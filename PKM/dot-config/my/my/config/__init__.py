@@ -4,7 +4,6 @@ from typing import List
 
 from my.core.common import PathIsh, Paths
 
-
 # if the HPIDATA environment variable is set (which points to my data)
 # use that. Else, just default to ~/data
 PREFIX: Path = Path(environ.get("HPIDATA", path.expanduser("~/PKM/data")))
@@ -38,3 +37,8 @@ class browser:
 
 class hypothesis:
     export_path: Paths = data("highlights/hypothesis.*.json")
+
+
+class google:
+    # you can pass the directory, a glob, or a single zip file
+    takeout_path = data("takeouts/*.zip")

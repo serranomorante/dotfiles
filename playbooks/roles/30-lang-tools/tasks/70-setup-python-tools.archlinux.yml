@@ -9,7 +9,7 @@
       - python-lsp-ruff # disables pycodestyle, pyflakes, mccabe, autopep8, yapf
     virtualenv: ~/apps/lang-tools/pylsp/.venv
     virtualenv_command: /usr/bin/python3 -m venv
-    state: present
+    state: latest
 
 - name: "[archlinux] Python language: ensure debugpy venv"
   ansible.builtin.pip:
