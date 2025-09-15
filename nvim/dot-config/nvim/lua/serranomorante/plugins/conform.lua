@@ -19,13 +19,13 @@ local function init()
     pattern = vim.tbl_keys(require("conform").formatters_by_ft),
     group = vim.api.nvim_create_augroup("conform_formatexpr", { clear = true }),
     callback = function(args)
-      vim.bo[args.buf].formatexpr = string.format("v:lua.require'conform'.formatexpr(%s)", vim.fn.string(FORMAT_OPTS))
+      vim.bo[args.buf].formatexpr = string.format("v:lua.require'conform'.formatexpr(%s)", vim.fn.string({}))
     end,
   })
 end
 
 local function keys()
-  vim.keymap.set({ "n", "v" }, "<leader>lf", function() require("conform").format(FORMAT_OPTS) end, {
+  vim.keymap.set({ "n", "v" }, "<leader>lf", function() require("conform").format({}) end, {
     desc = "Conform: Format file or range",
   })
 end
@@ -56,7 +56,7 @@ function M.opts()
       javascriptreact = gen_fmt(ft_tools.javascriptreact.fmts, { stop_after_first = false }),
       typescriptreact = gen_fmt(ft_tools.typescriptreact.fmts, { stop_after_first = false }),
       ["yaml.ansible"] = gen_fmt(vim.tbl_get(ft_tools, "yaml.ansible").fmts),
-      _ = { "auto_indent" },
+      _ = { "auto_indent", "trim_whitespace", lsp_format = "never" },
     },
     notify_on_error = false,
     default_format_opts = FORMAT_OPTS,
