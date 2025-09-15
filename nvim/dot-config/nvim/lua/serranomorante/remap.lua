@@ -112,6 +112,19 @@ vim.keymap.set({ "x", "v" }, "<leader>fv", function()
   return (":<C-u>Grep '%s'"):format(region[1])
 end, { desc = "Find visual selection", expr = true })
 
+vim.keymap.set({ "n", "x" }, "<leader>re", function()
+  local position_cursor_start = "<HOME>"
+  local position_cursor_quote = "<C-Right><C-Right><C-Right><C-Right><Space><C-v><C-j><Left><Left>"
+  local remove_marks = "<C-Delete><C-Delete><C-Delete><C-Delete><C-Delete>"
+  local expr = ":redir @a | %s redir END | echom getreg('a')%s" -- I put null type (instead of |) just before redir END
+  if vim.fn.mode() ~= "n" then
+    expr = expr:format("'<,'>", position_cursor_start .. remove_marks .. position_cursor_quote)
+  else
+    expr = expr:format("", position_cursor_start .. position_cursor_quote)
+  end
+  return expr
+end, { desc = "Prepare redir command", expr = true })
+
 vim.keymap.set("t", "<leader>lm", function()
   utils.feedkeys("<C-\\><C-n>", "t")
   return "<cmd>close<CR>"
