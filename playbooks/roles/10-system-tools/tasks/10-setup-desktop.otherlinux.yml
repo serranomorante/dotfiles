@@ -79,7 +79,7 @@
     mode: "755"
   loop:
     - name: rem
-      content: /data/data/com.termux/files/usr/bin/remind '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-knotify %s' -a -q /data/data/com.termux/files/home/.config/remind/reminders.rem
+      content: /data/data/com.termux/files/usr/bin/remind '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-knotify %s' -a -q "$@" /data/data/com.termux/files/home/.config/remind/reminders.rem
     - name: notify
       content: |
         sleep 1

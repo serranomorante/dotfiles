@@ -40,9 +40,12 @@ local function remind_update()
   end)
 end
 
-local function remind()
-  local cmd = "remind '-i$OnceFile=\"~/.config/remind/oncefile\"' '-knotify-send %s &' -a -q "
-  local content = vim.fn.system(cmd .. PATH)
+local function remind(args)
+  local cmd = vim.fn.join({
+    "remind '-i$OnceFile=\"~/.config/remind/oncefile\"' '-knotify-send %s &' -a -q",
+    unpack(args.fargs),
+  }, " ")
+  local content = vim.fn.system(vim.fn.join({ cmd, PATH }, " "))
   if content then return vim.api.nvim_echo({ { content, "DiagnosticWarn" } }, false, {}) end
 end
 
@@ -51,4 +54,9 @@ vim.api.nvim_create_user_command(
   remind_update,
   { force = true, nargs = "*", desc = "Update list of reminders" }
 )
-vim.api.nvim_create_user_command("Remind", remind, { force = true, nargs = "*", desc = "Run remind command" })
+
+vim.api.nvim_create_user_command(
+  "Remind",
+  remind,
+  { force = true, nargs = "*", bar = true, desc = "Run remind command" }
+)
