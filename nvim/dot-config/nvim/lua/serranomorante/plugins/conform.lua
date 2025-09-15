@@ -81,7 +81,10 @@ function M.config()
     vim.api.nvim_echo({ { "[Conform]: formatting...", "DiagnosticInfo" } }, false, {})
     return format(opts, function(err)
       ---https://github.com/stevearc/conform.nvim/issues/250#issuecomment-1868544121
-      if err then return vim.api.nvim_echo({ { "[Conform]: format done with errors", "DiagnosticWarn" } }, true, {}) end
+      if err then
+        vim.api.nvim_echo({ { ("[Conform]: %s"):format(err), "DiagnosticWarn" } }, true, {})
+        return
+      end
       utils.refresh_codelens()
       vim.api.nvim_echo({ { "[Conform]: format done.", "DiagnosticOk" } }, false, {})
     end)
