@@ -10,13 +10,13 @@
   loop:
     - { repo: https://github.com/jarun/nnn, version: master }
 
-- name: "[archlinux] Setup file manager: patch plugins"
-  ansible.builtin.command: git apply {{ item.patch }}
-  args:
-    chdir: ~/repos/nnn
+- name: "[archlinux] Setup file manager: patch plugins & nnn"
+  ansible.posix.patch:
+    src: "{{ item.patch }}"
+    basedir: ~/repos/nnn
+    strip: 1
   loop:
-    - { patch: ~/dotfiles/assets/patches/term/give_kitty_priority.patch }
-  changed_when: false
+    - patch: ~/dotfiles/assets/patches/term/give_kitty_priority.patch
 
 - name: "[archlinux] Setup file manager: ensure deps"
   become: true
@@ -53,7 +53,7 @@
   notify: handler_restart_xdg_desktop_portal_termfilechooser
 
 - name: "[archlinux] Setup file manager: build nnn"
-  ansible.builtin.command: make O_NERD=1 strip install
+  ansible.builtin.command: make O_NERD=1 O_GITSTATUS=1 O_PCRE2=1 strip install
   environment:
     PREFIX: "{{ ansible_env.HOME }}/.local"
   args:

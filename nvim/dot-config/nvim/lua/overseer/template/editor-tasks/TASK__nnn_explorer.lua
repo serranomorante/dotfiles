@@ -19,7 +19,7 @@ M.params = {
 
 function M.builder(params)
   local args = {
-    "-JRHdaAog",
+    "-GJRHdaAog",
     "-Tt",
     "-c",
   }
