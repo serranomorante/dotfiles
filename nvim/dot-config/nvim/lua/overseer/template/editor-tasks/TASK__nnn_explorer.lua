@@ -16,7 +16,7 @@ M.params = {
 }
 
 function M.builder(params)
-  local cmd = "nnn -JRHdaAo -Tt -c"
+  local cmd = "nnn -JRHdaAog -Tt -c"
   if params.startdir then cmd = cmd .. " '" .. params.startdir .. "'" end
   return {
     cmd = cmd,
