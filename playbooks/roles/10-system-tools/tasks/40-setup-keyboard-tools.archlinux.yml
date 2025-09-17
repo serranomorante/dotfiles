@@ -1,8 +1,35 @@
 ---
 - name: "[archlinux] Keyboard peripheral: ensure keyd is present"
+  become: true
   ansible.builtin.package:
     state: present
-    name: keyd
+    name: python-xlib
+  notify: handler_enable_start_keyd_application_mapper_service
+
+- name: "[archlinux] Keyboard peripheral: clone keyd"
+  ansible.builtin.git:
+    repo: https://github.com/rvaiya/keyd
+    dest: ~/repos/keyd
+    version: master
+    force: true
+    single_branch: true
+    depth: 100
+
+- name: "[archlinux] Keyboard peripheral: patch keyd"
+  ansible.posix.patch:
+    src: ~/dotfiles/assets/patches/keyd/{{ item }}
+    basedir: ~/repos/keyd
+    strip: 1
+  loop:
+    - dwm-support-keyd-application-mapper.patch
+
+- name: "[archlinux] Keyboard peripheral: install keyd"
+  become: true
+  ansible.builtin.shell: make && make install
+  args:
+    chdir: "{{ ansible_env.HOME }}/repos/keyd"
+    creates: /usr/local/bin/keyd
+  notify: "10-system-tools : handler_ensure_keyd_service"
 
 # fix conflict between kde and xorg keyboard rate
 # verify manually with: `kcmshell6 kcm_kded` and then search "Keyboard daemon"
@@ -156,3 +183,10 @@
     dest: ~/bin/cursor_indicator
     state: link
     mode: "755"
+
+- name: "[archlinux] Keyboard peripheral: add user to keyd group"
+  become: true
+  ansible.builtin.user:
+    append: true
+    groups: keyd
+    name: "{{ ansible_env.USER }}"

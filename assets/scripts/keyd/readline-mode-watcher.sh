@@ -3,7 +3,7 @@
 username="{{ ansible_env.USER }}"
 uid=$(id -u $username)
 
-/usr/bin/keyd listen | while read LINE; do
+/usr/local/bin/keyd listen | while read LINE; do
     readline_mode_enter=$(echo "$LINE" | /usr/bin/rg "\+readline")
     readline_mode_exit=$(echo "$LINE" | /usr/bin/rg "\-readline")
 

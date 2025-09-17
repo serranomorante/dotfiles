@@ -1,0 +1,9 @@
+[Unit]
+Description=Start keyd-application-mapper
+After=plasma-workspace.target
+
+[Service]
+ExecStart=/usr/local/bin/keyd-application-mapper
+
+[Install]
+WantedBy=plasma-workspace.target
