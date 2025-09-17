@@ -59,7 +59,9 @@ M.by_filetype = {
   sshconfig = { parsers = { "ssh_config" } },
   kitty = { parsers = { "file:kitty" } },
   gitignore = { parsers = { "gitignore" } },
+  systemd = { parsers = { "git_config" } },
   org = { parsers = { "file:org" } },
+  editorconfig = { parsers = { "editorconfig" } },
   ---No specific filetype
   all = {
     parsers = {
