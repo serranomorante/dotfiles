@@ -85,6 +85,7 @@
   aur:
     use: makepkg
     name: davinci-resolve
+    state: latest
     local_pkgbuild: ~/apps/video-tools/davinci-resolve
 
 - name: "[archlinux] Setup video tools: remove faulty wine .dekstop"
