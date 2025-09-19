@@ -110,7 +110,7 @@
   ansible.builtin.command: go build -ldflags="-s -w" .
   args:
     chdir: ~/external/repos/mouseless
-  changed_when: true
+    creates: ~/external/repos/mouseless/mouseless
   notify: handler_ensure_mouseless_service
 
 - name: handler_ensure_mouseless_udev_rules

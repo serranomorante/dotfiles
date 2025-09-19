@@ -115,7 +115,6 @@
     repo: https://github.com/jbensmann/mouseless
     dest: ~/external/repos/mouseless
     version: main
-    force: true
     single_branch: true
     depth: 1
   notify:
