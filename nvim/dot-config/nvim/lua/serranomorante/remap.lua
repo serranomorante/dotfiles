@@ -156,3 +156,12 @@ vim.keymap.set("n", "<leader>tt", function()
 end, { desc = "Go to buffer's random TODO item" })
 
 vim.keymap.set("n", "<leader>tr", "<cmd>RandomTodo<CR>", { desc = "Go to workspace's random TODO item" })
+
+vim.keymap.set("n", "<leader>to", function()
+  local cwd = vim.fn.getcwd()
+  local oldfiles = vim.tbl_filter(function(filename) return utils.file_inside_cwd(filename, cwd) end, vim.v.oldfiles)
+  vim.ui.select(oldfiles, {
+    prompt = "Recent files",
+    format_item = function(item) return vim.fn.fnamemodify(item, ":~:.") end,
+  }, function(choice) vim.cmd.edit(choice) end)
+end, { desc = "List oldfiles for current dir" })
