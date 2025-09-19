@@ -6,3 +6,4 @@
     name:
       - difftastic
       - git-delta
+      - lazygit
