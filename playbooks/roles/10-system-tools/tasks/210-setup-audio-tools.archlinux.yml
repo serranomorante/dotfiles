@@ -38,13 +38,6 @@
     - { name: pipewire-pulse.socket, state: started, enabled: true, masked: false }
     - { scope: system, name: cpupower.service, state: started, enabled: true, masked: false }
 
-
-- name: "[archlinux] Setup audio tools: mask for sddm"
-  # https://wiki.archlinux.org/title/PipeWire#Device_volume_for_SDDM_users_is_not_restored_on_login
-  become: true
-  ansible.builtin.command: systemctl --user -M sddm@ mask pipewire.socket
-  changed_when: false
-
 - name: "[archlinux] Setup audio tools: create pipewire group"
   become: true
   ansible.builtin.group:
