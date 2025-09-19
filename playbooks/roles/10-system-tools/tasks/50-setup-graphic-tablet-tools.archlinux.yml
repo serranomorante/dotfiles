@@ -92,7 +92,9 @@
   become: true
   ansible.builtin.user:
     append: true
-    groups: uinput
+    groups:
+      - uinput
+      - input
     name: "{{ ansible_env.USER }}"
 
 - name: "[archlinux] Graphic tablet peripheral: ensure weylus service"
