@@ -95,6 +95,7 @@ vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter" }, {
     if vim.fn.getcmdwintype() ~= "" then return end
     if vim.list_contains(forbidden_modes, vim.fn.mode()) then return end
     vim.cmd.checktime()
+    if utils.is_available("gitsigns") then require("gitsigns").refresh() end
   end,
 })
 
