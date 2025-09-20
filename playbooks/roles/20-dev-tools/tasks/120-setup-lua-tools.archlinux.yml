@@ -4,3 +4,9 @@
   ansible.builtin.package:
     state: present
     name: luarocks
+
+- name: "[archlinux] Setup lua tools: ensure lua modules"
+  become: true
+  ansible.builtin.command: luarocks install luaunit
+  args:
+    creates: /usr/share/lua/*/luaunit.lua
