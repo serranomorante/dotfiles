@@ -42,7 +42,7 @@ end
 
 local function remind(args)
   local cmd = vim.fn.join({
-    "remind '-i$OnceFile=\"~/.config/remind/oncefile\"' '-knotify-send %s &' -a -q",
+    "remind '-i$OnceFile=\"" .. vim.env.HOME .. "/.config/remind/oncefile\"' '-knotify-send %s &' -a -q",
     unpack(args.fargs),
   }, " ")
   local content = vim.fn.system(vim.fn.join({ cmd, PATH }, " "))
