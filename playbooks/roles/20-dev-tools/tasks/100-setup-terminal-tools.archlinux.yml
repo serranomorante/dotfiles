@@ -55,7 +55,7 @@
   ansible.builtin.command: ./configure --enable-sixel
   args:
     chdir: ~/repos/tmux
-    creates: ~/repos/tmux/tmux"
+    creates: ~/repos/tmux/tmux
 
 - name: "[archlinux] Setup terminal tools: run tmux make"
   become: true
