@@ -17,7 +17,7 @@ main() {
   fi
   tmpfile="${tmpdir}/browsing-$(epoch).jsonl.gz"
   browserexport --debug merge --json --stream "${browsing_dir}/"* | gzip --best | sponge "${tmpfile}"
-  rm -v "${browsing_dir}/"*
+  trash-put "${browsing_dir}/"*
   mv -v "${tmpfile}" "${browsing_dir}"
   du "${browsing_dir}"
   visit_count="$(hpi query my.browser.export.history | jq length | numfmt --grouping)"
