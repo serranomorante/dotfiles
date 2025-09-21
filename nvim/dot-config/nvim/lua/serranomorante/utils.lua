@@ -467,7 +467,7 @@ function M.exists(filepath)
 end
 
 ---@class FzfOpts
----@field source string
+---@field source string|table
 ---@field options? string[]
 ---@field prompt? string
 ---@field sink? fun(entry: string)
@@ -478,6 +478,7 @@ end
 function M.fzf(opts)
   opts.options = opts.options or {}
   local tempname = vim.fn.tempname()
+  local source_temp = vim.fn.tempname()
 
   local editor_height = vim.o.lines - 1
   local border_height = 2
@@ -501,7 +502,16 @@ function M.fzf(opts)
   vim.wo[term_winnr].scrollbind = false
   vim.wo[term_winnr].cursorbind = false
 
-  local cmd = ("%s | fzf %s > %s"):format(opts.source, table.concat(opts.options, " "), tempname)
+  local source = (function()
+    if type(opts.source) == "string" then
+      return opts.source
+    else
+      vim.fn.writefile(opts.source, source_temp)
+      return ([[cat %s]]):format(source_temp)
+    end
+  end)()
+
+  local cmd = ("%s | fzf %s > %s"):format(source, table.concat(opts.options, " "), tempname)
   vim.fn.jobstart(cmd, {
     term = true,
     on_exit = function()
@@ -516,6 +526,7 @@ function M.fzf(opts)
       end
 
       vim.fn.delete(tempname)
+      vim.fn.delete(source_temp)
     end,
   })
 end
@@ -537,19 +548,8 @@ function M.select(items, opts, on_choice)
     return choices
   end
 
-  local source = table.concat({
-    "echo",
-    string.format("'for _, item in ipairs(%s) do io.write(item .. \"\\n\") end'", vim.inspect(adapted_items())),
-    "|",
-    "nvim",
-    "--clean",
-    "--headless",
-    "-l",
-    "-",
-  }, " ")
-
   M.fzf({
-    source = source,
+    source = adapted_items(),
     prompt = opts.prompt,
     ---@param entry string
     sink = function(entry)
