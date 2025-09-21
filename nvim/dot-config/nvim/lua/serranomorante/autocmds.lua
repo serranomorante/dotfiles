@@ -164,6 +164,6 @@ vim.api.nvim_create_autocmd("FileType", {
 vim.api.nvim_create_autocmd("BufWritePost", {
   desc = "Refresh remind database on every :w",
   group = vim.api.nvim_create_augroup("remind_update", { clear = true }),
-  pattern = vim.env.HOME .. "/external/notes/*",
+  pattern = vim.env.HOME .. "/external/notes/**/*.md",
   callback = vim.schedule_wrap(function() vim.cmd.RemindUpdate() end),
 })
