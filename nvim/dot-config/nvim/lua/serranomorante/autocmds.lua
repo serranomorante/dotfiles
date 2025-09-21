@@ -141,7 +141,7 @@ vim.api.nvim_create_autocmd("TermOpen", {
 })
 
 local treesitter_filetypes = utils.ts_compatible_filetypes()
-local regex_filetypes = { "qf", "html", "remind" }
+local regex_filetypes = { "qf", "html", "remind", "spajson" }
 vim.api.nvim_create_autocmd("FileType", {
   desc = "Enable syntax highlighting",
   group = vim.api.nvim_create_augroup("ts_highlighting", { clear = true }),
