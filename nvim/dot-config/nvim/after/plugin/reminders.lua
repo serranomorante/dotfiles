@@ -10,13 +10,21 @@ local function remind_update()
   local matches = vim.fn.split(utils.grep_with_rg(string.format("%s %s", pattern, flags)), ",")
   local items = {}
   ---Assigns the same title to remind blocks with multiple lines
+  ---I do this because the last item will always be the one that has the MSG title from the TODO
   for i, remind_match in ipairs(matches) do
     if not remind_match:match(" MSG ") and not remind_match:match("PUSH%-OMIT%-CONTEXT") then
       local count = i
       while not matches[count]:match(" MSG ") do
         count = count + 1
       end
-      local start, finish = (matches[count]):find("MSG.*")
+      local start, finish
+      local current_match = matches[count]
+      if select(2, current_match:gsub("MSG", "")) > 1 then
+        start, finish = current_match:find("MSG.*", current_match:find("MSG") + 2) -- second current_match
+      else
+        start, finish = current_match:find("MSG.*")
+      end
+
       remind_match = string.format("%s %s", remind_match, matches[count]:sub(start, finish))
     end
     ---Removes msg on POP-OMIT-CONTEXT
