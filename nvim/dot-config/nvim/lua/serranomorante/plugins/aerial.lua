@@ -2,7 +2,7 @@ local M = {}
 
 local function keys()
   vim.keymap.set(
-    "n",
+    { "n", "x" },
     "<leader>ls",
     function() require("aerial").toggle() end,
     { desc = "Aerial: toggle document symbols" }

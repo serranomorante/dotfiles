@@ -14,6 +14,7 @@ local CHOICES = {
     "10-100-setup-compositor",
   },
   [HOME .. "/dotfiles/for-my-eyes-only"] = {
+    "10-10-setup-desktop",
     "60-10-for-my-eyes-only",
     "60-20-for-my-eyes-only",
     "60-30-for-my-eyes-only",
