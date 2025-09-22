@@ -105,8 +105,20 @@ local function opts()
     },
     extensions = {
       vectorcode = {
-        tool_group = {
-          enabled = true,
+        ---@type VectorCode.CodeCompanion.ExtensionOpts
+        opts = {
+          prompt_library = {},
+          tool_group = {
+            enabled = true,
+            extras = {},
+            collapse = false,
+          },
+          tool_opts = {
+            ---@type VectorCode.CodeCompanion.QueryToolOpts
+            query = {
+              chunk_mode = true,
+            },
+          },
         },
       },
       history = {
