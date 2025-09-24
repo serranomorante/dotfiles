@@ -382,6 +382,19 @@ function M.is_large_file(file)
     or stats.size / lines_count > vim.o.synmaxcol
 end
 
+---Conceal ripgrep 0 base with lua 1 base
+---@param start_0 integer
+---@param end_0 integer
+---@param seg_start_1 integer
+function M.rel_cols(start_0, end_0, seg_start_1)
+  local shift = seg_start_1 - 1
+  return (start_0 - shift) + 1, end_0 - shift
+end
+
+---@class RGStats
+---@field matched_lines integer
+---@field matches integer
+
 ---@class RGMatch
 ---@field text string
 
@@ -399,6 +412,7 @@ end
 ---@field line_number integer
 ---@field absolute_offset integer
 ---@field submatches RGSubmatch[]
+---@field stats RGStats
 
 ---@class RGContent
 ---@field type "begin"|"match"|"end"
@@ -409,18 +423,44 @@ end
 function M.rg_json_to_qfitems(json)
   ---@type vim.quickfix.entry[]
   local entries = {}
-  for _, item in pairs(json) do
+  for json_index, item in pairs(json) do
+    local prev_new_line_match_end = 1
+
+    ---Detect the "end" item so we can gather if the search was --multiline or not
+    local end_item_found_cache = false
+    local count = json_index + 1
+    while not end_item_found_cache and json[count] and json[count].type ~= "end" do
+      count = count + 1
+    end
+    local is_multiline = json[count] and json[count].data.stats.matched_lines > json[count].data.stats.matches
+    end_item_found_cache = item.type == "end" and false or true
+
     ---Inner loop is required due to: https://github.com/BurntSushi/ripgrep/issues/1983
     ---and https://github.com/BurntSushi/ripgrep/issues/2779
-    for _, submatch in pairs(item.data.submatches or {}) do
-      table.insert(entries, {
-        text = item.data.lines.text,
-        filename = item.data.path.text,
-        lnum = item.data.line_number,
-        col = submatch.start + 1,
-        end_col = submatch["end"],
-        user_data = { submatch = submatch.match.text },
-      })
+    for i, submatch in pairs(item.data.submatches or {}) do
+      if is_multiline then
+        local new_line_match_end = item.data.lines.text:find("\n", submatch["end"]) + 1
+        local text = item.data.lines.text:sub(prev_new_line_match_end, new_line_match_end)
+        local col, end_col = M.rel_cols(submatch.start, submatch["end"], prev_new_line_match_end)
+        table.insert(entries, {
+          text = text,
+          filename = item.data.path.text,
+          lnum = item.data.line_number + ((i - 1) * vim.tbl_count(vim.fn.split(submatch.match.text, "\n"))),
+          col = col,
+          end_col = end_col,
+          user_data = { submatch = submatch.match.text },
+        })
+        prev_new_line_match_end = new_line_match_end or 1
+      else
+        table.insert(entries, {
+          text = item.data.lines.text,
+          filename = item.data.path.text,
+          lnum = item.data.line_number,
+          col = submatch.start + 1,
+          end_col = submatch["end"],
+          user_data = { submatch = submatch.match.text },
+        })
+      end
     end
   end
   return entries, vim.tbl_count(entries)
