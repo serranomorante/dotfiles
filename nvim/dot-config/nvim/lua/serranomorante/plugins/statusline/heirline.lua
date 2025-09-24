@@ -88,7 +88,6 @@ local function opts()
 
   local WinBars = {
     fallthrough = false,
-    winbar_components.Oil,
     winbar_components.Breadcrumb,
   }
 
@@ -106,8 +105,6 @@ local function opts()
       ---Winbar should be disabled by default and only enabled after these conditions
       disable_winbar_cb = function(args)
         if not vim.api.nvim_buf_is_valid(args.buf) then return true end
-        ---Show winbar on these filetypes
-        if conditions.buffer_matches({ filetype = { "oil" } }, args.buf) then return false end
         ---Show winbar if these lsp servers are ready
         if not coc_utils.is_coc_attached(args.buf) and vim.tbl_count(vim.lsp.get_clients({ bufnr = args.buf })) > 0 then
           return false

@@ -12,7 +12,6 @@ local TablineFileNameBlock = {
     self.bufname = vim.api.nvim_buf_get_name(self.bufnr)
     self.filename = vim.fn.fnamemodify(self.bufname, ":t")
     if vim.fn.empty(self.filename) == 1 then self.filename = "[No Name]" end
-    if heirline_conds.buffer_matches({ filetype = { "oil" } }, self.bufnr) then self.filename = "File Explorer" end
     if heirline_conds.buffer_matches({ filetype = { "codecompanion" } }, self.bufnr) then self.filename = "AI" end
     if heirline_conds.buffer_matches({ filetype = { "fzf" } }, self.bufnr) then self.filename = "FZF" end
   end,

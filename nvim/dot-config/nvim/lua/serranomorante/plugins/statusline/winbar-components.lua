@@ -55,26 +55,4 @@ M.Breadcrumb = {
   heirline_utils.insert(AerialBreadcrumb),
 }
 
-M.Oil = {
-  condition = function()
-    return heirline_conditions.buffer_matches({ filetype = { "oil" } })
-      and (not heirline_conditions.buffer_matches({ filetype = { "oil_preview" } }))
-  end,
-  init = function(self)
-    self.dir = require("oil").get_current_dir()
-    self.cwd = vim.fn.getcwd()
-    self.outside_cwd = not vim.startswith(self.dir, self.cwd)
-  end,
-  {
-    provider = function(self)
-      local outside_cwd_dir = string.format("(%s)", vim.fn.fnamemodify(self.dir, ":~"))
-      return self.outside_cwd and outside_cwd_dir or vim.fn.fnamemodify(self.cwd, ":~") .. "/"
-    end,
-    hl = { fg = "NvimLightCyan", bold = true },
-  },
-  {
-    provider = function(self) return self.outside_cwd and "" or vim.fn.fnamemodify(self.dir, ":.") end,
-  },
-}
-
 return M
