@@ -42,7 +42,17 @@ function M.config()
     end, { expr = true })
   end
 
-  vim.api.nvim_set_hl(0, "TreesitterContextLineNumber", { bg = "NvimDarkGrey1" })
+  local function hl()
+    local background = vim.api.nvim_get_option_value("background", {}) == "dark" and "NvimDark" or "NvimLight"
+    vim.api.nvim_set_hl(0, "TreesitterContextLineNumber", { bg = background .. "Grey1" })
+  end
+  vim.api.nvim_create_autocmd("OptionSet", {
+    desc = "Reload on vim.o.background change",
+    group = vim.api.nvim_create_augroup("treesitter-context-hl", { clear = true }),
+    pattern = "background",
+    callback = hl,
+  })
+  hl()
 end
 
 return M

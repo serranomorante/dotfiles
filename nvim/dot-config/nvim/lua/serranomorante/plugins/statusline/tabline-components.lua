@@ -16,6 +16,11 @@ local TablineFileNameBlock = {
     if heirline_conds.buffer_matches({ filetype = { "codecompanion" } }, self.bufnr) then self.filename = "AI" end
     if heirline_conds.buffer_matches({ filetype = { "fzf" } }, self.bufnr) then self.filename = "FZF" end
   end,
+  static = {
+    context = {
+      view = "tabline",
+    },
+  },
   hl = function(self) return self.is_active and "TabLineSel" or "TabLine" end,
   heirline_utils.insert(
     components.FileIcon,

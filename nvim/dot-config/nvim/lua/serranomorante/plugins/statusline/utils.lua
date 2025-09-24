@@ -30,4 +30,22 @@ function M.update_events(opts)
   end
 end
 
+function M.setup_colors()
+  local background = vim.api.nvim_get_option_value("background", {}) == "dark" and "NvimDark" or "NvimLight"
+  return {
+    modifiable_tabline_fg = background .. "Yellow",
+    modifiable_statusline_fg = background .. "Yellow",
+    modified_statusline_fg = background .. "Grey1",
+    modified_tabline_fg = "Black",
+    diagnostic_error_fg = background .. "Red",
+    diagnostic_warn_fg = background .. "Yellow",
+    diagnostic_info_fg = background .. "Cyan",
+    diagnostic_hint_fg = background .. "Blue",
+    git_added_fg = background .. "Green",
+    git_removed_fg = background .. "Red",
+    git_changed_fg = background .. "Cyan",
+    dap_message_stopped_fg = background .. "Red",
+  }
+end
+
 return M

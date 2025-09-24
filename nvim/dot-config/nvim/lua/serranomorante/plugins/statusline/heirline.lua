@@ -1,4 +1,6 @@
 local coc_utils = require("serranomorante.plugins.coc.utils")
+local heirline_utils = require("heirline.utils")
+local statusline_utils = require("serranomorante.plugins.statusline.utils")
 
 local M = {}
 
@@ -18,6 +20,12 @@ local function init()
     pattern = "CocNvimInit",
     group = trigger_winbar_cb_augroup,
     callback = vim.schedule_wrap(trigger_winbar_cb),
+  })
+  vim.api.nvim_create_autocmd("OptionSet", {
+    desc = "Reload on vim.o.background change",
+    group = vim.api.nvim_create_augroup("heirline-hl", { clear = true }),
+    pattern = "background",
+    callback = function() heirline_utils.on_colorscheme(statusline_utils.setup_colors) end,
   })
 end
 
@@ -94,6 +102,7 @@ local function opts()
     winbar = WinBars,
     tabline = TabLines,
     opts = {
+      colors = statusline_utils.setup_colors,
       ---Winbar should be disabled by default and only enabled after these conditions
       disable_winbar_cb = function(args)
         if not vim.api.nvim_buf_is_valid(args.buf) then return true end

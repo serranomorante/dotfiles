@@ -14,10 +14,10 @@ M.php_aliases = { "php" }
 M.go_aliases = { "go" }
 
 M.overseer_status = {
-  ["FAILURE"] = { "F", "red" },
-  ["CANCELED"] = { "C", "gray" },
-  ["SUCCESS"] = { "S", "green" },
-  ["RUNNING"] = { "R", "#05c0cc" },
+  ["FAILURE"] = { "F", "Red" },
+  ["CANCELED"] = { "C", "Grey1" },
+  ["SUCCESS"] = { "S", "Green" },
+  ["RUNNING"] = { "R", "Cyan" },
 }
 
 ---https://github.com/folke/ts-comments.nvim

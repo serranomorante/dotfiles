@@ -1,40 +1,32 @@
 vim.cmd.highlight("clear")
 if vim.fn.exists("syntax_on") then vim.cmd.syntax("reset") end
 
-vim.g.colors_name = "default"
-vim.o.background = "dark"
-vim.o.termguicolors = true
+local background = vim.api.nvim_get_option_value("background", {})
+vim.api.nvim_set_option_value("background", background == "dark" and "light" or "dark", {})
+vim.api.nvim_set_option_value("termguicolors", true, {})
 
 ---https://github.com/neovim/neovim/pull/26540#issue-2038341661
 ---https://github.com/neovim/neovim/issues/26857
-local bg = vim.o.background == "dark" and "NvimDark" or "NvimLight"
+local bg = background == "dark" and "NvimLight" or "NvimDark"
 local fg = bg == "NvimDark" and "NvimLight" or "NvimDark"
 
 ---@type table<string, vim.api.keyset.highlight>
 local groups = {
-  ---Builtin
+  Normal = { fg = fg == "NvimDark" and "Black" or "White", bg = bg == "NvimDark" and "Black" or "White" },
   DiffChange = { bg = bg .. "Grey3" },
-  QuickFixLine = { ctermfg = "NONE", fg = "NONE", bg = "#1e2e4a" },
+  QuickFixLine = { ctermfg = "NONE", fg = "NONE", bg = bg == "NvimDark" and "#1e2e4a" or "#c1cee5" },
   LspInlayHint = { link = "CursorColumn" },
-  TabLineSel = { fg = "White", bg = bg .. "Grey2" },
+  TabLineSel = { fg = fg .. "Grey1", bg = bg .. "Grey2" },
   Folded = { bg = bg .. "Grey3" },
   MatchParen = { bg = bg .. "Grey3" },
-  MatchWord = { bg = bg .. "Grey3" },
-  Number = { fg = "Yellow" },
-  ---LSP
-  LspCodeLens = { link = "Comment" },
-  ---DAP
+  Number = { fg = fg .. "Yellow" },
   DapBreakpoint = { fg = fg .. "Red" },
   DapLogPoint = { fg = fg .. "Blue" },
   DapStopped = { fg = fg .. "Cyan" },
-  ---Aerial
-  AerialLine = { fg = fg .. "Cyan", ctermfg = 14, bg = bg .. "Grey3" },
-  ---Overseer
   OverseerRUNNING = { fg = fg .. "Cyan" },
   OverseerField = { fg = fg .. "Cyan" },
   OverseerComponent = { fg = fg .. "Yellow" },
   OverseerTask = { fg = fg .. "Blue" },
-  ---Diffview
   DiffviewCursorLine = { ctermfg = 14, bg = bg .. "Grey3" },
   CocFloatingSuggest = { bg = bg .. "Grey3" },
   qfDirName = { link = "Directory", default = true },
@@ -42,15 +34,16 @@ local groups = {
   qfSubmatch = { fg = fg .. "Red" },
   qfSeparatorLeft = { fg = bg .. "Grey4" },
   CustomOperatorPending = { bg = fg .. "Blue" },
-  CustomDapReplBg = { bg = "#192335" },
-  CustomAIChatBg = { bg = "#323a50" },
-  CustomAerialBg = { bg = "#242529" },
+  CustomDapReplBg = { bg = bg == "NvimDark" and "#192335" or "#b8cef7" },
+  CustomAIChatBg = { bg = bg == "NvimDark" and "#323a50" or "#b7c5ea" },
+  CustomAerialBg = { bg = bg .. "Grey3" },
+  CustomAerialTitle = { fg = fg .. "Cyan", bg = bg .. "Grey3", bold = true },
   DiagnosticUnderlineError = { sp = fg .. "Red", undercurl = true },
   DiagnosticUnderlineWarn = { sp = fg .. "Yellow", undercurl = true },
   DiagnosticUnderlineInfo = { sp = fg .. "Cyan", undercurl = true },
   DiagnosticUnderlineHint = { sp = fg .. "Blue", undercurl = true },
   DiagnosticUnderlineOk = { sp = fg .. "Green", undercurl = true },
-  MsgArea = { bg = "Black" },
+  MsgArea = { bg = bg == "NvimDark" and "Black" or "White" },
   ["@markup.heading.2.markdown"] = { fg = fg .. "Green", bg = bg .. "Green", bold = true },
   ["@markup.heading.3.markdown"] = { fg = fg .. "Blue", bg = bg .. "Blue", bold = true },
   ["@markup.heading.4.markdown"] = { fg = fg .. "Yellow", bg = bg .. "Yellow", bold = true },

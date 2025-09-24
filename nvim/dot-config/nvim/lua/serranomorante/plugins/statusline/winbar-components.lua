@@ -1,4 +1,3 @@
-local heirline_conditions = require("heirline.conditions")
 local heirline_utils = require("heirline.utils")
 local utils = require("serranomorante.utils")
 

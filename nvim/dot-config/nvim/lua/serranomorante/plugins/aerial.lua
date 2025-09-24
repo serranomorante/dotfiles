@@ -22,8 +22,9 @@ local function opts()
     link_tree_to_folds = false,
     layout = {
       default_direction = "float",
+      min_width = 0.9,
       win_opts = {
-        winhl = "Normal:CustomAerialBg,NormalFloat:CustomAerialBg",
+        winhl = "Normal:CustomAerialBg,NormalFloat:CustomAerialBg,Title:CustomAerialTitle",
       },
     },
     float = {

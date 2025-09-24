@@ -165,3 +165,10 @@ vim.keymap.set("n", "<leader>to", function()
     format_item = function(item) return vim.fn.fnamemodify(item, ":~:.") end,
   }, function(choice) vim.cmd.edit(choice) end)
 end, { desc = "List oldfiles for current dir" })
+
+vim.keymap.set(
+  "n",
+  "<leader>tb",
+  function() vim.cmd.runtime({ "colors/default.lua", bang = true }) end,
+  { desc = "Reload colors/default.lua" }
+)

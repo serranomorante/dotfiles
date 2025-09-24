@@ -50,7 +50,9 @@ M.FileFlags = {
   {
     condition = function(self) return vim.api.nvim_get_option_value("modified", { buf = self.bufnr }) end,
     provider = "%m",
-    hl = { fg = "green" },
+    hl = function(self)
+      return self.context.view == "tabline" and { fg = "modified_tabline_fg" } or { fg = "modified_statusline_fg" }
+    end,
   },
   {
     condition = function(self)
@@ -58,14 +60,17 @@ M.FileFlags = {
         or vim.api.nvim_get_option_value("readonly", { buf = self.bufnr })
     end,
     provider = " ",
-    hl = { fg = "orange" },
+    hl = function(self)
+      return self.context.view == "tabline" and { fg = "modifiable_tabline_fg" } or { fg = "modifiable_statusline_fg" }
+    end,
   },
 }
 
 M.FileNameModifier = {
   hl = function(self)
     if vim.api.nvim_get_option_value("modified", { buf = self.bufnr }) then
-      return { fg = "grey", bold = true, force = true }
+      return self.context.view == "tabline" and { fg = "modified_tabline_fg", bold = true, force = true }
+        or { fg = "modified_statusline_fg", bold = true, force = true }
     end
   end,
 }
@@ -83,6 +88,9 @@ M.FileNameBlock = {
       if filename:match("%%") ~= nil then filename = filename:gsub("%%", "_") end
       return filename
     end,
+    context = {
+      view = "statusline",
+    },
   },
   flexible = M.priority.filename,
   heirline_utils.insert(
@@ -155,7 +163,7 @@ M.Diagnostics = {
   },
   {
     provider = function(self) return self.errors and (self.error_icon .. self.errors) end,
-    hl = { fg = "NvimDarkRed", ctermfg = 9, bold = true },
+    hl = { fg = "diagnostic_error_fg", ctermfg = 9, bold = true },
   },
   {
     condition = function(self) return self.warns end,
@@ -163,7 +171,7 @@ M.Diagnostics = {
   },
   {
     provider = function(self) return self.warns and (self.warn_icon .. self.warns) end,
-    hl = { fg = "NvimDarkYellow", ctermfg = 11, bold = true },
+    hl = { fg = "diagnostic_warn_fg", ctermfg = 11, bold = true },
   },
   {
     condition = function(self) return self.info end,
@@ -171,7 +179,7 @@ M.Diagnostics = {
   },
   {
     provider = function(self) return self.info and (self.info_icon .. self.info) end,
-    hl = { fg = "NvimDarkCyan", ctermfg = 14, bold = true },
+    hl = { fg = "diagnostic_info_fg", ctermfg = 14, bold = true },
   },
   {
     condition = function(self) return self.hints end,
@@ -179,7 +187,7 @@ M.Diagnostics = {
   },
   {
     provider = function(self) return self.hints and (self.hint_icon .. self.hints) end,
-    hl = { fg = "NvimDarkBlue", ctermfg = 12, bold = true },
+    hl = { fg = "diagnostic_hint_fg", ctermfg = 12, bold = true },
   },
 }
 
@@ -206,21 +214,21 @@ M.Git = {
       local count = self.status_dict.added or 0
       return count > 0 and ("+" .. count)
     end,
-    hl = { fg = "NvimDarkGreen", ctermfg = 10, bold = true },
+    hl = { fg = "git_added_fg", ctermfg = 10, bold = true },
   },
   {
     provider = function(self)
       local count = self.status_dict.removed or 0
       return count > 0 and ("-" .. count)
     end,
-    hl = { fg = "NvimDarkRed", ctermfg = 9, bold = true },
+    hl = { fg = "git_removed_fg", ctermfg = 9, bold = true },
   },
   {
     provider = function(self)
       local count = self.status_dict.changed or 0
       return count > 0 and ("~" .. count)
     end,
-    hl = { fg = "NvimDarkCyan", ctermfg = 14, bold = true },
+    hl = { fg = "git_changed_fg", ctermfg = 14, bold = true },
   },
   {
     condition = function(self) return self.has_changes end,
@@ -238,7 +246,7 @@ M.DAPMessages = {
   end,
   provider = function(self) return " " .. self.dap_message end,
   hl = function(self)
-    if self.dap_message:match("[sS]topped") ~= nil then return { fg = "red", bold = true } end
+    if self.dap_message:match("[sS]topped") ~= nil then return { fg = "dap_message_stopped_fg", bold = true } end
   end,
 }
 
@@ -246,7 +254,10 @@ local function OverseerTasksForStatus(status)
   return {
     condition = function(self) return self.tasks[status] end,
     provider = function(self) return string.format("%s%d", self.status[status][1], #self.tasks[status]) end,
-    hl = function(self) return { fg = self.status[status][2], bold = true } end,
+    hl = function(self)
+      local background = vim.api.nvim_get_option_value("background", {}) == "dark" and "NvimDark" or "NvimLight"
+      return { fg = background .. self.status[status][2], bold = true }
+    end,
   }
 end
 
