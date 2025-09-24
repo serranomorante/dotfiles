@@ -30,6 +30,7 @@ local function generate_region_syntax(syntax_regions)
       syntax match qfSeparatorLeft oneline "|[^\|]*|" contained
       setlocal cursorline
       setlocal cursorlineopt=line
+      setlocal signcolumn=no
       let b:current_syntax = 'qf'
     ]]
   vim.cmd(cmd:format(vim.fn.join(syntax_regions, "\n")))
