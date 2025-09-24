@@ -67,9 +67,6 @@ neovim_plugins:
   - folder: start
     repo: mbbill/undotree
   - folder: start
-    repo: stevearc/resession.nvim
-    name: resession
-  - folder: start
     repo: kevinhwang91/nvim-fundo
     name: fundo
   - folder: start
