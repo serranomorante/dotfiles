@@ -151,10 +151,11 @@ end
 
 ---Update indent line for the current buffer
 ---https://github.com/gravndal/shiftwidth_leadmultispace.nvim/blob/master/plugin/shiftwidth_leadmultispace.lua
-function M.update_indent_line_curbuf()
+function M.update_indent_line_curbuf(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
   for _, winid in ipairs(vim.api.nvim_list_wins()) do
-    if vim.api.nvim_win_get_buf(winid) == vim.api.nvim_get_current_buf() then
-      vim.wo[winid].listchars = M.update_indent_line(vim.wo[winid].listchars, vim.bo.shiftwidth)
+    if vim.api.nvim_win_get_buf(winid) == bufnr then
+      vim.wo[winid].listchars = M.update_indent_line(vim.wo[winid].listchars, vim.bo[bufnr].shiftwidth)
     end
   end
 end

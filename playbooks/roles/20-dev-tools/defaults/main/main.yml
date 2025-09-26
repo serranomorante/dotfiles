@@ -57,7 +57,7 @@ neovim_plugins:
     repo: LeonHeidelbach/trailblazer.nvim
     name: trailblazer
   - folder: start
-    repo: tpope/vim-sleuth
+    repo: NMAC427/guess-indent.nvim
   - folder: start
     repo: mfussenegger/nvim-dap
     name: dap
