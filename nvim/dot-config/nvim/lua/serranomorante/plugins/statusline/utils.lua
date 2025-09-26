@@ -36,7 +36,7 @@ function M.setup_colors()
     modifiable_tabline_fg = background .. "Yellow",
     modifiable_statusline_fg = background .. "Yellow",
     modified_statusline_fg = background .. "Grey1",
-    modified_tabline_fg = "Black",
+    modified_tabline_fg = background == "NvimDark" and "White" or "Black",
     diagnostic_error_fg = background .. "Red",
     diagnostic_warn_fg = background .. "Yellow",
     diagnostic_info_fg = background .. "Cyan",

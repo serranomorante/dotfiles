@@ -2,12 +2,11 @@ vim.cmd.highlight("clear")
 if vim.fn.exists("syntax_on") then vim.cmd.syntax("reset") end
 
 local background = vim.api.nvim_get_option_value("background", {})
-vim.api.nvim_set_option_value("background", background == "dark" and "light" or "dark", {})
 vim.api.nvim_set_option_value("termguicolors", true, {})
 
 ---https://github.com/neovim/neovim/pull/26540#issue-2038341661
 ---https://github.com/neovim/neovim/issues/26857
-local bg = background == "dark" and "NvimLight" or "NvimDark"
+local bg = background == "dark" and "NvimDark" or "NvimLight"
 local fg = bg == "NvimDark" and "NvimLight" or "NvimDark"
 
 ---@type table<string, vim.api.keyset.highlight>

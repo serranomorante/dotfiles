@@ -166,9 +166,9 @@ vim.keymap.set("n", "<leader>to", function()
   }, function(choice) vim.cmd.edit(choice) end)
 end, { desc = "List oldfiles for current dir" })
 
-vim.keymap.set(
-  "n",
-  "<leader>tb",
-  function() vim.cmd.runtime({ "colors/default.lua", bang = true }) end,
-  { desc = "Reload colors/default.lua" }
-)
+vim.keymap.set("n", "<leader>tb", function()
+  local background = vim.api.nvim_get_option_value("background", {})
+  vim.api.nvim_set_option_value("background", background == "dark" and "light" or "dark", {})
+  vim.cmd.runtime({ "colors/default.lua", bang = true })
+end, { desc = "Reload colors/default.lua" })
+
