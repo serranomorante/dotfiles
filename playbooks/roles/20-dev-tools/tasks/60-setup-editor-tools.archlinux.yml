@@ -21,11 +21,21 @@
   delay: 10
   loop: "{{ var_async_clone_nvim_plugins.results }}"
 
+- name: "[archlinux] Editor tools: build lookup of nvim plugin results by repo (init)"
+  ansible.builtin.set_fact:
+    nvim_plugin_result_by_repo: {}
+
+- name: "[archlinux] Editor tools: build lookup of nvim plugin results by repo"
+  ansible.builtin.set_fact:
+    nvim_plugin_result_by_repo: "{{ nvim_plugin_result_by_repo | default({}) | combine({item.item.item.repo: item}) }}"
+  loop: "{{ var_job_result.results }}"
+
 - name: "[archlinux] Editor tools: install coc.nvim"
   ansible.builtin.command: npm ci
   args:
     chdir: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim
-    creates: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim/build/index.js
+  changed_when: "(nvim_plugin_result_by_repo['neoclide/coc.nvim'] | default({})).changed | default(false)"
+  when: "(nvim_plugin_result_by_repo['neoclide/coc.nvim'] | default({})).changed | default(false)"
 
 - name: "[archlinux] Editor tools: ensure aur packages"
   aur:

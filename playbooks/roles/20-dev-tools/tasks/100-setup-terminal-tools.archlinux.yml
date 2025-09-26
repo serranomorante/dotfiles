@@ -21,6 +21,11 @@
     - package_name: vectorcode
       creates: ~/.local/bin/vectorcode
 
+- name: "[archlinux] Editor tools: update vectorcode"
+  ansible.builtin.command: uv tool upgrade --python=3.12 vectorcode
+  changed_when: "(nvim_plugin_result_by_repo['Davidyz/VectorCode'] | default({})).changed | default(false)"
+  when: "(nvim_plugin_result_by_repo['Davidyz/VectorCode'] | default({})).changed | default(false)"
+
 - name: "[archlinux] Setup terminal tools: install kitty nightly"
   ansible.builtin.shell: >
     set -o pipefail &&
