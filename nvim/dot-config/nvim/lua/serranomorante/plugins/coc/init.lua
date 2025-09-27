@@ -32,8 +32,6 @@ local function init()
     tools.by_filetype.all
   )
   vim.b.coc_force_attach = 1
-  vim.api.nvim_set_hl(0, "CocMenuSel", { link = "PmenuSel" }) -- fix highlight
-  vim.api.nvim_set_hl(0, "CocInlayHint", { link = "CursorColumn" })
   local ok, override_node = pcall(binaries.system_default_node)
   if ok and override_node then vim.g.coc_node_path = override_node end
 

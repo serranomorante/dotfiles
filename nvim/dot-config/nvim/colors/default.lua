@@ -28,6 +28,8 @@ local groups = {
   OverseerTask = { fg = fg .. "Blue" },
   DiffviewCursorLine = { ctermfg = 14, bg = bg .. "Grey3" },
   CocFloatingSuggest = { bg = bg .. "Grey3" },
+  CocMenuSel = { link = "PmenuSel" },
+  CocInlayHint = { link = "CursorColumn" },
   qfDirName = { link = "Directory", default = true },
   qfFileName = { link = "CursorLineNr", default = true },
   qfSubmatch = { fg = fg .. "Red" },
