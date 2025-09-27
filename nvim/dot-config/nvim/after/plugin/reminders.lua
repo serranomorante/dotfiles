@@ -40,12 +40,6 @@ local function remind_update()
     table.insert(items, remind_match)
   end
   utils.write_file(PATH, vim.fn.join(items, "\n"))
-  vim.schedule(function()
-    vim.api.nvim_echo({ { "Reminder database updated", "DiagnosticOk" } }, false, {})
-    vim.fn.system(
-      string.format("scp %s phone2:/data/data/com.termux/files/home/%s &", PATH, PATH:sub(#vim.env.HOME + 1))
-    )
-  end)
 end
 
 local function remind(args)

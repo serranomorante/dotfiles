@@ -344,6 +344,8 @@ function M.nvim_started_without_args() return vim.fn.argc(-1) == 0 and not vim.g
 ---Check if current cwd is home
 function M.cwd_is_home() return vim.fn.getcwd() == vim.env.HOME end
 
+function M.cwd_is_notes() return vim.fn.getcwd() == vim.env.HOME .. "/external/notes/foam" end
+
 ---@class OpenQfList
 ---@field loclist? boolean
 ---@field height? integer
