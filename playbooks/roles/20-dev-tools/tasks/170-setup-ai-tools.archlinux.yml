@@ -1,14 +1,8 @@
 ---
-- name: "[archlinux] Setup ai tools: register mcp-hub installed"
-  ansible.builtin.command: which mcp-hub
-  changed_when: false
-  ignore_errors: true
-  register: mcp_hub_installed
-
 - name: "[archlinux] Setup ai tools: ensure mcp-hub"
   ansible.builtin.command: npm install -g mcp-hub@latest
-  changed_when: true
-  when: mcp_hub_installed.failed
+  changed_when: "(nvim_plugin_result_by_repo['ravitemer/mcphub.nvim'] | default({})).changed | default(false)"
+  when: "(nvim_plugin_result_by_repo['ravitemer/mcphub.nvim'] | default({})).changed | default(false)"
 
 - name: "[archlinux] Setup ai tools: register figma-developer-mcp installed"
   ansible.builtin.command: which figma-developer-mcp
