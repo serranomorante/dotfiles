@@ -112,7 +112,7 @@ vim.keymap.set({ "x", "v" }, "<leader>fv", function()
   return (":<C-u>Grep '%s'"):format(region[1])
 end, { desc = "Find visual selection", expr = true })
 
-vim.keymap.set({ "n", "x" }, "<leader>re", function()
+local function redir_cmd()
   local position_cursor_start = "<HOME>"
   local position_cursor_quote = "<C-Right><C-Right><C-Right><C-Right><Space><C-v><C-j><Left><Left>"
   local remove_marks = "<C-Delete><C-Delete><C-Delete><C-Delete><C-Delete>"
@@ -123,7 +123,20 @@ vim.keymap.set({ "n", "x" }, "<leader>re", function()
     expr = expr:format("", position_cursor_start .. position_cursor_quote)
   end
   return expr
-end, { desc = "Prepare redir command", expr = true })
+end
+
+vim.keymap.set({ "n", "x" }, "<leader>re", redir_cmd, { desc = "Prepare redir command", expr = true })
+
+vim.keymap.set({ "n", "x" }, "<leader>rm", function()
+  utils.new_scratch_buffer({ filetype = "log" })
+  local keys = redir_cmd()
+    .. "sil Remind -n | let @a=system('sort', @a)" -- run Remind -n and sort the result
+    .. "<END>" -- position cursor at the end
+    .. "<C-w><C-w><C-w><C-w><C-w>" -- delete echom from redir_cmd
+    .. "put =@a" -- and replace it with this command
+  utils.feedkeys(keys .. "<CR>")
+  utils.feedkeys("gg")
+end, { desc = "Prepare sorted remind command" })
 
 vim.keymap.set("t", "<leader>lm", function()
   utils.feedkeys("<C-\\><C-n>", "t")

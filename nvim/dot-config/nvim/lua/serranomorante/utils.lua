@@ -608,4 +608,11 @@ function M.select(items, opts, on_choice)
   })
 end
 
+---@param opts table?
+function M.new_scratch_buffer(opts)
+  opts = opts or {}
+  M.feedkeys(":tabnew<CR>")
+  if opts.filetype then M.feedkeys(string.format(":set filetype=%s<CR>", opts.filetype)) end
+end
+
 return M
