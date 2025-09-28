@@ -158,8 +158,7 @@ end, { desc = "Go to buffer's random TODO item" })
 vim.keymap.set("n", "<leader>tr", "<cmd>RandomTodo<CR>", { desc = "Go to workspace's random TODO item" })
 
 vim.keymap.set("n", "<leader>to", function()
-  local cwd = vim.fn.getcwd()
-  local oldfiles = vim.tbl_filter(function(filename) return utils.file_inside_cwd(filename, cwd) end, vim.v.oldfiles)
+  local oldfiles = vim.tbl_filter(function(filename) return utils.file_inside_cwd(filename) end, vim.v.oldfiles)
   vim.ui.select(oldfiles, {
     prompt = "Recent files",
     format_item = function(item) return vim.fn.fnamemodify(item, ":~:.") end,
@@ -172,3 +171,15 @@ vim.keymap.set("n", "<leader>tb", function()
   vim.cmd.runtime({ "colors/default.lua", bang = true })
 end, { desc = "Reload colors/default.lua" })
 
+vim.keymap.set("n", "'0", function()
+  local numbered_marks = { "'0", "'1", "'2", "'3", "'4", "'5", "'6", "'7", "'8", "'9" }
+  for _, m in ipairs(vim.fn.getmarklist()) do
+    if vim.list_contains(numbered_marks, m.mark) and utils.file_inside_cwd(m.file) then
+      vim.cmd.normal({ args = { m.mark }, bang = true })
+      return
+    end
+  end
+  local file = unpack(vim.tbl_filter(function(filename) return utils.file_inside_cwd(filename) end, vim.v.oldfiles))
+  if file then vim.cmd.edit(file) end
+  vim.api.nvim_echo({ { "No suitable numbered mark in project and no oldfiles.", "DiagnosticWarn" } }, false, {})
+end, { desc = "Go to last edited file or fallback to first oldfile" })
