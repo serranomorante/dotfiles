@@ -1,19 +1,13 @@
 ---
 - name: "[archlinux] Setup ai tools: ensure mcp-hub"
-  ansible.builtin.command: npm install -g mcp-hub@latest
-  changed_when: "(nvim_plugin_result_by_repo['ravitemer/mcphub.nvim'] | default({})).changed | default(false)"
-  when: "(nvim_plugin_result_by_repo['ravitemer/mcphub.nvim'] | default({})).changed | default(false)"
-
-- name: "[archlinux] Setup ai tools: register figma-developer-mcp installed"
-  ansible.builtin.command: which figma-developer-mcp
-  changed_when: false
-  ignore_errors: true
-  register: figma_developer_mcp
+  ansible.builtin.shell: volta run --node {{ node_system_default_version }} $(volta which npm) install --global mcp-hub@latest
+  changed_when: true
+  when: fact_npm_global_outdated['mcp-hub'] is defined or fact_npm_global_installed.dependencies['mcp-hub'] is undefined
 
 - name: "[archlinux] Setup ai tools: ensure figma-developer-mcp"
-  ansible.builtin.command: npm install -g figma-developer-mcp@latest
+  ansible.builtin.shell: volta run --node {{ node_system_default_version }} $(volta which npm) install --global figma-developer-mcp@latest
   changed_when: true
-  when: figma_developer_mcp.failed
+  when: fact_npm_global_outdated['figma-developer-mcp'] is defined or fact_npm_global_installed.dependencies['figma-developer-mcp'] is undefined
 
 - name: "[archlinux] Setup ai tools: clone reaper mcp"
   ansible.builtin.git:

@@ -32,10 +32,16 @@
     name: mathjax
     aur_only: true
 
+- name: dependencies
+  debug:
+    msg: "{{ fact_npm_global_installed.dependencies }}"
+
 - name: "[archlinux] Markdown language: ensure npm packages"
-  ansible.builtin.command: npm install --global {{ item.package }}
-  args:
-    creates: ~/.volta/bin/{{ item.name | default(item.package) }}
+  ansible.builtin.shell: >
+    volta run --node {{ node_system_default_version }} $(volta which npm) install --global {{ item.package }}@latest
+  changed_when: true
+  # if not installed or if not updated
+  when: fact_npm_global_outdated[item.package] is defined or fact_npm_global_installed.dependencies[item.package] is undefined
   loop:
     - { package: "@mermaid-js/mermaid-cli", name: mmdc }
     - { package: mermaid-filter }

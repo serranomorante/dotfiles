@@ -20,9 +20,9 @@
     - marksman
   changed_when: false
 
-- name: "[archlinux] Editor code generation: register volta default node version"
+- name: "[archlinux] Editor code generation: register volta's default node path"
   ansible.builtin.command: volta run --node "{{ node_system_default_version }}" which node
-  register: system_default_node
+  register: var_system_default_node
   changed_when: false
 
 - name: "[archlinux] Editor code generation: ensure binaries code-generation"
@@ -36,7 +36,7 @@
         {% for pkg_path in binaries.results -%}
           {{ pkg_path.executable | replace("-", "_") }} = function() return "{{ pkg_path.stdout }}" end,
         {% endfor %}
-        system_default_node = function() return "{{ system_default_node.stdout }}" end,
+        system_default_node = function() return "{{ var_system_default_node.stdout }}" end,
         vscode_js_debug_dap_executable = function() return vim.env.HOME .. "/repos/vscode-js-debug/dist/src/dapDebugServer.js" end,
         cppdbg_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7" end,
         bashdb_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/bash-debug-adapter" end,

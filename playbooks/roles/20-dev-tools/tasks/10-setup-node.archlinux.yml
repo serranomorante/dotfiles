@@ -1,16 +1,9 @@
 ---
-- name: "[archlinux] Setup node: register volta exists"
-  ansible.builtin.command: which volta
-  register: volta_executable
-  ignore_errors: true
-  changed_when: false
-
 - name: "[archlinux] Setup node: install volta"
   ansible.builtin.shell: >
     set -o pipefail &&
     curl https://get.volta.sh | bash -s -- --skip-setup
-  when: volta_executable is failed
-  changed_when: false
+  changed_when: true
 
 - name: "[archlinux] Setup node: add volta to console startup scripts"
   ansible.builtin.blockinfile:
@@ -27,8 +20,29 @@
     - { script: ~/dotfiles/home/dot-bashrc }
 
 - name: "[archlinux] Setup node: install node versions"
-  ansible.builtin.command: "volta install node@{{ item }}"
-  changed_when: false
-  loop:
-    - "{{ node_system_default_version }}"
-    - 21
+  ansible.builtin.command: volta install node@{{ node_system_default_version }}
+  args:
+    creates: ~/.volta/tools/image/node/{{ node_system_default_version }}/bin/node
+
+- name: "[archlinux] Setup node: list outdated npm global packages"
+  ansible.builtin.shell: volta run --node {{ node_system_default_version }} $(volta which npm) outdated --global --json
+  changed_when: true
+  failed_when:
+    - var_npm_global_outdated.rc != 0
+    - var_npm_global_outdated.rc != 1 # npm throws 1 when outdated packages are found
+    - var_npm_global_outdated.rc != 126 # npm throws 126 when outdated packages are found
+  register: var_npm_global_outdated
+
+- name: "[archlinux] Setup node: list npm globally installed packages"
+  ansible.builtin.shell: volta run --node {{ node_system_default_version }} $(volta which npm) ls --global --json
+  changed_when: true
+  register: var_npm_global_installed
+
+- name: "[archlinux] Setup node: set_fact outdated npm packages"
+  ansible.builtin.set_fact:
+    fact_npm_global_outdated: "{{ var_npm_global_outdated.stdout }}"
+    fact_npm_global_installed: "{{ var_npm_global_installed.stdout }}"
+
+- name: debug
+  ansible.builtin.debug:
+    msg: "{{ fact_npm_global_installed }}"
