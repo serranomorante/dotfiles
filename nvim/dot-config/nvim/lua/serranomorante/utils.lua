@@ -328,14 +328,20 @@ end
 
 function M.wrap_in_single_quotes(str) return string.format("'%s'", str) end
 
-function M.next_qf_item()
+---@param opts table
+function M.next_qf_item(opts)
+  opts = opts or {}
   local ok, _ = pcall(vim.cmd.cnext)
   if not ok then return echo_no_more_items() end
+  if opts.center_view then vim.cmd.normal({ "zz", bang = true }) end
 end
 
-function M.prev_qf_item()
+---@param opts table
+function M.prev_qf_item(opts)
+  opts = opts or {}
   local ok, _ = pcall(vim.cmd.cprev)
   if not ok then return echo_no_more_items() end
+  if opts.center_view then vim.cmd.normal({ "zz", bang = true }) end
 end
 
 ---Check if nvim was started with no args and without reading from stdin

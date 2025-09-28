@@ -14,6 +14,7 @@ local function random_todo()
   table.insert(cache, items[random_count].text)
   vim.fn.setqflist({}, " ", { title = "Go to random TODO", items = items })
   vim.cmd.cc({ args = { random_count }, mods = { silent = true } })
+  vim.cmd.normal({ "zz", bang = true })
 end
 
 vim.api.nvim_create_user_command("RandomTodo", random_todo, { force = true, nargs = "*", desc = "Go to random TODO" })

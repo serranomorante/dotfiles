@@ -145,8 +145,18 @@ vim.keymap.set("n", "<leader>ql", function()
   utils.toggle_qflist({ loclist = true })
 end, { desc = "Open location list" })
 
-vim.keymap.set("n", "<A-j>", utils.next_qf_item, { desc = "Next quickfix list item" })
-vim.keymap.set("n", "<A-k>", utils.prev_qf_item, { desc = "Prev quickfix list item" })
+vim.keymap.set(
+  "n",
+  "<A-j>",
+  function() utils.next_qf_item({ center_view = true }) end,
+  { desc = "Next quickfix list item" }
+)
+vim.keymap.set(
+  "n",
+  "<A-k>",
+  function() utils.prev_qf_item({ center_view = true }) end,
+  { desc = "Prev quickfix list item" }
+)
 
 vim.keymap.set("n", "<leader>tt", function()
   utils.feedkeys("gg")
@@ -176,10 +186,11 @@ vim.keymap.set("n", "'0", function()
   for _, m in ipairs(vim.fn.getmarklist()) do
     if vim.list_contains(numbered_marks, m.mark) and utils.file_inside_cwd(m.file) and not utils.cwd_is_home() then
       vim.cmd.normal({ args = { m.mark }, bang = true })
+      vim.cmd.normal({ "zz", bang = true })
       return
     end
   end
   local file = unpack(vim.tbl_filter(function(filename) return utils.file_inside_cwd(filename) end, vim.v.oldfiles))
   if file then vim.cmd.edit(file) end
-  vim.api.nvim_echo({ { "No suitable numbered mark in project and no oldfiles.", "DiagnosticWarn" } }, false, {})
+  vim.api.nvim_echo({ { "No suitable numbered mark, fallback to first oldfile.", "DiagnosticWarn" } }, false, {})
 end, { desc = "Go to last edited file or fallback to first oldfile" })
