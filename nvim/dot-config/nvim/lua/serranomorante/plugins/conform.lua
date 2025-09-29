@@ -1,5 +1,6 @@
 local tools = require("serranomorante.tools")
 local utils = require("serranomorante.utils")
+local binaries = require("serranomorante.binaries")
 
 local M = {}
 
@@ -86,6 +87,8 @@ function M.config()
         return
       end
       utils.refresh_codelens()
+      if utils.is_available("guess-indent") then vim.cmd.GuessIndent({ mods = { silent = true } }) end
+      if opts then utils.update_indent_line_curbuf(opts.bufnr) end
       vim.api.nvim_echo({ { "[Conform]: format done.", "DiagnosticOk" } }, false, {})
     end)
   end
@@ -96,6 +99,20 @@ function M.config()
       "--config-file",
       vim.fn.stdpath("config") .. "/lua/serranomorante/plugins/coc/ansible-lint-dev.yaml",
     },
+  }
+
+  local util = require("conform.util")
+
+  conform.formatters["js-beautify"] = {
+    command = util.find_executable({ "node_modules/.bin/js-beautify" }, binaries.js_beautify_executable()),
+  }
+
+  conform.formatters.eslint_d = {
+    prepend_args = {
+      "--no-color",
+    },
+    command = util.find_executable({ "node_modules/.bin/eslint_d" }, binaries.eslint_d_executable()),
+    exit_codes = { 0, 1 }, -- don't fail to let the success callback execute
   }
 
   ---Custom formatter to auto indent buffer.

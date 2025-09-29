@@ -1,5 +1,6 @@
 local constants = require("serranomorante.constants")
 local tools = require("serranomorante.tools")
+local binaries = require("serranomorante.binaries")
 
 local M = {}
 
@@ -14,7 +15,7 @@ function M.config()
   vim.g.ale_maximum_file_size = vim.g.max_file.size
   vim.g.ale_set_signs = 0
 
-  vim.g.ale_javascript_eslint_executable = "eslint_d"
+  vim.g.ale_javascript_eslint_executable = binaries.eslint_d_executable()
 
   vim.g.ale_linter_aliases = {
     ["javascript"] = constants.javascript_aliases,

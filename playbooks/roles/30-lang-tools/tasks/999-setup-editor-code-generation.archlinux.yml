@@ -25,6 +25,16 @@
   register: var_system_default_node
   changed_when: false
 
+- name: "[archlinux] Editor code generation: register volta's eslint_d path"
+  ansible.builtin.command: volta run --node "{{ node_system_default_version }}" which eslint_d
+  register: var_system_default_eslint_d
+  changed_when: false
+
+- name: "[archlinux] Editor code generation: register volta's eslint_d path"
+  ansible.builtin.command: volta run --node "{{ node_system_default_version }}" which js-beautify
+  register: var_system_default_js_beautify
+  changed_when: false
+
 - name: "[archlinux] Editor code generation: ensure binaries code-generation"
   ansible.builtin.blockinfile:
     dest: ~/.config/nvim/lua/serranomorante/binaries.lua
@@ -37,6 +47,8 @@
           {{ pkg_path.executable | replace("-", "_") }} = function() return "{{ pkg_path.stdout }}" end,
         {% endfor %}
         system_default_node = function() return "{{ var_system_default_node.stdout }}" end,
+        eslint_d_executable = function() return "{{ var_system_default_eslint_d.stdout }}" end,
+        js_beautify_executable = function() return "{{ var_system_default_js_beautify.stdout }}" end,
         vscode_js_debug_dap_executable = function() return vim.env.HOME .. "/repos/vscode-js-debug/dist/src/dapDebugServer.js" end,
         cppdbg_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7" end,
         bashdb_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/bash-debug-adapter" end,
