@@ -44,6 +44,15 @@ local function opts()
       enabled = false,
     },
     adapters = {
+      acp = {
+        claude_code = function()
+          return require("codecompanion.adapters").extend("claude_code", {
+            env = {
+              ANTHROPIC_API_KEY = "cmd: gpg --decrypt ~/secrets/anthropic_api_key.gpg 2>/dev/null",
+            },
+          })
+        end,
+      },
       http = {
         gemini = function()
           return require("codecompanion.adapters").extend("gemini", {
