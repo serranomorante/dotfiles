@@ -7,6 +7,7 @@
     - name: mcp-hub
     - name: figma-developer-mcp
     - name: "@anthropic-ai/claude-code"
+    - name: "@google/gemini-cli"
 
 - name: "[archlinux] Setup ai tools: clone reaper mcp"
   ansible.builtin.git:

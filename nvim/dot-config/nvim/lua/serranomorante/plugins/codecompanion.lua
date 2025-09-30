@@ -52,6 +52,13 @@ local function opts()
             },
           })
         end,
+        gemini_cli = function()
+          return require("codecompanion.adapters").extend("gemini_cli", {
+            env = {
+              GEMINI_API_KEY = "cmd: gpg --decrypt ~/secrets/gemini_api_key.gpg 2>/dev/null",
+            },
+          })
+        end,
       },
       http = {
         gemini = function()
@@ -110,6 +117,9 @@ local function opts()
       },
       inline = {
         adapter = "gemini",
+      },
+      cmd = {
+        adapter = "gemini_cli",
       },
     },
     extensions = {
