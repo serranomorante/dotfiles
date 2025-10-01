@@ -15,13 +15,23 @@
     "Figma": {
       "command": "{{ figma_mcp_server_setup.exe_path }}",
       "args": [
-        "--figma-api-key={{ figma_mcp_server_setup.personal_key.stdout }}",
+        "--figma-api-key={{ figma_mcp_server_setup.personal_key }}",
         "--stdio"
       ]
     },
     "chrome-devtools": {
       "command": "{{ chrome_devtools_mcp_server_setup.exe_path }}",
       "args": ["--browserUrl=http://localhost:9222"]
+    },
+    "playwright": {
+      "command": "{{ playwright_mcp_server_setup.exe_path }}"
+    },
+    "playwright-extension": {
+      "command": "{{ playwright_mcp_server_setup.exe_path }}",
+      "args": ["--extension", "--executable-path=/usr/bin/chromium"],
+      "env": {
+        "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "{{ playwright_mcp_server_setup.auth_key }}"
+      }
     }
   }
 }

@@ -211,7 +211,7 @@
   # We have to do this because the `manifest.json` file is not on the root of the repo
   # Important: the `*.crx` file has to be at the same level of the `manifest.json` file
   ansible.builtin.shell: >
-    ~/.local/share/gem/ruby/3.2.0/bin/extensionator
+    ~/.local/share/gem/ruby/{{ arch_ruby_version }}/bin/extensionator
     -d ~/repos/hypothesis-extension/build
     -i ~/apps/browser-tools/chrome/extensions/identity.pem
     -o ~/repos/hypothesis-extension/build/hypothesis.crx

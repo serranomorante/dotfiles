@@ -90,20 +90,16 @@
     create: true
     insertafter: "^\\[Service\\]"
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP CHROMIUM"
-    block: >
-      ExecStart={{ ansible_env.HOME }}/bin/chromiumnnn
-      --remote-debugging-port=9222
-      --load-extension=%h/repos/hypothesis-extension/build,%h/repos/promnesia/extension/dist/chrome,%h/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,%h/repos/{{
-      chromium_local_extensions | join(',%h/repos/') }}
+    block: ExecStart={{ ansible_env.HOME }}/bin/chromiumnnn --remote-debugging-port=9222 --load-extension={{ chromium_local_extensions | map(attribute='path') | join(',') }}
     mode: "644"
+  vars:
+    prefix: "%h"
 
 - name: handler_ensure_brave_desktop_file
   ansible.builtin.replace:
     path: ~/.local/share/applications/brave-browser.desktop
     regexp: "^(Exec=).*"
-    replace: "\\1bravennn --load-extension={{ ansible_env.HOME }}/repos/hypothesis-extension/build,{{ ansible_env.HOME }}/repos/promnesia/extension/dist/chrome,{{
-      ansible_env.HOME }}/repos/react/packages/react-devtools-extensions/chrome/build/unpacked,{{ ansible_env.HOME }}/repos/NewTab-Redirect,{{ ansible_env.HOME }}/repos/vimium,{{
-      ansible_env.HOME }}/repos/chrome-show-tab-numbers %u"
+    replace: "\\1bravennn --load-extension={{ chromium_local_extensions | map(attribute='path') | join(',') }} %u"
   notify: "10-system-tools : handler_update_desktop_database"
 
 - name: handler_build_mouseless

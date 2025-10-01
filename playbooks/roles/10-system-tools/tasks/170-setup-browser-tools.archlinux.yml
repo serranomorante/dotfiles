@@ -55,6 +55,49 @@
     - repo: https://github.com/facebook/react
       version: "{{ facebook_react_extension_version }}"
     - repo: https://github.com/karlicoss/promnesia
+    - repo: https://github.com/microsoft/playwright-mcp
+
+- name: "[archlinux] Setup browser tools: set fact fact_changed_extensions"
+  ansible.builtin.set_fact:
+    fact_changed_extensions: "{{ fact_changed_extensions | default({}) | combine({extension_name: item.changed}) }}"
+  vars:
+    extension_name: "{{ item.invocation.module_args.repo | basename }}"
+  loop: "{{ var_clone_chrome_extensions.results }}"
+
+- name: "[archlinux] Setup browser tools: register var_playwright_mcp_browser_key"
+  ansible.builtin.shell: gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt ~/secrets/playwright_mcp_browser_key.gpg 2>/dev/null
+  changed_when: true
+  register: var_playwright_mcp_browser_key
+
+- name: "[archlinux] Setup browser tools: create playwright_mcp_tempdir"
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: playwright_mcp_tempdir
+  register: playwright_mcp_tempdir
+
+- name: "[archlinux] Setup browser tools: dynamically generate playwright_mcp_auth_token.patch"
+  ansible.builtin.template:
+    src: playwright_mcp_auth_token.patch
+    dest: "{{ playwright_mcp_tempdir.path }}/playwright_mcp_auth_token.patch"
+    mode: "644"
+
+- name: slkdjlf
+  ansible.builtin.debug:
+    msg: "{{ fact_changed_extensions }}"
+
+- name: "[archlinux] Setup browser tools: patch playwright mcp extension"
+  ansible.posix.patch:
+    src: "{{ playwright_mcp_tempdir.path }}/playwright_mcp_auth_token.patch"
+    basedir: ~/repos/playwright-mcp
+    strip: 1
+  when: fact_changed_extensions['playwright-mcp']
+
+- name: "[archlinux] Setup browser tools: build playwright mcp"
+  ansible.builtin.shell: npm ci npm && npm run build
+  args:
+    chdir: ~/repos/playwright-mcp/extension
+  changed_when: fact_changed_extensions['playwright-mcp']
+  when: fact_changed_extensions['playwright-mcp']
 
 - name: "[archlinux] Setup browser tools: check if NewTab-Redirect already patched"
   ansible.builtin.shell: |
@@ -121,20 +164,20 @@
 
 - name: "[archlinux] Setup browser tools: build external crx"
   ansible.builtin.shell: >
-    ~/.local/share/gem/ruby/3.2.0/bin/extensionator
-    -d ~/repos/{{ extension_github_repo_name }}
+    ~/.local/share/gem/ruby/{{ arch_ruby_version }}/bin/extensionator
+    -d {{ item.path | default(var_default_d) }}
     -i ~/apps/browser-tools/chrome/extensions/identity.pem
-    -o ~/repos/{{ extension_github_repo_name }}/{{ extension_github_repo_name }}.crx
+    -o {{ item.path | default(var_default_d) }}/{{ item.name }}.crx
+  vars:
+    var_default_d: ~/repos/{{ item.name }}
   args:
-    creates: ~/repos/{{ extension_github_repo_name }}/{{ extension_github_repo_name }}.crx
+    creates: "{{ item.path | default(var_default_d) }}/{{ item.name }}.crx"
   loop: "{{ chromium_local_extensions }}"
-  loop_control:
-    loop_var: extension_github_repo_name
 
 - name: "[archlinux] Setup browser tools: build react-devtools crx"
   # We have to do this because the `manifest.json` file is not on the root of the repo
   ansible.builtin.shell: >
-    ~/.local/share/gem/ruby/3.2.0/bin/extensionator
+    ~/.local/share/gem/ruby/{{ arch_ruby_version }}/bin/extensionator
     -d ~/repos/react/packages/react-devtools-extensions/chrome/build/unpacked/
     -i ~/apps/browser-tools/chrome/extensions/identity.pem
     -o ~/repos/react/packages/react-devtools-extensions/chrome/build/unpacked/react-devtools.crx
@@ -152,7 +195,7 @@
 
 - name: "[archlinux] Setup browser tools: build promnesia crx"
   ansible.builtin.shell: >
-    ~/.local/share/gem/ruby/3.2.0/bin/extensionator
+    ~/.local/share/gem/ruby/{{ arch_ruby_version }}/bin/extensionator
     -d ~/repos/promnesia/extension/dist/chrome
     -i ~/apps/browser-tools/chrome/extensions/identity.pem
     -o ~/repos/promnesia/extension/dist/chrome/promnesia.crx

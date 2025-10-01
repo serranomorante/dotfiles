@@ -1,4 +1,6 @@
 ---
+arch_ruby_version: 3.2.0
+
 extension_react_devtools: nipckbchhibgnbgnabineijogaiegchd
 extension_show_tab_numbers: egbdjbfggjldijfoahggfipdkpijmmgd # local
 extension_chrome_regex_search: bpelaihoicobbkgmhcbikncnpacdbknn
@@ -9,11 +11,22 @@ extension_vimium: dblffdcabmecmgepoideebngccnllhlo # local
 extension_promnesia: dmeifochafhcoiolkeadbjgimpamfghc # local
 extension_monolith: koalogomkahjlabefiglodpnhhkokekg
 local_hypothesis_extension: oaefmonehnpgpgggcnifjffikgfchbgp
+local_playwright_mcp: jakfalbnbhgkpmoaakfflhflbfpkailf
 
-# Only add your local extension here if the `manifest.json` file is in the root of the repo
 chromium_local_extensions:
-  - NewTab-Redirect
-  - vimium
-  - chrome-show-tab-numbers
+  - name: hypothesis-extension
+    path: "{{ prefix | default(ansible_env.HOME) }}/repos/hypothesis-extension/build"
+  - name: promnesia
+    path: "{{ prefix | default(ansible_env.HOME) }}/repos/promnesia/extension/dist/chrome"
+  - name: react
+    path: "{{ prefix | default(ansible_env.HOME) }}/repos/react/packages/react-devtools-extensions/chrome/build/unpacked"
+  - name: NewTab-Redirect
+    path: "{{ prefix | default(ansible_env.HOME) }}/repos/NewTab-Redirect"
+  - name: vimium
+    path: "{{ prefix | default(ansible_env.HOME) }}/repos/vimium"
+  - name: chrome-show-tab-numbers
+    path: "{{ prefix | default(ansible_env.HOME) }}/repos/chrome-show-tab-numbers"
+  - name: playwright-mcp-extension
+    path: "{{ prefix | default(ansible_env.HOME) }}/repos/playwright-mcp/extension/dist"
 
 facebook_react_extension_version: 1460d67c5b9a0d4498b4d22e1a5a6c0ccac85fdd

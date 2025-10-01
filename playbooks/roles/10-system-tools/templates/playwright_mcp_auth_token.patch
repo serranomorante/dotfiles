@@ -1,0 +1,26 @@
+diff --git a/extension/src/ui/authToken.tsx b/extension/src/ui/authToken.tsx
+index 699cf2f..3ba97da 100644
+--- a/extension/src/ui/authToken.tsx
++++ b/extension/src/ui/authToken.tsx
+@@ -24,7 +24,7 @@ export const AuthTokenSection: React.FC<{}> = ({}) => {
+   const [isExampleExpanded, setIsExampleExpanded] = useState<boolean>(false);
+ 
+   const onRegenerateToken = useCallback(() => {
+-    const newToken = generateAuthToken();
++    const newToken = "{{ var_playwright_mcp_browser_key.stdout }}"
+     localStorage.setItem('auth-token', newToken);
+     setAuthToken(newToken);
+   }, []);
+@@ -109,10 +109,7 @@ function generateAuthToken(): string {
+ }
+ 
+ export const getOrCreateAuthToken = (): string => {
+-  let token = localStorage.getItem('auth-token');
+-  if (!token) {
+-    token = generateAuthToken();
+-    localStorage.setItem('auth-token', token);
+-  }
++  const token = "{{ var_playwright_mcp_browser_key.stdout }}"
++  localStorage.setItem('auth-token', token);
+   return token;
+ }

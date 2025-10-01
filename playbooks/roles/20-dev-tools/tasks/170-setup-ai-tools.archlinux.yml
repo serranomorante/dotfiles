@@ -9,6 +9,19 @@
     - name: "@anthropic-ai/claude-code"
     - name: "@google/gemini-cli"
     - name: chrome-devtools-mcp
+    - name: playwright
+    - name: "@playwright/mcp"
+
+- name: "[archlinux] Setup ai tools: register playwright path"
+  ansible.builtin.command: volta run --node "{{ node_system_default_version }}" which playwright
+  register: var_playwright_global_path
+  changed_when: false
+
+- name: "[archlinux] Setup ai tools: symlink playwright"
+  ansible.builtin.file:
+    state: link
+    src: "{{ var_playwright_global_path.stdout }}"
+    dest: ~/bin/playwright
 
 - name: "[archlinux] Setup ai tools: clone reaper mcp"
   ansible.builtin.git:
@@ -27,13 +40,20 @@
   changed_when: true
   register: mcp_server_figma_key
 
+- name: "[archlinux] Setup ai tools: register playwright_mcp_browser_key"
+  ansible.builtin.shell: gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt ~/secrets/playwright_mcp_browser_key.gpg 2>/dev/null
+  changed_when: true
+  register: var_playwright_mcp_browser_key
+
 - name: "[archlinux] Setup ai tools: generate servers.json"
   ansible.builtin.template:
     src: mcphub_servers.json
     dest: ~/.config/mcphub/servers.json
     mode: "644"
+  register: var_mcp_hub_servers_json
 
 - name: "[archlinux] Setup ai tools: restart server list"
   ansible.builtin.command: >
     nvim --headless -c "lua require("mcphub").get_hub_instance():restart()" -c "quit"
-  changed_when: false
+  changed_when: true
+  when: var_mcp_hub_servers_json.changed
