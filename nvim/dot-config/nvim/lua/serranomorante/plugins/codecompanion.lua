@@ -114,6 +114,13 @@ local function opts()
             },
           },
         },
+        slash_commands = {
+          image = {
+            opts = {
+              dirs = { vim.env.HOME .. "/Pictures" },
+            },
+          },
+        },
       },
       inline = {
         adapter = "gemini",
