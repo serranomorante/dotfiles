@@ -18,6 +18,10 @@
         "--figma-api-key={{ figma_mcp_server_setup.personal_key.stdout }}",
         "--stdio"
       ]
+    },
+    "chrome-devtools": {
+      "command": "{{ chrome_devtools_mcp_server_setup.exe_path }}",
+      "args": ["--browserUrl=http://localhost:9222"]
     }
   }
 }

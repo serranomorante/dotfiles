@@ -1,6 +1,6 @@
 ---
-- name: "[archlinux] Setup ai tools: ensure figma-developer-mcp"
-  ansible.builtin.shell: volta run --node {{ node_system_default_version }} $(volta which npm) install --global {{ item.name }}@latest
+- name: "[archlinux] Setup ai tools: ensure mcp servers"
+  ansible.builtin.shell: volta run --node {{ node_system_default_version }} $(volta which npm) install --global {{ item.name }}@{{ item.version | default('latest') }}
   changed_when: true
   when: fact_npm_global_outdated[item.name] is defined or fact_npm_global_installed.dependencies[item.name] is undefined
   loop:
@@ -8,6 +8,7 @@
     - name: figma-developer-mcp
     - name: "@anthropic-ai/claude-code"
     - name: "@google/gemini-cli"
+    - name: chrome-devtools-mcp
 
 - name: "[archlinux] Setup ai tools: clone reaper mcp"
   ansible.builtin.git:

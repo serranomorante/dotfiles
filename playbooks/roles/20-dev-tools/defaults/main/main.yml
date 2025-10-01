@@ -1,6 +1,6 @@
 ---
 plantuml_compiled_jar_version: 1.2024.6
-node_system_default_version: 22.8.0
+node_system_default_version: 22.19.0
 rust_version: 1.75.0
 tmux_version: 3.5a
 debian_fish_shell_version: 3.5.1
