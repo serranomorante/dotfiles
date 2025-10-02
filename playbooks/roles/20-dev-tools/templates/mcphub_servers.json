@@ -24,11 +24,18 @@
       "args": ["--browserUrl=http://localhost:9222"]
     },
     "playwright": {
-      "command": "{{ playwright_mcp_server_setup.exe_path }}"
+      "command": "{{ playwright_mcp_server_setup.exe_path }}",
+      "args": ["--executable-path=/usr/bin/chromium", "--browser=chromium"]
     },
     "playwright-extension": {
       "command": "{{ playwright_mcp_server_setup.exe_path }}",
-      "args": ["--extension", "--executable-path=/usr/bin/chromium"],
+      "args": [
+        "--extension",
+        "--executable-path",
+        "/usr/bin/chromium",
+        "--browser",
+        "chromium"
+      ],
       "env": {
         "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "{{ playwright_mcp_server_setup.auth_key }}"
       }

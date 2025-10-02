@@ -1,8 +1,8 @@
 ---
-- name: "[archlinux] Chrome tools: ensure chrome as debugger service"
+- name: "[archlinux] Chrome tools: ensure browser as debugger service"
   ansible.builtin.systemd_service:
     scope: user
-    name: chrome-debugger.service
+    name: browser-debugger.service
     state: started
     enabled: true
     masked: false

@@ -19,3 +19,4 @@ save_database() {
 save_database brave
 save_database chrome
 save_database chromium
+save_database edge

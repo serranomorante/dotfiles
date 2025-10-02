@@ -14,6 +14,7 @@ local APP_TO_OUTPUT = {
   ---Apply noise reduction to Google chrome media sound
   ["Google Chrome"] = "Filtered Headphones", -- will fallback to default if not available
   ["Chromium"] = "Filtered Headphones", -- will fallback to default if not available
+  ["Microsoft-edge"] = "Filtered Headphones", -- will fallback to default if not available
 }
 
 SimpleEventHook({

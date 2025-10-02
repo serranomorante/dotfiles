@@ -172,7 +172,7 @@
     var_default_d: ~/repos/{{ item.name }}
   args:
     creates: "{{ item.path | default(var_default_d) }}/{{ item.name }}.crx"
-  loop: "{{ chromium_local_extensions }}"
+  loop: "{{ browser_local_extensions }}"
 
 - name: "[archlinux] Setup browser tools: build react-devtools crx"
   # We have to do this because the `manifest.json` file is not on the root of the repo
@@ -206,43 +206,56 @@
 - name: "[archlinux] Setup browser tools: create browser policy directory for all users"
   become: true
   ansible.builtin.file:
-    path: /etc/{{ item }}/policies/managed
+    path: "{{ item }}"
     state: directory
     recurse: true
   loop:
-    - chromium
-    - brave
+    - /etc/brave/policies/managed
+    - /etc/chromium/policies/managed
+    - /etc/opt/edge/policies/managed
 
-- name: "[archlinux] Setup browser tools: create chromium policy file for all users"
+- name: "[archlinux] Setup browser tools: create browser policy file for all users"
   become: true
   ansible.builtin.template:
-    src: ~/dotfiles/assets/other/browser-custom-policy.json
-    dest: "/etc/{{ item }}/policies/managed/browser-custom-policy.json"
+    src: browser-custom-policy.json
+    dest: "{{ item }}"
     owner: root
     mode: "644"
   loop:
-    - chromium
-    - brave
+    - /etc/brave/policies/managed/browser-custom-policy.json
+    - /etc/chromium/policies/managed/browser-custom-policy.json
+    - /etc/opt/edge/policies/managed/browser-custom-policy.json
 
 - name: "[archlinux] Setup browser tools: create extensions directory for all users"
   become: true
   ansible.builtin.file:
-    path: /usr/share/chromium/extensions
+    path: "{{ item }}"
     state: directory
     recurse: true
+  loop:
+    - /usr/share/chromium/extensions
+    - /usr/share/microsoft-edge/extensions
 
 - name: "[archlinux] Setup browser tools: create extension files"
   become: true
   ansible.builtin.copy:
-    dest: /usr/share/chromium/extensions/{{ item }}.json
+    dest: "{{ item.policy_path }}/{{ item.extension_id }}.json"
     content: |
       { "external_update_url": "https://clients2.google.com/service/update2/crx" }
     mode: "644"
   loop:
-    - "{{ extension_floccus }}"
-    - "{{ extension_memex }}"
-    - "{{ extension_chrome_regex_search }}"
-    - "{{ extension_monolith }}"
+    - extension_id: "{{ extension_floccus }}"
+      policy_path: /usr/share/microsoft-edge/extensions
+    - extension_id: "{{ extension_chrome_regex_search }}"
+      policy_path: /usr/share/microsoft-edge/extensions
+    - extension_id: "{{ extension_monolith }}"
+      policy_path: /usr/share/microsoft-edge/extensions
+    - extension_id: "{{ extension_floccus }}"
+      policy_path: /usr/share/chromium/extensions
+    - extension_id: "{{ extension_chrome_regex_search }}"
+      policy_path: /usr/share/chromium/extensions
+    - extension_id: "{{ extension_monolith }}"
+      policy_path: /usr/share/chromium/extensions
 
 - name: "[archlinux] Setup browser tools: copy brave desktop file to user directory"
   become: true
@@ -263,5 +276,5 @@
   ansible.builtin.command: echo
   changed_when: true
   notify:
-    - handler_generate_chrome_debugger_service
+    - handler_generate_browser_debugger_service
     - handler_ensure_brave_desktop_file

@@ -40,7 +40,7 @@ end
 ---Pick an `urlFilter` pattern from your current chromium tabs
 function M.pick_url_filter_from_tabs()
   return coroutine.create(function(dap_run_co)
-    local urls = utils.cmd({ "chrome-session-dump" })
+    local urls = utils.cmd({ "chrome-session-dump", vim.env.HOME .. "/.config/chromium/" })
     local items = vim.tbl_map(function(url)
       local choice_as_pattern = url:gsub("^https?://([^%/]*).*", "%1*")
       return choice_as_pattern

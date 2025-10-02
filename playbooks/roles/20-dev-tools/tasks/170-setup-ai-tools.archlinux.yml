@@ -23,6 +23,13 @@
     src: "{{ var_playwright_global_path.stdout }}"
     dest: ~/bin/playwright
 
+- name: "[archlinux] Setup ai tools: execute playwright install"
+  ansible.builtin.command: playwright install
+  environment:
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+  args:
+    creates: ~/.cache/ms-playwright/chromium-*/INSTALLATION_COMPLETE
+
 - name: "[archlinux] Setup ai tools: clone reaper mcp"
   ansible.builtin.git:
     repo: https://github.com/dschuler36/reaper-mcp-server

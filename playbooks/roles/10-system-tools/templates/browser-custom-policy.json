@@ -22,19 +22,18 @@
       "file_url_navigation_allowed": true
     },
     "{{ extension_promnesia }}": {
-      "toolbar_pin": "force_pinned"
+      "toolbar_pin": "force_pinned",
+      "toolbar_state": "force_shown"
     },
     "{{ extension_monolith }}": {
-      "toolbar_pin": "force_pinned"
+      "toolbar_pin": "force_pinned",
+      "toolbar_state": "force_shown"
     },
     "{{ local_hypothesis_extension }}": {
       "toolbar_pin": "force_pinned",
+      "toolbar_state": "force_shown",
       "file_url_navigation_allowed": true,
-      "allowed_permissions": [
-        "scripting",
-        "storage",
-        "tabs"
-      ]
+      "allowed_permissions": ["scripting", "storage", "tabs"]
     },
     "{{ extension_vimium }}": {
       "file_url_navigation_allowed": true,

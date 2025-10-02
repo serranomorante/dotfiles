@@ -13,9 +13,10 @@ extension_monolith: koalogomkahjlabefiglodpnhhkokekg
 local_hypothesis_extension: oaefmonehnpgpgggcnifjffikgfchbgp
 local_playwright_mcp: jakfalbnbhgkpmoaakfflhflbfpkailf
 
-chromium_local_extensions:
+browser_local_extensions:
   - name: hypothesis-extension
     path: "{{ prefix | default(ansible_env.HOME) }}/repos/hypothesis-extension/build"
+    hide: true
   - name: promnesia
     path: "{{ prefix | default(ansible_env.HOME) }}/repos/promnesia/extension/dist/chrome"
   - name: react
