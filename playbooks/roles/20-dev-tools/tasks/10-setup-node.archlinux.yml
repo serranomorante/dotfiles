@@ -15,6 +15,7 @@
       {% if 'dot-bashrc' in item.script %}
       export VOLTA_HOME="$HOME/.volta"
       export PATH="$VOLTA_HOME/bin:$PATH"
+      export PATH="$VOLTA_HOME/tools/image/node/{{ node_system_default_version }}/bin:$PATH" # version is replaced by ansible
       {% endif %}
   loop:
     - { script: ~/dotfiles/home/dot-bashrc }

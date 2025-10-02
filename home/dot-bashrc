@@ -111,6 +111,7 @@ fi
 ## BEGIN ANSIBLE MANAGED BLOCK - SETUP NODE
 export VOLTA_HOME="$HOME/.volta"
 export PATH="$VOLTA_HOME/bin:$PATH"
+export PATH="$VOLTA_HOME/tools/image/node/22.19.0/bin:$PATH" # version is replaced by ansible
 ## END ANSIBLE MANAGED BLOCK - SETUP NODE
 ## BEGIN ANSIBLE MANAGED BLOCK - SETUP PYTHON
 export PYENV_ROOT="$HOME/.pyenv"
