@@ -162,6 +162,15 @@
   args:
     creates: ~/apps/browser-tools/chrome/extensions/identity.pem
 
+- name: "[archlinux] Setup browser tools: build promnesia"
+  ansible.builtin.command: |
+    npm ci
+    ~/apps/PKM/.venv/bin/python build --chrome --release
+  args:
+    chdir: ~/repos/promnesia/extension
+    creates: ~/repos/promnesia/extension/dist/chrome/manifest.json
+  ignore_errors: true
+
 - name: "[archlinux] Setup browser tools: build external crx"
   ansible.builtin.shell: >
     ~/.local/share/gem/ruby/{{ arch_ruby_version }}/bin/extensionator
@@ -173,15 +182,6 @@
   args:
     creates: "{{ item.path | default(var_default_d) }}/{{ item.name }}.crx"
   loop: "{{ browser_local_extensions }}"
-
-- name: "[archlinux] Setup browser tools: build promnesia"
-  ansible.builtin.command: |
-    npm ci
-    ~/apps/PKM/.venv/bin/python build --chrome --release
-  args:
-    chdir: ~/repos/promnesia/extension
-    creates: ~/repos/promnesia/extension/dist/chrome/manifest.json
-  ignore_errors: true
 
 - name: "[archlinux] Setup browser tools: create browser policy directory for all users"
   become: true
