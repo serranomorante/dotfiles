@@ -137,4 +137,10 @@
 
 - name: "[archlinux] Editor tools: update treesitter parsers"
   ansible.builtin.command: nvim --headless -c "TSUpdate" -c "quit"
-  changed_when: false
+  changed_when: "(nvim_plugin_result_by_repo['nvim-treesitter/nvim-treesitter'] | default({})).changed | default(false)"
+  when: "(nvim_plugin_result_by_repo['nvim-treesitter/nvim-treesitter'] | default({})).changed | default(false)"
+
+- name: "[archlinux] Editor tools: update coc extensions"
+  ansible.builtin.command: nvim --headless -c "CocUpdate" -c "quit"
+  changed_when: "(nvim_plugin_result_by_repo['neoclide/coc.nvim'] | default({})).changed | default(false)"
+  when: "(nvim_plugin_result_by_repo['neoclide/coc.nvim'] | default({})).changed | default(false)"
