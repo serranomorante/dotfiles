@@ -4,7 +4,7 @@
   "HomepageIsNewTabPage": false,
   "VideoCaptureAllowedUrls": ["https://[*.]google.com/"],
   "ExtensionSettings": {
-    "{{ extension_show_tab_numbers }}": {
+    "{{ local_extension_show_tab_numbers }}": {
       "allowed_permissions": [
         "contextMenus",
         "scripting",
@@ -14,14 +14,14 @@
       ],
       "file_url_navigation_allowed": true
     },
-    "{{ extension_new_tab_redirect }}": {
+    "{{ local_extension_new_tab_redirect }}": {
       "allowed_permissions": ["favicon", "storage"],
       "file_url_navigation_allowed": true
     },
-    "{{ extension_react_devtools }}": {
+    "{{ local_extension_react_devtools }}": {
       "file_url_navigation_allowed": true
     },
-    "{{ extension_promnesia }}": {
+    "{{ local_extension_promnesia }}": {
       "toolbar_pin": "force_pinned",
       "toolbar_state": "force_shown"
     },
@@ -35,7 +35,7 @@
       "file_url_navigation_allowed": true,
       "allowed_permissions": ["scripting", "storage", "tabs"]
     },
-    "{{ extension_vimium }}": {
+    "{{ local_extension_vimium }}": {
       "file_url_navigation_allowed": true,
       "allowed_permissions": [
         "tabs",
