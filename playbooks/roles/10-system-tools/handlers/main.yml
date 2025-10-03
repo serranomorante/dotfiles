@@ -151,6 +151,7 @@
 
 - name: handler_kill_reaper_wineserver
   ansible.builtin.command: wineserver -k
+  timeout: 60
   changed_when: true
   environment:
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"

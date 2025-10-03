@@ -85,6 +85,7 @@
 
 - name: "[archlinux] Wine tools: setup prefixes"
   ansible.builtin.command: winecfg -v {{ item.winver | default('win10') }}
+  timeout: 10
   environment:
     WINEPREFIX: "{{ item.wine_prefix }}"
     WINEARCH: "{{ item.architecture | default('win64') }}"
@@ -95,6 +96,7 @@
 - name: "[archlinux] Wine tools: setup prefixes DPI"
   # https://forum.winehq.org/viewtopic.php?t=34980
   ansible.builtin.command: wine reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v LogPixels /t REG_DWORD /d {{ item.dpi | default(0x90) }} /f
+  timeout: 60
   environment:
     WINEPREFIX: "{{ item.path }}"
   changed_when: true
@@ -103,6 +105,7 @@
 
 - name: "[archlinux] Wine tools: install reaper"
   ansible.builtin.command: wine start /unix '{{ arch_reaper_wine_setup.backup_path }}/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe'
+  timeout: 60
   environment:
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
   changed_when: true
@@ -172,6 +175,7 @@
 
 - name: "[archlinux] Wine tools: register wineasio"
   ansible.builtin.command: wine regsvr32 /s {{ item }}
+  timeout: 10
   environment:
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
   loop:
@@ -197,6 +201,7 @@
 
 - name: "[archlinux] Wine tools: install sws extension"
   ansible.builtin.command: wine start /unix '{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe'
+  timeout: 60
   environment:
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
   changed_when: true
@@ -228,6 +233,7 @@
 
 - name: "[archlinux] Wine tools: install gather town"
   ansible.builtin.command: wine start /unix '{{ arch_gather_wine_setup.backup_path }}/Gather-{{ arch_gather_wine_setup.version }}-Setup.exe'
+  timeout: 60
   environment:
     WINEPREFIX: "{{ arch_gather_wine_setup.wine_prefix }}"
   args:
@@ -242,6 +248,7 @@
 
 - name: "[archlinux] Wine tools: install youlean loudness meter 2 vst"
   ansible.builtin.command: wine start /unix '{{ arch_youlean_wine_setup.backup_path }}/Youlean Loudness Meter 2 - V{{ arch_youlean_wine_setup.version }} Installer.exe'
+  timeout: 60
   environment:
     WINEPREFIX: "{{ arch_youlean_wine_setup.wine_prefix }}"
   args:
