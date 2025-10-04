@@ -3,7 +3,7 @@ Description=Start weylus
 After=graphical-session.target
 
 [Service]
-ExecStart=/usr/bin/weylus --no-gui --try-nvenc --custom-lib-js %h/repos/Weylus/www/static/lib.js
+ExecStart=/usr/bin/weylus --no-gui --try-nvenc
 Restart=on-failure
 
 [Install]
