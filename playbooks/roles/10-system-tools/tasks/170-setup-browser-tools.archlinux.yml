@@ -105,23 +105,11 @@
     basedir: ~/repos/NewTab-Redirect
     strip: 1
 
-- name: "[archlinux] Setup browser tools: check if react-devtools already patched"
-  ansible.builtin.shell: |
-    git ls-files -m
-  register: react_devtools_modified_files
-  args:
-    chdir: ~/repos/react
-  changed_when: false
-
 - name: "[archlinux] Setup browser tools: patch react-devtools extension"
-  ansible.builtin.shell: |
-    git apply ~/dotfiles/assets/patches/chrome_extensions/{{ item }}
-  args:
-    chdir: ~/repos/react
-  loop:
-    - extension_react_devtools.patch
-  when: '"utils.js" not in react_devtools_modified_files.stdout'
-  changed_when: false
+  ansible.posix.patch:
+    src: extension_react_devtools.patch
+    basedir: ~/repos/react
+    strip: 1
 
 - name: "[archlinux] Setup browser tools: patch vimium extension"
   ansible.posix.patch:
