@@ -5,6 +5,7 @@
   ansible.builtin.package:
     state: present
     name:
+      - obs-studio
       - linux-lts
       - xorg
       - xorg-xinit
