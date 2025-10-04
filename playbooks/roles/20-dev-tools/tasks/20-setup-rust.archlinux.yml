@@ -1,0 +1,6 @@
+---
+- name: "[archlinux] Setup rust: ensure rustup"
+  ansible.builtin.shell: >
+    set -o pipefail &&
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable-x86_64-unknown-linux-gnu
+  changed_when: true

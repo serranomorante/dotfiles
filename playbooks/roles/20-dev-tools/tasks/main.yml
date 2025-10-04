@@ -16,7 +16,7 @@
       with_first_found:
         - files: 20-setup-rust.{{ user_os }}.yml
           skip: true
-      when: "user_os in ['debian']"
+      when: "user_os in ['archlinux', 'debian']"
       loop_control:
         loop_var: task_file
   tags: ["20-20"]
