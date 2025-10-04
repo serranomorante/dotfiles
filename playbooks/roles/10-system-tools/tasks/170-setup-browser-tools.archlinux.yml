@@ -99,23 +99,11 @@
   changed_when: fact_changed_extensions['playwright-mcp']
   when: fact_changed_extensions['playwright-mcp']
 
-- name: "[archlinux] Setup browser tools: check if NewTab-Redirect already patched"
-  ansible.builtin.shell: |
-    git ls-files -m
-  register: newtab_redirect_modified_files
-  args:
-    chdir: ~/repos/NewTab-Redirect
-  changed_when: false
-
 - name: "[archlinux] Setup browser tools: patch NewTab-Redirect extension"
-  ansible.builtin.shell: |
-    git apply ~/dotfiles/assets/patches/chrome_extensions/{{ item }}
-  args:
-    chdir: ~/repos/NewTab-Redirect
-  loop:
-    - extension_new_tab_redirect.patch
-  when: '"main.html" not in newtab_redirect_modified_files.stdout'
-  changed_when: false
+  ansible.posix.patch:
+    src: extension_new_tab_redirect_tab.patch
+    basedir: ~/repos/NewTab-Redirect
+    strip: 1
 
 - name: "[archlinux] Setup browser tools: check if react-devtools already patched"
   ansible.builtin.shell: |
