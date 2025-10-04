@@ -42,7 +42,3 @@
   ansible.builtin.set_fact:
     fact_npm_global_outdated: "{{ var_npm_global_outdated.stdout }}"
     fact_npm_global_installed: "{{ var_npm_global_installed.stdout }}"
-
-- name: debug
-  ansible.builtin.debug:
-    msg: "{{ fact_npm_global_installed }}"

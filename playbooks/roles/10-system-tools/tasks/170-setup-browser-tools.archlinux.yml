@@ -42,12 +42,10 @@
     repo: "{{ item.repo }}"
     dest: ~/repos/{{ item.name | default(item.repo) | basename }}
     version: "{{ item.version | default('HEAD') }}"
+    force: true
     depth: 1
     single_branch: true
   register: var_clone_chrome_extensions
-  failed_when:
-    - "'msg' in var_clone_chrome_extensions"
-    - "'Local modifications exist in the destination' not in var_clone_chrome_extensions.msg"
   loop:
     - repo: https://github.com/jimschubert/NewTab-Redirect
     - repo: https://github.com/philc/vimium
@@ -80,10 +78,6 @@
     src: playwright_mcp_auth_token.patch
     dest: "{{ playwright_mcp_tempdir.path }}/playwright_mcp_auth_token.patch"
     mode: "644"
-
-- name: slkdjlf
-  ansible.builtin.debug:
-    msg: "{{ fact_changed_extensions }}"
 
 - name: "[archlinux] Setup browser tools: patch playwright mcp extension"
   ansible.posix.patch:
