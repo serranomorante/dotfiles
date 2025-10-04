@@ -17,12 +17,10 @@
       - ccache # recommended here: https://github.com/neovim/neovim/issues/26979#issuecomment-1885240317
 
 - name: "[archlinux] Neovim: apply patches to neovim"
-  ansible.builtin.command: git apply ~/dotfiles/assets/patches/nvim/{{ item.patch_filename }}
-  args:
-    chdir: ~/repos/neovim
-  loop:
-    - { patch_filename: folds.patch }
-  changed_when: false
+  ansible.posix.patch:
+    src: nvim_folds.patch
+    basedir: ~/repos/neovim
+    strip: 1
 
 - name: "[archlinux] Neovim: remove .deps"
   become: true
