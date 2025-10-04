@@ -5,6 +5,7 @@ config_files_backup_env: # home folder only
   - ~/.local/share/nvim/dirsession
   - ~/.local/share/nvim/fzf-lua
   - ~/.local/share/nvim/gp
+  - ~/.local/share/nvim/codecompanion-history
   - ~/.local/share/zoxide
   - ~/.cache/nvim/fundo
   - ~/.cache/nvim/undodir

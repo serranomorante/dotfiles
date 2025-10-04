@@ -13,8 +13,8 @@ local TablineFileNameBlock = {
     self.filename = vim.fn.fnamemodify(self.bufname, ":t")
     if vim.fn.empty(self.filename) == 1 then self.filename = "[No Name]" end
     if heirline_conds.buffer_matches({ filetype = { "codecompanion" } }, self.bufnr) then
-      local metadata = _G.codecompanion_chat_metadata
-      self.filename = "AI:" .. tostring(metadata and metadata[self.bufnr].adapter.model or "")
+      local metadata = _G.codecompanion_chat_metadata or {}
+      self.filename = "AI:" .. tostring(metadata[self.bufnr] and metadata[self.bufnr].adapter.model or "")
     end
     if heirline_conds.buffer_matches({ filetype = { "fzf" } }, self.bufnr) then self.filename = "FZF" end
   end,

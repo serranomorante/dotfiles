@@ -61,4 +61,6 @@ M.commentstring_setup.lang.javascript = vim.deepcopy(M.commentstring_setup.lang.
 
 M.POSITION_CURSOR_BETWEEN_QUOTES = "<HOME><C-Right><Right><Right>"
 
+M.CWD = vim.fn.getcwd()
+
 return M

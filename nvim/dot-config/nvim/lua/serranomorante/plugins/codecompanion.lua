@@ -1,6 +1,7 @@
 ---https://github.com/olimorris/dotfiles/blob/main/.config/nvim/lua/plugins/coding.lua
 
 local utils = require("serranomorante.utils")
+local constants = require("serranomorante.constants")
 
 local M = {}
 
@@ -149,8 +150,12 @@ local function opts()
       },
       history = {
         enabled = true,
-        title_generation_opts = {
-          model = "gpt-3.5-turbo",
+        ---@type CodeCompanion.History.Opts
+        opts = {
+          chat_filter = function(chat_data) return constants.CWD == chat_data.cwd end,
+          title_generation_opts = {
+            model = "gpt-3.5-turbo",
+          },
         },
       },
       mcphub = {

@@ -28,6 +28,7 @@
     "$HOME/.local/share/nvim/site/pack/plugins/start/plenary/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/start/mcphub/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/start/codecompanion/lua",
+    "$HOME/.local/share/nvim/site/pack/plugins/start/codecompanion-history.nvim/lua/codecompanion/_extensions/history",
     "$HOME/.local/share/nvim/site/pack/plugins/start/vectorcode/lua",
     "$HOME/.local/share/nvim/site/pack/plugins/opt/ufo/lua"
   ]
