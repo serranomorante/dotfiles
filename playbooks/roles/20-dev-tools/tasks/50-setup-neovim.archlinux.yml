@@ -16,12 +16,6 @@
       - ninja
       - ccache # recommended here: https://github.com/neovim/neovim/issues/26979#issuecomment-1885240317
 
-- name: "[archlinux] Neovim: apply patches to neovim"
-  ansible.posix.patch:
-    src: nvim_folds.patch
-    basedir: ~/repos/neovim
-    strip: 1
-
 - name: "[archlinux] Neovim: remove .deps"
   become: true
   ansible.builtin.file:

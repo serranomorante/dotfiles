@@ -43,7 +43,7 @@ vim.wo.foldcolumn = "1"
 vim.wo.foldlevel = 99
 vim.wo.foldenable = true
 vim.go.foldopen = vim.go.foldopen:gsub(",hor", "")
-vim.go.fillchars = "eob: ,fold: ,foldopen: ,foldsep: ,foldclose:+"
+vim.go.fillchars = "eob: ,fold: ,foldopen: ,foldsep: ,foldinner: ,foldclose:+"
 
 vim.go.splitright = true
 vim.go.splitbelow = true
