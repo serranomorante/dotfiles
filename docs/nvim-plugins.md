@@ -44,7 +44,6 @@ Some reasoning behind my current plugin list.
 | nvim-dap-python             | A little treat that I don't use too much, might delete                                                                                                                           |
 | one-small-step-for-vimking  | Really good for debugging your nvim setup and plugins                                                                                                                            |
 | SchemaStore.nvim            | Useful for config files like lazygit/config.yml or tsconfig.json                                                                                                                 |
-| undotree                    | Might delete, I don't use it too much, maybe git is enough                                                                                                                       |
 
 ## What I used to have
 
@@ -60,3 +59,4 @@ Some reasoning behind my current plugin list.
 | neotree               | The tree used to jump a lot. Also, I never felt that the "always opened tree" approach is well suited for vim                                                                                |
 | colorscheme plugins   | New neovim default colorscheme is all I need. Now seeing all that color from colorscheme plugins feels overwhelming                                                                          |
 | fidget,notify.nvim    | I don't mind not having fancy notifications. I print the LspProgress on a custom autocmd                                                                                                     |
+| undotree              | It's now native to neovim                                                                                                                                                                    |

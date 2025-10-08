@@ -66,8 +66,6 @@ neovim_plugins:
     repo: rebelot/heirline.nvim
     name: heirline
   - folder: start
-    repo: mbbill/undotree
-  - folder: start
     repo: kevinhwang91/nvim-fundo
     name: fundo
   - folder: start
