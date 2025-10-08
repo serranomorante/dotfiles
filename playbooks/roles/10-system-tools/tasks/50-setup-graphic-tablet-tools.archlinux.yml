@@ -15,6 +15,7 @@
     name:
       - gromit-mpx
       - weylus-bin
+      - simplescreenrecorder-git
 
 - name: "[archlinux] Graphic tablet peripheral: enable gromit-mpx service"
   ansible.builtin.systemd_service:
