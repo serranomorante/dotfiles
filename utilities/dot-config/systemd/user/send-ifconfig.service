@@ -1,0 +1,11 @@
+[Unit]
+Description=Send ifconfig file to phone2
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/scp %h/laptopifconfig phone2:/data/data/com.termux/files/home/laptopifconfig
+ExecStartPre=/usr/bin/bash -c "ifconfig -a | grep 'inet 192' > %h/laptopifconfig"
+
+[Install]
+WantedBy=graphical-session.target

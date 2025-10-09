@@ -121,3 +121,8 @@
     dest: ~/bin/mypaint
     mode: "755"
   notify: "10-system-tools : handler_ensure_mypaint_service"
+
+- name: "[archlinux] Graphic tablet peripheral: ensure services"
+  ansible.builtin.command: echo
+  changed_when: true
+  notify: handler_ensure_send_ifconfig_service
