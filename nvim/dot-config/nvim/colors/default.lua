@@ -27,7 +27,7 @@ local groups = {
   OverseerComponent = { fg = fg .. "Yellow" },
   OverseerTask = { fg = fg .. "Blue" },
   DiffviewCursorLine = { ctermfg = 14, bg = bg .. "Grey3" },
-  CocFloatingSuggest = { bg = bg .. "Grey3" },
+  FloatingSuggest = { bg = bg .. "Grey3" },
   CocMenuSel = { link = "PmenuSel" },
   CocInlayHint = { link = "CursorColumn" },
   qfDirName = { link = "Directory", default = true },

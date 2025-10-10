@@ -140,11 +140,9 @@ function M.enable_completion_documentation(client, augroup, bufnr)
 
               local wininfo = vim.api.nvim__complete_set(complete_info.selected, { info = format_docs(docs, client) })
               if vim.tbl_isempty(wininfo) or not vim.api.nvim_win_is_valid(wininfo.winid) then return end
-
-              vim.api.nvim_win_set_config(wininfo.winid, { border = "rounded" })
-
+              vim.api.nvim_win_set_config(wininfo.winid, { border = "single" })
+              vim.api.nvim_set_option_value("winhl", "NormalFloat:FloatingSuggest", { win = wininfo.winid })
               if not vim.api.nvim_buf_is_valid(wininfo.bufnr) then return end
-
               vim.bo[wininfo.bufnr].syntax = "markdown"
               vim.treesitter.start(wininfo.bufnr, "markdown")
             end,

@@ -74,6 +74,7 @@ vim.go.listchars = vim.go.listchars .. ",leadmultispace:  ,trail:·,tab:→ "
 vim.go.completeopt = "menuone,noselect,noinsert,popup,fuzzy"
 vim.go.pumheight = 15
 vim.go.shortmess = "atToOF"
+vim.go.pumborder = "single"
 vim.go.showbreak = "⮎ "
 vim.go.virtualedit = "all"
 vim.go.messagesopt = "hit-enter,history:10000"
