@@ -153,9 +153,6 @@ local function opts()
         ---@type CodeCompanion.History.Opts
         opts = {
           chat_filter = function(chat_data) return constants.CWD == chat_data.cwd end,
-          title_generation_opts = {
-            model = "gpt-3.5-turbo",
-          },
         },
       },
       mcphub = {
