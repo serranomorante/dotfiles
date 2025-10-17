@@ -6,7 +6,7 @@ local function remind_update()
   local pattern =
     "'^- \\[ \\]\\s([^\\n\\\\]+)(?:\\n|\\\\\n)(?:^\\n|^\\s{2}[^\\n]+\\n){1,10}\\s{2}```remind\\n(.*?)\\n\\s{2}```'"
   local replace = "'$2 MSG $1'"
-  local flags = "--multiline --multiline-dotall --no-filename --no-line-number --no-column -r " .. replace
+  local flags = "--type md --multiline --multiline-dotall --no-filename --no-line-number --no-column -r " .. replace
   local matches = vim.fn.split(utils.grep_with_rg(string.format("%s %s", pattern, flags)), ",")
   local items = {}
   ---Assigns the same title to remind blocks with multiple lines

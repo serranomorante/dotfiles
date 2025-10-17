@@ -2,7 +2,8 @@ local utils = require("serranomorante.utils")
 
 local cache = {}
 local function random_todo()
-  local items, count = utils.rg_json_to_qfitems(utils.grep_with_rg("'^- \\[ \\]'", { json = true }))
+  local flags = " --type md --iglob !*.vaticinios.md --iglob !*.events.md"
+  local items, count = utils.rg_json_to_qfitems(utils.grep_with_rg("'^- \\[ \\]'" .. flags, { json = true }))
   if count == 0 then return vim.api.nvim_echo({ { "No pending TODOs" } }, false, { err = true }) end
   local random_count = math.random(count)
   local cache_full = vim.tbl_count(cache) == vim.tbl_count(items)
