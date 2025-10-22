@@ -6,11 +6,14 @@ end
 
 local function opts()
   return {
+    default = {
+      use_absolute_path = true,
+      relative_template_path = false,
+      prompt_for_file_name = false,
+    },
     filetypes = {
       codecompanion = {
-        prompt_for_file_name = false,
         template = "[Image]($FILE_PATH)",
-        use_absolute_path = true,
       },
     },
   }
