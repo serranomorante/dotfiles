@@ -17,6 +17,18 @@ local function init()
     group = vim.api.nvim_create_augroup("codecompanion-model-name", { clear = true }),
     callback = function() vim.defer_fn(vim.cmd.redrawstatus, 500) end,
   })
+
+  vim.api.nvim_create_autocmd("BufWinEnter", {
+    desc = "Force removing winhighlight when buffer is not codecompanion filetype",
+    group = vim.api.nvim_create_augroup("codecompanion-bg-highlight", { clear = true }),
+    callback = function(args)
+      if vim.api.nvim_get_option_value("filetype", { buf = args.buf }) == "codecompanion" then return end
+      local winid = vim.fn.bufwinid(args.buf)
+      if vim.api.nvim_get_option_value("winhl", { win = winid == -1 and 0 or winid }):match("CustomAI") then
+        vim.api.nvim_set_option_value("winhl", "", { win = winid })
+      end
+    end,
+  })
 end
 
 local function keys()
