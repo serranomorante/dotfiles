@@ -4,7 +4,7 @@ local lsp_utils = require("serranomorante.plugins.lsp.utils")
 local bufnr = vim.api.nvim_get_current_buf()
 
 ---Fill title to markdown files that don't have it
-if not select(1, unpack(vim.api.nvim_buf_get_lines(bufnr, 0, 1, false))):match("#") then
+if vim.fn.empty(select(1, unpack(vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)))) == 1 then
   local bufname = vim.api.nvim_buf_get_name(bufnr)
   if vim.fn.filereadable(bufname) == 1 then
     local f = vim.fn.split(vim.fn.fnamemodify(bufname, ":t"), "\\.")
