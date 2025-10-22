@@ -11,7 +11,9 @@
   become: true
   ansible.builtin.package:
     state: present
-    name: marksman
+    name:
+      - marksman
+      - mdcat
 
 - name: "[archlinux] Markdown language: ensure aur texlive"
   become: true
