@@ -10,6 +10,13 @@ M.PLUGIN = "codecompanion"
 local function init()
   ---Expand 'cc' into 'CodeCompanion' in the command line
   vim.cmd([[cab cc CodeCompanion]])
+
+  vim.api.nvim_create_autocmd("User", {
+    desc = "Force redraw to display codecompanion model",
+    pattern = "CodeCompanionChatModel",
+    group = vim.api.nvim_create_augroup("codecompanion-model-name", { clear = true }),
+    callback = function() vim.defer_fn(vim.cmd.redrawstatus, 500) end,
+  })
 end
 
 local function keys()

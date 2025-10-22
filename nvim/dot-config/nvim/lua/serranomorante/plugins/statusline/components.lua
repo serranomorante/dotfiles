@@ -1,4 +1,4 @@
-local heirline_conditions = require("heirline.conditions")
+local heirline_conds = require("heirline.conditions")
 local heirline_utils = require("heirline.utils")
 local utils = require("serranomorante.utils")
 local events = require("serranomorante.events")
@@ -30,8 +30,15 @@ M.Mode = {
 
 M.FileIcon = {
   init = function(self)
-    local extension = vim.fn.fnamemodify(self.filename, ":e")
-    self.icon = require("nvim-web-devicons").get_icon(self.filename, extension, { default = true })
+    if heirline_conds.buffer_matches({ filetype = { "codecompanion" } }, self.bufnr) then
+      self.icon = " "
+    else
+      self.icon = require("nvim-web-devicons").get_icon(
+        self.filename,
+        vim.fn.fnamemodify(self.filename, ":e"),
+        { default = true }
+      )
+    end
   end,
   provider = function(self) return self.icon and (self.icon .. " ") end,
 }
@@ -78,16 +85,23 @@ M.FileNameModifier = {
 M.FileNameBlock = {
   init = function(self)
     self.bufnr = vim.api.nvim_get_current_buf()
-    self.filename = self.parse_filename(vim.api.nvim_buf_get_name(self.bufnr))
+    local filename = vim.api.nvim_buf_get_name(self.bufnr)
+    if #filename == 0 then return "[No Name]" end
+    filename = vim.fn.fnamemodify(filename, ":.")
+    ---Fix resession filenames
+    if filename:match("%%") ~= nil then filename = filename:gsub("%%", "_") end
+    ---Parse code companion
+    if heirline_conds.buffer_matches({ filetype = { "codecompanion" } }, self.bufnr) then
+      local metadata = _G.codecompanion_chat_metadata or {}
+      local model_ready = metadata[self.bufnr] and type(metadata[self.bufnr].adapter.model) == "string"
+      filename = filename:gsub(
+        "^[^]]*%[[^]]*%](.*)",
+        "[" .. tostring(model_ready and metadata[self.bufnr].adapter.model or "...") .. "] %1"
+      )
+    end
+    self.filename = filename
   end,
   static = {
-    ---@param filename string
-    parse_filename = function(filename)
-      if #filename == 0 then return "[No Name]" end
-      filename = vim.fn.fnamemodify(filename, ":.")
-      if filename:match("%%") ~= nil then filename = filename:gsub("%%", "_") end
-      return filename
-    end,
     context = {
       view = "statusline",
     },
@@ -121,7 +135,7 @@ M.LSPActive = {
       return " " .. string.format("%." .. limit .. "s%s", table.concat(names, ","), trunc and "…" or "")
     end,
   },
-  condition = heirline_conditions.lsp_attached,
+  condition = heirline_conds.lsp_attached,
   flexible = M.priority.lsp,
   {
     provider = function(self) return self:wrap(self.names) end,
@@ -142,7 +156,7 @@ M.LSPActive = {
 ---https://github.com/rebelot/heirline.nvim/blob/master/cookbook.md#diagnostics
 ---https://github.com/neovim/neovim/commit/4ee656e4f35766bef4e27c5afbfa8e3d8d74a76c
 M.Diagnostics = {
-  condition = heirline_conditions.has_diagnostics,
+  condition = heirline_conds.has_diagnostics,
   static = {
     error_icon = " ",
     warn_icon = " ",
@@ -193,7 +207,7 @@ M.Diagnostics = {
 
 ---https://github.com/rebelot/heirline.nvim/blob/master/cookbook.md#git
 M.Git = {
-  condition = heirline_conditions.is_git_repo,
+  condition = heirline_conds.is_git_repo,
   init = function(self)
     self.status_dict = vim.b.gitsigns_status_dict
     self.has_changes = (self.status_dict.added ~= 0 and self.status_dict.added ~= nil)
