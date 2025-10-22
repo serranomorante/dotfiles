@@ -30,6 +30,7 @@ neovim_plugins:
   - folder: start
     repo: stevearc/overseer.nvim
     name: overseer
+    version: v1.6.0 # ATTN: overseer.nvim will experience breaking changes soon. Pin to version v1.6.0 or earlier to avoid disruption.
   - folder: start
     repo: nvim-treesitter/nvim-treesitter
     version: main
