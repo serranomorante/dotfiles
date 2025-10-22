@@ -536,6 +536,12 @@ function M.fzf(opts)
   local scratch = true
   local term_bufnr = vim.api.nvim_create_buf(listed, scratch)
   vim.api.nvim_set_option_value("filetype", "fzf", { buf = term_bufnr })
+  vim.keymap.set(
+    "t",
+    "<C-y>",
+    "<CR>",
+    { desc = "Alternative to pressing enter on fuzzy picker", nowait = true, silent = true, buffer = term_bufnr }
+  )
   local term_winnr = vim.api.nvim_open_win(term_bufnr, true, {
     relative = "editor",
     row = editor_height,
