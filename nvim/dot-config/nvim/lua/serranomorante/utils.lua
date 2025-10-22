@@ -550,6 +550,7 @@ function M.fzf(opts)
   vim.wo[term_winnr].signcolumn = "no"
   vim.wo[term_winnr].scrollbind = false
   vim.wo[term_winnr].cursorbind = false
+  vim.api.nvim_set_option_value("winhl", "Normal:Normal", { win = term_winnr })
 
   local source = (function()
     if type(opts.source) == "string" then
