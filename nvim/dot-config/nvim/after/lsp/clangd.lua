@@ -1,9 +1,8 @@
-local binaries = require("serranomorante.binaries")
 local constants = require("serranomorante.constants")
 
 ---@type vim.lsp.Config
 return {
-  cmd = { binaries.clangd() },
+  cmd = { constants.BINARIES.clangd() },
   filetypes = constants.c_aliases,
   capabilities = {
     offsetEncoding = "utf-16",

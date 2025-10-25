@@ -1,9 +1,8 @@
-local binaries = require("serranomorante.binaries")
 local constants = require("serranomorante.constants")
 
 ---@type vim.lsp.Config
 return {
-  cmd = { binaries.lua_language_server() },
+  cmd = { constants.BINARIES.lua_language_server() },
   filetypes = constants.lua_aliases,
   root_markers = {
     ".luarc.json",

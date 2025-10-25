@@ -63,4 +63,7 @@ M.POSITION_CURSOR_BETWEEN_QUOTES = "<HOME><C-Right><Right><Right>"
 
 M.CWD = vim.fn.getcwd()
 
+local ok, binaries = pcall(require, "serranomorante.binaries")
+M.BINARIES = ok and binaries or {}
+
 return M

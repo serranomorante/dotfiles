@@ -1,6 +1,6 @@
 local tools = require("serranomorante.tools")
 local utils = require("serranomorante.utils")
-local binaries = require("serranomorante.binaries")
+local constants = require("serranomorante.constants")
 
 local M = {}
 
@@ -105,14 +105,14 @@ function M.config()
   local util = require("conform.util")
 
   conform.formatters["js-beautify"] = {
-    command = util.find_executable({ "node_modules/.bin/js-beautify" }, binaries.js_beautify_executable()),
+    command = util.find_executable({ "node_modules/.bin/js-beautify" }, constants.BINARIES.js_beautify_executable()),
   }
 
   conform.formatters.eslint_d = {
     prepend_args = {
       "--no-color",
     },
-    command = util.find_executable({ "node_modules/.bin/eslint_d" }, binaries.eslint_d_executable()),
+    command = util.find_executable({ "node_modules/.bin/eslint_d" }, constants.BINARIES.eslint_d_executable()),
     exit_codes = { 0, 1 }, -- don't fail to let the success callback execute
   }
 

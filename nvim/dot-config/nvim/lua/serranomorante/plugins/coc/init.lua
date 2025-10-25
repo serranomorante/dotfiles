@@ -1,10 +1,10 @@
 local M = {}
 
 local utils = require("serranomorante.utils")
+local constants = require("serranomorante.constants")
 local tools = require("serranomorante.tools")
 local event_handlers = require("serranomorante.plugins.coc.event_handlers")
 local coc_utils = require("serranomorante.plugins.coc.utils")
-local binaries = require("serranomorante.binaries")
 
 local coc_custom_group = vim.api.nvim_create_augroup("coc_custom_config", { clear = true })
 
@@ -32,7 +32,7 @@ local function init()
     tools.by_filetype.all
   )
   vim.b.coc_force_attach = 1
-  local ok, override_node = pcall(binaries.system_default_node)
+  local ok, override_node = pcall(constants.BINARIES.system_default_node)
   if ok and override_node then vim.g.coc_node_path = override_node end
 
   vim.api.nvim_create_autocmd({ "BufReadPre", "BufNewFile" }, {

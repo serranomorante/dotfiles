@@ -1,7 +1,6 @@
 local utils = require("serranomorante.utils")
 local constants = require("serranomorante.constants")
 local dap_utils = require("serranomorante.plugins.dap.dap-utils")
-local binaries = require("serranomorante.binaries")
 
 local M = {}
 
@@ -168,9 +167,9 @@ function M.config()
   ---║               Adapters               ║
   ---╚══════════════════════════════════════╝
 
-  local ok, override_node = pcall(binaries.system_default_node)
+  local ok, override_node = pcall(constants.BINARIES.system_default_node)
 
-  if binaries.vscode_js_debug_dap_executable() then
+  if constants.BINARIES.vscode_js_debug_dap_executable() then
     for _, type in ipairs({
       "node",
       "chrome",
@@ -187,30 +186,30 @@ function M.config()
         port = "${port}",
         executable = {
           command = (ok and override_node) and override_node or "node",
-          args = { binaries.vscode_js_debug_dap_executable(), "${port}", host },
+          args = { constants.BINARIES.vscode_js_debug_dap_executable(), "${port}", host },
         },
       }
     end
   end
 
   ---https://github.com/mfussenegger/nvim-dap/wiki/C-C---Rust-(gdb-via--vscode-cpptools)
-  if vim.fn.executable(binaries.cppdbg_dap_executable()) == 1 then
+  if vim.fn.executable(constants.BINARIES.cppdbg_dap_executable()) == 1 then
     dap.adapters.cppdbg = {
       id = "cppdbg",
       type = "executable",
-      command = binaries.cppdbg_dap_executable(),
+      command = constants.BINARIES.cppdbg_dap_executable(),
     }
   end
 
-  if vim.fn.executable(binaries.bashdb_dap_executable()) == 1 then
+  if vim.fn.executable(constants.BINARIES.bashdb_dap_executable()) == 1 then
     dap.adapters.bashdb = {
       name = "bashdb",
       type = "executable",
-      command = binaries.bashdb_dap_executable(),
+      command = constants.BINARIES.bashdb_dap_executable(),
     }
   end
 
-  if vim.fn.executable(binaries.debugpy_dap_executable()) == 1 then
+  if vim.fn.executable(constants.BINARIES.debugpy_dap_executable()) == 1 then
     function dap.adapters.python(cb, config)
       if config.request == "attach" then
         local port = (config.connect or config).port
@@ -227,7 +226,7 @@ function M.config()
       else
         cb({
           type = "executable",
-          command = binaries.debugpy_dap_executable(),
+          command = constants.BINARIES.debugpy_dap_executable(),
           args = { "-m", "debugpy.adapter" },
           enrich_config = dap_utils.python_enrich_config,
           options = {
@@ -238,19 +237,19 @@ function M.config()
     end
   end
 
-  if vim.fn.executable(binaries.php_dap_executable()) == 1 then
+  if vim.fn.executable(constants.BINARIES.php_dap_executable()) == 1 then
     dap.adapters.php = {
       type = "executable",
       command = "node",
-      args = { binaries.php_dap_executable() },
+      args = { constants.BINARIES.php_dap_executable() },
     }
   end
 
-  if vim.fn.executable(binaries.go_dap_executable()) == 1 then
+  if vim.fn.executable(constants.BINARIES.go_dap_executable()) == 1 then
     dap.adapters.go = {
       type = "executable",
       command = "node",
-      args = { binaries.go_dap_executable() },
+      args = { constants.BINARIES.go_dap_executable() },
     }
   end
 
@@ -387,7 +386,7 @@ function M.config()
       request = "launch",
       showLog = false,
       program = "${file}",
-      dlvToolPath = binaries.dlv(),
+      dlvToolPath = constants.BINARIES.dlv(),
     },
   }
 

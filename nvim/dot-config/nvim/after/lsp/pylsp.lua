@@ -1,9 +1,8 @@
-local binaries = require("serranomorante.binaries")
 local constants = require("serranomorante.constants")
 
 ---@type vim.lsp.Config
 return {
-  cmd = { binaries.pylsp() }, -- Use to debug: "-vvv", "--log-file", "/tmp/lsp.log"
+  cmd = { constants.BINARIES.pylsp() }, -- Use to debug: "-vvv", "--log-file", "/tmp/lsp.log"
   filetypes = constants.python_aliases,
   settings = {
     pylsp = {
