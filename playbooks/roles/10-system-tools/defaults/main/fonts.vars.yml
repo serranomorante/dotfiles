@@ -1,0 +1,13 @@
+---
+arch_pragmasevka_nerd_font_version: 1.7.0
+arch_font_awesome_font_version: 7.1.0
+arch_hack_nerd_font_version: 3.4.0
+arch_jetbrains_mono_nerd_font_version: 3.4.0
+arch_firacode_nerd_font_version: 3.4.0
+
+arch_fonts:
+  - https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ arch_hack_nerd_font_version }}/Hack.zip
+  - https://github.com/shytikov/pragmasevka/releases/download/v{{ arch_pragmasevka_nerd_font_version }}/Pragmasevka_NF.zip
+  - https://github.com/FortAwesome/Font-Awesome/releases/download/{{ arch_font_awesome_font_version }}/fontawesome-free-7.1.0-desktop.zip
+  - https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ arch_jetbrains_mono_nerd_font_version }}/JetBrainsMono.zip
+  - https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ arch_firacode_nerd_font_version }}/FiraCode.zip

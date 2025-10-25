@@ -191,3 +191,7 @@
     state: started
     enabled: true
     masked: false
+
+- name: handler_ensure_fc_cache
+  ansible.builtin.command: fc-cache
+  changed_when: true
