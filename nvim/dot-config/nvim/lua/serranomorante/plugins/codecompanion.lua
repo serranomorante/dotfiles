@@ -171,6 +171,7 @@ local function opts()
         enabled = true,
         ---@type CodeCompanion.History.Opts
         opts = {
+          auto_generate_title = false,
           chat_filter = function(chat_data) return constants.CWD == chat_data.cwd end,
         },
       },
