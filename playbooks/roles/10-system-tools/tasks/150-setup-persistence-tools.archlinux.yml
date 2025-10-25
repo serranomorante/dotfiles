@@ -21,7 +21,7 @@
       - ansible
     virtualenv: ~/apps/persistence-tools/.venv
     virtualenv_command: /usr/bin/python3 -m venv
-    state: present
+    state: latest
 
 - name: "[archlinux] Persistence tools: symlink virtualenv ansible"
   ansible.builtin.file:

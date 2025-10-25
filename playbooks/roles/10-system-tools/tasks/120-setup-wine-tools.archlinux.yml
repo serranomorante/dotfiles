@@ -261,4 +261,4 @@
     msg: Timeout waiting for reaper to finish installation
     delay: 5
     timeout: 300
-  when: var_install_youlean_loudness
+  when: var_install_youlean_loudness.changed
