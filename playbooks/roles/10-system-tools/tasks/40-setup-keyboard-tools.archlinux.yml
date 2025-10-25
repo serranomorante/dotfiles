@@ -6,6 +6,22 @@
     name: python-xlib
   notify: handler_enable_start_keyd_application_mapper_service
 
+- name: "[archlinux] Keyboard peripheral: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      # Mouseless.click dependencies
+      - webkit2gtk-4.1
+      # warpd dependencies
+      - libxi
+      - libxinerama
+      - libxft
+      - libxfixes
+      - libxtst
+      - libx11
+      - libxkbcommon
+
 - name: "[archlinux] Keyboard peripheral: clone keyd"
   ansible.builtin.git:
     repo: https://github.com/rvaiya/keyd
@@ -122,19 +138,6 @@
     - "10-system-tools : handler_ensure_mouseless_udev_rules"
     - "10-system-tools : handler_link_mouseless_binary"
 
-- name: "[archlinux] Keyboard peripheral: ensure warpd dependencies"
-  become: true
-  ansible.builtin.package:
-    state: present
-    name:
-      - libxi
-      - libxinerama
-      - libxft
-      - libxfixes
-      - libxtst
-      - libx11
-      - libxkbcommon
-
 - name: "[archlinux] Keyboard peripheral: clone warpd"
   ansible.builtin.git:
     repo: https://github.com/rvaiya/warpd
@@ -189,3 +192,16 @@
     append: true
     groups: keyd
     name: "{{ ansible_env.USER }}"
+
+- name: "[archlinux] Other tools: ensure keyboard-tools dir exists"
+  ansible.builtin.file:
+    path: ~/apps/keyboard-tools
+    state: directory
+    mode: "775"
+
+- name: "[archlinux] Keyboard peripheral: download mouseless.click"
+  ansible.builtin.get_url:
+    url: https://github.com/croian/mouseless/releases/download/v{{ arch_mouseless_click_version }}/Mouseless_v{{ arch_mouseless_click_version }}_arch-20251005.0.430597_x86_64.AppImage
+    dest: ~/apps/keyboard-tools/Mouseless.AppImage
+    mode: "755"
+  notify: handler_ensure_mouseless_click_service

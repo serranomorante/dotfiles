@@ -183,3 +183,11 @@
     state: started
     enabled: true
     masked: false
+
+- name: handler_ensure_mouseless_click_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: mouseless-click.service
+    state: started
+    enabled: true
+    masked: false
