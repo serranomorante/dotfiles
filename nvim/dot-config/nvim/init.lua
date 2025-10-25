@@ -1,5 +1,10 @@
 vim.loader.enable()
-require("vim._extui").enable({})
+require("vim._extui").enable({
+  msg = {
+    target = "msg",
+    timeout = 4000,
+  },
+})
 
 vim.filetype.add({
   filename = {

@@ -134,6 +134,16 @@ vim.api.nvim_create_autocmd("FileType", {
   command = "set wrap",
 })
 
+vim.api.nvim_create_autocmd("FileType", {
+  desc = "Add custom bg to ephemeral msg window",
+  pattern = "msg",
+  group = general_settings_group,
+  callback = function(args)
+    local winid = vim.fn.bufwinid(args.buf)
+    vim.api.nvim_set_option_value("winhl", "Normal:CustomEphemeralMsgBg", { win = winid })
+  end,
+})
+
 vim.api.nvim_create_autocmd("TermOpen", {
   desc = "Enter terminal in insert mode",
   group = general_settings_group,
