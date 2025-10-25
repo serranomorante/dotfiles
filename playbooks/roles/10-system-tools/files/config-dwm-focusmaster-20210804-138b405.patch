@@ -1,0 +1,12 @@
+diff --git a/config.h b/config.h
+index 77a60d1..575f11c 100644
+--- a/config.h
++++ b/config.h
+@@ -86,6 +86,7 @@ static const Key keys[] = {
+ 	{ MODKEY,                       XK_period, focusmon,       {.i = +1 } },
+ 	{ MODKEY|ShiftMask,             XK_comma,  tagmon,         {.i = -1 } },
+ 	{ MODKEY|ShiftMask,             XK_period, tagmon,         {.i = +1 } },
++	{ MODKEY|ControlMask,           XK_space,  focusmaster,    {0} },
+ 	TAGKEYS(                        XK_1,                      0)
+ 	TAGKEYS(                        XK_2,                      1)
+ 	TAGKEYS(                        XK_3,                      2)

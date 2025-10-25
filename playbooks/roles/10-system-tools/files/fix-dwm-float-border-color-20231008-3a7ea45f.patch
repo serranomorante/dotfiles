@@ -1,0 +1,25 @@
+diff --git a/dwm.c b/dwm.c
+index e7dbdc6..4f867dd 100644
+--- a/dwm.c
++++ b/dwm.c
+@@ -1720,16 +1720,18 @@ togglefloating(const Arg *arg)
+ 	if (!selmon->sel)
+ 		return;
+ 	selmon->sel->isfloating = !selmon->sel->isfloating || selmon->sel->isfixed;
+-	if (selmon->sel->isfloating)
++	if (selmon->sel->isfloating) {
++		XSetWindowBorder(dpy, selmon->sel->win, scheme[SchemeSel][ColFloat].pixel);
+ 		/*restore last known float dimensions*/
+ 		resize(selmon->sel, selmon->sel->sfx, selmon->sel->sfy,
+ 		       selmon->sel->sfw, selmon->sel->sfh, False);
+-	else {
++	} else {
+ 		/*save last known float dimensions*/
+ 		selmon->sel->sfx = selmon->sel->x;
+ 		selmon->sel->sfy = selmon->sel->y;
+ 		selmon->sel->sfw = selmon->sel->w;
+ 		selmon->sel->sfh = selmon->sel->h;
++		XSetWindowBorder(dpy, selmon->sel->win, scheme[SchemeSel][ColBorder].pixel);
+ 	}
+ 	arrange(selmon);
+ }

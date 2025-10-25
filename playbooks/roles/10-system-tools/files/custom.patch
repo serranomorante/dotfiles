@@ -1,0 +1,61 @@
+diff --git a/config.h b/config.h
+index 56ee471..cda66c7 100644
+--- a/config.h
++++ b/config.h
+@@ -1,9 +1,9 @@
+ /* See LICENSE file for copyright and license details. */
+ 
+ /* appearance */
+-static const unsigned int borderpx  = 1;        /* border pixel of windows */
++static const unsigned int borderpx  = 5;        /* border pixel of windows */
+ static const unsigned int snap      = 32;       /* snap pixel */
+-static const int showbar            = 1;        /* 0 means no bar */
++static const int showbar            = 0;        /* 0 means no bar */
+ static const int topbar             = 1;        /* 0 means bottom bar */
+ static const char *fonts[]          = { "monospace:size=10" };
+ static const char dmenufont[]       = "monospace:size=10";
+@@ -28,9 +28,22 @@ static const Rule rules[] = {
+ 	 *	WM_CLASS(STRING) = instance, class
+ 	 *	WM_NAME(STRING) = title
+ 	 */
+-	/* class      instance    title       tags mask     isfloating   monitor */
+-	{ "Gimp",     NULL,       NULL,       0,            1,           -1 },
+-	{ "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
++	/* class                  instance                title                      tags mask     isfloating   monitor    float x,y,w,h    floatborderpx */
++	{ "plasmashell",          "plasmashell",          "Desktop @ QRect",         1 << 8,       0,           -1,        -1,-1,-1,-1,     -1 }, // send plasma desktop to tag 9
++	{ NULL,                   NULL,                   "is sharing your screen.", 1 << 8,       1,           -1,        -1,-1,-1,-1,     -1 }, // send google meet popup to tag 9
++	{ "kcalc",                "kcalc",                NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1 }, // make calculator floating by default { "picker",               "picker",               NULL,                      0,            1,           -1,        -1,-1,1800,800,  -1 }, // make nnn picker floating by default
++	{ "mouseless",            "Mouseless",            "Mouseless",               0,            1,           -1,        -1,-1,-1,-1,     -1 }, // make mouseless-click config floating by default
++	{ "kronometer",           "kronometer",           NULL,                      0,            1,           -1,        -1,-1,1800,800,  -1 }, // make nnn picker floating by default
++	{ "Google-chrome",        "google-chrome",        NULL,                      1 << 4,       0,           -1,        -1,-1,-1,-1,     -1 }, // use tag 5 for chrome
++	{ "Microsoft-edge",       "microsoft-edge",       NULL,                      1 << 4,       0,           -1,        -1,-1,-1,-1,     -1 }, // use tag 5 for edge
++	{ "Bitwarden",            "bitwarden",            "Bitwarden",               1 << 8,       0,           -1,        -1,-1,-1,-1,     -1 }, // use tag 9 for bitwarden
++	{ NULL,                   NULL,                   "NoiseTorch",              1 << 8,       0,           -1,        -1,-1,-1,-1,     -1 }, // use tag 3 for noisetorch
++	{ "MyPaint",              "mypaint",              NULL,                      1 << 5,       0,           -1,        -1,-1,-1,-1,     -1 }, // use tag 6 for mypaint
++	{ "Chromium",             "chromium",             NULL,                      1 << 4,       0,           -1,        -1,-1,-1,-1,     -1 }, // use tag 5 for chromium
++	{ "SimpleScreenRecorder", "simplescreenrecorder", "SimpleScreenRecorder",    0,            1,           -1,        -1,-1,-1,-1,     -1 },
++	{ NULL,                   NULL,                   "KRunner",                 0,            1,           -1,        -1,-1,-1,-1,     -1 },
++	{ NULL,                   NULL,                   "Event Tester",            0,            1,           -1,        -1,-1,-1,-1,     -1 },
++
+ };
+ 
+ /* layout(s) */
+@@ -48,7 +61,7 @@ static const Layout layouts[] = {
+ };
+ 
+ /* key definitions */
+-#define MODKEY Mod1Mask
++#define MODKEY Mod4Mask
+ #define TAGKEYS(KEY,TAG) \
+ 	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
+ 	{ MODKEY|ControlMask,           KEY,      toggleview,     {.ui = 1 << TAG} }, \
+@@ -61,7 +74,8 @@ static const Layout layouts[] = {
+ /* commands */
+ static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
+ static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
+-static const char *termcmd[]  = { "st", NULL };
++/* https://github.com/kovidgoyal/kitty/discussions/6017#discussioncomment-4970377 */
++static const char *termcmd[]  = { "kitty", "--single-instance", NULL };
+ 
+ static const Key keys[] = {
+ 	/* modifier                     key        function        argument */

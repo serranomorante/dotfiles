@@ -17,25 +17,9 @@
     enabled: false
     masked: true
 
-- name: "[archlinux] Compositor: install dwm"
-  become: true
-  ansible.builtin.command: make install
-  args:
-    chdir: "{{ ansible_env.HOME }}/pjs/dwm"
-  register: make_result
-  changed_when: make_result.rc == 0
-
 - name: "[archlinux] Compositor: kwriteconfig6"
   ansible.builtin.command: kwriteconfig6 --file startkderc --group General --key systemdBoot true
   changed_when: false
-
-- name: "[archlinux] Compositor: ensure dwm service"
-  ansible.builtin.systemd_service:
-    scope: user
-    name: plasma-wm.service
-    state: started
-    enabled: true
-    masked: false
 
 - name: "[archlinux] Compositor: ensure packages"
   become: true
@@ -53,3 +37,81 @@
     depth: 1
   loop:
     - repo: https://github.com/ikz87/picom-shaders
+
+- name: "[archlinux] Compositor: clone latest dwm"
+  ansible.builtin.git:
+    repo: git://git.suckless.org/dwm
+    dest: ~/repos/dwm
+    version: "{{ arch_dwm_version }}"
+  ignore_errors: true
+
+- name: "[archlinux] Compositor: perform sudo make to generate config.h"
+  become: true
+  ansible.builtin.command: make
+  args:
+    chdir: "{{ ansible_env.HOME }}/repos/dwm"
+    creates: "{{ ansible_env.HOME }}/repos/dwm/config.h"
+
+- name: "[archlinux] Compositor: prepare patches folder"
+  ansible.builtin.file:
+    path: ~/repos/dwm/patches
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Compositor: get all dwm patches"
+  ansible.builtin.get_url:
+    url: "{{ item }}"
+    dest: ~/repos/dwm/patches/{{ item | basename }}
+    mode: "755"
+  loop:
+    - https://dwm.suckless.org/patches/fakefullscreen/dwm-fakefullscreen-20210714-138b405.diff
+    - https://dwm.suckless.org/patches/focusmaster/dwm-focusmaster-20210804-138b405.diff
+    - https://dwm.suckless.org/patches/save_floats/dwm-savefloats-6.0.diff
+    - https://dwm.suckless.org/patches/alpha/dwm-fixborders-6.2.diff
+    - https://dwm.suckless.org/patches/float_border_color/dwm-float-border-color-20231008-3a7ea45f.diff
+    - https://dwm.suckless.org/patches/swapfocus/dwm-swapfocus-20160731-56a31dc.diff
+
+- name: "[archlinux] Compositor: apply dwm patches"
+  ansible.posix.patch:
+    src: "{{ item }}"
+    strip: 1
+    basedir: ~/repos/dwm
+  ignore_errors: true
+  loop:
+    # fakefullscreen
+    - ~/repos/dwm/patches/dwm-fakefullscreen-20210714-138b405.diff
+    - fix-dwm-fakefullscreen-20210714-138b405.patch
+    # focusmaster
+    - ~/repos/dwm/patches/dwm-focusmaster-20210804-138b405.diff
+    - config-dwm-focusmaster-20210804-138b405.patch
+    # savefloats
+    - ~/repos/dwm/patches/dwm-savefloats-6.0.diff
+    - fix-dwm-savefloats-6.0.patch
+    # fixborders
+    - ~/repos/dwm/patches/dwm-fixborders-6.2.diff
+    # dwm-float-border-color
+    - ~/repos/dwm/patches/dwm-float-border-color-20231008-3a7ea45f.diff
+    - fix-dwm-float-border-color-20231008-3a7ea45f.patch
+    - config-dwm-float-border-color-20231008-3a7ea45f.patch
+    # swapfocus
+    - ~/repos/dwm/patches/dwm-swapfocus-20160731-56a31dc.diff
+    - fix-dwm-swapfocus-20160731-56a31dc.patch
+    - config-dwm-swapfocus-20160731-56a31dc.patch
+    # My changes. Always leave this last.
+    - custom.patch
+
+- name: "[archlinux] Compositor: install dwm"
+  become: true
+  ansible.builtin.command: make install
+  args:
+    chdir: "{{ ansible_env.HOME }}/repos/dwm"
+  register: var_dwm_result
+  changed_when: var_dwm_result.rc == 0
+
+- name: "[archlinux] Compositor: ensure dwm service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: plasma-wm.service
+    state: started
+    enabled: true
+    masked: false

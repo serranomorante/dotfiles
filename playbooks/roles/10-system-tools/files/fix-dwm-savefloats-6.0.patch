@@ -1,0 +1,23 @@
+diff --git a/dwm.c b/dwm.c
+index a5f307f..98d3804 100644
+--- a/dwm.c
++++ b/dwm.c
+@@ -1712,8 +1712,16 @@ togglefloating(const Arg *arg)
+ 		return;
+ 	selmon->sel->isfloating = !selmon->sel->isfloating || selmon->sel->isfixed;
+ 	if (selmon->sel->isfloating)
+-		resize(selmon->sel, selmon->sel->x, selmon->sel->y,
+-			selmon->sel->w, selmon->sel->h, 0);
++		/*restore last known float dimensions*/
++		resize(selmon->sel, selmon->sel->sfx, selmon->sel->sfy,
++		       selmon->sel->sfw, selmon->sel->sfh, False);
++	else {
++		/*save last known float dimensions*/
++		selmon->sel->sfx = selmon->sel->x;
++		selmon->sel->sfy = selmon->sel->y;
++		selmon->sel->sfw = selmon->sel->w;
++		selmon->sel->sfh = selmon->sel->h;
++	}
+ 	arrange(selmon);
+ }
+ 

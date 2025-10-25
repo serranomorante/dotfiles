@@ -8,6 +8,7 @@ arch_davinci_resolve_version: "20.2"
 arch_nvidia_libs_version: 0.8.5
 arch_wine_staging_version: 10.8-2
 arch_mouseless_click_version: 0.4.2
+arch_dwm_version: 7c3abae4e68b6a21f05cb04f3af31217259c0aa9
 davinci_resolve_download_key: foo
 arch_mypaint_version: 2.1.0-alpha-400-g90b36db-2021-05-04_18.41
 arch_reaper_sws_extension_setup:
