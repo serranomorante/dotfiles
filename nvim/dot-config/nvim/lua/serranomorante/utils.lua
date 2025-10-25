@@ -622,4 +622,11 @@ function M.new_scratch_buffer(opts)
   if opts.filetype then M.feedkeys(string.format(":set filetype=%s<CR>", opts.filetype)) end
 end
 
+---@param opts table?
+function M.write_password(opts)
+  if not vim.g.pass then return end
+  opts = opts or { delay = 100 }
+  vim.defer_fn(function() M.feedkeys(string.format("%s<ENTER>", vim.g.pass), "t") end, opts.delay)
+end
+
 return M

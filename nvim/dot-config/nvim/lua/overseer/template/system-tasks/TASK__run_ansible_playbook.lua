@@ -80,6 +80,12 @@ return {
       optional = true,
       order = 5,
     },
+    pass = {
+      desc = "Password",
+      type = "string",
+      optional = true,
+      order = 6,
+    },
   },
   builder = function(params)
     local args = {
@@ -106,6 +112,8 @@ return {
       retain_shell = true,
     }
     local final = vim.fn.join(utils.wrap_overseer_args_with_tmux(args, tmux_args), " ")
+    if params.pass then vim.g.pass = params.pass end
+    utils.write_password({ delay = 2000 })
     return {
       name = task_name .. string.format(" %s", params.task_id),
       cmd = final,

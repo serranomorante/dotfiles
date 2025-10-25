@@ -1,3 +1,5 @@
+local utils = require("serranomorante.utils")
+
 local M = {}
 
 local function keys()
@@ -23,7 +25,7 @@ local function keys()
   vim.keymap.set(
     "n",
     "<leader>od",
-    "<cmd>OverseerQuickAction<CR>",
+    "<cmd>OverseerTaskAction<CR>",
     { desc = "Overseer: Run an action on the most recent task" }
   )
   vim.keymap.set(
@@ -88,6 +90,14 @@ local function opts()
           vim.defer_fn(function()
             if vim.bo.buftype == "terminal" then vim.cmd.startinsert() end
           end, 200)
+        end,
+      },
+      ["Restart playbook"] = {
+        desc = "Restart playbook",
+        condition = function(task) return task.name:match("^run%-ansible%-playbook") end,
+        run = function(task)
+          utils.write_password({ delay = 2000 })
+          require("overseer").run_action(task, "restart")
         end,
       },
     },
