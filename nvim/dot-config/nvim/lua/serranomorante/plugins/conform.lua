@@ -56,6 +56,7 @@ function M.opts()
       typescript = gen_fmt(ft_tools.typescript.fmts, { stop_after_first = false }),
       javascriptreact = gen_fmt(ft_tools.javascriptreact.fmts, { stop_after_first = false }),
       typescriptreact = gen_fmt(ft_tools.typescriptreact.fmts, { stop_after_first = false }),
+      gitcommit = function() return {} end, -- disable formatting for this filetype
       ["yaml.ansible"] = gen_fmt(vim.tbl_get(ft_tools, "yaml.ansible").fmts),
       _ = { "auto_indent", "trim_whitespace", lsp_format = "never" },
     },
