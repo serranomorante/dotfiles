@@ -107,6 +107,7 @@ return {
     }
     local final = vim.fn.join(utils.wrap_overseer_args_with_tmux(args, tmux_args), " ")
     return {
+      name = task_name .. string.format(" %s", params.task_id),
       cmd = final,
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
       components = {

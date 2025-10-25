@@ -6,6 +6,7 @@ return {
   desc = "Open markdown preview",
   builder = function()
     return {
+      name = task_name,
       cmd = string.format(
         'kitty @ launch --location=vsplit --bias=50 --hold bash -c "mdcat --no-pager %s"',
         vim.fn.expand("%:p")

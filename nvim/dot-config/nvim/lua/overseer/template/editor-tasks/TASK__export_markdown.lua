@@ -26,6 +26,7 @@ return {
     local command = vim.list_extend({ "pandoc" }, vim.list_extend(args, { input, "-o", output }))
 
     return {
+      name = task_name,
       cmd = { "tmux" },
       args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name .. input, cwd = vim.fn.getcwd() }),
       components = {

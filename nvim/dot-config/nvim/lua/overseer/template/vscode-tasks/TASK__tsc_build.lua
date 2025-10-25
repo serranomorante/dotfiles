@@ -10,6 +10,7 @@ return {
   builder = function()
     local command = { "tsc" }
     return {
+      name = task_name,
       cmd = { "tmux" },
       args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name }),
       components = {

@@ -20,8 +20,9 @@ return {
       precalculated_vars.fileDirname .. "/" .. precalculated_vars.fileBasenameNoExtension,
     }
     return {
+      name = task_name,
       cmd = { "tmux" },
-      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name }),
+      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name, retain_shell = true }),
       components = {
         "defaults_without_notification",
       },
