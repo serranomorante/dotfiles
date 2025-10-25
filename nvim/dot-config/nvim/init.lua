@@ -1,4 +1,5 @@
 vim.loader.enable()
+require("vim._extui").enable({})
 
 vim.filetype.add({
   filename = {
