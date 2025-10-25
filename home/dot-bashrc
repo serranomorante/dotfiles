@@ -157,3 +157,16 @@ export LESS_TERMCAP_ue=$'\e[0m'        # reset underline
 export GROFF_NO_SGR=1                  # for konsole and gnome-terminal
 # https://stackoverflow.com/a/19871578/5353461
 export MANPAGER='less -s -M +Gg'
+
+# https://unix.stackexchange.com/a/684760
+_edit_wo_executing() {
+    local editor="${EDITOR:-nano}"
+    tmpf="$(mktemp).sh"
+    printf '%s\n' "$READLINE_LINE" > "$tmpf"
+    $editor "$tmpf"
+    READLINE_LINE="$(<"$tmpf")"
+    READLINE_POINT="${#READLINE_LINE}"
+    rm "$tmpf"
+}
+
+bind -x '"\C-x\C-e":_edit_wo_executing'
