@@ -188,3 +188,11 @@ vim.api.nvim_create_autocmd("BufWritePost", {
     end)
   end),
 })
+
+vim.api.nvim_create_autocmd("VimEnter", {
+  desc = "Open the most recently used file on startup",
+  group = general_settings_group,
+  callback = vim.schedule_wrap(function()
+    if utils.nvim_started_without_args() and not utils.cwd_is_home() then vim.cmd.normal({ "'0" }) end
+  end),
+})
