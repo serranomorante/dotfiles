@@ -71,6 +71,9 @@
     - https://dwm.suckless.org/patches/float_border_color/dwm-float-border-color-20231008-3a7ea45f.diff
     - https://dwm.suckless.org/patches/swapfocus/dwm-swapfocus-20160731-56a31dc.diff
     - https://dwm.suckless.org/patches/floatrules/dwm-floatrules-20210801-138b405.diff
+    - https://raw.githubusercontent.com/bakkeby/patches/refs/heads/master/dwm/dwm-unmanaged-6.6.diff
+  loop_control:
+    pause: 1
 
 - name: "[archlinux] Compositor: apply dwm patches"
   ansible.posix.patch:
@@ -100,6 +103,9 @@
     - config-dwm-swapfocus-20160731-56a31dc.patch
     # floatrules
     - ~/repos/dwm/patches/dwm-floatrules-20210801-138b405.diff
+    # dwm-unmanaged
+    - ~/repos/dwm/patches/dwm-unmanaged-6.6.diff
+    - fix-dwm-unmanaged-6.6.patch
     # My changes. Always leave this last.
     - make-dwm-debuggable.patch
     - custom.patch

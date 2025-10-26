@@ -1,0 +1,20 @@
+diff --git a/dwm.c b/dwm.c
+index 6e11f06..e3e267e 100644
+--- a/dwm.c
++++ b/dwm.c
+@@ -144,6 +144,7 @@ typedef struct {
+ 	int monitor;
+ 	int floatx, floaty, floatw, floath;
+ 	int floatborderpx;
++    int unmanaged;
+ } Rule;
+ 
+ /* function declarations */
+@@ -309,6 +310,7 @@ applyrules(Client *c)
+ 		{
+ 			c->isfloating = r->isfloating;
+ 			c->tags |= r->tags;
++		    unmanaged = r->unmanaged;
+ 			if (r->floatborderpx >= 0) {
+ 				c->floatborderpx = r->floatborderpx;
+ 				c->hasfloatbw = 1;
