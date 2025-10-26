@@ -70,6 +70,7 @@
     - https://dwm.suckless.org/patches/alpha/dwm-fixborders-6.2.diff
     - https://dwm.suckless.org/patches/float_border_color/dwm-float-border-color-20231008-3a7ea45f.diff
     - https://dwm.suckless.org/patches/swapfocus/dwm-swapfocus-20160731-56a31dc.diff
+    - https://dwm.suckless.org/patches/floatrules/dwm-floatrules-20210801-138b405.diff
 
 - name: "[archlinux] Compositor: apply dwm patches"
   ansible.posix.patch:
@@ -97,6 +98,8 @@
     - ~/repos/dwm/patches/dwm-swapfocus-20160731-56a31dc.diff
     - fix-dwm-swapfocus-20160731-56a31dc.patch
     - config-dwm-swapfocus-20160731-56a31dc.patch
+    # floatrules
+    - ~/repos/dwm/patches/dwm-floatrules-20210801-138b405.diff
     # My changes. Always leave this last.
     - make-dwm-debuggable.patch
     - custom.patch
