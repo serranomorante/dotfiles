@@ -96,7 +96,7 @@ local function opts()
         desc = "Restart playbook",
         condition = function(task) return task.name:match("^run%-ansible%-playbook") end,
         run = function(task)
-          utils.write_password({ delay = 2000 })
+          utils.write_password({ delay = 1000 })
           require("overseer").run_action(task, "restart")
         end,
       },

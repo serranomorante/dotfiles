@@ -113,7 +113,7 @@ return {
     }
     local final = vim.fn.join(utils.wrap_overseer_args_with_tmux(args, tmux_args), " ")
     if params.pass then vim.g.pass = params.pass end
-    utils.write_password({ delay = 2000 })
+    utils.write_password({ delay = 1000 })
     return {
       name = task_name .. string.format(" %s", params.task_id),
       cmd = final,
