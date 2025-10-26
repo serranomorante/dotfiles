@@ -61,6 +61,7 @@ M.by_filetype = {
   gitignore = { parsers = { "gitignore" } },
   systemd = { parsers = { "git_config" } },
   org = { parsers = { "file:org" } },
+  conf = { parsers = { "file:conf" } },
   editorconfig = { parsers = { "editorconfig" } },
   ---No specific filetype
   all = {
