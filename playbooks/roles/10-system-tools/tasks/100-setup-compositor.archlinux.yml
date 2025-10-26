@@ -98,6 +98,7 @@
     - fix-dwm-swapfocus-20160731-56a31dc.patch
     - config-dwm-swapfocus-20160731-56a31dc.patch
     # My changes. Always leave this last.
+    - make-dwm-debuggable.patch
     - custom.patch
 
 - name: "[archlinux] Compositor: install dwm"
