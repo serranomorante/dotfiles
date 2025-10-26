@@ -2,6 +2,16 @@ local utils = require("serranomorante.utils")
 
 local M = {}
 
+local function init()
+  vim.api.nvim_create_autocmd("FileType", {
+    desc = "Force OverseerForm to always enter insertmode",
+    pattern = "OverseerForm",
+    callback = function()
+      vim.defer_fn(function() vim.cmd.startinsert() end, 200)
+    end,
+  })
+end
+
 local function keys()
   local overseer = require("overseer")
   local nnn_explorer = require("overseer.template.editor-tasks.TASK__nnn_explorer")
@@ -113,6 +123,7 @@ local function opts()
 end
 
 function M.config()
+  init()
   keys()
   require("overseer").setup(opts())
 end
