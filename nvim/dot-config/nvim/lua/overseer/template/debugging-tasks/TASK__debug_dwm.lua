@@ -1,24 +1,45 @@
-local DEFAULT_XORG_DISPLAY = ":2"
+local utils = require("serranomorante.utils")
+
+local task_name = "debugging-tasks: prepare DWM debugging session"
 
 ---@type overseer.TemplateDefinition
-local debug_dwm_orchestrator = {
-  name = "debugging-tasks: prepare DWM debugging session",
+return {
+  name = task_name,
   builder = function()
-    vim.env.DAP_OVERRIDED_DISPLAY = DEFAULT_XORG_DISPLAY -- just like a task but on nvim itself
+    local prepare_dwm = vim.fn.join(
+      utils.wrap_overseer_args_with_tmux(
+        { "Xephyr", "-br", "-ac", "-noreset", "-screen", "800x600", ":2" },
+        { include_binary = true, detach = true }
+      ),
+      " "
+    )
+    local prepare_st =
+      vim.fn.join(utils.wrap_overseer_args_with_tmux({ "st" }, { include_binary = true, detach = true }), " ")
     return {
-      name = "debug_dwm: orchestrator",
+      name = task_name,
       strategy = {
         "orchestrator",
         tasks = {
-          { "shell", cmd = "Xephyr -br -ac -noreset -screen 800x600 " .. DEFAULT_XORG_DISPLAY },
-          ---No need for more tasks here for now, but I might in the future
+          {
+            "shell",
+            cmd = prepare_dwm,
+          },
+          {
+            "shell",
+            cmd = "sleep 1",
+          },
+          {
+            "shell",
+            cmd = prepare_st,
+            env = {
+              DISPLAY = ":2",
+            },
+          },
         },
       },
     }
   end,
   condition = {
-    callback = function() return vim.fn.executable("Xephyr") == 1 end,
+    callback = function() return vim.fn.executable("Xephyr") == 1 and utils.cwd_is_dwm() end,
   },
 }
-
-return debug_dwm_orchestrator

@@ -133,9 +133,6 @@ function M.config()
   keys()
   local dap = require("dap")
   local repl = require("dap.repl")
-  ---https://github.com/stevearc/overseer.nvim/blob/master/doc/third_party.md#dap
-  require("overseer").enable_dap(true)
-  require("dap.ext.vscode").json_decode = require("overseer.json").decode
   dap.set_log_level(vim.env.DAP_LOG_LEVEL or "INFO")
   dap.defaults.fallback.focus_terminal = true
   dap.defaults.fallback.force_external_terminal = true
@@ -335,12 +332,18 @@ function M.config()
         request = "launch",
         program = function() return require("dap.utils").pick_file() end,
         cwd = "${workspaceFolder}",
+      },
+      {
+        name = "DAP: c/c++ launch dwm",
+        type = "cppdbg",
+        request = "launch",
+        program = "${fileDirname}/dwm",
+        cwd = "${workspaceFolder}",
+        preLaunchTask = require("overseer.template.debugging-tasks.TASK__debug_dwm").name,
         environment = {
           {
-            ---I override the `DAP_OVERRIDED_DISPLAY` env variable (which fallbacks to the original DISPLAY value)
-            ---from an overseer task that setups my dwm debugging session
             name = "DISPLAY",
-            value = "${env:DAP_OVERRIDED_DISPLAY}",
+            value = ":2",
           },
         },
       },

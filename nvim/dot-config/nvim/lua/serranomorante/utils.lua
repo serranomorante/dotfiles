@@ -290,7 +290,8 @@ local function echo_no_more_items() vim.api.nvim_echo({ { "No more items", "Diag
 
 ---@class TmuxWrapperOpts
 ---@field cwd? string
----@field session_name string
+---@field detach? boolean
+---@field session_name? string
 ---@field include_binary? boolean
 ---@field retain_shell? boolean
 
@@ -304,8 +305,8 @@ function M.wrap_overseer_args_with_tmux(cmd, opts)
     "-f", -- use tmux config that disables statusbar
     vim.env.HOME .. "/.config/tmux/tmuxnvim.conf",
     "new-session",
-    "-A", -- attach in session exists
   }
+  table.insert(args, opts.detach and "-d" or "-A")
   if opts.include_binary then table.insert(args, 1, "tmux") end
   if opts.cwd then vim.list_extend(args, { "-c", M.wrap_in_single_quotes(opts.cwd) }) end
   if opts.session_name then
@@ -349,6 +350,8 @@ function M.nvim_started_without_args() return vim.fn.argc(-1) == 0 and not vim.g
 
 ---Check if current cwd is home
 function M.cwd_is_home() return vim.fn.getcwd() == vim.env.HOME end
+
+function M.cwd_is_dwm() return vim.fn.getcwd() == vim.env.HOME .. "/repos/dwm" end
 
 function M.cwd_is_notes() return vim.fn.getcwd() == vim.env.HOME .. "/external/notes/foam" end
 
