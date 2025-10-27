@@ -7,6 +7,10 @@ figma_mcp_server_setup:
   exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/figma-developer-mcp"
   personal_key: "{{ (mcp_server_figma_key | default({})).stdout }}"
 
+figma_mcp_commentary_server_setup:
+  exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/mcp-figma-comment-summary"
+  personal_key: "{{ (mcp_server_figma_key | default({})).stdout }}"
+
 chrome_devtools_mcp_server_setup:
   exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/chrome-devtools-mcp"
 

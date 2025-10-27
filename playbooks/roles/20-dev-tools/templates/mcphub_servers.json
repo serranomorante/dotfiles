@@ -19,6 +19,12 @@
         "--stdio"
       ]
     },
+    "figma-comments": {
+      "command": "{{ figma_mcp_commentary_server_setup.exe_path }}",
+      "env": {
+        "FIGMA_ACCESS_TOKEN": "{{ figma_mcp_commentary_server_setup.personal_key }}"
+      }
+    },
     "chrome-devtools": {
       "command": "{{ chrome_devtools_mcp_server_setup.exe_path }}",
       "args": ["--browserUrl=http://localhost:9222"]

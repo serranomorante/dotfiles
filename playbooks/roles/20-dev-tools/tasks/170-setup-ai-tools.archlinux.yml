@@ -11,6 +11,7 @@
     - name: chrome-devtools-mcp
     - name: playwright
     - name: "@playwright/mcp"
+    - name: mcp-figma-comment-summary
 
 - name: "[archlinux] Setup ai tools: register playwright path"
   ansible.builtin.command: volta run --node "{{ node_system_default_version }}" which playwright
