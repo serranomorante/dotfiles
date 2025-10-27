@@ -13,6 +13,7 @@ local PLAYS = {
   SETUP_VIRTUALBOX = "10-140 [Setup virtualbox]",
   SETUP_PERSISTENCE_TOOLS = "10-150 [Setup persistence tools]",
   SETUP_OTHER_TOOLS = "10-160 [Setup other tools]",
+  SETUP_VIDEO_TOOLS = "10-220 [Setup video tools]",
   SETUP_NEOVIM = "20-50 [Setup neovim]",
   SETUP_EDITOR_TOOLS = "20-60 [Setup editor tools]",
   SETUP_FULL_EDITOR = "20-50,20-60 [Setup full editor + plugins]",

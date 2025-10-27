@@ -10,13 +10,27 @@
     path: ~/temp/makepkg/davinci-resolve
     state: absent
 
-- name: "[archlinux] Setup video tools: ensure required zip"
-  ansible.builtin.get_url:
-    url: https://swr.cloud.blackmagicdesign.com/DaVinciResolve/v{{ arch_davinci_resolve_version }}/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip?verify={{
-      davinci_resolve_download_key }}
-    dest: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
-    mode: "755"
-  ignore_errors: true
+- name: "[archlinux] Setup video tools: download davinci resolve"
+  ansible.builtin.command: nvim --headless -c "autocmd User CodeCompanionChatDone normal ZQ" -c "sleep 2" -c "CodeCompanion /download-davinci"
+  register: var_download_davinci_result
+  args:
+    creates: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+
+- name: "[archlinux] Setup video tools: wait for davinci to download"
+  ansible.builtin.wait_for:
+    path: ~/Downloads/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+    msg: Timeout waiting for davinci resolve to download
+    delay: 5
+    timeout: 600
+  timeout: 0
+  when: var_download_davinci_result.changed
+
+- name: "[archlinux] Setup video tools: move davinci resolve zip to expected location"
+  ansible.builtin.command: mv DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip ~/apps/video-tools/davinci-resolve/
+  args:
+    chdir: ~/Downloads
+    creates: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+  when: var_download_davinci_result.changed
 
 - name: "[archlinux] Setup video tools: download aur package"
   ansible.builtin.unarchive:
@@ -87,6 +101,7 @@
     name: davinci-resolve
     state: latest
     local_pkgbuild: ~/apps/video-tools/davinci-resolve
+  when: var_download_davinci_result.changed
 
 - name: "[archlinux] Setup video tools: remove faulty wine .dekstop"
   ansible.builtin.file:
