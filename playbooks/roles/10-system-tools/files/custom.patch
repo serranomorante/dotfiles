@@ -22,10 +22,10 @@ index 56ee471..7ced8b3 100644
 -	{ "Gimp",     NULL,       NULL,       0,            1,           -1 },
 -	{ "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
 +	/* class                  instance                title                      tags mask     isfloating   monitor    float x,y,w,h    floatborderpx       unmanaged */
-+	{ "plasmashell",          "plasmashell",          "Desktop @ QRect",         1 << 8,       0,           -1,        -1,-1,-1,-1,     -1                     }, // send plasma desktop to tag 9
 +	{ "Plasma",               NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1,                  1 }, // make plasma windows unmanaged
 +	{ "plasma-desktop",       NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1,                  1 }, // make plasma windows unmanaged
 +	{ "plasmashell",          NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1,                  1 }, // make plasma windows unmanaged
++	{ "plasmashell",          "plasmashell",          "Desktop @ QRect",         1 << 8,       0,           -1,        -1,-1,800,800,   -1                     }, // send plasma desktop to tag 9
 +	{ NULL,                   NULL,                   "is sharing your screen.", 1 << 8,       1,           -1,        -1,-1,-1,-1,     -1                     }, // send google meet popup to tag 9
 +	{ "kcalc",                "kcalc",                NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1                     }, // make calculator floating by default
 +	{ "mouseless",            "Mouseless",            "Mouseless",               0,            1,           -1,        -1,-1,-1,-1,     -1                     }, // make mouseless-click config floating by default
