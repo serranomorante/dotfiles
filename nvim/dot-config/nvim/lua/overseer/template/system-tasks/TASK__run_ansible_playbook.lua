@@ -84,6 +84,7 @@ return {
       desc = "Password",
       type = "string",
       optional = true,
+      conceal = true,
       order = 6,
     },
   },
