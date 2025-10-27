@@ -7,6 +7,20 @@
       - ccze
       - yt-dlp
 
+- name: "[archlinux] Other tools: install jdownloader"
+  community.general.flatpak:
+    name: org.jdownloader.JDownloader
+    state: latest
+
+- name: "[archlinux] Other tools: ensure custom jdownloader desktop"
+  become: true
+  ansible.builtin.copy:
+    src: flatpak-jdownloader.desktop
+    dest: /var/lib/flatpak/exports/share/applications/org.jdownloader.JDownloader.desktop
+    owner: "{{ ansible_env.USER }}"
+    mode: "644"
+  notify: handler_update_desktop_database
+
 - name: "[archlinux] Other tools: ensure font directory exists"
   ansible.builtin.file:
     path: ~/.local/share/fonts/{{ item | basename | splitext | first }}

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Categories=Network
+Comment=JDownloader is a free download management tool
+Exec=_JAVA_AWT_WM_NONREPARENTING=1 /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=jd-wrapper --file-forwarding org.jdownloader.JDownloader -- @@u %u @@
+Icon=org.jdownloader.JDownloader
+Name=JDownloader
+Type=Application
+StartupWMClass=org-jdownloader-update-launcher-JDLauncher
+X-Flatpak-Tags=proprietary;
+X-Flatpak=org.jdownloader.JDownloader
