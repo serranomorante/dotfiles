@@ -632,4 +632,12 @@ function M.write_password(opts)
   vim.defer_fn(function() M.feedkeys(string.format("%s<ENTER>", vim.g.pass), "t") end, opts.delay)
 end
 
+---Get a uuid
+---@param opts table?
+function M.get_uuid(opts)
+  opts = opts or { chars = 64 }
+  local seed = tostring(vim.uv.hrtime()) .. tostring(vim.uv.os_getpid())
+  return vim.fn.sha256(seed):sub(1, opts.chars)
+end
+
 return M

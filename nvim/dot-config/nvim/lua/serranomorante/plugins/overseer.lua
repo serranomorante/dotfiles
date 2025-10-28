@@ -77,6 +77,8 @@ local function keys()
 end
 
 local function opts()
+  local parser = require("overseer.parser")
+
   ---@type overseer.Config
   return {
     strategy = "terminal",
@@ -108,6 +110,17 @@ local function opts()
         run = function(task)
           utils.write_password({ delay = 1000 })
           require("overseer").run_action(task, "restart")
+        end,
+      },
+      ["Quit & save ffmpeg recording"] = {
+        desc = "Send `q` to the terminal. This quits ffmpeg recording.",
+        condition = function(task) return task.name:match("^ffmpeg") and task.status == parser.STATUS.RUNNING end,
+        run = function(task)
+          task:open_output("float")
+          vim.defer_fn(function()
+            if vim.bo.buftype == "terminal" then vim.cmd.startinsert() end
+            utils.feedkeys("q", "t")
+          end, 200)
         end,
       },
     },
