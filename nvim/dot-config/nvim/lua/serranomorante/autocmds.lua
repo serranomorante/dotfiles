@@ -144,6 +144,17 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
+vim.api.nvim_create_autocmd("FileType", {
+  desc = "Don't allow <C-l> on cmd windows",
+  pattern = "vim",
+  group = general_settings_group,
+  callback = function(args)
+    vim.keymap.set("n", "<C-l>", function()
+      if vim.fn.getcmdwintype() ~= "" then return end
+    end, { buffer = args.buf })
+  end,
+})
+
 vim.api.nvim_create_autocmd("TermOpen", {
   desc = "Enter terminal in insert mode",
   group = general_settings_group,
