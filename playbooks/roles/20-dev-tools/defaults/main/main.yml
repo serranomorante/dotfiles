@@ -64,9 +64,6 @@ neovim_plugins:
     repo: mfussenegger/nvim-dap
     name: dap
   - folder: start
-    repo: rebelot/heirline.nvim
-    name: heirline
-  - folder: start
     repo: kevinhwang91/nvim-fundo
     name: fundo
   - folder: start
