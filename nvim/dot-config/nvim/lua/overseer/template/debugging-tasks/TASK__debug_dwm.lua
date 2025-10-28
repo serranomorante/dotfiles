@@ -35,6 +35,13 @@ return {
               DISPLAY = ":2",
             },
           },
+          {
+            "shell",
+            cmd = prepare_st,
+            env = {
+              DISPLAY = ":2",
+            },
+          },
         },
       },
     }
