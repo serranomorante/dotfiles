@@ -55,9 +55,6 @@ neovim_plugins:
     repo: lewis6991/gitsigns.nvim
     name: gitsigns
   - folder: start
-    repo: LeonHeidelbach/trailblazer.nvim
-    name: trailblazer
-  - folder: start
     repo: NMAC427/guess-indent.nvim
     name: guess-indent
   - folder: start

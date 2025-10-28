@@ -122,15 +122,6 @@
     creates: ~/intelephense/licence.txt
   ignore_errors: true
 
-- name: "[archlinux] Editor tools: apply patches to nvim plugins"
-  ansible.posix.patch:
-    src: ~/dotfiles/assets/patches/nvim/{{ item.patch }}
-    basedir: "{{ item.cwd }}"
-    strip: 1
-  loop:
-    - cwd: ~/.local/share/nvim/site/pack/plugins/start/trailblazer
-      patch: trailblazer.patch
-
 - name: "[archlinux] Editor tools: generate helptags"
   ansible.builtin.command: nvim --headless -c "helptags ALL" -c "quit"
   changed_when: false
