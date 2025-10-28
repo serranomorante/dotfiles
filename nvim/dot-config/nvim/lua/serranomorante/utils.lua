@@ -290,10 +290,11 @@ local function echo_no_more_items() vim.api.nvim_echo({ { "No more items", "Diag
 
 ---@class TmuxWrapperOpts
 ---@field cwd? string
----@field detach? boolean
+---@field detach? boolean By default we attach to the session
 ---@field session_name? string
----@field include_binary? boolean
----@field retain_shell? boolean
+---@field include_binary? boolean Include `tmux` as part of the args?
+---@field retain_shell? boolean Enter an interactive shell after command finishes?
+---@field wait_for? string Block until command finishes?
 
 ---@param cmd table
 ---@param opts? TmuxWrapperOpts
@@ -312,18 +313,14 @@ function M.wrap_overseer_args_with_tmux(cmd, opts)
   if opts.session_name then
     vim.list_extend(args, { "-s", M.wrap_in_single_quotes(opts.session_name .. vim.fn.fnameescape(vim.v.servername)) })
   end
-  ---Don't exit after command execution
-  if opts.retain_shell then
-    table.insert(args, "sh")
-    table.insert(args, "-c")
-    table.insert(args, '"')
-  end
+  ---Delimite the command part (and add wait-for if required)
+  table.insert(args, '"')
   vim.list_extend(args, cmd)
-  if opts.retain_shell then
-    table.insert(args, ";")
-    table.insert(args, "exec bash")
-    table.insert(args, '"')
-  end
+  if opts.retain_shell then vim.list_extend(args, { ";", "bash" }) end
+  if opts.wait_for then vim.list_extend(args, { ";", "tmux", "wait-for", "-S", opts.wait_for }) end
+  table.insert(args, '"')
+  ---Recibe the wait
+  if opts.wait_for then vim.list_extend(args, { "\\;", "wait-for", opts.wait_for }) end
   return args
 end
 
