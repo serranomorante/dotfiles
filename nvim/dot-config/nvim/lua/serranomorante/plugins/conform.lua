@@ -8,7 +8,6 @@ M.PLUGIN = "conform"
 
 ---@type conform.DefaultFormatOpts
 local FORMAT_OPTS = {
-  async = true,
   timeout_ms = 5000, -- we still have to use this for the `formatexpr` to work, maybe a bug?
   lsp_format = "never",
 }
@@ -20,13 +19,14 @@ local function init()
     pattern = vim.tbl_keys(require("conform").formatters_by_ft),
     group = vim.api.nvim_create_augroup("conform_formatexpr", { clear = true }),
     callback = function(args)
-      vim.bo[args.buf].formatexpr = string.format("v:lua.require'conform'.formatexpr(%s)", vim.fn.string({}))
+      vim.bo[args.buf].formatexpr =
+        string.format("v:lua.require'conform'.formatexpr(%s)", vim.fn.string({ async = true }))
     end,
   })
 end
 
 local function keys()
-  vim.keymap.set({ "n", "v" }, "<leader>lf", function() require("conform").format({}) end, {
+  vim.keymap.set({ "n", "v" }, "<leader>lf", function() require("conform").format({ async = true }) end, {
     desc = "Conform: Format file or range",
   })
 end
