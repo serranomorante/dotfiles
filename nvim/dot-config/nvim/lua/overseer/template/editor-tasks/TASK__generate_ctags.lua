@@ -15,7 +15,7 @@ return {
     return {
       name = task_name,
       cmd = { "tmux" },
-      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name }),
+      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name, wait_for = task_name }),
       components = {
         {
           "restart_on_save",

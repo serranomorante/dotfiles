@@ -107,18 +107,11 @@ return {
     if params.skip_tags then vim.list_extend(args, { "--skip-tags", params.skip_tags }) end
     if params.force_handlers then table.insert(args, "--force-handlers") end
     if params.verbose then table.insert(args, params.verbose) end
-    local tmux_args = {
-      session_name = task_name,
-      include_binary = true,
-      cwd = vim.env.HOME .. "/dotfiles/playbooks",
-      retain_shell = true,
-    }
-    local final = vim.fn.join(utils.wrap_overseer_args_with_tmux(args, tmux_args), " ")
     if params.pass then vim.g.pass = params.pass end
     utils.write_password({ delay = 1000 })
     return {
       name = task_name .. string.format(" %s", params.task_id),
-      cmd = final,
+      cmd = vim.fn.join(args, " "),
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
       components = {
         { "open_output", direction = "float", on_start = "always", focus = true },

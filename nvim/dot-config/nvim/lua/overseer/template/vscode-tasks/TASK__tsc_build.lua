@@ -11,8 +11,13 @@ return {
     local command = { "tsc" }
     return {
       name = task_name,
-      cmd = { "tmux" },
-      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name }),
+      cmd = vim.fn.join(
+        utils.wrap_overseer_args_with_tmux(
+          command,
+          { session_name = task_name, wait_for = task_name, include_binary = true }
+        ),
+        " "
+      ),
       components = {
         { "on_output_parse", problem_matcher = "$tsc" },
         "on_result_diagnostics",

@@ -22,7 +22,7 @@ return {
     return {
       name = task_name,
       cmd = { "tmux" },
-      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name, retain_shell = true }),
+      args = utils.wrap_overseer_args_with_tmux(command, { session_name = task_name, wait_for = task_name }),
       components = {
         "defaults_without_notification",
       },
