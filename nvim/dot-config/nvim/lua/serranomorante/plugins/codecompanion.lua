@@ -191,7 +191,7 @@ local function opts()
         },
       },
       inline = {
-        adapter = "gemini",
+        adapter = "anthropic",
       },
       cmd = {
         adapter = "gemini_cli",
