@@ -7,19 +7,20 @@ return {
   builder = function()
     return {
       name = task_name,
-      cmd = "kitty",
+      cmd = "kitty", -- for the image support
       args = {
         "@",
         "launch",
-        "--location=vsplit",
-        "--bias=50",
+        "--type=overlay",
+        "--cwd=current",
         "--hold",
-        "bash",
-        "-c",
-        string.format("mdcat --no-pager %s", vim.fn.expand("%:p")),
+        "mdcat",
+        "--no-pager",
+        vim.fn.expand("%:p"),
       },
       components = {
         { "open_output", direction = "float", on_start = "always", focus = true },
+        { "on_complete_dispose", timeout = 1, statuses = { require("overseer.parser").STATUS.SUCCESS } },
         "unique",
         "defaults_without_notification",
       },
@@ -27,7 +28,7 @@ return {
   end,
   condition = {
     callback = function(search)
-      return vim.fn.executable("lowdown") == 1 and vim.list_contains({ "markdown" }, search.filetype)
+      return vim.fn.executable("mdcat") == 1 and vim.list_contains({ "markdown" }, search.filetype)
     end,
   },
 }

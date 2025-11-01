@@ -39,7 +39,6 @@
     dest: ~/bin/{{ item }}
     state: link
   loop:
-    - kitty
     - kitten
 
 - name: "[archlinux] Setup terminal tools: clone tmux"

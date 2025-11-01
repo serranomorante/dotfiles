@@ -149,12 +149,6 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
-vim.api.nvim_create_autocmd("TermOpen", {
-  desc = "Enter terminal in insert mode",
-  group = general_settings_group,
-  command = "startinsert",
-})
-
 local treesitter_filetypes = utils.ts_compatible_filetypes()
 local regex_filetypes = { "qf", "html", "remind", "spajson", "log", "pager" }
 vim.api.nvim_create_autocmd("FileType", {

@@ -16,6 +16,7 @@ end
 local function keys()
   local overseer = require("overseer")
   local nnn_explorer = require("overseer.template.editor-tasks.TASK__nnn_explorer")
+  local lazygit = require("overseer.template.system-tasks.TASK__run_lazygit")
   local open_markdown_preview = require("overseer.template.editor-tasks.TASK__open_markdown_preview")
 
   vim.keymap.set("n", "<leader>oo", "<cmd>OverseerToggle<CR>", { desc = "Overseer: Toggle the overseer window" })
@@ -42,7 +43,7 @@ local function keys()
   vim.keymap.set(
     "n",
     "<leader>oa",
-    "<cmd>OverseerQuickAction open float insertmode<CR>",
+    "<cmd>OverseerQuickAction open float<CR>",
     { desc = "Overseer: Run open float action on the most recent task" }
   )
   vim.keymap.set(
@@ -52,36 +53,55 @@ local function keys()
     { desc = "Overseer: Select a task to run an action on" }
   )
 
-  vim.keymap.set(
-    "n",
-    "<leader>lm",
-    function() overseer.run_template({ name = open_markdown_preview.name }) end,
-    { desc = "Open markdown preview" }
-  )
+  vim.keymap.set("n", "<leader>lm", function()
+    overseer.run_template({ name = open_markdown_preview.name }, function(task)
+      if task then overseer.run_action(task, "Close when exit 0") end
+    end)
+  end, { desc = "Open markdown preview" })
 
   vim.keymap.set("n", "<leader>e", function()
     overseer.run_template(
       { name = nnn_explorer.name, params = { startdir = vim.fn.expand("%:p") } },
       ---@param task overseer.Task
       function(task)
-        vim.api.nvim_create_autocmd("TermClose", {
-          desc = "Force closing the terminal after TUI exits",
-          group = vim.api.nvim_create_augroup("nnn.explorer.close", { clear = true }),
+        if not task then return end
+        overseer.run_action(task, "Close when exit 0")
+        vim.api.nvim_create_autocmd("WinLeave", {
+          desc = "Dispose task if still running after window closes",
           buffer = task:get_bufnr(),
-          callback = function()
-            local event = vim.api.nvim_get_vvar("event")
-            if event.status == 0 then utils.feedkeys("q", "t") end
-          end,
+          callback = function() task:dispose(true) end,
         })
       end,
       { desc = "Toggle explorer" }
     )
   end)
+
+  vim.keymap.set("n", "<leader>w", function()
+    ---@type overseer.Task
+    local lazygit_task = select(
+      1,
+      unpack(overseer.list_tasks({ name = lazygit.name, status = require("overseer.parser").STATUS.RUNNING }))
+    )
+    if lazygit_task then return overseer.run_action(lazygit_task, "open float") end
+    overseer.run_template(
+      { name = lazygit.name },
+      ---@param task overseer.Task
+      function(task)
+        if not task then return end
+        vim.keymap.set("t", "<leader>", "<space>", { buffer = task:get_bufnr(), nowait = true })
+        vim.keymap.set(
+          "t",
+          "q",
+          function() overseer.run_action(task, "close term window") end,
+          { buffer = task:get_bufnr() }
+        )
+      end,
+      { desc = "Toggle lazygit" }
+    )
+  end)
 end
 
 local function opts()
-  local parser = require("overseer.parser")
-
   ---@type overseer.Config
   return {
     strategy = "terminal",
@@ -93,23 +113,23 @@ local function opts()
       direction = "left",
     },
     task_win = {
-      border = "single",
+      border = "none",
       padding = 0,
     },
     actions = {
-      ["open float insertmode"] = {
-        desc = "Open float in insert mode",
+      ["close term window"] = {
+        desc = "Close terminal window without killing process",
         condition = function(task) return task:get_bufnr() end,
-        run = function(task)
-          task:open_output("float")
-          vim.defer_fn(function()
-            if vim.bo.buftype == "terminal" then vim.cmd.startinsert() end
-          end, 200)
+        run = function()
+          if vim.bo.buftype ~= "terminal" then return end
+          utils.feedkeys("<C-\\><C-n>", "t")
+          vim.api.nvim_win_close(vim.api.nvim_get_current_win(), false)
         end,
       },
       ["Restart playbook"] = {
         desc = "Restart playbook",
         condition = function(task) return task.name:match("^run%-ansible%-playbook") end,
+        ---@param task overseer.Task
         run = function(task)
           utils.write_password({ delay = 1000 })
           require("overseer").run_action(task, "restart")
@@ -117,13 +137,28 @@ local function opts()
       },
       ["Quit & save ffmpeg recording"] = {
         desc = "Send `q` to the terminal. This quits ffmpeg recording.",
-        condition = function(task) return task.name:match("^ffmpeg") and task.status == parser.STATUS.RUNNING end,
+        condition = function(task)
+          return task.name:match("^ffmpeg") and task.status == require("overseer.parser").STATUS.RUNNING
+        end,
+        ---@param task overseer.Task
         run = function(task)
-          task:open_output("float")
-          vim.defer_fn(function()
-            if vim.bo.buftype == "terminal" then vim.cmd.startinsert() end
-            utils.feedkeys("q", "t")
-          end, 200)
+          require("overseer").run_action(task, "open float")
+          utils.feedkeys("q", "t")
+        end,
+      },
+      ["Close when exit 0"] = {
+        desc = "Immediatelly close term window when process exits with status 0",
+        ---@param task overseer.Task
+        run = function(task)
+          vim.api.nvim_create_autocmd("TermClose", {
+            desc = "Force closing the terminal after TUI exits",
+            group = vim.api.nvim_create_augroup("term.close", { clear = true }),
+            buffer = task:get_bufnr(),
+            callback = function()
+              local event = vim.api.nvim_get_vvar("event")
+              if event.status == 0 then vim.cmd.close() end
+            end,
+          })
         end,
       },
     },

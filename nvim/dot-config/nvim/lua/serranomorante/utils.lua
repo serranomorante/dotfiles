@@ -347,7 +347,10 @@ function M.prev_qf_item(opts)
 end
 
 ---Check if nvim was started with no args and without reading from stdin
-function M.nvim_started_without_args() return vim.fn.argc(-1) == 0 and not vim.g.using_stdin end
+function M.nvim_started_without_args()
+  local cmdline = vim.fn.split(unpack(vim.fn.readfile("/proc/self/cmdline")), "\n")
+  return not vim.g.using_stdin and (vim.tbl_count(cmdline) <= 1 or vim.list_contains(cmdline, "--listen"))
+end
 
 ---Check if current cwd is home
 function M.cwd_is_home() return vim.fn.getcwd() == vim.env.HOME end
@@ -539,6 +542,13 @@ function M.fzf(opts)
   local listed = false
   local scratch = true
   local term_bufnr = vim.api.nvim_create_buf(listed, scratch)
+  vim.api.nvim_create_autocmd("TermOpen", {
+    buffer = term_bufnr,
+    callback = function(args)
+      if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) ~= "terminal" then return end
+      vim.cmd.startinsert()
+    end,
+  })
   vim.api.nvim_set_option_value("filetype", "fzf", { buf = term_bufnr })
   vim.keymap.set(
     "t",

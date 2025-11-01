@@ -16,7 +16,6 @@ M.params = {
 }
 
 function M.builder(params)
-  local parser = require("overseer.parser")
   local args = {
     "-JRHdaAog",
     "-Tt",
@@ -32,12 +31,13 @@ function M.builder(params)
       VISUAL = "open_in_nvim.sh nnn_explorer",
       NNN_OPENER = "open_in_nvim.sh nnn_explorer",
       NNN_TRASH = "trash",
-      CUSTOM_NVIM_LISTEN_ADDRESS = vim.v.servername,
+      NVIM_KITTY_LISTEN_ADDRESS = vim.v.servername,
       TERM = vim.env.TERM,
     },
     components = {
+      { "system-components/COMPONENT__start_insert_mode" },
       { "open_output", direction = "float", on_start = "always", focus = true },
-      { "on_complete_dispose", timeout = 1, statuses = { parser.STATUS.SUCCESS } },
+      { "on_complete_dispose", timeout = 1, statuses = { require("overseer.parser").STATUS.SUCCESS } },
       "unique",
       "defaults_without_notification",
     },

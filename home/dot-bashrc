@@ -78,20 +78,7 @@ if command -v fzf &>/dev/null; then
     eval "$(fzf --bash)"
 fi
 
-# Alias nvim to include --server & --listen arguments
-if command -v nvim &>/dev/null && command -v tmux &>/dev/null && [ -n "$TMUX" ]; then
-    CUSTOM_NVIM_LISTEN_ADDRESS=$(tmux show-environment CUSTOM_NVIM_LISTEN_ADDRESS 2>/dev/null | sed "s:^.*=::")
-    if [ -n "$CUSTOM_NVIM_LISTEN_ADDRESS" ]; then
-        if command -v nvr &>/dev/null; then
-            nvr --nostart -s --servername "$CUSTOM_NVIM_LISTEN_ADDRESS"
-            if [ $? -eq 0 ]; then
-                alias nvim='~/bin/nvim --server "$CUSTOM_NVIM_LISTEN_ADDRESS"'
-            else
-                alias nvim='~/bin/nvim --listen "$CUSTOM_NVIM_LISTEN_ADDRESS"'
-            fi
-        fi
-    fi
-fi
+alias nvim='~/bin/nvim $(nvr --nostart -s --servername "$NVIM_KITTY_LISTEN_ADDRESS" &>/dev/null && echo --server || echo --listen) "$NVIM_KITTY_LISTEN_ADDRESS"'
 
 # https://github.com/mfussenegger/nvim-dap/blob/e64ebf3309154b578a03c76229ebf51c37898118/doc/dap.txt#L960
 # Available log levels:
@@ -159,7 +146,7 @@ export MANPAGER='less -s -M +Gg'
 _edit_wo_executing() {
     local editor="${EDITOR:-nano}"
     tmpf="$(mktemp).sh"
-    printf '%s\n' "$READLINE_LINE" > "$tmpf"
+    printf '%s\n' "$READLINE_LINE" >"$tmpf"
     $editor "$tmpf"
     READLINE_LINE="$(<"$tmpf")"
     READLINE_POINT="${#READLINE_LINE}"

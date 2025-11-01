@@ -114,6 +114,7 @@ return {
       args = args,
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
       components = {
+        { "system-components/COMPONENT__force_very_fullscreen_float" },
         { "open_output", direction = "float", on_start = "always", focus = true },
         "default",
       },

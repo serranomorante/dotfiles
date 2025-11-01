@@ -6,6 +6,8 @@ gui:
   skipRewordInEditorWarning: true
   showDivergenceFromBaseBranch: "arrowAndNumber"
   filterMode: "fuzzy"
+  # setting next option to false helps with redraw issues inside neovim builtin terminal
+  showBottomLine: false
 # based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md#default
 keybinding:
   universal:
