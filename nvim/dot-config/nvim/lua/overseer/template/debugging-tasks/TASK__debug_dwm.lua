@@ -6,15 +6,11 @@ local task_name = "debugging-tasks: prepare DWM debugging session"
 return {
   name = task_name,
   builder = function()
-    local prepare_dwm = vim.fn.join(
-      utils.wrap_overseer_args_with_tmux(
-        { "Xephyr", "-br", "-ac", "-noreset", "-screen", "800x600", ":2" },
-        { include_binary = true, detach = true }
-      ),
-      " "
+    local prepare_dwm = utils.wrap_overseer_args_with_tmux(
+      "Xephyr -br -ac -noreset -screen 800x600 :2",
+      { include_binary = true, detach = true }
     )
-    local prepare_st =
-      vim.fn.join(utils.wrap_overseer_args_with_tmux({ "st" }, { include_binary = true, detach = true }), " ")
+    local prepare_st = utils.wrap_overseer_args_with_tmux("st", { include_binary = true, detach = true })
     return {
       name = task_name,
       strategy = {

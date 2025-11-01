@@ -91,7 +91,6 @@ return {
   },
   builder = function(params)
     local args = {
-      "vansible-playbook",
       "-K",
       ("%s/dotfiles/playbooks/tools.yml"):format(HOME),
       "-l",
@@ -111,7 +110,8 @@ return {
     utils.write_password({ delay = 1000 })
     return {
       name = task_name .. string.format(" %s", params.task_id),
-      cmd = vim.fn.join(args, " "),
+      cmd = "vansible-playbook",
+      args = args,
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
       components = {
         { "open_output", direction = "float", on_start = "always", focus = true },

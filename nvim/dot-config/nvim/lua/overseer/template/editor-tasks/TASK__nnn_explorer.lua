@@ -16,11 +16,16 @@ M.params = {
 }
 
 function M.builder(params)
-  local cmd = "nnn -JRHdaAog -Tt -c"
-  if params.startdir then cmd = cmd .. " '" .. params.startdir .. "'" end
+  local args = {
+    "-JRHdaAog",
+    "-Tt",
+    "-c",
+  }
+  if params.startdir then table.insert(args, string.format("'%s'", params.startdir)) end
   return {
     name = TASK_NAME,
-    cmd = cmd,
+    cmd = "nnn",
+    args = args,
     env = {
       EDITOR = "open_in_nvim.sh nnn_explorer",
       VISUAL = "open_in_nvim.sh nnn_explorer",

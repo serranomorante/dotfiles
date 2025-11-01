@@ -1,4 +1,3 @@
-local utils = require("serranomorante.utils")
 local task_name = "editor-tasks-export-markdown"
 
 ---@type overseer.TemplateDefinition
@@ -23,17 +22,10 @@ return {
     if vim.fn.filereadable(fullhrule) == 1 then table.insert(args, ("--include-in-header=%s"):format(fullhrule)) end
     if vim.fn.filereadable(bib_file) == 1 then table.insert(args, ("--bibliography=%s"):format(bib_file)) end
 
-    local command = vim.list_extend({ "pandoc" }, vim.list_extend(args, { input, "-o", output }))
-
     return {
       name = task_name,
-      cmd = vim.fn.join(
-        utils.wrap_overseer_args_with_tmux(
-          command,
-          { session_name = task_name .. input, cwd = vim.fn.getcwd(), wait_for = task_name, include_binary = true }
-        ),
-        " "
-      ),
+      cmd = { "pandoc" },
+      args = vim.list_extend(args, { input, "-o", output }),
       components = {
         "unique",
         "default",
