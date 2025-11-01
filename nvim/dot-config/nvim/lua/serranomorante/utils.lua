@@ -296,10 +296,13 @@ local function echo_no_more_items() vim.api.nvim_echo({ { "No more items", "Diag
 ---@field retain_shell? boolean Enter an interactive shell after command finishes?
 ---@field wait_for? string Block until command finishes?
 
----@param cmd table
+---@param cmd table|string
 ---@param opts? TmuxWrapperOpts
+---@return string|table
 function M.wrap_overseer_args_with_tmux(cmd, opts)
   opts = opts or {}
+  local cmd_is_shell = type(cmd) == "string"
+  if cmd_is_shell then cmd = { cmd } end
   local args = {
     "-L", -- use different tmux server for overseer tasks
     "overseer",
@@ -315,12 +318,13 @@ function M.wrap_overseer_args_with_tmux(cmd, opts)
   end
   ---Delimite the command part (and add wait-for if required)
   table.insert(args, '"')
-  vim.list_extend(args, cmd)
+  vim.list_extend(args, cmd --[[@as table]])
   if opts.retain_shell then vim.list_extend(args, { ";", "bash" }) end
   if opts.wait_for then vim.list_extend(args, { ";", "tmux", "wait-for", "-S", opts.wait_for }) end
   table.insert(args, '"')
-  ---Recibe the wait
+  ---Receive the wait
   if opts.wait_for then vim.list_extend(args, { "\\;", "wait-for", opts.wait_for }) end
+  if cmd_is_shell then return vim.fn.join(args, " ") end
   return args
 end
 
