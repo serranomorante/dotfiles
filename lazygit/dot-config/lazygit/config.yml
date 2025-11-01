@@ -8,11 +8,11 @@ gui:
   filterMode: "fuzzy"
   # setting next option to false helps with redraw issues inside neovim builtin terminal
   showBottomLine: false
-# based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md#default
+  # based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md#default
 keybinding:
   universal:
     quit: <disabled>
-# based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Custom_Pagers.md#delta
+    # based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Custom_Pagers.md#delta
 git:
   autoForwardBranches: none
   branchLogCmd: "git log --graph --color=always --abbrev-commit --decorate --date=relative --pretty=medium --oneline {{branchName}} --"
@@ -22,7 +22,7 @@ git:
     # uncomment if you want to use difftastic
     # externalDiffCommand: difft --color=always
     pager: delta
-# based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
+    # based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
 os:
   edit: 'open_in_nvim.sh lazygit_edit "$(printf %q {{filename}})"'
   editAtLine: 'open_in_nvim.sh lazygit_edit_at_line "$(printf %q {{filename}})" "{{line}}"'
@@ -38,7 +38,7 @@ customCommands:
     description: "Custom: Compare selected branch against checked out branch"
     context: "localBranches"
     command: 'open_in_nvim.sh lazygit_compare_branch "{{.SelectedLocalBranch.Name}}"'
-  # From commits, search the whole history for an expression in a file (case-sensitive)
+    # From commits, search the whole history for an expression in a file (case-sensitive)
   - key: '<c-a>'
     description: 'Custom: Search the whole history (from a ref and down) for an expression in a file'
     command: "git checkout {{index .PromptResponses 3}}"
@@ -57,32 +57,46 @@ customCommands:
         filter: '(?P<commit_id>[0-9a-zA-Z]*) *(?P<commit_msg>.*)'
         valueFormat: '{{ .commit_id }}'
         labelFormat: '{{ .commit_id | green | bold }} - {{ .commit_msg | yellow }}'
-  # From commits, add empty commit
+        # From commits, add empty commit
   - key: 'E'
     description: 'Custom: Add empty commit'
     context: 'commits,files'
     command: 'git commit --allow-empty -m "empty commit"'
     loadingText: 'Committing empty commit...'
-  # From files, open mergetool (DiffviewOpen)
+    # From files, open mergetool (DiffviewOpen)
   - key: "M"
     description: 'Custom: Open mergetool'
     command: 'open_in_nvim.sh lazygit_open_merge_tool "$(printf %q {{.SelectedFile.Name}})"'
     context: "files"
     loadingText: "loading DiffviewOpen"
     output: terminal
-  # From commits, extract diff into /tmp/<sha>.patch file
+    # From commit files, open mergetool (DiffviewOpen)
+  - key: "M"
+    description: 'Custom: Open mergetool'
+    command: 'open_in_nvim.sh lazygit_open_merge_tool "$(printf %q {{.SelectedCommitFile.Name}})"'
+    context: "commitFiles"
+    loadingText: "loading DiffviewOpen"
+    output: terminal
+    # From commits, extract diff into /tmp/<sha>.patch file
   - key: '<c-q>'
     command: git diff {{.SelectedCommit.Sha}}^! > /tmp/{{.SelectedCommit.Sha}}.patch
     context: "commits,subCommits"
     description: 'Custom: extract commit diff into /tmp/<sha>.patch file'
-  # From files, open difftool (DiffviewOpen)
+    # From files, open difftool (DiffviewOpen)
   - key: "<c-t>"
     description: 'Custom: Open difftool'
     command: 'open_in_nvim.sh lazygit_open_difftool "$(printf %q {{.SelectedFile.Name}})"'
     context: "files"
     loadingText: "loading DiffviewOpen"
     output: terminal
-  # From commits, push a specific commit (and any preceding)
+    # From commit files, open difftool (DiffviewOpen)
+  - key: "<c-t>"
+    description: 'Custom: Open difftool'
+    command: 'open_in_nvim.sh lazygit_open_difftool "$(printf %q {{.SelectedCommitFile.Name}})"'
+    context: "commitFiles"
+    loadingText: "loading DiffviewOpen"
+    output: terminal
+    # From commits, push a specific commit (and any preceding)
   - key: 'P'
     description: 'Custom: Force push a specific commit (and any preceding)'
     command: "git push --force {{.SelectedRemote.Name}} {{.SelectedCommit.Sha}}:{{.SelectedLocalBranch.Name}}"
@@ -94,12 +108,12 @@ customCommands:
         title: "Force push specific commit"
         body: "Are you sure you want to force push?"
     output: log
-  # From commits, open as a PR review
+    # From commits, open as a PR review
   - key: 'D'
     description: 'Custom: Diff commit against parent commit'
     command: 'open_in_nvim.sh lazygit_diff_against_parent "{{.SelectedCommit.Sha}}"'
     context: "commits,subCommits"
-  # From remotes, fetch a remote branch as a new local branch
+    # From remotes, fetch a remote branch as a new local branch
   - key: '<c-f>'
     description: 'Custom: fetch a remote branch as a new local branch'
     command: "git fetch {{index .SelectedRemote.Name }} {{index .PromptResponses 0}}:{{index .PromptResponses 1}}"
@@ -112,7 +126,7 @@ customCommands:
         title: 'New Local Branch Name'
         initialValue: ''
     loadingText: 'fetching branch'
-  # From commitFiles, compare (difftool) with local copy
+    # From commitFiles, compare (difftool) with local copy
   - key: 'f'
     description: 'Custom: Compare (difftool) with local copy'
     command: 'open_in_nvim.sh lazygit_diff_with_local_copy "$(printf %q {{.SelectedCommitFile.Name}})" "{{.SelectedCommit.Sha}}"'
