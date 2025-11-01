@@ -11,13 +11,6 @@ local function init()
   ---Expand 'cc' into 'CodeCompanion' in the command line
   vim.cmd([[cab cc CodeCompanion]])
 
-  vim.api.nvim_create_autocmd("User", {
-    desc = "Force redraw to display codecompanion model",
-    pattern = "CodeCompanionChatModel",
-    group = vim.api.nvim_create_augroup("codecompanion-model-name", { clear = true }),
-    callback = function() vim.defer_fn(vim.cmd.redrawstatus, 500) end,
-  })
-
   vim.api.nvim_create_autocmd("BufWinEnter", {
     desc = "Force removing winhighlight when buffer is not codecompanion filetype",
     group = vim.api.nvim_create_augroup("codecompanion-bg-highlight", { clear = true }),

@@ -105,12 +105,6 @@ vim.api.nvim_create_autocmd("FileChangedShellPost", {
   callback = function() vim.api.nvim_echo({ { "File changed on disk. Buffer reloaded", "Comment" } }, false, {}) end,
 })
 
-vim.api.nvim_create_autocmd("FocusGained", {
-  desc = "Redraw status on nvim focus",
-  group = general_settings_group,
-  command = "redrawstatus",
-})
-
 local guicursor = vim.api.nvim_get_option_value("guicursor", {})
 local previous_mode = nil
 vim.api.nvim_create_autocmd({ "InsertEnter", "InsertLeave" }, {
