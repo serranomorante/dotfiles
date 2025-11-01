@@ -4,9 +4,10 @@ local M = {}
 
 local function init()
   vim.api.nvim_create_autocmd("FileType", {
-    desc = "Force OverseerForm to always enter insertmode",
+    desc = "Force the task builder to always enter on insertmode",
     pattern = "OverseerForm",
-    callback = function()
+    callback = function(args)
+      if vim.fn.bufname(args.buf) ~= "Overseer task builder" then return end
       vim.defer_fn(function() vim.cmd.startinsert() end, 200)
     end,
   })
