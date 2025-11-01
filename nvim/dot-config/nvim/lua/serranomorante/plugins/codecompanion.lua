@@ -11,7 +11,7 @@ local function init()
   ---Expand 'cc' into 'CodeCompanion' in the command line
   vim.cmd([[cab cc CodeCompanion]])
 
-  vim.api.nvim_create_autocmd("BufWinEnter", {
+  vim.api.nvim_create_autocmd("BufEnter", {
     desc = "Force removing winhighlight when buffer is not codecompanion filetype",
     group = vim.api.nvim_create_augroup("codecompanion-bg-highlight", { clear = true }),
     callback = function(args)
