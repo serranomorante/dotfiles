@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+sockets=$(lsof -U 2>/dev/null | grep -oE @kitty-[0-9]+)
+entries=()
+declare -A seen_cwds
+for socket in $sockets; do
+    temp_output=()
+    readarray -t temp_output < <(kitten @ --to "unix:$socket" ls | jq -r '.[].tabs.[].windows.[].cwd')
+    for cwd in "${temp_output[@]}"; do
+        if [[ -n "$cwd" && -z "${seen_cwds[$cwd]}" ]]; then
+            seen_cwds["$cwd"]=1
+            entries+=("$cwd|$socket")
+        fi
+    done
+done
+
+uuid=$(uuidgen)
+kitty --class kitty-dmenu -o tab_bar_style=hidden sh -c "
+	\$(printf '%s\n' $(printf "'%s' " "${entries[@]}") | cut -d '|' -f1 | fzf --prompt='Select cwd: ' > /tmp/$uuid.current)
+"
+
+selected=$(</tmp/$uuid.current)
+if [[ -n "$selected" ]]; then
+    socket=$(printf '%s\n' $(printf "'%s' " "${entries[@]}") | grep "$selected" | cut -d '|' -f 2 | cut -d "'" -f 1)
+    kitten @ --to "unix:$socket" focus-window --match "cwd:$selected"
+fi

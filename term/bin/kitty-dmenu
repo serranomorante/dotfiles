@@ -1,20 +1,38 @@
 #!/usr/bin/env bash
 
 if [[ $# -eq 1 ]]; then
-	selected_path=$1
+    selected_path=$1
 else
-	uuid=$(uuidgen)
-	kitty --class kitty-dmenu -o tab_bar_style=hidden sh -c "find ~/work/gp/.bare ~/pjs ~/repos ~/courses ~/temp ~/issues ~/dotfiles ~/.local/share/Cryptomator/mnt ~/.local/share/nvim/site/pack/plugins/start ~/.local/share/nvim/site/pack/plugins/opt ~/.local/share/nvim/gp ~/external/work/cf/repos ~/external/repos ~/external/pjs ~/external/courses ~/external/notes -mindepth 1 -maxdepth 1 -type d | fzf >/tmp/$uuid"
-	selected_path=$(</tmp/$uuid)
+    uuid=$(uuidgen)
+    kitty --class kitty-dmenu -o tab_bar_style=hidden sh -c "
+        find \
+        ~/work/gp/.bare \
+        ~/pjs \
+        ~/repos \
+        ~/courses \
+        ~/temp \
+        ~/issues \
+        ~/dotfiles \
+        ~/.local/share/Cryptomator/mnt \
+        ~/.local/share/nvim/site/pack/plugins/start \
+        ~/.local/share/nvim/site/pack/plugins/opt \
+        ~/.local/share/nvim/gp \
+        ~/external/work/cf/repos \
+        ~/external/repos \
+        ~/external/pjs \
+        ~/external/courses \
+        ~/external/notes \
+        -mindepth 1 -maxdepth 1 -type d | fzf --prompt='Select cwd: ' >/tmp/$uuid"
+    selected_path=$(</tmp/$uuid)
 fi
 
 if [[ -z $selected_path ]]; then
-	exit 0
+    exit 0
 fi
 
 sockets=$(lsof -U 2>/dev/null | grep -oE @kitty-[0-9]+)
 for socket in $sockets; do
-	kitten @ --to "unix:$socket" focus-window --match "cwd:$selected_path" && exit 0
+    kitten @ --to "unix:$socket" focus-window --match "cwd:$selected_path" && exit 0
 done
 
 kitty -d $selected_path
