@@ -1,8 +1,8 @@
 diff --git a/plugins/preview-tui b/plugins/preview-tui
-index 860a93a..5f6b5dd 100755
+index f7a2696..71d4ea4 100755
 --- a/plugins/preview-tui
 +++ b/plugins/preview-tui
-@@ -146,10 +146,10 @@ pidkill() {
+@@ -147,10 +147,10 @@ pidkill() {
  }
  
  start_preview() {
@@ -17,7 +17,7 @@ index 860a93a..5f6b5dd 100755
          NNN_TERMINAL=kitty
          exists mpv && ENVVARS+=("NNN_PREVIEWVIDEO=kitty")
      elif [ -n "$WEZTERM_PANE" ]; then
-@@ -179,10 +179,10 @@ start_preview() {
+@@ -182,15 +182,15 @@ start_preview() {
      esac
  
      case "$NNN_TERMINAL" in
@@ -31,13 +31,22 @@ index 860a93a..5f6b5dd 100755
 +        #     tmux split-window -l"$NNN_SPLITSIZE"% "${ENVVARS[@]}" -d"$split" -p"$NNN_SPLITSIZE" "$0" "$1" ;;
          kitty) # Setting the layout for the new window. It will be restored after the script ends.
              ENVVARS=("${ENVVARS[@]/#/--env=}")
-             kitty @ goto-layout splits
-@@ -446,8 +446,8 @@ image_preview() {
+-            kitty @ goto-layout splits
++            ~/.local/kitty.app/bin/kitty @ goto-layout splits
+             # Trying to use kitty's integrated window management as the split window.
+-            kitty @ launch --no-response --title "preview-tui" --keep-focus \
++            ~/.local/kitty.app/bin/kitty @ launch --no-response --title "preview-tui" --keep-focus \
+                 --cwd "$PWD" "${ENVVARS[@]}" --location "${NNN_SPLIT}split" "$0" "$1" ;;
+         wezterm)
+             export "${ENVVARS[@]}"
+@@ -465,9 +465,9 @@ image_preview() {
+     clear
      exec >/dev/tty
      if [ "$NNN_TERMINAL" = "kitty" ] && [[ "$NNN_PREVIEWIMGPROG" == +(|icat) ]]; then
-         kitty +kitten icat --silent --scale-up --place "$1"x"$2"@0x0 --transfer-mode=stream --stdin=no "$3" &
+-        kitty +kitten icat --silent --scale-up --place "$1"x"$2"@0x0 --transfer-mode=stream --stdin=no "$3" &
 -    elif [ "$NNN_TERMINAL" = "tmux" ] && [[ -n "$KITTY_LISTEN_ON" ]] && [[ "$NNN_PREVIEWIMGPROG" == +(|icat) ]]; then
 -        kitty +kitten icat --silent --scale-up --place "$(($1 - 1))x$(($2 - 1))"@0x0 --transfer-mode=memory --stdin=no "$3" &
++        ~/.local/kitty.app/bin/kitty +kitten icat --silent --scale-up --place "$1"x"$2"@0x0 --transfer-mode=stream --stdin=no "$3" &
 +    # elif [ "$NNN_TERMINAL" = "tmux" ] && [[ -n "$KITTY_LISTEN_ON" ]] && [[ "$NNN_PREVIEWIMGPROG" == +(|icat) ]]; then
 +    #     kitty +kitten icat --silent --scale-up --place "$(($1 - 1))x$(($2 - 1))"@0x0 --transfer-mode=memory --stdin=no "$3" &
      elif [ "$NNN_TERMINAL" = "wezterm" ] && [[ "$NNN_PREVIEWIMGPROG" == +(|imgcat) ]]; then
