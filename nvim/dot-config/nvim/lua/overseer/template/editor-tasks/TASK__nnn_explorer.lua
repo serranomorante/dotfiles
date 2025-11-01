@@ -16,6 +16,7 @@ M.params = {
 }
 
 function M.builder(params)
+  local parser = require("overseer.parser")
   local args = {
     "-JRHdaAog",
     "-Tt",
@@ -36,6 +37,7 @@ function M.builder(params)
     },
     components = {
       { "open_output", direction = "float", on_start = "always", focus = true },
+      { "on_complete_dispose", timeout = 1, statuses = { parser.STATUS.SUCCESS } },
       "unique",
       "defaults_without_notification",
     },

@@ -64,11 +64,13 @@ local function keys()
       { name = nnn_explorer.name, params = { startdir = vim.fn.expand("%:p") } },
       ---@param task overseer.Task
       function(task)
-        vim.api.nvim_create_autocmd("WinLeave", {
-          group = vim.api.nvim_create_augroup("nnn.explorer", { clear = true }),
-          callback = function(args)
-            local ok, task_id = pcall(vim.api.nvim_buf_get_var, args.buf, "overseer_task")
-            if ok and task_id == task.id then task:dispose(true) end
+        vim.api.nvim_create_autocmd("TermClose", {
+          desc = "Force closing the terminal after TUI exits",
+          group = vim.api.nvim_create_augroup("nnn.explorer.close", { clear = true }),
+          buffer = task:get_bufnr(),
+          callback = function()
+            local event = vim.api.nvim_get_vvar("event")
+            if event.status == 0 then utils.feedkeys("q", "t") end
           end,
         })
       end,
