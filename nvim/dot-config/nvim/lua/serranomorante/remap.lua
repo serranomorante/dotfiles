@@ -199,7 +199,7 @@ vim.keymap.set("n", "'0", function()
   for _, m in ipairs(vim.fn.getmarklist()) do
     if vim.list_contains(numbered_marks, m.mark) and utils.file_inside_cwd(m.file) and not utils.cwd_is_home() then
       local ok, _ = pcall(vim.cmd.normal, { args = { m.mark }, bang = true }) -- pcall because it randomly fails now...
-      if ok then vim.schedule(function() vim.cmd.normal({ "zz", bang = true }) end) end
+      if ok then vim.schedule(function() pcall(vim.cmd.normal, { "zz", bang = true }) end) end
       return
     end
   end
