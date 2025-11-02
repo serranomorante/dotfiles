@@ -28,6 +28,9 @@ return {
       name = task_name,
       cmd = { "pandoc" },
       args = vim.list_extend(args, { input, "-o", output }),
+      metadata = {
+        PREVENT_QUIT = true,
+      },
       components = {
         "unique",
         "default",

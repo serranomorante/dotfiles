@@ -16,7 +16,17 @@ end, { desc = "Toggle wrap" })
 vim.keymap.set("n", "<leader>nb", "<cmd>enew<CR>", { desc = "New buffer" })
 
 ---Closing vim
-vim.keymap.set("n", "ZQ", "<cmd>qa!<CR>", { desc = 'Quit without checking for changes (same as ":q!")' })
+vim.keymap.set("n", "ZQ", function()
+  if
+    unpack(require("overseer").list_tasks({
+      status = require("overseer.parser").STATUS.RUNNING,
+      filter = function(task) return task.metadata.PREVENT_QUIT end,
+    }))
+  then
+    return "<cmd>echohl DiagnosticWarn | echom 'You have running tasks!' | echohl None<CR>"
+  end
+  return "<cmd>qa!<CR>"
+end, { expr = true, desc = 'Quit without checking for changes (same as ":q!")' })
 
 -- Move selected lines around
 vim.keymap.set("x", "J", ":m '>+1<CR>gv=gv", { desc = "Move lines down" })

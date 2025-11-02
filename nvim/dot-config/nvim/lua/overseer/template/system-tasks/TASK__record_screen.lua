@@ -46,6 +46,9 @@ return {
         "orchestrator",
         tasks = tasks,
       },
+      metadata = {
+        PREVENT_QUIT = true,
+      },
       components = {
         { "system-components/COMPONENT__start_insert_mode" },
         { "timeout", timeout = 60 * 60 * 2 },

@@ -115,6 +115,9 @@ return {
       cmd = "vansible-playbook",
       args = args,
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
+      metadata = {
+        PREVENT_QUIT = true,
+      },
       components = {
         { "system-components/COMPONENT__force_very_fullscreen_float" },
         { "open_output", direction = "float", on_start = "always", focus = true },
