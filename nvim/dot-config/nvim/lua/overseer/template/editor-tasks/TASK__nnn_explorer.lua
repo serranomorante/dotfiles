@@ -21,7 +21,9 @@ function M.builder(params)
     "-Tt",
     "-c",
   }
-  if params.startdir then table.insert(args, string.format("'%s'", params.startdir)) end
+  local startdir = params.startdir
+  if vim.fn.filereadable(params.startdir) == 0 then startdir = vim.fn.fnamemodify(startdir, ":h") end
+  if startdir then table.insert(args, "'" .. startdir .. "'") end
   return {
     name = TASK_NAME,
     cmd = "nnn",
