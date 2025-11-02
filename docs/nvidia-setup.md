@@ -108,8 +108,6 @@ When using `optimus-manager` you must not relay on the `sddm` script called `Xse
 #!/bin/sh
 # Xsetup - run as root before the login dialog appears
 
-exec >/home/serranomorante/xsetup.out 2>&1
-
 snixembed --fork
 
 internal=$(xrandr | grep "DP.* connected" | cut -d " " -f 1)
@@ -132,8 +130,6 @@ else
 fi
 
 # snixembed --fork
-
-# source /home/serranomorante/.config/autorandr/postswitch.d/notify-i3
 ```
 
 ### Installed some packages
@@ -230,8 +226,6 @@ ACTION=="change", SUBSYSTEM=="drm", RUN+="/usr/local/bin/hotplug_monitor.sh"
 ```bash
 #!/bin/sh
 
-exec >/home/serranomorante/udev.out 2>&1
-
 echo 'After udev.out'
 
 export XAUTHORITY=/home/serranomorante/.Xauthority
@@ -259,8 +253,6 @@ else
 fi
 
 echo 'After conditions'
-
-source /home/serranomorante/.config/autorandr/postswitch.d/notify-i3
 
 echo 'After end'
 ```

@@ -1,8 +1,7 @@
 [Desktop Entry]
-Name=(tmux) REAPER
-Exec=tmux -L reaper new-session -A -s reaper -c '/home/serranomorante/external/.wine-win64-reaper/dosdevices/c:/ProgramData/Microsoft/Windows/Start Menu/Programs/REAPER (x64)' sh -c "LC_ALL=C WINEPREFIX='/home/serranomorante/external/.wine-win64-reaper' wine 'C:/ProgramData/Microsoft/Windows/Start Menu/Programs/REAPER (x64)/REAPER (x64).lnk' || bash"
+Name=(debug) REAPER
+Exec=kitty --hold -o env=LC_ALL=C -o env=WINEPREFIX='/home/serranomorante/external/.wine-win64-reaper' --directory '/home/serranomorante/external/.wine-win64-reaper/dosdevices/c:/ProgramData/Microsoft/Windows/Start Menu/Programs/REAPER (x64)' wine 'C:/ProgramData/Microsoft/Windows/Start Menu/Programs/REAPER (x64)/REAPER (x64).lnk'
 Type=Application
-Terminal=true
 StartupNotify=true
 Icon=3716_reaper.0
 StartupWMClass=reaper.exe

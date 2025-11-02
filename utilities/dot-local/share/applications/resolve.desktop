@@ -1,11 +1,11 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=(tmux) DaVinci Resolve
-GenericName=(tmux) DaVinci Resolve
+Name=(debug) DaVinci Resolve
+GenericName=(debug) DaVinci Resolve
 Comment=Revolutionary new tools for editing, visual effects, color correction and professional audio post production, all in a single application!
 Path=/opt/resolve/
-Exec=tmux -L resolve new-session -A -s resolve sh -c "prime-run /opt/resolve/bin/resolve %u || bash"
+Exec=kitty --hold prime-run /opt/resolve/bin/resolve %u
 Terminal=true
 MimeType=application/x-resolveproj;
 Icon=davinci-resolve.png

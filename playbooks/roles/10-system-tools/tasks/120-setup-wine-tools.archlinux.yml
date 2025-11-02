@@ -211,12 +211,12 @@
   ansible.builtin.file:
     state: directory
     recurse: true
-    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/serranomorante/AppData/Roaming/REAPER/Scripts/custom"
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/REAPER/Scripts/custom"
 
 - name: "[archlinux] Wine tools: copy custom script"
   ansible.builtin.copy:
     src: ~/dotfiles/assets/scripts/reaper/alternate_position.lua
-    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/serranomorante/AppData/Roaming/REAPER/Scripts/custom/"
+    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/REAPER/Scripts/custom/"
     mode: "644"
 
 - name: "[archlinux] Wine tools: get noise suppression for voice"

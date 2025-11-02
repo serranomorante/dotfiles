@@ -3,8 +3,6 @@
 ```bash
 #!/bin/sh
 
-exec >/home/serranomorante/midi.out 2>&1
-
 sleep 2
 
 midi_client_id=$(aconnect -i | grep "'APC mini mk2'" | cut -d " " -f 2)
