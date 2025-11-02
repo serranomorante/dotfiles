@@ -24,8 +24,6 @@ neovim_plugins:
   - folder: start
     repo: kevinhwang91/promise-async # use `typings/?.lua` on .luarc.json
   - folder: start
-    repo: nvim-tree/nvim-web-devicons
-  - folder: start
     repo: neoclide/coc.nvim
   - folder: start
     repo: stevearc/overseer.nvim
