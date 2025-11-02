@@ -2,9 +2,10 @@
 wacom_vendor_id: 056a
 ansible_hhkb_keyboard_id: 04fe:0021 # same id for hhkb_1, hhkb_2, etc
 ansible_mx_keys_keyboard_id: 046d:408a
+ansible_internal_keyboard_device_1: 048d:c100
+ansible_rii_keyboard_device: 04e8:7021
 ansible_internal_keyboard_name_1: AT Translated Set 2 keyboard
 ansible_internal_keyboard_name_2: ITE Tech. Inc. ITE Device(8910) Keyboard
 ansible_internal_keyboard_name_3: Ideapad extra buttons
-ansible_internal_keyboard_device_1: 048d:c100
 macos_weylus_version: no_cursor_found_fix_macos
 arch_weylus_version: d92867ec229ecf080f96ff53978bdf3c1c5e45e2

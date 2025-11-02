@@ -5,6 +5,7 @@ devices:
   - "Logitech MX Keys"
   - "HHKB-Hybrid_1 Keyboard"
   - "ITE Tech. Inc. ITE Device(8910) Wireless Radio Control"
+  - "Bluetooth 3.0 Keyboard"
 
 # fix keyboard rate
 # https://github.com/jbensmann/mouseless/issues/7

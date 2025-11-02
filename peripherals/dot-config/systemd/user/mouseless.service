@@ -8,6 +8,7 @@ ExecStartPre=%h/bin/setup-mouseless-devices.sh "PFU Limited HHKB-Hybrid Keyboard
 ExecStartPre=%h/bin/setup-mouseless-devices.sh "Logitech MX Keys"
 ExecStartPre=%h/bin/setup-mouseless-devices.sh "HHKB-Hybrid_1 Keyboard"
 ExecStartPre=%h/bin/setup-mouseless-devices.sh "ITE Tech. Inc. ITE Device(8910) Wireless Radio Control"
+ExecStartPre=%h/bin/setup-mouseless-devices.sh "Bluetooth 3.0 Keyboard"
 ExecStart=/usr/local/bin/mouseless --config %h/.config/mouseless/config.yaml
 ExecStartPost=/usr/bin/env GIT_TERMINAL_PROMPT=0 /usr/bin/git -C %h/dotfiles stash push -m "mouseless" -- %h/dotfiles/peripherals/dot-config/mouseless/config.yaml
 
