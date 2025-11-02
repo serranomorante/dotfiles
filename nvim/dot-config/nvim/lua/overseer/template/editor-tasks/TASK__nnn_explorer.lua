@@ -1,3 +1,5 @@
+local utils = require("serranomorante.utils")
+
 ---@type overseer.TemplateDefinition
 ---@diagnostic disable-next-line: missing-fields
 local M = {}
@@ -22,7 +24,7 @@ function M.builder(params)
     "-c",
   }
   local startdir = params.startdir
-  if vim.fn.filereadable(params.startdir) == 0 then startdir = vim.fn.fnamemodify(startdir, ":h") end
+  if not utils.exists(params.startdir) then startdir = vim.fn.fnamemodify(startdir, ":h") end
   if startdir then table.insert(args, "'" .. startdir .. "'") end
   return {
     name = TASK_NAME,

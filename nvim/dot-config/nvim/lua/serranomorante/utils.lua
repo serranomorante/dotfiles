@@ -9,7 +9,7 @@ local M = {}
 ---@param filepath string
 function M.nnn_search_in_dir(search_type, filepath)
   local search_dir = vim.fn.fnamemodify(filepath or "", ":p:~:h")
-  if vim.fn.isdirectory(vim.fn.expand(search_dir)) ~= 1 then
+  if not M.is_directory(vim.fn.expand(search_dir)) then
     local msg = '[NNN] %s search aborted. Directory "%s" not found'
     return vim.api.nvim_echo({ { msg:format(search_type, search_dir) } }, false, { err = true })
   end
@@ -135,7 +135,7 @@ end
 function M.file_inside_cwd(filename, cwd)
   local dir = cwd or vim.fn.getcwd()
   dir = dir:sub(-1) ~= "/" and dir .. "/" or dir
-  return vim.startswith(filename, dir) and vim.fn.filereadable(filename) == 1
+  return vim.startswith(filename, dir) and M.exists(filename)
 end
 
 ---Get the indent char string for a given shiftwidth

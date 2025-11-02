@@ -1,3 +1,5 @@
+local utils = require("serranomorante.utils")
+
 local task_name = "editor-tasks-export-markdown"
 
 ---@type overseer.TemplateDefinition
@@ -19,8 +21,8 @@ return {
       "--filter=mermaid-filter",
       "--citeproc",
     }
-    if vim.fn.filereadable(fullhrule) == 1 then table.insert(args, ("--include-in-header=%s"):format(fullhrule)) end
-    if vim.fn.filereadable(bib_file) == 1 then table.insert(args, ("--bibliography=%s"):format(bib_file)) end
+    if utils.exists(fullhrule) then table.insert(args, ("--include-in-header=%s"):format(fullhrule)) end
+    if utils.exists(bib_file) then table.insert(args, ("--bibliography=%s"):format(bib_file)) end
 
     return {
       name = task_name,
