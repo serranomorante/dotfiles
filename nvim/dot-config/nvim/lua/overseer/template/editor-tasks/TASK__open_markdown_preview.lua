@@ -13,6 +13,7 @@ return {
         "launch",
         "--type=overlay",
         "--cwd=current",
+        "--var=is_markdown_preview",
         "--hold",
         "mdcat",
         "--no-pager",
