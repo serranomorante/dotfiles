@@ -17,12 +17,12 @@ git:
   autoForwardBranches: none
   branchLogCmd: "git log --graph --color=always --abbrev-commit --decorate --date=relative --pretty=medium --oneline {{branchName}} --"
   autoStageResolvedConflicts: false
-  paging:
-    colorArg: always
-    # uncomment if you want to use difftastic
-    # externalDiffCommand: difft --color=always
-    pager: delta
-    # based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
+  pagers:
+    - colorArg: always
+      # uncomment if you want to use difftastic
+      # externalDiffCommand: difft --color=always
+      pager: delta
+      # based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
 os:
   edit: 'open_in_nvim.sh lazygit_edit "$(printf %q {{filename}})"'
   editAtLine: 'open_in_nvim.sh lazygit_edit_at_line "$(printf %q {{filename}})" "{{line}}"'

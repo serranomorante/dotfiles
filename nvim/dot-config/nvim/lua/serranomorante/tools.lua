@@ -62,6 +62,7 @@ M.by_filetype = {
   systemd = { parsers = { "git_config" } },
   org = { parsers = { "file:org" } },
   conf = { parsers = { "file:conf" } },
+  gitconfig = { parsers = { "file:gitconfig" } },
   editorconfig = { parsers = { "editorconfig" } },
   ---No specific filetype
   all = {
