@@ -20,6 +20,7 @@ return {
         vim.fn.expand("%:p"),
       },
       components = {
+        { "system-components/COMPONENT__close_window_on_exit_0" },
         { "open_output", direction = "float", on_start = "always", focus = true },
         { "on_complete_dispose", timeout = 1, statuses = { require("overseer.parser").STATUS.SUCCESS } },
         "unique",

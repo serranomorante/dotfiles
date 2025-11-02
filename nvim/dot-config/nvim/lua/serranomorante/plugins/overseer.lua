@@ -53,28 +53,19 @@ local function keys()
     { desc = "Overseer: Select a task to run an action on" }
   )
 
-  vim.keymap.set("n", "<leader>lm", function()
-    overseer.run_template({ name = open_markdown_preview.name }, function(task)
-      if task then overseer.run_action(task, "Close when exit 0") end
-    end)
-  end, { desc = "Open markdown preview" })
+  vim.keymap.set(
+    "n",
+    "<leader>lm",
+    function() overseer.run_template({ name = open_markdown_preview.name }) end,
+    { desc = "Open markdown preview" }
+  )
 
-  vim.keymap.set("n", "<leader>e", function()
-    overseer.run_template(
-      { name = nnn_explorer.name, params = { startdir = vim.fn.expand("%:p") } },
-      ---@param task overseer.Task
-      function(task)
-        if not task then return end
-        overseer.run_action(task, "Close when exit 0")
-        vim.api.nvim_create_autocmd("WinLeave", {
-          desc = "Dispose task if still running after window closes",
-          buffer = task:get_bufnr(),
-          callback = function() task:dispose(true) end,
-        })
-      end,
-      { desc = "Toggle explorer" }
-    )
-  end)
+  vim.keymap.set(
+    "n",
+    "<leader>e",
+    function() overseer.run_template({ name = nnn_explorer.name, params = { startdir = vim.fn.expand("%:p") } }) end,
+    { desc = "Toggle explorer" }
+  )
 
   vim.keymap.set("n", "<leader>w", function()
     ---@type overseer.Task
@@ -144,23 +135,6 @@ local function opts()
         run = function(task)
           require("overseer").run_action(task, "open float")
           utils.feedkeys("q", "t")
-        end,
-      },
-      ["Close when exit 0"] = {
-        desc = "Immediatelly close term window when process exits with status 0",
-        ---@param task overseer.Task
-        run = function(task)
-          vim.api.nvim_create_autocmd("TermClose", {
-            desc = "Force closing the terminal after TUI exits",
-            group = vim.api.nvim_create_augroup("term.close", { clear = true }),
-            buffer = task:get_bufnr(),
-            callback = function(args)
-              local event = vim.api.nvim_get_vvar("event")
-              if event.status == 0 and vim.api.nvim_get_option_value("buftype", { buf = args.buf }) == "terminal" then
-                vim.api.nvim_win_close(0, true)
-              end
-            end,
-          })
         end,
       },
     },

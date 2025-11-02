@@ -39,6 +39,8 @@ function M.builder(params)
       TERM = vim.env.TERM,
     },
     components = {
+      { "system-components/COMPONENT__dispose_on_window_close" },
+      { "system-components/COMPONENT__close_window_on_exit_0" },
       { "system-components/COMPONENT__force_very_fullscreen_float" },
       { "system-components/COMPONENT__start_insert_mode" },
       { "open_output", direction = "float", on_start = "always", focus = true },
