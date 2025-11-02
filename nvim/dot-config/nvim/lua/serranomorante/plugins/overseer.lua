@@ -154,9 +154,11 @@ local function opts()
             desc = "Force closing the terminal after TUI exits",
             group = vim.api.nvim_create_augroup("term.close", { clear = true }),
             buffer = task:get_bufnr(),
-            callback = function()
+            callback = function(args)
               local event = vim.api.nvim_get_vvar("event")
-              if event.status == 0 then vim.cmd.close() end
+              if event.status == 0 and vim.api.nvim_get_option_value("buftype", { buf = args.buf }) == "terminal" then
+                vim.api.nvim_win_close(0, true)
+              end
             end,
           })
         end,

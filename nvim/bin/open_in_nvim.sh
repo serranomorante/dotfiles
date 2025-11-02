@@ -10,12 +10,12 @@ app="$1"
 servername=$(echo $NVIM_KITTY_LISTEN_ADDRESS)
 
 shift
-nvim_close_term_win="vim.cmd.close()"
+nvim_close_term_win="vim.api.nvim_win_close(0, false)"
 nvim_edit="vim.cmd.edit({ [[$1]], mods = { emsg_silent = true }})" # don't use `nvr --remote` because it doesn't respect shortmess
 
 case $app in
 nnn_search)
-    nvr --servername $servername --nostart -c "lua require'serranomorante.utils'.nnn_search_in_dir('$1', '$PWD/$nnn'); $nvim_close_term_win"
+    nvr --servername $servername --nostart -c "NNNSearch $1 $PWD/$nnn"
     ;;
 nnn_explorer)
     nvr --servername $servername --nostart -c "lua $nvim_close_term_win; $nvim_edit"
