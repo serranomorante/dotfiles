@@ -217,3 +217,8 @@ vim.keymap.set("n", "'0", function()
   if file then vim.cmd.edit(file) end
   vim.api.nvim_echo({ { "No suitable numbered mark, fallback to first oldfile.", "DiagnosticWarn" } }, false, {})
 end, { desc = "Go to last edited file or fallback to first oldfile" })
+
+vim.keymap.set("n", "t^", function()
+  local prev_tab = vim.fn.tabpagenr("#")
+  if prev_tab > 0 then vim.cmd("tabn " .. prev_tab) end
+end, { desc = "Toggle between current and previous tab" })
