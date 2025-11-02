@@ -4,6 +4,7 @@ local task_name = "run-lazygit"
 return {
   name = task_name,
   desc = "Run Lazygit",
+  hide = true,
   builder = function()
     return {
       name = task_name,
