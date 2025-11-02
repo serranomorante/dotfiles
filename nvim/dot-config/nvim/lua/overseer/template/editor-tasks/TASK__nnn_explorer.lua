@@ -37,6 +37,7 @@ function M.builder(params)
       TERM = vim.env.TERM,
     },
     components = {
+      { "system-components/COMPONENT__force_very_fullscreen_float" },
       { "system-components/COMPONENT__start_insert_mode" },
       { "open_output", direction = "float", on_start = "always", focus = true },
       { "on_complete_dispose", timeout = 1, statuses = { require("overseer.parser").STATUS.SUCCESS } },
