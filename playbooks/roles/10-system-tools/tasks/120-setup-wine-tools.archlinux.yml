@@ -127,6 +127,12 @@
     delay: 5
     timeout: 300
 
+- name: "[archlinux] Wine tools: setup reaper.desktop file"
+  ansible.builtin.template:
+    src: reaper.desktop
+    dest: ~/.local/share/applications/
+    mode: "644"
+
 - name: "[archlinux] Wine tools: clone wineasio"
   ansible.builtin.git:
     repo: https://github.com/wineasio/wineasio

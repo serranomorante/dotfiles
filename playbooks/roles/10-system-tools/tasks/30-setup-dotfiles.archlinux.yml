@@ -15,6 +15,12 @@
     - ~/.config/kiorc
     - ~/.local/share/applications/wine-protocol-dreamtonics-svstudio2.desktop
 
+- name: "[archlinux] Setup browser tools: setup ktrashrc"
+  ansible.builtin.template:
+    src: ktrashrc
+    dest: ~/.config/
+    mode: "644"
+
 - name: "[archlinux] Dotfiles: apply stow"
   ansible.builtin.command: >
     stow --dotfiles

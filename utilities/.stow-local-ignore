@@ -1,3 +1,5 @@
 \.mypy_cache.*
 \.editorconfig.*
 ^/.config/remind/.*
+^/.config/picom/.*
+^/.config/ktrashrc.*

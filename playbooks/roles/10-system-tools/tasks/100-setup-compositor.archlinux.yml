@@ -38,6 +38,12 @@
   loop:
     - repo: https://github.com/ikz87/picom-shaders
 
+- name: "[archlinux] Setup browser tools: setup picom conf"
+  ansible.builtin.template:
+    src: picom.conf
+    dest: ~/.config/picom/
+    mode: "644"
+
 - name: "[archlinux] Compositor: clone latest dwm"
   ansible.builtin.git:
     repo: git://git.suckless.org/dwm
