@@ -35,3 +35,4 @@
   args:
     chdir: ~/repos/neovim
     creates: ~/repos/neovim/build/bin/nvim
+  timeout: 300
