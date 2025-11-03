@@ -28,6 +28,7 @@ end
 local function opts()
   ---@type DiffviewConfig
   return {
+    use_icons = false,
     show_help_hints = false,
     watch_index = true,
     default_args = {
