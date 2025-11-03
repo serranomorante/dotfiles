@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+\nvim --server $NVIM_KITTY_LISTEN_ADDRESS --remote-ui --remote-send '<cmd>TasksRunning | sleep 1 | detach<CR>'
+
+result=$(cat "${NVIM_KITTY_LISTEN_ADDRESS}.tasks_running")
+
+if [[ "$result" == "tasks are running" ]]; then
+    kitten @ action close_window_with_confirmation
+else
+    kitten @ action close_window
+fi
