@@ -22,5 +22,5 @@ kitty --class kitty-dmenu -o tab_bar_style=hidden sh -c "
 selected=$(</tmp/$uuid.current)
 if [[ -n "$selected" ]]; then
     socket=$(printf '%s\n' $(printf "'%s' " "${entries[@]}") | grep "$selected" | cut -d '|' -f 2 | cut -d "'" -f 1)
-    kitten @ --to "unix:$socket" focus-window --match "cwd:$selected"
+    error_msg=$(kitten @ --to "unix:$socket" focus-window --match "cwd:^${selected}$" 2>&1) || notify-send "Error: $error_msg"
 fi

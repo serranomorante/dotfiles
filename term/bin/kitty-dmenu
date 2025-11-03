@@ -32,7 +32,8 @@ fi
 
 sockets=$(lsof -U 2>/dev/null | grep -oE @kitty-[0-9]+)
 for socket in $sockets; do
-    kitten @ --to "unix:$socket" focus-window --match "cwd:$selected_path" && exit 0
+    error_msg=$(kitten @ --to "unix:$socket" focus-window --match "cwd:^${selected_path}$" 2>&1) && exit 0 ||
+        { [[ ! "$error_msg" =~ "No matching windows for expression" ]] && notify-send "Error: $error_msg"; }
 done
 
 kitty -d $selected_path
