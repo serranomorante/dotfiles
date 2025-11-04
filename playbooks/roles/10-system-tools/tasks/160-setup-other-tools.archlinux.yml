@@ -10,7 +10,7 @@
 - name: "[archlinux] Other tools: install jdownloader"
   community.general.flatpak:
     name: org.jdownloader.JDownloader
-    state: latest
+    state: present
 
 - name: "[archlinux] Other tools: ensure custom jdownloader desktop"
   become: true

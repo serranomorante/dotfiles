@@ -102,6 +102,7 @@
     state: latest
     local_pkgbuild: ~/apps/video-tools/davinci-resolve
   when: var_download_davinci_result.changed
+  timeout: 0
 
 - name: "[archlinux] Setup video tools: remove faulty wine .dekstop"
   ansible.builtin.file:
