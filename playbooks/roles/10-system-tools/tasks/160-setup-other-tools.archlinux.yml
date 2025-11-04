@@ -43,23 +43,17 @@
     mode: "755"
 
 - name: "[archlinux] Other tools: install bitwarden"
-  ansible.builtin.get_url:
-    url: https://bitwarden.com/download/?app=desktop&platform=linux&variant=appimage
-    dest: ~/apps/security-tools/bitwarden
-    force: true
-    mode: "755"
+  community.general.flatpak:
+    name: com.bitwarden.desktop
+    state: latest
+  register: var_bitwarden_install
 
-- name: "[archlinux] Other tools: symlink bitwarden"
-  ansible.builtin.file:
-    state: link
-    src: ~/apps/security-tools/bitwarden
-    dest: ~/bin/bitwarden
-
-- name: "[archlinux] Other tools: prepare .desktop and mimetype"
+- name: "[archlinux] Other tools: prepare bitwarden .desktop and mimetype"
   ansible.builtin.shell: |
     update-desktop-database ~/.local/share/applications
     xdg-mime default bitwarden.desktop x-scheme-handler/bitwarden
-  changed_when: false
+  changed_when: true
+  when: var_bitwarden_install.changed
   notify: "10-system-tools : handler_update_desktop_database"
 
 - name: "[archlinux] Other tools: add no-internet group"

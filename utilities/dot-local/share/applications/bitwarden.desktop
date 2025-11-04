@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Bitwarden Dekstop
-Exec=bitwarden %u
+Exec=com.bitwarden.desktop %u
 Type=Application
 Terminal=false
 MimeType=x-scheme-handler/bitwarden;
