@@ -10,3 +10,11 @@
     url: https://raw.githubusercontent.com/kewlfft/ansible-aur/master/plugins/modules/aur.py
     dest: ~/.ansible/plugins/modules/aur.py
     mode: "644"
+
+- name: "[archlinux] Setup desktop: ensure aur packages"
+  aur:
+    use: yay
+    state: present
+    name:
+      - downgrade
+      - ttf-ms-win11-auto

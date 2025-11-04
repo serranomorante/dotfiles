@@ -33,14 +33,6 @@
       # - kde-applications
   notify: "10-system-tools : handler_ensure_docker_service"
 
-- name: "[archlinux] Setup desktop: ensure aur packages"
-  aur:
-    use: yay
-    state: present
-    name:
-      - downgrade
-      - ttf-ms-win11-auto
-
 - name: "[archlinux] Setup desktop: remove packages"
   become: true
   ansible.builtin.package:
