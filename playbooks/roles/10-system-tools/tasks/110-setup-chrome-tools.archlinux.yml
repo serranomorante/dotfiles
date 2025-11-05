@@ -1,4 +1,12 @@
 ---
+- name: "[archlinux] Chrome tools: setup browser debugger template"
+  ansible.builtin.template:
+    src: browser-debugger.service
+    dest: ~/.config/systemd/user/
+    mode: "644"
+  vars:
+    prefix: "%h"
+
 - name: "[archlinux] Chrome tools: ensure browser as debugger service"
   ansible.builtin.systemd_service:
     scope: user

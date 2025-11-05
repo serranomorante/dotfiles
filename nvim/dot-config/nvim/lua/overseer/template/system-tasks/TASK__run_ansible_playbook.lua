@@ -9,6 +9,7 @@ local PLAYS = {
   SETUP_BROWSER_TOOLS = "10-170 [Setup browser tools]",
   SETUP_BACKUP_TOOLS = "10-180,10-181 [Setup backup tools]",
   SETUP_COMPOSITOR = "10-100 [Setup compositor]",
+  SETUP_CHROME = "10-110 [Setup chrome]",
   SETUP_DOTFILES = "10-30 [Setup dotfiles]",
   SETUP_VIRTUALBOX = "10-140 [Setup virtualbox]",
   SETUP_PERSISTENCE_TOOLS = "10-150 [Setup persistence tools]",

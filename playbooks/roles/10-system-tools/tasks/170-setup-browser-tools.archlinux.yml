@@ -226,5 +226,4 @@
   ansible.builtin.command: echo
   changed_when: true
   notify:
-    - handler_generate_browser_debugger_service
     - handler_ensure_brave_desktop_file

@@ -84,18 +84,6 @@
     replace: '{\n  "oauthClientId": "{{ ansible_facts.hypothesis_oauth_client_id | default(None) }}",'
   when: ansible_facts.hypothesis_oauth_client_id is not undefined
 
-- name: handler_generate_browser_debugger_service
-  ansible.builtin.blockinfile:
-    dest: ~/dotfiles/systemd/dot-config/systemd/user/browser-debugger.service
-    create: true
-    insertafter: "^\\[Service\\]"
-    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP BROWSER"
-    block: >
-      ExecStart=/usr/bin/chromium --remote-debugging-port=9222 --load-extension={% for item in browser_local_extensions if (item.hide is not defined) or (not item.hide) %}{{ item.path }}{% if not loop.last %},{% endif %}{% endfor %}
-    mode: "644"
-  vars:
-    prefix: "%h"
-
 - name: handler_ensure_brave_desktop_file
   ansible.builtin.replace:
     path: ~/.local/share/applications/brave-browser.desktop
