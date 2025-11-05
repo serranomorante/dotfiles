@@ -25,6 +25,7 @@ neovim_plugins:
     repo: kevinhwang91/promise-async # use `typings/?.lua` on .luarc.json
   - folder: start
     repo: neoclide/coc.nvim
+    version: release
   - folder: start
     repo: stevearc/overseer.nvim
     name: overseer
