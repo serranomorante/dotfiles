@@ -11,6 +11,36 @@
     dest: ~/.ansible/plugins/modules/aur.py
     mode: "644"
 
+- name: "[archlinux] AUR: Create the `aur_builder` user"
+  become: true
+  ansible.builtin.user:
+    name: aur_builder
+    create_home: true
+    group: wheel
+
+- name: "[archlinux] AUR: Allow the `aur_builder` user to run `sudo pacman` without a password"
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/11-install-aur_builder
+    line: "aur_builder ALL=(ALL) NOPASSWD: /usr/bin/pacman"
+    create: true
+    mode: "644"
+    validate: "visudo -cf %s"
+
+- name: "[archlinux] AUR: ensure makepkg folder permissions"
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/temp/makepkg"
+    recurse: true
+    mode: "070"
+    group: wheel
+
+- name: "[archlinux] AUR: append user to wheel group"
+  become: true
+  ansible.builtin.user:
+    append: true
+    groups: wheel
+    name: "{{ ansible_env.USER }}"
+
 - name: "[archlinux] Setup desktop: ensure aur packages"
   aur:
     use: yay
