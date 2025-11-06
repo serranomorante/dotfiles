@@ -58,6 +58,8 @@
       - blender
 
 - name: "[archlinux] Setup video tools: ensure aur packages"
+  become: true
+  become_user: aur_builder
   aur:
     use: yay
     state: present
@@ -96,6 +98,8 @@
   when: davinci_resolve_deps is success
 
 - name: "[archlinux] Setup video tools: install davinci-resolve"
+  become: true
+  become_user: aur_builder
   aur:
     use: makepkg
     name: davinci-resolve

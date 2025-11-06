@@ -10,6 +10,8 @@
     - name: js-beautify
 
 - name: "[archlinux] Javascript language: ensure FORMATTERS (using aur)"
+  become: true
+  become_user: aur_builder
   aur:
     use: yay
     state: present

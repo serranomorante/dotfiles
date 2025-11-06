@@ -1,5 +1,7 @@
 ---
 - name: "[archlinux] Vim language: ensure LSP (using aur)"
+  become: true
+  become_user: aur_builder
   aur:
     use: yay
     state: present

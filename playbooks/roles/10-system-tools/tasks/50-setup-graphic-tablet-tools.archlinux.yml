@@ -9,6 +9,8 @@
       - gimp
 
 - name: "[archlinux] Graphic tablet peripheral: ensure tools (using aur)"
+  become: true
+  become_user: aur_builder
   aur:
     use: yay
     state: present

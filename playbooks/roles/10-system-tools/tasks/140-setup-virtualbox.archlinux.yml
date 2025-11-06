@@ -8,6 +8,8 @@
       - ninja
 
 - name: "[archlinux] Setup virtualbox: ensure aur packages"
+  become: true
+  become_user: aur_builder
   aur:
     use: yay
     state: present

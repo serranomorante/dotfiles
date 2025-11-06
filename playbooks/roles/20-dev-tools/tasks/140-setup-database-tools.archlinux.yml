@@ -1,5 +1,7 @@
 ---
 - name: "[archlinux] Setup database tools: ensure aur packages"
+  become: true
+  become_user: aur_builder
   aur:
     use: yay
     state: present
