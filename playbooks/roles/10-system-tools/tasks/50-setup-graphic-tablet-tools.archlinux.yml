@@ -54,18 +54,6 @@
     depth: 1
     version: "{{ arch_weylus_version }}"
 
-- name: "[archlinux] Graphic tablet peripheral: apply custom patch to lib.ts"
-  ansible.builtin.command: git apply ~/dotfiles/assets/patches/weylus/lib.patch
-  args:
-    chdir: ~/repos/Weylus
-  changed_when: false
-
-- name: "[archlinux] Graphic tablet peripheral: compile weylus lib.ts"
-  ansible.builtin.command: tsc
-  args:
-    chdir: ~/repos/Weylus
-    creates: ~/repos/Weylus/www/static/lib.js
-
 - name: "[archlinux] Graphic tablet peripheral: register ufw status variable"
   ansible.builtin.systemd_service:
     name: ufw.service
