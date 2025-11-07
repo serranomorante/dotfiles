@@ -57,6 +57,7 @@
     after: "^\\[Module-keyboard\\]"
     regexp: "^(autoload)=true"
     replace: "\\1=false"
+  ignore_errors: true
 
 - name: "[archlinux] Keyboard peripheral: setup keyd default.conf"
   become: true
