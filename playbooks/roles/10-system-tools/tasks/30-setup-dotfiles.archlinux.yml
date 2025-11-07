@@ -24,6 +24,7 @@
     - ~/.config/mimeapps.list
     - ~/.config/ktrashrc
     - ~/.config/kiorc
+    - ~/.config/kglobalshortcutsrc
     - ~/.local/share/applications/wine-protocol-dreamtonics-svstudio2.desktop
 
 - name: "[archlinux] Setup browser tools: setup ktrashrc"
