@@ -87,7 +87,7 @@
 
 - name: "[archlinux] Wine tools: setup prefixes"
   ansible.builtin.command: winecfg -v {{ item.winver | default('win10') }}
-  timeout: 10
+  timeout: 60
   environment:
     WINEPREFIX: "{{ item.wine_prefix }}"
     WINEARCH: "{{ item.architecture | default('win64') }}"
