@@ -5,6 +5,7 @@ debian_fzf_version: 0.55.0
 debian_rg_version: 14.0.3
 debian_fd_version: 10.1.0
 arch_davinci_resolve_version: 20.2.2
+arch_yay_version: HEAD
 arch_nvidia_libs_version: 0.8.5
 arch_wine_staging_version: 10.8-2
 arch_mouseless_click_version: 0.4.2
