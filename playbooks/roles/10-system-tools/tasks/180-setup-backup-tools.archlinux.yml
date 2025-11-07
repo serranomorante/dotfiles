@@ -37,7 +37,6 @@
       ansible.builtin.systemd_service:
         scope: user
         name: "{{ item.service }}.timer"
-        state: started
         enabled: true
         masked: false
       loop:

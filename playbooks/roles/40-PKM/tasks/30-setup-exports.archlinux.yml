@@ -3,7 +3,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: "{{ item }}.timer"
-    state: started
     enabled: true
     masked: false
   loop:
@@ -15,7 +14,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: promnesia.service
-    state: started
     enabled: true
     masked: false
 

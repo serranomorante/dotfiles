@@ -22,7 +22,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: gromit-mpx.service
-    state: started
     enabled: true
     masked: false
 
@@ -43,7 +42,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: wacom.service
-    state: started
     enabled: true
     masked: false
 
@@ -87,7 +85,6 @@
 - name: "[archlinux] Graphic tablet peripheral: weylus - ensure uinput group"
   become: true
   ansible.builtin.group:
-    state: present
     name: uinput
 
 - name: "[archlinux] Graphic tablet peripheral: weylus - append user to group"
@@ -103,7 +100,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: weylus.service
-    state: started
     enabled: true
     masked: false
 
@@ -111,7 +107,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: setup-displays.service
-    state: started
     enabled: true
     masked: false
 

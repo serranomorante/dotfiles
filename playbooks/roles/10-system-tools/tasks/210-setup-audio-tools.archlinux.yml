@@ -30,13 +30,13 @@
   ansible.builtin.systemd_service:
     scope: "{{ item.scope | default('user') }}"
     name: "{{ item.name }}"
-    state: "{{ item.state }}"
     enabled: "{{ item.enabled }}"
     masked: "{{ item.masked }}"
   loop:
-    - { name: pipewire.socket, state: started, enabled: true, masked: false }
-    - { name: pipewire-pulse.socket, state: started, enabled: true, masked: false }
-    - { scope: system, name: cpupower.service, state: started, enabled: true, masked: false }
+    - { name: pipewire.socket, enabled: true, masked: false }
+    - { name: pipewire-pulse.socket, enabled: true, masked: false }
+    - { name: wireplumber.service, enabled: true, masked: false }
+    - { scope: system, name: cpupower.service, enabled: true, masked: false }
 
 - name: "[archlinux] Setup audio tools: create pipewire group"
   become: true

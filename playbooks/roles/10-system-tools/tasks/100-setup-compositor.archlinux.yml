@@ -13,7 +13,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: plasma-kwin_x11.service
-    state: stopped
     enabled: false
     masked: true
 
@@ -131,6 +130,5 @@
   ansible.builtin.systemd_service:
     scope: user
     name: plasma-wm.service
-    state: started
     enabled: true
     masked: false

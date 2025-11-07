@@ -11,7 +11,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: ssh-agent.service
-    state: started
     enabled: true
     masked: false
 

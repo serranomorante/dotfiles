@@ -52,11 +52,10 @@
   ansible.builtin.systemd_service:
     scope: system
     name: "{{ item.name }}"
-    state: "{{ item.state }}"
     enabled: "{{ item.enabled }}"
     masked: "{{ item.masked }}"
   loop:
-    - { name: sddm.service, state: started, enabled: true, masked: false }
+    - { name: sddm.service, enabled: true, masked: false }
     - { name: NetworkManager-wait-online.service, state: stopped, enabled: false, masked: true }
 
 - name: "[archlinux] Setup desktop: register pinentry"

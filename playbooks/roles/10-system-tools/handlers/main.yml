@@ -17,7 +17,6 @@
   ansible.builtin.systemd_service:
     scope: system
     name: keyd.service
-    state: started
     enabled: true
     masked: false
 
@@ -39,7 +38,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: mouseless.service
-    state: started
     enabled: true
     masked: false
 
@@ -48,7 +46,6 @@
   ansible.builtin.systemd_service:
     scope: system
     name: readline-mode-notify.service
-    state: started
     enabled: true
     masked: false
 
@@ -56,7 +53,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: mypaint.service
-    state: started
     enabled: true
     masked: false
 
@@ -64,7 +60,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: compositor.service
-    state: started
     enabled: true
     masked: false
 
@@ -73,7 +68,6 @@
   ansible.builtin.systemd_service:
     scope: system
     name: docker.service
-    state: started
     enabled: true
     masked: false
 
@@ -125,7 +119,6 @@
   ansible.builtin.systemd_service:
     scope: system
     name: iptables.service
-    state: started
     enabled: true
     masked: false
 
@@ -133,7 +126,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: xdg-desktop-portal-termfilechooser.service
-    state: restarted
     enabled: true
     masked: false
 
@@ -152,7 +144,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: remind.service
-    state: started
     enabled: true
     masked: false
 
@@ -160,7 +151,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: keyd-application-mapper.service
-    state: started
     enabled: true
     masked: false
 
@@ -168,7 +158,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: send-ifconfig.service
-    state: started
     enabled: true
     masked: false
 
@@ -176,7 +165,6 @@
   ansible.builtin.systemd_service:
     scope: user
     name: mouseless-click.service
-    state: started
     enabled: true
     masked: false
 
