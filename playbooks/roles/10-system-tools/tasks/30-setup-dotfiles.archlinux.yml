@@ -5,9 +5,7 @@
   aur:
     use: yay
     state: present
-    name:
-      - downgrade
-      - ttf-ms-win11-auto
+    name: downgrade
 
 - name: "[archlinux] Dotfiles: ensure stow installed"
   become: true
@@ -25,6 +23,8 @@
     - ~/.config/ktrashrc
     - ~/.config/kiorc
     - ~/.config/kglobalshortcutsrc
+    - ~/.bash_profile
+    - ~/.bashrc
     - ~/.local/share/applications/wine-protocol-dreamtonics-svstudio2.desktop
 
 - name: "[archlinux] Setup browser tools: setup ktrashrc"

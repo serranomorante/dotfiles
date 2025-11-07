@@ -50,6 +50,14 @@
     version: "{{ arch_yay_version }}"
     single_branch: true
 
+- name: "[archlinux] AUR: ensure yay folder permissions"
+  become: true
+  ansible.builtin.file:
+    path: /tmp/yay
+    recurse: true
+    mode: "770"
+    group: wheel
+
 - name: "[archlinux] AUR: install yay"
   become: true
   become_user: aur_builder
