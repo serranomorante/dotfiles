@@ -27,19 +27,11 @@
     mode: "644"
     validate: "visudo -cf %s"
 
-- name: "[archlinux] AUR: ensure makepkg folder permissions"
-  become: true
-  ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/temp/makepkg"
-    recurse: true
-    mode: "777"
-    group: wheel
-
-- name: "[archlinux] AUR: append aur_builder to wheel group"
+- name: "[archlinux] AUR: add groups to aur_builder"
   become: true
   ansible.builtin.user:
     append: true
-    groups: wheel
+    groups: "{{ ansible_env.USER }}"
     name: aur_builder
 
 - name: "[archlinux] AUR: append user to wheel group"
@@ -52,24 +44,15 @@
 - name: "[archlinux] AUR: clone yay"
   ansible.builtin.git:
     repo: https://aur.archlinux.org/yay-bin
-    dest: "{{ ansible_env.HOME }}/repos/yay"
+    dest: /tmp/yay
     depth: 1
     force: true
     version: "{{ arch_yay_version }}"
     single_branch: true
-
-- name: "[archlinux] AUR: append wheel permission"
-  become: true
-  ansible.builtin.file:
-    state: directory
-    path: "{{ ansible_env.HOME }}/external/repos/yay"
-    group: wheel
-    recurse: true
-    mode: "777"
 
 - name: "[archlinux] AUR: install yay"
   become: true
   become_user: aur_builder
   ansible.builtin.command: makepkg -si --noconfirm
   args:
-    chdir: "{{ ansible_env.HOME }}/repos/yay"
+    chdir: /tmp/yay
