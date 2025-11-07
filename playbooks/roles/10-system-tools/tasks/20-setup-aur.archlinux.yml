@@ -28,6 +28,7 @@
     validate: "visudo -cf %s"
 
 - name: "[archlinux] AUR: ensure makepkg folder permissions"
+  become: true
   ansible.builtin.file:
     path: "{{ ansible_env.HOME }}/temp/makepkg"
     recurse: true

@@ -1,5 +1,6 @@
 ---
 - name: "[archlinux] Grep utilities: ensure several grep packages"
+  become: true
   ansible.builtin.package:
     state: present
     name:

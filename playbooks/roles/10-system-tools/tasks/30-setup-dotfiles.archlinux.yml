@@ -10,6 +10,7 @@
       - ttf-ms-win11-auto
 
 - name: "[archlinux] Dotfiles: ensure stow installed"
+  become: true
   ansible.builtin.package:
     state: present
     name: stow
