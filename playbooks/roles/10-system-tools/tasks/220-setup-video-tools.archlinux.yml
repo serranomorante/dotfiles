@@ -15,6 +15,7 @@
   register: var_download_davinci_result
   args:
     creates: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+  when: is_x_display_session
 
 - name: "[archlinux] Setup video tools: wait for davinci to download"
   ansible.builtin.wait_for:
@@ -23,14 +24,14 @@
     delay: 5
     timeout: 600
   timeout: 0
-  when: var_download_davinci_result.changed
+  when: (var_download_davinci_result | default({})).changed and is_x_display_session
 
 - name: "[archlinux] Setup video tools: move davinci resolve zip to expected location"
   ansible.builtin.command: mv DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip ~/apps/video-tools/davinci-resolve/
   args:
     chdir: ~/Downloads
     creates: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
-  when: var_download_davinci_result.changed
+  when: (var_download_davinci_result | default({})).changed and is_x_display_session
 
 - name: "[archlinux] Setup video tools: download aur package"
   ansible.builtin.unarchive:
@@ -40,13 +41,19 @@
     creates: ~/apps/video-tools/davinci-resolve/PKGBUILD
 
 - name: "[archlinux] Setup video tools: ensure packages"
-  # https://github.com/Ashark/davinci-resolve-checker?tab=readme-ov-file#installation
   become: true
   ansible.builtin.package:
     state: present
     name:
       - mesa
       - expac
+
+- name: "[archlinux] Setup video tools: ensure packages (needs display)"
+  # https://github.com/Ashark/davinci-resolve-checker?tab=readme-ov-file#installation
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
       - mesa-utils
       - lib32-mesa-utils
       - lib32-opencl-mesa
@@ -56,6 +63,7 @@
       - lib32-opencl-nvidia
       - mingw-w64
       - blender
+  when: is_x_display_session
 
 - name: "[archlinux] Setup video tools: ensure aur packages"
   become: true
@@ -64,6 +72,7 @@
     use: yay
     state: present
     name: opencl-amd
+  when: is_x_display_session
 
 - name: "[archlinux] Setup video tools: ensure pip deps for davinci-resolve-checker"
   ansible.builtin.pip:
@@ -89,13 +98,14 @@
     chdir: ~/apps/video-tools/davinci-resolve
   register: davinci_resolve_deps
   changed_when: false
+  when: is_x_display_session
 
 - name: "[archlinux] Setup video tools: install davinci-resolve deps"
   become: true
   ansible.builtin.package:
     state: present
     name: "{{ davinci_resolve_deps.stdout | regex_findall('(.*)\n') }}"
-  when: davinci_resolve_deps is success
+  when: davinci_resolve_deps is success and is_x_display_session
 
 - name: "[archlinux] Setup video tools: install davinci-resolve"
   become: true
@@ -105,7 +115,7 @@
     name: davinci-resolve
     state: latest
     local_pkgbuild: ~/apps/video-tools/davinci-resolve
-  when: var_download_davinci_result.changed
+  when: var_download_davinci_result.changed and is_x_display_session
   timeout: 0
 
 - name: "[archlinux] Setup video tools: remove faulty wine .dekstop"
