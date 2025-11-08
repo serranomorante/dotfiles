@@ -176,6 +176,11 @@
   tags: ["10-160"]
 
 - block:
+    - name: Prepare volta, npm, node, etc before browser setup
+      ansible.builtin.include_role:
+        name: 20-dev-tools
+        tasks_from: node
+
     - name: Setup browser tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
