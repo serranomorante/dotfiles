@@ -20,6 +20,7 @@
       creates: ~/.local/bin/isd
     - package_name: vectorcode
       creates: ~/.local/bin/vectorcode
+  timeout: 0
 
 - name: "[archlinux] Editor tools: update vectorcode"
   ansible.builtin.command: uv tool upgrade --python=3.12 vectorcode
@@ -93,6 +94,11 @@
   loop:
     - { script: ~/dotfiles/tmux/dot-config/tmux/tmux.conf }
 
+- name: "[archlinux] Setup terminal tools: clone tmux"
+  ansible.builtin.stat:
+    path: ~/.config/kdeglobals
+  register: var_stat_kdeglobals
+
 - name: "[archlinux] Setup terminal tools: fix kdeglobals"
   ansible.builtin.blockinfile:
     dest: ~/.config/kdeglobals
@@ -100,3 +106,4 @@
     block: |
       TerminalApplication=kitty
       TerminalService=kitty.desktop
+  when: var_stat_kdeglobals.stat.exists
