@@ -35,11 +35,11 @@
 
 - name: "[archlinux] Setup python: ensure python versions"
   ansible.builtin.command: pyenv install --skip-existing {{ item }}
-  ignore_errors: true
   loop:
     - 3.11.2
     - 3.11.3
-  changed_when: false
+  changed_when: true
+  timeout: 0
 
 - name: "[archlinux] Setup python: ensure python system default"
   ansible.builtin.command: pyenv global system
