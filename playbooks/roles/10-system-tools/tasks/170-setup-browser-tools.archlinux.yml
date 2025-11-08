@@ -154,7 +154,7 @@
 - name: "[archlinux] Setup browser tools: build promnesia"
   ansible.builtin.command: |
     npm ci
-    ~/apps/PKM/.venv/bin/python build --chrome --release
+    /usr/bin/python build --chrome --release
   args:
     chdir: ~/repos/promnesia/extension
     creates: ~/repos/promnesia/extension/dist/chrome/manifest.json
