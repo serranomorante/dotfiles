@@ -24,6 +24,11 @@
   ansible.builtin.command: volta install node@{{ node_system_default_version }}
   changed_when: true
 
+- name: "[archlinux] Setup node: install yarn 1.22.22"
+  ansible.builtin.shell: >
+    volta run --node {{ node_system_default_version }} $(volta which npm) install --global yarn@1.22.22
+  changed_when: true
+
 - name: "[archlinux] Setup node: list outdated npm global packages"
   ansible.builtin.shell: volta run --node {{ node_system_default_version }} $(volta which npm) outdated --global --json
   changed_when: true

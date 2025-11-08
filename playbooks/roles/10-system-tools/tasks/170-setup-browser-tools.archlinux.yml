@@ -121,11 +121,6 @@
     basedir: ~/repos/vimium
     strip: 1
 
-- name: "[archlinux] Setup browser tools: install yarn"
-  ansible.builtin.shell: >
-    volta run --node {{ node_system_default_version }} $(volta which npm) install --global yarn@1.22.22
-  changed_when: true
-
 - name: "[archlinux] Setup browser tools: prepare react-devtools"
   ansible.builtin.shell: |
     yarn install
