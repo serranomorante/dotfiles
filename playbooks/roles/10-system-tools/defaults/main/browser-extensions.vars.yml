@@ -29,4 +29,4 @@ browser_local_extensions:
   - name: playwright-mcp-extension
     path: "{{ prefix | default(ansible_env.HOME) }}/repos/playwright-mcp/extension/dist"
 
-facebook_react_extension_version: 1460d67c5b9a0d4498b4d22e1a5a6c0ccac85fdd
+facebook_react_extension_version: 19.2.0

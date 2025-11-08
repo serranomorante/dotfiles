@@ -53,7 +53,7 @@
     - repo: https://github.com/philc/vimium
     - repo: https://github.com/kg8m/chrome-show-tab-numbers
     - repo: https://github.com/facebook/react
-      version: "{{ facebook_react_extension_version }}"
+      version: v{{ facebook_react_extension_version }}
     - repo: https://github.com/karlicoss/promnesia
     - repo: https://github.com/microsoft/playwright-mcp
 
@@ -128,6 +128,7 @@
   args:
     creates: ~/repos/react/build/bundle-sizes.json
     chdir: ~/repos/react
+  timeout: 0
 
 - name: "[archlinux] Setup browser tools: build chrome react-devtools extension"
   ansible.builtin.shell: |
