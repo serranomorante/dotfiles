@@ -33,6 +33,13 @@
       # - kde-applications
   notify: "10-system-tools : handler_ensure_docker_service"
 
+- name: "[archlinux] Setup desktop: add user to docker group"
+  become: true
+  ansible.builtin.user:
+    append: true
+    groups: docker
+    name: "{{ ansible_env.USER }}"
+
 - name: "[archlinux] Setup desktop: remove packages"
   become: true
   ansible.builtin.package:
