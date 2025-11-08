@@ -36,8 +36,16 @@
 
 - name: "[archlinux] Setup browser tools: ensure ruby packages"
   community.general.gem:
-    name: extensionator
+    name: "{{ item }}"
     state: present
+  loop:
+    - base64
+    - extensionator
+
+- name: "[archlinux] Setup browser tools: version to extensionator path"
+  ansible.builtin.shell: set -o pipefail && fd 'extensionator' ~/.local/share/gem/ruby -t x -1 | grep -oP "\/\K\d[^/]+" -m 1
+  register: var_ruby_version
+  changed_when: true
 
 - name: "[archlinux] Setup browser tools: clone chrome extensions"
   ansible.builtin.git:
@@ -154,7 +162,7 @@
 
 - name: "[archlinux] Setup browser tools: build external crx"
   ansible.builtin.shell: >
-    ~/.local/share/gem/ruby/{{ arch_ruby_version }}/bin/extensionator
+    ~/.local/share/gem/ruby/{{ var_ruby_version.stdout }}/bin/extensionator
     -d {{ item.path | default(var_default_d) }}
     -i ~/apps/browser-tools/chrome/extensions/identity.pem
     -o {{ item.path | default(var_default_d) }}/{{ item.name }}.crx

@@ -207,11 +207,16 @@
     creates: ~/repos/hypothesis-extension/build/manifest.json
     chdir: ~/repos/hypothesis-extension
 
+- name: "[archlinux] Setup HPI: version to extensionator path"
+  ansible.builtin.shell: set -o pipefail && fd 'extensionator' ~/.local/share/gem/ruby -t x -1 | grep -oP "\/\K\d[^/]+" -m 1
+  register: var_ruby_version
+  changed_when: true
+
 - name: "[archlinux] Setup HPI: build hypothesis external crx"
   # We have to do this because the `manifest.json` file is not on the root of the repo
   # Important: the `*.crx` file has to be at the same level of the `manifest.json` file
   ansible.builtin.shell: >
-    ~/.local/share/gem/ruby/{{ arch_ruby_version }}/bin/extensionator
+    ~/.local/share/gem/ruby/{{ var_ruby_version.stdout }}/bin/extensionator
     -d ~/repos/hypothesis-extension/build
     -i ~/apps/browser-tools/chrome/extensions/identity.pem
     -o ~/repos/hypothesis-extension/build/hypothesis.crx
