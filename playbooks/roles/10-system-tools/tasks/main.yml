@@ -181,6 +181,11 @@
         name: 20-dev-tools
         tasks_from: node
 
+    - name: Prepare java env before browser setup because react-devtools need it
+      ansible.builtin.include_role:
+        name: 30-lang-tools
+        tasks_from: java
+
     - name: Setup browser tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:

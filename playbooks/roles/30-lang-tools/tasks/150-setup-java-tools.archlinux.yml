@@ -1,0 +1,11 @@
+---
+- name: "[archlinux] Java language: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: jdk21-openjdk
+
+- name: "[archlinux] Java language: set java environment"
+  become: true
+  ansible.builtin.command: archlinux-java set java-21-openjdk
+  changed_when: true
