@@ -59,19 +59,37 @@
     chdir: ~/repos/nnn
     creates: ~/.local/bin/nnn
 
+- name: "[archlinux] Setup file manager: ensure dest folder"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "744"
+  loop:
+    - ~/.config/nnn
+    - ~/.config/nnn/plugins
 
 # https://github.com/jarun/nnn/wiki/Advanced-use-cases#desktop-integration
-- name: "[archlinux] Setup file manager: install nnn plugins and desktop"
-  ansible.builtin.copy:
+- name: "[archlinux] Setup file manager: install nnn plugins"
+  ansible.builtin.file:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
-    mode: "755"
+    state: link
   loop:
-    - { src: ~/repos/nnn/plugins/preview-tui, dest: ~/.config/nnn/plugins/preview-tui }
-    - { src: ~/repos/nnn/plugins/nmount, dest: ~/.config/nnn/plugins/nmount }
-    - { src: ~/repos/nnn/plugins/umounttree, dest: ~/.config/nnn/plugins/umounttree }
-    - { src: ~/repos/nnn/plugins/dragdrop, dest: ~/.config/nnn/plugins/dragdrop }
-    - { src: ~/repos/nnn/misc/desktop/nnn.desktop, dest: ~/.local/share/applications/nnn.desktop }
+    - src: ~/repos/nnn/plugins/preview-tui
+      dest: ~/.config/nnn/plugins/preview-tui
+    - src: ~/repos/nnn/plugins/nmount
+      dest: ~/.config/nnn/plugins/nmount
+    - src: ~/repos/nnn/plugins/umounttree
+      dest: ~/.config/nnn/plugins/umounttree
+    - src: ~/repos/nnn/plugins/dragdrop
+      dest: ~/.config/nnn/plugins/dragdrop
+
+# https://github.com/jarun/nnn/wiki/Advanced-use-cases#desktop-integration
+- name: "[archlinux] Setup file manager: install nnn plugins"
+  ansible.builtin.copy:
+    src: ~/repos/nnn/misc/desktop/nnn.desktop
+    dest: ~/.local/share/applications/nnn.desktop
+    mode: "644"
 
 - name: "[archlinux] Setup file manager: get nnn external plugin"
   ansible.builtin.copy:
