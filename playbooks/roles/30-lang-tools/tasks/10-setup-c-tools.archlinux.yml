@@ -1,4 +1,10 @@
 ---
+- name: "[archlinux] C language: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: clang
+
 - name: "[archlinux] C language: ensure DAP - cpptools folder exists"
   ansible.builtin.file:
     path: ~/apps/lang-tools/cpptools
