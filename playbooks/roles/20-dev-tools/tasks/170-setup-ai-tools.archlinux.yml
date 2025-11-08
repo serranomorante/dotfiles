@@ -73,6 +73,12 @@
   register: var_playwright_mcp_browser_key
   ignore_errors: true
 
+- name: "[archlinux] Setup ai tools: create dest folder"
+  ansible.builtin.file:
+    path: ~/.config/mcphub
+    state: directory
+    mode: "744"
+
 - name: "[archlinux] Setup ai tools: generate servers.json"
   ansible.builtin.template:
     src: mcphub_servers.json
