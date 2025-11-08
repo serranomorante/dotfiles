@@ -13,18 +13,25 @@ local_playwright_mcp: jakfalbnbhgkpmoaakfflhflbfpkailf
 browser_local_extensions:
   - name: hypothesis-extension
     path: "{{ prefix | default(ansible_env.HOME) }}/repos/hypothesis-extension/build"
+    repo: https://github.com/hypothesis/browser-extension
     hide: true
   - name: promnesia
     path: "{{ prefix | default(ansible_env.HOME) }}/repos/promnesia/extension/dist/chrome"
+    repo: https://github.com/karlicoss/promnesia
   - name: react
     path: "{{ prefix | default(ansible_env.HOME) }}/repos/react/packages/react-devtools-extensions/chrome/build/unpacked"
+    repo: https://github.com/facebook/react
   - name: NewTab-Redirect
     path: "{{ prefix | default(ansible_env.HOME) }}/repos/NewTab-Redirect"
+    repo: https://github.com/jimschubert/NewTab-Redirect
   - name: vimium
     path: "{{ prefix | default(ansible_env.HOME) }}/repos/vimium"
+    repo: https://github.com/philc/vimium
   - name: chrome-show-tab-numbers
     path: "{{ prefix | default(ansible_env.HOME) }}/repos/chrome-show-tab-numbers"
+    repo: https://github.com/kg8m/chrome-show-tab-numbers
   - name: playwright-mcp-extension
+    repo: https://github.com/microsoft/playwright-mcp
     path: "{{ prefix | default(ansible_env.HOME) }}/repos/playwright-mcp/extension/dist"
 
 facebook_react_extension_version: 19.2.0

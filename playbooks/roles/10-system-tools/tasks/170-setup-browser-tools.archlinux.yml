@@ -1,4 +1,10 @@
 ---
+- name: "[archlinux] Setup browser tools: set fact"
+  ansible.builtin.set_fact:
+    fact_filtered_browser_extensions: "{{ (fact_filtered_browser_extensions | default([])) + [item] }}"
+  loop: "{{ browser_local_extensions }}"
+  when: item.hide is not defined or not item.hide
+
 - name: "[archlinux] Setup browser tools: ensure packages"
   become: true
   ansible.builtin.package:
@@ -95,14 +101,14 @@
     src: playwright_mcp_auth_token.patch
     dest: "{{ playwright_mcp_tempdir.path }}/playwright_mcp_auth_token.patch"
     mode: "644"
-  when: "'stdout' in var_playwright_mcp_browser_key"
+  when: fact_changed_extensions['playwright-mcp'] and 'stdout' in var_playwright_mcp_browser_key
 
 - name: "[archlinux] Setup browser tools: patch playwright mcp extension"
   ansible.posix.patch:
     src: "{{ playwright_mcp_tempdir.path }}/playwright_mcp_auth_token.patch"
     basedir: ~/repos/playwright-mcp
     strip: 1
-  when: fact_changed_extensions['playwright-mcp']
+  when: fact_changed_extensions['playwright-mcp'] and 'stdout' in var_playwright_mcp_browser_key
 
 - name: "[archlinux] Setup browser tools: build playwright mcp"
   ansible.builtin.shell: npm ci npm && npm run build
@@ -168,9 +174,9 @@
     -o {{ item.path | default(var_default_d) }}/{{ item.name }}.crx
   vars:
     var_default_d: ~/repos/{{ item.name }}
-  args:
-    creates: "{{ item.path | default(var_default_d) }}/{{ item.name }}.crx"
-  loop: "{{ browser_local_extensions }}"
+  changed_when: fact_changed_extensions[item.repo | basename] | default(false)
+  when: fact_changed_extensions[item.repo | basename] | default(false)
+  loop: "{{ fact_filtered_browser_extensions }}"
 
 - name: "[archlinux] Setup browser tools: create browser policy directory for all users"
   become: true
