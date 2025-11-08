@@ -38,6 +38,7 @@
     state: present
     name:
       - ctags-git
+  timeout: 0
 
 - name: "[archlinux] Editor tools: create treesitter tempdir"
   ansible.builtin.tempfile:
@@ -76,7 +77,7 @@
 - name: "[archlinux] Editor tools: build treesitter parsers"
   ansible.builtin.command: tree-sitter build -o ~/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
   args:
-    creates: ~/repos/{{ item.repo | basename }}/{{ item.filetype }}
+    creates: ~/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
     chdir: ~/repos/{{ item.repo | basename }}/{{ item.build_folder | default(None) }}
   loop: "{{ treesitter_parsers }}"
 
