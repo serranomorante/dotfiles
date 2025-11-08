@@ -13,6 +13,8 @@
   community.general.flatpak:
     name: org.jdownloader.JDownloader
     state: present
+  register: var_jdownloader_install
+  ignore_errors: true
 
 - name: "[archlinux] Other tools: ensure custom jdownloader desktop"
   become: true
@@ -21,6 +23,7 @@
     dest: /var/lib/flatpak/exports/share/applications/org.jdownloader.JDownloader.desktop
     owner: "{{ ansible_env.USER }}"
     mode: "644"
+  when: var_jdownloader_install.changed and var_jdownloader_install is success
   notify: handler_update_desktop_database
 
 - name: "[archlinux] Other tools: ensure font directory exists"
@@ -48,6 +51,7 @@
   community.general.flatpak:
     name: com.bitwarden.desktop
     state: latest
+  ignore_errors: true
   register: var_bitwarden_install
 
 - name: "[archlinux] Other tools: prepare bitwarden .desktop and mimetype"
@@ -55,7 +59,7 @@
     update-desktop-database ~/.local/share/applications
     xdg-mime default bitwarden.desktop x-scheme-handler/bitwarden
   changed_when: true
-  when: var_bitwarden_install.changed
+  when: var_bitwarden_install.changed and var_bitwarden_install is success
   notify: "10-system-tools : handler_update_desktop_database"
 
 - name: "[archlinux] Other tools: add no-internet group"

@@ -18,6 +18,7 @@
       - virtualbox
       - virtualbox-host-modules-lts
       - virtualbox-guest-iso # https://wiki.archlinux.org/title/VirtualBox#Guest_additions
+  timeout: 600
 
 # https://wiki.archlinux.org/title/VirtualBox#Accessing_host_USB_devices_in_guest
 - name: "[archlinux] Setup virtualbox: ensure vboxusers group"
