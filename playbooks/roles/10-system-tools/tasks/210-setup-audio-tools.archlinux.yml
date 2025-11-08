@@ -7,6 +7,15 @@
       - plasma-pa
       - pulseaudio
 
+- name: "[archlinux] Setup audio tools: remove conflicting packages"
+  become: true
+  ansible.builtin.package:
+    force: true
+    state: absent
+    name:
+      - jack
+      - jack2
+
 - name: "[archlinux] Setup audio tools: ensure packages"
   become: true
   ansible.builtin.package:
@@ -26,9 +35,9 @@
       - base-devel
       - cpupower
 
-- name: "[archlinux] Setup audio tools: ensure services"
+- name: "[archlinux] Setup audio tools: ensure user services"
   ansible.builtin.systemd_service:
-    scope: "{{ item.scope | default('user') }}"
+    scope: user
     name: "{{ item.name }}"
     enabled: "{{ item.enabled }}"
     masked: "{{ item.masked }}"
@@ -36,7 +45,14 @@
     - { name: pipewire.socket, enabled: true, masked: false }
     - { name: pipewire-pulse.socket, enabled: true, masked: false }
     - { name: wireplumber.service, enabled: true, masked: false }
-    - { scope: system, name: cpupower.service, enabled: true, masked: false }
+
+- name: "[archlinux] Setup audio tools: ensure system services"
+  become: true
+  ansible.builtin.systemd_service:
+    scope: system
+    name: cpupower.service
+    enabled: true
+    masked: false
 
 - name: "[archlinux] Setup audio tools: create pipewire group"
   become: true
@@ -53,8 +69,14 @@
       - pipewire
     name: "{{ ansible_env.USER }}"
 
+- name: "[archlinux] Setup audio tools: check file exists"
+  ansible.builtin.stat:
+    path: ~/.config/REAPER/reaper.ini
+  register: var_reaper_ini_file
+
 - name: "[archlinux] Setup audio tools: increase REAPER ui scale"
   ansible.builtin.replace:
     path: ~/.config/REAPER/reaper.ini
     regexp: "^(ui_?scale)=[^\\s]*"
     replace: "\\1=1.2"
+  when: var_reaper_ini_file.stat.exists
