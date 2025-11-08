@@ -87,6 +87,7 @@
     src: playwright_mcp_auth_token.patch
     dest: "{{ playwright_mcp_tempdir.path }}/playwright_mcp_auth_token.patch"
     mode: "644"
+  when: "'stdout' in var_playwright_mcp_browser_key"
 
 - name: "[archlinux] Setup browser tools: patch playwright mcp extension"
   ansible.posix.patch:

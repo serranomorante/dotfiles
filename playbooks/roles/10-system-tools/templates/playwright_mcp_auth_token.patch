@@ -7,7 +7,7 @@ index 699cf2f..3ba97da 100644
  
    const onRegenerateToken = useCallback(() => {
 -    const newToken = generateAuthToken();
-+    const newToken = "{{ var_playwright_mcp_browser_key.stdout }}"
++    const newToken = "{{ (var_playwright_mcp_browser_key | default({})).stdout }}"
      localStorage.setItem('auth-token', newToken);
      setAuthToken(newToken);
    }, []);
@@ -20,7 +20,7 @@ index 699cf2f..3ba97da 100644
 -    token = generateAuthToken();
 -    localStorage.setItem('auth-token', token);
 -  }
-+  const token = "{{ var_playwright_mcp_browser_key.stdout }}"
++  const token = "{{ (var_playwright_mcp_browser_key | default({})).stdout }}"
 +  localStorage.setItem('auth-token', token);
    return token;
  }
