@@ -68,6 +68,7 @@
   ansible.builtin.systemd_service:
     scope: system
     name: docker.service
+    state: started
     enabled: true
     masked: false
 

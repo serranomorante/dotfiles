@@ -33,6 +33,9 @@
       # - kde-applications
   notify: "10-system-tools : handler_ensure_docker_service"
 
+- name: flush_handlers
+  ansible.builtin.meta: flush_handlers
+
 - name: "[archlinux] Setup desktop: add user to docker group"
   become: true
   ansible.builtin.user:

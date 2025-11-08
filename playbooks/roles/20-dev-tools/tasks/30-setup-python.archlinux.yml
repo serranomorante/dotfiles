@@ -42,5 +42,9 @@
   timeout: 0
 
 - name: "[archlinux] Setup python: ensure python system default"
-  ansible.builtin.command: pyenv global system
-  changed_when: false
+  ansible.builtin.command: pyenv global 3.11.3
+  changed_when: true
+
+- name: "[archlinux] Setup python: upgrade pip default"
+  ansible.builtin.command: pyenv exec pip install --upgrade pip
+  changed_when: true

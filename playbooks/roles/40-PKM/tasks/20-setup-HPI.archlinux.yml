@@ -13,7 +13,9 @@
   become: true
   ansible.builtin.package:
     state: present
-    name: sqlitebrowser
+    name:
+      - sqlitebrowser
+      - rsync
 
 - name: "[archlinux] Setup HPI - ensure virtualenv packages"
   ansible.builtin.pip:
@@ -41,14 +43,14 @@
 - name: "[archlinux] Setup HPI - ensure hypothesis domain points to local instance"
   ansible.builtin.replace:
     path: ~/apps/PKM/.venv/lib/python3.13/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
-    regexp: '(domain=)None\,'
+    regexp: "(domain=)None\\,"
     replace: '\1"localhost:5000",'
 
 - name: "[archlinux] Setup HPI - replace https"
   ansible.builtin.replace:
     path: ~/apps/PKM/.venv/lib/python3.13/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
-    regexp: 'https'
-    replace: 'http'
+    regexp: "https"
+    replace: "http"
 
 - name: "[archlinux] Setup HPI - symlink virtualenv packages"
   ansible.builtin.file:
@@ -80,12 +82,13 @@
 
 - name: "[archlinux] Setup HPI - patch hypothesis h"
   ansible.posix.patch:
-    src: ~/dotfiles/assets/patches/hypothesis/{{ item }}
+    src: "{{ item }}"
     basedir: ~/external/repos/h
     strip: 1
   loop:
     - hypothesis_h.patch
     - hypothesis_new_command.patch
+    - patch_h_tox_ini.patch
 
 - name: "[archlinux] Setup HPI - register docker dbs network exists"
   # The docker-compose file of the h repo needs this network to exist
@@ -100,12 +103,52 @@
   changed_when: false
   when: docker_network_dbs_exists.stdout == "0"
 
+- name: "[archlinux] Setup HPI - get python version from h repo"
+  ansible.builtin.command: cat .python-version
+  register: var_h_python_version
+  args:
+    chdir: ~/external/repos/h
+  changed_when: true
+
+- name: "[archlinux] Setup HPI - ensure h pip requirements"
+  # helps us to quickly verify if we have issues with our package versions
+  ansible.builtin.command: make requirements
+  register: ensure_h_requirements_result
+  args:
+    chdir: ~/external/repos/h
+  environment:
+    PYENV_VERSION: "{{ var_h_python_version.stdout }}"
+    VIRTUALENV_PIP: "24.0"
+  changed_when: "'commands succeeded' in ensure_h_requirements_result.stdout"
+  failed_when: >
+    ensure_h_requirements_result.rc not in [0, 2] or
+    'commands succeeded' not in ensure_h_requirements_result.stdout
+  timeout: 0
+
 - name: "[archlinux] Setup HPI - ensure h services"
-  ansible.builtin.shell: make services && make db
+  ansible.builtin.command: make services
   register: ensure_h_services_result
   args:
     chdir: ~/external/repos/h
+  environment:
+    PYENV_VERSION: "{{ var_h_python_version.stdout }}"
+    VIRTUALENV_PIP: "24.0"
   changed_when: "'commands succeeded' in ensure_h_services_result.stdout"
+  failed_when: ensure_h_services_result.rc not in [0, 2]
+  timeout: 0
+  notify:
+    - "40-PKM : handler_ensure_hypothesis_self_hosted_service"
+
+- name: "[archlinux] Setup HPI - ensure h db"
+  ansible.builtin.command: make db
+  register: ensure_h_db_result
+  args:
+    chdir: ~/external/repos/h
+  environment:
+    PYENV_VERSION: "{{ var_h_python_version.stdout }}"
+    VIRTUALENV_PIP: "24.0"
+  changed_when: "'commands succeeded' in ensure_h_db_result.stdout"
+  timeout: 0
   notify:
     - "40-PKM : handler_ensure_hypothesis_self_hosted_service"
 
@@ -165,7 +208,8 @@
 
 - name: "[archlinux] Setup HPI - set_fact hypothesis client id"
   ansible.builtin.set_fact:
-    hypothesis_oauth_client_id: "{{ create_new_oauth_client_result.stdout | default(register_auth_client_exists_result.stdout) | regex_search('Client ID: ([\\w-]*)', '\\1') | first }}"
+    hypothesis_oauth_client_id: "{{ create_new_oauth_client_result.stdout | default(register_auth_client_exists_result.stdout) | regex_search('Client ID: ([\\w-]*)',
+      '\\1') | first }}"
     cacheable: true
 
 - name: "[archlinux] Setup HPI: clone hypothesis browser extension"
