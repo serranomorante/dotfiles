@@ -2,13 +2,39 @@
 - hosts: localhost,all
   gather_facts: false
   vars:
-    user_os: "{{ ansible_distribution|lower|replace(' ', '') }}"
+    user_os: "{{ ansible_distribution | lower | replace(' ', '') }}"
     xorg_display_env_vars: DISPLAY=:0 XAUTHORITY={{ ansible_env.HOME }}/.Xauthority
+
+  pre_tasks:
+    - name: "[archlinux] Setup roles: set var"
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: var_role_exists
+      loop:
+        - ../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only/tasks/main.yml
+        - ../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/tasks/main.yml
+
+    - name: "[archlinux] Setup ai tools: set fact"
+      ansible.builtin.set_fact:
+        fact_roles: "{{ fact_roles | default({}) | combine({file: item.stat.exists}) }}"
+      vars:
+        file: "{{ item.item }}"
+      loop: "{{ var_role_exists.results }}"
+
   roles:
-    - 10-system-tools       # general system packages
-    - 20-dev-tools          # editors, editor plugins, terminal tools
-    - 30-lang-tools         # lang dependencies, lsp, dap, syntax, linters, formatters
-    - 40-PKM                # Personal Knowledge Management
-    - 50-cloud-tools        #
-    - ../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only
-    - ../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only
+    - 10-system-tools
+    - 20-dev-tools
+    - 30-lang-tools
+    - 40-PKM
+    - 50-cloud-tools
+
+  tasks:
+    - name: Include 60-for-my-eyes-only if present
+      ansible.builtin.include_role:
+        name: ../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only # noqa role-name[path]
+      when: fact_roles['../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only/tasks/main.yml']
+
+    - name: Include 70-for-my-eyes-only if present
+      ansible.builtin.include_role:
+        name: ../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only # noqa role-name[path]
+      when: fact_roles['../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/tasks/main.yml']
