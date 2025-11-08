@@ -64,10 +64,17 @@
     extension_name: "{{ item.invocation.module_args.repo | basename }}"
   loop: "{{ var_clone_chrome_extensions.results }}"
 
+- name: "[archlinux] Setup browser tools: set var"
+  ansible.builtin.stat:
+    path: ~/secrets/playwright_mcp_browser_key.gpg
+  register: var_gpg_playwright_mcp_exists
+
 - name: "[archlinux] Setup browser tools: register var_playwright_mcp_browser_key"
   ansible.builtin.shell: gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt ~/secrets/playwright_mcp_browser_key.gpg 2>/dev/null
   changed_when: true
+  when: var_gpg_playwright_mcp_exists.stat.exists
   register: var_playwright_mcp_browser_key
+  ignore_errors: true
 
 - name: "[archlinux] Setup browser tools: create playwright_mcp_tempdir"
   ansible.builtin.tempfile:

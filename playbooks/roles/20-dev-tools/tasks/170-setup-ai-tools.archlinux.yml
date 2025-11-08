@@ -1,6 +1,7 @@
 ---
 - name: "[archlinux] Setup ai tools: ensure mcp servers"
-  ansible.builtin.shell: volta run --node {{ node_system_default_version }} $(volta which npm) install --global {{ item.name }}@{{ item.version | default('latest') }}
+  ansible.builtin.shell: >
+    volta run --node {{ node_system_default_version }} $(volta which npm) install --global {{ item.name }}@{{ item.version | default('latest') }}
   changed_when: true
   when: fact_npm_global_outdated[item.name] is defined or fact_npm_global_installed.dependencies[item.name] is undefined
   loop:
@@ -43,15 +44,34 @@
     creates: "{{ reaper_mcp_server_setup.repo_path }}/.venv/bin/activate"
     chdir: "{{ reaper_mcp_server_setup.repo_path }}"
 
+- name: "[archlinux] Setup ai tools: set var"
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: var_gpg_file_exists
+  loop:
+    - ~/secrets/mcp-cf-figma.gpg
+    - ~/secrets/playwright_mcp_browser_key.gpg
+
+- name: "[archlinux] Setup ai tools: set fact"
+  ansible.builtin.set_fact:
+    fact_stat_gpg_files: "{{ fact_stat_gpg_files | default({}) | combine({file: item.stat.exists}) }}"
+  vars:
+    file: "{{ item.item }}"
+  loop: "{{ var_gpg_file_exists.results }}"
+
 - name: "[archlinux] Setup ai tools: register figma api key"
   ansible.builtin.shell: gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt ~/secrets/mcp-cf-figma.gpg 2>/dev/null
   changed_when: true
+  when: fact_stat_gpg_files['~/secrets/mcp-cf-figma.gpg']
   register: mcp_server_figma_key
+  ignore_errors: true
 
 - name: "[archlinux] Setup ai tools: register playwright_mcp_browser_key"
   ansible.builtin.shell: gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt ~/secrets/playwright_mcp_browser_key.gpg 2>/dev/null
   changed_when: true
+  when: fact_stat_gpg_files['~/secrets/playwright_mcp_browser_key.gpg']
   register: var_playwright_mcp_browser_key
+  ignore_errors: true
 
 - name: "[archlinux] Setup ai tools: generate servers.json"
   ansible.builtin.template:
