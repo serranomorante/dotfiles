@@ -6,7 +6,7 @@
     xorg_display_env_vars: DISPLAY=:0 XAUTHORITY={{ ansible_env.HOME }}/.Xauthority
 
   pre_tasks:
-    - name: "[archlinux] Setup roles: set var"
+    - name: "Setup roles: set var"
       ansible.builtin.stat:
         path: "{{ item }}"
       register: var_role_exists
@@ -14,7 +14,7 @@
         - ../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only/tasks/main.yml
         - ../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/tasks/main.yml
 
-    - name: "[archlinux] Setup ai tools: set fact"
+    - name: "Setup roles: set fact"
       ansible.builtin.set_fact:
         fact_roles: "{{ fact_roles | default({}) | combine({file: item.stat.exists}) }}"
       vars:

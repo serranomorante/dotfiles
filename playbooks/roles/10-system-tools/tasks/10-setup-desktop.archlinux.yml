@@ -1,4 +1,21 @@
 ---
+- name: "[archlinux] Setup desktop: refresh pacman"
+  become: true
+  ansible.builtin.command: pacman -Sy
+  changed_when: true
+
+- name: "[archlinux] Setup desktop: ensure reflector"
+  become: true
+  ansible.builtin.package:
+    name: reflector
+    state: present
+
+- name: "[archlinux] Setup desktop: setup reflector"
+  become: true
+  ansible.builtin.command: reflector --verbose --sort rate -l 20 -c Netherlands -c France --save /etc/pacman.d/mirrorlist
+  ignore_errors: true
+  changed_when: true
+
 - name: "[archlinux] Setup desktop: ensure packages"
   # How to Dual Boot Arch Linux and Windows 11/10 [ 2022 ]
   # https://www.youtube.com/watch?v=JRdYSGh-g3s
