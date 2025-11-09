@@ -22,19 +22,28 @@
       loop: "{{ var_role_exists.results }}"
 
   roles:
-    - 10-system-tools
-    - 20-dev-tools
-    - 30-lang-tools
-    - 40-PKM
-    - 50-cloud-tools
+    - role: 10-system-tools
+      tags: 10-system-tools
+    - role: 20-dev-tools
+      tags: 20-dev-tools
+    - role: 30-lang-tools
+      tags: 30-lang-tools
+    - role: 40-PKM
+      tags: 40-PKM
+    - role: 50-cloud-tools
+      tags: 50-cloud-tools
 
   tasks:
     - name: Include 60-for-my-eyes-only if present
       ansible.builtin.include_role:
         name: ../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only # noqa role-name[path]
+        apply:
+          tags: 60-for-my-eyes-only
       when: fact_roles['../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only/tasks/main.yml']
 
     - name: Include 70-for-my-eyes-only if present
       ansible.builtin.include_role:
         name: ../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only # noqa role-name[path]
+        apply:
+          tags: 70-for-my-eyes-only
       when: fact_roles['../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/tasks/main.yml']
