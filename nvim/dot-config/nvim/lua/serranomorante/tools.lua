@@ -64,6 +64,7 @@ M.by_filetype = {
   conf = { parsers = { "file:conf" } },
   gitconfig = { parsers = { "file:gitconfig" } },
   editorconfig = { parsers = { "editorconfig" } },
+  make = { parsers = { "file:make" } },
   ---No specific filetype
   all = {
     parsers = {
@@ -77,7 +78,6 @@ M.by_filetype = {
       "dockerfile",
       "mermaid",
       "udev",
-      "make",
     },
     extensions = { "coc-webview" },
   },
