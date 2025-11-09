@@ -6,7 +6,6 @@
     loop_var: executable
   loop:
     - lua-language-server
-    - pylsp
     - gopls
     - gofmt
     - dlv
@@ -20,22 +19,22 @@
   changed_when: false
 
 - name: "[archlinux] Editor code generation: register volta's default node path"
-  ansible.builtin.command: volta run --node "{{ node_system_default_version }}" which node
+  ansible.builtin.command: "{{ ansible_env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which node"
   register: var_system_default_node
   changed_when: false
 
 - name: "[archlinux] Editor code generation: register volta's eslint_d path"
-  ansible.builtin.command: volta run --node "{{ node_system_default_version }}" which eslint_d
+  ansible.builtin.command: "{{ ansible_env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which eslint_d"
   register: var_system_default_eslint_d
   changed_when: false
 
 - name: "[archlinux] Editor code generation: register volta's eslint_d path"
-  ansible.builtin.command: volta run --node "{{ node_system_default_version }}" which js-beautify
+  ansible.builtin.command: "{{ ansible_env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which js-beautify"
   register: var_system_default_js_beautify
   changed_when: false
 
 - name: "[archlinux] Editor code generation: register volta's mcp-hub path"
-  ansible.builtin.command: volta run --node "{{ node_system_default_version }}" which mcp-hub
+  ansible.builtin.command: "{{ ansible_env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which mcp-hub"
   register: var_mcp_hub
   changed_when: false
 
@@ -56,6 +55,7 @@
         js_beautify_executable = function() return "{{ var_system_default_js_beautify.stdout }}" end,
         vscode_js_debug_dap_executable = function() return vim.env.HOME .. "/repos/vscode-js-debug/dist/src/dapDebugServer.js" end,
         cppdbg_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7" end,
+        pylsp = function() return vim.env.HOME .. "/bin/pylsp" end,
         bashdb_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/bash-debug-adapter" end,
         php_dap_executable = function() return "/usr/lib/node_modules/php-debug/out/phpDebug.js" end,
         debugpy_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/debugpy/.venv/bin/python" end,

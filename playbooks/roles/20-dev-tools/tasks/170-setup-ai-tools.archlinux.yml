@@ -1,7 +1,8 @@
 ---
 - name: "[archlinux] Setup ai tools: ensure mcp servers"
   ansible.builtin.shell: >
-    volta run --node {{ node_system_default_version }} $(volta which npm) install --global {{ item.name }}@{{ item.version | default('latest') }}
+    {{ ansible_env.HOME }}/.volta/bin/volta run --node {{ node_system_default_version }} $({{ ansible_env.HOME }}/.volta/bin/volta which npm) install --global {{
+    item.name }}@{{ item.version | default('latest') }}
   changed_when: true
   when: fact_npm_global_outdated[item.name] is defined or fact_npm_global_installed.dependencies[item.name] is undefined
   loop:
@@ -15,7 +16,7 @@
     - name: mcp-figma-comment-summary
 
 - name: "[archlinux] Setup ai tools: register playwright path"
-  ansible.builtin.command: volta run --node "{{ node_system_default_version }}" which playwright
+  ansible.builtin.command: "{{ ansible_env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which playwright"
   register: var_playwright_global_path
   changed_when: false
 
@@ -26,7 +27,9 @@
     dest: ~/bin/playwright
 
 - name: "[archlinux] Setup ai tools: execute playwright install"
-  ansible.builtin.command: playwright install
+  ansible.builtin.shell: |
+    source ~/.bashrc
+    ~/bin/playwright install
   environment:
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
   args:
@@ -87,7 +90,6 @@
   register: var_mcp_hub_servers_json
 
 - name: "[archlinux] Setup ai tools: restart server list"
-  ansible.builtin.command: >
-    nvim --headless -c "lua require("mcphub").get_hub_instance():restart()" -c "quit"
+  ansible.builtin.command: ~/bin/nvim --headless -c "lua require("mcphub").get_hub_instance():restart()" -c "quit"
   changed_when: true
   when: var_mcp_hub_servers_json.changed

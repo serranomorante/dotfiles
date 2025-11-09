@@ -111,7 +111,9 @@
   when: fact_changed_extensions['playwright-mcp'] and 'stdout' in var_playwright_mcp_browser_key
 
 - name: "[archlinux] Setup browser tools: build playwright mcp"
-  ansible.builtin.shell: npm ci npm && npm run build
+  ansible.builtin.shell: >
+    $({{ ansible_env.HOME }}/.volta/bin/volta which npm) ci npm &&
+    $({{ ansible_env.HOME }}/.volta/bin/volta which npm) run build
   args:
     chdir: ~/repos/playwright-mcp/extension
   changed_when: fact_changed_extensions['playwright-mcp']
@@ -137,8 +139,9 @@
 
 - name: "[archlinux] Setup browser tools: prepare react-devtools"
   ansible.builtin.shell: |
-    yarn install
-    yarn build-for-devtools
+    source ~/.bashrc
+    $({{ ansible_env.HOME }}/.volta/bin/volta which yarn) install
+    $({{ ansible_env.HOME }}/.volta/bin/volta which yarn) build-for-devtools
   args:
     creates: ~/repos/react/build/bundle-sizes.json
     chdir: ~/repos/react
@@ -146,7 +149,8 @@
 
 - name: "[archlinux] Setup browser tools: build chrome react-devtools extension"
   ansible.builtin.shell: |
-    yarn build:chrome
+    source ~/.bashrc
+    $({{ ansible_env.HOME }}/.volta/bin/volta which yarn) build:chrome
   args:
     creates: ~/repos/react/packages/react-devtools-extensions/chrome/build/ReactDevTools.zip
     chdir: ~/repos/react/packages/react-devtools-extensions
@@ -159,7 +163,7 @@
 
 - name: "[archlinux] Setup browser tools: build promnesia"
   ansible.builtin.command: |
-    npm ci
+    $({{ ansible_env.HOME }}/.volta/bin/volta which npm) ci
     /usr/bin/python build --chrome --release
   args:
     chdir: ~/repos/promnesia/extension
