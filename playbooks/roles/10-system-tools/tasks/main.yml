@@ -33,6 +33,11 @@
   tags: [always, "10-30"]
 
 - block:
+    - name: Prepare go before mouseless setup
+      ansible.builtin.include_role:
+        name: 20-dev-tools
+        tasks_from: go
+
     - name: Ensure peripheral tools are configured
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
