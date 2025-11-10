@@ -112,7 +112,9 @@
 
 - name: "[archlinux] Setup HPI - ensure h pip requirements"
   # helps us to quickly verify if we have issues with our package versions
-  ansible.builtin.command: sg docker -c "make requirements"
+  ansible.builtin.shell: >
+    source ~/.bashrc &&
+    sg docker -c "make requirements"
   register: ensure_h_requirements_result
   args:
     chdir: ~/external/repos/h
@@ -126,7 +128,9 @@
   timeout: 0
 
 - name: "[archlinux] Setup HPI - ensure h services"
-  ansible.builtin.command: sg docker -c "make services"
+  ansible.builtin.shell: >
+    source ~/.bashrc &&
+    sg docker -c "make services"
   register: ensure_h_services_result
   args:
     chdir: ~/external/repos/h
@@ -140,7 +144,9 @@
     - "40-PKM : handler_ensure_hypothesis_self_hosted_service"
 
 - name: "[archlinux] Setup HPI - ensure h db"
-  ansible.builtin.command: sg docker -c "make db"
+  ansible.builtin.shell: >
+    source ~/.bashrc &&
+    sg docker -c "make db"
   register: ensure_h_db_result
   args:
     chdir: ~/external/repos/h
@@ -162,7 +168,7 @@
 - name: "[archlinux] Setup HPI - ensure hypothesis user"
   # These credentials will not be used on production environments
   ansible.builtin.command: >
-    tox -qe dev -- sh bin/hypothesis --dev user add
+    pyenv exec tox -qe dev -- sh bin/hypothesis --dev user add
       --username hypothesis
       --email hypothesis@hypothes.is
       --password hypothesis
@@ -176,7 +182,8 @@
     - "'commands succeeded' not in ensure_hypothesis_user_result.stdout"
 
 - name: "[archlinux] Setup HPI - ensure admin user"
-  ansible.builtin.command: tox -qe dev -- sh bin/hypothesis --dev user admin hypothesis
+  ansible.builtin.command: >
+    pyenv exec tox -qe dev -- sh bin/hypothesis --dev user admin hypothesis
   register: ensure_admin_user_result
   changed_when: "'commands succeeded' in ensure_admin_user_result.stdout"
   args:
@@ -185,7 +192,7 @@
 - name: "[archlinux] Setup HPI - register authclient exists"
   # You must apply the `hypothesis_new_command.patch` patch first.
   ansible.builtin.command: >
-    tox -qe dev -- sh bin/hypothesis --dev authclient find
+    pyenv exec tox -qe dev -- sh bin/hypothesis --dev authclient find
       --name "Chrome Extension"
   register: register_auth_client_exists_result
   args:
@@ -194,7 +201,7 @@
 
 - name: "[archlinux] Setup HPI - create new OAuth client"
   ansible.builtin.command: >
-    tox -qe dev -- sh bin/hypothesis --dev authclient add
+    pyenv exec tox -qe dev -- sh bin/hypothesis --dev authclient add
       --name "Chrome Extension"
       --authority "localhost"
       --type "public"
@@ -246,7 +253,9 @@
   ansible.builtin.meta: flush_handlers
 
 - name: "[archlinux] Setup HPI: prepare hypothesis extension"
-  ansible.builtin.command: make build SETTINGS_FILE=settings/custom-dev.json
+  ansible.builtin.shell: >
+    source ~/.bashrc &&
+    make build SETTINGS_FILE=settings/custom-dev.json
   args:
     creates: ~/repos/hypothesis-extension/build/manifest.json
     chdir: ~/repos/hypothesis-extension

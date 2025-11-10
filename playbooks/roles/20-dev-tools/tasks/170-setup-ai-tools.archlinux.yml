@@ -1,6 +1,7 @@
 ---
 - name: "[archlinux] Setup ai tools: ensure mcp servers"
   ansible.builtin.shell: >
+    source ~/.bashrc &&
     {{ ansible_env.HOME }}/.volta/bin/volta run --node {{ node_system_default_version }} $({{ ansible_env.HOME }}/.volta/bin/volta which npm) install --global {{
     item.name }}@{{ item.version | default('latest') }}
   changed_when: true

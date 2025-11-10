@@ -112,6 +112,7 @@
 
 - name: "[archlinux] Setup browser tools: build playwright mcp"
   ansible.builtin.shell: >
+    source ~/.bashrc &&
     $({{ ansible_env.HOME }}/.volta/bin/volta which npm) ci npm &&
     $({{ ansible_env.HOME }}/.volta/bin/volta which npm) run build
   args:

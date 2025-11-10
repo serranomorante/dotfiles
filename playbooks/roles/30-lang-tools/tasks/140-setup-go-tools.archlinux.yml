@@ -17,6 +17,7 @@
 
 - name: "[archlinux] Go language: install vscode-go"
   ansible.builtin.shell: |
+    source ~/.bashrc
     $({{ ansible_env.HOME }}/.volta/bin/volta which npm) ci
     $({{ ansible_env.HOME }}/.volta/bin/volta which npm) run compile
   args:
