@@ -94,12 +94,12 @@
   # The docker-compose file of the h repo needs this network to exist
   ansible.builtin.shell: >
     set -o pipefail &&
-    docker network ls --filter name=dbs --format 'json' | wc -l
+    sg docker -c "docker network ls --filter name=dbs --format 'json' | wc -l"
   register: docker_network_dbs_exists
   changed_when: false
 
 - name: "[archlinux] Setup HPI - create dbs network"
-  ansible.builtin.command: docker network create dbs
+  ansible.builtin.command: sg docker -c "docker network create dbs"
   changed_when: false
   when: docker_network_dbs_exists.stdout == "0"
 
@@ -112,7 +112,7 @@
 
 - name: "[archlinux] Setup HPI - ensure h pip requirements"
   # helps us to quickly verify if we have issues with our package versions
-  ansible.builtin.command: make requirements
+  ansible.builtin.command: sg docker -c "make requirements"
   register: ensure_h_requirements_result
   args:
     chdir: ~/external/repos/h
@@ -126,7 +126,7 @@
   timeout: 0
 
 - name: "[archlinux] Setup HPI - ensure h services"
-  ansible.builtin.command: make services
+  ansible.builtin.command: sg docker -c "make services"
   register: ensure_h_services_result
   args:
     chdir: ~/external/repos/h
@@ -140,7 +140,7 @@
     - "40-PKM : handler_ensure_hypothesis_self_hosted_service"
 
 - name: "[archlinux] Setup HPI - ensure h db"
-  ansible.builtin.command: make db
+  ansible.builtin.command: sg docker -c "make db"
   register: ensure_h_db_result
   args:
     chdir: ~/external/repos/h
