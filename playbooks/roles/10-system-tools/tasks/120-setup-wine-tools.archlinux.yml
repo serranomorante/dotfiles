@@ -8,6 +8,16 @@
     block: |
       [multilib]
       Include = /etc/pacman.d/mirrorlist
+  register: var_multilib_enabled
+
+- name: "[archlinux] Wine tools: upgrade system"
+  # We don't use `handler_upgrade_system` because we need this to execute here
+  # without flushing handlers (it conflicts with keyd)
+  become: true
+  community.general.pacman:
+    update_cache: true
+    upgrade: true
+  when: var_multilib_enabled.changed
 
 - name: "[archlinux] Wine tools: register current wine version"
   ansible.builtin.command: which wine

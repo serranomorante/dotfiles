@@ -48,6 +48,7 @@
       - vlc-plugins-all
       - arch-wiki-docs
       # - kde-applications
+  timeout: 0
   notify: "10-system-tools : handler_ensure_docker_service"
 
 - name: flush_handlers
