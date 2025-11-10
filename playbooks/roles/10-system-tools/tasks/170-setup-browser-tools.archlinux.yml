@@ -169,7 +169,23 @@
   args:
     chdir: ~/repos/promnesia/extension
     creates: ~/repos/promnesia/extension/dist/chrome/manifest.json
+  register: var_build_promnesia
   ignore_errors: true
+
+- name: "[archlinux] Setup browser tools: register build dirs exists"
+  ansible.builtin.stat:
+    path: "{{ item.path | default(var_default_d) }}"
+  vars:
+    var_default_d: ~/repos/{{ item.name }}
+  register: var_build_dirs_exists
+  loop: "{{ browser_local_extensions }}"
+
+- name: "[archlinux] Setup browser tools: set build dir facts"
+  ansible.builtin.set_fact:
+    fact_build_dirs_exists: "{{ fact_build_dirs_exists | default({}) | combine({file: item.stat.isdir is defined and item.stat.isdir}) }}"
+  vars:
+    file: "{{ item.item.path }}"
+  loop: "{{ var_build_dirs_exists.results }}"
 
 - name: "[archlinux] Setup browser tools: build external crx"
   ansible.builtin.shell: >
@@ -179,8 +195,12 @@
     -o {{ item.path | default(var_default_d) }}/{{ item.name }}.crx
   vars:
     var_default_d: ~/repos/{{ item.name }}
-  changed_when: fact_changed_extensions[item.repo | basename] | default(false)
-  when: fact_changed_extensions[item.repo | basename] | default(false)
+  changed_when:
+    - fact_changed_extensions[item.repo | basename] | default(false)
+    - fact_build_dirs_exists[item.path | default(var_default_d)] | default(false)
+  when:
+    - fact_changed_extensions[item.repo | basename] | default(false)
+    - fact_build_dirs_exists[item.path | default(var_default_d)] | default(false)
   loop: "{{ fact_filtered_browser_extensions }}"
 
 - name: "[archlinux] Setup browser tools: create browser policy directory for all users"
