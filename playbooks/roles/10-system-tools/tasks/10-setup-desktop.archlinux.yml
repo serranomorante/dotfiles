@@ -1,4 +1,7 @@
 ---
+- name: "[archlinux] Setup desktop: populate service facts"
+  ansible.builtin.service_facts:
+
 - name: "[archlinux] Setup desktop: refresh pacman"
   become: true
   ansible.builtin.command: pacman -Sy

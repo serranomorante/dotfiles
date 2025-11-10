@@ -24,6 +24,7 @@
   become: true
   ansible.builtin.command: keyd reload
   changed_when: true
+  when: "(ansible_facts.services['keyd.service'] | default({})).state | default('') == 'running'"
 
 - name: handler_reload_udev_rules
   become: true
