@@ -1,13 +1,10 @@
 ---
 - name: "[archlinux] Compositor: remove packages"
   become: true
-  ansible.builtin.command: pacman -Rdd --noconfirm kwin
-  register: result
-  failed_when:
-    - '"stderr" in result'
-    - '"target not found" not in result.stderr'
-    - result.rc != 0
-  changed_when: false
+  ansible.builtin.package:
+    name: kwin
+    state: absent
+    force: true
 
 - name: "[archlinux] Compositor: ensure mask kwin service"
   ansible.builtin.systemd_service:
