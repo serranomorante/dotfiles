@@ -2,6 +2,7 @@
 wacom_vendor_id: 056a
 ansible_hhkb_keyboard_id: 04fe:0021 # same id for hhkb_1, hhkb_2, etc
 ansible_mx_keys_keyboard_id: 046d:408a
+ansible_mx_keys_keyboard_id_2: 046d:b35b
 ansible_internal_keyboard_device_1: 048d:c100
 ansible_rii_keyboard_device: 04e8:7021
 ansible_internal_keyboard_name_1: AT Translated Set 2 keyboard
