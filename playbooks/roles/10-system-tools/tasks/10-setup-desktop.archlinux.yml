@@ -15,7 +15,7 @@
 
 - name: "[archlinux] Setup desktop: setup reflector"
   become: true
-  ansible.builtin.command: reflector --verbose --sort rate -l 20 -c Netherlands -c France --save /etc/pacman.d/mirrorlist
+  ansible.builtin.command: reflector --verbose --cache-timeout 604800 --sort rate -l 20 -c Netherlands -c France --save /etc/pacman.d/mirrorlist
   ignore_errors: true
   changed_when: true
 
