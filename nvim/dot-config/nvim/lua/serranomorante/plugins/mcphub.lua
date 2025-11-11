@@ -20,6 +20,7 @@ local function opts()
 end
 
 function M.config()
+  if not constants.BINARIES.mcp_hub_executable then return end
   init()
   require("mcphub").setup(opts())
 end

@@ -1,5 +1,7 @@
 local constants = require("serranomorante.constants")
 
+if not constants.BINARIES.lua_language_server then return {} end
+
 ---@type vim.lsp.Config
 return {
   cmd = { constants.BINARIES.lua_language_server() },

@@ -104,17 +104,21 @@ function M.config()
 
   local util = require("conform.util")
 
-  conform.formatters["js-beautify"] = {
-    command = util.find_executable({ "node_modules/.bin/js-beautify" }, constants.BINARIES.js_beautify_executable()),
-  }
+  if constants.BINARIES.js_beautify_executable then
+    conform.formatters["js-beautify"] = {
+      command = util.find_executable({ "node_modules/.bin/js-beautify" }, constants.BINARIES.js_beautify_executable()),
+    }
+  end
 
-  conform.formatters.eslint_d = {
-    prepend_args = {
-      "--no-color",
-    },
-    command = util.find_executable({ "node_modules/.bin/eslint_d" }, constants.BINARIES.eslint_d_executable()),
-    exit_codes = { 0, 1 }, -- don't fail to let the success callback execute
-  }
+  if constants.BINARIES.eslint_d_executable then
+    conform.formatters.eslint_d = {
+      prepend_args = {
+        "--no-color",
+      },
+      command = util.find_executable({ "node_modules/.bin/eslint_d" }, constants.BINARIES.eslint_d_executable()),
+      exit_codes = { 0, 1 }, -- don't fail to let the success callback execute
+    }
+  end
 
   ---Custom formatter to auto indent buffer.
   ---Indents with neovim's builtin indentation `=`.

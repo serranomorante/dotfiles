@@ -1,5 +1,7 @@
 local constants = require("serranomorante.constants")
 
+if not constants.BINARIES.gopls then return {} end
+
 ---@type vim.lsp.Config
 return {
   cmd = { constants.BINARIES.gopls() },

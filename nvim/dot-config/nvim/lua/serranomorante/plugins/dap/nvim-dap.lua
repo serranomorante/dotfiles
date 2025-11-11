@@ -166,7 +166,7 @@ function M.config()
 
   local ok, override_node = pcall(constants.BINARIES.system_default_node)
 
-  if constants.BINARIES.vscode_js_debug_dap_executable() then
+  if constants.BINARIES.vscode_js_debug_dap_executable then
     for _, type in ipairs({
       "node",
       "chrome",
@@ -190,7 +190,7 @@ function M.config()
   end
 
   ---https://github.com/mfussenegger/nvim-dap/wiki/C-C---Rust-(gdb-via--vscode-cpptools)
-  if vim.fn.executable(constants.BINARIES.cppdbg_dap_executable()) == 1 then
+  if constants.BINARIES.cppdbg_dap_executable then
     dap.adapters.cppdbg = {
       id = "cppdbg",
       type = "executable",
@@ -198,7 +198,7 @@ function M.config()
     }
   end
 
-  if vim.fn.executable(constants.BINARIES.bashdb_dap_executable()) == 1 then
+  if constants.BINARIES.bashdb_dap_executable then
     dap.adapters.bashdb = {
       name = "bashdb",
       type = "executable",
@@ -206,7 +206,7 @@ function M.config()
     }
   end
 
-  if vim.fn.executable(constants.BINARIES.debugpy_dap_executable()) == 1 then
+  if constants.BINARIES.debugpy_dap_executable then
     function dap.adapters.python(cb, config)
       if config.request == "attach" then
         local port = (config.connect or config).port
@@ -234,7 +234,7 @@ function M.config()
     end
   end
 
-  if vim.fn.executable(constants.BINARIES.php_dap_executable()) == 1 then
+  if constants.BINARIES.php_dap_executable then
     dap.adapters.php = {
       type = "executable",
       command = "node",
@@ -242,7 +242,7 @@ function M.config()
     }
   end
 
-  if vim.fn.executable(constants.BINARIES.go_dap_executable()) == 1 then
+  if constants.BINARIES.go_dap_executable then
     dap.adapters.go = {
       type = "executable",
       command = "node",
@@ -382,16 +382,18 @@ function M.config()
     },
   }
 
-  dap.configurations.go = {
-    {
-      type = "go",
-      name = "Debug",
-      request = "launch",
-      showLog = false,
-      program = "${file}",
-      dlvToolPath = constants.BINARIES.dlv(),
-    },
-  }
+  if constants.BINARIES.dlv then
+    dap.configurations.go = {
+      {
+        type = "go",
+        name = "Debug",
+        request = "launch",
+        showLog = false,
+        program = "${file}",
+        dlvToolPath = constants.BINARIES.dlv(),
+      },
+    }
+  end
 
   dap.configurations.python = {
     {
