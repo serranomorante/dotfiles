@@ -23,6 +23,7 @@
   ansible.builtin.package:
     state: present
     name:
+      - eza
       - pkg-config
       - ncurses
       - imagemagick
