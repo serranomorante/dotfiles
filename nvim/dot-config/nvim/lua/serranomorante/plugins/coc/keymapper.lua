@@ -9,6 +9,7 @@ function M.opts_for(bufnr)
     return {
       buffer = bufnr,
       desc = keymap_prefix .. " " .. desc,
+      silent = true,
     }
   end
 end
