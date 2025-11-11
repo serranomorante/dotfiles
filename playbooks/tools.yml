@@ -7,6 +7,16 @@
     is_x_display_session: false
 
   pre_tasks:
+    - name: "Setup playbook: get command arguments used to invoke ansible"
+      get_argv:
+      register: var_argv
+      tags: always
+
+    - name: "Setup playbook: gather facts conditionally"
+      ansible.builtin.gather_facts:
+      when: "'localhost' in var_argv.ansible_facts.argv"
+      tags: always
+
     - name: "Setup roles: set var"
       ansible.builtin.stat:
         path: "{{ item }}"
