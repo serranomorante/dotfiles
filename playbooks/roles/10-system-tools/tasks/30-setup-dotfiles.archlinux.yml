@@ -21,6 +21,7 @@
     - ~/.config/gromit-mpx.ini
     - ~/.config/mimeapps.list
     - ~/.config/ksplashrc
+    - ~/.config/kscreenlockerrc
     - ~/.config/ktrashrc
     - ~/.config/kiorc
     - ~/.config/kglobalshortcutsrc
