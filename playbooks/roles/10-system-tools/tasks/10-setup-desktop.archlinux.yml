@@ -70,13 +70,18 @@
     state: absent
     name: wacomtablet
 
-- name: "[archlinux] Setup desktop: copy sddm Xsetup script"
+- name: "[archlinux] Setup desktop: setup sddm files"
   become: true
   ansible.builtin.template:
-    src: "{{ ansible_env.HOME }}/dotfiles/assets/scripts/sddm/Xsetup"
-    dest: /usr/share/sddm/scripts/Xsetup
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
     owner: root
     mode: "744"
+  loop:
+    - src: sddm/Xsetup
+      dest: /usr/share/sddm/scripts/Xsetup
+    - src: sddm/autologin.conf
+      dest: /etc/sddm.conf.d/autologin.conf
 
 - name: "[archlinux] Setup desktop: ensure sddm service"
   become: true
