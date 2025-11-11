@@ -20,6 +20,7 @@
   loop:
     - ~/.config/gromit-mpx.ini
     - ~/.config/mimeapps.list
+    - ~/.config/ksplashrc
     - ~/.config/ktrashrc
     - ~/.config/kiorc
     - ~/.config/kglobalshortcutsrc
