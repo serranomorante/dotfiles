@@ -20,3 +20,8 @@ vim.api.nvim_create_user_command("NNNSearch", nnn_search_in_dir, {
   force = true,
   nargs = "*",
 })
+
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+---If netrw was already loaded, clear this augroup
+if vim.fn.exists("#FileExplorer") then vim.api.nvim_create_augroup("FileExplorer", { clear = true }) end

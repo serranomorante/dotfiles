@@ -24,7 +24,11 @@ function M.builder(params)
     "-c",
   }
   local startdir = params.startdir
-  if not utils.exists(params.startdir) then startdir = vim.fn.fnamemodify(startdir, ":h") end
+  if utils.is_directory(params.startdir) then
+    startdir = startdir:sub(-1) ~= "/" and startdir .. "/" or startdir
+  elseif not utils.exists(params.startdir) then
+    startdir = vim.fn.fnamemodify(startdir, ":h")
+  end
   if startdir then table.insert(args, "'" .. startdir .. "'") end
   return {
     name = TASK_NAME,
