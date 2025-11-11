@@ -1,33 +1,49 @@
 # dotfiles
 
-Main technologies:
+These dotfiles help me replicate my exact system after OS upgrades or after a fresh archlinux install.
 
-- [kitty](https://github.com/kovidgoyal/kitty). Terminal emulator
-- [neovim](https://neovim.io/). Text editor
-- [tmux](https://github.com/tmux/tmux). Terminal multiplexer
-- [dwm](https://dwm.suckless.org/). Window manager
-- ~~[m2i](https://gitlab.com/enetheru/midi2input). Use midi to control your system~~
-- [gromit-mpx](https://github.com/bk138/gromit-mpx). Draw on top of your screen
-- [keyd](https://github.com/rvaiya/keyd). A key remapping daemon for linux
-- [pipewire](https://github.com/rvaiya/keyd). Multimedia processing graphs
-- [wireplumber](https://gitlab.freedesktop.org/pipewire/wireplumber). Session manager for Pipewire
+The system is intented to be used just by me, but you can extract any useful configs from this repo if you want.
 
-## Requirements
+## How to replicate the full system
 
-Necesary dependencies for my workflow
+If you want to install my system (why would you want that?) you can, but you need **a fresh arch linux installation**:
 
-- [Pragmasevka Nerd Font](https://github.com/shytikov/pragmasevka)
-- [feh](https://wiki.archlinux.org/title/feh). Set your system wallpaper programatically
-- [jq](https://man.archlinux.org/man/jq.1.en). Command-line JSON processor
-- [xgetres](https://aur.archlinux.org/packages/xgetres). Get entries from .Xresources
+> warning: if you're gonna do this on a virtual machine, enable 3D acceleration and pre-allocate the disk space instead of using dynamic disk allocation.
 
-## Workflow
+> only tested on AMD with NVIDIA gpu using linux-lts
 
-## Plans
+### Partitions
 
-- ~~**Add m2i's config files**. Still in progress~~ Changed my mind, I only want to use the keyboard to control my system.
-- **Add wireplumber's config files**. :white_check_mark: ~Still in progress~
-- **Add pipewire's config files**. :white_check_mark: ~Still in progress~
+4 partitions:
+
+1. at least `8Gb` of a swap partition
+1. at least `30Gb` mounted to /
+1. at least `60Gb` mounted to /home
+1. at least `100Mb` mounted to /home/external (don't ask why)
+
+### Dependencies
+
+A fresh archlinux install with just `git` and `ansible`
+
+### User
+
+You need a user with sudo access and added to the `wheel` group. Don't try to run the playbook as root.
+
+### Steps
+
+1. `git clone https://github.com/serranomorante/dotfiles`
+1. `cd dotfiles/playbooks`
+1. `ansible-playbook -K tools.yml -l localhost --tags all`
+
+It will take at least ~1h to complete, do a restart, select Plasma x11 session on the login screen, enter your password and that's all.
+
+### What tools does it have?
+
+Everything I use, even browser extensions with my own configs already patched into the extensions themselves.
+
+### What it doesn't have?
+
+My secret keys and data.
 
 ## Some guides to my self
 
