@@ -90,6 +90,82 @@ local function keys()
       { desc = "Toggle lazygit" }
     )
   end)
+
+  vim.keymap.set("n", "<leader>tp", function()
+    local lines = {}
+    vim.fn.jobstart("vansible-playbook tools.yml -l localhost --list-tasks", {
+      cwd = vim.env.HOME .. "/dotfiles/playbooks",
+      on_stdout = function(_, result)
+        for _, line in ipairs(result) do
+          if line ~= "" then table.insert(lines, line) end
+        end
+      end,
+      on_exit = function(_, exit_code)
+        if exit_code ~= 0 then
+          vim.notify("Command failed with exit code: " .. exit_code, vim.log.levels.ERROR)
+          return
+        end
+
+        local items = {}
+
+        for _, line in ipairs(lines) do
+          -- Look for lines that contain tasks (have leading spaces and contain TAGS:)
+          if line:match("^%s+.*TAGS:") then
+            -- Extract task name (before TAGS:)
+            local task_part = line:match("^%s+(.-)\tTAGS:")
+            if task_part then
+              -- Extract tags section
+              local tags_part = line:match("TAGS:%s*%[(.-)%]")
+              if tags_part then
+                -- Extract role name (before the colon)
+                local role_name = task_part:match("^(.-)%s*:")
+                -- Extract task description (after the colon)
+                local task_desc = task_part:match("^.-:%s*(.+)$") or task_part
+
+                if role_name and task_desc then
+                  -- Split tags by comma and process each
+                  for tag in tags_part:gmatch("([^,]+)") do
+                    tag = tag:match("^%s*(.-)%s*$") -- trim whitespace
+
+                    -- Check if tag matches \d+-\d+ pattern (only numbers and dash)
+                    if tag:match("^%d+%-%d+$") then
+                      local item = tag .. " : " .. task_desc .. " (" .. role_name .. ")"
+                      table.insert(items, item)
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+
+        -- Remove duplicates (same task might have multiple numeric tags)
+        local unique_items = {}
+        local seen = {}
+        for _, item in ipairs(items) do
+          if not seen[item] then
+            table.insert(unique_items, item)
+            seen[item] = true
+          end
+        end
+
+        if #unique_items == 0 then
+          vim.notify("No tasks with numeric tags found", vim.log.levels.WARN)
+          return
+        end
+
+        vim.ui.select(unique_items, {
+          prompt = "Ansible tasks",
+          format_item = function(item) return item end,
+        }, function(choice)
+          if choice then
+            local playbooks = require("overseer.template.system-tasks.TASK__run_ansible_playbook")
+            require("overseer").run_template({ name = playbooks.name, params = { task_id = choice } })
+          end
+        end)
+      end,
+    })
+  end, { desc = "Show a list of ansible tasks in vim.ui.select" })
 end
 
 local function opts()
