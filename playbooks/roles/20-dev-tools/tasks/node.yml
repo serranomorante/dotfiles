@@ -1,6 +1,6 @@
 ---
 - block:
-    - name: Ensure node
+    - name: Setup node
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 10-setup-node.{{ user_os }}.yml

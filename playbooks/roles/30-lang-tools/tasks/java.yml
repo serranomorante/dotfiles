@@ -1,6 +1,6 @@
 ---
 - block:
-    - name: Ensure java tools
+    - name: Setup java tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 150-setup-java-tools.{{ user_os }}.yml

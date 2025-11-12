@@ -3,7 +3,6 @@ plantuml_compiled_jar_version: 1.2024.6
 node_system_default_version: 22.19.0
 rust_version: 1.75.0
 tmux_version: 3.5a
-debian_fish_shell_version: 3.5.1
 archlinux_neovim_version: master
 archlinux_treesitter_version: 0.25.9
 debian_neovim_version: 688b961d13bd # before cmake 3.16 requirement

@@ -1,6 +1,6 @@
 ---
 - block:
-    - name: Ensure node
+    - name: Setup node
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 10-setup-node.{{ user_os }}.yml
@@ -11,7 +11,7 @@
   tags: ["20-10"]
 
 - block:
-    - name: Ensure rust
+    - name: Setup rust
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 20-setup-rust.{{ user_os }}.yml
@@ -22,7 +22,7 @@
   tags: ["20-20"]
 
 - block:
-    - name: Ensure python
+    - name: Setup python
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 30-setup-python.{{ user_os }}.yml
@@ -33,7 +33,7 @@
   tags: ["20-30"]
 
 - block:
-    - name: Ensure python tools
+    - name: Setup python tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 40-setup-python-tools.{{ user_os }}.yml
@@ -44,7 +44,7 @@
   tags: ["20-40"]
 
 - block:
-    - name: Ensure neovim is installed
+    - name: Setup neovim
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 50-setup-neovim.{{ user_os }}.yml
@@ -55,7 +55,7 @@
   tags: ["20-50"]
 
 - block:
-    - name: Ensure editor tools
+    - name: Setup editor tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 60-setup-editor-tools.{{ user_os }}.yml
@@ -66,7 +66,7 @@
   tags: ["20-60"]
 
 - block:
-    - name: Ensure plantuml compiled jar is in location
+    - name: Setup plantuml compiled jar is in location
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 80-setup-plantuml.{{ user_os }}.yml
@@ -77,7 +77,7 @@
   tags: ["20-80"]
 
 - block:
-    - name: Ensure git tools
+    - name: Setup git tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 90-setup-git-tools.{{ user_os }}.yml

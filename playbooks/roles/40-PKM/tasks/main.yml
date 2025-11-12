@@ -1,6 +1,6 @@
 ---
 - block:
-    - name: Ensure note-taking utility packages
+    - name: Setup note-taking utility packages
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 10-setup-note-taking-utilities.{{ user_os }}.yml
@@ -11,7 +11,7 @@
   tags: ["40-10"]
 
 - block:
-    - name: Ensure HPI setup
+    - name: Setup HPI setup
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 20-setup-HPI.{{ user_os }}.yml
@@ -22,7 +22,7 @@
   tags: ["40-20"]
 
 - block:
-    - name: Ensure PKM exports
+    - name: Setup PKM exports
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 30-setup-exports.{{ user_os }}.yml
@@ -33,7 +33,7 @@
   tags: ["40-30"]
 
 - block:
-    - name: Ensure reading tools
+    - name: Setup reading tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 40-setup-reading-tools.{{ user_os }}.yml

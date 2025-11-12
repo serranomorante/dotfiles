@@ -1,6 +1,6 @@
 ---
 - block:
-    - name: Ensure startup scripts
+    - name: Setup startup scripts
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 10-setup-desktop.{{ user_os }}.yml
@@ -11,7 +11,7 @@
   tags: [always, "10-10"]
 
 - block:
-    - name: Ensure ansible aur module is installed
+    - name: Setup ansible aur module
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 20-setup-aur.{{ user_os }}.yml
@@ -22,7 +22,7 @@
   tags: ["10-20"]
 
 - block:
-    - name: Ensure dotfiles are setup
+    - name: Setup dotfiles are setup
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 30-setup-dotfiles.{{ user_os }}.yml
@@ -38,7 +38,7 @@
         name: 20-dev-tools
         tasks_from: go
 
-    - name: Ensure peripheral tools are configured
+    - name: Setup keyboard tools are configured
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 40-setup-keyboard-tools.{{ user_os }}.yml
@@ -49,7 +49,7 @@
   tags: ["10-40"]
 
 - block:
-    - name: Ensure peripheral tools are configured
+    - name: Setup graphic tablet tools are configured
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 50-setup-graphic-tablet-tools.{{ user_os }}.yml
@@ -60,7 +60,7 @@
   tags: ["10-50"]
 
 - block:
-    - name: Ensure display tools are configured
+    - name: Setup nvidia tools are configured
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 60-setup-nvidia-tools.{{ user_os }}.yml
@@ -71,7 +71,7 @@
   tags: ["10-60"]
 
 - block:
-    - name: Ensure handy utilities are installed
+    - name: Setup automation tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 70-setup-automation-tools.{{ user_os }}.yml
@@ -82,7 +82,7 @@
   tags: ["10-70"]
 
 - block:
-    - name: Ensure grep utilities are installed
+    - name: Setup grep utilities
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 80-setup-grep-tools.{{ user_os }}.yml
@@ -93,7 +93,7 @@
   tags: ["10-80"]
 
 - block:
-    - name: Ensure handy utilities are installed
+    - name: Setup notification tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 90-setup-notification-tools.{{ user_os }}.yml
@@ -104,7 +104,7 @@
   tags: ["10-90"]
 
 - block:
-    - name: Ensure compositor is installed
+    - name: Setup compositor
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 100-setup-compositor.{{ user_os }}.yml
@@ -115,7 +115,7 @@
   tags: ["10-100"]
 
 - block:
-    - name: Ensure browser tools are setup
+    - name: Setup chrome tools are setup
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 110-setup-chrome-tools.{{ user_os }}.yml
@@ -126,7 +126,7 @@
   tags: ["10-110"]
 
 - block:
-    - name: Ensure wine tools are setup
+    - name: Setup wine tools are setup
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 120-setup-wine-tools.{{ user_os }}.yml
@@ -135,17 +135,6 @@
       loop_control:
         loop_var: task_file
   tags: ["10-120"]
-
-- block:
-    - name: Ensure wine tools are setup
-      ansible.builtin.include_tasks: "{{ task_file }}"
-      with_first_found:
-        - files: 130-setup-yabridge-tools.{{ user_os }}.yml
-          skip: true
-      when: "user_os in ['archlinux']"
-      loop_control:
-        loop_var: task_file
-  tags: ["10-130"]
 
 - block:
     - name: Setup virtualbox tools
@@ -211,7 +200,6 @@
       loop_control:
         loop_var: task_file
   tags: ["10-180"]
-
 
 - block:
     - name: Setup root backup tools

@@ -1,6 +1,6 @@
 ---
 - block:
-    - name: "Cloud tools: setup cloud tools"
+    - name: Setup cloud tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 10-setup-cloud-tools.{{ user_os }}.yml
@@ -11,7 +11,7 @@
   tags: [never, "50-10"]
 
 - block:
-    - name: "Cloud tools: upgrade cloud tools"
+    - name: Setup cloud tools upgrade
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 20-upgrade-cloud-tools.{{ user_os }}.yml
