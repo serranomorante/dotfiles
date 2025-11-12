@@ -24,6 +24,7 @@
       loop:
         - ../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only/tasks/main.yml
         - ../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/tasks/main.yml
+      tags: always
 
     - name: "Setup roles: set fact"
       ansible.builtin.set_fact:
@@ -31,6 +32,7 @@
       vars:
         file: "{{ item.item }}"
       loop: "{{ var_role_exists.results }}"
+      tags: always
 
   roles:
     - role: 10-system-tools
@@ -50,6 +52,7 @@
         name: ../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only # noqa role-name[path]
         apply:
           tags: 60-for-my-eyes-only
+      tags: always
       when: fact_roles['../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only/tasks/main.yml']
 
     - name: Include 70-for-my-eyes-only if present
@@ -57,4 +60,5 @@
         name: ../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only # noqa role-name[path]
         apply:
           tags: 70-for-my-eyes-only
+      tags: always
       when: fact_roles['../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/tasks/main.yml']
