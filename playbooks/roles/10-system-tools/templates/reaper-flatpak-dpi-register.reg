@@ -1,0 +1,7 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\Control Panel\Desktop]
+"LogPixels"=dword:{{ '%08x' | format(arch_reaper_wine_flatpak_setup.dpi | default(144)) }}
+"EnablePerProcessSystemDPI"=dword:00000001
+"Win8DpiScaling"=dword:00000001
+"DpiScalingVer"=dword:00001018

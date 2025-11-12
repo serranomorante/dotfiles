@@ -19,10 +19,11 @@ arch_reaper_wine_setup:
   backup_path: ~/external/Downloads
   wine_prefix: "{{ ansible_env.HOME }}/external/.wine-win64-reaper"
   architecture: win64 # wow64 will fail for some plugins
-arch_youlean_wine_setup:
-  version: 2.5.12
-  backup_path: ~/external/Downloads/Youlean Loudness Meter 2 - V2.5.12 - Windows
-  wine_prefix: "{{ ansible_env.HOME }}/external/.wine-win64-reaper"
+arch_reaper_wine_flatpak_setup:
+  version: 747
+  backup_path: ~/external/Downloads
+  wine_prefix: "{{ ansible_env.HOME }}/external/.wine-flatpak-win64-reaper"
+  architecture: win64 # wow64 will fail for some plugins
 arch_gather_wine_setup:
   version: 1.32.0
   backup_path: ~/Downloads
@@ -31,3 +32,7 @@ arch_gather_wine_setup:
 arch_wine_prefixes:
   - "{{ arch_reaper_wine_setup }}"
   - "{{ arch_gather_wine_setup }}"
+
+arch_ansible_long_retries_config:
+  delay_n: 5
+  retries_n: 10000

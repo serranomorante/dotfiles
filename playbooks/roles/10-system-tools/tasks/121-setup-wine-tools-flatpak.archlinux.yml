@@ -1,0 +1,126 @@
+---
+- name: "[archlinux] Wine tools (flatpak): Add the flathub flatpak repository remote to the user installation"
+  community.general.flatpak_remote:
+    name: flathub
+    state: present
+    flatpakrepo_url: https://dl.flathub.org/repo/flathub.flatpakrepo
+    method: user
+  register: var_flatpak_remote
+
+- name: "[archlinux] Wine tools (flatpak): Install Wine Flatpak (stable 25.08)"
+  community.general.flatpak:
+    name: org.winehq.Wine//stable-25.08
+    remote: flathub
+    method: user
+    state: present
+  when: var_flatpak_remote is success
+
+- name: force handler
+  ansible.builtin.command: echo
+  changed_when: true
+  notify: handler_kill_reaper_flatpak_wineserver
+
+- name: flush_handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: "[archlinux] Wine tools (flatpak): install reaper"
+  ansible.builtin.command: >
+    flatpak run --share=network
+    --env="WINEPREFIX={{ arch_reaper_wine_flatpak_setup.wine_prefix }}"
+    --env="WINEARCH={{ arch_reaper_wine_flatpak_setup.architecture | default('win64') }}"
+    org.winehq.Wine start /unix  '{{ arch_reaper_wine_flatpak_setup.backup_path }}/reaper{{ arch_reaper_wine_flatpak_setup.version }}_x64-install.exe'
+  timeout: 0
+  changed_when: true
+  register: var_install_reaper
+  when: (var_new_reaper_version_downloaded | default({})).changed | default(false) and is_x_display_session
+
+- block:
+    - name: "[archlinux] Wine tools (flatpak): wait until window closes: {{ window_query }}"
+      ansible.builtin.shell: set -o pipefail && sleep {{ delay_n }} && wmctrl -lx | grep -oE {{ window_query }} | wc -l
+      changed_when: true
+      register: flatpak_wine_pid
+      until: flatpak_wine_pid.stdout | int == 0
+      delay: "{{ delay_n }}"
+      retries: "{{ retries_n }}"
+      failed_when: false
+      notify: handler_kill_reaper_flatpak_wineserver
+      when: is_x_display_session and should_wait
+
+    - name: flush_handlers
+      ansible.builtin.meta: flush_handlers
+  vars:
+    window_query: reaper.*\.exe
+    # Defaults
+    should_wait: "{{ var_install_reaper.changed }}"
+    delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
+    retries_n: "{{ arch_ansible_long_retries_config.retries_n }}"
+
+- name: "[archlinux] Wine tools (flatpak): setup windows register file"
+  ansible.builtin.template:
+    src: reaper-flatpak-dpi-register.reg
+    dest: "{{ arch_reaper_wine_flatpak_setup.wine_prefix }}/reaper-flatpak-dpi-register.reg"
+    mode: "644"
+
+- name: "[archlinux] Wine tools (flatpak): setup prefixes DPI"
+  # https://forum.winehq.org/viewtopic.php?t=34980
+  ansible.builtin.shell: >
+    flatpak run --user --unshare=network
+    --env="WINEPREFIX={{ arch_reaper_wine_flatpak_setup.wine_prefix }}"
+    --command=regedit
+    org.winehq.Wine /s ./reaper-flatpak-dpi-register.reg
+  args:
+    chdir: "{{ arch_reaper_wine_flatpak_setup.wine_prefix }}"
+  changed_when: true
+  when: var_install_reaper.changed
+  notify: handler_kill_reaper_flatpak_wineserver
+
+- name: "[archlinux] Wine tools (flatpak): give the previous command some time to finish"
+  ansible.builtin.wait_for:
+    timeout: 2
+
+- name: flush_handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: "[archlinux] Wine tools (flatpak): setup reaper-flatpak.desktop file"
+  ansible.builtin.template:
+    src: reaper-flatpak.desktop
+    dest: ~/.local/share/applications/
+    mode: "644"
+  notify: handler_update_desktop_database
+
+- name: "[archlinux] Wine tools (flatpak): install sws extension"
+  ansible.builtin.command: >
+    flatpak run --share=network
+    --env="WINEPREFIX={{ arch_reaper_wine_flatpak_setup.wine_prefix }}"
+    org.winehq.Wine start /unix '{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe'
+  timeout: 60
+  changed_when: true
+  register: var_sws_install
+  when: (var_new_sws_extension_version_downloaded | default({})).changed | default(false) and is_x_display_session
+
+- block:
+    - name: "[archlinux] Wine tools (flatpak): wait until window closes: {{ window_query }}"
+      ansible.builtin.shell: set -o pipefail && sleep {{ delay_n }} && wmctrl -lx | grep -oE {{ window_query }} | wc -l
+      changed_when: true
+      register: flatpak_wine_pid
+      until: flatpak_wine_pid.stdout | int == 0
+      delay: "{{ delay_n }}"
+      retries: "{{ retries_n }}"
+      failed_when: false
+      notify: handler_kill_reaper_flatpak_wineserver
+      when: is_x_display_session and should_wait
+
+    - name: flush_handlers
+      ansible.builtin.meta: flush_handlers
+  vars:
+    window_query: sws.*\.exe
+    # Defaults
+    should_wait: "{{ var_sws_install.changed }}"
+    delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
+    retries_n: "{{ arch_ansible_long_retries_config.retries_n }}"
+
+- name: "[archlinux] Wine tools (flatpak): copy custom script"
+  ansible.builtin.copy:
+    src: ~/dotfiles/assets/scripts/reaper/alternate_position.lua
+    dest: "{{ arch_reaper_wine_flatpak_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/REAPER/Scripts/custom/"
+    mode: "644"

@@ -179,3 +179,12 @@
   community.general.pacman:
     update_cache: true
     upgrade: true
+
+- name: handler_kill_reaper_flatpak_wineserver
+  ansible.builtin.shell: flatpak kill org.winehq.Wine; sleep 1 # TODO the sleep portion might be safe to delete
+  changed_when: true
+  register: var_kill_reaper_flatpak_wineserver
+  failed_when:
+    - var_kill_reaper_flatpak_wineserver.rc != 0
+    - var_kill_reaper_flatpak_wineserver.rc != 1
+  ignore_errors: true
