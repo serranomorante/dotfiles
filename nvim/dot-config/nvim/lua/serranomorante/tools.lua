@@ -65,6 +65,7 @@ M.by_filetype = {
   gitconfig = { parsers = { "file:gitconfig" } },
   editorconfig = { parsers = { "editorconfig" } },
   make = { parsers = { "file:make" } },
+  dockerfile = { parsers = { "file:dockerfile" } },
   ---No specific filetype
   all = {
     parsers = {
@@ -75,7 +76,6 @@ M.by_filetype = {
       "git_rebase",
       "gitattributes",
       "rst",
-      "dockerfile",
       "mermaid",
       "udev",
     },
