@@ -170,7 +170,10 @@ local function keys()
         }, function(choice)
           if choice then
             local playbooks = require("overseer.template.system-tasks.TASK__run_ansible_playbook")
-            require("overseer").run_template({ name = playbooks.name, params = { task_id = choice } })
+            require("overseer").run_template({
+              name = playbooks.name,
+              params = { task_id = choice, pass = vim.g.pass },
+            })
           end
         end)
       end,
