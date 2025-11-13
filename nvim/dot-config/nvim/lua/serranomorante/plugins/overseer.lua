@@ -101,6 +101,7 @@ local function keys()
         end
       end,
       on_exit = function(_, exit_code)
+        local ok, private_tasks = pcall(require, "serranomorante.private-tasks")
         if exit_code ~= 0 then
           vim.notify("Command failed with exit code: " .. exit_code, vim.log.levels.ERROR)
           return
@@ -138,6 +139,15 @@ local function keys()
             end
           end
         end
+        vim.list_extend(items, {
+          "all", -- all tasks
+          "setup", -- base tasks like running stow
+          "never", -- very slow tasks that I rarely need to perform
+          "always", -- tasks that should always be executed
+          "20-50,20-60 [Full editor setup]",
+        })
+        -- Add private playbooks
+        if ok then vim.list_extend(items, private_tasks or {}) end
 
         -- Remove duplicates (same task might have multiple numeric tags)
         local unique_items = {}
