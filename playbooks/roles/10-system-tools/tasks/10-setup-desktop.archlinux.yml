@@ -2,10 +2,13 @@
 - name: "[archlinux] Setup desktop: populate service facts"
   ansible.builtin.service_facts:
 
-- name: "[archlinux] Setup desktop: refresh pacman"
-  become: true
-  ansible.builtin.command: pacman -Sy
+- name: "[archlinux] Setup desktop: upgrade system"
+  ansible.builtin.command: echo
   changed_when: true
+  notify: handler_upgrade_system
+
+- name: flush_handlers
+  ansible.builtin.meta: flush_handlers
 
 - name: "[archlinux] Setup desktop: ensure reflector"
   become: true
