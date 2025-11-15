@@ -25,10 +25,10 @@
 
 - name: "[archlinux] Wine tools (flatpak): install reaper"
   ansible.builtin.command: >
-    flatpak run --share=network
+    flatpak run --user --share=network
     --env="WINEPREFIX={{ arch_reaper_wine_flatpak_setup.wine_prefix }}"
     --env="WINEARCH={{ arch_reaper_wine_flatpak_setup.architecture | default('win64') }}"
-    org.winehq.Wine start /unix  '{{ arch_reaper_wine_flatpak_setup.backup_path }}/reaper{{ arch_reaper_wine_flatpak_setup.version }}_x64-install.exe'
+    org.winehq.Wine start /unix '{{ arch_reaper_wine_flatpak_setup.backup_path }}/reaper{{ arch_reaper_wine_flatpak_setup.version }}_x64-install.exe'
   timeout: 0
   changed_when: true
   register: var_install_reaper
@@ -55,6 +55,18 @@
     delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
     retries_n: "{{ arch_ansible_long_retries_config.retries_n }}"
 
+- name: "[archlinux] Wine tools: setup prefixes"
+  # Fixes synth v
+  ansible.builtin.shell: >
+    flatpak run --share=network
+    --env="WINEPREFIX={{ arch_reaper_wine_flatpak_setup.wine_prefix }}"
+    --env="WINEARCH={{ arch_reaper_wine_flatpak_setup.architecture | default('win64') }}"
+    --command=winetricks org.winehq.Wine -q win81
+  notify: handler_kill_reaper_flatpak_wineserver
+
+- name: flush_handlers
+  ansible.builtin.meta: flush_handlers
+
 - name: "[archlinux] Wine tools (flatpak): setup windows register file"
   ansible.builtin.template:
     src: reaper-flatpak-dpi-register.reg
@@ -71,7 +83,6 @@
   args:
     chdir: "{{ arch_reaper_wine_flatpak_setup.wine_prefix }}"
   changed_when: true
-  when: var_install_reaper.changed
   notify: handler_kill_reaper_flatpak_wineserver
 
 - name: "[archlinux] Wine tools (flatpak): give the previous command some time to finish"
