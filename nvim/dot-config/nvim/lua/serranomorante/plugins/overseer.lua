@@ -228,6 +228,12 @@ local function opts()
       },
     },
     component_aliases = {
+      defaults_without_dispose = {
+        { "display_duration", detail_level = 2 },
+        "on_output_summarize",
+        "on_exit_set_status",
+        "on_complete_notify",
+      },
       defaults_without_notification = {
         { "display_duration", detail_level = 2 },
         "on_output_summarize",
