@@ -88,7 +88,6 @@
   loop:
     - hypothesis_h.patch
     - hypothesis_new_command.patch
-    - patch_h_tox_ini.patch
 
 - name: "[archlinux] Setup HPI - register docker dbs network exists"
   # The docker-compose file of the h repo needs this network to exist
@@ -110,11 +109,16 @@
     chdir: ~/external/repos/h
   changed_when: true
 
+- name: "[archlinux] Setup HPI - clean dependencies"
+  ansible.builtin.file:
+    path: ~/external/repos/h/.tox
+    state: absent
+
 - name: "[archlinux] Setup HPI - ensure h pip requirements"
   # helps us to quickly verify if we have issues with our package versions
   ansible.builtin.shell: >
     source ~/.bashrc &&
-    sg docker -c "make requirements"
+    sg docker -c "make requirements --always-make args='--upgrade-package pip-tools'"
   register: ensure_h_requirements_result
   args:
     chdir: ~/external/repos/h
