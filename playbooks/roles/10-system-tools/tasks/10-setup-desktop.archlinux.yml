@@ -67,6 +67,14 @@
     groups: docker
     name: "{{ ansible_env.USER }}"
 
+- name: "[archlinux] Setup desktop: set bell sound off"
+  # https://wiki.archlinux.org/index.php?title=PC_speaker&oldid=740440#Globally
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/nobeep.conf
+    content: blacklist pcspkr
+    mode: "755"
+
 - name: "[archlinux] Setup desktop: remove packages"
   become: true
   ansible.builtin.package:
