@@ -131,13 +131,26 @@
   register: var_install_reaper
   when: var_new_reaper_version_downloaded.changed and is_x_display_session
 
-- name: "[archlinux] Wine tools: wait for reaper install"
-  ansible.builtin.wait_for:
-    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/Program Files/REAPER (x64)/reaper.exe"
-    msg: Timeout waiting for reaper to finish installation
-    delay: 5
-    timeout: 300
-  when: var_install_reaper.changed and is_x_display_session
+- block:
+    - name: "[archlinux] Wine tools: wait until window closes: {{ window_query }}"
+      ansible.builtin.shell: set -o pipefail && sleep {{ delay_n }} && wmctrl -lx | grep -oE {{ window_query }} | wc -l
+      changed_when: true
+      register: var_host_windows
+      until: var_host_windows.stdout | int == 0
+      delay: "{{ delay_n }}"
+      retries: "{{ retries_n }}"
+      failed_when: false
+      notify: handler_kill_reaper_wineserver
+      when: is_x_display_session and should_wait
+
+    - name: flush_handlers
+      ansible.builtin.meta: flush_handlers
+  vars:
+    window_query: reaper.*\.exe
+    # Defaults
+    should_wait: "{{ var_install_reaper.changed }}"
+    delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
+    retries_n: "{{ arch_ansible_long_retries_config.retries_n }}"
 
 - name: "[archlinux] Wine tools: setup reaper.desktop file"
   ansible.builtin.template:
@@ -160,6 +173,28 @@
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
   changed_when: true
   when: var_new_sws_extension_version_downloaded.changed and is_x_display_session
+  register: var_sws_install
+
+- block:
+    - name: "[archlinux] Wine tools: wait until window closes: {{ window_query }}"
+      ansible.builtin.shell: set -o pipefail && sleep {{ delay_n }} && wmctrl -lx | grep -oE {{ window_query }} | wc -l
+      changed_when: true
+      register: var_host_windows
+      until: var_host_windows.stdout | int == 0
+      delay: "{{ delay_n }}"
+      retries: "{{ retries_n }}"
+      failed_when: false
+      notify: handler_kill_reaper_wineserver
+      when: is_x_display_session and should_wait
+
+    - name: flush_handlers
+      ansible.builtin.meta: flush_handlers
+  vars:
+    window_query: sws.*\.exe
+    # Defaults
+    should_wait: "{{ var_sws_install.changed }}"
+    delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
+    retries_n: "{{ arch_ansible_long_retries_config.retries_n }}"
 
 - name: "[archlinux] Wine tools: ensure custom script folder"
   ansible.builtin.file:

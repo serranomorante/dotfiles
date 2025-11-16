@@ -132,7 +132,7 @@
     masked: false
 
 - name: handler_kill_reaper_wineserver
-  ansible.builtin.command: wineserver -k
+  ansible.builtin.command: wineserver -k; sleep 1 # TODO the sleep portion might be safe to delete
   timeout: 60
   changed_when: true
   environment:
