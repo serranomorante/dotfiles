@@ -110,3 +110,9 @@
   notify:
     - handler_save_iptables
     - handler_ensure_iptables_service
+
+- name: "[archlinux] Other tools: install packages"
+  become: true
+  ansible.builtin.package:
+    name: firejail
+    state: present
