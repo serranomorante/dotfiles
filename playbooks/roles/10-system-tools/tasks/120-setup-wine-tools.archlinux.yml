@@ -144,6 +144,7 @@
     src: reaper.desktop
     dest: ~/.local/share/applications/
     mode: "644"
+  notify: handler_update_desktop_database
 
 - name: "[archlinux] Wine tools: get sws extension"
   ansible.builtin.get_url:
@@ -176,6 +177,7 @@
   ansible.builtin.unarchive:
     src: https://github.com/werman/noise-suppression-for-voice/releases/download/v{{ noise_suppression_for_voice_version }}/win-rnnoise.zip
     dest: ~/external/Downloads
+    creates: ~/external/Downloads/win-rnnoise
     remote_src: true
 
 - name: "[archlinux] Wine tools: get gather town"
