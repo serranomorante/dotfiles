@@ -18,9 +18,6 @@
       "allowed_permissions": ["favicon", "storage"],
       "file_url_navigation_allowed": true
     },
-    "{{ local_extension_react_devtools }}": {
-      "file_url_navigation_allowed": true
-    },
     "{{ local_extension_promnesia }}": {
       "toolbar_pin": "force_pinned",
       "toolbar_state": "force_shown"

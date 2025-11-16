@@ -11,7 +11,6 @@
     name:
       - chromium # gives the user more control from the cli
       - ruby # to install extensionator
-      - jdk-openjdk # to build react-devtools
 
 - name: "[archlinux] Setup browser tools: ensure aur packages"
   become: true
@@ -126,35 +125,11 @@
     basedir: ~/repos/NewTab-Redirect
     strip: 1
 
-- name: "[archlinux] Setup browser tools: patch react-devtools extension"
-  ansible.posix.patch:
-    src: extension_react_devtools.patch
-    basedir: ~/repos/react
-    strip: 1
-
 - name: "[archlinux] Setup browser tools: patch vimium extension"
   ansible.posix.patch:
     src: ~/dotfiles/assets/patches/chrome_extensions/extension_vimium_config.patch
     basedir: ~/repos/vimium
     strip: 1
-
-- name: "[archlinux] Setup browser tools: prepare react-devtools"
-  ansible.builtin.shell: |
-    source ~/.bashrc
-    $({{ ansible_env.HOME }}/.volta/bin/volta which yarn) install
-    $({{ ansible_env.HOME }}/.volta/bin/volta which yarn) build-for-devtools
-  args:
-    creates: ~/repos/react/build/bundle-sizes.json
-    chdir: ~/repos/react
-  timeout: 0
-
-- name: "[archlinux] Setup browser tools: build chrome react-devtools extension"
-  ansible.builtin.shell: |
-    source ~/.bashrc
-    $({{ ansible_env.HOME }}/.volta/bin/volta which yarn) build:chrome
-  args:
-    creates: ~/repos/react/packages/react-devtools-extensions/chrome/build/ReactDevTools.zip
-    chdir: ~/repos/react/packages/react-devtools-extensions
 
 - name: "[archlinux] Setup browser tools: generate key file"
   ansible.builtin.shell: |
