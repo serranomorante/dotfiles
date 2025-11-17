@@ -137,17 +137,6 @@
   tags: ["10-120"]
 
 - block:
-    - name: Setup wine tools are setup (using flatpak)
-      ansible.builtin.include_tasks: "{{ task_file }}"
-      with_first_found:
-        - files: 121-setup-wine-tools-flatpak.{{ user_os }}.yml
-          skip: true
-      when: "user_os in ['archlinux']"
-      loop_control:
-        loop_var: task_file
-  tags: ["10-121"]
-
-- block:
     - name: Setup virtualbox tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
