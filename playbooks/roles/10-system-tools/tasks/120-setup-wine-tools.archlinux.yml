@@ -47,8 +47,8 @@
       - vulkan-radeon
       - lib32-vulkan-radeon
 
-# https://wiki.archlinux.org/title/Steam#Installation
 - name: "[archlinux] Wine tools: ensure wine 32bit drivers"
+  # https://wiki.archlinux.org/title/Steam#Installation
   become: true
   ansible.builtin.package:
     state: present
@@ -87,13 +87,6 @@
     state: directory
     mode: "750"
 
-- name: "[archlinux] Wine tools: get reaper"
-  ansible.builtin.get_url:
-    url: https://www.reaper.fm/files/7.x/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe
-    dest: ~/external/Downloads
-    mode: "755"
-  register: var_new_reaper_version_downloaded
-
 - name: force handler
   ansible.builtin.command: echo
   changed_when: true
@@ -104,128 +97,44 @@
 
 - name: "[archlinux] Wine tools: setup prefixes"
   ansible.builtin.command: winecfg -v {{ item.winver | default('win10') }}
-  timeout: 60
   environment:
     WINEPREFIX: "{{ item.wine_prefix }}"
     WINEARCH: "{{ item.architecture | default('win64') }}"
   args:
     creates: "{{ item.wine_prefix }}/system.reg"
   loop: "{{ arch_wine_prefixes }}"
+  timeout: 60
+
+- name: "[archlinux] Wine tools: test reg query LogPixels"
+  ansible.builtin.command: wine reg query 'HKEY_CURRENT_USER\Control Panel\Desktop' /v 'LogPixels'
+  environment:
+    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  changed_when: false
+  ignore_errors: true
+  register: var_reg_log_pixels
 
 - name: "[archlinux] Wine tools: setup prefixes DPI"
   # https://forum.winehq.org/viewtopic.php?t=34980
-  ansible.builtin.command: wine reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v LogPixels /t REG_DWORD /d {{ item.dpi | default(0x90) }} /f
-  timeout: 60
-  environment:
-    WINEPREFIX: "{{ item.path }}"
-  changed_when: true
-  loop:
-    - path: "{{ arch_reaper_wine_setup.wine_prefix }}"
-
-- name: "[archlinux] Wine tools: install reaper"
-  ansible.builtin.command: wine start /unix '{{ arch_reaper_wine_setup.backup_path }}/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe'
-  timeout: 60
+  ansible.builtin.command: >
+    wine reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v LogPixels /t REG_DWORD /d {{ arch_reaper_wine_setup.dpi | default(0x90) }} /f
   environment:
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
   changed_when: true
-  register: var_install_reaper
-  when: var_new_reaper_version_downloaded.changed and is_x_display_session
-
-- block:
-    - name: "[archlinux] Wine tools: wait until window closes: {{ window_query }}"
-      ansible.builtin.shell: set -o pipefail && sleep {{ delay_n }} && wmctrl -lx | grep -oE {{ window_query }} | wc -l
-      changed_when: true
-      register: var_host_windows
-      until: var_host_windows.stdout | int == 0
-      delay: "{{ delay_n }}"
-      retries: "{{ retries_n }}"
-      failed_when: false
-      notify: handler_kill_reaper_wineserver
-      when: is_x_display_session and should_wait
-
-    - name: flush_handlers
-      ansible.builtin.meta: flush_handlers
-  vars:
-    window_query: reaper.*\.exe
-    # Defaults
-    should_wait: "{{ var_install_reaper.changed }}"
-    delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
-    retries_n: "{{ arch_ansible_long_retries_config.retries_n }}"
-
-- name: "[archlinux] Wine tools: setup reaper.desktop file"
-  ansible.builtin.template:
-    src: reaper.desktop
-    dest: ~/.local/share/applications/
-    mode: "644"
-  notify: handler_update_desktop_database
-
-- name: "[archlinux] Wine tools: get sws extension"
-  ansible.builtin.get_url:
-    url: https://www.sws-extension.org/download/featured/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe
-    dest: ~/external/Downloads
-    mode: "755"
-  register: var_new_sws_extension_version_downloaded
-
-- name: "[archlinux] Wine tools: install sws extension"
-  ansible.builtin.command: wine start /unix '{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe'
+  when: var_reg_log_pixels is failed
   timeout: 60
-  environment:
-    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
-  changed_when: true
-  when: var_new_sws_extension_version_downloaded.changed and is_x_display_session
-  register: var_sws_install
 
-- block:
-    - name: "[archlinux] Wine tools: wait until window closes: {{ window_query }}"
-      ansible.builtin.shell: set -o pipefail && sleep {{ delay_n }} && wmctrl -lx | grep -oE {{ window_query }} | wc -l
-      changed_when: true
-      register: var_host_windows
-      until: var_host_windows.stdout | int == 0
-      delay: "{{ delay_n }}"
-      retries: "{{ retries_n }}"
-      failed_when: false
-      notify: handler_kill_reaper_wineserver
-      when: is_x_display_session and should_wait
+- name: "[archlinux] Wine tools: reaper"
+  ansible.builtin.include_tasks:
+    file: wine-tools/reaper.task.yml
 
-    - name: flush_handlers
-      ansible.builtin.meta: flush_handlers
-  vars:
-    window_query: sws.*\.exe
-    # Defaults
-    should_wait: "{{ var_sws_install.changed }}"
-    delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
-    retries_n: "{{ arch_ansible_long_retries_config.retries_n }}"
+- name: "[archlinux] Wine tools: sws extensions"
+  ansible.builtin.include_tasks:
+    file: wine-tools/sws-extensions.task.yml
 
-- name: "[archlinux] Wine tools: ensure custom script folder"
-  ansible.builtin.file:
-    state: directory
-    recurse: true
-    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/REAPER/Scripts/custom"
+- name: "[archlinux] Wine tools: reaper"
+  ansible.builtin.include_tasks:
+    file: wine-tools/noise-suppression.task.yml
 
-- name: "[archlinux] Wine tools: copy custom script"
-  ansible.builtin.copy:
-    src: ~/dotfiles/assets/scripts/reaper/alternate_position.lua
-    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/REAPER/Scripts/custom/"
-    mode: "644"
-
-- name: "[archlinux] Wine tools: get noise suppression for voice"
-  ansible.builtin.unarchive:
-    src: https://github.com/werman/noise-suppression-for-voice/releases/download/v{{ noise_suppression_for_voice_version }}/win-rnnoise.zip
-    dest: ~/external/Downloads
-    creates: ~/external/Downloads/win-rnnoise
-    remote_src: true
-
-- name: "[archlinux] Wine tools: get gather town"
-  ansible.builtin.get_url:
-    url: https://downloads.gather.town/desktop/Gather-{{ arch_gather_wine_setup.version }}-Setup.exe
-    dest: ~/Downloads
-    mode: "755"
-
-- name: "[archlinux] Wine tools: install gather town"
-  ansible.builtin.command: wine start /unix '{{ arch_gather_wine_setup.backup_path }}/Gather-{{ arch_gather_wine_setup.version }}-Setup.exe'
-  timeout: 60
-  environment:
-    WINEPREFIX: "{{ arch_gather_wine_setup.wine_prefix }}"
-  args:
-    creates: "{{ arch_gather_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/Gather/config.json"
-  when: is_x_display_session
+- name: "[archlinux] Wine tools: gather town"
+  ansible.builtin.include_tasks:
+    file: wine-tools/gather-town.task.yml
