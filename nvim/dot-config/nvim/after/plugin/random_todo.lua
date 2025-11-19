@@ -19,3 +19,5 @@ local function random_todo()
 end
 
 vim.api.nvim_create_user_command("RandomTodo", random_todo, { force = true, nargs = "*", desc = "Go to random TODO" })
+
+vim.keymap.set("n", "<leader>tr", "<cmd>RandomTodo<CR>", { desc = "Go to workspace's random TODO item" })

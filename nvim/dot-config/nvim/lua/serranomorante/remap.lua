@@ -188,8 +188,6 @@ vim.keymap.set("n", "<leader>tt", function()
   utils.feedkeys(("gg%sn<C-l>"):format(math.random(vim.fn.searchcount().total)))
 end, { desc = "Go to buffer's random TODO item" })
 
-vim.keymap.set("n", "<leader>tr", "<cmd>RandomTodo<CR>", { desc = "Go to workspace's random TODO item" })
-
 vim.keymap.set("n", "<leader>to", function()
   local oldfiles = vim.tbl_filter(function(filename) return utils.file_inside_cwd(filename) end, vim.v.oldfiles)
   vim.ui.select(oldfiles, {
