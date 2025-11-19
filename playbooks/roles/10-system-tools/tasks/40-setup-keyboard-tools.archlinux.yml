@@ -65,9 +65,15 @@
     src: keyd-default.conf
     dest: /etc/keyd/default.conf
     mode: "644"
+  register: var_keyd_conf
   notify:
     - "10-system-tools : handler_ensure_keyd_service"
     - "10-system-tools : handler_restart_keyd"
+
+- name: "[archlinux] Keyboard peripheral: check keyd conf"
+  ansible.builtin.command: keyd check
+  changed_when: true
+  when: var_keyd_conf.changed
 
 - name: "[archlinux] Keyboard peripheral: enable kbdrate services"
   ansible.builtin.systemd_service:
