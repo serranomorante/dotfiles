@@ -29,6 +29,7 @@
   ansible.builtin.package:
     state: present
     name:
+      - bind
       - dmenu
       - obs-studio
       - xorg
