@@ -17,6 +17,11 @@
       when: "'localhost' in var_argv.ansible_facts.argv"
       tags: always
 
+    - name: "Setup playbook: populate service facts"
+      ansible.builtin.service_facts:
+      when: "'localhost' in var_argv.ansible_facts.argv"
+      tags: always
+
     - name: "Setup roles: set var"
       ansible.builtin.stat:
         path: "{{ item }}"

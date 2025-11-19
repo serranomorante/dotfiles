@@ -1,7 +1,4 @@
 ---
-- name: "[archlinux] Setup desktop: populate service facts"
-  ansible.builtin.service_facts:
-
 - name: "[archlinux] Setup desktop: upgrade system"
   ansible.builtin.command: echo
   changed_when: true
