@@ -62,7 +62,7 @@
 - name: "[archlinux] Keyboard peripheral: setup keyd default.conf"
   become: true
   ansible.builtin.template:
-    src: ~/dotfiles/assets/other/keyd-default.conf
+    src: keyd-default.conf
     dest: /etc/keyd/default.conf
     mode: "644"
   notify:
@@ -205,3 +205,6 @@
     dest: ~/apps/keyboard-tools/Mouseless.AppImage
     mode: "755"
   notify: handler_ensure_mouseless_click_service
+
+- name: flush_handlers
+  ansible.builtin.meta: flush_handlers
