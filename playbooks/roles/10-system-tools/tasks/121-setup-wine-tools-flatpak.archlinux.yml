@@ -61,7 +61,7 @@
     flatpak run --share=network
     --env="WINEPREFIX={{ arch_reaper_wine_flatpak_setup.wine_prefix }}"
     --env="WINEARCH={{ arch_reaper_wine_flatpak_setup.architecture | default('win64') }}"
-    --command=winetricks org.winehq.Wine -q win81
+    --command=winetricks org.winehq.Wine -q --force win81
   notify: handler_kill_reaper_flatpak_wineserver
 
 - name: flush_handlers
