@@ -2,7 +2,6 @@
   "SystemShortcutBehavior": 3,
   "ShortcutCustomizationAllowed": true,
   "HomepageIsNewTabPage": false,
-  "VideoCaptureAllowedUrls": ["https://[*.]google.com/"],
   "ExtensionSettings": {
     "{{ local_extension_show_tab_numbers }}": {
       "allowed_permissions": [

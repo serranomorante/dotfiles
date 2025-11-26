@@ -8,9 +8,7 @@
 - name: "[archlinux] Setup browser tools: ensure packages"
   become: true
   ansible.builtin.package:
-    name:
-      - chromium # gives the user more control from the cli
-      - ruby # to install extensionator
+    name: ruby # to install extensionator
 
 - name: "[archlinux] Setup browser tools: ensure aur packages"
   become: true
@@ -18,7 +16,9 @@
   aur:
     use: yay
     state: present
-    name: brave-bin
+    name:
+      - brave-bin
+      - ungoogled-chromium-bin
 
 - name: "[archlinux] Setup browser tools: ensure folder exists"
   ansible.builtin.file:
