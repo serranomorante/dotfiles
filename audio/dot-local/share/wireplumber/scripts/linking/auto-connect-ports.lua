@@ -11,6 +11,7 @@ local APP_TO_OUTPUT = {
   ["Firefox"] = "media-sink",
   ["ALSA plug-in [plexamp]"] = "media-sink",
   ["BTAdapter"] = "media-sink",
+  ["Chromium input"] = "rnnoise_source",
   ---Apply noise reduction to Google chrome media sound
   ["Google Chrome"] = "Filtered Headphones", -- will fallback to default if not available
   ["Chromium"] = "Filtered Headphones", -- will fallback to default if not available
