@@ -52,6 +52,7 @@
       - vlc-plugins-all
       - arch-wiki-docs
       - noise-suppression-for-voice
+      - libebur128
       # - kde-applications
   timeout: 0
   notify: "10-system-tools : handler_ensure_docker_service"

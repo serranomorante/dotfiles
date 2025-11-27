@@ -19,7 +19,7 @@ local MAPPINGS = {
   ["Chromium input"] = "source_filter.rnnoise",
   ---Apply noise reduction to Google chrome media sound
   ["Google Chrome"] = "Filtered Headphones", -- will fallback to default if not available
-  ["Chromium"] = "Filtered Headphones", -- will fallback to default if not available
+  ["Chromium"] = "source_filter.ebur128_normalize", -- will fallback to default if not available
   ["Microsoft-edge"] = "Filtered Headphones", -- will fallback to default if not available
 }
 
