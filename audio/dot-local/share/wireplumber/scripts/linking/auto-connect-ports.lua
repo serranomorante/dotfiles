@@ -12,11 +12,11 @@ local lu = require("luaunit")
 ---Try changing the order (target -> source instead of source -> target)
 ---if it doesn't work as expected
 local MAPPINGS = {
-  ["Brave"] = "media-sink",
-  ["Firefox"] = "media-sink",
-  ["ALSA plug-in [plexamp]"] = "media-sink",
-  ["BTAdapter"] = "media-sink",
-  ["Chromium input"] = "rnnoise_source",
+  ["Brave"] = "sink_node.multimedia",
+  ["Firefox"] = "sink_node.multimedia",
+  ["ALSA plug-in [plexamp]"] = "sink_node.multimedia",
+  ["BTAdapter"] = "sink_node.multimedia",
+  ["Chromium input"] = "source_filter.rnnoise",
   ---Apply noise reduction to Google chrome media sound
   ["Google Chrome"] = "Filtered Headphones", -- will fallback to default if not available
   ["Chromium"] = "Filtered Headphones", -- will fallback to default if not available
@@ -35,17 +35,14 @@ SimpleEventHook({
     ---@diagnostic disable-next-line: unused-local
     local source, om, si, si_props, si_flags, target = lutils:unwrap_select_target_event(event)
 
-    ---@type string
-    local SOURCE = si_props["node.name"]
-
     ---bypass the hook if the target is already picked up
     if target then
       return
     end
 
-    local TARGET = MAPPINGS[SOURCE]
-
-    if TARGET == nil then
+    ---@type string
+    local TARGET = MAPPINGS[si_props["node.name"]]
+    if not TARGET then
       return
     end
 
