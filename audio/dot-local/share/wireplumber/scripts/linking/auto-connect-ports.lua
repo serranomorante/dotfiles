@@ -9,16 +9,31 @@ local lutils = require("linking-utils")
 log = Log.open_topic("s-linking")
 local lu = require("luaunit")
 
----Try changing the order (target -> source instead of source -> target)
----if it doesn't work as expected
+---The order is: source -> sink
+---SOURCE: You get audio from a source/capture (unless that source was marked as sink using media.class = Audio/Sink). You can then pass that audio
+---to other sinks.
+---SINK: You have to send audio to a sink (so the sink can output it to your speakers). Watch out for the media.class that converts
+---these sinks/playbacks into sources.
 local MAPPINGS = {
-  ["Brave"] = "sink_node.multimedia",
-  ["Firefox"] = "sink_node.multimedia",
-  ["ALSA plug-in [plexamp]"] = "sink_node.multimedia",
-  ["BTAdapter"] = "sink_node.multimedia",
+  ---BTAdapter -> Multimedia sink
+  ---BTAdapter (media.class = "Stream/Output/Audio")
+  ---capture.sink_node.multimedia (media.class = "Audio/Sink")
+  ["BTAdapter"] = "capture.sink_node.multimedia",
+  ["Brave"] = "capture.sink_node.multimedia",
+  ["Firefox"] = "capture.sink_node.multimedia",
+  ["ALSA plug-in [plexamp]"] = "capture.sink_node.multimedia",
+  ---Denoiser source -> chromium input source?
+  ---Chromium input (media.class = "Stream/Input/Audio")
+  ---source_filter.rnnoise (media.class = "Audio/Source")
   ["Chromium input"] = "source_filter.rnnoise",
-  ---Apply noise reduction to Google chrome media sound
-  ["Chromium"] = "source_filter.ebur128_normalize", -- will fallback to default if not available
+  ---Mic source -> Denoiser source
+  ---capture.source_filter.rnnoise (media.class = "Stream/Input/Audio" )
+  ---Mic (media.class = "Audio/Source")
+  ["capture.source_filter.rnnoise"] = "Mic",
+  ---Chromium sink -> Normalizer sink
+  ---Chromium (media.class = "Stream/Output/Audio")
+  ---capture.source_filter.ebur128_normalize (media.class = "Audio/Sink")
+  ["Chromium"] = "capture.source_filter.ebur128_normalize", -- will fallback to default if not available
 }
 
 SimpleEventHook({
