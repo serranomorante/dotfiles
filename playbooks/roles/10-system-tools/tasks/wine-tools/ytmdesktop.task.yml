@@ -1,0 +1,15 @@
+---
+- name: "[archlinux] Wine tools: get ytmdesktop"
+  ansible.builtin.get_url:
+    url: https://github.com/ytmdesktop/ytmdesktop/releases/download/v{{ arch_ytmdesktop_wine_setup.version }}/YouTube.Music.Desktop.App-{{ arch_ytmdesktop_wine_setup.version }}.Setup.exe
+    dest: ~/Downloads
+    mode: "755"
+
+- name: "[archlinux] Wine tools: install ytmdesktop"
+  ansible.builtin.command: wine start /unix '{{ arch_ytmdesktop_wine_setup.backup_path }}/YouTube.Music.Desktop.App-{{ arch_ytmdesktop_wine_setup.version }}.Setup.exe'
+  timeout: 60
+  environment:
+    WINEPREFIX: "{{ arch_ytmdesktop_wine_setup.wine_prefix }}"
+  args:
+    creates: "{{ ansible_env.HOME }}/external/.wine-win64-ytmdesktop/drive_c/users/serranomorante/AppData/Roaming/YouTube Music Desktop App/config.json"
+  when: is_x_display_session
