@@ -34,6 +34,10 @@ local MAPPINGS = {
   ---Chromium (media.class = "Stream/Output/Audio")
   ---capture.source_filter.ebur128_normalize (media.class = "Audio/Sink")
   ["Chromium"] = "capture.source_filter.ebur128_normalize", -- will fallback to default if not available
+  ---Youtube music sink -> Normalizer sink
+  ---YouTube Music Desktop App (media.class = "Stream/Output/Audio")
+  ---capture.source_filter.ebur128_normalize (media.class = "Audio/Sink")
+  ["YouTube Music Desktop App"] = "capture.source_filter.ebur128_normalize"
 }
 
 SimpleEventHook({
