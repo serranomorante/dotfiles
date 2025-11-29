@@ -1,0 +1,51 @@
+---
+- name: "[archlinux] Wine tools: get audiogridder server"
+  ansible.builtin.get_url:
+    url: https://audiogridder.com/releases/AudioGridderServer_{{ arch_audiogridder_wine_setup.version }}.exe
+    dest: "{{ arch_audiogridder_wine_setup.backup_path }}/AudioGridderServer_{{ arch_audiogridder_wine_setup.version }}.exe"
+    mode: "755"
+
+- name: "[archlinux] Wine tools: install audiogridder server"
+  ansible.builtin.command: wine start /unix '{{ arch_audiogridder_wine_setup.backup_path }}/AudioGridderServer_{{ arch_audiogridder_wine_setup.version }}.exe'
+  timeout: 60
+  environment:
+    WINEPREFIX: "{{ arch_audiogridder_wine_setup.wine_prefix }}"
+  args:
+    creates: "{{ arch_audiogridder_wine_setup.wine_prefix }}/drive_c/Program Files/AudioGridderServer/AudioGridderServer.exe"
+  when: is_x_display_session
+  register: var_install_audiogridder
+
+- block:
+    - name: "[archlinux] Wine tools: wait until window closes: {{ window_query }}"
+      ansible.builtin.shell: set -o pipefail && sleep {{ delay_n }} && wmctrl -lx | grep -oE {{ window_query }} | wc -l
+      changed_when: true
+      register: var_host_windows
+      until: var_host_windows.stdout | int == 0
+      delay: "{{ delay_n }}"
+      retries: "{{ retries_n }}"
+      failed_when: false
+      notify: handler_kill_reaper_wineserver
+      when: is_x_display_session and should_wait
+
+    - name: flush_handlers
+      ansible.builtin.meta: flush_handlers
+  vars:
+    window_query: gridder.*\.tmp
+    # Defaults
+    should_wait: "{{ var_install_audiogridder.changed }}"
+    delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
+    retries_n: "{{ arch_ansible_long_retries_config.retries_n }}"
+
+- name: "[archlinux] Wine tools: get audiogridder client"
+  ansible.builtin.unarchive:
+    src: https://audiogridder.com/github/releases/download/release_1_2_0/AudioGridder_{{ arch_audiogridder_wine_setup.version }}-Linux.zip
+    dest: ~/.vst3/
+    creates: ~/.vst3/build-linux-x86_64/lib/AudioGridder.so
+    remote_src: true
+
+- name: "[archlinux] Wine tools: setup audiogridder.desktop file"
+  ansible.builtin.template:
+    src: audiogridder.desktop
+    dest: ~/.local/share/applications/wine/Programs/AudioGridderServer.desktop
+    mode: "644"
+  notify: handler_update_desktop_database

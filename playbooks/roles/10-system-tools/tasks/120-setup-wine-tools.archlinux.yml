@@ -142,3 +142,7 @@
 - name: "[archlinux] Wine tools: ytmdesktop"
   ansible.builtin.include_tasks:
     file: wine-tools/ytmdesktop.task.yml
+
+- name: "[archlinux] Wine tools: audiogridder"
+  ansible.builtin.include_tasks:
+    file: wine-tools/audiogridder.task.yml
