@@ -38,7 +38,7 @@
 
 - name: "[archlinux] Wine tools: get audiogridder client"
   ansible.builtin.unarchive:
-    src: https://audiogridder.com/github/releases/download/release_1_2_0/AudioGridder_{{ arch_audiogridder_wine_setup.version }}-Linux.zip
+    src: https://audiogridder.com/github/releases/download/release_1_1_1/AudioGridder_{{ arch_audiogridder_wine_setup.version }}-Linux.zip
     dest: ~/.vst3/
     creates: ~/.vst3/build-linux-x86_64/lib/AudioGridder.so
     remote_src: true
