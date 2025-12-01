@@ -49,7 +49,7 @@
     - name: flush_handlers
       ansible.builtin.meta: flush_handlers
   vars:
-    window_query: reaper.*\.exe
+    window_query: explorer.exe
     # Defaults
     should_wait: "{{ var_install_reaper.changed }}"
     delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
@@ -124,7 +124,7 @@
     - name: flush_handlers
       ansible.builtin.meta: flush_handlers
   vars:
-    window_query: sws.*\.exe
+    window_query: explorer.exe
     # Defaults
     should_wait: "{{ var_sws_install.changed }}"
     delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
