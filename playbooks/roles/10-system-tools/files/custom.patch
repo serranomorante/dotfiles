@@ -1,5 +1,5 @@
 diff --git a/config.h b/config.h
-index 56ee471..ca8f655 100644
+index 56ee471..44647f9 100644
 --- a/config.h
 +++ b/config.h
 @@ -1,9 +1,9 @@
@@ -41,7 +41,7 @@ index 56ee471..ca8f655 100644
 +	{ "SimpleScreenRecorder", "simplescreenrecorder", "SimpleScreenRecorder",    0,            1,           -1,        -1,-1,-1,-1,     -1                     },
 +	{ NULL,                   NULL,                   "KRunner",                 0,            1,           -1,        -1,-1,-1,-1,     -1                     },
 +	{ NULL,                   NULL,                   "Event Tester",            0,            1,           -1,        -1,-1,-1,-1,     -1                     },
-+
++    { "explorer.exe",         "explorer.exe",         "Wine Desktop",            1 << 7,       0,           -1,        -1,-1,-1,-1,     -1                     }, // use tag 7 for wine explorer.exe
  };
  
  /* layout(s) */
