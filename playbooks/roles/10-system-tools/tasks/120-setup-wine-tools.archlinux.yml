@@ -116,12 +116,31 @@
 - name: "[archlinux] Wine tools: setup prefixes DPI"
   # https://forum.winehq.org/viewtopic.php?t=34980
   ansible.builtin.command: >
-    wine reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v LogPixels /t REG_DWORD /d {{ arch_reaper_wine_setup.dpi | default(0x90) }} /f
+    wine reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v LogPixels /t REG_DWORD /d {{ arch_reaper_wine_setup.dpi | default(0x60) }} /f
   environment:
     WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
   changed_when: true
   when: var_reg_log_pixels is failed
   timeout: 60
+
+- name: "[archlinux] Wine tools: test reg query virtual desktop"
+  ansible.builtin.command: wine reg query 'HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops' /v 'Default'
+  environment:
+    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  changed_when: false
+  ignore_errors: true
+  register: var_reg_virtual_desktop
+
+- name: "[archlinux] Wine tools: setup virtual desktop"
+  ansible.builtin.command: "{{ item }}"
+  environment:
+    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  changed_when: true
+  when: "'1920x1080' not in var_reg_virtual_desktop.stdout"
+  timeout: 60
+  loop:
+    - wine reg add "HKEY_CURRENT_USER\Software\Wine\Explorer" /v Desktop /d Default /f
+    - wine reg add "HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops" /v Default /d 1920x1080 /f
 
 - name: "[archlinux] Wine tools: reaper"
   ansible.builtin.include_tasks:
