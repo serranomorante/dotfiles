@@ -163,16 +163,85 @@ local function opts()
           },
         },
         keymaps = {
+          options = {
+            modes = { n = "<C-g>?" },
+          },
+          completion = {
+            modes = {
+              i = "<C-x><C-\\>",
+            },
+          },
           send = {
             modes = {
               n = "<C-g><C-g>",
               i = "<C-g><C-g>",
             },
           },
-          completion = {
+          regenerate = {
+            modes = { n = "<C-g>gr" },
+          },
+          close = {
             modes = {
-              i = "<C-x><C-\\>",
+              n = "<C-c>",
+              i = "<C-c>",
             },
+          },
+          stop = {
+            modes = { n = "q" },
+          },
+          clear = {
+            modes = { n = "gx" },
+          },
+          codeblock = {
+            modes = { n = "gc" },
+          },
+          yank_code = {
+            modes = { n = "gy" },
+          },
+          pin = {
+            modes = { n = "gp" },
+          },
+          watch = {
+            modes = { n = "gw" },
+          },
+          next_chat = {
+            modes = { n = "}" },
+          },
+          previous_chat = {
+            modes = { n = "{" },
+          },
+          next_header = {
+            modes = { n = "]]" },
+          },
+          previous_header = {
+            modes = { n = "[[" },
+          },
+          change_adapter = {
+            modes = { n = "ga" },
+          },
+          fold_code = {
+            modes = { n = "gf" },
+          },
+          debug = {
+            modes = { n = "gd" },
+          },
+          system_prompt = {
+            modes = { n = "gs" },
+          },
+          memory = {
+            modes = { n = "gM" },
+          },
+          yolo_mode = {
+            modes = { n = "gty" },
+          },
+          goto_file_under_cursor = {
+            modes = { n = "gR" },
+          },
+          copilot_stats = {
+            modes = { n = "gS" },
+          },
+          super_diff = {
+            modes = { n = "gD" },
           },
         },
         slash_commands = {
