@@ -15,6 +15,7 @@
     - name: playwright
     - name: "@playwright/mcp"
     - name: mcp-figma-comment-summary
+    - name: "@upstash/context7-mcp"
 
 - name: "[archlinux] Setup ai tools: register playwright path"
   ansible.builtin.command: "{{ ansible_env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which playwright"
