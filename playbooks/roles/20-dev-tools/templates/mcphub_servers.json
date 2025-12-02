@@ -33,6 +33,9 @@
       "command": "{{ playwright_mcp_server_setup.exe_path }}",
       "args": ["--executable-path=/usr/bin/chromium", "--browser=chromium"]
     },
+    "Context7": {
+      "command": "{{ context7_mcp_server_setup.exe_path }}"
+    },
     "playwright-extension": {
       "command": "{{ playwright_mcp_server_setup.exe_path }}",
       "args": [
