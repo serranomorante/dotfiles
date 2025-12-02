@@ -33,10 +33,10 @@ arch_ytmdesktop_wine_setup:
   backup_path: ~/Downloads
   wine_prefix: "{{ ansible_env.HOME }}/external/.wine-win64-ytmdesktop"
 arch_audiogridder_wine_setup:
-  version: 1.2.0-beta7
-  version_slug: 1_2_0_beta7
-  plugin_version: 1.2.0-beta7
-  plugin_version_slug: 1_2_0_beta7
+  version: 1.1.1
+  version_slug: "1_1_1"
+  plugin_version: 1.1.1
+  plugin_version_slug: "1_1_1"
   backup_path: ~/external/Downloads
   config_path: "{{ ansible_env.HOME }}/external/.wine-win64-reaper/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/AudioGridder"
   wine_prefix: "{{ ansible_env.HOME }}/external/.wine-win64-reaper"
