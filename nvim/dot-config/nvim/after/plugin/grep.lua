@@ -18,6 +18,7 @@ local function grep(command_args)
     { title = msg:format(count, command_args.args), items = items, context = { name = "user.grep" } }
   )
   vim.cmd.cfirst({ mods = { emsg_silent = true } })
+  vim.cmd.normal({ "zz", bang = true })
 end
 
 vim.api.nvim_create_user_command(
