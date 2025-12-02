@@ -9,7 +9,7 @@ local comp = {
       ---@param result table A result table.
       on_complete = function(self, task, status, result)
         if
-          status == require("overseer.parser").STATUS.SUCCESS
+          status == require("overseer.constants").STATUS.SUCCESS
           and vim.api.nvim_get_option_value("buftype", { buf = task:get_bufnr() }) == "terminal"
         then
           vim.api.nvim_win_close(0, true)

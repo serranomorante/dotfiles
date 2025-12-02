@@ -118,15 +118,15 @@
     creates: ~/intelephense/licence.txt
   ignore_errors: true
 
-- name: "[archlinux] Editor tools: apply patches to nvim plugins"
-  ansible.posix.patch:
-    src: "{{ item.patch }}"
-    basedir: "{{ item.basedir }}"
-    strip: 1
-  loop:
-    - basedir: ~/.local/share/nvim/site/pack/plugins/start/overseer
-      patch: overseer.nvim.patch
-  when: "(nvim_plugin_result_by_repo['stevearc/overseer.nvim'] | default({})).changed | default(false)"
+# - name: "[archlinux] Editor tools: apply patches to nvim plugins"
+#   ansible.posix.patch:
+#     src: "{{ item.patch }}"
+#     basedir: "{{ item.basedir }}"
+#     strip: 1
+#   loop:
+#     - basedir: ~/.local/share/nvim/site/pack/plugins/start/overseer
+#       patch: overseer.nvim.patch
+#   when: "(nvim_plugin_result_by_repo['stevearc/overseer.nvim'] | default({})).changed | default(false)"
 
 - name: "[archlinux] Editor tools: generate helptags"
   ansible.builtin.command: ~/bin/nvim --headless -c "helptags ALL" -c "quit"

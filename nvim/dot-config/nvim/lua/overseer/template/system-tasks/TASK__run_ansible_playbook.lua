@@ -14,12 +14,10 @@ local OS_TO_SSHD_CONFIG = {
 return {
   name = task_name,
   desc = "Run ansible playbook",
-  hide = true,
   params = {
     task_id = {
       desc = "Task id",
       type = "string",
-      optional = true,
       order = 1,
     },
     os = {
@@ -54,7 +52,6 @@ return {
     pass = {
       desc = "Password",
       type = "string",
-      optional = true,
       conceal = true,
       order = 6,
     },
@@ -87,8 +84,7 @@ return {
         PREVENT_QUIT = true,
       },
       components = {
-        { "system-components/COMPONENT__force_very_fullscreen_float" },
-        { "open_output", direction = "float", on_start = "always", focus = true },
+        { "open_output", direction = "tab", on_start = "always", focus = true },
         "defaults_without_dispose",
       },
     }

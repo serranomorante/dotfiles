@@ -53,42 +53,45 @@ local function keys()
     { desc = "Overseer: Select a task to run an action on" }
   )
 
-  vim.keymap.set(
-    "n",
-    "<leader>lm",
-    function() overseer.run_template({ name = open_markdown_preview.name }) end,
-    { desc = "Open markdown preview" }
-  )
+  vim.keymap.set("n", "<leader>lm", function()
+    overseer.run_task({ name = open_markdown_preview.name }, function(task)
+      if not task then return end
+      task:subscribe("on_complete", utils.close_window_on_exit_0)
+    end)
+  end, { desc = "Open markdown preview" })
 
-  vim.keymap.set(
-    "n",
-    "<leader>e",
-    function() overseer.run_template({ name = nnn_explorer.name, params = { startdir = vim.fn.expand("%:p") } }) end,
-    { desc = "Toggle explorer" }
-  )
-
-  vim.keymap.set("n", "<leader>w", function()
-    ---@type overseer.Task
-    local lazygit_task = select(
-      1,
-      unpack(overseer.list_tasks({ name = lazygit.name, status = require("overseer.parser").STATUS.RUNNING }))
-    )
-    if lazygit_task then return overseer.run_action(lazygit_task, "open float") end
-    overseer.run_template(
-      { name = lazygit.name },
-      ---@param task overseer.Task
+  vim.keymap.set("n", "<leader>e", function()
+    overseer.run_task(
+      { autostart = false, name = nnn_explorer.name, params = { startdir = vim.fn.expand("%:p") } },
       function(task)
-        if not task then return end
-        vim.keymap.set("t", "<leader>", "<space>", { buffer = task:get_bufnr(), nowait = true })
-        vim.keymap.set(
-          "t",
-          "q",
-          function() overseer.run_action(task, "close term window") end,
-          { buffer = task:get_bufnr() }
-        )
-      end,
-      { desc = "Toggle lazygit" }
+        utils.force_very_fullscreen_float(task)
+        utils.start_insert_mode(task)
+        task:subscribe("on_output", utils.dispose_on_window_close)
+        task:subscribe("on_complete", utils.close_window_on_exit_0)
+        task:start()
+      end
     )
+  end, { desc = "Toggle explorer" })
+
+  local previous_task = nil
+  vim.keymap.set("n", "<leader>w", function()
+    overseer.run_task({ autostart = false, name = lazygit.name }, function(task)
+      if previous_task and previous_task.status == "RUNNING" then
+        overseer.run_action(previous_task, "open float")
+        return
+      end
+      previous_task = task
+      utils.force_very_fullscreen_float(task)
+      utils.start_insert_mode(task)
+      task:start()
+      vim.keymap.set("t", "<leader>", "<space>", { buffer = task:get_bufnr(), nowait = true })
+      vim.keymap.set(
+        "t",
+        "q",
+        function() overseer.run_action(task, "close term window") end,
+        { buffer = task:get_bufnr() }
+      )
+    end)
   end)
 
   vim.keymap.set("n", "<leader>tp", function()
@@ -170,10 +173,10 @@ local function keys()
         }, function(choice)
           if choice then
             local playbooks = require("overseer.template.system-tasks.TASK__run_ansible_playbook")
-            require("overseer").run_template({
+            require("overseer").run_task({
               name = playbooks.name,
               params = { task_id = choice, pass = vim.g.pass },
-            })
+            }, function(task) utils.force_very_fullscreen_float(task) end)
           end
         end)
       end,
@@ -182,18 +185,23 @@ local function keys()
 end
 
 local function opts()
-  ---@type overseer.Config
+  ---@type overseer.SetupOpts
   return {
     strategy = "terminal",
+    output = {
+      use_terminal = true,
+      preserve_output = true,
+    },
     ---Disable the automatic patch and do it manually on nvim-dap config
     ---https://github.com/stevearc/overseer.nvim/blob/master/doc/third_party.md#dap
     dap = true,
-    templates = { "builtin", "vscode-tasks", "editor-tasks", "debugging-tasks", "system-tasks" },
+    form = {
+      border = "single",
+    },
     task_list = {
       direction = "left",
     },
     task_win = {
-      border = "none",
       padding = 0,
     },
     actions = {
@@ -218,7 +226,7 @@ local function opts()
       ["Quit & save ffmpeg recording"] = {
         desc = "Send `q` to the terminal. This quits ffmpeg recording.",
         condition = function(task)
-          return task.name:match("^ffmpeg") and task.status == require("overseer.parser").STATUS.RUNNING
+          return task.name:match("^ffmpeg") and task.status == require("overseer.constants").STATUS.RUNNING
         end,
         ---@param task overseer.Task
         run = function(task)
@@ -229,14 +237,10 @@ local function opts()
     },
     component_aliases = {
       defaults_without_dispose = {
-        { "display_duration", detail_level = 2 },
-        "on_output_summarize",
         "on_exit_set_status",
         "on_complete_notify",
       },
       defaults_without_notification = {
-        { "display_duration", detail_level = 2 },
-        "on_output_summarize",
         "on_exit_set_status",
         { "on_complete_dispose", require_view = { "SUCCESS", "FAILURE" } },
       },

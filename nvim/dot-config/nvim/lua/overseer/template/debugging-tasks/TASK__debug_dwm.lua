@@ -17,22 +17,18 @@ return {
         "orchestrator",
         tasks = {
           {
-            "shell",
             cmd = prepare_dwm,
           },
           {
-            "shell",
             cmd = "sleep 1",
           },
           {
-            "shell",
             cmd = prepare_st,
             env = {
               DISPLAY = ":2",
             },
           },
           {
-            "shell",
             cmd = prepare_st,
             env = {
               DISPLAY = ":2",
@@ -43,6 +39,6 @@ return {
     }
   end,
   condition = {
-    callback = function() return vim.fn.executable("Xephyr") == 1 and utils.cwd_is_dwm() end,
+    dir = vim.env.HOME .. "/repos/dwm",
   },
 }

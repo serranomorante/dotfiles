@@ -17,7 +17,7 @@ local comp = {
           callback = function(args)
             if is_preview(args.buf) then return end
             if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) ~= "terminal" then return end
-            if task.status == require("overseer.parser").STATUS.RUNNING then task:dispose(true) end
+            if task.status == require("overseer.constants").STATUS.RUNNING then task:dispose(true) end
           end,
         })
       end,

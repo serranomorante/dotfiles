@@ -651,4 +651,55 @@ function M.get_uuid(opts)
   return vim.fn.sha256(seed):sub(1, opts.chars)
 end
 
+---@param task overseer.Task
+---@param status overseer.Status Can be CANCELED, FAILURE, or SUCCESS
+function M.close_window_on_exit_0(task, status)
+  if
+    status == require("overseer.constants").STATUS.SUCCESS
+    and vim.api.nvim_get_option_value("buftype", { buf = task:get_bufnr() }) == "terminal"
+  then
+    vim.api.nvim_win_close(0, true)
+  end
+end
+
+local function is_preview(buf) return vim.api.nvim_win_get_config(vim.fn.bufwinid(buf)).row == 1 end
+
+---@param task overseer.Task
+---@param data string[] Output of process. See :help channel-lines
+function M.dispose_on_window_close(task, data)
+  vim.api.nvim_create_autocmd("WinLeave", {
+    desc = "Dispose task if still running after window closes",
+    buffer = task:get_bufnr(),
+    callback = function(args)
+      if is_preview(args.buf) then return end
+      if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) ~= "terminal" then return end
+      if task.status == require("overseer.constants").STATUS.RUNNING then task:dispose(true) end
+    end,
+  })
+end
+
+---@param task overseer.Task
+function M.force_very_fullscreen_float(task)
+  vim.api.nvim_create_autocmd("BufEnter", {
+    buffer = task:get_bufnr(),
+    callback = function(args)
+      if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) ~= "terminal" then return end
+      if is_preview(args.buf) then return end
+      vim.cmd.wincmd({ "|" })
+    end,
+  })
+end
+
+---@param task overseer.Task
+function M.start_insert_mode(task)
+  vim.api.nvim_create_autocmd("BufEnter", {
+    buffer = task:get_bufnr(),
+    callback = function(args)
+      if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) ~= "terminal" then return end
+      if is_preview(args.buf) then return end
+      vim.cmd.startinsert()
+    end,
+  })
+end
+
 return M

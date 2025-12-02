@@ -14,10 +14,8 @@ return {
         TERM = "xterm-256color",
       },
       components = {
-        { "system-components/COMPONENT__start_insert_mode" },
-        { "system-components/COMPONENT__force_very_fullscreen_float" },
-        { "open_output", direction = "float", on_start = "always", focus = true },
-        { "on_complete_dispose", timeout = 1, statuses = { require("overseer.parser").STATUS.SUCCESS } },
+        { "open_output", direction = "tab", on_start = "always", focus = true },
+        { "on_complete_dispose", timeout = 1, statuses = { require("overseer.constants").STATUS.SUCCESS } },
         "unique",
         "default",
       },

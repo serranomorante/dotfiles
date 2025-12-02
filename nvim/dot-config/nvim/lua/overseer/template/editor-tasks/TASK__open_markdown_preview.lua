@@ -20,17 +20,14 @@ return {
         vim.fn.expand("%:p"),
       },
       components = {
-        { "system-components/COMPONENT__close_window_on_exit_0" },
-        { "open_output", direction = "float", on_start = "always", focus = true },
-        { "on_complete_dispose", timeout = 1, statuses = { require("overseer.parser").STATUS.SUCCESS } },
+        { "open_output", direction = "tab", on_start = "always", focus = true },
+        { "on_complete_dispose", timeout = 1, statuses = { require("overseer.constants").STATUS.SUCCESS } },
         "unique",
         "defaults_without_notification",
       },
     }
   end,
   condition = {
-    callback = function(search)
-      return vim.fn.executable("mdcat") == 1 and vim.list_contains({ "markdown" }, search.filetype)
-    end,
+    filetype = "markdown",
   },
 }

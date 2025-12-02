@@ -22,8 +22,7 @@ return {
     path = {
       desc = "Path to save the files",
       type = "string",
-      optional = true,
-      default = "~/external/Videos",
+      choices = { "~/external/Videos" },
       order = 3,
     },
   },
@@ -40,11 +39,9 @@ return {
       .. string.format(" %s/screencast_%s.%s", params.path, datefmt, params.output)
     local tasks = {
       {
-        "shell",
         cmd = "sleep 2", -- give time before starting to record
       },
       {
-        "shell",
         cmd = ffmpeg_cmd,
       },
     }
@@ -59,7 +56,6 @@ return {
         PREVENT_QUIT = true,
       },
       components = {
-        { "system-components/COMPONENT__start_insert_mode" },
         { "timeout", timeout = 60 * 60 * 2 },
         "unique",
         "default",

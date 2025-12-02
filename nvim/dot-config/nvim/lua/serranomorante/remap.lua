@@ -19,7 +19,7 @@ vim.keymap.set("n", "<leader>nb", "<cmd>enew<CR>", { desc = "New buffer" })
 vim.keymap.set("n", "ZQ", function()
   if
     unpack(require("overseer").list_tasks({
-      status = require("overseer.parser").STATUS.RUNNING,
+      status = require("overseer.constants").STATUS.RUNNING,
       filter = function(task) return task.metadata.PREVENT_QUIT end,
     }))
   then
@@ -207,10 +207,16 @@ vim.keymap.set("n", "'0", function()
   for _, m in ipairs(vim.fn.getmarklist()) do
     if vim.list_contains(numbered_marks, m.mark) and utils.file_inside_cwd(m.file) and not utils.cwd_is_home() then
       if utils.is_directory(m.file) then
-        require("overseer").run_template({
+        require("overseer").run_task({
+          autostart = false,
           name = require("overseer.template.editor-tasks.TASK__nnn_explorer").name,
           params = { startdir = m.file },
-        })
+        }, function(task)
+          utils.force_very_fullscreen_float(task)
+          task:subscribe("on_output", utils.dispose_on_window_close)
+          task:subscribe("on_complete", utils.close_window_on_exit_0)
+          task:start()
+        end)
         return
       else
         local ok, _ = pcall(vim.cmd.normal, { args = { m.mark }, bang = true }) -- pcall because it randomly fails now...

@@ -38,8 +38,6 @@ return {
     }
   end,
   condition = {
-    callback = function(search)
-      return vim.fn.executable("pandoc") == 1 and vim.list_contains({ "markdown" }, search.filetype)
-    end,
+    filetype = "markdown",
   },
 }

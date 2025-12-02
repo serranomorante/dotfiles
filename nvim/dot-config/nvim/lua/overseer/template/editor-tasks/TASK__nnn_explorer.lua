@@ -43,19 +43,12 @@ function M.builder(params)
       TERM = vim.env.TERM,
     },
     components = {
-      { "system-components/COMPONENT__dispose_on_window_close" },
-      { "system-components/COMPONENT__close_window_on_exit_0" },
-      { "system-components/COMPONENT__force_very_fullscreen_float" },
-      { "system-components/COMPONENT__start_insert_mode" },
-      { "open_output", direction = "float", on_start = "always", focus = true },
-      { "on_complete_dispose", timeout = 1, statuses = { require("overseer.parser").STATUS.SUCCESS } },
+      { "open_output", direction = "tab", on_start = "always", focus = true },
+      { "on_complete_dispose", timeout = 1, statuses = { require("overseer.constants").STATUS.SUCCESS } },
       "unique",
       "defaults_without_notification",
     },
   }
 end
-
-M.condition = {}
-function M.condition.callback() return vim.fn.executable("nnn") == 1 end
 
 return M
