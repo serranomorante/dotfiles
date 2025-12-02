@@ -10,6 +10,7 @@ app="$1"
 servername=$(echo $NVIM_KITTY_LISTEN_ADDRESS)
 
 shift
+nvim_center_view="vim.cmd.normal({ "zz", bang = true })"
 nvim_close_term_win="vim.api.nvim_win_close(0, false)"
 nvim_edit="vim.cmd.edit({ [[$1]], mods = { emsg_silent = true }})" # don't use `nvr --remote` because it doesn't respect shortmess
 
@@ -31,7 +32,7 @@ lazygit_edit)
 lazygit_edit_at_line)
     # exec >~/open-in-nvim.out 2>&1
     # echo "$1"
-    nvr --servername $servername --nostart -cc "lua $nvim_close_term_win; $nvim_edit" -c "$2"
+    nvr --servername $servername --nostart -cc "lua $nvim_close_term_win; $nvim_edit; $nvim_center_view" -c "$2"
     ;;
 lazygit_edit_at_line_and_wait)
     nvr --servername $servername --nostart --remote-wait "$1" -c "$2"
@@ -58,7 +59,7 @@ lazygit_diff_with_local_copy)
     nvr --servername $servername --nostart -cc "lua $nvim_close_term_win" -c "DiffviewOpen $2 -- %"
     ;;
 kitty_edit_at_line)
-    nvr --servername $servername --nostart -cc "lua $nvim_edit" -c "$2" | kitten @ action goto_tab 1
+    nvr --servername $servername --nostart -cc "lua $nvim_edit; $nvim_center_view" -c "$2" | kitten @ action goto_tab 1
     ;;
 *)
     nvim --server $servername --remote "$@"
