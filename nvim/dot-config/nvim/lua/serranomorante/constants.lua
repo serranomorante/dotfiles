@@ -66,4 +66,12 @@ M.CWD = vim.fn.getcwd()
 local ok, binaries = pcall(require, "serranomorante.binaries")
 M.BINARIES = ok and binaries or {}
 
+M.fullscreen_jobstart_opts = {
+  "jobstart",
+  wrap_opts = {
+    width = vim.o.columns,
+    height = vim.o.lines - 3,
+  },
+}
+
 return M

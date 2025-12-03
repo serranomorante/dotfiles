@@ -1,4 +1,5 @@
 local utils = require("serranomorante.utils")
+local constants = require("serranomorante.constants")
 local task_name = "run-ansible-playbook"
 local HOME = vim.env.HOME
 
@@ -78,13 +79,13 @@ return {
     return {
       name = task_name .. string.format(" %s", params.task_id),
       cmd = "vansible-playbook",
+      strategy = constants.fullscreen_jobstart_opts,
       args = args,
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
       metadata = {
         PREVENT_QUIT = true,
       },
       components = {
-        { "open_output", direction = "tab", on_start = "always", focus = true },
         "defaults_without_dispose",
       },
     }

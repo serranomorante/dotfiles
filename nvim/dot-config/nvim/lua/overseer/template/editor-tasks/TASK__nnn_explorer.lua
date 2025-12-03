@@ -1,4 +1,5 @@
 local utils = require("serranomorante.utils")
+local constants = require("serranomorante.constants")
 
 ---@type overseer.TemplateDefinition
 ---@diagnostic disable-next-line: missing-fields
@@ -34,6 +35,7 @@ function M.builder(params)
     name = TASK_NAME,
     cmd = "nnn",
     args = args,
+    strategy = constants.fullscreen_jobstart_opts,
     env = {
       EDITOR = "open_in_nvim.sh nnn_explorer",
       VISUAL = "open_in_nvim.sh nnn_explorer",
@@ -43,7 +45,7 @@ function M.builder(params)
       TERM = vim.env.TERM,
     },
     components = {
-      { "open_output", direction = "tab", on_start = "always", focus = true },
+      { "open_output", direction = "float", on_start = "always", focus = true },
       { "on_complete_dispose", timeout = 1, statuses = { require("overseer.constants").STATUS.SUCCESS } },
       "unique",
       "defaults_without_notification",

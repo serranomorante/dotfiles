@@ -640,7 +640,10 @@ end
 function M.write_password(opts)
   if not vim.g.pass then return end
   opts = opts or { delay = 100 }
-  vim.defer_fn(function() M.feedkeys(string.format("%s<ENTER>", vim.g.pass), "t") end, opts.delay)
+  vim.defer_fn(function()
+    vim.cmd.startinsert()
+    M.feedkeys(string.format("%s<ENTER>", vim.g.pass), "t")
+  end, opts.delay)
 end
 
 ---Get a uuid
