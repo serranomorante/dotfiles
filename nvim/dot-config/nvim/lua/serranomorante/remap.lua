@@ -212,6 +212,7 @@ vim.keymap.set("n", "'0", function()
           name = require("overseer.template.editor-tasks.TASK__nnn_explorer").name,
           params = { startdir = m.file },
         }, function(task)
+          if not task then return end
           utils.force_very_fullscreen_float(task)
           task:subscribe("on_output", utils.dispose_on_window_close)
           task:subscribe("on_complete", utils.close_window_on_exit_0)

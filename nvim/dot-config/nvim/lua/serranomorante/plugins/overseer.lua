@@ -43,7 +43,7 @@ local function keys()
   vim.keymap.set(
     "n",
     "<leader>oa",
-    "<cmd>OverseerQuickAction open float<CR>",
+    "<cmd>OverseerTaskAction<CR>",
     { desc = "Overseer: Run open float action on the most recent task" }
   )
   vim.keymap.set(
@@ -64,6 +64,7 @@ local function keys()
     overseer.run_task(
       { autostart = false, name = nnn_explorer.name, params = { startdir = vim.fn.expand("%:p") } },
       function(task)
+        if not task then return end
         utils.force_very_fullscreen_float(task)
         utils.start_insert_mode(task)
         task:subscribe("on_output", utils.dispose_on_window_close)
@@ -75,11 +76,12 @@ local function keys()
 
   local previous_task = nil
   vim.keymap.set("n", "<leader>w", function()
+    if previous_task and previous_task.status == "RUNNING" then
+      overseer.run_action(previous_task, "open float")
+      return
+    end
     overseer.run_task({ autostart = false, name = lazygit.name }, function(task)
-      if previous_task and previous_task.status == "RUNNING" then
-        overseer.run_action(previous_task, "open float")
-        return
-      end
+      if not task then return end
       previous_task = task
       utils.force_very_fullscreen_float(task)
       utils.start_insert_mode(task)
@@ -176,7 +178,14 @@ local function keys()
             require("overseer").run_task({
               name = playbooks.name,
               params = { task_id = choice, pass = vim.g.pass },
-            }, function(task) utils.force_very_fullscreen_float(task) end)
+            }, function(task)
+              if not task then return end
+              utils.force_very_fullscreen_float(task)
+              vim.defer_fn(function()
+                overseer.run_action(task, "open float")
+                utils.write_password()
+              end, 500)
+            end)
           end
         end)
       end,
@@ -187,7 +196,6 @@ end
 local function opts()
   ---@type overseer.SetupOpts
   return {
-    strategy = "terminal",
     output = {
       use_terminal = true,
       preserve_output = true,
@@ -217,10 +225,12 @@ local function opts()
       ["Restart playbook"] = {
         desc = "Restart playbook",
         condition = function(task) return task.name:match("^run%-ansible%-playbook") end,
-        ---@param task overseer.Task
         run = function(task)
-          utils.write_password({ delay = 1000 })
           require("overseer").run_action(task, "restart")
+          vim.defer_fn(function()
+            require("overseer").run_action(task, "open float")
+            utils.write_password()
+          end, 500)
         end,
       },
       ["Quit & save ffmpeg recording"] = {
@@ -228,7 +238,6 @@ local function opts()
         condition = function(task)
           return task.name:match("^ffmpeg") and task.status == require("overseer.constants").STATUS.RUNNING
         end,
-        ---@param task overseer.Task
         run = function(task)
           require("overseer").run_action(task, "open float")
           utils.feedkeys("q", "t")
