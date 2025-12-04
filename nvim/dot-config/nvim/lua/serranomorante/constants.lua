@@ -66,6 +66,7 @@ M.CWD = vim.fn.getcwd()
 local ok, binaries = pcall(require, "serranomorante.binaries")
 M.BINARIES = ok and binaries or {}
 
+---@type overseer.JobstartStrategyOpts
 M.fullscreen_jobstart_opts = {
   "jobstart",
   wrap_opts = {

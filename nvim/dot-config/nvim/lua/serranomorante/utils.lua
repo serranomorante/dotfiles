@@ -688,6 +688,7 @@ function M.force_very_fullscreen_float(task)
     callback = function(args)
       if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) ~= "terminal" then return end
       if is_preview(args.buf) then return end
+      pcall(vim.fn.jobresize, task.job_id, vim.o.columns, vim.o.lines - 3)
       vim.cmd.wincmd({ "|" })
     end,
   })

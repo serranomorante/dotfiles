@@ -1,13 +1,12 @@
-diff --git a/lua/overseer/layout.lua b/lua/overseer/layout.lua
-index 8ac50a4..db4a621 100644
---- a/lua/overseer/layout.lua
-+++ b/lua/overseer/layout.lua
-@@ -19,7 +19,7 @@ M.get_editor_width = function()
- end
+diff --git a/lua/overseer/strategy/jobstart.lua b/lua/overseer/strategy/jobstart.lua
+index 3007710..72e2f43 100644
+--- a/lua/overseer/strategy/jobstart.lua
++++ b/lua/overseer/strategy/jobstart.lua
+@@ -321,6 +321,7 @@ function JobstartStrategy:start(task)
+   })
  
- M.get_editor_height = function()
--  local editor_height = vim.o.lines - vim.o.cmdheight
-+  local editor_height = vim.o.lines
-   -- Subtract 1 if tabline is visible
-   if vim.o.showtabline == 2 or (vim.o.showtabline == 1 and #vim.api.nvim_list_tabpages() > 1) then
-     editor_height = editor_height - 1
+   self.job_id = overseer.builtin.jobstart(task.cmd, opts)
++  task.job_id = self.job_id
+ 
+   if self.job_id == 0 then
+     log.error("Invalid arguments for task '%s'", task.name)
