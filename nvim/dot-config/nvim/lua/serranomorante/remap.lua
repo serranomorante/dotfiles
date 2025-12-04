@@ -202,10 +202,50 @@ vim.keymap.set("n", "<leader>tb", function()
   vim.cmd.runtime({ "colors/default.lua", bang = true })
 end, { desc = "Reload colors/default.lua" })
 
+vim.keymap.set("n", "<A-'>", function()
+  local marks = vim.tbl_filter(
+    ---@param item vim.fn.getmarklist.ret.item
+    function(item) return not vim.list_contains(constants.NUMBERED_MARKS, item.mark) end,
+    vim.fn.getmarklist()
+  )
+  vim.ui.select(marks, {
+    prompt = "Go to mark",
+    ---@param item vim.fn.getmarklist.ret.item
+    format_item = function(item)
+      return string.format("%s | %s", constants.GLOBAL_MARKS[item.mark] or item.mark, item.file)
+    end,
+  }, function(choice)
+    vim.cmd.normal({ "`" .. choice.mark:sub(2), bang = true })
+    vim.cmd.normal({ "zz", bang = true })
+    vim.notify(string.format("[marks] go to mark: %s", constants.GLOBAL_MARKS[choice.mark] or choice.mark))
+  end)
+end, { desc = "[marks] Go to mark" })
+
+vim.keymap.set("n", "<A-l>", function()
+  vim.ui.select(vim.tbl_keys(constants.GLOBAL_MARKS), {
+    prompt = "Set a mark",
+    ---@param item string
+    format_item = function(item)
+      local has_marks = vim.tbl_count(vim.tbl_filter(
+        ---@param mark vim.fn.getmarklist.ret.item
+        function(mark) return mark.mark == item end,
+        vim.fn.getmarklist()
+      )) > 0
+      return string.format("%s %s", has_marks and " " or "", constants.GLOBAL_MARKS[item] or item)
+    end,
+  }, function(choice)
+    vim.cmd.normal({ "m" .. choice:sub(2), bang = true })
+    vim.notify(string.format("[marks] new mark: %s", constants.GLOBAL_MARKS[choice] or choice))
+  end)
+end, { desc = "[marks] set a mark" })
+
 vim.keymap.set("n", "'0", function()
-  local numbered_marks = { "'0", "'1", "'2", "'3", "'4", "'5", "'6", "'7", "'8", "'9" }
   for _, m in ipairs(vim.fn.getmarklist()) do
-    if vim.list_contains(numbered_marks, m.mark) and utils.file_inside_cwd(m.file) and not utils.cwd_is_home() then
+    if
+      vim.list_contains(constants.NUMBERED_MARKS, m.mark)
+      and utils.file_inside_cwd(m.file)
+      and not utils.cwd_is_home()
+    then
       if utils.is_directory(m.file) then
         require("overseer").run_task({
           autostart = false,

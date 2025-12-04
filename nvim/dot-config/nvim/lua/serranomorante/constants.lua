@@ -74,4 +74,34 @@ M.fullscreen_jobstart_opts = {
   },
 }
 
+M.NUMBERED_MARKS = { "'0", "'1", "'2", "'3", "'4", "'5", "'6", "'7", "'8", "'9" }
+M.GLOBAL_MARKS = {
+  ["'A"] = nil,
+  ["'B"] = "me:finance",
+  ["'C"] = "me:health",
+  ["'D"] = "me:youtube",
+  ["'E"] = "me:ideas 1",
+  ["'F"] = "me:ideas 2",
+  ["'G"] = "me:todos 1",
+  ["'H"] = "me:todos 2",
+  ["'I"] = nil,
+  ["'J"] = "code:step-1",
+  ["'K"] = "code:step-2",
+  ["'L"] = nil,
+  ["'M"] = "me:learning 1",
+  ["'N"] = "me:learning 2",
+  ["'O"] = nil,
+  ["'P"] = "code:issues 1",
+  ["'Q"] = "code:issues 2",
+  ["'R"] = nil,
+  ["'S"] = "me:journal 1",
+  ["'T"] = "me:journal 2",
+  ["'U"] = "me:journal 3",
+  ["'V"] = "code:important 1",
+  ["'W"] = "code:important 2",
+  ["'X"] = "code:watch-later 1",
+  ["'Y"] = "code:watch-later 2",
+  ["'Z"] = nil,
+}
+
 return M

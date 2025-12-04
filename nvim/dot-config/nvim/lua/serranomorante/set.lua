@@ -1,4 +1,5 @@
 local utils = require("serranomorante.utils")
+local constants = require("serranomorante.constants")
 
 vim.g.mapleader = " "
 
@@ -10,6 +11,9 @@ local undodir = utils.join_paths(cache_path, "undodir")
 local shadadir = utils.join_paths(cache_path, "shadadir")
 if not utils.is_directory(undodir) then vim.fn.mkdir(undodir, "p") end
 if not utils.is_directory(shadadir) then vim.fn.mkdir(shadadir, "p") end
+
+vim.opt.exrc = true
+vim.opt.secure = true
 
 vim.go.viewoptions = vim.o.viewoptions:gsub(",curdir", "")
 
@@ -26,7 +30,7 @@ vim.o.swapfile = false
 vim.go.backup = false
 
 vim.go.shada = "'500,<0,%0,:1000,/1000,s500,h"
-vim.go.shadafile = utils.join_paths(shadadir, "nvim.shada")
+vim.go.shadafile = utils.join_paths(shadadir, vim.fn.sha256(constants.CWD):sub(1, 8) .. ".nvim.shada")
 vim.go.undodir = undodir
 vim.o.undofile = true
 vim.go.jumpoptions = "stack,view"
