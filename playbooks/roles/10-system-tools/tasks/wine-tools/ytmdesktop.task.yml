@@ -11,5 +11,5 @@
   environment:
     WINEPREFIX: "{{ arch_ytmdesktop_wine_setup.wine_prefix }}"
   args:
-    creates: "{{ ansible_env.HOME }}/external/.wine-win64-ytmdesktop/drive_c/users/serranomorante/AppData/Roaming/YouTube Music Desktop App/config.json"
+    creates: "{{ arch_ytmdesktop_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/YouTube Music Desktop App/config.json"
   when: is_x_display_session
