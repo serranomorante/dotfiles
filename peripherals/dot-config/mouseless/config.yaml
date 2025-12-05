@@ -28,10 +28,6 @@ layers:
     bindings:
       # activate mouse layer
       leftctrl+rightctrl: layer mouse
-      kpasterisk+k1: "exec ~/bin/kitty &"
-      kpasterisk+k2: "exec ~/bin/kitty-dmenu &"
-      kpasterisk+k3: "exec ~/bin/kitty-dmenu-currently-opened &"
-      kpasterisk+k4: "exec dunstctl history-pop &"
       # a layer for mouse movement
   - name: mouse
     # when true, keys that are not mapped keep their original meaning

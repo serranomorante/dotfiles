@@ -1,0 +1,15 @@
+#!/bin/bash
+# {{ ansible_managed }}
+set -e
+
+TARGET_USER="aaaa"
+TARGET_UID=1000
+
+# Pass all arguments to the su command
+exec su - "$TARGET_USER" -c "
+    DISPLAY=:0 \
+    XAUTHORITY='{{ ansible_env.HOME }}/.Xauthority' \
+    DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus' \
+    SSH_AUTH_SOCK='/run/user/1000/ssh-agent.socket' \
+    XDG_RUNTIME_DIR='/run/user/1000' \
+    $*"

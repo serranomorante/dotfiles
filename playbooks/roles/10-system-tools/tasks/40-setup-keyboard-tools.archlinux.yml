@@ -59,6 +59,13 @@
     replace: "\\1=false"
   ignore_errors: true
 
+- name: "[archlinux] Keyboard peripheral: setup run as user script"
+  become: true
+  ansible.builtin.template:
+    src: run_as_user
+    dest: /usr/local/bin/run_as_user
+    mode: "755"
+
 - name: "[archlinux] Keyboard peripheral: setup keyd default.conf"
   become: true
   ansible.builtin.template:
