@@ -21,7 +21,9 @@
   become: true
   ansible.builtin.package:
     state: present
-    name: picom
+    name:
+      - picom
+      - wmctrl
   notify: "10-system-tools : handler_ensure_compositor_service"
 
 - name: "[archlinux] Compositor: clone picom shaders"
