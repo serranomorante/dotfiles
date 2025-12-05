@@ -2,7 +2,7 @@
 - name: "[archlinux] Wine tools: get sws extension"
   ansible.builtin.get_url:
     url: https://www.sws-extension.org/download/featured/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe
-    dest: ~/external/Downloads
+    dest: "{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe"
     mode: "755"
   register: var_new_sws_extension_version_downloaded
 

@@ -2,7 +2,7 @@
 - name: "[archlinux] Wine tools: get gather town"
   ansible.builtin.get_url:
     url: https://downloads.gather.town/desktop/Gather-{{ arch_gather_wine_setup.version }}-Setup.exe
-    dest: ~/Downloads
+    dest: "{{ arch_gather_wine_setup.backup_path }}/"
     mode: "755"
 
 - name: "[archlinux] Wine tools: install gather town"

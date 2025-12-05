@@ -11,11 +11,17 @@
     state: absent
 
 - name: "[archlinux] Setup video tools: download davinci resolve"
-  ansible.builtin.command: ~/bin/nvim --headless -c "autocmd User CodeCompanionChatDone normal ZQ" -c "sleep 2" -c "CodeCompanion /download-davinci"
+  ansible.builtin.command: >
+    ~/bin/nvim --headless -c "autocmd User CodeCompanionChatDone normal ZQ" -c "sleep 2" -c "CodeCompanion /download-davinci" -c "normal ZQ"
   register: var_download_davinci_result
   args:
     creates: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
   when: is_x_display_session
+
+- name: sldkds
+  ansible.builtin.stat:
+    path: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+  register: var_stat_davinci_zip
 
 - name: "[archlinux] Setup video tools: wait for davinci to download"
   ansible.builtin.wait_for:
@@ -24,14 +30,14 @@
     delay: 5
     timeout: 600
   timeout: 0
-  when: (var_download_davinci_result | default({})).changed and is_x_display_session
+  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: move davinci resolve zip to expected location"
   ansible.builtin.command: mv DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip ~/apps/video-tools/davinci-resolve/
   args:
     chdir: ~/Downloads
     creates: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
-  when: (var_download_davinci_result | default({})).changed and is_x_display_session
+  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: download aur package"
   ansible.builtin.unarchive:
@@ -39,6 +45,7 @@
     dest: ~/apps/video-tools/
     remote_src: true
     creates: ~/apps/video-tools/davinci-resolve/PKGBUILD
+  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: ensure packages"
   become: true
@@ -98,14 +105,18 @@
     chdir: ~/apps/video-tools/davinci-resolve
   register: davinci_resolve_deps
   changed_when: false
-  when: is_x_display_session
+  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: install davinci-resolve deps"
   become: true
   ansible.builtin.package:
     state: present
     name: "{{ davinci_resolve_deps.stdout | regex_findall('(.*)\n') }}"
-  when: davinci_resolve_deps is success and is_x_display_session
+  when:
+    - (var_download_davinci_result | default({})).changed
+    - is_x_display_session
+    - var_stat_davinci_zip.stat.exists
+    - davinci_resolve_deps is success
 
 - name: "[archlinux] Setup video tools: install davinci-resolve"
   become: true
@@ -115,7 +126,11 @@
     name: davinci-resolve
     state: latest
     local_pkgbuild: ~/apps/video-tools/davinci-resolve
-  when: var_download_davinci_result.changed and is_x_display_session
+  when:
+    - (var_download_davinci_result | default({})).changed
+    - is_x_display_session
+    - var_stat_davinci_zip.stat.exists
+    - davinci_resolve_deps is success
   timeout: 0
 
 - name: "[archlinux] Setup video tools: remove faulty wine .dekstop"

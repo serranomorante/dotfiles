@@ -252,3 +252,6 @@
   changed_when: true
   notify:
     - handler_ensure_brave_desktop_file
+
+- name: flush_handlers
+  ansible.builtin.meta: flush_handlers

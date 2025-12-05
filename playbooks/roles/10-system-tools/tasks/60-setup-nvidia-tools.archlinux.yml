@@ -6,7 +6,6 @@
       - nvidia-lts
       - nvidia-prime
       - nvidia-settings
-      - nvidia-prime-rtd3pm
       - nvidia-utils
       - lib32-nvidia-utils
   when: is_x_display_session

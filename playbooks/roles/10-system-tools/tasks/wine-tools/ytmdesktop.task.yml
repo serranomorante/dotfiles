@@ -2,7 +2,7 @@
 - name: "[archlinux] Wine tools: get ytmdesktop"
   ansible.builtin.get_url:
     url: https://github.com/ytmdesktop/ytmdesktop/releases/download/v{{ arch_ytmdesktop_wine_setup.version }}/YouTube.Music.Desktop.App-{{ arch_ytmdesktop_wine_setup.version }}.Setup.exe
-    dest: ~/Downloads
+    dest: "{{ arch_ytmdesktop_wine_setup.backup_path }}/YouTube.Music.Desktop.App-{{ arch_ytmdesktop_wine_setup.version }}.Setup.exe"
     mode: "755"
 
 - name: "[archlinux] Wine tools: install ytmdesktop"

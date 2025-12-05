@@ -34,6 +34,7 @@
       - realtime-privileges
       - base-devel
       - cpupower
+      - helvum
 
 - name: "[archlinux] Setup audio tools: ensure user services"
   ansible.builtin.systemd_service:

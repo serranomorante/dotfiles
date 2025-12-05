@@ -64,3 +64,4 @@
   ansible.builtin.command: makepkg -si --noconfirm
   args:
     chdir: /tmp/yay
+    creates: /usr/bin/yay

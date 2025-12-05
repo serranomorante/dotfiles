@@ -7,6 +7,7 @@
       - xf86-input-wacom
       - usbutils
       - gimp
+      - flameshot
 
 - name: "[archlinux] Graphic tablet peripheral: ensure tools (using aur)"
   become: true

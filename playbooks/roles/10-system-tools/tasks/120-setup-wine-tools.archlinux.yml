@@ -83,9 +83,12 @@
 
 - name: "[archlinux] Wine tools: ensure external Downloads folder"
   ansible.builtin.file:
-    path: ~/external/Downloads
+    path: "{{ item }}"
     state: directory
-    mode: "750"
+    mode: "755"
+  loop:
+    - ~/Downloads
+    - ~/external/Downloads
 
 - name: force handler
   ansible.builtin.command: echo
