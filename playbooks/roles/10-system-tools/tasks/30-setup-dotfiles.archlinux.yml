@@ -24,6 +24,7 @@
     - ~/.config/kscreenlockerrc
     - ~/.config/ktrashrc
     - ~/.config/kiorc
+    - ~/.config/kded5rc
     - ~/.config/kglobalshortcutsrc
     - ~/.config/plasma-org.kde.plasma.desktop-appletsrc
     - ~/.bash_profile
