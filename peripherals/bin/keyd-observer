@@ -1,0 +1,37 @@
+#!/usr/bin/env sh
+
+# https://unix.stackexchange.com/questions/152310/how-to-correctly-start-an-application-from-a-shell
+
+enter_mouseless_mode=leftcontrol+rightcontrol
+leave_mouseless_mode=leftalt+rightalt
+
+keyd listen | while read x; do
+    case "$x" in
+    +signal_escape)
+        [ -n "$warpd_pid" ] && kill $warpd_pid >/dev/null 2>&1
+        ;;
+
+    +signal_open_warpd_overlay)
+        keyd do $leave_mouseless_mode &
+        ( (warpd --config ~/.config/warpd/config --hint --oneshot --foreground && keyd do $enter_mouseless_mode && warpd_pid="") >/dev/null 2>&1 &)
+        warpd_pid=$(pgrep -f "warpd")
+        ;;
+
+    +signal_type_from_clipboard)
+        keyd do $leave_mouseless_mode &
+        xdotool type --clearmodifiers "$(xclip -selection clipboard -o | head -c 20)" &
+        ;;
+
+    +signal_open_kitty)
+        systemd-run --user ~/bin/kitty
+        ;;
+
+    +signal_open_kitty_dmenu)
+        systemd-run --user ~/bin/kitty-dmenu
+        ;;
+
+    +signal_open_kitty_dmenu_recents)
+        systemd-run --user ~/bin/kitty-dmenu-currently-opened
+        ;;
+    esac
+done

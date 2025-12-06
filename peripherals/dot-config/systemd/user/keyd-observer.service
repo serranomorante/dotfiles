@@ -1,0 +1,9 @@
+[Unit]
+Description=Keyd observer
+After=plasma-workspace.target
+
+[Service]
+ExecStart=%h/bin/keyd-observer
+
+[Install]
+WantedBy=plasma-workspace.target
