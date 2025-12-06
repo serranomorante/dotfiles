@@ -195,3 +195,12 @@ vim.api.nvim_create_autocmd("VimEnter", {
     if utils.nvim_started_without_args() and not utils.cwd_is_home() then vim.cmd.normal({ "'0" }) end
   end),
 })
+
+vim.api.nvim_create_autocmd("TermOpen", {
+  desc = "Apply some term only configurations",
+  group = general_settings_group,
+  callback = function()
+    vim.keymap.set("t", "<Esc>", "<C-\\><C-n>", { desc = "Use `Esc` to exit terminal mode (go into normal mode)" })
+    vim.keymap.set("n", "q", "<cmd>close<CR>", { desc = "Use q to close terminal window (from normal mode)" })
+  end,
+})
