@@ -142,6 +142,9 @@
     - "10-system-tools : handler_ensure_mouseless_udev_rules"
     - "10-system-tools : handler_link_mouseless_binary"
 
+- name: flush_handlers
+  ansible.builtin.meta: flush_handlers
+
 - name: "[archlinux] Keyboard peripheral: clone warpd"
   ansible.builtin.git:
     repo: https://github.com/rvaiya/warpd
