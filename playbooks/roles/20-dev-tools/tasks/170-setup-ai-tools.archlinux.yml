@@ -65,7 +65,8 @@
   loop: "{{ var_gpg_file_exists.results }}"
 
 - name: "[archlinux] Setup ai tools: register figma api key"
-  ansible.builtin.shell: gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt ~/secrets/mcp-cf-figma.gpg 2>/dev/null
+  ansible.builtin.shell: kwallet-query --folder mcp- --read-password {{ item.borg_repo | basename }} kdewallet
+  gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt ~/secrets/mcp-cf-figma.gpg 2>/dev/null
   changed_when: true
   when: fact_stat_gpg_files['~/secrets/mcp-cf-figma.gpg']
   register: mcp_server_figma_key

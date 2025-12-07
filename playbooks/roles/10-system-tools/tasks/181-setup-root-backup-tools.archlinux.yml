@@ -18,7 +18,6 @@
         owner: root
       vars:
         borg_repo: "{{ item.borg_repo }}"
-        borg_pass: "{{ item.encrypted_passphrase_file }}"
         files: "{{ item.files }}"
       loop: "{{ archlinux_borg_root_repos_env }}"
 

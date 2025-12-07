@@ -14,26 +14,12 @@
     validate: visudo -cf %s
 
 - block:
-    - name: "[archlinux] Setup backup tools: check files available"
-      ansible.builtin.stat:
-        path: ~/secrets/{{ item.pass_file }}
-      loop: "{{ archlinux_borg_repos_env }}"
-      register: var_stat_gpg_files
-
-    - name: "[archlinux] Setup backup tools: set fact_stat_gpg_files"
-      ansible.builtin.set_fact:
-        fact_stat_gpg_files: "{{ fact_stat_gpg_files | default({}) | combine({file: item.stat.exists}) }}"
-      vars:
-        file: "{{ item.item.pass_file }}"
-      loop: "{{ var_stat_gpg_files.results }}"
-
     - name: "[archlinux] Setup backup tools: init borg repos"
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.repo }}'
       environment:
         BORG_PASSCOMMAND: gpg --decrypt {{ ansible_env.HOME }}/secrets/{{ item.pass_file }}
       loop: "{{ archlinux_borg_repos_env }}"
       changed_when: false
-      when: fact_stat_gpg_files[item.pass_file]
       register: result
 
     - name: "[archlinux] Setup backup tools: create backup scripts from template"
@@ -43,9 +29,7 @@
         mode: "744"
       vars:
         borg_repo: "{{ item.repo }}"
-        borg_pass: "{{ item.pass_file }}"
         files: "{{ item.files }}"
-      when: fact_stat_gpg_files[item.pass_file]
       loop: "{{ archlinux_borg_repos_env }}"
 
     - name: "[archlinux] Setup backup tools: ensure borg backup timer"
@@ -84,7 +68,6 @@
       environment:
         BORG_PASSCOMMAND: gpg --decrypt {{ ansible_env.HOME }}/secrets/{{ item.pass_file }}
       changed_when: false
-      when: fact_stat_gpg_files[item.pass_file]
       loop: "{{ archlinux_borg_repos_env }}"
 
     - name: "[archlinux] Setup backup tools: register timestamp"
