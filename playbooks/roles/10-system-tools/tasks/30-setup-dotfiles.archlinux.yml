@@ -45,7 +45,6 @@
   ansible.builtin.command: >
     stow --dotfiles --no-folding
     dunst
-    gnupg
     lazygit
     nvim
     peripherals

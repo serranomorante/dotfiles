@@ -120,6 +120,7 @@
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP GNUGP"
     dest: ~/dotfiles/gnupg/dot-gnupg/gpg-agent.conf
     insertafter: "EOF"
+    create: true
     mode: "700"
     block: |
       pinentry-program {{ pinentry_tty_path.stdout }}

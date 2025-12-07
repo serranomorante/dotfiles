@@ -117,20 +117,16 @@
     - { name: NetworkManager-wait-online.service, state: stopped, enabled: false, masked: true }
 
 - name: "[archlinux] Setup desktop: register pinentry"
-  ansible.builtin.command: which pinentry-tty
-  register: var_pinentry_tty_path
+  # Use pinentry-qt on desktop to store passwords in kwallet
+  ansible.builtin.command: which pinentry-qt
+  register: var_pinentry_path
   changed_when: false
 
-- name: "[archlinux] Setup desktop: setup gnugp"
-  ansible.builtin.blockinfile:
-    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP GNUGP"
-    insertafter: "EOF"
-    dest: ~/dotfiles/gnupg/dot-gnupg/gpg-agent.conf
+- name: "[archlinux] Setup desktop: ensure gpg-agent.conf"
+  ansible.builtin.template:
+    src: gpg-agent.conf
+    dest: ~/.gnupg/gpg-agent.conf
     mode: "700"
-    block: |
-      pinentry-program {{ var_pinentry_tty_path.stdout }}
-      default-cache-ttl 34560000
-      max-cache-ttl 34560000
 
 - name: "[archlinux] Setup desktop: ignore packages from pacman"
   become: true

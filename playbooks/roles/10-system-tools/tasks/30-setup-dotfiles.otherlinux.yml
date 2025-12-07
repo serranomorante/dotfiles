@@ -4,11 +4,3 @@
     pkg install -y
     stow
   changed_when: false
-
-- name: "[otherlinux] Dotfiles: apply stow"
-  ansible.builtin.shell: >
-    stow --dotfiles
-    gnupg
-  args:
-    chdir: ~/dotfiles
-  changed_when: false
