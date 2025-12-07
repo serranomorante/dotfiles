@@ -56,3 +56,42 @@
   become: true
   community.general.ufw:
     state: enabled
+
+- name: "[archlinux] Setup security tools: get nvim keyrings"
+  ansible.builtin.shell: >
+    nvim --headless +'lua =io.stdout:write(vim.json.encode(require("serranomorante.constants").KEYRINGS) .. "\n")' +q 2>/dev/null
+  changed_when: false
+  register: var_nvim_keyrings
+
+- name: "[archlinux] Setup security tools: set keyrings fact"
+  ansible.builtin.set_fact:
+    keyrings: "{{ (keyrings | default([])) + ((var_nvim_keyrings.stdout | from_json).values() | list) }}"
+
+- name: "[archlinux] Setup security tools: set borg keyrings facts"
+  ansible.builtin.set_fact:
+    keyrings: "{{ (keyrings | default([])) + (item | map(attribute='keyrings')) }}"
+  loop:
+    - "{{ archlinux_borg_repos_env }}"
+    - "{{ archlinux_borg_root_repos_env }}"
+
+- name: "[archlinux] Setup security tools: set dev-tools keyrings facts"
+  ansible.builtin.set_fact:
+    keyrings: "{{ keyrings | default([]) + [item.keyrings] }}"
+  loop:
+    - "{{ figma_mcp_server_setup }}"
+    - "{{ figma_mcp_commentary_server_setup }}"
+    - "{{ playwright_mcp_server_setup }}"
+
+- name: "[archlinux] Setup security tools: stat setup-kwallet"
+  ansible.builtin.stat:
+    path: ../../../../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/templates/setup-kwallet
+  register: var_stat_setup_kwallet
+
+- name: "[archlinux] Setup security tools: setup-kwallet passwords"
+  ansible.builtin.template:
+    src: ../../../../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/templates/setup-kwallet
+    dest: ~/bin/setup-kwallet
+    mode: "755"
+  vars:
+    keyrings: "{{ keyrings }}"
+  when: var_stat_setup_kwallet.stat.exists

@@ -17,7 +17,7 @@
     - name: "[archlinux] Setup backup tools: init borg repos"
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.repo }}'
       environment:
-        BORG_PASSCOMMAND: gpg --decrypt {{ ansible_env.HOME }}/secrets/{{ item.pass_file }}
+        BORG_PASSCOMMAND: kwallet-query --folder {{ item.keyrings.folder }} --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }}
       loop: "{{ archlinux_borg_repos_env }}"
       changed_when: false
       register: result
@@ -29,6 +29,7 @@
         mode: "744"
       vars:
         borg_repo: "{{ item.repo }}"
+        keyrings: "{{ item.keyrings }}"
         files: "{{ item.files }}"
       loop: "{{ archlinux_borg_repos_env }}"
 
@@ -66,7 +67,7 @@
         borg key export "{{ item.repo }}"
         '~/secrets/backup-borg-keyfiles/{{ item.repo | regex_replace("[^A-Za-z0-9]", "_") }}'
       environment:
-        BORG_PASSCOMMAND: gpg --decrypt {{ ansible_env.HOME }}/secrets/{{ item.pass_file }}
+        BORG_PASSCOMMAND: kwallet-query --folder {{ item.keyrings.folder }} --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }}
       changed_when: false
       loop: "{{ archlinux_borg_repos_env }}"
 

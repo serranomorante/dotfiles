@@ -4,7 +4,11 @@
       become: true
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.repo }}'
       environment:
-        BORG_PASSCOMMAND: gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt {{ ansible_env.HOME }}/secrets/{{ item.pass_file }}
+        BORG_PASSCOMMAND: >
+          /usr/local/bin/run_as_user
+            kwallet-query
+            --folder {{ item.keyrings.folder }}
+            --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }} 2>/dev/null
       loop: "{{ archlinux_borg_root_repos_env }}"
       changed_when: false
       register: result
@@ -18,6 +22,7 @@
         owner: root
       vars:
         borg_repo: "{{ item.borg_repo }}"
+        keyrings: "{{ item.keyrings }}"
         files: "{{ item.files }}"
       loop: "{{ archlinux_borg_root_repos_env }}"
 
@@ -56,7 +61,11 @@
         borg key export "{{ item.borg_repo }}"
         '{{ ansible_env.HOME }}/secrets/backup-borg-root-keyfiles/{{ item.borg_repo | regex_replace("[^A-Za-z0-9]", "_") }}'
       environment:
-        BORG_PASSCOMMAND: gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt {{ ansible_env.HOME }}/secrets/{{ item.encrypted_passphrase_file }}
+        BORG_PASSCOMMAND: >
+          /usr/local/bin/run_as_user
+            kwallet-query
+            --folder {{ item.keyrings.folder }}
+            --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }} 2>/dev/null
       changed_when: false
       loop: "{{ archlinux_borg_root_repos_env }}"
 

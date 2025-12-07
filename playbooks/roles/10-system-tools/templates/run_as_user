@@ -2,7 +2,7 @@
 # {{ ansible_managed }}
 set -e
 
-TARGET_USER="aaaa"
+TARGET_USER="{{ ansible_env.USER }}"
 TARGET_UID=1000
 
 # Pass all arguments to the su command
