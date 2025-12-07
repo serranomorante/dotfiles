@@ -49,35 +49,25 @@
     creates: "{{ reaper_mcp_server_setup.repo_path }}/.venv/bin/activate"
     chdir: "{{ reaper_mcp_server_setup.repo_path }}"
 
-- name: "[archlinux] Setup ai tools: set var"
-  ansible.builtin.stat:
-    path: "{{ item }}"
-  register: var_gpg_file_exists
-  loop:
-    - ~/secrets/mcp-cf-figma.gpg
-    - ~/secrets/playwright_mcp_browser_key.gpg
-
-- name: "[archlinux] Setup ai tools: set fact"
-  ansible.builtin.set_fact:
-    fact_stat_gpg_files: "{{ fact_stat_gpg_files | default({}) | combine({file: item.stat.exists}) }}"
-  vars:
-    file: "{{ item.item }}"
-  loop: "{{ var_gpg_file_exists.results }}"
-
 - name: "[archlinux] Setup ai tools: register figma api key"
-  ansible.builtin.shell: kwallet-query --folder mcp- --read-password {{ item.borg_repo | basename }} kdewallet
-  gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt ~/secrets/mcp-cf-figma.gpg 2>/dev/null
+  ansible.builtin.command: kwallet-query --folder {{ folder }} --read-password {{ passkey }} {{ wallet }}
   changed_when: true
-  when: fact_stat_gpg_files['~/secrets/mcp-cf-figma.gpg']
   register: mcp_server_figma_key
   ignore_errors: true
+  vars:
+    folder: "{{ figma_mcp_server_setup.folder }}"
+    passkey: "{{ figma_mcp_server_setup.passkey }}"
+    wallet: "{{ figma_mcp_server_setup.wallet }}"
 
 - name: "[archlinux] Setup ai tools: register playwright_mcp_browser_key"
-  ansible.builtin.shell: gpg --homedir '{{ ansible_env.HOME }}/.gnupg' --decrypt ~/secrets/playwright_mcp_browser_key.gpg 2>/dev/null
+  ansible.builtin.command: kwallet-query --folder {{ folder }} --read-password {{ passkey }} {{ wallet }}
   changed_when: true
-  when: fact_stat_gpg_files['~/secrets/playwright_mcp_browser_key.gpg']
   register: var_playwright_mcp_browser_key
   ignore_errors: true
+  vars:
+    folder: "{{ playwright_mcp_server_setup.folder }}"
+    passkey: "{{ playwright_mcp_server_setup.passkey }}"
+    wallet: "{{ playwright_mcp_server_setup.wallet }}"
 
 - name: "[archlinux] Setup ai tools: create dest folder"
   ansible.builtin.file:

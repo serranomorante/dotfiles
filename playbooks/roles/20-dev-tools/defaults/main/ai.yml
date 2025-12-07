@@ -6,10 +6,18 @@ reaper_mcp_server_setup:
 figma_mcp_server_setup:
   exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/figma-developer-mcp"
   personal_key: "{{ (mcp_server_figma_key | default({})).stdout | default(None) }}"
+  keyrings:
+    folder: dev-tools
+    passkey: mcp-cf-figma
+    wallet: kdewallet
 
 figma_mcp_commentary_server_setup:
   exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/mcp-figma-comment-summary"
   personal_key: "{{ (mcp_server_figma_key | default({})).stdout | default(None) }}"
+  keyrings:
+    folder: dev-tools
+    passkey: mcp-cf-figma
+    wallet: kdewallet
 
 chrome_devtools_mcp_server_setup:
   exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/chrome-devtools-mcp"
@@ -17,6 +25,10 @@ chrome_devtools_mcp_server_setup:
 playwright_mcp_server_setup:
   exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/mcp-server-playwright"
   auth_key: "{{ (var_playwright_mcp_browser_key | default({})).stdout | default(None) }}"
+  keyrings:
+    folder: dev-tools
+    passkey: playwright_mcp_browser_key
+    wallet: kdewallet
 
 context7_mcp_server_setup:
   exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/context7-mcp"
