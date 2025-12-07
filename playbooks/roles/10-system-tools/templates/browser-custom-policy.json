@@ -2,6 +2,8 @@
   "SystemShortcutBehavior": 3,
   "ShortcutCustomizationAllowed": true,
   "HomepageIsNewTabPage": false,
+  "DefaultSearchProviderSearchURL": "https://www.google.com/search?q={searchTerms}",
+  "DefaultSearchProviderEnabled": true,
   "ExtensionSettings": {
     "{{ local_extension_show_tab_numbers }}": {
       "allowed_permissions": [
