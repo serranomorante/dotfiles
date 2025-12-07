@@ -114,23 +114,6 @@
     path: ~/external/repos/h/.tox
     state: absent
 
-- name: "[archlinux] Setup HPI - ensure h pip requirements"
-  # helps us to quickly verify if we have issues with our package versions
-  ansible.builtin.shell: >
-    source ~/.bashrc &&
-    sg docker -c "make requirements --always-make args='--upgrade-package pip-tools'"
-  register: ensure_h_requirements_result
-  args:
-    chdir: ~/external/repos/h
-  environment:
-    PYENV_VERSION: "{{ var_h_python_version.stdout }}"
-    VIRTUALENV_PIP: "24.0"
-  changed_when: "'commands succeeded' in ensure_h_requirements_result.stdout"
-  failed_when: >
-    ensure_h_requirements_result.rc not in [0, 2] or
-    'commands succeeded' not in ensure_h_requirements_result.stdout
-  timeout: 0
-
 - name: "[archlinux] Setup HPI - ensure h services"
   ansible.builtin.shell: >
     source ~/.bashrc &&
