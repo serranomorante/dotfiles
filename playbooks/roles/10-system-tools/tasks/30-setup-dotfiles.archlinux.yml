@@ -26,6 +26,8 @@
     - ~/.config/kiorc
     - ~/.config/kded5rc
     - ~/.config/kwalletrc
+    - ~/.config/kdedefaults/kdeglobals
+    - ~/.config/kdedefaults/ksplashrc
     - ~/.config/kglobalshortcutsrc
     - ~/.config/plasma-org.kde.plasma.desktop-appletsrc
     - ~/.config/mouseless/config.yaml
