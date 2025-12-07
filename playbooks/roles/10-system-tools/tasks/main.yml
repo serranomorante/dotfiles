@@ -208,10 +208,10 @@
   tags: ["10-181"]
 
 - block:
-    - name: Setup encryption tools
+    - name: Setup security tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
-        - files: 190-setup-encryption-tools.{{ user_os }}.yml
+        - files: 190-setup-security-tools.{{ user_os }}.yml
           skip: true
       when: "user_os in ['archlinux']"
       loop_control:

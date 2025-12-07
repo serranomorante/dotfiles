@@ -1,0 +1,53 @@
+---
+- name: "[archlinux] Setup security tools: ensure packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - kwallet
+      - kwalletmanager
+      - ufw
+
+- name: "[archlinux] Setup security tools: enable services"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: ssh-agent.service
+    enabled: true
+    masked: false
+
+# https://wiki.archlinux.org/title/SSH_keys#Start_ssh-agent_with_systemd_user
+- name: "[archlinux] Setup security tools: setup shell startup scripts"
+  ansible.builtin.blockinfile:
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP ENCRYPTION"
+    dest: "{{ item.script }}"
+    create: true
+    mode: "744"
+    block: |
+      {% if 'dot-bashrc' in item.script %}
+      export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
+      {% endif %}
+  loop:
+    - { script: ~/dotfiles/home/dot-bashrc }
+
+- name: "[archlinux] Setup security tools: default deny incoming"
+  become: true
+  community.general.ufw:
+    default: deny
+    direction: incoming
+
+- name: "[archlinux] Setup security tools: default allow outgoing"
+  become: true
+  community.general.ufw:
+    default: allow
+    direction: outgoing
+
+- name: "[archlinux] Setup security tools: setup ufw"
+  # From: /etc/ufw/applications.d
+  become: true
+  community.general.ufw:
+    state: enabled
+    rule: allow
+    name: "{{ item }}"
+  loop:
+    - SSH
+    - WWW Full
