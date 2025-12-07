@@ -15,14 +15,14 @@
     "Figma": {
       "command": "{{ figma_mcp_server_setup.exe_path }}",
       "args": [
-        "--figma-api-key={{ figma_mcp_server_setup.personal_key }}",
+        "--figma-api-key={{ (mcp_server_figma_key | default({})).stdout | default(None) }}",
         "--stdio"
       ]
     },
     "figma-comments": {
       "command": "{{ figma_mcp_commentary_server_setup.exe_path }}",
       "env": {
-        "FIGMA_ACCESS_TOKEN": "{{ figma_mcp_commentary_server_setup.personal_key }}"
+        "FIGMA_ACCESS_TOKEN": "{{ (mcp_server_figma_key | default({})).stdout | default(None) }}"
       }
     },
     "chrome-devtools": {
@@ -46,7 +46,7 @@
         "chromium"
       ],
       "env": {
-        "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "{{ playwright_mcp_server_setup.auth_key }}"
+        "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "{{ (var_playwright_mcp_browser_key | default({})).stdout | default(None) }}"
       }
     }
   }

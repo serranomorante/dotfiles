@@ -83,9 +83,9 @@
   register: var_playwright_mcp_browser_key
   ignore_errors: true
   vars:
-    folder: "{{ playwright_mcp_server_setup.folder }}"
-    passkey: "{{ playwright_mcp_server_setup.passkey }}"
-    wallet: "{{ playwright_mcp_server_setup.wallet }}"
+    folder: "{{ playwright_mcp_server_setup.keyrings.folder }}"
+    passkey: "{{ playwright_mcp_server_setup.keyrings.passkey }}"
+    wallet: "{{ playwright_mcp_server_setup.keyrings.wallet }}"
 
 - name: "[archlinux] Setup browser tools: create playwright_mcp_tempdir"
   ansible.builtin.tempfile:

@@ -105,4 +105,27 @@ M.GLOBAL_MARKS = {
   ["'Z"] = nil,
 }
 
+M.KEYRINGS = {
+  anthropic = {
+    folder = "dev-tools",
+    passkey = "anthropic-api-key",
+    wallet = "kdewallet"
+  },
+  openai = {
+    folder = "dev-tools",
+    passkey = "openai-api-key",
+    wallet = "kdewallet"
+  },
+  gemini = {
+    folder = "dev-tools",
+    passkey = "gemini-api-key",
+    wallet = "kdewallet"
+  },
+  davinci = {
+    folder = "creative-tools",
+    passkey = "davinci-resolve-blackmagic-pass",
+    wallet = "kdewallet"
+  }
+}
+
 return M

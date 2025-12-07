@@ -55,9 +55,9 @@
   register: mcp_server_figma_key
   ignore_errors: true
   vars:
-    folder: "{{ figma_mcp_server_setup.folder }}"
-    passkey: "{{ figma_mcp_server_setup.passkey }}"
-    wallet: "{{ figma_mcp_server_setup.wallet }}"
+    folder: "{{ figma_mcp_server_setup.keyrings.folder }}"
+    passkey: "{{ figma_mcp_server_setup.keyrings.passkey }}"
+    wallet: "{{ figma_mcp_server_setup.keyrings.wallet }}"
 
 - name: "[archlinux] Setup ai tools: register playwright_mcp_browser_key"
   ansible.builtin.command: kwallet-query --folder {{ folder }} --read-password {{ passkey }} {{ wallet }}
@@ -65,9 +65,9 @@
   register: var_playwright_mcp_browser_key
   ignore_errors: true
   vars:
-    folder: "{{ playwright_mcp_server_setup.folder }}"
-    passkey: "{{ playwright_mcp_server_setup.passkey }}"
-    wallet: "{{ playwright_mcp_server_setup.wallet }}"
+    folder: "{{ playwright_mcp_server_setup.keyrings.folder }}"
+    passkey: "{{ playwright_mcp_server_setup.keyrings.passkey }}"
+    wallet: "{{ playwright_mcp_server_setup.keyrings.wallet }}"
 
 - name: "[archlinux] Setup ai tools: create dest folder"
   ansible.builtin.file:

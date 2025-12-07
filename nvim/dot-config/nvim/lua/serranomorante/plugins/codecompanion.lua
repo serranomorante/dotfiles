@@ -7,6 +7,16 @@ local M = {}
 
 M.PLUGIN = "codecompanion"
 
+---@param provider "openai"|"gemini"|"anthropic"
+local function api_key_gen(provider)
+  return string.format(
+    "cmd: kwallet-query --folder %s --read-password %s %s",
+    constants.KEYRINGS[provider].folder,
+    constants.KEYRINGS[provider].passkey,
+    constants.KEYRINGS[provider].wallet
+  )
+end
+
 local function init()
   ---Expand 'cc' into 'CodeCompanion' in the command line
   vim.cmd([[cab cc CodeCompanion]])
@@ -109,14 +119,14 @@ local function opts()
         claude_code = function()
           return require("codecompanion.adapters").extend("claude_code", {
             env = {
-              ANTHROPIC_API_KEY = "cmd: gpg --decrypt ~/secrets/anthropic_api_key.gpg 2>/dev/null",
+              ANTHROPIC_API_KEY = api_key_gen("anthropic"),
             },
           })
         end,
         gemini_cli = function()
           return require("codecompanion.adapters").extend("gemini_cli", {
             env = {
-              GEMINI_API_KEY = "cmd: gpg --decrypt ~/secrets/gemini_api_key.gpg 2>/dev/null",
+              GEMINI_API_KEY = api_key_gen("gemini"),
             },
           })
         end,
@@ -125,7 +135,7 @@ local function opts()
         gemini = function()
           return require("codecompanion.adapters").extend("gemini", {
             env = {
-              api_key = "cmd: gpg --decrypt ~/secrets/gemini_api_key.gpg 2>/dev/null",
+              api_key = api_key_gen("gemini"),
             },
           })
         end,
@@ -135,7 +145,7 @@ local function opts()
               stream = true,
             },
             env = {
-              api_key = "cmd: gpg --decrypt ~/openai_api_key.asc 2>/dev/null",
+              api_key = api_key_gen("openai"),
             },
             schema = {
               model = {
@@ -147,7 +157,7 @@ local function opts()
         anthropic = function()
           return require("codecompanion.adapters").extend("anthropic", {
             env = {
-              api_key = "cmd: gpg --decrypt ~/secrets/anthropic_api_key.gpg 2>/dev/null",
+              api_key = api_key_gen("anthropic"),
             },
           })
         end,
