@@ -39,7 +39,7 @@
 
 - name: "[archlinux] Dotfiles: apply stow"
   ansible.builtin.command: >
-    stow --dotfiles
+    stow --dotfiles --no-folding
     dunst
     gnupg
     lazygit
