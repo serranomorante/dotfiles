@@ -98,7 +98,7 @@ local function keys()
 
   vim.keymap.set("n", "<leader>tp", function()
     local lines = {}
-    vim.fn.jobstart("vansible-playbook tools.yml -l localhost --list-tasks", {
+    vim.fn.jobstart("ansible-playbook tools.yml -l localhost --list-tasks", {
       cwd = vim.env.HOME .. "/dotfiles/playbooks",
       on_stdout = function(_, result)
         for _, line in ipairs(result) do

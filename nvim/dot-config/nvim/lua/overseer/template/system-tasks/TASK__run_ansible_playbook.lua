@@ -77,7 +77,7 @@ return {
     if params.pass then vim.g.pass = params.pass end
     return {
       name = task_name .. string.format(" %s", params.task_id),
-      cmd = "vansible-playbook",
+      cmd = "ansible-playbook",
       strategy = constants.fullscreen_jobstart_opts,
       args = args,
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
