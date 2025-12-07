@@ -46,9 +46,13 @@
   # From: /etc/ufw/applications.d
   become: true
   community.general.ufw:
-    state: enabled
     rule: allow
     name: "{{ item }}"
   loop:
     - SSH
     - WWW Full
+
+- name: "[archlinux] Setup security tools: enable ufw"
+  become: true
+  community.general.ufw:
+    state: enabled

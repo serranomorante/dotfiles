@@ -28,6 +28,7 @@
     - ~/.config/kwalletrc
     - ~/.config/kglobalshortcutsrc
     - ~/.config/plasma-org.kde.plasma.desktop-appletsrc
+    - ~/.config/mouseless/config.yaml
     - ~/.bash_profile
     - ~/.bashrc
     - ~/.local/share/applications/wine-protocol-dreamtonics-svstudio2.desktop
