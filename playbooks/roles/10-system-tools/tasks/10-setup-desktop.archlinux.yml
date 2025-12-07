@@ -85,6 +85,13 @@
     state: absent
     name: wacomtablet
 
+- name: "[archlinux] Setup desktop: ensure sddm config folder"
+  become: true
+  ansible.builtin.file:
+    path: /etc/sddm.conf.d
+    state: directory
+    mode: "755"
+
 - name: "[archlinux] Setup desktop: setup sddm files"
   become: true
   ansible.builtin.template:

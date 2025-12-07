@@ -32,7 +32,20 @@
   environment:
     DOWNGRADE_FROM_ALA: "1"
   changed_when: true
+  timeout: 0
   when: "'wine-10.8 (Staging)' not in var_which_wine.stdout"
+
+- name: "[archlinux] Wine tools: ensure wine programs folder"
+  ansible.builtin.file:
+    path: ~/.local/share/applications/wine/Programs/
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Wine tools: ensure .vst3 folder"
+  ansible.builtin.file:
+    path: ~/.vst3
+    state: directory
+    mode: "755"
 
 - name: "[archlinux] Wine tools: ensure wine is installed"
   become: true
