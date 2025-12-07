@@ -25,6 +25,7 @@
     - ~/.config/ktrashrc
     - ~/.config/kiorc
     - ~/.config/kded5rc
+    - ~/.config/kwalletrc
     - ~/.config/kglobalshortcutsrc
     - ~/.config/plasma-org.kde.plasma.desktop-appletsrc
     - ~/.bash_profile

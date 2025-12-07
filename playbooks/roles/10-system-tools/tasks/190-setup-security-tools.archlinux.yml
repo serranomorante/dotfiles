@@ -7,6 +7,7 @@
       - kwallet
       - kwalletmanager
       - ufw
+      - ksshaskpass
 
 - name: "[archlinux] Setup security tools: enable services"
   ansible.builtin.systemd_service:
