@@ -1,0 +1,128 @@
+#!/bin/bash
+# Borg backup wrapper script with kwallet integration
+# Usage: bg -f FOLDER -p PASSKEY -w WALLET -u USER -- BORG_COMMAND
+
+set -euo pipefail # Exit on error, undefined vars, pipe failures
+
+# Default values
+FOLDER=""
+PASSKEY=""
+WALLET=""
+USER=""
+BORG_ARGS=()
+VERBOSE=false
+
+# Function to display usage
+usage() {
+    cat <<EOF
+Usage: $0 -f FOLDER -p PASSKEY -w WALLET -u USER [OPTIONS] -- BORG_COMMAND
+
+Wrapper script for borg backup commands with kwallet password integration.
+
+Required arguments:
+  -f FOLDER     KWallet folder name
+  -p PASSKEY    KWallet password key name
+  -w WALLET     KWallet wallet name
+  -u USER       Username for borg operations
+
+Optional arguments:
+  -v            Enable verbose output
+  -h            Show this help message
+
+Examples:
+  $0 -f backups -p borg-repo -w kdewallet -u john -- borg list /path/to/repo
+  $0 -f backups -p borg-repo -w kdewallet -u john -- borg create /path/to/repo::backup-{now} ~/Documents
+
+EOF
+}
+
+# Function for error messages
+error() {
+    echo "Error: $1" >&2
+    exit 1
+}
+
+# Function for verbose output
+verbose() {
+    if [[ "$VERBOSE" == true ]]; then
+        echo "Info: $1" >&2
+    fi
+}
+
+# Parse command line arguments
+while getopts "f:p:w:u:vh" opt; do
+    case $opt in
+    f) FOLDER="$OPTARG" ;;
+    p) PASSKEY="$OPTARG" ;;
+    w) WALLET="$OPTARG" ;;
+    u) USER="$OPTARG" ;;
+    v) VERBOSE=true ;;
+    h)
+        usage
+        exit 0
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+    esac
+done
+
+# Shift past the options to get the command
+shift $((OPTIND - 1))
+
+# Check if -- separator was used
+if [[ $# -gt 0 && "$1" == "--" ]]; then
+    shift
+    BORG_ARGS=("$@")
+elif [[ $# -gt 0 ]]; then
+    BORG_ARGS=("$@")
+else
+    error "No borg command specified. Use -- to separate options from the borg command."
+fi
+
+# Validate required arguments
+[[ -z "$FOLDER" ]] && error "Folder (-f) is required"
+[[ -z "$PASSKEY" ]] && error "Passkey (-p) is required"
+[[ -z "$WALLET" ]] && error "Wallet (-w) is required"
+[[ -z "$USER" ]] && error "User (-u) is required"
+[[ ${#BORG_ARGS[@]} -eq 0 ]] && error "Borg command is required"
+
+# Validate user exists
+if ! id "$USER" &>/dev/null; then
+    error "User '$USER' does not exist"
+fi
+
+# Validate user's home directory
+USER_HOME="/home/$USER"
+if [[ ! -d "$USER_HOME" ]]; then
+    error "Home directory '$USER_HOME' does not exist"
+fi
+
+# Check if kwallet-query is available
+if ! command -v kwallet-query &>/dev/null; then
+    error "kwallet-query command not found. Please install KWallet tools."
+fi
+
+# Validate borg command starts with 'borg'
+if [[ ! "${BORG_ARGS[0]}" =~ ^borg$ ]]; then
+    error "Command must start with 'borg'. Got: ${BORG_ARGS[0]}"
+fi
+
+verbose "Folder: $FOLDER"
+verbose "Passkey: $PASSKEY"
+verbose "Wallet: $WALLET"
+verbose "User: $USER"
+verbose "Command: ${BORG_ARGS[*]}"
+verbose "User home: $USER_HOME"
+
+# Construct the kwallet command
+KWALLET_CMD="/usr/local/bin/run_as_user kwallet-query --folder \"$FOLDER\" --read-password \"$PASSKEY\" \"$WALLET\" 2>/dev/null"
+
+verbose "Executing borg command with kwallet integration..."
+
+# Execute the command with proper environment setup
+exec sudo \
+    BORG_PASSCOMMAND="$KWALLET_CMD" \
+    BORG_BASE_DIR="$USER_HOME" \
+    "${BORG_ARGS[@]}"

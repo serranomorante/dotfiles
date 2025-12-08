@@ -3,7 +3,9 @@
   become: true
   ansible.builtin.package:
     state: present
-    name: borg
+    name:
+      - borg
+      - python-pyfuse3
 
 - name: "[archlinux] Setup backup tools: ensure borg env variables in sudoers file"
   become: true
@@ -14,6 +16,13 @@
     validate: visudo -cf %s
 
 - block:
+    - name: "[archlinux] Setup backup tools: ensure borg keys folder with right permissions"
+      ansible.builtin.file:
+        path: ~/.config/borg/keys
+        recurse: true
+        state: directory
+        mode: "755"
+
     - name: "[archlinux] Setup backup tools: init borg repos"
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.repo }}'
       environment:
