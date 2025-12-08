@@ -59,6 +59,7 @@
       - ufw
       - kdialog
       - ncdu
+      - btop
       # - kde-applications
   timeout: 0
   notify: "10-system-tools : handler_ensure_docker_service"
