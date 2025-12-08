@@ -55,21 +55,15 @@
     depth: 1
     version: "{{ arch_weylus_version }}"
 
-- name: "[archlinux] Graphic tablet peripheral: register ufw status variable"
-  ansible.builtin.systemd_service:
-    name: ufw.service
-  register: ufw_service_status
-
 - name: "[archlinux] Graphic tablet peripheral: open ufw to weylus ports"
   become: true
-  ansible.builtin.command: ufw allow {{ port }}/tcp
-  when: ufw_service_status.status.ActiveState == "active"
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
   loop:
     - 1701
     - 9001
-  loop_control:
-    loop_var: port
-  changed_when: false
 
 - name: "[archlinux] Graphic tablet peripheral: weylus - ensure uinput group"
   become: true
