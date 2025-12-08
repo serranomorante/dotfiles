@@ -12,16 +12,19 @@
 
 - name: "[archlinux] Setup video tools: download davinci resolve"
   ansible.builtin.command: >
-    ~/bin/nvim --headless -c "autocmd User CodeCompanionChatDone normal ZQ" -c "sleep 2" -c "CodeCompanion /download-davinci" -c "normal ZQ"
+    ~/bin/nvim --headless -c "autocmd User CodeCompanionChatDone normal ZQ" -c "sleep 2" -c "CodeCompanion /download-davinci"
   register: var_download_davinci_result
   args:
     creates: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+  timeout: 120
+  ignore_errors: true
   when: is_x_display_session
 
-- name: sldkds
-  ansible.builtin.stat:
-    path: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
-  register: var_stat_davinci_zip
+- name: "[archlinux] Setup video tools: ensure davinci-resolve folder"
+  ansible.builtin.file:
+    path: ~/apps/video-tools/davinci-resolve
+    state: directory
+    mode: "755"
 
 - name: "[archlinux] Setup video tools: wait for davinci to download"
   ansible.builtin.wait_for:
@@ -30,14 +33,19 @@
     delay: 5
     timeout: 600
   timeout: 0
-  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
+  when: (var_download_davinci_result | default({})).changed and is_x_display_session
 
 - name: "[archlinux] Setup video tools: move davinci resolve zip to expected location"
   ansible.builtin.command: mv DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip ~/apps/video-tools/davinci-resolve/
   args:
     chdir: ~/Downloads
     creates: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
-  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
+  when: (var_download_davinci_result | default({})).changed and is_x_display_session
+
+- name: "[archlinux] Setup video tools: stat davinci-resolve zip package"
+  ansible.builtin.stat:
+    path: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+  register: var_stat_davinci_zip
 
 - name: "[archlinux] Setup video tools: download aur package"
   ansible.builtin.unarchive:
@@ -46,6 +54,12 @@
     remote_src: true
     creates: ~/apps/video-tools/davinci-resolve/PKGBUILD
   when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
+
+- name: "[archlinux] Setup video tools: ensure same davinci-resolve version"
+  ansible.builtin.replace:
+    path: ~/apps/video-tools/davinci-resolve/PKGBUILD
+    regexp: "^pkgver=.*"
+    replace: "pkgver={{ arch_davinci_resolve_version }}"
 
 - name: "[archlinux] Setup video tools: ensure packages"
   become: true
@@ -109,14 +123,55 @@
 
 - name: "[archlinux] Setup video tools: install davinci-resolve deps"
   become: true
-  ansible.builtin.package:
+  become_user: aur_builder
+  aur:
+    use: yay
     state: present
     name: "{{ davinci_resolve_deps.stdout | regex_findall('(.*)\n') }}"
+  timeout: 0
   when:
     - (var_download_davinci_result | default({})).changed
     - is_x_display_session
     - var_stat_davinci_zip.stat.exists
     - davinci_resolve_deps is success
+
+- name: "[archlinux] Setup video tools: ensure home folder permissions"
+  # This is necessary because `recurse: true` doesn't propagate to home folder
+  become: true
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}"
+    group: "{{ ansible_env.USER }}"
+    owner: "{{ ansible_env.USER }}"
+    mode: "750"
+
+- name: "[archlinux] Setup video tools: ensure davinci-resolve folder permissions"
+  become: true
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/apps/video-tools/davinci-resolve"
+    group: "{{ ansible_env.USER }}"
+    owner: "{{ ansible_env.USER }}"
+    recurse: true
+    mode: "750"
+
+- name: "[archlinux] Setup video tools: upgrade pkg sums to prevent yay error"
+  ansible.builtin.command: updpkgsums
+  args:
+    chdir: "{{ ansible_env.HOME }}/apps/video-tools/davinci-resolve"
+  changed_when: true
+
+- name: "[archlinux] Setup video tools: temporary give tmpfs more space"
+  become: true
+  ansible.builtin.command: mount -o remount,size=80% /tmp
+  changed_when: true
+
+- name: "[archlinux] Setup video tools: setup makepkg folder on aur_builder user"
+  become: true
+  become_user: aur_builder
+  ansible.builtin.file:
+    path: /home/aur_builder/makepkg
+    state: directory
+    recurse: true
+    mode: "755"
 
 - name: "[archlinux] Setup video tools: install davinci-resolve"
   become: true
@@ -125,7 +180,11 @@
     use: makepkg
     name: davinci-resolve
     state: latest
-    local_pkgbuild: ~/apps/video-tools/davinci-resolve
+    local_pkgbuild: "{{ ansible_env.HOME }}/apps/video-tools/davinci-resolve"
+  environment:
+    BUILDDIR: /home/aur_builder/makepkg # more space
+    # https://wiki.archlinux.org/title/DaVinci_Resolve
+    PKGEXT: ".pkg.tar"
   when:
     - (var_download_davinci_result | default({})).changed
     - is_x_display_session

@@ -58,6 +58,7 @@
       - xclip
       - ufw
       - kdialog
+      - ncdu
       # - kde-applications
   timeout: 0
   notify: "10-system-tools : handler_ensure_docker_service"

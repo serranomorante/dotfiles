@@ -9,3 +9,11 @@
       - nvidia-utils
       - lib32-nvidia-utils
   when: is_x_display_session
+
+- name: "[archlinux] Nvidia tools: ensure aur packages"
+  become: true
+  become_user: aur_builder
+  aur:
+    use: yay
+    state: present
+    name: nvidia-prime-rtd3pm

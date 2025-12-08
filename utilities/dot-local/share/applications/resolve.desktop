@@ -10,5 +10,4 @@ Terminal=true
 MimeType=application/x-resolveproj;
 Icon=davinci-resolve.png
 StartupNotify=true
-Name[en_US]=tmux_DaVinci Resolve
 StartupWMClass=resolve
