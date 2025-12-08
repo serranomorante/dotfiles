@@ -105,6 +105,7 @@ local function opts()
   if ok then prompts = vim.tbl_deep_extend("force", prompts, private_prompts or {}) end
 
   return {
+    ignore_warnings = true,
     display = {
       chat = {
         intro_message = "",
