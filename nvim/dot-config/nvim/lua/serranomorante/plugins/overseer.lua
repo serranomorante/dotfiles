@@ -183,7 +183,7 @@ local function keys()
               utils.force_very_fullscreen_float(task)
               vim.defer_fn(function()
                 overseer.run_action(task, "open float")
-                utils.write_password()
+                utils.write_password({ delay = 1000 })
               end, 500)
             end)
           end
@@ -229,7 +229,7 @@ local function opts()
           require("overseer").run_action(task, "restart")
           vim.defer_fn(function()
             require("overseer").run_action(task, "open float")
-            utils.write_password()
+            utils.write_password({ delay = 1000 })
           end, 500)
         end,
       },
