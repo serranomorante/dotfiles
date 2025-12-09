@@ -85,6 +85,7 @@ local function keys()
       previous_task = task
       utils.force_very_fullscreen_float(task)
       utils.start_insert_mode(task)
+      utils.attach_keymaps(task)
       task:start()
       vim.keymap.set("t", "<leader>", "<space>", { buffer = task:get_bufnr(), nowait = true })
       vim.keymap.set(
@@ -182,6 +183,7 @@ local function keys()
             }, function(task)
               if not task then return end
               utils.force_very_fullscreen_float(task)
+              utils.attach_keymaps(task)
               vim.defer_fn(function()
                 overseer.run_action(task, "open float")
                 utils.write_password({ delay = 1000 })
@@ -228,6 +230,7 @@ local function opts()
         condition = function(task) return task.name:match("^run%-ansible%-playbook") end,
         run = function(task)
           require("overseer").run_action(task, "restart")
+          utils.attach_keymaps(task)
           vim.defer_fn(function()
             require("overseer").run_action(task, "open float")
             utils.write_password({ delay = 1000 })
@@ -240,6 +243,7 @@ local function opts()
           return task.name:match("^ffmpeg") and task.status == require("overseer.constants").STATUS.RUNNING
         end,
         run = function(task)
+          utils.attach_keymaps(task)
           require("overseer").run_action(task, "open float")
           utils.feedkeys("q", "t")
         end,

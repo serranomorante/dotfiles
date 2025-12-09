@@ -682,6 +682,30 @@ function M.dispose_on_window_close(task, data)
 end
 
 ---@param task overseer.Task
+function M.attach_keymaps(task)
+  vim.api.nvim_create_autocmd("BufEnter", {
+    buffer = task:get_bufnr(),
+    callback = function(args)
+      if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) ~= "terminal" then return end
+      if is_preview(args.buf) then return end
+      vim.cmd.startinsert()
+      vim.keymap.set(
+        "t",
+        "<ESC>",
+        "<C-\\><C-n>",
+        { buffer = args.buf, desc = "Use `Esc` to exit terminal mode (go into normal mode)" }
+      )
+      vim.keymap.set(
+        "n",
+        "q",
+        "<cmd>close<CR>",
+        { buffer = args.buf, desc = "Use q to close terminal window (from normal mode)" }
+      )
+    end,
+  })
+end
+
+---@param task overseer.Task
 function M.force_very_fullscreen_float(task)
   vim.api.nvim_create_autocmd("BufEnter", {
     buffer = task:get_bufnr(),
