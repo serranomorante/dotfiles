@@ -13,7 +13,7 @@ SOURCES = [
     Source(hypothesis.index),
     Source(
         auto.index,
-        "~/external/notes/foam",
+        "~/data/notes/foam",
         ignored=[
             "*.html",
             "*.yaml",

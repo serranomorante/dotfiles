@@ -174,7 +174,7 @@ local PATH = vim.env.HOME .. "/.config/remind/reminders.rem"
 vim.api.nvim_create_autocmd("BufWritePost", {
   desc = "Refresh remind database on every :w",
   group = vim.api.nvim_create_augroup("remind_update", { clear = true }),
-  pattern = vim.env.HOME .. "/external/notes/**/*.md",
+  pattern = vim.env.HOME .. "/data/notes/**/*.md",
   callback = vim.schedule_wrap(function()
     if not utils.cwd_is_notes() then return end
     local ok, error = pcall(vim.cmd.RemindUpdate)

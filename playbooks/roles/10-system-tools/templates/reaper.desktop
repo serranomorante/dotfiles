@@ -1,7 +1,7 @@
 # {{ ansible_managed }}
 [Desktop Entry]
 Name=(debug) REAPER
-Exec=kitty --hold -o env=LC_ALL=C -o env=WINEPREFIX='{{ ansible_env.HOME }}/external/.wine-win64-reaper' --directory '{{ ansible_env.HOME }}/external/.wine-win64-reaper/dosdevices/c:/ProgramData/Microsoft/Windows/Start Menu/Programs/REAPER (x64)' firejail wine 'C:/ProgramData/Microsoft/Windows/Start Menu/Programs/REAPER (x64)/REAPER (x64).lnk'
+Exec=kitty --hold -o env=LC_ALL=C -o env=WINEPREFIX='{{ ansible_env.HOME }}/data/.wine-win64-reaper' --directory '{{ ansible_env.HOME }}/data/.wine-win64-reaper/dosdevices/c:/ProgramData/Microsoft/Windows/Start Menu/Programs/REAPER (x64)' firejail wine 'C:/ProgramData/Microsoft/Windows/Start Menu/Programs/REAPER (x64)/REAPER (x64).lnk'
 Type=Application
 StartupNotify=true
 Icon=3716_reaper.0

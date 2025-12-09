@@ -19,7 +19,6 @@ If you want to install my system (why would you want that?) you can, but you nee
 1. at least `8Gb` of a swap partition
 1. at least `30Gb` mounted to /
 1. at least `60Gb` mounted to /home
-1. at least `100Mb` mounted to /home/external (don't ask why)
 
 ### Dependencies
 

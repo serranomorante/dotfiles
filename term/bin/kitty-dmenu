@@ -6,22 +6,17 @@ else
     uuid=$(uuidgen)
     kitty --class kitty-dmenu -o tab_bar_style=hidden sh -c "
         find \
-        ~/work/gp/.bare \
-        ~/pjs \
-        ~/repos \
-        ~/courses \
-        ~/temp \
-        ~/issues \
+        ~/data/pjs \
+        ~/data/repos \
+        ~/data/courses \
+        ~/data/issues \
         ~/dotfiles \
         ~/.local/share/Cryptomator/mnt \
         ~/.local/share/nvim/site/pack/plugins/start \
         ~/.local/share/nvim/site/pack/plugins/opt \
         ~/.local/share/nvim/gp \
-        ~/external/work/cf/repos \
-        ~/external/repos \
-        ~/external/pjs \
-        ~/external/courses \
-        ~/external/notes \
+        ~/data/work/cf/repos \
+        ~/data/notes \
         -mindepth 1 -maxdepth 1 -type d | fzf --prompt='Select cwd: ' >/tmp/$uuid"
     selected_path=$(</tmp/$uuid)
 fi

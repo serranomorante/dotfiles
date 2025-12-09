@@ -5,7 +5,7 @@ Percent=10
 UseSizeLimit=true
 UseTimeLimit=false
 
-[{{ ansible_env.HOME }}/external/.Trash-1000]
+[{{ ansible_env.HOME }}/data/.Trash-1000]
 Days=7
 LimitReachedAction=0
 Percent=10

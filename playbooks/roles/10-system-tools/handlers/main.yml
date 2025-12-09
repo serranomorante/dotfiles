@@ -98,8 +98,8 @@
 - name: handler_build_mouseless
   ansible.builtin.command: go build -ldflags="-s -w" .
   args:
-    chdir: ~/external/repos/mouseless
-    creates: ~/external/repos/mouseless/mouseless
+    chdir: ~/data/repos/mouseless
+    creates: ~/data/repos/mouseless/mouseless
   notify: handler_ensure_mouseless_service
 
 - name: handler_ensure_mouseless_udev_rules
@@ -114,7 +114,7 @@
 - name: handler_link_mouseless_binary
   become: true
   ansible.builtin.file:
-    src: "{{ ansible_env.HOME }}/external/repos/mouseless/mouseless"
+    src: "{{ ansible_env.HOME }}/data/repos/mouseless/mouseless"
     dest: /usr/local/bin/mouseless
     state: link
     mode: "755"

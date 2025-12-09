@@ -29,7 +29,7 @@
 - name: "[archlinux] Compositor: clone picom shaders"
   ansible.builtin.git:
     repo: "{{ item.repo }}"
-    dest: ~/external/repos/{{ item.name | default(item.repo) | basename }}
+    dest: ~/data/repos/{{ item.name | default(item.repo) | basename }}
     version: "{{ item.version | default('HEAD') }}"
     single_branch: true
     depth: 1

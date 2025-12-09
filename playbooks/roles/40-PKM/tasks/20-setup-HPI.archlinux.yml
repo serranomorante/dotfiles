@@ -72,7 +72,7 @@
 - name: "[archlinux] Setup HPI - clone h"
   ansible.builtin.git:
     repo: "{{ item }}"
-    dest: ~/external/repos/{{ item | basename }}
+    dest: ~/data/repos/{{ item | basename }}
     version: main
     depth: 1
     force: true
@@ -99,7 +99,7 @@
 - name: "[archlinux] Setup HPI - patch hypothesis h"
   ansible.posix.patch:
     src: "{{ item }}"
-    basedir: ~/external/repos/h
+    basedir: ~/data/repos/h
     strip: 1
   loop:
     - "{{ var_hypothesis_tempdir.path }}/hypothesis_h.patch"
@@ -128,12 +128,12 @@
   ansible.builtin.command: cat .python-version
   register: var_h_python_version
   args:
-    chdir: ~/external/repos/h
+    chdir: ~/data/repos/h
   changed_when: true
 
 - name: "[archlinux] Setup HPI - clean dependencies"
   ansible.builtin.file:
-    path: ~/external/repos/h/.tox
+    path: ~/data/repos/h/.tox
     state: absent
 
 - name: "[archlinux] Setup HPI - ensure h services"
@@ -142,7 +142,7 @@
     sg docker -c "make services"
   register: ensure_h_services_result
   args:
-    chdir: ~/external/repos/h
+    chdir: ~/data/repos/h
   environment:
     PYENV_VERSION: "{{ var_h_python_version.stdout }}"
     VIRTUALENV_PIP: "24.0"
@@ -158,7 +158,7 @@
     sg docker -c "make db"
   register: ensure_h_db_result
   args:
-    chdir: ~/external/repos/h
+    chdir: ~/data/repos/h
   environment:
     PYENV_VERSION: "{{ var_h_python_version.stdout }}"
     VIRTUALENV_PIP: "24.0"
@@ -182,7 +182,7 @@
       --email hypothesis@hypothes.is
       --password hypothesis
   args:
-    chdir: ~/external/repos/h
+    chdir: ~/data/repos/h
   register: ensure_hypothesis_user_result
   changed_when: "'commands succeeded' in ensure_hypothesis_user_result.stdout"
   failed_when:
@@ -196,7 +196,7 @@
   register: ensure_admin_user_result
   changed_when: "'commands succeeded' in ensure_admin_user_result.stdout"
   args:
-    chdir: ~/external/repos/h
+    chdir: ~/data/repos/h
 
 - name: "[archlinux] Setup HPI - register authclient exists"
   # You must apply the `hypothesis_new_command.patch` patch first.
@@ -205,7 +205,7 @@
       --name "Chrome Extension"
   register: register_auth_client_exists_result
   args:
-    chdir: ~/external/repos/h
+    chdir: ~/data/repos/h
   changed_when: false
 
 - name: "[archlinux] Setup HPI - create new OAuth client"
@@ -218,7 +218,7 @@
       --grant-type "authorization_code"
   register: create_new_oauth_client_result
   args:
-    chdir: ~/external/repos/h
+    chdir: ~/data/repos/h
   when: "'Auth client not found' in register_auth_client_exists_result.stdout"
   changed_when: "'commands succeeded' in create_new_oauth_client_result.stdout"
 

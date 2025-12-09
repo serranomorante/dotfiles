@@ -13,33 +13,33 @@ arch_dwm_version: 7c3abae4e68b6a21f05cb04f3af31217259c0aa9
 arch_mypaint_version: 2.1.0-alpha-400-g90b36db-2021-05-04_18.41
 arch_reaper_sws_extension_setup:
   version: 2.14.0.7
-  backup_path: ~/external/Downloads
+  backup_path: ~/data/Downloads
 arch_reaper_wine_setup:
   version: 755+dev1206
-  backup_path: ~/external/Downloads
-  wine_prefix: "{{ ansible_env.HOME }}/external/.wine-win64-reaper"
+  backup_path: ~/data/Downloads
+  wine_prefix: "{{ ansible_env.HOME }}/data/.wine-win64-reaper"
   architecture: win64 # wow64 will fail for some plugins
 arch_reaper_wine_flatpak_setup:
   version: 755+dev1206
-  backup_path: ~/external/Downloads
-  wine_prefix: "{{ ansible_env.HOME }}/external/.wine-flatpak-win64-reaper"
+  backup_path: ~/data/Downloads
+  wine_prefix: "{{ ansible_env.HOME }}/data/.wine-flatpak-win64-reaper"
   architecture: win64 # wow64 will fail for some plugins
 arch_gather_wine_setup:
   version: 1.32.0
   backup_path: ~/Downloads
-  wine_prefix: "{{ ansible_env.HOME }}/external/.wine-win64-gather-town"
+  wine_prefix: "{{ ansible_env.HOME }}/data/.wine-win64-gather-town"
 arch_ytmdesktop_wine_setup:
   version: 2.0.10
   backup_path: ~/Downloads
-  wine_prefix: "{{ ansible_env.HOME }}/external/.wine-win64-ytmdesktop"
+  wine_prefix: "{{ ansible_env.HOME }}/data/.wine-win64-ytmdesktop"
 arch_audiogridder_wine_setup:
   version: 1.1.1
   version_slug: "1_1_1"
   plugin_version: 1.1.1
   plugin_version_slug: "1_1_1"
-  backup_path: ~/external/Downloads
-  config_path: "{{ ansible_env.HOME }}/external/.wine-win64-reaper/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/AudioGridder"
-  wine_prefix: "{{ ansible_env.HOME }}/external/.wine-win64-reaper"
+  backup_path: ~/data/Downloads
+  config_path: "{{ ansible_env.HOME }}/data/.wine-win64-reaper/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/AudioGridder"
+  wine_prefix: "{{ ansible_env.HOME }}/data/.wine-win64-reaper"
 
 arch_wine_prefixes:
   - "{{ arch_reaper_wine_setup }}"

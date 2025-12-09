@@ -27,9 +27,9 @@ seedvault_main_backup_env:
 phone_photos_backup_env:
   - /storage/emulated/0/DCIM/Camera
 audio_pjs_backup_env:
-  - ~/external/audio-pjs
+  - ~/data/audio-pjs
 notes_backup_env:
-  - ~/external/notes/foam
+  - ~/data/notes/foam
 reader_annotations_backup_env:
   - /storage/emulated/0/note
 root_backup_env:

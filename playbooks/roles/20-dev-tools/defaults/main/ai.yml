@@ -1,7 +1,7 @@
 ---
 reaper_mcp_server_setup:
-  repo_path: "{{ ansible_env.HOME }}/external/repos/reaper-mcp-server"
-  projects_dir: "{{ ansible_env.HOME }}/external/audio-pjs"
+  repo_path: "{{ ansible_env.HOME }}/data/repos/reaper-mcp-server"
+  projects_dir: "{{ ansible_env.HOME }}/data/audio-pjs"
 
 figma_mcp_server_setup:
   exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/figma-developer-mcp"

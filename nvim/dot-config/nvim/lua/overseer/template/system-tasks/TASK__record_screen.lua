@@ -22,7 +22,7 @@ return {
     path = {
       desc = "Path to save the files",
       type = "string",
-      choices = { "~/external/Videos" },
+      choices = { "~/Videos" },
       order = 3,
     },
   },
