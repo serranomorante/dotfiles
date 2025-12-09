@@ -28,6 +28,7 @@
       loop:
         - ../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only/tasks/main.yml
         - ../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/tasks/main.yml
+        - ../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/tasks/main.yml
       tags: always
 
     - name: "Setup roles: set fact"
@@ -78,3 +79,11 @@
           tags: 70-for-my-eyes-only
       tags: always
       when: fact_roles['../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/tasks/main.yml']
+
+    - name: Include 80-for-my-eyes-only if present
+      ansible.builtin.include_role:
+        name: ../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only # noqa role-name[path]
+        apply:
+          tags: 80-for-my-eyes-only
+      tags: always
+      when: fact_roles['../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/tasks/main.yml']
