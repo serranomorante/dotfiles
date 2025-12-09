@@ -18,10 +18,14 @@
 - block:
     - name: "[archlinux] Setup backup tools: ensure borg keys folder with right permissions"
       ansible.builtin.file:
-        path: ~/.config/borg/keys
+        path: "{{ item }}"
         recurse: true
         state: directory
         mode: "755"
+      loop:
+        - ~/.cache/borg
+        - ~/.config/borg/keys
+        - ~/.config/borg/security
 
     - name: "[archlinux] Setup backup tools: init borg repos"
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.repo }}'

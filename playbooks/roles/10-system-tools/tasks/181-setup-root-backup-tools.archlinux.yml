@@ -8,7 +8,7 @@
           /usr/local/bin/run_as_user
             kwallet-query
             --folder {{ item.keyrings.folder }}
-            --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }} 2>/dev/null
+            --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }}
       loop: "{{ archlinux_borg_root_repos_env }}"
       changed_when: false
       register: result
@@ -65,7 +65,7 @@
           /usr/local/bin/run_as_user
             kwallet-query
             --folder {{ item.keyrings.folder }}
-            --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }} 2>/dev/null
+            --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }}
       changed_when: false
       loop: "{{ archlinux_borg_root_repos_env }}"
 
