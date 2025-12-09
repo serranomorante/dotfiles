@@ -26,6 +26,7 @@
     - ~/.config/kiorc
     - ~/.config/kded5rc
     - ~/.config/kwalletrc
+    - ~/.config/baloofilerc
     - ~/.config/kdedefaults/kdeglobals
     - ~/.config/kdedefaults/ksplashrc
     - ~/.config/kglobalshortcutsrc
