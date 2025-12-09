@@ -2,14 +2,63 @@
 # {{ ansible_managed }}
 set -e
 
-TARGET_USER="{{ ansible_env.USER }}"
-TARGET_UID=1000
+# Default values
+TARGET_USER=""
 
-# Pass all arguments to the su command
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+    -u | --user)
+        TARGET_USER="$2"
+        shift 2
+        ;;
+    -h | --help)
+        echo "Usage: $0 [-u|--user USERNAME] COMMAND [ARGS...]"
+        echo "Run a command as another user with proper environment setup"
+        echo ""
+        echo "Options:"
+        echo "  -u, --user USERNAME   Run as specified user (default: current user)"
+        echo "  -h, --help           Show this help message"
+        exit 0
+        ;;
+    *)
+        break
+        ;;
+    esac
+done
+
+# If no user specified, use current user
+if [[ -z "$TARGET_USER" ]]; then
+    TARGET_USER="$USER"
+fi
+
+# Validate that we have a command to run
+if [[ $# -eq 0 ]]; then
+    echo "Error: No command specified" >&2
+    echo "Use -h or --help for usage information" >&2
+    exit 1
+fi
+
+# Get the UID for the target user
+if ! TARGET_UID=$(id -u "$TARGET_USER" 2>/dev/null); then
+    echo "Error: User '$TARGET_USER' not found" >&2
+    exit 1
+fi
+
+# Get the home directory for the target user
+TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
+
+# Build the command string with proper escaping
+CMD=""
+for arg in "$@"; do
+    CMD+="$(printf '%q ' "$arg")"
+done
+
+# Pass all remaining arguments to the su command
 exec su - "$TARGET_USER" -c "
     DISPLAY=:0 \
-    XAUTHORITY='{{ ansible_env.HOME }}/.Xauthority' \
-    DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/bus' \
-    SSH_AUTH_SOCK='/run/user/1000/ssh-agent.socket' \
-    XDG_RUNTIME_DIR='/run/user/1000' \
-    $*"
+    XAUTHORITY='$TARGET_HOME/.Xauthority' \
+    DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/$TARGET_UID/bus' \
+    SSH_AUTH_SOCK='/run/user/$TARGET_UID/ssh-agent.socket' \
+    XDG_RUNTIME_DIR='/run/user/$TARGET_UID' \
+    $CMD"
