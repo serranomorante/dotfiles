@@ -1,6 +1,7 @@
 {
   "DefaultBrowserSettingEnabled": false,
   "SystemShortcutBehavior": 3,
+  "BookmarkBarEnabled": false,
   "ShortcutCustomizationAllowed": true,
   "HomepageIsNewTabPage": false,
   "DefaultSearchProviderSearchURL": "https://www.google.com/search?q={searchTerms}",
