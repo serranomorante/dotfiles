@@ -150,7 +150,7 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 
 local treesitter_filetypes = utils.ts_compatible_filetypes()
-local regex_filetypes = { "qf", "html", "remind", "spajson", "log", "pager" }
+local regex_filetypes = { "qf", "html", "remind", "spajson", "log", "pager", "rst" }
 vim.api.nvim_create_autocmd("FileType", {
   desc = "Enable syntax highlighting",
   group = vim.api.nvim_create_augroup("ts_highlighting", { clear = true }),
