@@ -8,6 +8,7 @@
       - kwalletmanager
       - ufw
       - ksshaskpass
+      - tcpdump
 
 - name: "[archlinux] Setup security tools: enable services"
   ansible.builtin.systemd_service:
