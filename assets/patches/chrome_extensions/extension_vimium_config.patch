@@ -7,7 +7,7 @@ index 1df4545..105de26 100644
    scrollStepSize: 60,
    smoothScroll: true,
 -  keyMappings: "# Insert your preferred key mappings here.",
-+  keyMappings: "# Insert your preferred key mappings here.\n\nmap K previousTab\nmap J nextTab\n\n# Unmaps\nunmap t\nunmap d\nunmap u\nunmap f\nunmap F\n\nmap <c-d> scrollPageDown\nmap <c-u> scrollPageUp\nmap z LinkHints.activateMode action=hover\nmap <c-]> passNextKey",
++  keyMappings: "# Insert your preferred key mappings here.\n\nmap K previousTab\nmap J nextTab\n\n# Unmaps\nunmap t\nunmap d\nunmap u\nunmap f\nunmap F\n\nmap <c-d> scrollPageDown\nmap <c-u> scrollPageUp\nmap z LinkHints.activateMode action=hover\nmap <c-]> passNextKey \nmap ' Marks.activateGotoMode",
    linkHintCharacters: "sadfjklewcmpgh",
    linkHintNumbers: "0123456789",
    filterLinkHints: false,
