@@ -51,9 +51,12 @@
   become: true
   ansible.builtin.systemd_service:
     scope: system
-    name: cpupower.service
+    name: "{{ item }}"
     enabled: true
     masked: false
+  loop:
+    - cpupower.service
+    - bluetooth.service
 
 - name: "[archlinux] Setup audio tools: create pipewire group"
   become: true

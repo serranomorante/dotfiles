@@ -60,9 +60,12 @@
       - kdialog
       - ncdu
       - btop
+      - bluez
       # - kde-applications
   timeout: 0
-  notify: "10-system-tools : handler_ensure_docker_service"
+  notify:
+    - "10-system-tools : handler_ensure_docker_service"
+    - "10-system-tools : handler_ensure_bluetooth_service"
 
 - name: flush_handlers
   ansible.builtin.meta: flush_handlers
