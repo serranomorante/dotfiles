@@ -151,6 +151,7 @@ local function keys()
           "never", -- very slow tasks that I rarely need to perform
           "always", -- tasks that should always be executed
           "20-50,20-60 [Full editor setup]",
+          "10-170,40-20 [Full browser extensions]",
           "10-system-tools,20-dev-tools,30-lang-tools,40-PKM,80-for-my-eyes-only [Base setup]",
         })
         -- Add private playbooks

@@ -37,7 +37,7 @@ index 3db99fe..62a7da9 100644
                  "grant_type": GrantType.authorization_code,
                  "response_type": ResponseType.code,
                  "trusted": False,
-+                "redirect_url": "chrome-extension://oaefmonehnpgpgggcnifjffikgfchbgp"
++                "redirect_url": "chrome-extension://{{ local_hypothesis_extension }}"
              }
          )
          return self._template_context()

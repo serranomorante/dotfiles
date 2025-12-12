@@ -9,6 +9,14 @@
   "ShowHomeButton": false,
   "HomepageLocation": "https://developer.wikimedia.org/",
   "RestoreOnStartup": 6,
+  "PopupsAllowedForUrls": [
+    "http://localhost:5000[*.]",
+    "chrome-extension://{{ local_hypothesis_extension }}[*.]"
+  ],
+  "InsecureContentAllowedForUrls": [
+    "http://localhost:5000[*.]",
+    "chrome-extension://{{ local_hypothesis_extension }}[*.]"
+  ],
   "ExtensionSettings": {
     "{{ local_extension_show_tab_numbers }}": {
       "allowed_permissions": [

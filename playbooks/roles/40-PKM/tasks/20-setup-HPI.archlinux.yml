@@ -80,14 +80,35 @@
     - https://github.com/hypothesis/h # because I want to self-host
     - https://github.com/hypothesis/bouncer
 
+- name: "[archlinux] Setup HPI - generate patch tempdir"
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: hypothesis
+  register: var_hypothesis_tempdir
+
+- name: "[archlinux] Setup HPI - apply vars to patches"
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "{{ var_hypothesis_tempdir.path }}/{{ item }}"
+    mode: "644"
+  loop:
+    - hypothesis_h.patch
+    - hypothesis_new_command.patch
+
 - name: "[archlinux] Setup HPI - patch hypothesis h"
   ansible.posix.patch:
     src: "{{ item }}"
     basedir: ~/external/repos/h
     strip: 1
   loop:
-    - hypothesis_h.patch
-    - hypothesis_new_command.patch
+    - "{{ var_hypothesis_tempdir.path }}/hypothesis_h.patch"
+    - "{{ var_hypothesis_tempdir.path }}/hypothesis_new_command.patch"
+
+- name: "[archlinux] Setup HPI - remove tempdir"
+  ansible.builtin.file:
+    path: "{{ var_hypothesis_tempdir.path }}"
+    state: absent
+  when: var_hypothesis_tempdir.path is defined
 
 - name: "[archlinux] Setup HPI - register docker dbs network exists"
   # The docker-compose file of the h repo needs this network to exist
@@ -146,10 +167,10 @@
     - "40-PKM : handler_ensure_hypothesis_self_hosted_service"
 
 - name: "[archlinux] Setup HPI - add CHROME_EXTENSION_ID env to bouncer"
-  ansible.builtin.replace:
-    path: ~/dotfiles/PKM/dot-config/systemd/user/hypothesis-bouncer-self-hosted.service
-    regexp: '(^Environment="CHROME_EXTENSION_ID=).*'
-    replace: '\1{{ local_hypothesis_extension }}" # this id is replaced by ansible task'
+  ansible.builtin.template:
+    src: hypothesis-bouncer-self-hosted.service
+    dest: ~/.config/systemd/user/
+    mode: "644"
   notify: "40-PKM : handler_ensure_hypothesis_bouncer_self_hosted_service"
 
 - name: "[archlinux] Setup HPI - ensure hypothesis user"
