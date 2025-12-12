@@ -23,6 +23,8 @@ SOURCES = [
             "*.bib",
             "*.lock",
             "*.scss",
+            "*.err",
+            "*/tags",
             "*/Gemfile",
             "*/assets/*",
         ],

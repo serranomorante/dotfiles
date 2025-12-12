@@ -136,7 +136,7 @@
     creates: ~/apps/browser-tools/chrome/extensions/identity.pem
 
 - name: "[archlinux] Setup browser tools: build promnesia"
-  ansible.builtin.command: |
+  ansible.builtin.shell: |
     $({{ ansible_env.HOME }}/.volta/bin/volta which npm) ci
     /usr/bin/python build --chrome --release
   args:
