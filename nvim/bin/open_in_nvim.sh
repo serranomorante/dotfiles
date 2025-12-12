@@ -58,8 +58,17 @@ lazygit_diff_against_parent)
 lazygit_diff_with_local_copy)
     nvr --servername $servername --nostart -cc "lua $nvim_close_term_win" -c "DiffviewOpen $2 -- %"
     ;;
+kitty_edit)
+    nvr --servername $servername --nostart -cc "lua $nvim_edit" | kitten @ action goto_tab 1
+    ;;
 kitty_edit_at_line)
     nvr --servername $servername --nostart -cc "lua $nvim_edit; $nvim_center_view" -c "$2" | kitten @ action goto_tab 1
+    ;;
+kitty_simple_edit)
+    nvr --servername $servername --nostart -cc "lua $nvim_edit"
+    ;;
+kitty_simple_edit_at_line)
+    nvr --servername $servername --nostart -cc "lua $nvim_edit; $nvim_center_view" -c "$2"
     ;;
 *)
     nvim --server $servername --remote "$@"

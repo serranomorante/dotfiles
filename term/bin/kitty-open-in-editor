@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+sockets=$(lsof -U 2>/dev/null | grep -oE @kitty-[0-9]+)
+entries=()
+declare -A seen_cwds
+for socket in $sockets; do
+    temp_output=()
+    readarray -t temp_output < <(kitten @ --to "unix:$socket" ls | jq -r '.[].tabs.[].windows.[].cwd')
+    for cwd in "${temp_output[@]}"; do
+        if [[ -n "$cwd" && "$*" == "$cwd"* ]]; then
+            if [[ "$*" =~ ^([^:]+):([0-9]+)$ ]]; then
+                file="${BASH_REMATCH[1]}"
+                line="${BASH_REMATCH[2]}"
+                kitty @ --to "unix:$socket" run open_in_nvim.sh kitty_simple_edit_at_line "$file" "$line"
+            else
+                file="$*"
+                kitty @ --to "unix:$socket" run open_in_nvim.sh kitty_simple_edit "$file"
+            fi
+
+            # Focus the correct window
+            if error_msg=$(kitten @ --to "unix:$socket" focus-window --match "cwd:^${cwd}$" 2>&1); then
+                found_match=true
+                break 2 # Break out of both loops on success
+            else
+                notify-send "Error focusing window: $error_msg"
+            fi
+        fi
+    done
+done
+
+if [[ "$found_match" != true ]]; then
+    echo "No matching kitty window found for path: $*" >&2
+    exit 1
+fi

@@ -63,10 +63,11 @@
     - browserexport
 
 - name: "[archlinux] Setup HPI - register open_in_editor MIME handler"
-  ansible.builtin.command: >
-    python ~/repos/open-in-editor/open_in_editor.py --install --editor vim
-  args:
-    creates: ~/.local/share/applications/open_in_editor.desktop
+  ansible.builtin.shell: |
+    update-desktop-database ~/.local/share/applications
+    xdg-mime default nvr_nvim_open.desktop x-scheme-handler/editor
+  changed_when: true
+  notify: handler_update_desktop_database
 
 - name: "[archlinux] Setup HPI - clone h"
   ansible.builtin.git:

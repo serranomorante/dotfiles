@@ -2,13 +2,13 @@
 Categories=Utility;
 Exec=nvr_open_nvim.sh %u
 Icon=utilities-terminal
-MimeType=x-scheme-handler/terminal
+MimeType=x-scheme-handler/editor;
 Name[en_US]=NVR Open Nvim
 Name=NVR Open Nvim
 Name[en_CA]=NVR Open Nvim
 Name[en_GB]=NVR Open Nvim
 StartupNotify=true
-Terminal=true
+Terminal=false
 Type=Application
 X-KDE-SubstituteUID=false
 X-KDE-Username=
