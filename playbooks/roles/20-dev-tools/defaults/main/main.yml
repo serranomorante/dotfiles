@@ -17,9 +17,11 @@ neovim_plugins:
   - folder: start
     repo: ravitemer/mcphub.nvim
     name: mcphub
+    version: 8ff40b5edc649959bb7e89d25ae18e055554859a
   - folder: start
     repo: olimorris/codecompanion.nvim
     name: codecompanion
+    version: 8ad65eef735b31bb47d76f59d878ee1bac4bdc85
   - folder: start
     repo: kevinhwang91/promise-async # use `typings/?.lua` on .luarc.json
   - folder: start
