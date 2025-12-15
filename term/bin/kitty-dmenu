@@ -6,6 +6,7 @@ else
     uuid=$(uuidgen)
     kitty --class kitty-dmenu -o tab_bar_style=hidden sh -c "
         find \
+        ~/repos \
         ~/data/pjs \
         ~/data/repos \
         ~/data/courses \
