@@ -94,14 +94,15 @@
   ansible.builtin.command: sysctl --system
   changed_when: false
 
-- name: "[archlinux] Wine tools: ensure Downloads folder"
+- name: "[archlinux] Wine tools: ensure music-production folder"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
+    recurse: true
     mode: "755"
   loop:
     - ~/Downloads
-    - ~/data/Downloads
+    - ~/data/Downloads/music-production
 
 - name: force handler
   ansible.builtin.command: echo
