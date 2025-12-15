@@ -1,7 +1,7 @@
 ---
 - name: "[archlinux] Wine tools: get reaper"
   ansible.builtin.get_url:
-    url: https://www.landoleet.org/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe
+    url: https://www.reaper.fm/files/7.x/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe
     dest: "{{ arch_reaper_wine_setup.backup_path }}/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe"
     mode: "755"
   ignore_errors: true
