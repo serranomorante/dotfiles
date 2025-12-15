@@ -60,6 +60,7 @@
     path: ~/apps/video-tools/davinci-resolve/PKGBUILD
     regexp: "^pkgver=.*"
     replace: "pkgver={{ arch_davinci_resolve_version }}"
+  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: ensure packages"
   become: true
@@ -143,6 +144,7 @@
     group: "{{ ansible_env.USER }}"
     owner: "{{ ansible_env.USER }}"
     mode: "750"
+  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: ensure davinci-resolve folder permissions"
   become: true
@@ -152,12 +154,14 @@
     owner: "{{ ansible_env.USER }}"
     recurse: true
     mode: "750"
+  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: upgrade pkg sums to prevent yay error"
   ansible.builtin.command: updpkgsums
   args:
     chdir: "{{ ansible_env.HOME }}/apps/video-tools/davinci-resolve"
   changed_when: true
+  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: temporary give tmpfs more space"
   become: true
