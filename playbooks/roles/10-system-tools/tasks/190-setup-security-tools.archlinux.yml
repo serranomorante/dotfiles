@@ -10,6 +10,30 @@
       - ksshaskpass
       - tcpdump
 
+- name: "[archlinux] Other tools: ensure kwalletcli folder"
+  ansible.builtin.file:
+    path: ~/apps/security-tools/kwalletcli
+    state: directory
+    recurse: true
+    mode: "755"
+
+- name: "[archlinux] Other tools: download pre-compiled kwalletcli"
+  ansible.builtin.unarchive:
+    src: https://gitlab.com/stefanwimmer128/pkgbuilds/-/package_files/188019197/download
+    dest: ~/apps/security-tools/kwalletcli/
+    remote_src: true
+
+- name: "[archlinux] Other tools: symlink kwalletcli"
+  ansible.builtin.file:
+    src: ~/apps/security-tools/kwalletcli/usr/bin/{{ item }}
+    dest: ~/bin/{{ item }}
+    state: link
+  loop:
+    - kwalletaskpass
+    - kwalletcli_getpin
+    - kwalletcli
+    - pinentry-kwallet
+
 - name: "[archlinux] Setup security tools: enable services"
   ansible.builtin.systemd_service:
     scope: user
@@ -62,15 +86,17 @@
   ansible.builtin.shell: >
     nvim --headless +'lua =io.stdout:write(vim.json.encode(require("serranomorante.constants").KEYRINGS) .. "\n")' +q 2>/dev/null
   changed_when: false
+  ignore_errors: true
   register: var_nvim_keyrings
 
 - name: "[archlinux] Setup security tools: set keyrings fact"
   ansible.builtin.set_fact:
     keyrings: "{{ (keyrings | default([])) + ((var_nvim_keyrings.stdout | from_json).values() | list) }}"
+  when: var_nvim_keyrings is success
 
 - name: "[archlinux] Setup security tools: set borg keyrings facts"
   ansible.builtin.set_fact:
-    keyrings: "{{ (keyrings | default([])) + (item | map(attribute='keyrings')) }}"
+    keyrings: "{{ (keyrings | default([])) | union(item | map(attribute='keyrings')) }}"
   loop:
     - "{{ archlinux_borg_repos_env }}"
     - "{{ archlinux_borg_root_repos_env }}"
@@ -85,7 +111,7 @@
 
 - name: "[archlinux] Setup security tools: stat setup-kwallet"
   ansible.builtin.stat:
-    path: ../../../../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/templates/setup-kwallet
+    path: ~/dotfiles/for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/templates/setup-kwallet
   register: var_stat_setup_kwallet
 
 - name: "[archlinux] Setup security tools: setup-kwallet passwords"
