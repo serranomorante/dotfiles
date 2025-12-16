@@ -9,7 +9,12 @@ export BORG_RELOCATED_REPO_ACCESS_IS_OK=yes
 export BORG_REPO='{{ borg_repo }}'
 
 # See the section "Passphrase notes" for more infos.
-export BORG_PASSCOMMAND='kwallet-query --folder {{ keyrings.folder }} --read-password {{ keyrings.passkey }} {{ keyrings.wallet }}'
+# Check if running under sudo
+if [[ -n "${SUDO_USER:-}" ]] && [[ "$EUID" -eq 0 ]]; then
+    export BORG_PASSCOMMAND='/usr/local/bin/run_as_user -u {{ ansible_env.USER }} kwallet-query --folder {{ keyrings.folder }} --read-password {{ keyrings.passkey }} {{ keyrings.wallet }}'
+else
+    export BORG_PASSCOMMAND='kwallet-query --folder {{ keyrings.folder }} --read-password {{ keyrings.passkey }} {{ keyrings.wallet }}'
+fi
 
 # some helpers and error handling:
 info() { printf "\n%s %s\n\n" "$(date)" "$*" >&2; }
