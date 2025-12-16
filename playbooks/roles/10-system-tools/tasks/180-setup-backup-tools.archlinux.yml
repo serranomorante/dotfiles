@@ -16,7 +16,7 @@
     validate: visudo -cf %s
 
 - block:
-    - name: "[archlinux] Setup backup tools: ensure borg keys folder with right permissions"
+    - name: "[archlinux] Setup backup tools: ensure borg folders"
       ansible.builtin.file:
         path: "{{ item }}"
         recurse: true
@@ -26,13 +26,19 @@
         - ~/.cache/borg
         - ~/.config/borg/keys
         - ~/.config/borg/security
+        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/data/backups
+        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/data/backups
+        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev4 }}/data/backups
 
     - name: "[archlinux] Setup backup tools: init borg repos"
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.repo }}'
       environment:
         BORG_PASSCOMMAND: kwallet-query --folder {{ item.keyrings.folder }} --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }}
+      vars:
+        device: '{{ item.device | regex_replace("[^A-Za-z0-9]", "_") }}'
+        reponame: '{{ item.keyrings.passkey | regex_replace("[^A-Za-z0-9]", "_") }}'
       args:
-        creates: ~/.config/borg/keys/*{{ item.repo | basename | regex_replace("[^A-Za-z0-9]", "_") }}
+        creates: ~/.config/borg/keys/*{{ device }}_data_backups_{{ reponame }}
       loop: "{{ archlinux_borg_repos_env }}"
 
     - name: "[archlinux] Setup backup tools: create backup scripts from template"

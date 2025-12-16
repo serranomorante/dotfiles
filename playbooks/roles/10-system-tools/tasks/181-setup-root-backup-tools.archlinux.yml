@@ -17,8 +17,11 @@
             kwallet-query
             --folder {{ item.keyrings.folder }}
             --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }}
+      vars:
+        device: '{{ item.device | regex_replace("[^A-Za-z0-9]", "_") }}'
+        reponame: '{{ item.keyrings.passkey | regex_replace("[^A-Za-z0-9]", "_") }}'
       args:
-        creates: ~/.config/borg-root/keys/*{{ item.borg_repo | basename | regex_replace("[^A-Za-z0-9]", "_") }}
+        creates: ~/.config/borg-root/keys/*{{ device }}_data_backups_{{ reponame }}
       loop: "{{ archlinux_borg_root_repos_env }}"
 
     - name: "[archlinux] Setup root backup tools: create backup scripts from template"

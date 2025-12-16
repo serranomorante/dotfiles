@@ -7,9 +7,12 @@
     - name: "[otherlinux] Setup backup tools: init borg repos"
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.repo }}'
       environment:
-        BORG_PASSCOMMAND: "gpg --homedir /data/data/com.termux/files/home/.gnupg --decrypt {{ ansible_env.HOME }}/data/secrets/{{ item.pass_file }}"
+        BORG_PASSCOMMAND: gpg --homedir /data/data/com.termux/files/home/.gnupg --decrypt {{ ansible_env.HOME }}/data/secrets/{{ item.pass_file }}
+      vars:
+        device: '{{ item.device | regex_replace("[^A-Za-z0-9]", "_") }}'
+        reponame: '{{ item.keyrings.passkey | regex_replace("[^A-Za-z0-9]", "_") }}'
       args:
-        creates: ~/.config/borg/keys/*{{ item.repo | basename | regex_replace("[^A-Za-z0-9]", "_") }}
+        creates: ~/.config/borg/keys/*{{ device }}_data_backups_{{ reponame }}
       loop: "{{ otherlinux_borg_repos_env }}"
 
     - name: "[otherlinux] Setup backup tools: ensure bin folder"
