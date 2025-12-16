@@ -16,6 +16,19 @@
     validate: visudo -cf %s
 
 - block:
+    - name: "[archlinux] Setup backup tools: stat local backup drives"
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/data/backups
+        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/data/backups
+        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev4 }}/data/backups
+      register: var_local_backup_drives
+
+    - name: "[archlinux] Setup backup tools: set available drives fact"
+      ansible.builtin.set_fact:
+        available_drives: "{{ var_local_backup_drives.results | items2dict(key_name='item', value_name='stat') }}"
+
     - name: "[archlinux] Setup backup tools: ensure borg folders"
       ansible.builtin.file:
         path: "{{ item }}"
@@ -37,8 +50,10 @@
       vars:
         device: '{{ item.device | regex_replace("[^A-Za-z0-9]", "_") }}'
         reponame: '{{ item.keyrings.passkey | regex_replace("[^A-Za-z0-9]", "_") }}'
+        repobasename: /run/media/{{ ansible_env.USER }}/{{ item.device }}/data/backups
       args:
         creates: ~/.config/borg/keys/*{{ device }}_data_backups_{{ reponame }}
+      when: repobasename in available_drives and available_drives[repobasename].exists
       loop: "{{ archlinux_borg_repos_env }}"
 
     - name: "[archlinux] Setup backup tools: create backup scripts from template"
