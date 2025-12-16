@@ -1,0 +1,9 @@
+---
+- block:
+    - name: Setup swap
+      ansible.builtin.include_tasks: "{{ item }}"
+      with_first_found:
+        - files: 10-setup-swap.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+  tags: ["10--system--10"]

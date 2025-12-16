@@ -1,0 +1,9 @@
+---
+- name: handler_ensure_swap_file
+  become: true
+  ansible.builtin.systemd_service:
+    scope: system
+    name: swapfile.swap
+    enabled: true
+    masked: false
+    daemon_reload: true

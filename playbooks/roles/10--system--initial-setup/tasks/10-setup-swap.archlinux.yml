@@ -1,0 +1,32 @@
+---
+- name: "[archlinux] System setup - Check swapfile already exists"
+  become: true
+  ansible.builtin.stat:
+    path: "{{ var_swapfile_path }}"
+  register: var_stat_swapfile_path
+
+- name: "[archlinux] System setup - Check swapfile is enabled"
+  become: true
+  ansible.builtin.command: swapon --show
+  changed_when: true
+  register: var_swapon_show
+
+- name: "[archlinux] System setup - Create swapfile"
+  become: true
+  ansible.builtin.command: mkswap -U clear --size 8G --file {{ var_swapfile_path }}
+  changed_when: true
+  when: not var_stat_swapfile_path.stat.exists
+
+- name: "[archlinux] System setup - swapon swap file"
+  become: true
+  ansible.builtin.command: swapon {{ var_swapfile_path }}
+  changed_when: true
+  when: var_swapon_show.stdout | length == 0
+
+- name: "[archlinux] System setup - copy systemd swap file"
+  become: true
+  ansible.builtin.copy:
+    src: swapfile.swap
+    dest: /etc/systemd/system/swapfile.swap
+    mode: "600"
+  notify: handler_ensure_swap_file
