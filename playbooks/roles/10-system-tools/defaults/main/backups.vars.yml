@@ -56,18 +56,18 @@ bw_backup_env:
   - ~/data/bw
 
 # borg repos
-dev2_audio_pjs_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/backups/audio-pjs
-dev2_config_files_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/backups/config-files
-dev2_pkm_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/backups/PKM
-dev2_notes_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/backups/notes
-dev2_root_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/backups/root-backup
-dev2_bw_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/backups/bw-backup
-dev3_audio_pjs_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/backups/audio-pjs
-dev3_config_files_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/backups/config-files
-dev3_pkm_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/backups/PKM
-dev3_notes_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/backups/notes
-dev3_root_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/backups/root-backup
-dev3_bw_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/backups/bw-backup
+dev2_audio_pjs_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/data/backups/audio-pjs
+dev2_config_files_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/data/backups/config-files
+dev2_pkm_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/data/backups/PKM
+dev2_notes_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/data/backups/notes
+dev2_root_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/data/backups/root-backup
+dev2_bw_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/data/backups/bw-backup
+dev3_audio_pjs_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/data/backups/audio-pjs
+dev3_config_files_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/data/backups/config-files
+dev3_pkm_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/data/backups/PKM
+dev3_notes_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/data/backups/notes
+dev3_root_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/data/backups/root-backup
+dev3_bw_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/data/backups/bw-backup
 dev4_audio_pjs_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev4 }}/data/backups/audio-pjs
 dev4_config_files_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev4 }}/data/backups/config-files
 dev4_pkm_borg_repo: /run/media/{{ ansible_env.USER }}/{{ arch_external_dev4 }}/data/backups/PKM
