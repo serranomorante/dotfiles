@@ -23,8 +23,12 @@
 - name: "[archlinux] Setup browser tools: ensure folder exists"
   ansible.builtin.file:
     state: directory
-    recurse: true
-    path: ~/data/apps/browser-tools/chrome/extensions
+    path: "{{ item }}"
+    mode: "755"
+  loop:
+    - ~/data/apps/browser-tools
+    - ~/data/apps/browser-tools/chrome
+    - ~/data/apps/browser-tools/chrome/extensions
 
 - name: "[archlinux] Setup browser tools: get chrome-session-dump"
   ansible.builtin.get_url:
@@ -182,10 +186,16 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    recurse: true
+    mode: "755"
   loop:
+    - /etc/brave
+    - /etc/brave/policies
     - /etc/brave/policies/managed
+    - /etc/chromium
+    - /etc/chromium/policies
     - /etc/chromium/policies/managed
+    - /etc/opt/edge
+    - /etc/opt/edge/policies
     - /etc/opt/edge/policies/managed
 
 - name: "[archlinux] Setup browser tools: create browser policy file for all users"
@@ -205,9 +215,11 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    recurse: true
+    mode: "755"
   loop:
+    - /usr/share/chromium
     - /usr/share/chromium/extensions
+    - /usr/share/microsoft-edge
     - /usr/share/microsoft-edge/extensions
 
 - name: "[archlinux] Setup browser tools: create extension files"

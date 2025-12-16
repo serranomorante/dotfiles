@@ -11,10 +11,14 @@
   become: true
   ansible.builtin.file:
     state: directory
-    path: ~/data/apps/db/postgresql/data
-    recurse: true
+    path: "{{ item }}"
     owner: postgres
     group: postgres
+    mode: "755"
+  loop:
+    - "{{ ansible_env.HOME }}/data/apps/db"
+    - "{{ ansible_env.HOME }}/data/apps/db/postgresql"
+    - "{{ ansible_env.HOME }}/data/apps/db/postgresql/data"
 
 - name: "[archlinux] Setup database tools: register if initialized"
   become: true

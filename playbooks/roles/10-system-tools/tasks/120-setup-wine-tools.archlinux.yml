@@ -98,10 +98,10 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    recurse: true
     mode: "755"
   loop:
     - ~/Downloads
+    - ~/data/Downloads
     - ~/data/Downloads/music-production
 
 - name: force handler

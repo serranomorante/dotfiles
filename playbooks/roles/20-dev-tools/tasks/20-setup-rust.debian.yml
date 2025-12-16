@@ -2,8 +2,12 @@
 - name: "[debian] Setup rust: ensure folder exists"
   ansible.builtin.file:
     state: directory
-    recurse: true
-    path: ~/data/apps/lang-tools/rust
+    path: "{{ item }}"
+    mode: "755"
+  loop:
+    - ~/data/apps
+    - ~/data/apps/lang-tools
+    - ~/data/apps/lang-tools/rust
 
 - name: "[debian] Setup rust: unzip, unrar, unarchive rust"
   ansible.builtin.unarchive:

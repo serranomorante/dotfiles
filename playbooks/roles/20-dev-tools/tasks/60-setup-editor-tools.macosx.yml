@@ -2,8 +2,12 @@
 - name: "[macosx] Dotfiles: ensure nvim pack folder"
   ansible.builtin.file:
     state: directory
-    recurse: true
-    path: ~/.config/nvim/pack/
+    path: "{{ item }}"
+    mode: "755"
+  loop:
+    - ~/.config
+    - ~/.config/nvim
+    - ~/.config/nvim/pack/
 
 - name: "[macosx] Editor tools: ensure nvim plugins"
   ansible.builtin.git:

@@ -7,9 +7,12 @@
 
 - name: "[macos] Dotfiles: ensure stow folder exists"
   ansible.builtin.file:
+    path: "{{ item }}"
     state: directory
-    recurse: true
-    path: ~/data/apps/stow
+    mode: "755"
+  loop:
+    - ~/data/apps
+    - ~/data/apps/stow
   when: stow_executable is failed
 
 - name: "[macos] Dotfiles: unzip, unrar, unarchive stow"

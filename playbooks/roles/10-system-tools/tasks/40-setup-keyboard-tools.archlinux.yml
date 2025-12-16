@@ -84,8 +84,12 @@
   become: true
   ansible.builtin.file:
     state: directory
-    recurse: true
-    path: /etc/X11/xinit/xinput.d
+    path: "{{ item }}"
+    mode: "755"
+  loop:
+    - /etc/X11
+    - /etc/X11/xinit
+    - /etc/X11/xinit/xinput.d
 
 - name: "[archlinux] Keyboard peripheral: copy sudo files"
   become: true

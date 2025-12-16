@@ -153,24 +153,19 @@
     - var_stat_davinci_zip.stat.exists
     - davinci_resolve_deps is success
 
-- name: "[archlinux] Setup video tools: ensure home folder permissions"
-  # This is necessary because `recurse: true` doesn't propagate to home folder
-  become: true
-  ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}"
-    group: "{{ ansible_env.USER }}"
-    owner: "{{ ansible_env.USER }}"
-    mode: "750"
-  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
-
 - name: "[archlinux] Setup video tools: ensure davinci-resolve folder permissions"
   become: true
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/data/apps/video-tools/davinci-resolve"
+    path: "{{ item }}"
     group: "{{ ansible_env.USER }}"
     owner: "{{ ansible_env.USER }}"
-    recurse: true
     mode: "750"
+  loop:
+    - "{{ ansible_env.HOME }}"
+    - "{{ ansible_env.HOME }}/data"
+    - "{{ ansible_env.HOME }}/data/apps"
+    - "{{ ansible_env.HOME }}/data/apps/video-tools"
+    - "{{ ansible_env.HOME }}/data/apps/video-tools/davinci-resolve"
   when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: upgrade pkg sums to prevent yay error"
@@ -184,10 +179,12 @@
   become: true
   become_user: aur_builder
   ansible.builtin.file:
-    path: /home/aur_builder/makepkg
+    path: "{{ item }}"
     state: directory
-    recurse: true
     mode: "755"
+  loop:
+    - /home/aur_builder
+    - /home/aur_builder/makepkg
 
 - name: "[archlinux] Setup video tools: install davinci-resolve"
   become: true

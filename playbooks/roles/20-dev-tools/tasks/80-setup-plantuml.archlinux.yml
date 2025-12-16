@@ -2,8 +2,11 @@
 - name: "[archlinux] Plantuml compiled jar: Create ~/data/plantuml folder"
   ansible.builtin.file:
     state: directory
-    recurse: true
-    path: ~/data/plantuml
+    path: "{{ item }}"
+    mode: "755"
+  loop:
+    - ~/data
+    - ~/data/plantuml
 
 - name: "[archlinux] Plantuml compiled jar: ensure file in location"
   ansible.builtin.get_url:

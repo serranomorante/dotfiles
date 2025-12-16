@@ -2,8 +2,11 @@
 - name: "[archlinux] AUR: ensure aur - Create modules folder"
   ansible.builtin.file:
     state: directory
-    recurse: true
-    path: ~/.ansible/plugins/modules
+    path: "{{ item }}"
+    mode: "755"
+  loop:
+    - ~/.ansible/plugins
+    - ~/.ansible/plugins/modules
 
 - name: "[archlinux] AUR: ensure ansible aur helper"
   ansible.builtin.get_url:
@@ -53,10 +56,12 @@
 - name: "[archlinux] AUR: ensure yay folder permissions"
   become: true
   ansible.builtin.file:
-    path: /tmp/yay
-    recurse: true
+    path: "{{ item }}"
     mode: "770"
     group: wheel
+  loop:
+    - /tmp
+    - /tmp/yay
 
 - name: "[archlinux] AUR: install yay"
   become: true

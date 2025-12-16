@@ -19,11 +19,11 @@
     - name: "[archlinux] Setup backup tools: ensure borg folders"
       ansible.builtin.file:
         path: "{{ item }}"
-        recurse: true
         state: directory
         mode: "755"
       loop:
         - ~/.cache/borg
+        - ~/.config/borg
         - ~/.config/borg/keys
         - ~/.config/borg/security
         - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/data/backups

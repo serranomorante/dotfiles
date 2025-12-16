@@ -8,8 +8,11 @@
 - name: "[debian] Dotfiles: ensure stow folder exists"
   ansible.builtin.file:
     state: directory
-    recurse: true
-    path: ~/data/apps/stow
+    path: "{{ item }}"
+    mode: "755"
+  loop:
+    - ~/data/apps
+    - ~/data/apps/stow
   when: stow_executable is failed
 
 - name: "[debian] Dotfiles: unzip, unrar, unarchive stow"

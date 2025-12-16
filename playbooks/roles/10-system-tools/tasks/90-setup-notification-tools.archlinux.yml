@@ -27,9 +27,12 @@
 - name: "[archlinux] Notification utilities: ensure dbus-1 servics folder"
   # See: https://dunst-project.org/faq/
   ansible.builtin.file:
-    path: ~/.local/share/dbus-1/services
+    path: "{{ item }}"
     state: directory
-    recurse: true
+    mode: "755"
+  loop:
+    - ~/.local/share/dbus-1
+    - ~/.local/share/dbus-1/services
 
 - name: "[archlinux] Notification utilities: ensure dunst as default notification daemon"
   # See: https://dunst-project.org/faq/

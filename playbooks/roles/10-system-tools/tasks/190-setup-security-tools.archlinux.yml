@@ -12,10 +12,12 @@
 
 - name: "[archlinux] Other tools: ensure kwalletcli folder"
   ansible.builtin.file:
-    path: ~/data/apps/security-tools/kwalletcli
+    path: "{{ item }}"
     state: directory
-    recurse: true
     mode: "755"
+  loop:
+    - ~/data/apps/security-tools
+    - ~/data/apps/security-tools/kwalletcli
 
 - name: "[archlinux] Other tools: download pre-compiled kwalletcli"
   ansible.builtin.unarchive:
