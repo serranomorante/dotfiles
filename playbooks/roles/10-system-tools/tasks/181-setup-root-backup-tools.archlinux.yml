@@ -16,7 +16,7 @@
     - name: "[archlinux] Setup root backup tools: create backup scripts from template"
       become: true
       ansible.builtin.template:
-        src: "{{ ansible_env.HOME }}/dotfiles/assets/scripts/backup/borg_backup_jinja_template.backup.sh"
+        src: borg_backup_jinja_template.backup.sh
         dest: "/usr/bin/{{ item.sh_template }}.backup.sh"
         mode: "744"
         owner: root
