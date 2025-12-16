@@ -59,13 +59,13 @@
 
     - name: "[archlinux] Setup database tools: ensure root-keyfiles backup folder"
       ansible.builtin.file:
-        path: ~/secrets/backup-borg-root-keyfiles
+        path: ~/data/secrets/backup-borg-root-keyfiles
         state: directory
         mode: "755"
 
     - name: "[archlinux] Setup root backup tools: backup keyfile"
       become: true
-      ansible.builtin.command: borg key export "{{ item.borg_repo }}" "{{ ansible_env.HOME }}/secrets/backup-borg-root-keyfiles/{{ keyfilename }}"
+      ansible.builtin.command: borg key export "{{ item.borg_repo }}" "{{ ansible_env.HOME }}/data/secrets/backup-borg-root-keyfiles/{{ keyfilename }}"
       environment:
         BORG_KEYS_DIR: "{{ ansible_env.USER }}/.config/borg-root/keys"
         BORG_PASSCOMMAND: >
@@ -87,6 +87,6 @@
       become: true
       ansible.builtin.command: tar -czvf ../root_keyfiles-{{ user_os }}-{{ var_tstamp.stdout }}.tar.gz * --remove-files
       args:
-        chdir: "{{ ansible_env.HOME }}/secrets/backup-borg-root-keyfiles"
+        chdir: "{{ ansible_env.HOME }}/data/secrets/backup-borg-root-keyfiles"
         creates: ../root_keyfiles-{{ user_os }}-{{ var_tstamp.stdout }}.tar.gz
   ignore_errors: true

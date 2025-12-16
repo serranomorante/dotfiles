@@ -18,13 +18,13 @@
       - pip
       - redis
       - ansible
-    virtualenv: ~/apps/persistence-tools/.venv
+    virtualenv: ~/data/apps/persistence-tools/.venv
     virtualenv_command: /usr/bin/python3 -m venv
     state: latest
 
 - name: "[archlinux] Persistence tools: symlink virtualenv ansible"
   ansible.builtin.file:
-    src: ~/apps/persistence-tools/.venv/bin/{{ item.bin_name }}
+    src: ~/data/apps/persistence-tools/.venv/bin/{{ item.bin_name }}
     dest: ~/bin/{{ item.symlink_name }}
     state: link
   loop:

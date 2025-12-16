@@ -83,7 +83,7 @@
 
 - name: handler_ensure_hypothesis_oauth_client_id
   ansible.builtin.replace:
-    path: ~/repos/hypothesis-extension/settings/custom-dev.json
+    path: ~/data/repos/hypothesis-extension/settings/custom-dev.json
     regexp: "^\\{"
     replace: '{\n  "oauthClientId": "{{ ansible_facts.hypothesis_oauth_client_id | default(None) }}",'
   when: ansible_facts.hypothesis_oauth_client_id is not undefined

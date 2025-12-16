@@ -2,7 +2,7 @@
 - name: "[debian] Neovim: ensure Neovim - clone"
   ansible.builtin.git:
     repo: https://github.com/neovim/neovim.git
-    dest: ~/repos/neovim
+    dest: ~/data/repos/neovim
     force: true
     depth: 1
     single_branch: true
@@ -11,7 +11,7 @@
 - name: "[debian] Neovim: apply patches to neovim"
   ansible.builtin.command: git apply ~/dotfiles/assets/patches/nvim/{{ item.patch_filename }}
   args:
-    chdir: ~/repos/neovim
+    chdir: ~/data/repos/neovim
   loop:
     - patch_filename: msg_limit.patch
   changed_when: false
@@ -21,5 +21,5 @@
   environment:
     CMAKE_BUILD_TYPE: RelWithDebInfo
   args:
-    chdir: ~/repos/neovim
-    creates: ~/repos/neovim/build/bin/nvim
+    chdir: ~/data/repos/neovim
+    creates: ~/data/repos/neovim/build/bin/nvim

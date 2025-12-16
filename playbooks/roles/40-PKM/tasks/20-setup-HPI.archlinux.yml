@@ -2,7 +2,7 @@
 - name: "[archlinux] Setup HPI - clone packages"
   ansible.builtin.git:
     repo: "{{ item.repo }}"
-    dest: ~/repos/{{ item.name | default(item.repo) | basename }}
+    dest: ~/data/repos/{{ item.name | default(item.repo) | basename }}
     version: "{{ item.version | default('HEAD') }}"
     single_branch: true
   loop:
@@ -22,7 +22,7 @@
     name:
       - pip
       - promnesia
-      - ~/repos/HPI
+      - ~/data/repos/HPI
       # Optional dependencies
       - bs4
       - lxml
@@ -36,25 +36,25 @@
       - git+https://github.com/karlicoss/hypexport
       - browserexport
       - cachew
-    virtualenv: ~/apps/PKM/.venv
+    virtualenv: ~/data/apps/PKM/.venv
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
 
 - name: "[archlinux] Setup HPI - ensure hypothesis domain points to local instance"
   ansible.builtin.replace:
-    path: ~/apps/PKM/.venv/lib/python3.13/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
+    path: ~/data/apps/PKM/.venv/lib/python3.13/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
     regexp: "(domain=)None\\,"
     replace: '\1"localhost:5000",'
 
 - name: "[archlinux] Setup HPI - replace https"
   ansible.builtin.replace:
-    path: ~/apps/PKM/.venv/lib/python3.13/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
+    path: ~/data/apps/PKM/.venv/lib/python3.13/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
     regexp: "https"
     replace: "http"
 
 - name: "[archlinux] Setup HPI - symlink virtualenv packages"
   ansible.builtin.file:
-    src: ~/apps/PKM/.venv/bin/{{ item }}
+    src: ~/data/apps/PKM/.venv/bin/{{ item }}
     dest: ~/bin/{{ item }}
     state: link
   loop:
@@ -231,7 +231,7 @@
 - name: "[archlinux] Setup HPI: clone hypothesis browser extension"
   ansible.builtin.git:
     repo: "{{ item.repo }}"
-    dest: "~/repos/{{ item.name | default(item.repo) | basename }}"
+    dest: "~/data/repos/{{ item.name | default(item.repo) | basename }}"
     version: "{{ item.version | default('HEAD') }}"
     depth: 1
     force: true
@@ -245,7 +245,7 @@
 - name: "[archlinux] Setup HPI: patch hypothesis extension"
   ansible.posix.patch:
     src: ~/dotfiles/assets/patches/chrome_extensions/{{ item }}
-    basedir: ~/repos/hypothesis-extension
+    basedir: ~/data/repos/hypothesis-extension
     strip: 1
   loop:
     - extension_hypothesis_delete_welcome.patch
@@ -253,8 +253,8 @@
 
 - name: "[archlinux] Setup HPI: generate hypothesis extension custom-dev.json"
   ansible.builtin.copy:
-    src: ~/repos/hypothesis-extension/settings/chrome-dev.json
-    dest: ~/repos/hypothesis-extension/settings/custom-dev.json
+    src: ~/data/repos/hypothesis-extension/settings/chrome-dev.json
+    dest: ~/data/repos/hypothesis-extension/settings/custom-dev.json
     mode: "644"
   notify: handler_ensure_hypothesis_oauth_client_id
 
@@ -266,8 +266,8 @@
     source ~/.bashrc &&
     make build SETTINGS_FILE=settings/custom-dev.json
   args:
-    creates: ~/repos/hypothesis-extension/build/manifest.json
-    chdir: ~/repos/hypothesis-extension
+    creates: ~/data/repos/hypothesis-extension/build/manifest.json
+    chdir: ~/data/repos/hypothesis-extension
 
 - name: "[archlinux] Setup HPI: version to extensionator path"
   ansible.builtin.shell: set -o pipefail && fd 'extensionator' ~/.local/share/gem/ruby -t x -1 | grep -oP "\/\K\d[^/]+" -m 1
@@ -279,11 +279,11 @@
   # Important: the `*.crx` file has to be at the same level of the `manifest.json` file
   ansible.builtin.shell: >
     ~/.local/share/gem/ruby/{{ var_ruby_version.stdout }}/bin/extensionator
-    -d ~/repos/hypothesis-extension/build
-    -i ~/apps/browser-tools/chrome/extensions/identity.pem
-    -o ~/repos/hypothesis-extension/build/hypothesis.crx
+    -d ~/data/repos/hypothesis-extension/build
+    -i ~/data/apps/browser-tools/chrome/extensions/identity.pem
+    -o ~/data/repos/hypothesis-extension/build/hypothesis.crx
   args:
-    creates: ~/repos/hypothesis-extension/build/hypothesis.crx
+    creates: ~/data/repos/hypothesis-extension/build/hypothesis.crx
 
 - name: "[archlinux] Setup HPI: run handlers"
   ansible.builtin.command: echo

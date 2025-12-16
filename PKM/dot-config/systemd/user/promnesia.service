@@ -6,6 +6,6 @@ After=graphical-session.target
 WantedBy=graphical-session.target
 
 [Service]
-ExecStart=%h/apps/PKM/.venv/bin/python3 -m promnesia serve --db %h/.local/share/promnesia/promnesia.sqlite --timezone Europe/Madrid --host 0.0.0.0 --port 13131
+ExecStart=%h/data/apps/PKM/.venv/bin/python3 -m promnesia serve --db %h/.local/share/promnesia/promnesia.sqlite --timezone Europe/Madrid --host 0.0.0.0 --port 13131
 Type=simple
 Restart=always

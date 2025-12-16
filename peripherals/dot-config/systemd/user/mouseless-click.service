@@ -3,7 +3,7 @@ Description=Mouseless.click service
 After=graphical-session.target
 
 [Service]
-ExecStart=%h/apps/keyboard-tools/Mouseless.AppImage
+ExecStart=%h/data/apps/keyboard-tools/Mouseless.AppImage
 
 [Install]
 WantedBy=graphical-session.target

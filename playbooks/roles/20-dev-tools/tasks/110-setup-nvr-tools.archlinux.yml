@@ -4,13 +4,13 @@
     name:
       - pip
       - neovim-remote
-    virtualenv: ~/apps/python-tools/.venv
+    virtualenv: ~/data/apps/python-tools/.venv
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
 
 - name: "[archlinux] Setup NVR tools: symlink virtualenv nvr"
   ansible.builtin.file:
-    src: ~/apps/python-tools/.venv/bin/{{ item }}
+    src: ~/data/apps/python-tools/.venv/bin/{{ item }}
     dest: ~/bin/{{ item }}
     state: link
   loop:

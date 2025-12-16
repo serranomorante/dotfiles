@@ -7,7 +7,7 @@
       - pydocstyle
       - pylsp-mypy
       - python-lsp-ruff # disables pycodestyle, pyflakes, mccabe, autopep8, yapf
-    virtualenv: ~/apps/lang-tools/pylsp/.venv
+    virtualenv: ~/data/apps/lang-tools/pylsp/.venv
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
 
@@ -16,7 +16,7 @@
     name:
       - pip
       - debugpy
-    virtualenv: ~/apps/lang-tools/debugpy/.venv
+    virtualenv: ~/data/apps/lang-tools/debugpy/.venv
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
 
@@ -25,13 +25,13 @@
     name:
       - pip
       - cookiecutter
-    virtualenv: ~/apps/lang-tools/python-tools/.venv
+    virtualenv: ~/data/apps/lang-tools/python-tools/.venv
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
 
 - name: "[archlinux] Python language: ensure symlinks"
   ansible.builtin.file:
-    src: ~/apps/lang-tools/{{ item.dir }}/.venv/bin/{{ item.bin }}
+    src: ~/data/apps/lang-tools/{{ item.dir }}/.venv/bin/{{ item.bin }}
     dest: ~/bin/{{ item.bin }}
     state: link
   loop:

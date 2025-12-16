@@ -20,7 +20,7 @@
 - name: "[debian] Editor tools: clone universal ctags"
   ansible.builtin.git:
     repo: https://github.com/universal-ctags/ctags.git
-    dest: ~/repos/ctags
+    dest: ~/data/repos/ctags
     depth: 1
     version: master
 
@@ -31,5 +31,5 @@
     make
     make install
   args:
-    chdir: ~/repos/ctags
+    chdir: ~/data/repos/ctags
     creates: ~/.local/bin/ctags

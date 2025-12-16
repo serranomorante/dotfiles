@@ -12,7 +12,7 @@
 
 - name: "[archlinux] Other tools: ensure kwalletcli folder"
   ansible.builtin.file:
-    path: ~/apps/security-tools/kwalletcli
+    path: ~/data/apps/security-tools/kwalletcli
     state: directory
     recurse: true
     mode: "755"
@@ -20,12 +20,12 @@
 - name: "[archlinux] Other tools: download pre-compiled kwalletcli"
   ansible.builtin.unarchive:
     src: https://gitlab.com/stefanwimmer128/pkgbuilds/-/package_files/188019197/download
-    dest: ~/apps/security-tools/kwalletcli/
+    dest: ~/data/apps/security-tools/kwalletcli/
     remote_src: true
 
 - name: "[archlinux] Other tools: symlink kwalletcli"
   ansible.builtin.file:
-    src: ~/apps/security-tools/kwalletcli/usr/bin/{{ item }}
+    src: ~/data/apps/security-tools/kwalletcli/usr/bin/{{ item }}
     dest: ~/bin/{{ item }}
     state: link
   loop:

@@ -45,7 +45,7 @@
 - name: "[archlinux] Compositor: clone latest dwm"
   ansible.builtin.git:
     repo: git://git.suckless.org/dwm
-    dest: ~/repos/dwm
+    dest: ~/data/repos/dwm
     version: "{{ arch_dwm_version }}"
   ignore_errors: true
 
@@ -53,19 +53,19 @@
   become: true
   ansible.builtin.command: make
   args:
-    chdir: "{{ ansible_env.HOME }}/repos/dwm"
-    creates: "{{ ansible_env.HOME }}/repos/dwm/config.h"
+    chdir: "{{ ansible_env.HOME }}/data/repos/dwm"
+    creates: "{{ ansible_env.HOME }}/data/repos/dwm/config.h"
 
 - name: "[archlinux] Compositor: prepare patches folder"
   ansible.builtin.file:
-    path: ~/repos/dwm/patches
+    path: ~/data/repos/dwm/patches
     state: directory
     mode: "755"
 
 - name: "[archlinux] Compositor: get all dwm patches"
   ansible.builtin.get_url:
     url: "{{ item }}"
-    dest: ~/repos/dwm/patches/{{ item | basename }}
+    dest: ~/data/repos/dwm/patches/{{ item | basename }}
     mode: "755"
   loop:
     - https://dwm.suckless.org/patches/fakefullscreen/dwm-fakefullscreen-20210714-138b405.diff
@@ -84,35 +84,35 @@
   ansible.posix.patch:
     src: "{{ item }}"
     strip: 1
-    basedir: ~/repos/dwm
+    basedir: ~/data/repos/dwm
   ignore_errors: true
   loop:
     # fakefullscreen
-    - ~/repos/dwm/patches/dwm-fakefullscreen-20210714-138b405.diff
+    - ~/data/repos/dwm/patches/dwm-fakefullscreen-20210714-138b405.diff
     - fix-dwm-fakefullscreen-20210714-138b405.patch
     # focusmaster
-    - ~/repos/dwm/patches/dwm-focusmaster-20210804-138b405.diff
+    - ~/data/repos/dwm/patches/dwm-focusmaster-20210804-138b405.diff
     - config-dwm-focusmaster-20210804-138b405.patch
     # savefloats
-    - ~/repos/dwm/patches/dwm-savefloats-6.0.diff
+    - ~/data/repos/dwm/patches/dwm-savefloats-6.0.diff
     - fix-dwm-savefloats-6.0.patch
     # fixborders
-    - ~/repos/dwm/patches/dwm-fixborders-6.2.diff
+    - ~/data/repos/dwm/patches/dwm-fixborders-6.2.diff
     # dwm-float-border-color
-    - ~/repos/dwm/patches/dwm-float-border-color-20231008-3a7ea45f.diff
+    - ~/data/repos/dwm/patches/dwm-float-border-color-20231008-3a7ea45f.diff
     - fix-dwm-float-border-color-20231008-3a7ea45f.patch
     - config-dwm-float-border-color-20231008-3a7ea45f.patch
     # swapfocus
-    - ~/repos/dwm/patches/dwm-swapfocus-20160731-56a31dc.diff
+    - ~/data/repos/dwm/patches/dwm-swapfocus-20160731-56a31dc.diff
     - fix-dwm-swapfocus-20160731-56a31dc.patch
     - config-dwm-swapfocus-20160731-56a31dc.patch
     # floatrules
-    - ~/repos/dwm/patches/dwm-floatrules-20210801-138b405.diff
+    - ~/data/repos/dwm/patches/dwm-floatrules-20210801-138b405.diff
     # dwm-unmanaged
-    - ~/repos/dwm/patches/dwm-unmanaged-6.6.diff
+    - ~/data/repos/dwm/patches/dwm-unmanaged-6.6.diff
     - fix-dwm-unmanaged-6.6.patch
     # dwm-focusonnetactive-6.2
-    - ~/repos/dwm/patches/dwm-focusonnetactive-6.2.diff
+    - ~/data/repos/dwm/patches/dwm-focusonnetactive-6.2.diff
     # My changes. Always leave this last.
     - make-dwm-debuggable.patch
     - custom.patch
@@ -121,7 +121,7 @@
   become: true
   ansible.builtin.command: make install
   args:
-    chdir: "{{ ansible_env.HOME }}/repos/dwm"
+    chdir: "{{ ansible_env.HOME }}/data/repos/dwm"
   register: var_dwm_result
   changed_when: var_dwm_result.rc == 0
 

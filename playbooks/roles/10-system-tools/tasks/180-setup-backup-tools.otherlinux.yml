@@ -7,7 +7,7 @@
     - name: "[otherlinux] Setup backup tools: init borg repos"
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.repo }}'
       environment:
-        BORG_PASSCOMMAND: "gpg --homedir /data/data/com.termux/files/home/.gnupg --decrypt {{ ansible_env.HOME }}/secrets/{{ item.pass_file }}"
+        BORG_PASSCOMMAND: "gpg --homedir /data/data/com.termux/files/home/.gnupg --decrypt {{ ansible_env.HOME }}/data/secrets/{{ item.pass_file }}"
       args:
         creates: ~/.config/borg/keys/*{{ item.repo | basename | regex_replace("[^A-Za-z0-9]", "_") }}
       loop: "{{ otherlinux_borg_repos_env }}"
@@ -37,14 +37,14 @@
 
     - name: "[otherlinux] Setup backup tools: ensure keyfiles backup folder"
       ansible.builtin.file:
-        path: ~/secrets/backup-borg-keyfiles
+        path: ~/data/secrets/backup-borg-keyfiles
         state: directory
         mode: "755"
 
     - name: "[otherlinux] Setup backup tools: backup keyfile"
-      ansible.builtin.command: borg key export "{{ item.repo }}" "~/secrets/backup-borg-keyfiles/{{ keyfilename }}"
+      ansible.builtin.command: borg key export "{{ item.repo }}" "~/data/secrets/backup-borg-keyfiles/{{ keyfilename }}"
       environment:
-        BORG_PASSCOMMAND: gpg --homedir /data/data/com.termux/files/home/.gnupg --decrypt {{ ansible_env.HOME }}/secrets/{{ item.pass_file }}
+        BORG_PASSCOMMAND: gpg --homedir /data/data/com.termux/files/home/.gnupg --decrypt {{ ansible_env.HOME }}/data/secrets/{{ item.pass_file }}
       vars:
         keyfilename: '{{ item.repo | regex_replace("[^A-Za-z0-9]", "_") }}'
       changed_when: true
@@ -58,6 +58,6 @@
     - name: "[otherlinux] Setup backup tools: archive the keyfiles"
       ansible.builtin.command: tar -czvf ../keyfiles-{{ user_os }}-{{ var_tstamp.stdout }}.tar.gz * --remove-files
       args:
-        chdir: ~/secrets/backup-borg-keyfiles
+        chdir: ~/data/secrets/backup-borg-keyfiles
         creates: ../keyfiles-{{ user_os }}-{{ var_tstamp.stdout }}.tar.gz
   ignore_errors: true

@@ -71,12 +71,12 @@
 
     - name: "[archlinux] Setup backup tools: ensure keyfiles backup folder"
       ansible.builtin.file:
-        path: ~/secrets/backup-borg-keyfiles
+        path: ~/data/secrets/backup-borg-keyfiles
         state: directory
         mode: "755"
 
     - name: "[archlinux] Setup backup tools: backup keyfile"
-      ansible.builtin.command: borg key export "{{ item.repo }}" "~/secrets/backup-borg-keyfiles/{{ keyfilename }}"
+      ansible.builtin.command: borg key export "{{ item.repo }}" "~/data/secrets/backup-borg-keyfiles/{{ keyfilename }}"
       environment:
         BORG_PASSCOMMAND: kwallet-query --folder {{ item.keyrings.folder }} --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }}
       vars:
@@ -92,6 +92,6 @@
     - name: "[archlinux] Setup backup tools: archive the keyfiles"
       ansible.builtin.command: tar -czvf ../keyfiles-{{ user_os }}-{{ var_tstamp.stdout }}.tar.gz * --remove-files
       args:
-        chdir: ~/secrets/backup-borg-keyfiles
+        chdir: ~/data/secrets/backup-borg-keyfiles
         creates: ../keyfiles-{{ user_os }}-{{ var_tstamp.stdout }}.tar.gz
   ignore_errors: true

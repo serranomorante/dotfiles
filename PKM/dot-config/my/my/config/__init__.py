@@ -7,7 +7,7 @@ from my.core.common import PathIsh, Paths
 
 # if the HPIDATA environment variable is set (which points to my data)
 # use that. Else, just default to ~/data
-PREFIX: Path = Path(environ.get("HPIDATA", path.expanduser("~/PKM/data")))
+PREFIX: Path = Path(environ.get("HPIDATA", path.expanduser("~/data/PKM/data")))
 
 
 def data(p: PathIsh) -> Path:

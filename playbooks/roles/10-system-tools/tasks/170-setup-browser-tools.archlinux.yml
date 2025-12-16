@@ -24,18 +24,18 @@
   ansible.builtin.file:
     state: directory
     recurse: true
-    path: ~/apps/browser-tools/chrome/extensions
+    path: ~/data/apps/browser-tools/chrome/extensions
 
 - name: "[archlinux] Setup browser tools: get chrome-session-dump"
   ansible.builtin.get_url:
     url: https://github.com/lemnos/chrome-session-dump/releases/download/v0.0.2/chrome-session-dump-linux
-    dest: ~/apps/browser-tools/chrome/chrome-session-dump-linux
+    dest: ~/data/apps/browser-tools/chrome/chrome-session-dump-linux
     force: true
     mode: "755"
 
 - name: "[archlinux] Setup browser tools: symlink chrome-session-dump"
   ansible.builtin.file:
-    src: ~/apps/browser-tools/chrome/chrome-session-dump-linux
+    src: ~/data/apps/browser-tools/chrome/chrome-session-dump-linux
     dest: ~/bin/chrome-session-dump
     state: link
 
@@ -55,7 +55,7 @@
 - name: "[archlinux] Setup browser tools: clone chrome extensions"
   ansible.builtin.git:
     repo: "{{ item.repo }}"
-    dest: ~/repos/{{ item.name | default(item.repo) | basename }}
+    dest: ~/data/repos/{{ item.name | default(item.repo) | basename }}
     version: "{{ item.version | default('HEAD') }}"
     force: true
     depth: 1
@@ -103,7 +103,7 @@
 - name: "[archlinux] Setup browser tools: patch playwright mcp extension"
   ansible.posix.patch:
     src: "{{ playwright_mcp_tempdir.path }}/playwright_mcp_auth_token.patch"
-    basedir: ~/repos/playwright-mcp
+    basedir: ~/data/repos/playwright-mcp
     strip: 1
   when: fact_changed_extensions['playwright-mcp'] and 'stdout' in var_playwright_mcp_browser_key
 
@@ -113,36 +113,36 @@
     $({{ ansible_env.HOME }}/.volta/bin/volta which npm) ci npm &&
     $({{ ansible_env.HOME }}/.volta/bin/volta which npm) run build
   args:
-    chdir: ~/repos/playwright-mcp/extension
+    chdir: ~/data/repos/playwright-mcp/extension
   changed_when: fact_changed_extensions['playwright-mcp']
   when: fact_changed_extensions['playwright-mcp']
 
 - name: "[archlinux] Setup browser tools: patch NewTab-Redirect extension"
   ansible.posix.patch:
     src: extension_new_tab_redirect_tab.patch
-    basedir: ~/repos/NewTab-Redirect
+    basedir: ~/data/repos/NewTab-Redirect
     strip: 1
 
 - name: "[archlinux] Setup browser tools: patch vimium extension"
   ansible.posix.patch:
     src: ~/dotfiles/assets/patches/chrome_extensions/extension_vimium_config.patch
-    basedir: ~/repos/vimium
+    basedir: ~/data/repos/vimium
     strip: 1
   ignore_errors: true
 
 - name: "[archlinux] Setup browser tools: generate key file"
   ansible.builtin.shell: |
-    openssl genrsa -out ~/apps/browser-tools/chrome/extensions/identity.pem 2048
+    openssl genrsa -out ~/data/apps/browser-tools/chrome/extensions/identity.pem 2048
   args:
-    creates: ~/apps/browser-tools/chrome/extensions/identity.pem
+    creates: ~/data/apps/browser-tools/chrome/extensions/identity.pem
 
 - name: "[archlinux] Setup browser tools: build promnesia"
   ansible.builtin.shell: |
     $({{ ansible_env.HOME }}/.volta/bin/volta which npm) ci
     /usr/bin/python build --chrome --release
   args:
-    chdir: ~/repos/promnesia/extension
-    creates: ~/repos/promnesia/extension/dist/chrome/manifest.json
+    chdir: ~/data/repos/promnesia/extension
+    creates: ~/data/repos/promnesia/extension/dist/chrome/manifest.json
   register: var_build_promnesia
   ignore_errors: true
 
@@ -150,7 +150,7 @@
   ansible.builtin.stat:
     path: "{{ item.path | default(var_default_d) }}"
   vars:
-    var_default_d: ~/repos/{{ item.name }}
+    var_default_d: ~/data/repos/{{ item.name }}
   register: var_build_dirs_exists
   loop: "{{ browser_local_extensions }}"
 
@@ -165,10 +165,10 @@
   ansible.builtin.shell: >
     ~/.local/share/gem/ruby/{{ var_ruby_version.stdout }}/bin/extensionator
     -d {{ item.path | default(var_default_d) }}
-    -i ~/apps/browser-tools/chrome/extensions/identity.pem
+    -i ~/data/apps/browser-tools/chrome/extensions/identity.pem
     -o {{ item.path | default(var_default_d) }}/{{ item.name }}.crx
   vars:
-    var_default_d: ~/repos/{{ item.name }}
+    var_default_d: ~/data/repos/{{ item.name }}
   changed_when:
     - fact_changed_extensions[item.repo | basename] | default(false)
     - fact_build_dirs_exists[item.path | default(var_default_d)] | default(false)

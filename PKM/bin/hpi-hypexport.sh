@@ -7,11 +7,11 @@ set -euo pipefail
 HOME_DIR="${HOME}" # Or replace with `$h` if it's a valid variable
 
 # Decrypt credentials
-username=$(gpg --decrypt "${HOME_DIR}/secrets/hypothesis_username.gpg" 2>/dev/null || {
+username=$(gpg --decrypt "${HOME_DIR}/data/secrets/hypothesis_username.gpg" 2>/dev/null || {
   echo "Failed to decrypt username."
   exit 1
 })
-token=$(gpg --decrypt "${HOME_DIR}/secrets/hypothesis_token.gpg" 2>/dev/null || {
+token=$(gpg --decrypt "${HOME_DIR}/data/secrets/hypothesis_token.gpg" 2>/dev/null || {
   echo "Failed to decrypt token."
   exit 1
 })
@@ -23,13 +23,13 @@ timestamp() {
 
 # If both credentials are available, perform export
 if [[ -n $username && -n $token ]]; then
-  JSON_DIR="${HOME_DIR}/PKM/data/highlights"
+  JSON_DIR="${HOME_DIR}/data/PKM/data/highlights"
   mkdir -p "$JSON_DIR" # Ensure that the target directory exists
   EXPORT_FILE="$JSON_DIR/hypothesis.$(timestamp).json"
   TEMP_FILE="$(mktemp)" # Create a temporary file
 
   # Redirect output to the temporary file
-  if ~/apps/PKM/.venv/bin/python -m hypexport.export --username "$username" --token "$token" >"$TEMP_FILE"; then
+  if ~/data/apps/PKM/.venv/bin/python -m hypexport.export --username "$username" --token "$token" >"$TEMP_FILE"; then
     mv "$TEMP_FILE" "$EXPORT_FILE"
     echo "Export completed successfully and written to $EXPORT_FILE"
   else

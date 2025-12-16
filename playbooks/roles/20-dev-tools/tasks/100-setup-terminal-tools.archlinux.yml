@@ -45,7 +45,7 @@
 - name: "[archlinux] Setup terminal tools: clone tmux"
   ansible.builtin.git:
     repo: https://github.com/tmux/tmux.git
-    dest: ~/repos/tmux
+    dest: ~/data/repos/tmux
     force: true
     depth: 1
     version: "{{ tmux_version }}"
@@ -53,20 +53,20 @@
 - name: "[archlinux] Setup terminal tools: run tmux autogen"
   ansible.builtin.command: sh autogen.sh
   args:
-    chdir: ~/repos/tmux
-    creates: ~/repos/tmux/configure
+    chdir: ~/data/repos/tmux
+    creates: ~/data/repos/tmux/configure
 
 - name: "[archlinux] Setup terminal tools: configure tmux with sixel enabled"
   ansible.builtin.command: ./configure --enable-sixel
   args:
-    chdir: ~/repos/tmux
-    creates: ~/repos/tmux/tmux
+    chdir: ~/data/repos/tmux
+    creates: ~/data/repos/tmux/tmux
 
 - name: "[archlinux] Setup terminal tools: run tmux make"
   become: true
   ansible.builtin.shell: make && make install
   args:
-    chdir: "{{ ansible_env.HOME }}/repos/tmux"
+    chdir: "{{ ansible_env.HOME }}/data/repos/tmux"
     creates: /usr/local/bin/tmux
 
 - name: "[archlinux] Setup terminal tools: ensure automatic start-up of systemd user instances"

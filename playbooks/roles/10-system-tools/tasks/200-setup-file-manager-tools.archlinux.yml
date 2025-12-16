@@ -2,7 +2,7 @@
 - name: "[archlinux] Setup file manager: clone packages"
   ansible.builtin.git:
     repo: "{{ item.repo }}"
-    dest: ~/repos/{{ item.name | default(item.repo) | basename }}
+    dest: ~/data/repos/{{ item.name | default(item.repo) | basename }}
     depth: 10
     force: true
     single_branch: true
@@ -13,7 +13,7 @@
 - name: "[archlinux] Setup file manager: patch plugins & nnn"
   ansible.posix.patch:
     src: "{{ item.patch }}"
-    basedir: ~/repos/nnn
+    basedir: ~/data/repos/nnn
     strip: 1
   loop:
     - patch: ~/dotfiles/assets/patches/term/give_kitty_priority.patch
@@ -57,7 +57,7 @@
   environment:
     PREFIX: "{{ ansible_env.HOME }}/.local"
   args:
-    chdir: ~/repos/nnn
+    chdir: ~/data/repos/nnn
     creates: ~/.local/bin/nnn
 
 - name: "[archlinux] Setup file manager: ensure dest folder"
@@ -76,19 +76,19 @@
     dest: "{{ item.dest }}"
     state: link
   loop:
-    - src: ~/repos/nnn/plugins/preview-tui
+    - src: ~/data/repos/nnn/plugins/preview-tui
       dest: ~/.config/nnn/plugins/preview-tui
-    - src: ~/repos/nnn/plugins/nmount
+    - src: ~/data/repos/nnn/plugins/nmount
       dest: ~/.config/nnn/plugins/nmount
-    - src: ~/repos/nnn/plugins/umounttree
+    - src: ~/data/repos/nnn/plugins/umounttree
       dest: ~/.config/nnn/plugins/umounttree
-    - src: ~/repos/nnn/plugins/dragdrop
+    - src: ~/data/repos/nnn/plugins/dragdrop
       dest: ~/.config/nnn/plugins/dragdrop
 
 # https://github.com/jarun/nnn/wiki/Advanced-use-cases#desktop-integration
 - name: "[archlinux] Setup file manager: install nnn plugins"
   ansible.builtin.copy:
-    src: ~/repos/nnn/misc/desktop/nnn.desktop
+    src: ~/data/repos/nnn/misc/desktop/nnn.desktop
     dest: ~/.local/share/applications/nnn.desktop
     mode: "644"
 

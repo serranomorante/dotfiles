@@ -9,12 +9,12 @@
 
 - name: "[archlinux] Bash language: ensure DAP - bash-debug-adapter folder exists"
   ansible.builtin.file:
-    path: ~/apps/lang-tools/bash-debug-adapter
+    path: ~/data/apps/lang-tools/bash-debug-adapter
     state: directory
     mode: "755"
 
 - name: "[archlinux] Bash language: ensure DAP - install bash-debug-adapter"
   ansible.builtin.unarchive:
     src: https://github.com/rogalmic/vscode-bash-debug/releases/download/v{{ bash_debug_adapter_version }}/bash-debug-{{ bash_debug_adapter_version }}.vsix
-    dest: ~/apps/lang-tools/bash-debug-adapter
+    dest: ~/data/apps/lang-tools/bash-debug-adapter
     remote_src: true

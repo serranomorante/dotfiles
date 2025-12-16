@@ -5,13 +5,13 @@
       - pip
       - hatch
       - poetry
-    virtualenv: ~/apps/python-tools/.venv
+    virtualenv: ~/data/apps/python-tools/.venv
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
 
 - name: "[archlinux] Python tools: symlink python tools"
   ansible.builtin.file:
-    src: ~/apps/python-tools/.venv/bin/{{ item }}
+    src: ~/data/apps/python-tools/.venv/bin/{{ item }}
     dest: ~/bin/{{ item }}
     state: link
   loop:

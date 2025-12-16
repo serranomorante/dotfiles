@@ -43,7 +43,7 @@
 
 - name: "[archlinux] Other tools: ensure security tools folder"
   ansible.builtin.file:
-    path: ~/apps/security-tools
+    path: ~/data/apps/security-tools
     state: directory
     mode: "755"
 

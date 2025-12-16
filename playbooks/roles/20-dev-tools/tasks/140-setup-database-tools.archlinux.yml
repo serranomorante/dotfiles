@@ -11,7 +11,7 @@
   become: true
   ansible.builtin.file:
     state: directory
-    path: ~/apps/db/postgresql/data
+    path: ~/data/apps/db/postgresql/data
     recurse: true
     owner: postgres
     group: postgres

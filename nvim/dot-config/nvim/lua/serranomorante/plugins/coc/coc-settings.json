@@ -43,7 +43,7 @@
   "typescript.inlayHints.enumMemberValues.enabled": true,
   // Download the compiled jar from this url and add it to the following dir
   // https://plantuml.com/download
-  "markdown-preview-enhanced.plantumlJarPath": "${userHome}/plantuml/plantuml.jar",
+  "markdown-preview-enhanced.plantumlJarPath": "${userHome}/data/plantuml/plantuml.jar",
   "markdown-preview-enhanced.usePandocParser": true,
   "markdown-preview-enhanced.pandocArguments": ["--mathjax"],
   "markdown-preview-enhanced.enableWikiLinkSyntax": true,

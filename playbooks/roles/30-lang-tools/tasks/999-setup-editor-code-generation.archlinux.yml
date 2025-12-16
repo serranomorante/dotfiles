@@ -53,11 +53,11 @@
         mcp_hub_executable = function() return "{{ var_mcp_hub.stdout }}" end,
         eslint_d_executable = function() return "{{ var_system_default_eslint_d.stdout }}" end,
         js_beautify_executable = function() return "{{ var_system_default_js_beautify.stdout }}" end,
-        vscode_js_debug_dap_executable = function() return vim.env.HOME .. "/repos/vscode-js-debug/dist/src/dapDebugServer.js" end,
-        cppdbg_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7" end,
+        vscode_js_debug_dap_executable = function() return vim.env.HOME .. "/data/repos/vscode-js-debug/dist/src/dapDebugServer.js" end,
+        cppdbg_dap_executable = function() return vim.env.HOME .. "/data/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7" end,
         pylsp = function() return vim.env.HOME .. "/bin/pylsp" end,
-        bashdb_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/bash-debug-adapter" end,
+        bashdb_dap_executable = function() return vim.env.HOME .. "/data/apps/lang-tools/bash-debug-adapter" end,
         php_dap_executable = function() return "/usr/lib/node_modules/php-debug/out/phpDebug.js" end,
-        debugpy_dap_executable = function() return vim.env.HOME .. "/apps/lang-tools/debugpy/.venv/bin/python" end,
-        go_dap_executable = function() return vim.env.HOME .. "/repos/vscode-go/extension/dist/debugAdapter.js" end
+        debugpy_dap_executable = function() return vim.env.HOME .. "/data/apps/lang-tools/debugpy/.venv/bin/python" end,
+        go_dap_executable = function() return vim.env.HOME .. "/data/repos/vscode-go/extension/dist/debugAdapter.js" end
       }

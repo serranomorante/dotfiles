@@ -7,18 +7,18 @@
 
 - name: "[archlinux] C language: ensure DAP - cpptools folder exists"
   ansible.builtin.file:
-    path: ~/apps/lang-tools/cpptools
+    path: ~/data/apps/lang-tools/cpptools
     state: directory
     mode: "755"
 
 - name: "[archlinux] C language: ensure DAP - install cpptools"
   ansible.builtin.unarchive:
     src: https://github.com/microsoft/vscode-cpptools/releases/download/{{ cpptools_version }}/cpptools-linux-x64.vsix
-    dest: ~/apps/lang-tools/cpptools
+    dest: ~/data/apps/lang-tools/cpptools
     remote_src: true
-    creates: ~/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7 # if exists, this step will not be run
+    creates: ~/data/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7 # if exists, this step will not be run
 
 - name: "[archlinux] C language: ensure DAP - set cpptools as executable"
   ansible.builtin.file:
-    path: ~/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7
+    path: ~/data/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7
     mode: "755"

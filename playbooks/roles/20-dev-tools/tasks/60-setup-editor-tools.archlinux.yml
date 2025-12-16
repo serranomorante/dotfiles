@@ -67,7 +67,7 @@
 - name: "[archlinux] Editor tools: clone treesitter parsers"
   ansible.builtin.git:
     repo: "{{ item.repo }}"
-    dest: ~/repos/{{ item.repo | basename }}
+    dest: ~/data/repos/{{ item.repo | basename }}
     version: "{{ item.version | default('HEAD') }}"
     depth: 1
     force: true
@@ -75,10 +75,10 @@
   loop: "{{ treesitter_parsers }}"
 
 - name: "[archlinux] Editor tools: build treesitter parsers"
-  ansible.builtin.command: ~/bin/tree-sitter build -o ~/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
+  ansible.builtin.command: ~/data/bin/tree-sitter build -o ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
   args:
-    creates: ~/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
-    chdir: ~/repos/{{ item.repo | basename }}/{{ item.build_folder | default(None) }}
+    creates: ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
+    chdir: ~/data/repos/{{ item.repo | basename }}/{{ item.build_folder | default(None) }}
   loop: "{{ treesitter_parsers }}"
 
 - name: "[archlinux] Editor tools: ensure nvim treesitter folders"
@@ -92,14 +92,14 @@
 
 - name: "[archlinux] Editor tools: copy treesitter parsers to nvim"
   ansible.builtin.copy:
-    src: ~/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
+    src: ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
     dest: ~/.config/nvim/parser/{{ item.filetype }}.so
     mode: "755"
   loop: "{{ treesitter_parsers }}"
 
 - name: "[archlinux] Editor tools: copy treesitter queries to nvim"
   ansible.builtin.copy:
-    src: ~/repos/{{ item.repo | basename }}/queries/
+    src: ~/data/repos/{{ item.repo | basename }}/queries/
     dest: ~/.config/nvim/queries/{{ item.filetype }}/
     mode: "755"
   loop: "{{ treesitter_parsers }}"
@@ -107,15 +107,15 @@
 # Create this entry kdewallet/neovim/intelephense using kwalletmanager
 - name: "[archlinux] Editor tools: setup intelephense key if available"
   ansible.builtin.shell: |
-    mkdir -p ~/intelephense
-    {{ kwallet_query_cmd }} && echo "$({{ kwallet_query_cmd }})" > ~/intelephense/licence.txt
+    mkdir -p ~/data/intelephense
+    {{ kwallet_query_cmd }} && echo "$({{ kwallet_query_cmd }})" > ~/data/intelephense/licence.txt
   vars:
     folder_entry: intelephense
     wallet_name: kdewallet
     folder_name: neovim
     kwallet_query_cmd: kwallet-query -r {{ folder_entry }} {{ wallet_name }} -f {{ folder_name }}
   args:
-    creates: ~/intelephense/licence.txt
+    creates: ~/data/intelephense/licence.txt
   ignore_errors: true
 
 - name: "[archlinux] Editor tools: apply patches to nvim plugins"

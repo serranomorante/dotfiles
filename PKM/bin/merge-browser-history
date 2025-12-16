@@ -11,7 +11,7 @@ epoch() {
 main() {
   local tmpdir tmpfile browsing_dir
   tmpdir="$(mktemp -d)"
-  browsing_dir="$HOME/PKM/data/browsing" || exit $?
+  browsing_dir="$HOME/data/PKM/data/browsing" || exit $?
   if [[ ! -d "$browsing_dir" ]]; then
     exit 1
   fi

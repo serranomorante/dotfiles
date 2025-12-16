@@ -355,7 +355,7 @@ end
 ---Check if current cwd is home
 function M.cwd_is_home() return vim.fn.getcwd() == vim.env.HOME end
 
-function M.cwd_is_dwm() return vim.fn.getcwd() == vim.env.HOME .. "/repos/dwm" end
+function M.cwd_is_dwm() return vim.fn.getcwd() == vim.env.HOME .. "/data/repos/dwm" end
 
 function M.cwd_is_notes() return vim.fn.getcwd() == vim.env.HOME .. "/data/notes/foam" end
 

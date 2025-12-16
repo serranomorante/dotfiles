@@ -4,6 +4,6 @@ Description=Backup hypothesis sql
 
 [Service]
 Type=oneshot
-ExecStartPre=mkdir -p %h/PKM/data/sql/hypothesis
-ExecStart=/usr/bin/bash -c "docker compose exec postgres pg_dump postgres -U postgres > %h/PKM/data/sql/hypothesis/dumpfile"
+ExecStartPre=mkdir -p %h/data/PKM/data/sql/hypothesis
+ExecStart=/usr/bin/bash -c "docker compose exec postgres pg_dump postgres -U postgres > %h/data/PKM/data/sql/hypothesis/dumpfile"
 WorkingDirectory=%h/data/repos/h

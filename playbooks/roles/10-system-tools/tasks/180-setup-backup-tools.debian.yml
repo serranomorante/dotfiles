@@ -11,4 +11,4 @@
   ansible.builtin.replace:
     path: ~/.ssh/authorized_keys
     regexp: "^([^c].*borg)$"
-    replace: 'command="~/bin/borg serve --restrict-to-path ~/backups",restrict \1'
+    replace: 'command="~/data/bin/borg serve --restrict-to-path ~/data/backups",restrict \1'

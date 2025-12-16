@@ -39,6 +39,6 @@ return {
     }
   end,
   condition = {
-    dir = vim.env.HOME .. "/repos/dwm",
+    dir = vim.env.HOME .. "/data/repos/dwm",
   },
 }

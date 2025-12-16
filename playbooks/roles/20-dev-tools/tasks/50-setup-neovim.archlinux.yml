@@ -2,7 +2,7 @@
 - name: "[archlinux] Neovim: ensure Neovim - clone"
   ansible.builtin.git:
     repo: https://github.com/neovim/neovim
-    dest: ~/repos/neovim
+    dest: ~/data/repos/neovim
     force: true
     single_branch: true
     version: "{{ archlinux_neovim_version }}"
@@ -22,9 +22,9 @@
     path: "{{ item }}"
     state: absent
   loop:
-    - "{{ ansible_env.HOME }}/repos/neovim/.deps"
+    - "{{ ansible_env.HOME }}/data/repos/neovim/.deps"
     - /usr/local/share/nvim/runtime
-    # - ~/repos/neovim/build
+    # - ~/data/repos/neovim/build
 
 - name: "[archlinux] Neovim: ensure neovim - build"
   ansible.builtin.shell: >
@@ -33,6 +33,6 @@
   environment:
     CCACHE_DISABLE: true
   args:
-    chdir: ~/repos/neovim
-    creates: ~/repos/neovim/build/bin/nvim
+    chdir: ~/data/repos/neovim
+    creates: ~/data/repos/neovim/build/bin/nvim
   timeout: 0

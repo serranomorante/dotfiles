@@ -22,7 +22,7 @@
 - name: "[archlinux] Javascript language: clone vscode-js-debug"
   ansible.builtin.git:
     repo: https://github.com/microsoft/vscode-js-debug.git
-    dest: ~/repos/vscode-js-debug
+    dest: ~/data/repos/vscode-js-debug
     depth: 1
     force: true
     single_branch: true
@@ -31,7 +31,7 @@
 - name: "[archlinux] Javascript language: apply custom patch"
   ansible.builtin.command: git apply ~/dotfiles/assets/patches/vscode_js_debug_stderr.patch
   args:
-    chdir: ~/repos/vscode-js-debug
+    chdir: ~/data/repos/vscode-js-debug
   changed_when: false
 
 - name: "[archlinux] Javascript language: install vscode-js-debug"
@@ -40,5 +40,5 @@
     $({{ ansible_env.HOME }}/.volta/bin/volta which npm) ci
     $({{ ansible_env.HOME }}/.volta/bin/volta which npx) gulp dapDebugServer
   args:
-    chdir: ~/repos/vscode-js-debug
-    creates: ~/repos/vscode-js-debug/dist/src/dapDebugServer.js
+    chdir: ~/data/repos/vscode-js-debug
+    creates: ~/data/repos/vscode-js-debug/dist/src/dapDebugServer.js

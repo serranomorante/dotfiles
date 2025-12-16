@@ -3,7 +3,7 @@
 if [[ $# -eq 1 ]]; then
     selected_path=$1
 else
-    selected_path=$(find ~/work/gp/.bare ~/pjs ~/repos ~/courses ~/temp ~/issues ~/dotfiles ~/.local/share/Cryptomator/mnt ~/.local/share/nvim/site/pack/plugins/start ~/.local/share/nvim/site/pack/plugins/opt ~/.local/share/nvim/gp ~/data/work/cf/repos ~/data/repos ~/data/pjs ~/data/courses ~/data/notes -mindepth 1 -maxdepth 1 -type d | fzf)
+    selected_path=$(find ~/data/work/gp/.bare ~/data/pjs ~/data/repos ~/data/courses ~/data/temp ~/data/issues ~/data/dotfiles ~/.local/share/Cryptomator/mnt ~/.local/share/nvim/site/pack/plugins/start ~/.local/share/nvim/site/pack/plugins/opt ~/.local/share/nvim/gp ~/data/work/cf/repos ~/data/repos ~/data/pjs ~/data/courses ~/data/notes -mindepth 1 -maxdepth 1 -type d | fzf)
 fi
 
 if [[ -z $selected_path ]]; then

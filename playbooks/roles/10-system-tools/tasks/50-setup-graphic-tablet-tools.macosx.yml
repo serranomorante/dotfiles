@@ -16,13 +16,13 @@
 - name: "[macosx] Graphic tablet peripheral: ensure repos folder"
   ansible.builtin.file:
     state: directory
-    path: "{{ ansible_env.HOME }}/repos"
+    path: "{{ ansible_env.HOME }}/data/repos"
     mode: "755"
 
 - name: "[macosx] Graphic tablet peripheral: clone patched weylus"
   ansible.builtin.git:
     repo: https://github.com/P1YU5H-50N1/Weylus
-    dest: "{{ ansible_env.HOME }}/repos/Weylus"
+    dest: "{{ ansible_env.HOME }}/data/repos/Weylus"
     force: true
     depth: 1
     version: "{{ macos_weylus_version }}"
@@ -31,5 +31,5 @@
   # doesn't work
   ansible.builtin.command: cargo build
   args:
-    chdir: "{{ ansible_env.HOME }}/repos/Weylus"
-    # creates: "{{ ansible_env.HOME }}/repos/Weylus"
+    chdir: "{{ ansible_env.HOME }}/data/repos/Weylus"
+    # creates: "{{ ansible_env.HOME }}/data/repos/Weylus"

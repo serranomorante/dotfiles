@@ -3,7 +3,7 @@
 set -o pipefail
 set -ex
 
-SAVE_DIR="${HOME}/PKM/data/browsing"
+SAVE_DIR="${HOME}/data/PKM/data/browsing"
 
 mkdir -p "$SAVE_DIR"
 

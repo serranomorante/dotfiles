@@ -60,13 +60,13 @@
       - mdformat-frontmatter
       - mdformat-web
       - mdformat-wikilink
-    virtualenv: ~/apps/note-taking-tools/utilities/.venv
+    virtualenv: ~/data/apps/note-taking-tools/utilities/.venv
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
 
 - name: "[archlinux] Markdown language: symlink virtualenv packages"
   ansible.builtin.file:
-    src: ~/apps/note-taking-tools/utilities/.venv/bin/{{ item }}
+    src: ~/data/apps/note-taking-tools/utilities/.venv/bin/{{ item }}
     dest: ~/bin/{{ item }}
     state: link
   loop:

@@ -10,7 +10,7 @@
 - name: "[archlinux] Go language: clone vscode-go"
   ansible.builtin.git:
     repo: https://github.com/golang/vscode-go
-    dest: ~/repos/vscode-go
+    dest: ~/data/repos/vscode-go
     depth: 1
     single_branch: true
     version: release-v{{ vscode_go_version }}
@@ -21,5 +21,5 @@
     $({{ ansible_env.HOME }}/.volta/bin/volta which npm) ci
     $({{ ansible_env.HOME }}/.volta/bin/volta which npm) run compile
   args:
-    chdir: ~/repos/vscode-go/extension
+    chdir: ~/data/repos/vscode-go/extension
   changed_when: false
