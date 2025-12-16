@@ -1,17 +1,25 @@
 ---
 - block:
+    - name: "[archlinux] Setup root backup tools: ensure folder with right permissions"
+      ansible.builtin.file:
+        path: ~/.config/borg-root/keys
+        recurse: true
+        state: directory
+        mode: "755"
+
     - name: "[archlinux] Setup root backup tools: init borg root repos"
       become: true
-      ansible.builtin.command: borg init --encryption=keyfile '{{ item.repo }}'
+      ansible.builtin.command: borg init --encryption=keyfile '{{ item.borg_repo }}'
       environment:
+        BORG_KEYS_DIR: "{{ ansible_env.USER }}/.config/borg-root/keys"
         BORG_PASSCOMMAND: >
           /usr/local/bin/run_as_user -u {{ ansible_env.USER }}
             kwallet-query
             --folder {{ item.keyrings.folder }}
             --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }}
+      args:
+        creates: ~/.config/borg-root/keys/*{{ item.borg_repo | basename | regex_replace("[^A-Za-z0-9]", "_") }}
       loop: "{{ archlinux_borg_root_repos_env }}"
-      changed_when: false
-      register: result
 
     - name: "[archlinux] Setup root backup tools: create backup scripts from template"
       become: true
@@ -57,27 +65,28 @@
 
     - name: "[archlinux] Setup root backup tools: backup keyfile"
       become: true
-      ansible.builtin.command: >
-        borg key export "{{ item.borg_repo }}"
-        '{{ ansible_env.HOME }}/secrets/backup-borg-root-keyfiles/{{ item.borg_repo | regex_replace("[^A-Za-z0-9]", "_") }}'
+      ansible.builtin.command: borg key export "{{ item.borg_repo }}" "{{ ansible_env.HOME }}/secrets/backup-borg-root-keyfiles/{{ keyfilename }}"
       environment:
+        BORG_KEYS_DIR: "{{ ansible_env.USER }}/.config/borg-root/keys"
         BORG_PASSCOMMAND: >
           /usr/local/bin/run_as_user -u {{ ansible_env.USER }}
             kwallet-query
             --folder {{ item.keyrings.folder }}
             --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }}
-      changed_when: false
+      vars:
+        keyfilename: '{{ item.borg_repo | regex_replace("[^A-Za-z0-9]", "_") }}'
+      changed_when: true
       loop: "{{ archlinux_borg_root_repos_env }}"
 
     - name: "[archlinux] Setup root backup tools: register timestamp"
-      ansible.builtin.command: "date +%Y-%m-%d%H-%M-%S"
-      changed_when: false
-      register: tstamp
+      ansible.builtin.command: date +%Y-%m-%d%H-%M-%S
+      changed_when: true
+      register: var_tstamp
 
     - name: "[archlinux] Setup root backup tools: archive the keyfiles"
       become: true
-      ansible.builtin.shell: tar -czvf ../root_keyfiles-{{ user_os }}-{{ tstamp.stdout }}.tar.gz * --remove-files
-      changed_when: false
+      ansible.builtin.command: tar -czvf ../root_keyfiles-{{ user_os }}-{{ var_tstamp.stdout }}.tar.gz * --remove-files
       args:
         chdir: "{{ ansible_env.HOME }}/secrets/backup-borg-root-keyfiles"
+        creates: ../root_keyfiles-{{ user_os }}-{{ var_tstamp.stdout }}.tar.gz
   ignore_errors: true

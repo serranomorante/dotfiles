@@ -8,9 +8,9 @@
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.repo }}'
       environment:
         BORG_PASSCOMMAND: "gpg --homedir /data/data/com.termux/files/home/.gnupg --decrypt {{ ansible_env.HOME }}/secrets/{{ item.pass_file }}"
+      args:
+        creates: ~/.config/borg/keys/*{{ item.repo | basename | regex_replace("[^A-Za-z0-9]", "_") }}
       loop: "{{ otherlinux_borg_repos_env }}"
-      changed_when: false
-      register: result
 
     - name: "[otherlinux] Setup backup tools: ensure bin folder"
       ansible.builtin.file:
@@ -42,25 +42,22 @@
         mode: "755"
 
     - name: "[otherlinux] Setup backup tools: backup keyfile"
-      ansible.builtin.command: >
-        borg key export "{{ item.repo }}"
-        '~/secrets/backup-borg-keyfiles/{{ item.repo | regex_replace("[^A-Za-z0-9]", "_") }}'
+      ansible.builtin.command: borg key export "{{ item.repo }}" "~/secrets/backup-borg-keyfiles/{{ keyfilename }}"
       environment:
         BORG_PASSCOMMAND: gpg --homedir /data/data/com.termux/files/home/.gnupg --decrypt {{ ansible_env.HOME }}/secrets/{{ item.pass_file }}
-      changed_when: false
+      vars:
+        keyfilename: '{{ item.repo | regex_replace("[^A-Za-z0-9]", "_") }}'
+      changed_when: true
       loop: "{{ otherlinux_borg_repos_env }}"
 
     - name: "[otherlinux] Setup backup tools: register timestamp"
-      ansible.builtin.command: "date +%Y-%m-%d%H-%M-%S"
-      changed_when: false
-      register: tstamp
+      ansible.builtin.command: date +%Y-%m-%d%H-%M-%S
+      changed_when: true
+      register: var_tstamp
 
     - name: "[otherlinux] Setup backup tools: archive the keyfiles"
-      ansible.builtin.shell: tar -czvf ../keyfiles-{{ user_os }}-{{ tstamp.stdout }}.tar.gz * --remove-files
-      changed_when: false
+      ansible.builtin.command: tar -czvf ../keyfiles-{{ user_os }}-{{ var_tstamp.stdout }}.tar.gz * --remove-files
       args:
-        chdir: "~/secrets/backup-borg-keyfiles"
-      failed_when:
-        - '"stderr" in result'
-        - '"Cannot stat: No such file or directory" not in result.stderr'
+        chdir: ~/secrets/backup-borg-keyfiles
+        creates: ../keyfiles-{{ user_os }}-{{ var_tstamp.stdout }}.tar.gz
   ignore_errors: true
