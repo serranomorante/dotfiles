@@ -7,8 +7,11 @@
 
 - name: "[archlinux] Setup video tools: fix permission denied issue with davinci install"
   ansible.builtin.file:
-    path: ~/temp/makepkg/davinci-resolve
+    path: "{{ item }}"
     state: absent
+  loop:
+    - ~/temp/makepkg/davinci-resolve
+    - ~/Downloads/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
 
 - name: "[archlinux] Setup video tools: download davinci resolve"
   ansible.builtin.command: >
@@ -35,12 +38,21 @@
   timeout: 0
   when: (var_download_davinci_result | default({})).changed and is_x_display_session
 
+- name: "[archlinux] Setup video tools: stat downloaded davinci resolve file"
+  ansible.builtin.stat:
+    path: ~/Downloads/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+  register: var_stat_downloaded_davinci_resolve_file
+
 - name: "[archlinux] Setup video tools: move davinci resolve zip to expected location"
   ansible.builtin.command: mv DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip ~/apps/video-tools/davinci-resolve/
   args:
     chdir: ~/Downloads
     creates: ~/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
-  when: (var_download_davinci_result | default({})).changed and is_x_display_session
+  when:
+    - is_x_display_session
+    - (var_download_davinci_result | default({})).changed
+    - var_stat_downloaded_davinci_resolve_file.stat.exists
+    - ((var_stat_downloaded_davinci_resolve_file.stat.size / 1024 / 1024) | int > 1000) # at least greater than 1G
 
 - name: "[archlinux] Setup video tools: stat davinci-resolve zip package"
   ansible.builtin.stat:
@@ -122,6 +134,11 @@
   changed_when: false
   when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
+- name: "[archlinux] Setup video tools: temporary give tmpfs more space"
+  become: true
+  ansible.builtin.command: mount -o remount,size=80% /tmp
+  changed_when: true
+
 - name: "[archlinux] Setup video tools: install davinci-resolve deps"
   become: true
   become_user: aur_builder
@@ -162,11 +179,6 @@
     chdir: "{{ ansible_env.HOME }}/apps/video-tools/davinci-resolve"
   changed_when: true
   when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
-
-- name: "[archlinux] Setup video tools: temporary give tmpfs more space"
-  become: true
-  ansible.builtin.command: mount -o remount,size=80% /tmp
-  changed_when: true
 
 - name: "[archlinux] Setup video tools: setup makepkg folder on aur_builder user"
   become: true
