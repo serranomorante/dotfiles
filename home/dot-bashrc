@@ -46,6 +46,7 @@ export PATH="$HOME/bin:$PATH"
 export PATH="/usr/lib/python3.11/site-packages:$PATH"
 export FONTCONFIG_PATH=/etc/fonts
 export COLORTERM=truecolor
+export EDITOR=nvim
 # For go packages
 if [ -x "$(command -v go)" ]; then
     export PATH="$PATH:$(go env GOBIN):$(go env GOPATH)/bin"
