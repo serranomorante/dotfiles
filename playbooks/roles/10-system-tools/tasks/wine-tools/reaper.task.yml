@@ -43,3 +43,15 @@
     dest: ~/.local/share/applications/
     mode: "644"
   notify: handler_update_desktop_database
+
+- name: "[archlinux] Wine tools: check file exists"
+  ansible.builtin.stat:
+    path: ~/.config/REAPER/reaper.ini
+  register: var_reaper_ini_file
+
+- name: "[archlinux] Wine tools: increase REAPER ui scale"
+  ansible.builtin.replace:
+    path: ~/.config/REAPER/reaper.ini
+    regexp: r"^(ui_?scale)=[^\s]*"
+    replace: r"\1=1.2"
+  when: var_reaper_ini_file.stat.exists

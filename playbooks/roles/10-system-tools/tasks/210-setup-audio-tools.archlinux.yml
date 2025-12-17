@@ -72,15 +72,3 @@
       - audio
       - pipewire
     name: "{{ ansible_env.USER }}"
-
-- name: "[archlinux] Setup audio tools: check file exists"
-  ansible.builtin.stat:
-    path: ~/.config/REAPER/reaper.ini
-  register: var_reaper_ini_file
-
-- name: "[archlinux] Setup audio tools: increase REAPER ui scale"
-  ansible.builtin.replace:
-    path: ~/.config/REAPER/reaper.ini
-    regexp: "^(ui_?scale)=[^\\s]*"
-    replace: "\\1=1.2"
-  when: var_reaper_ini_file.stat.exists

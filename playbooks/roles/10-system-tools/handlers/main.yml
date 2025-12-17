@@ -84,7 +84,7 @@
 - name: handler_ensure_hypothesis_oauth_client_id
   ansible.builtin.replace:
     path: ~/data/repos/hypothesis-extension/settings/custom-dev.json
-    regexp: "^\\{"
+    regexp: r"^\{"
     replace: '{\n  "oauthClientId": "{{ ansible_facts.hypothesis_oauth_client_id | default(None) }}",'
   when: ansible_facts.hypothesis_oauth_client_id is not undefined
 
@@ -92,7 +92,7 @@
   ansible.builtin.replace:
     path: ~/.local/share/applications/brave-browser.desktop
     regexp: "^(Exec=).*"
-    replace: "\\1bravennn --load-extension={{ browser_local_extensions | map(attribute='path') | join(',') }} %u"
+    replace: r"\1bravennn --load-extension={{ browser_local_extensions | map(attribute='path') | join(',') }} %u"
   notify: "10-system-tools : handler_update_desktop_database"
 
 - name: handler_build_mouseless
