@@ -25,3 +25,11 @@ vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 ---If netrw was already loaded, clear this augroup
 if vim.fn.exists("#FileExplorer") then vim.api.nvim_create_augroup("FileExplorer", { clear = true }) end
+
+vim.api.nvim_create_autocmd("VimEnter", {
+  desc = "Change backgroun color if this instance was open by nnn",
+  group = vim.api.nvim_create_augroup("nnnlvl", { clear = true }),
+  callback = function()
+    if vim.env.NNNLVL then vim.api.nvim_set_hl(0, "Normal", { bg = "#111827" }) end
+  end,
+})
