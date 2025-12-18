@@ -5,8 +5,14 @@ local utils = require("serranomorante.utils")
 ---@param command_args vim.api.keyset.create_user_command.command_args
 local function helpgrep(command_args)
   local args = command_args.args:gsub("\\'", "\\x27") -- escape single quotes
-  local dirs = string.format("%s/repos/neovim/runtime/doc %s/site/pack/plugins", vim.env.HOME, vim.fn.stdpath("data"))
+  local dirs =
+    string.format("%s/data/repos/neovim/runtime/doc %s/site/pack/plugins", vim.env.HOME, vim.fn.stdpath("data"))
   local content = vim.fn.join(vim.fn.systemlist(string.format("rg -e %s %s -g '*.txt' --json", args, dirs)), ",")
+  local look_for_errors = vim.fn.matchstr(content, "^rg:[^,]*,")
+  if look_for_errors then
+    local msg = "[Helpgrep] Error: %s"
+    return vim.api.nvim_echo({ { msg:format(look_for_errors) } }, false, { err = true })
+  end
   local json_content = vim.json.decode(string.format("[%s]", content), { luanil = { object = true } })
 
   local items, count = utils.rg_json_to_qfitems(json_content)
