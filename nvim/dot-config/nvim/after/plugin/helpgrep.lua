@@ -9,7 +9,7 @@ local function helpgrep(command_args)
     string.format("%s/data/repos/neovim/runtime/doc %s/site/pack/plugins", vim.env.HOME, vim.fn.stdpath("data"))
   local content = vim.fn.join(vim.fn.systemlist(string.format("rg -e %s %s -g '*.txt' --json", args, dirs)), ",")
   local look_for_errors = vim.fn.matchstr(content, "^rg:[^,]*,")
-  if look_for_errors then
+  if look_for_errors ~= "" then
     local msg = "[Helpgrep] Error: %s"
     return vim.api.nvim_echo({ { msg:format(look_for_errors) } }, false, { err = true })
   end
