@@ -275,3 +275,15 @@ vim.keymap.set("n", "t^", function()
   local prev_tab = vim.fn.tabpagenr("#")
   if prev_tab > 0 then vim.cmd("tabn " .. prev_tab) end
 end, { desc = "Toggle between current and previous tab" })
+
+vim.keymap.set({ "i", "c" }, "<C-f>", function()
+  if vim.fn.getcmdpos() > #vim.fn.getcmdline() then return "<C-f>" end
+  return "<Right>"
+end, { desc = "Move cursor right", expr = true })
+vim.keymap.set({ "i", "c" }, "<C-b>", "<Left>", { desc = "Move cursor left" })
+vim.keymap.set({ "i", "c" }, "<C-a>", "<Home>", { desc = "Move to beginning of line" })
+vim.keymap.set({ "i", "c" }, "<C-e>", "<End>", { desc = "Move to end of line" })
+vim.keymap.set({ "i", "c" }, "<C-d>", "<Delete>", { desc = "Delete character forward" })
+vim.keymap.set({ "i", "c" }, "<A-b>", "<C-Left>", { desc = "Move word backward" })
+vim.keymap.set({ "i", "c" }, "<A-f>", "<C-Right>", { desc = "Move word forward" })
+vim.keymap.set({ "i", "c" }, "<A-d>", "<C-o>dw", { desc = "Delete word forward" })

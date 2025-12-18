@@ -64,8 +64,6 @@ neovim_plugins:
     repo: kevinhwang91/nvim-fundo
     name: fundo
   - folder: start
-    repo: tpope/vim-rsi # https://vi.stackexchange.com/a/6041
-  - folder: start
     repo: stevearc/aerial.nvim
   - folder: start
     repo: HakonHarnes/img-clip.nvim
