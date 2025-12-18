@@ -19,6 +19,8 @@ config_files_backup_env: # home folder only
   - ~/.ssh/config
   - ~/.bash_history
   - ~/.config/REAPER
+  - ~/data/work/cf/.gitconfig
+  - ~/dotfiles/.gitconfig
 pkm_backup_env:
   - ~/data/PKM
   - ~/.local/share/promnesia
