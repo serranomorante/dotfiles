@@ -1,6 +1,6 @@
 [user]
-email = serranomorantepatricio@gmail.com
-name = Patricio Serrano
+email = example@example.com
+name = example
 
 [init]
 defaultBranch = main
@@ -45,6 +45,9 @@ file-style = omit
 hunk-header-decoration-style = Black box
 hunk-header-file-style = Gray bold ul
 hunk-header-style = file line-number syntax
+
+[includeIf "gitdir:~/dotfiles/**"]
+path = ~/dotfiles/.gitconfig
 
 [includeIf "gitdir:~/data/work/cf/**"]
 path = ~/data/work/cf/.gitconfig
