@@ -17,7 +17,7 @@ git:
   autoForwardBranches: none
   branchLogCmd: "git log --graph --color=always --abbrev-commit --decorate --date=relative --pretty=medium --oneline {{branchName}} --"
   autoStageResolvedConflicts: false
-  autoFetch: false
+  autoFetch: true
   pagers:
     - colorArg: always
       # uncomment if you want to use difftastic
