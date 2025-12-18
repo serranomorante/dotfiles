@@ -8,7 +8,7 @@ for socket in $sockets; do
     readarray -t temp_output < <(kitten @ --to "unix:$socket" ls | jq -r '.[].tabs.[].windows.[].cwd')
     for cwd in "${temp_output[@]}"; do
         if [[ -n "$cwd" && "$*" == "$cwd"* ]]; then
-            if [[ "$*" =~ ^([^:]+):([0-9]+)$ ]]; then
+            if [[ "$*" =~ ^([^:]+):([^:]+): ]]; then
                 file="${BASH_REMATCH[1]}"
                 line="${BASH_REMATCH[2]}"
                 kitty @ --to "unix:$socket" run open_in_nvim.sh kitty_simple_edit_at_line "$file" "$line"
