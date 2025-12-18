@@ -1,50 +1,50 @@
 [user]
-    email = serranomorantepatricio@gmail.com
-    name = Patricio Serrano
+email = serranomorantepatricio@gmail.com
+name = Patricio Serrano
 
 [init]
-    defaultBranch = main
+defaultBranch = main
 
 [rerere]
-    enabled = true
+enabled = false
 
 [commit]
-    verbose = true
+verbose = true
 
 [core]
-    editor = open_in_nvim.sh git_editor
-    pager = delta
+editor = open_in_nvim.sh git_editor
+pager = delta
 
 [interactive]
-    diffFilter = delta
+diffFilter = delta
 
 [merge]
-    conflictstyle = diff3
+conflictstyle = diff3
 
 [diff]
-    colorMoved = default
+colorMoved = default
 
 [delta]
-    features = settings interactive decorations
+features = settings interactive decorations
 
 [delta "settings"]
-    true-color = always
-    dark = true
-    paging = never
-    line-numbers = true
-    hyperlinks = true
-    hyperlinks-file-link-format = "lazygit-edit://{path}:{line}"
+true-color = always
+dark = true
+paging = never
+line-numbers = true
+hyperlinks = true
+hyperlinks-file-link-format = "lazygit-edit://{path}:{line}"
 
 [delta "interactive"]
-    keep-plus-minus-markers = false
+keep-plus-minus-markers = false
 
 [delta "decorations"]
-    commit-decoration-style = blue
-    commit-style = raw
-    file-style = omit
-    hunk-header-decoration-style = Black box
-    hunk-header-file-style = Gray bold ul
-    hunk-header-style = file line-number syntax
+commit-decoration-style = blue
+commit-style = raw
+file-style = omit
+hunk-header-decoration-style = Black box
+hunk-header-file-style = Gray bold ul
+hunk-header-style = file line-number syntax
 
 [includeIf "gitdir:~/data/work/cf/**"]
-    path = ~/data/work/cf/.gitconfig
+path = ~/data/work/cf/.gitconfig
