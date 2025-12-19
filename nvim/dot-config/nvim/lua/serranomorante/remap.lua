@@ -287,3 +287,22 @@ vim.keymap.set({ "i", "c" }, "<C-d>", "<Delete>", { desc = "Delete character for
 vim.keymap.set({ "i", "c" }, "<A-b>", "<C-Left>", { desc = "Move word backward" })
 vim.keymap.set({ "i", "c" }, "<A-f>", "<C-Right>", { desc = "Move word forward" })
 vim.keymap.set({ "i", "c" }, "<A-d>", "<C-o>dw", { desc = "Delete word forward" })
+
+---https://stackoverflow.com/questions/11074440/how-to-iterate-through-the-registers-in-my-vimscript
+---@type number[]
+local registers_nr = vim.fn.range(vim.fn.char2nr("a"), vim.fn.char2nr("z"))
+registers_nr = vim.list_extend(registers_nr, vim.fn.range(vim.fn.char2nr("0"), vim.fn.char2nr("9")))
+registers_nr = vim.list_extend(registers_nr, vim.tbl_map(vim.fn.char2nr, { '"', "-", "*", "%", "/", ".", "#", ":" }))
+vim.keymap.set({ "n", "c", "i" }, "<A-.>", function()
+  local registers = vim.tbl_map(function(item)
+    local register = vim.fn.nr2char(item)
+    return { name = register, value = vim.fn.getreg(register) }
+  end, registers_nr)
+  registers = vim.tbl_filter(function(register) return register.value ~= "" end, registers)
+  vim.ui.select(registers, {
+    prompt = "Registers",
+    format_item = function(register) return string.format("%s | %s", register.name, vim.fn.trim(register.value, " ")) end,
+  }, function(choice)
+    if choice then vim.api.nvim_paste(choice.value, false, -1) end
+  end)
+end, { desc = "[registers] list and paste selected register" })
