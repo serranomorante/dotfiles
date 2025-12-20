@@ -88,13 +88,6 @@
     replace: '{\n  "oauthClientId": "{{ ansible_facts.hypothesis_oauth_client_id | default(None) }}",'
   when: ansible_facts.hypothesis_oauth_client_id is not undefined
 
-- name: handler_ensure_brave_desktop_file
-  ansible.builtin.replace:
-    path: ~/.local/share/applications/brave-browser.desktop
-    regexp: "^(Exec=).*"
-    replace: r"\1bravennn --load-extension={{ browser_local_extensions | map(attribute='path') | join(',') }} %u"
-  notify: "10-system-tools : handler_update_desktop_database"
-
 - name: handler_build_mouseless
   ansible.builtin.command: go build -ldflags="-s -w" .
   args:

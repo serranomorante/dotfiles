@@ -251,18 +251,26 @@
     owner: "{{ ansible_env.USER }}"
     mode: "644"
 
+- name: "[archlinux] Setup browser tools: clean exec line"
+  ansible.builtin.lineinfile:
+    dest: "{{ ansible_env.HOME }}/.local/share/applications/brave-browser.desktop"
+    regexp: "^Exec=.*"
+    state: absent
+
+- name: "[archlinux] Setup browser tools: ensure brave scale"
+  ansible.builtin.blockinfile:
+    dest: "{{ ansible_env.HOME }}/.local/share/applications/brave-browser.desktop"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK"
+    insertafter: "^\\[Desktop Entry\\]"
+    block: Exec=bravennn --load-extension={{ browser_local_extensions | map(attribute='path') | join(',') }} %u
+  notify: handler_update_desktop_database
+
 - name: "[archlinux] Setup browser tools: clean packages"
   become: true
   ansible.builtin.package:
     force: true
     state: absent
     name: jdk-openjdk
-
-- name: "[archlinux] Setup browser tools: run handlers"
-  ansible.builtin.command: echo
-  changed_when: true
-  notify:
-    - handler_ensure_brave_desktop_file
 
 - name: flush_handlers
   ansible.builtin.meta: flush_handlers
