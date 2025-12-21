@@ -3,7 +3,7 @@
   become: true
   ansible.builtin.package:
     name:
-      - nvidia-lts
+      - nvidia-open-lts
       - nvidia-prime
       - nvidia-settings
       - nvidia-utils
