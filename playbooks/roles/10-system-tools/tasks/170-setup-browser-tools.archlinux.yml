@@ -8,7 +8,10 @@
 - name: "[archlinux] Setup browser tools: ensure packages"
   become: true
   ansible.builtin.package:
-    name: ruby # to install extensionator
+    state: present
+    name:
+      - ruby # to install extensionator
+      - firefox
 
 - name: "[archlinux] Setup browser tools: ensure aur packages"
   become: true
