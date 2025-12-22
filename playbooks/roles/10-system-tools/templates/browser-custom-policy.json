@@ -17,6 +17,7 @@
     "http://localhost:5000[*.]",
     "chrome-extension://{{ local_hypothesis_extension }}[*.]"
   ],
+  "ForcedLanguages": ["en-US"],
   "ExtensionSettings": {
     "{{ local_extension_show_tab_numbers }}": {
       "allowed_permissions": [
