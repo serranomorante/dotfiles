@@ -1,0 +1,23 @@
+#!/bin/bash
+
+die() {
+    printf "%s\n" "$@" >&2
+    exit 1
+}
+
+for file in "${@-/var/log/Xorg.0.log.old}"; do
+    # First find the log line with timestamp in it, and use that
+    # to find host boot time.
+    starttime=$(sed -n \
+        -e '/\[ *\([0-9.]*\)\].*, Time: \(.*\)/!n' \
+        -e 's//date -d "\2 -\1 seconds" "+%s.%N"/ep' \
+        "$file") || exit
+    test "$starttime" || die "No timestamp found in $file"
+
+    # Note that the timestamp precision is rounded down to exact second,
+    # so we add ½ second to centre the error range.
+    awk -v"s=$starttime" \
+        -e 'match($0,/^\[([ 0-9.]*)](.*)/,a) {t=s+a[1]+.5; printf "%s.%03d%s\n",strftime("%F %T", t),t%1*1000,a[2]}' \
+        -e '!/^\[/' \
+        "$file"
+done
