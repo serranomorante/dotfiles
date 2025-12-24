@@ -143,3 +143,13 @@
     block: |
       # IgnorePkg = wine-staging davinci-resolve
       IgnorePkg = wine-staging davinci-resolve
+
+- name: "[archlinux] Setup desktop: disable baloo indexing"
+  # https://wiki.archlinux.org/title/Baloo#Disabling_the_indexer
+  ansible.builtin.command: "{{ item }}"
+  changed_when: true
+  loop:
+    - balooctl6 suspend
+    - balooctl6 disable
+    - balooctl6 purge
+  ignore_errors: true
