@@ -54,6 +54,7 @@
   ansible.builtin.pip:
     name:
       - pip
+      - weasyprint
       - mdformat
       - mdformat-gfm
       - mdformat_footnote
@@ -71,3 +72,4 @@
     state: link
   loop:
     - mdformat
+    - weasyprint
