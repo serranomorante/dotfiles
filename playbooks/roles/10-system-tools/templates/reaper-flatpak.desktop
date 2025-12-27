@@ -1,8 +1,0 @@
-# {{ ansible_managed }}
-[Desktop Entry]
-Name=(debug) REAPER flatpak
-Exec=kitty --hold flatpak run --env="WINEPREFIX={{ arch_reaper_wine_flatpak_setup.wine_prefix }}" --user --unshare=network org.winehq.Wine 'C:/ProgramData/Microsoft/Windows/Start Menu/Programs/REAPER (x64)/REAPER (x64).lnk'
-Type=Application
-StartupNotify=true
-Icon=3716_reaper.0
-StartupWMClass=reaper.exe
