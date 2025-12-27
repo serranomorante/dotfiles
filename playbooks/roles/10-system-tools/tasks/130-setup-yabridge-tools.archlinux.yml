@@ -1,0 +1,6 @@
+---
+- name: "[archlinux] Yabridge tools: ensure yabridge is installed"
+  ansible.builtin.unarchive:
+    src: https://github.com/robbert-vdh/yabridge/releases/download/5.1.1/yabridge-5.1.1.tar.gz
+    dest: ~/.local/share/
+    remote_src: true

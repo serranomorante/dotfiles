@@ -126,7 +126,7 @@
   tags: ["10-110"]
 
 - block:
-    - name: Setup wine tools are setup
+    - name: Setup wine tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 120-setup-wine-tools.{{ user_os }}.yml
@@ -135,6 +135,17 @@
       loop_control:
         loop_var: task_file
   tags: ["10-120"]
+
+- block:
+    - name: Setup yabridge tools
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 130-setup-yabridge-tools.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["10-130"]
 
 - block:
     - name: Setup virtualbox tools

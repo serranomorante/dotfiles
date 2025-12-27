@@ -119,6 +119,8 @@ fi
 
 [ -n "$NNNLVL" ] && PS1="N$NNNLVL $PS1"
 
+export PATH="$PATH:$HOME/.local/share/yabridge"
+
 # https://github.com/jarun/nnn/wiki/Basic-use-cases#sync-subshell-pwd
 nnn_cd() {
     if ! [ -z "$NNN_PIPE" ]; then
