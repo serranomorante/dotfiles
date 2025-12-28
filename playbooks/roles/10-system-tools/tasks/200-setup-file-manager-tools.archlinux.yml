@@ -38,6 +38,8 @@
       - lowdown
       - fuse2
       - dragon
+      - libimobiledevice
+      - usbmuxd
 
 - name: "[archlinux] Setup file manager: ensure aur deps"
   become: true
