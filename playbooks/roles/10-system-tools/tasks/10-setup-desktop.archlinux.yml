@@ -153,3 +153,20 @@
     - balooctl6 disable
     - balooctl6 purge
   ignore_errors: true
+
+- name: "[archlinux] Setup desktop: ensure folders"
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  loop:
+    - /etc/polkit-1
+    - /etc/polkit-1/rules.d/
+
+- name: "[archlinux] Setup desktop: disable hibernation for all users"
+  become: true
+  ansible.builtin.copy:
+    src: 99-disable-hibernate.rules
+    dest: /etc/polkit-1/rules.d/99-disable-hibernate.rules
+    mode: "600"

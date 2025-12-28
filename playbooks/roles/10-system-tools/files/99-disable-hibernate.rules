@@ -1,0 +1,11 @@
+// Disable hibernate for all users
+polkit.addRule(function(action, subject) {
+   if ((action.id == "org.freedesktop.login1.hibernate")) {
+      return polkit.Result.NO;
+   }
+});
+polkit.addRule(function(action, subject) {
+   if ((action.id == "org.freedesktop.login1.hibernate-multiple-sessions")) {
+      return polkit.Result.NO;
+   }
+});
