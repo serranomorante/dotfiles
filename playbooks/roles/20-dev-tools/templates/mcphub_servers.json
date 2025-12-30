@@ -25,6 +25,9 @@
         "FIGMA_ACCESS_TOKEN": "{{ (mcp_server_figma_key | default({})).stdout | default(None) }}"
       }
     },
+    "cf-projects": {
+      "command": "{{ cf_projects_mcp_server_setup.exe_path }}"
+    },
     "chrome-devtools": {
       "command": "{{ chrome_devtools_mcp_server_setup.exe_path }}",
       "args": ["--browserUrl=http://localhost:9222"]
