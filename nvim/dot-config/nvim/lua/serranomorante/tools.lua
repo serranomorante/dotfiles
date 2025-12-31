@@ -5,7 +5,7 @@ local M = {}
 M.by_filetype = {
   asm = { parsers = { "asm" } },
   javascript = {
-    fmts = { "eslint_d", "prettierd" },
+    fmts = { "eslint_d" },
     linters = { "eslint_d" },
     lsp = { "typescript-language-server", "tailwindcss-language-server", "vtsls" },
     dap = {

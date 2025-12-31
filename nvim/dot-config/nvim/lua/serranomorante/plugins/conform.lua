@@ -20,13 +20,13 @@ local function init()
     group = vim.api.nvim_create_augroup("conform_formatexpr", { clear = true }),
     callback = function(args)
       vim.bo[args.buf].formatexpr =
-        string.format("v:lua.require'conform'.formatexpr(%s)", vim.fn.string({ async = true }))
+        string.format("v:lua.require'conform'.formatexpr(%s)", vim.fn.string({}))
     end,
   })
 end
 
 local function keys()
-  vim.keymap.set({ "n", "v" }, "<leader>lf", function() require("conform").format({ async = true }) end, {
+  vim.keymap.set({ "n", "v" }, "<leader>lf", function() require("conform").format({}) end, {
     desc = "Conform: Format file or range",
   })
 end
@@ -52,10 +52,10 @@ function M.opts()
       jsonc = gen_fmt(ft_tools.json.fmts, { stop_after_first = true }),
       markdown = gen_fmt(ft_tools.markdown.fmts, { stop_after_first = true }),
       vue = gen_fmt(ft_tools.vue.fmts, { stop_after_first = false }),
-      javascript = gen_fmt(ft_tools.javascript.fmts, { stop_after_first = false }),
-      typescript = gen_fmt(ft_tools.typescript.fmts, { stop_after_first = false }),
-      javascriptreact = gen_fmt(ft_tools.javascriptreact.fmts, { stop_after_first = false }),
-      typescriptreact = gen_fmt(ft_tools.typescriptreact.fmts, { stop_after_first = false }),
+      javascript = gen_fmt(ft_tools.javascript.fmts, { stop_after_first = true }),
+      typescript = gen_fmt(ft_tools.typescript.fmts, { stop_after_first = true }),
+      javascriptreact = gen_fmt(ft_tools.javascriptreact.fmts, { stop_after_first = true }),
+      typescriptreact = gen_fmt(ft_tools.typescriptreact.fmts, { stop_after_first = true }),
       gitcommit = function() return {} end, -- disable formatting for this filetype
       ["yaml.ansible"] = gen_fmt(vim.tbl_get(ft_tools, "yaml.ansible").fmts),
       _ = { "auto_indent", "trim_whitespace", lsp_format = "never" },
