@@ -3,7 +3,7 @@
   become: true
   ansible.builtin.systemd_service:
     scope: system
-    name: swapfile.swap
+    name: "{{ var_escaped_swapfile_path.stdout }}.swap"
     enabled: true
     masked: false
     daemon_reload: true

@@ -1,5 +1,5 @@
 [Swap]
-What=/swapfile
+What={{ var_swapfile_path }}
 
 [Install]
 WantedBy=swap.target
