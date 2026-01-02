@@ -16,6 +16,7 @@ else
         ~/.local/share/nvim/site/pack/plugins/opt \
         ~/.local/share/nvim/gp \
         ~/data/work/cf/repos \
+        ~/data/work/gp/repos \
         ~/data/notes \
         -mindepth 1 -maxdepth 1 -type d | fzf --prompt='Select cwd: ' >/tmp/$uuid"
     selected_path=$(</tmp/$uuid)
