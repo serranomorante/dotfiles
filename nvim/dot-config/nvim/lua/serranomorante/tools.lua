@@ -17,7 +17,7 @@ M.by_filetype = {
   lua = { fmts = { "stylua" }, lsp = { "lua-language-server" }, parsers = { "lua", "luap", "luadoc" } },
   json = {
     fmts = { "prettierd" },
-    parsers = { "json", "jsonc" },
+    parsers = { "json" },
     extensions = { "coc-json" },
   },
   yaml = { fmts = { "ansible-lint" }, parsers = { "yaml" }, extensions = { "coc-yaml", "@yaegassy/coc-ansible" } },
