@@ -6,7 +6,6 @@ local provider_by_filetype = {
   vim = "indent",
   python = "indent",
   html = "indent",
-  markdown = "treesitter",
   git = "",
   nofile = "",
 }
@@ -30,6 +29,7 @@ local function enhance_selector(bufnr)
     .getFolds(bufnr, "lsp")
     :catch(function(err) return handle_fallback_exception(err, "treesitter") end)
     :catch(function(err) return handle_fallback_exception(err, "indent") end)
+    :catch(function(_) return nil end)
 end
 
 local function keys()
