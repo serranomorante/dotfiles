@@ -55,11 +55,14 @@ vim.api.nvim_create_autocmd("BufReadPre", {
   end,
 })
 
-vim.api.nvim_create_autocmd("BufWinEnter", {
+vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile", "BufWritePost" }, {
   desc = "Update indent line on BufReadPost event",
   group = indent_line_group,
   callback = function(args)
     if vim.b[args.buf].large_buf then return end
+    if utils.is_available("guess-indent") then
+      vim.cmd.GuessIndent({ args = { "context" }, mods = { silent = true } })
+    end
     vim.wo.listchars = utils.update_indent_line(vim.wo.listchars, vim.bo[args.buf].shiftwidth)
   end,
 })
