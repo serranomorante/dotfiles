@@ -91,10 +91,22 @@
   ignore_errors: true
   register: var_nvim_keyrings
 
+- name: "[archlinux] Setup security tools: get private nvim keyrings"
+  ansible.builtin.shell: >
+    nvim --headless +'lua =io.stdout:write(vim.json.encode(require("serranomorante.private-constants").KEYRINGS) .. "\n")' +q 2>/dev/null
+  changed_when: false
+  ignore_errors: true
+  register: var_private_nvim_keyrings
+
 - name: "[archlinux] Setup security tools: set keyrings fact"
   ansible.builtin.set_fact:
     keyrings: "{{ (keyrings | default([])) + ((var_nvim_keyrings.stdout | from_json).values() | list) }}"
   when: var_nvim_keyrings is success
+
+- name: "[archlinux] Setup security tools: set private keyrings fact"
+  ansible.builtin.set_fact:
+    keyrings: "{{ (keyrings | default([])) + ((var_private_nvim_keyrings.stdout | from_json).values() | list) }}"
+  when: var_private_nvim_keyrings is success
 
 - name: "[archlinux] Setup security tools: set borg keyrings facts"
   ansible.builtin.set_fact:
