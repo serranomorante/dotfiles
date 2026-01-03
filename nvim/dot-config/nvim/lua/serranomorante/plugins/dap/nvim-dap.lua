@@ -68,10 +68,15 @@ local function keys()
   )
   vim.keymap.set("n", "<leader>dS", function() require("dap").run_to_cursor() end, { desc = "DAP: Run To Cursor" })
   vim.keymap.set("n", "<leader>dd", function() require("dap").focus_frame() end, { desc = "DAP: Focus frame" })
-  vim.keymap.set("n", "<leader>dh", function() require("dap.ui.widgets").hover() end, { desc = "DAP: Debugger Hover" })
+  vim.keymap.set(
+    "n",
+    "<leader>dh",
+    function() require("dap.ui.widgets").hover(nil, { border = "single" }) end,
+    { desc = "DAP: Debugger Hover" }
+  )
   vim.keymap.set("n", "<leader>ds", function()
     local ui = require("dap.ui.widgets")
-    ui.centered_float(ui.scopes, { number = true, wrap = false, width = 999 })
+    ui.centered_float(ui.scopes, { number = true, wrap = false, width = 999, border = "single" })
   end, { desc = 'DAP: Toggle "scopes" in floating window' })
   vim.keymap.set(
     "n",
@@ -79,7 +84,7 @@ local function keys()
     "<leader>da",
     function()
       local ui = require("dap.ui.widgets")
-      ui.centered_float(ui.sessions, { number = true, wrap = false, width = 999 })
+      ui.centered_float(ui.sessions, { number = true, wrap = false, width = 999, border = "single" })
     end,
     { desc = 'DAP: Toggle "sessions" in floating window' }
   )
