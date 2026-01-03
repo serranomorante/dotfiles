@@ -13,7 +13,8 @@
 
     - name: "Setup playbook: gather facts conditionally"
       ansible.builtin.gather_facts:
-      when: "'localhost' in var_argv.ansible_facts.argv"
+      when:
+        - "'localhost' in var_argv.ansible_facts.argv or 'phone2' in var_argv.ansible_facts.argv"
       tags: always
 
     - name: "Setup playbook: populate service facts"

@@ -4,11 +4,12 @@ local task_name = "run-ansible-playbook"
 local HOME = vim.env.HOME
 
 ---Maps os names to sshd_config names
-local OS_TO_SSHD_CONFIG = {
-  archlinux = "localhost",
-  debian = "cloud",
-  otherlinux = "phone",
-  macosx = "macos",
+local HOST_TO_SSHD_CONFIG = {
+  localhost = "localhost",
+  cloud = "cloud",
+  phone = "phone",
+  phone2 = "phone2",
+  macos = "macos",
 }
 
 ---@type overseer.TemplateDefinition
@@ -21,12 +22,12 @@ return {
       type = "string",
       order = 1,
     },
-    os = {
-      desc = "OS",
+    host = {
+      desc = "Host",
       type = "enum",
-      choices = { "archlinux", "debian", "otherlinux" },
+      choices = vim.tbl_values(HOST_TO_SSHD_CONFIG),
       optional = false,
-      default = "archlinux",
+      default = HOST_TO_SSHD_CONFIG.localhost,
       order = 2,
     },
     force_handlers = {
@@ -60,9 +61,11 @@ return {
   builder = function(params)
     local args = {
       "-K",
-      ("%s/dotfiles/playbooks/tools.yml"):format(HOME),
+      string.format("%s/dotfiles/playbooks/tools.yml", HOME),
       "-l",
-      OS_TO_SSHD_CONFIG[params.os],
+      HOST_TO_SSHD_CONFIG[params.host],
+      "-i",
+      string.format("%s/dotfiles/playbooks/inventory.ini", HOME),
       "--tags",
       utils.wrap_in_single_quotes(
         vim.fn.join(
@@ -73,7 +76,7 @@ return {
     }
     if params.skip_tags then vim.list_extend(args, { "--skip-tags", params.skip_tags }) end
     if params.force_handlers then table.insert(args, "--force-handlers") end
-    if params.verbose then table.insert(args, params.verbose) end
+    if params.verbose then table.insert(args, "-" .. params.verbose) end
     if params.pass then vim.g.pass = params.pass end
     return {
       name = task_name .. string.format(" %s", params.task_id),
