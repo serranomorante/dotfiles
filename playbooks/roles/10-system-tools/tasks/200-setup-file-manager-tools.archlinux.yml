@@ -10,14 +10,6 @@
   loop:
     - { repo: https://github.com/jarun/nnn, version: master }
 
-- name: "[archlinux] Setup file manager: patch plugins & nnn"
-  ansible.posix.patch:
-    src: "{{ item.patch }}"
-    basedir: ~/data/repos/nnn
-    strip: 1
-  loop:
-    - patch: ~/dotfiles/assets/patches/term/give_kitty_priority.patch
-
 - name: "[archlinux] Setup file manager: ensure deps"
   become: true
   ansible.builtin.package:
