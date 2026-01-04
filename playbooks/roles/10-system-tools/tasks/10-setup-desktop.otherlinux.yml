@@ -39,6 +39,7 @@
     termux-api
     remind
     ossp-uuid
+    ncdu
   changed_when: false
 
 - name: "[otherlinux] Setup desktop: ensure folders"
