@@ -35,6 +35,7 @@
       - base-devel
       - cpupower
       - helvum
+      - alsa-utils
       - rtirq
   notify: handler_ensure_rtirq_service
 
@@ -49,16 +50,6 @@
     - { name: pipewire-pulse.socket, enabled: true, masked: false }
     - { name: wireplumber.service, enabled: true, masked: false }
 
-- name: "[archlinux] Setup audio tools: ensure system services"
-  become: true
-  ansible.builtin.systemd_service:
-    scope: system
-    name: "{{ item }}"
-    enabled: true
-    masked: false
-  loop:
-    - cpupower.service
-    - bluetooth.service
 
 - name: "[archlinux] Setup audio tools: create pipewire group"
   become: true
@@ -74,3 +65,53 @@
       - audio
       - pipewire
     name: "{{ ansible_env.USER }}"
+
+- name: "[archlinux] Setup audio tools: max user freq"
+  # https://wiki.archlinux.org/title/Professional_audio#Optimizing_system_configuration
+  become: true
+  ansible.builtin.command: "{{ item }}"
+  changed_when: true
+  loop:
+    - echo 2048 > /sys/class/rtc/rtc0/max_user_freq
+    - echo 2048 > /proc/sys/dev/hpet/max-user-freq
+    - setpci -v -d *:* latency_timer=b0
+    - setpci -v -s 06:00.6 latency_timer=ff
+
+- name: "[archlinux] Setup audio tools: setup swappiness"
+  become: true
+  ansible.builtin.copy:
+    src: 90-swappiness.conf
+    dest: /etc/sysctl.d/90-swappiness.conf
+    mode: "644"
+
+- name: "[archlinux] Setup audio tools: setup max user watches"
+  become: true
+  ansible.builtin.copy:
+    src: 90-max_user_watches.conf
+    dest: /etc/sysctl.d/90-max_user_watches.conf
+    mode: "644"
+
+- name: "[archlinux] Setup audio tools: enable threadirqs"
+  become: true
+  ansible.builtin.copy:
+    src: audio.conf
+    dest: /etc/cmdline.d/audio.conf
+    mode: "644"
+
+- name: "[archlinux] Setup audio tools: governor performance"
+  become: true
+  ansible.builtin.replace:
+    path: /etc/default/cpupower
+    regexp: ".?governor=.*"
+    replace: "governor='performance'"
+
+- name: "[archlinux] Setup audio tools: ensure system services"
+  become: true
+  ansible.builtin.systemd_service:
+    scope: system
+    name: "{{ item }}"
+    enabled: true
+    masked: false
+  loop:
+    - cpupower.service
+    - bluetooth.service
