@@ -15,7 +15,7 @@ arch_reaper_sws_extension_setup:
   version: 2.14.0.7
   backup_path: ~/data/Downloads/music-production
 arch_reaper_wine_setup:
-  version: "757"
+  version: "758"
   backup_path: ~/data/Downloads/music-production
   wine_prefix: "{{ ansible_env.HOME }}/data/.wine-win64-reaper"
   architecture: win64 # wow64 will fail for some plugins
