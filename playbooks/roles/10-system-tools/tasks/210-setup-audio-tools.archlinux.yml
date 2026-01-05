@@ -35,6 +35,8 @@
       - base-devel
       - cpupower
       - helvum
+      - rtirq
+  notify: handler_ensure_rtirq_service
 
 - name: "[archlinux] Setup audio tools: ensure user services"
   ansible.builtin.systemd_service:
