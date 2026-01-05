@@ -168,6 +168,13 @@
     - wine reg add "HKEY_CURRENT_USER\Software\Wine\Explorer" /v Desktop /d Default /f
     - wine reg add "HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops" /v Default /d 1920x1080 /f
 
+- name: "[archlinux] Wine tools: show dot files"
+  ansible.builtin.command: wine reg add "HKEY_CURRENT_USER\Software\Wine" /v ShowDotFiles /d Y /f
+  environment:
+    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  changed_when: true
+  timeout: 60
+
 - name: "[archlinux] Wine tools: reaper"
   ansible.builtin.include_tasks:
     file: wine-tools/reaper.task.yml
