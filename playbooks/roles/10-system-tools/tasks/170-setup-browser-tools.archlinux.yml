@@ -21,7 +21,7 @@
     state: present
     name:
       - brave-bin
-      - ungoogled-chromium-bin
+      - chromium
 
 - name: "[archlinux] Setup browser tools: ensure folder exists"
   ansible.builtin.file:
