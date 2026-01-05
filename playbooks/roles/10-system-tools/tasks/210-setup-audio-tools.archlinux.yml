@@ -37,7 +37,15 @@
       - helvum
       - alsa-utils
       - rtirq
+      - reaper
   notify: handler_ensure_rtirq_service
+
+- name: "[archlinux] Setup audio tools: setup reaper-linux.desktop file"
+  ansible.builtin.template:
+    src: reaper-linux.desktop
+    dest: ~/.local/share/applications/
+    mode: "644"
+  notify: handler_update_desktop_database
 
 - name: "[archlinux] Setup audio tools: ensure user services"
   ansible.builtin.systemd_service:
