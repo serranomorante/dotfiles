@@ -6,4 +6,10 @@
     name:
       - difftastic
       - git-delta
-      - lazygit
+
+- name: "[archlinux] Git tools: downgrade lazygit"
+  become: true
+  ansible.builtin.command: downgrade --ignore always --prefer-cache 'lazygit=0.57.0' -- --noconfirm
+  environment:
+    DOWNGRADE_FROM_ALA: "1"
+  changed_when: true
