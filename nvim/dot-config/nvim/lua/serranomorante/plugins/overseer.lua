@@ -7,7 +7,7 @@ local function init()
     desc = "Force the task builder to always enter on insertmode",
     pattern = "OverseerForm",
     callback = function(args)
-      if vim.fn.bufname(args.buf) ~= "Overseer task builder" then return end
+      if vim.fn.bufname(args.buf) ~= "Overseer form" then return end
       vim.defer_fn(function() vim.cmd.startinsert() end, 200)
     end,
   })
