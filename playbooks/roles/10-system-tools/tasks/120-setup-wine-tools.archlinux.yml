@@ -96,7 +96,6 @@
     remote_src: true
     creates: ~/data/apps/virt-tools/wine-staging-tkg
     extra_opts: ["--one-top-level"]
-  register: var_wine_staging_tkg
 
 - name: "[archlinux] Wine tools: apply sysctl changes without rebooting"
   become: true

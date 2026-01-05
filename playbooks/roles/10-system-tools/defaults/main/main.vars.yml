@@ -10,31 +10,18 @@ arch_nvidia_libs_version: 0.8.5
 arch_mouseless_click_version: 0.4.2
 arch_wine_staging_version: "9.21"
 arch_dwm_version: 7c3abae4e68b6a21f05cb04f3af31217259c0aa9
+wine_path: "{{ ansible_env.HOME }}/data/apps/virt-tools/wine-9.21-staging-tkg-amd649fcwsq0i/wine-9.21-staging-tkg-amd64"
 arch_mypaint_version: 2.1.0-alpha-400-g90b36db-2021-05-04_18.41
-arch_reaper_sws_extension_setup:
-  version: 2.14.0.7
-  backup_path: ~/data/Downloads/music-production
-arch_reaper_wine_setup:
-  version: "758"
-  backup_path: ~/data/Downloads/music-production
-  wine_prefix: "{{ ansible_env.HOME }}/data/.wine-win64-reaper"
-  architecture: win64 # wow64 will fail for some plugins
+
 arch_gather_wine_setup:
   version: 1.32.0
   backup_path: ~/Downloads
   wine_prefix: "{{ ansible_env.HOME }}/data/.wine-win64-gather-town"
+
 arch_ytmdesktop_wine_setup:
   version: 2.0.10
   backup_path: ~/Downloads
   wine_prefix: "{{ ansible_env.HOME }}/data/.wine-win64-ytmdesktop"
-arch_audiogridder_wine_setup:
-  version: 1.1.1
-  version_slug: "1_1_1"
-  plugin_version: 1.1.1
-  plugin_version_slug: "1_1_1"
-  backup_path: ~/data/Downloads/music-production
-  config_path: "{{ ansible_env.HOME }}/data/.wine-win64-reaper/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/AudioGridder"
-  wine_prefix: "{{ ansible_env.HOME }}/data/.wine-win64-reaper"
 
 arch_wine_prefixes:
   - "{{ arch_reaper_wine_setup }}"
@@ -43,3 +30,12 @@ arch_wine_prefixes:
 arch_ansible_long_retries_config:
   delay_n: 5
   retries_n: 10000
+
+wine_env_vars:
+  WINEVERPATH: "{{ wine_path }}"
+  WINELOADER: "{{ wine_path }}/bin/wine"
+  WINESERVER: "{{ wine_path }}/bin/wineserver"
+  WINEDLLPATH: "{{ wine_path }}/lib/wine/x86_64-windows:{{ wine_path }}/lib/wine/i386-windows"
+  LD_LIBRARY_PATH: "{{ wine_path }}/lib/wine/x86_64-unix:{{ wine_path }}/lib/wine/i386-unix"
+  PATH: "{{ wine_path }}/bin/:{{ ansible_env.PATH }}"
+  WINEFSYNC: 1

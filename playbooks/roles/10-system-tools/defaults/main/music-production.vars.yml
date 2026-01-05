@@ -1,0 +1,24 @@
+---
+pipewire_latency_vars:
+  PIPEWIRE_LATENCY: "256/48000"
+  PIPEWIRE_QUANTUM: "256/48000"
+  PIPEWIRE_RATE: "1/48000"
+
+arch_reaper_sws_extension_setup:
+  version: 2.14.0.7
+  backup_path: ~/data/Downloads/music-production
+
+arch_reaper_wine_setup:
+  version: "758"
+  backup_path: ~/data/Downloads/music-production
+  wine_prefix: "{{ ansible_env.HOME }}/data/.wine-win64-reaper"
+  architecture: win64 # wow64 will fail for some plugins
+
+arch_audiogridder_wine_setup:
+  version: 1.1.1
+  version_slug: "1_1_1"
+  plugin_version: 1.1.1
+  plugin_version_slug: "1_1_1"
+  backup_path: ~/data/Downloads/music-production
+  config_path: "{{ ansible_env.HOME }}/data/.wine-win64-reaper/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/AudioGridder"
+  wine_prefix: "{{ ansible_env.HOME }}/data/.wine-win64-reaper"

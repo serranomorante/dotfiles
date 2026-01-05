@@ -1,7 +1,7 @@
 # {{ ansible_managed }}
 [Desktop Entry]
 Name=(debug) AudioGridderServer
-Exec=kitty --hold -o env=LC_ALL=C -o env=WINEPREFIX='{{ arch_reaper_wine_setup.wine_prefix }}' --directory '{{ arch_reaper_wine_setup.wine_prefix }}/dosdevices/c:/ProgramData/Microsoft/Windows/Start Menu/Programs' firejail --profile={{ ansible_env.HOME }}/.config/firejail/wine.local wine 'C:/ProgramData/Microsoft/Windows/Start Menu/Programs/AudioGridderServer.lnk'
+Exec=kitty --hold -o env=LC_ALL=C -o env=WINEPREFIX='{{ arch_reaper_wine_setup.wine_prefix }}' {% for env in wine_env_vars.items() %}-o env={{ env | join('=') }} {% endfor %} {% for env in pipewire_latency_vars.items() %}-o env={{ env | join('=') }} {% endfor %} --directory '{{ arch_reaper_wine_setup.wine_prefix }}/dosdevices/c:/ProgramData/Microsoft/Windows/Start Menu/Programs' firejail --profile={{ ansible_env.HOME }}/.config/firejail/wine.local wine 'C:/ProgramData/Microsoft/Windows/Start Menu/Programs/AudioGridderServer.lnk'
 Type=Application
 StartupNotify=true
 Icon=05B9_AudioGridderServer.0
