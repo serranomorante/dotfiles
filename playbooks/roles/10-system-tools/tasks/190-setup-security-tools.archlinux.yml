@@ -136,3 +136,10 @@
   vars:
     keyrings: "{{ keyrings }}"
   when: var_stat_setup_kwallet.stat.exists
+
+- name: "[archlinux] Setup security tools: setup secrets service"
+  # https://wiki.archlinux.org/title/KDE_Wallet#Automatic_D-Bus_activation
+  ansible.builtin.copy:
+    src: org.freedesktop.secrets.service
+    dest: ~/.local/share/dbus-1/services/org.freedesktop.secrets.service
+    mode: "644"
