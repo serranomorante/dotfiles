@@ -28,4 +28,4 @@ playwright_mcp_server_setup:
     wallet: kdewallet
 
 context7_mcp_server_setup:
-  exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/context7-mcp"
+  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/context7-mcp"
