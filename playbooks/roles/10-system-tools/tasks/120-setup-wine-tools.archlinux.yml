@@ -122,9 +122,7 @@
 
 - name: "[archlinux] Wine tools: setup prefixes"
   ansible.builtin.command: winecfg -v {{ item.winver | default('win10') }}
-  environment:
-    WINEPREFIX: "{{ item.wine_prefix }}"
-    WINEARCH: "{{ item.architecture | default('win64') }}"
+  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': item.wine_prefix, 'WINEARCH': item.architecture | default('win64') }) }}"
   args:
     creates: "{{ item.wine_prefix }}/system.reg"
   loop: "{{ arch_wine_prefixes }}"
@@ -132,8 +130,7 @@
 
 - name: "[archlinux] Wine tools: test reg query LogPixels"
   ansible.builtin.command: wine reg query 'HKEY_CURRENT_USER\Control Panel\Desktop' /v 'LogPixels'
-  environment:
-    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix }) }}"
   changed_when: false
   ignore_errors: true
   register: var_reg_log_pixels
@@ -142,24 +139,21 @@
   # https://forum.winehq.org/viewtopic.php?t=34980
   ansible.builtin.command: >
     wine reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v LogPixels /t REG_DWORD /d {{ arch_reaper_wine_setup.dpi | default(0x60) }} /f
-  environment:
-    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix }) }}"
   changed_when: true
   when: var_reg_log_pixels is failed
   timeout: 60
 
 - name: "[archlinux] Wine tools: test reg query virtual desktop"
   ansible.builtin.command: wine reg query 'HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops' /v 'Default'
-  environment:
-    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix }) }}"
   changed_when: false
   ignore_errors: true
   register: var_reg_virtual_desktop
 
 - name: "[archlinux] Wine tools: setup virtual desktop"
   ansible.builtin.command: "{{ item }}"
-  environment:
-    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix }) }}"
   changed_when: true
   when: "'1920x1080' not in var_reg_virtual_desktop.stdout"
   timeout: 60
@@ -169,8 +163,7 @@
 
 - name: "[archlinux] Wine tools: show dot files"
   ansible.builtin.command: wine reg add "HKEY_CURRENT_USER\Software\Wine" /v ShowDotFiles /d Y /f
-  environment:
-    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix }) }}"
   changed_when: true
   timeout: 60
 

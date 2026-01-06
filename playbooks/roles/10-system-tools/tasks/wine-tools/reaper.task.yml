@@ -10,8 +10,7 @@
 - name: "[archlinux] Wine tools: install reaper"
   ansible.builtin.command: wine start /unix '{{ arch_reaper_wine_setup.backup_path }}/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe'
   timeout: 60
-  environment:
-    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix }) }}"
   changed_when: true
   register: var_install_reaper
   when: var_new_reaper_version_downloaded.changed and is_x_display_session

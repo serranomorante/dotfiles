@@ -8,8 +8,7 @@
 - name: "[archlinux] Wine tools: install audiogridder server"
   ansible.builtin.command: wine start /unix '{{ arch_audiogridder_wine_setup.backup_path }}/AudioGridderServer_{{ arch_audiogridder_wine_setup.version }}.exe'
   timeout: 60
-  environment:
-    WINEPREFIX: "{{ arch_audiogridder_wine_setup.wine_prefix }}"
+  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_audiogridder_wine_setup.wine_prefix }) }}"
   args:
     creates: "{{ arch_audiogridder_wine_setup.wine_prefix }}/drive_c/Program Files/AudioGridderServer/AudioGridderServer.exe"
   when: is_x_display_session
