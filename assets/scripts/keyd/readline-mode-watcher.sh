@@ -1,6 +1,6 @@
 #!/bin/sh
 
-username="{{ ansible_env.USER }}"
+username="{{ ansible_facts.env.USER }}"
 uid=$(id -u $username)
 
 /usr/local/bin/keyd listen | while read LINE; do

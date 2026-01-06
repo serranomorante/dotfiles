@@ -11,7 +11,7 @@
     create: true
     mode: "644"
     block: |
-      --history={{ ansible_env.HOME }}/.fzf_history
+      --history={{ ansible_facts.env.HOME }}/.fzf_history
 
 - name: "[debian] Grep utilities: ensure ripgrep"
   ansible.builtin.unarchive:

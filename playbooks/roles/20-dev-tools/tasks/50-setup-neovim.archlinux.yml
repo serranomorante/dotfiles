@@ -22,12 +22,12 @@
     path: "{{ item }}"
     state: absent
   loop:
-    - "{{ ansible_env.HOME }}/data/repos/neovim/.deps"
+    - "{{ ansible_facts.env.HOME }}/data/repos/neovim/.deps"
     - /usr/local/share/nvim/runtime
 
 - name: "[archlinux] Neovim: ensure neovim - build"
   ansible.builtin.shell: >
-    make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_INSTALL_PREFIX={{ ansible_env.HOME }}/.local &&
+    make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_INSTALL_PREFIX={{ ansible_facts.env.HOME }}/.local &&
     make install
   environment:
     CCACHE_DISABLE: true

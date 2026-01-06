@@ -16,9 +16,9 @@
     group: postgres
     mode: "755"
   loop:
-    - "{{ ansible_env.HOME }}/data/apps/db"
-    - "{{ ansible_env.HOME }}/data/apps/db/postgresql"
-    - "{{ ansible_env.HOME }}/data/apps/db/postgresql/data"
+    - "{{ ansible_facts.env.HOME }}/data/apps/db"
+    - "{{ ansible_facts.env.HOME }}/data/apps/db/postgresql"
+    - "{{ ansible_facts.env.HOME }}/data/apps/db/postgresql/data"
 
 - name: "[archlinux] Setup database tools: register if initialized"
   become: true

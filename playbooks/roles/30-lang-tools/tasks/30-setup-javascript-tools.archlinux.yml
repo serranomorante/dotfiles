@@ -2,8 +2,8 @@
 - name: "[archlinux] Javascript language: ensure eslint_d"
   ansible.builtin.shell: >
     source ~/.bashrc &&
-    {{ ansible_env.HOME }}/.volta/bin/volta run --node {{ node_system_default_version }}
-    $({{ ansible_env.HOME }}/.volta/bin/volta which npm) install --global {{ item.name }}@{{ item.version | default('latest') }}
+    {{ ansible_facts.env.HOME }}/.volta/bin/volta run --node {{ node_system_default_version }}
+    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) install --global {{ item.name }}@{{ item.version | default('latest') }}
   changed_when: fact_npm_global_outdated[item.name] is defined or fact_npm_global_installed.dependencies[item.name] is undefined
   when: fact_npm_global_outdated[item.name] is defined or fact_npm_global_installed.dependencies[item.name] is undefined
   loop:
@@ -37,8 +37,8 @@
 - name: "[archlinux] Javascript language: install vscode-js-debug"
   ansible.builtin.shell: |
     source ~/.bashrc
-    $({{ ansible_env.HOME }}/.volta/bin/volta which npm) ci
-    $({{ ansible_env.HOME }}/.volta/bin/volta which npx) gulp dapDebugServer
+    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) ci
+    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npx) gulp dapDebugServer
   args:
     chdir: ~/data/repos/vscode-js-debug
     creates: ~/data/repos/vscode-js-debug/dist/src/dapDebugServer.js

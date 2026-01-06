@@ -43,7 +43,7 @@
   become: true
   ansible.builtin.shell: make && make install
   args:
-    chdir: "{{ ansible_env.HOME }}/data/repos/keyd"
+    chdir: "{{ ansible_facts.env.HOME }}/data/repos/keyd"
     creates: /usr/local/bin/keyd
   notify: "10-system-tools : handler_ensure_keyd_service"
 
@@ -119,14 +119,14 @@
 - name: "[archlinux] Keyboard peripheral: prepare readline-mode-notify script"
   become: true
   ansible.builtin.template:
-    src: "{{ ansible_env.HOME }}/dotfiles/assets/scripts/keyd/readline-mode-watcher.sh"
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/scripts/keyd/readline-mode-watcher.sh"
     dest: /usr/local/bin/readline-mode-watcher.sh
     mode: "755"
 
 - name: "[archlinux] Keyboard peripheral: setup services"
   become: true
   ansible.builtin.template:
-    src: "{{ ansible_env.HOME }}/dotfiles/assets/services/{{ item }}"
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/services/{{ item }}"
     dest: /etc/systemd/system/{{ item }}
     owner: root
     mode: "644"
@@ -173,7 +173,7 @@
   environment:
     DISABLE_WAYLAND: "true"
   args:
-    chdir: "{{ ansible_env.HOME }}/data/repos/warpd"
+    chdir: "{{ ansible_facts.env.HOME }}/data/repos/warpd"
     creates: /usr/local/bin/warpd
 
 - name: "[archlinux] Keyboard peripheral: clone cursor indicator"
@@ -202,7 +202,7 @@
   ansible.builtin.user:
     append: true
     groups: keyd
-    name: "{{ ansible_env.USER }}"
+    name: "{{ ansible_facts.env.USER }}"
 
 - name: "[archlinux] Other tools: ensure keyboard-tools dir exists"
   ansible.builtin.file:

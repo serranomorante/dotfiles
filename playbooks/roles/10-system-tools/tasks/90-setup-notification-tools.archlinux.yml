@@ -39,6 +39,6 @@
   # And: https://github.com/dunst-project/dunst/issues/363
   ansible.builtin.file:
     src: /usr/share/dbus-1/services/{{ default_notification_daemon | default('org.knopwob.dunst.service') }}
-    dest: "{{ ansible_env.HOME }}/.local/share/dbus-1/services/org.freedesktop.Notifications.service"
+    dest: "{{ ansible_facts.env.HOME }}/.local/share/dbus-1/services/org.freedesktop.Notifications.service"
     state: link
     force: true

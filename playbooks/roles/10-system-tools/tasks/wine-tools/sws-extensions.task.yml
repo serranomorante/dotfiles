@@ -44,14 +44,14 @@
     path: "{{ item }}"
     mode: "755"
   loop:
-    - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData"
-    - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming"
-    - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/REAPER/"
-    - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/REAPER/Scripts"
-    - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/REAPER/Scripts/custom"
+    - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData"
+    - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming"
+    - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/"
+    - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts"
+    - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts/custom"
 
 - name: "[archlinux] Wine tools: copy custom script"
   ansible.builtin.copy:
     src: ~/dotfiles/assets/scripts/reaper/alternate_position.lua
-    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/REAPER/Scripts/custom/"
+    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts/custom/"
     mode: "644"

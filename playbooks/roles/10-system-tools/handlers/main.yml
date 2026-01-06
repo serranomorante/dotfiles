@@ -112,14 +112,14 @@
   become: true
   ansible.builtin.template:
     src: ~/dotfiles/assets/udev-rules/99-user.rules
-    dest: /etc/udev/rules.d/99-{{ ansible_env.USER }}.rules
+    dest: /etc/udev/rules.d/99-{{ ansible_facts.env.USER }}.rules
     mode: "644"
   notify: handler_reload_udev_rules
 
 - name: handler_link_mouseless_binary
   become: true
   ansible.builtin.file:
-    src: "{{ ansible_env.HOME }}/data/repos/mouseless/mouseless"
+    src: "{{ ansible_facts.env.HOME }}/data/repos/mouseless/mouseless"
     dest: /usr/local/bin/mouseless
     state: link
     mode: "755"

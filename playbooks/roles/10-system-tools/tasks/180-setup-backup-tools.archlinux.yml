@@ -20,9 +20,9 @@
       ansible.builtin.stat:
         path: "{{ item }}"
       loop:
-        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/data/backups
-        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/data/backups
-        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev4 }}/data/backups
+        - /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev2 }}/data/backups
+        - /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev3 }}/data/backups
+        - /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev4 }}/data/backups
       register: var_local_backup_drives
 
     - name: "[archlinux] Setup backup tools: set available drives fact"
@@ -39,9 +39,9 @@
         - ~/.config/borg
         - ~/.config/borg/keys
         - ~/.config/borg/security
-        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/data/backups
-        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/data/backups
-        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev4 }}/data/backups
+        - /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev2 }}/data/backups
+        - /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev3 }}/data/backups
+        - /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev4 }}/data/backups
 
     - name: "[archlinux] Setup backup tools: init borg repos"
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.repo }}'
@@ -50,7 +50,7 @@
       vars:
         device: '{{ item.device | regex_replace("[^A-Za-z0-9]", "_") }}'
         reponame: '{{ item.keyrings.passkey | regex_replace("[^A-Za-z0-9]", "_") }}'
-        repobasename: /run/media/{{ ansible_env.USER }}/{{ item.device }}/data/backups
+        repobasename: /run/media/{{ ansible_facts.env.USER }}/{{ item.device }}/data/backups
       args:
         creates: ~/.config/borg/keys/*{{ device }}_data_backups_{{ reponame }}
       when: repobasename in available_drives and available_drives[repobasename].exists

@@ -1,11 +1,11 @@
-[{{ ansible_env.HOME }}/.local/share/Trash]
+[{{ ansible_facts.env.HOME }}/.local/share/Trash]
 Days=7
 LimitReachedAction=0
 Percent=10
 UseSizeLimit=true
 UseTimeLimit=false
 
-[{{ ansible_env.HOME }}/data/.Trash-1000]
+[{{ ansible_facts.env.HOME }}/data/.Trash-1000]
 Days=7
 LimitReachedAction=0
 Percent=10

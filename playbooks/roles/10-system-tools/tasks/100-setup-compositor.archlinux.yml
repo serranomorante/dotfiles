@@ -53,8 +53,8 @@
   become: true
   ansible.builtin.command: make
   args:
-    chdir: "{{ ansible_env.HOME }}/data/repos/dwm"
-    creates: "{{ ansible_env.HOME }}/data/repos/dwm/config.h"
+    chdir: "{{ ansible_facts.env.HOME }}/data/repos/dwm"
+    creates: "{{ ansible_facts.env.HOME }}/data/repos/dwm/config.h"
 
 - name: "[archlinux] Compositor: prepare patches folder"
   ansible.builtin.file:
@@ -121,7 +121,7 @@
   become: true
   ansible.builtin.command: make install
   args:
-    chdir: "{{ ansible_env.HOME }}/data/repos/dwm"
+    chdir: "{{ ansible_facts.env.HOME }}/data/repos/dwm"
   register: var_dwm_result
   changed_when: var_dwm_result.rc == 0
 

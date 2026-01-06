@@ -117,8 +117,8 @@
 - name: "[archlinux] Setup browser tools: build playwright mcp"
   ansible.builtin.shell: >
     source ~/.bashrc &&
-    $({{ ansible_env.HOME }}/.volta/bin/volta which npm) ci npm &&
-    $({{ ansible_env.HOME }}/.volta/bin/volta which npm) run build
+    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) ci npm &&
+    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) run build
   args:
     chdir: ~/data/repos/playwright-mcp/extension
   changed_when: fact_changed_extensions['playwright-mcp']
@@ -145,7 +145,7 @@
 
 - name: "[archlinux] Setup browser tools: build promnesia"
   ansible.builtin.shell: |
-    $({{ ansible_env.HOME }}/.volta/bin/volta which npm) ci
+    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) ci
     /usr/bin/python build --chrome --release
   args:
     chdir: ~/data/repos/promnesia/extension
@@ -250,19 +250,19 @@
   become: true
   ansible.builtin.copy:
     src: /usr/share/applications/brave-browser.desktop
-    dest: "{{ ansible_env.HOME }}/.local/share/applications/brave-browser.desktop"
-    owner: "{{ ansible_env.USER }}"
+    dest: "{{ ansible_facts.env.HOME }}/.local/share/applications/brave-browser.desktop"
+    owner: "{{ ansible_facts.env.USER }}"
     mode: "644"
 
 - name: "[archlinux] Setup browser tools: clean exec line"
   ansible.builtin.lineinfile:
-    dest: "{{ ansible_env.HOME }}/.local/share/applications/brave-browser.desktop"
+    dest: "{{ ansible_facts.env.HOME }}/.local/share/applications/brave-browser.desktop"
     regexp: "^Exec=.*"
     state: absent
 
 - name: "[archlinux] Setup browser tools: ensure brave scale"
   ansible.builtin.blockinfile:
-    dest: "{{ ansible_env.HOME }}/.local/share/applications/brave-browser.desktop"
+    dest: "{{ ansible_facts.env.HOME }}/.local/share/applications/brave-browser.desktop"
     marker: "# {mark} ANSIBLE MANAGED BLOCK"
     insertafter: "^\\[Desktop Entry\\]"
     block: Exec=bravennn --load-extension={{ browser_local_extensions | map(attribute='path') | join(',') }} %u

@@ -1,27 +1,27 @@
 ---
 reaper_mcp_server_setup:
-  repo_path: "{{ ansible_env.HOME }}/data/repos/reaper-mcp-server"
-  projects_dir: "{{ ansible_env.HOME }}/data/audio-pjs"
+  repo_path: "{{ ansible_facts.env.HOME }}/data/repos/reaper-mcp-server"
+  projects_dir: "{{ ansible_facts.env.HOME }}/data/audio-pjs"
 
 figma_mcp_server_setup:
-  exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/figma-developer-mcp"
+  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/figma-developer-mcp"
   keyrings:
     folder: dev-tools
     passkey: mcp-cf-figma
     wallet: kdewallet
 
 figma_mcp_commentary_server_setup:
-  exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/mcp-figma-comment-summary"
+  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/mcp-figma-comment-summary"
   keyrings:
     folder: dev-tools
     passkey: mcp-cf-figma
     wallet: kdewallet
 
 chrome_devtools_mcp_server_setup:
-  exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/chrome-devtools-mcp"
+  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/chrome-devtools-mcp"
 
 playwright_mcp_server_setup:
-  exe_path: "{{ ansible_env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/mcp-server-playwright"
+  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/mcp-server-playwright"
   keyrings:
     folder: dev-tools
     passkey: playwright_mcp_browser_key

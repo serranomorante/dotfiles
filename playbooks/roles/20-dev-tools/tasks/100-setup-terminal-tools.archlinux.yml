@@ -66,7 +66,7 @@
   become: true
   ansible.builtin.shell: make && make install
   args:
-    chdir: "{{ ansible_env.HOME }}/data/repos/tmux"
+    chdir: "{{ ansible_facts.env.HOME }}/data/repos/tmux"
     creates: /usr/local/bin/tmux
 
 - name: "[archlinux] Setup terminal tools: ensure automatic start-up of systemd user instances"

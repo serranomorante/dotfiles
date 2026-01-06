@@ -1,2 +1,2 @@
-KERNEL=="uinput", GROUP="{{ ansible_env.USER }}", MODE:="0660"
-KERNEL=="event*", GROUP="{{ ansible_env.USER }}", NAME="input/%k", MODE="660"
+KERNEL=="uinput", GROUP="{{ ansible_facts.env.USER }}", MODE:="0660"
+KERNEL=="event*", GROUP="{{ ansible_facts.env.USER }}", NAME="input/%k", MODE="660"

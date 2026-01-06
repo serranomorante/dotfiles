@@ -72,7 +72,7 @@
       - realtime
       - audio
       - pipewire
-    name: "{{ ansible_env.USER }}"
+    name: "{{ ansible_facts.env.USER }}"
 
 - name: "[archlinux] Setup audio tools: max user freq"
   # https://wiki.archlinux.org/title/Professional_audio#Optimizing_system_configuration

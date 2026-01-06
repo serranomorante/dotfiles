@@ -11,5 +11,5 @@
   environment:
     WINEPREFIX: "{{ arch_gather_wine_setup.wine_prefix }}"
   args:
-    creates: "{{ arch_gather_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/Gather/config.json"
+    creates: "{{ arch_gather_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/Gather/config.json"
   when: is_x_display_session

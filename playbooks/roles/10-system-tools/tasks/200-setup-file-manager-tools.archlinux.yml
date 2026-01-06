@@ -49,7 +49,7 @@
 - name: "[archlinux] Setup file manager: build nnn"
   ansible.builtin.command: make O_NERD=1 O_GITSTATUS=1 O_PCRE2=1 strip install
   environment:
-    PREFIX: "{{ ansible_env.HOME }}/.local"
+    PREFIX: "{{ ansible_facts.env.HOME }}/.local"
   args:
     chdir: ~/data/repos/nnn
     creates: ~/.local/bin/nnn

@@ -1,7 +1,7 @@
 # {{ ansible_managed }}
 [Desktop Entry]
 Name=(debug) REAPER [LINUX]
-Exec=kitty --hold -o env=WINEPREFIX='{{ arch_reaper_wine_setup.wine_prefix }}' {% for env in wine_env_vars.items() %}-o env={{ env | join('=') }} {% endfor %} {% for env in pipewire_latency_vars.items() %}-o env={{ env | join('=') }} {% endfor %} --directory='~/data/audio-pjs' firejail --profile={{ ansible_env.HOME }}/.config/firejail/wine.local reaper
+Exec=kitty --hold -o env=WINEPREFIX='{{ arch_reaper_wine_setup.wine_prefix }}' {% for env in wine_env_vars.items() %}-o env={{ env | join('=') }} {% endfor %} {% for env in pipewire_latency_vars.items() %}-o env={{ env | join('=') }} {% endfor %} --directory='~/data/audio-pjs' firejail --profile={{ ansible_facts.env.HOME }}/.config/firejail/wine.local reaper
 Type=Application
 StartupNotify=true
 Icon=3716_reaper.0

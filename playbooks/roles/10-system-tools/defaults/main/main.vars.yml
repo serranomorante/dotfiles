@@ -10,18 +10,18 @@ arch_nvidia_libs_version: 0.8.5
 arch_mouseless_click_version: 0.4.2
 arch_wine_staging_version: "9.21"
 arch_dwm_version: 7c3abae4e68b6a21f05cb04f3af31217259c0aa9
-wine_path: "{{ ansible_env.HOME }}/data/apps/virt-tools/wine-9.21-staging-tkg-amd649fcwsq0i/wine-9.21-staging-tkg-amd64"
+wine_path: "{{ ansible_facts.env.HOME }}/data/apps/virt-tools/wine-9.21-staging-tkg-amd649fcwsq0i/wine-9.21-staging-tkg-amd64"
 arch_mypaint_version: 2.1.0-alpha-400-g90b36db-2021-05-04_18.41
 
 arch_gather_wine_setup:
   version: 1.32.0
   backup_path: ~/Downloads
-  wine_prefix: "{{ ansible_env.HOME }}/data/.wine-win64-gather-town"
+  wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-gather-town"
 
 arch_ytmdesktop_wine_setup:
   version: 2.0.10
   backup_path: ~/Downloads
-  wine_prefix: "{{ ansible_env.HOME }}/data/.wine-win64-ytmdesktop"
+  wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-ytmdesktop"
 
 arch_wine_prefixes:
   - "{{ arch_reaper_wine_setup }}"
@@ -37,5 +37,5 @@ wine_env_vars:
   WINESERVER: "{{ wine_path }}/bin/wineserver"
   WINEDLLPATH: "{{ wine_path }}/lib/wine/x86_64-windows:{{ wine_path }}/lib/wine/i386-windows"
   LD_LIBRARY_PATH: "{{ wine_path }}/lib/wine/x86_64-unix:{{ wine_path }}/lib/wine/i386-unix"
-  PATH: "{{ wine_path }}/bin/:{{ ansible_env.PATH }}"
+  PATH: "{{ wine_path }}/bin/:{{ ansible_facts.env.PATH }}"
   WINEFSYNC: 1

@@ -3,6 +3,6 @@
 
 {% for repo in archlinux_borg_repos_env %}
 borgb -f "{{ repo.keyrings.folder }}" -p "{{ repo.keyrings.passkey }}" -w "{{ repo.keyrings.wallet }}" -- \
-    borg key export '{{ repo.repo }}' "{{ ansible_env.HOME }}/data/secrets/backup-borg-keyfiles/{{ repo.repo | regex_replace('[^A-Za-z0-9]', '_') }}"
+    borg key export '{{ repo.repo }}' "{{ ansible_facts.env.HOME }}/data/secrets/backup-borg-keyfiles/{{ repo.repo | regex_replace('[^A-Za-z0-9]', '_') }}"
 
 {% endfor %}

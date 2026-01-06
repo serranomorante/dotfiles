@@ -75,7 +75,7 @@
   ansible.builtin.user:
     append: true
     groups: docker
-    name: "{{ ansible_env.USER }}"
+    name: "{{ ansible_facts.env.USER }}"
 
 - name: "[archlinux] Setup desktop: set bell sound off"
   # https://wiki.archlinux.org/index.php?title=PC_speaker&oldid=740440#Globally

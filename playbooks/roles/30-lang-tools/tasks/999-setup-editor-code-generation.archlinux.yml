@@ -19,22 +19,22 @@
   changed_when: false
 
 - name: "[archlinux] Editor code generation: register volta's default node path"
-  ansible.builtin.command: "{{ ansible_env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which node"
+  ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which node"
   register: var_system_default_node
   changed_when: false
 
 - name: "[archlinux] Editor code generation: register volta's eslint_d path"
-  ansible.builtin.command: "{{ ansible_env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which eslint_d"
+  ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which eslint_d"
   register: var_system_default_eslint_d
   changed_when: false
 
 - name: "[archlinux] Editor code generation: register volta's eslint_d path"
-  ansible.builtin.command: "{{ ansible_env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which js-beautify"
+  ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which js-beautify"
   register: var_system_default_js_beautify
   changed_when: false
 
 - name: "[archlinux] Editor code generation: register volta's mcp-hub path"
-  ansible.builtin.command: "{{ ansible_env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which mcp-hub"
+  ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which mcp-hub"
   register: var_mcp_hub
   changed_when: false
 

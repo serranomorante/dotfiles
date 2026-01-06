@@ -34,7 +34,7 @@
   become: true
   ansible.builtin.user:
     append: true
-    groups: "{{ ansible_env.USER }}"
+    groups: "{{ ansible_facts.env.USER }}"
     name: aur_builder
 
 - name: "[archlinux] AUR: append user to wheel group"
@@ -42,7 +42,7 @@
   ansible.builtin.user:
     append: true
     groups: wheel
-    name: "{{ ansible_env.USER }}"
+    name: "{{ ansible_facts.env.USER }}"
 
 - name: "[archlinux] AUR: clone yay"
   ansible.builtin.git:

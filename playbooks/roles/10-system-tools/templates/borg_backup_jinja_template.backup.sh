@@ -11,7 +11,7 @@ export BORG_REPO='{{ borg_repo }}'
 # See the section "Passphrase notes" for more infos.
 # Check if running under sudo
 if [[ -n "${SUDO_USER:-}" ]] && [[ "$EUID" -eq 0 ]]; then
-    export BORG_PASSCOMMAND='/usr/local/bin/run_as_user -u {{ ansible_env.USER }} kwallet-query --folder {{ keyrings.folder }} --read-password {{ keyrings.passkey }} {{ keyrings.wallet }}'
+    export BORG_PASSCOMMAND='/usr/local/bin/run_as_user -u {{ ansible_facts.env.USER }} kwallet-query --folder {{ keyrings.folder }} --read-password {{ keyrings.passkey }} {{ keyrings.wallet }}'
 else
     export BORG_PASSCOMMAND='kwallet-query --folder {{ keyrings.folder }} --read-password {{ keyrings.passkey }} {{ keyrings.wallet }}'
 fi

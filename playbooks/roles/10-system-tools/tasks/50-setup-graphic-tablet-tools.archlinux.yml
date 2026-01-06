@@ -77,7 +77,7 @@
     groups:
       - uinput
       - input
-    name: "{{ ansible_env.USER }}"
+    name: "{{ ansible_facts.env.USER }}"
 
 - name: "[archlinux] Graphic tablet peripheral: ensure weylus service"
   ansible.builtin.systemd_service:

@@ -21,7 +21,7 @@
   ansible.builtin.copy:
     src: flatpak-jdownloader.desktop
     dest: /var/lib/flatpak/exports/share/applications/org.jdownloader.JDownloader.desktop
-    owner: "{{ ansible_env.USER }}"
+    owner: "{{ ansible_facts.env.USER }}"
     mode: "644"
   when: var_jdownloader_install.changed and var_jdownloader_install is success
   notify: handler_update_desktop_database
@@ -73,7 +73,7 @@
   ansible.builtin.user:
     append: true
     groups: no-internet
-    name: "{{ ansible_env.USER }}"
+    name: "{{ ansible_facts.env.USER }}"
 
 - name: "[archlinux] Other tools: block internet using iptables"
   become: true

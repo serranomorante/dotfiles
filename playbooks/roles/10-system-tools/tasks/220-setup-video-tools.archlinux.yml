@@ -157,21 +157,21 @@
   become: true
   ansible.builtin.file:
     path: "{{ item }}"
-    group: "{{ ansible_env.USER }}"
-    owner: "{{ ansible_env.USER }}"
+    group: "{{ ansible_facts.env.USER }}"
+    owner: "{{ ansible_facts.env.USER }}"
     mode: "750"
   loop:
-    - "{{ ansible_env.HOME }}"
-    - "{{ ansible_env.HOME }}/data"
-    - "{{ ansible_env.HOME }}/data/apps"
-    - "{{ ansible_env.HOME }}/data/apps/video-tools"
-    - "{{ ansible_env.HOME }}/data/apps/video-tools/davinci-resolve"
+    - "{{ ansible_facts.env.HOME }}"
+    - "{{ ansible_facts.env.HOME }}/data"
+    - "{{ ansible_facts.env.HOME }}/data/apps"
+    - "{{ ansible_facts.env.HOME }}/data/apps/video-tools"
+    - "{{ ansible_facts.env.HOME }}/data/apps/video-tools/davinci-resolve"
   when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: upgrade pkg sums to prevent yay error"
   ansible.builtin.command: updpkgsums
   args:
-    chdir: "{{ ansible_env.HOME }}/data/apps/video-tools/davinci-resolve"
+    chdir: "{{ ansible_facts.env.HOME }}/data/apps/video-tools/davinci-resolve"
   changed_when: true
   when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
@@ -193,7 +193,7 @@
     use: makepkg
     name: davinci-resolve
     state: latest
-    local_pkgbuild: "{{ ansible_env.HOME }}/data/apps/video-tools/davinci-resolve"
+    local_pkgbuild: "{{ ansible_facts.env.HOME }}/data/apps/video-tools/davinci-resolve"
   environment:
     BUILDDIR: /home/aur_builder/makepkg # more space
     # https://wiki.archlinux.org/title/DaVinci_Resolve

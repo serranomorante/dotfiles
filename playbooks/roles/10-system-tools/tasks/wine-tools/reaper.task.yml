@@ -45,12 +45,12 @@
 
 - name: "[archlinux] Wine tools: check file exists"
   ansible.builtin.stat:
-    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
   register: var_reaper_ini_file
 
 - name: "[archlinux] Wine tools: clean some reaper settings"
   ansible.builtin.lineinfile:
-    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
+    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
     regexp: "^{{ item }}.*"
     state: absent
   loop:
@@ -62,7 +62,7 @@
 
 - name: "[archlinux] Wine tools: ensure reaper UI scale"
   ansible.builtin.blockinfile:
-    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
+    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
     marker: "; {mark} ANSIBLE MANAGED BLOCK"
     insertafter: "^\\[reaper\\]"
     block: |

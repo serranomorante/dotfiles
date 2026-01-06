@@ -4,9 +4,9 @@
       ansible.builtin.stat:
         path: "{{ item }}"
       loop:
-        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev2 }}/data/backups
-        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev3 }}/data/backups
-        - /run/media/{{ ansible_env.USER }}/{{ arch_external_dev4 }}/data/backups
+        - /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev2 }}/data/backups
+        - /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev3 }}/data/backups
+        - /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev4 }}/data/backups
       register: var_local_backup_drives
 
     - name: "[archlinux] Setup root backup tools: set available drives fact"
@@ -26,16 +26,16 @@
       become: true
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.borg_repo }}'
       environment:
-        BORG_KEYS_DIR: "{{ ansible_env.USER }}/.config/borg-root/keys"
+        BORG_KEYS_DIR: "{{ ansible_facts.env.USER }}/.config/borg-root/keys"
         BORG_PASSCOMMAND: >
-          /usr/local/bin/run_as_user -u {{ ansible_env.USER }}
+          /usr/local/bin/run_as_user -u {{ ansible_facts.env.USER }}
             kwallet-query
             --folder {{ item.keyrings.folder }}
             --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }}
       vars:
         device: '{{ item.device | regex_replace("[^A-Za-z0-9]", "_") }}'
         reponame: '{{ item.keyrings.passkey | regex_replace("[^A-Za-z0-9]", "_") }}'
-        repobasename: /run/media/{{ ansible_env.USER }}/{{ item.device }}/data/backups
+        repobasename: /run/media/{{ ansible_facts.env.USER }}/{{ item.device }}/data/backups
       args:
         creates: ~/.config/borg-root/keys/*{{ device }}_data_backups_{{ reponame }}
       when: repobasename in available_drives and available_drives[repobasename].exists
@@ -57,7 +57,7 @@
     - name: "[archlinux] Setup root backup tools: copy root timers & services"
       become: true
       ansible.builtin.copy:
-        src: "{{ ansible_env.HOME }}/dotfiles/assets/other/{{ item }}"
+        src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/other/{{ item }}"
         dest: "/etc/systemd/system/{{ item }}"
         owner: root
         mode: "644"
@@ -85,11 +85,11 @@
 
     - name: "[archlinux] Setup root backup tools: backup keyfile"
       become: true
-      ansible.builtin.command: borg key export "{{ item.borg_repo }}" "{{ ansible_env.HOME }}/data/secrets/backup-borg-root-keyfiles/{{ keyfilename }}"
+      ansible.builtin.command: borg key export "{{ item.borg_repo }}" "{{ ansible_facts.env.HOME }}/data/secrets/backup-borg-root-keyfiles/{{ keyfilename }}"
       environment:
-        BORG_KEYS_DIR: "{{ ansible_env.USER }}/.config/borg-root/keys"
+        BORG_KEYS_DIR: "{{ ansible_facts.env.USER }}/.config/borg-root/keys"
         BORG_PASSCOMMAND: >
-          /usr/local/bin/run_as_user -u {{ ansible_env.USER }}
+          /usr/local/bin/run_as_user -u {{ ansible_facts.env.USER }}
             kwallet-query
             --folder {{ item.keyrings.folder }}
             --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }}
@@ -107,6 +107,6 @@
       become: true
       ansible.builtin.command: tar -czvf ../root_keyfiles-{{ user_os }}-{{ var_tstamp.stdout }}.tar.gz * --remove-files
       args:
-        chdir: "{{ ansible_env.HOME }}/data/secrets/backup-borg-root-keyfiles"
+        chdir: "{{ ansible_facts.env.HOME }}/data/secrets/backup-borg-root-keyfiles"
         creates: ../root_keyfiles-{{ user_os }}-{{ var_tstamp.stdout }}.tar.gz
   ignore_errors: true
