@@ -5,3 +5,10 @@
 
 xrandr --setprovideroutputsource modesetting NVIDIA-0
 xrandr --auto
+
+# https://wiki.archlinux.org/title/NVIDIA/Troubleshooting#System_freeze_when_the_display_powers_off_or_on_resume
+# Set a max limit on the graphics gpu
+nvidia-smi -lgc 139,300
+
+# Under-clock the graphics memory
+nvidia-settings -a "GPUMemoryTransferRateOffset[0x3]=-2000" -c :0

@@ -17,3 +17,29 @@
     use: yay
     state: present
     name: nvidia-prime-rtd3pm
+
+- name: "[archlinux] Nvidia tools: add kernel param"
+  become: true
+  ansible.builtin.copy:
+    src: nvidia/video.conf
+    dest: /etc/cmdline.d/video.conf
+    mode: "644"
+  notify: handler_mkinitcpio_allpresets
+
+- name: "[archlinux] Nvidia tools: enable nvidia-persistenced service"
+  become: true
+  ansible.builtin.systemd_service:
+    scope: system
+    name: nvidia-persistenced.service
+    enabled: true
+    masked: false
+
+- name: "[archlinux] Nvidia tools: add config files"
+  become: true
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "644"
+  loop:
+    - src: nvidia/80-igpu-primary-egpu-offload.conf
+      dest: /etc/X11/xorg.conf.d/80-igpu-primary-egpu-offload.conf
