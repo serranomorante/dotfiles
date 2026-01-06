@@ -2,7 +2,7 @@
 - hosts: localhost,all
   gather_facts: false
   vars:
-    user_os: "{{ ansible_distribution | lower | replace(' ', '') }}"
+    user_os: "{{ ansible_facts.distribution | lower | replace(' ', '') }}"
     is_x_display_session: false
 
   pre_tasks:

@@ -2,7 +2,7 @@
 - hosts: localhost
   gather_facts: false
   vars:
-    user_os: "{{ ansible_distribution | lower | replace(' ', '') }}"
+    user_os: "{{ ansible_facts.distribution | lower | replace(' ', '') }}"
 
   pre_tasks:
     - name: "Setup playbook: get command arguments used to invoke ansible"
