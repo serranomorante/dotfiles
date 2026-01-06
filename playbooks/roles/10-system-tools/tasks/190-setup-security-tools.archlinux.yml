@@ -9,6 +9,7 @@
       - ufw
       - ksshaskpass
       - tcpdump
+      - bustle
 
 - name: "[archlinux] Other tools: ensure kwalletcli folder"
   ansible.builtin.file:
