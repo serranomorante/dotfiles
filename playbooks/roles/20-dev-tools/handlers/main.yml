@@ -13,3 +13,10 @@
     name: subscribe_color_change.service
     enabled: true
     masked: false
+
+- name: handler_ensure_gnirehtet_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: gnirehtet.service
+    enabled: true
+    masked: false

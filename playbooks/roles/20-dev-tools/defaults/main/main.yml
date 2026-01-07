@@ -6,6 +6,7 @@ tmux_version: 3.5a
 archlinux_neovim_version: master
 archlinux_treesitter_version: 0.25.9
 debian_neovim_version: 688b961d13bd # before cmake 3.16 requirement
+arch_gnirehtet_version: 2.5.1
 neovim_plugins:
   # themes
   - folder: start

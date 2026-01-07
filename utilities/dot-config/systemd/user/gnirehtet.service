@@ -1,0 +1,9 @@
+[Unit]
+Description=gnirehtet service
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/data/apps/android-tools/gnirehtet-rust-linux64/gnirehtet run
+
+[Install]
+WantedBy=graphical-session.target

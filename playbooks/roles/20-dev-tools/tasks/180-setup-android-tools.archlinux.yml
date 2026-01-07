@@ -1,0 +1,21 @@
+---
+- name: "[archlinux] Setup android tools: install packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: android-tools
+
+- name: "[archlinux] Setup android tools: ensure folder"
+  ansible.builtin.file:
+    path: ~/data/apps/android-tools
+    state: directory
+    mode: "770"
+
+- name: "[archlinux] Setup android tools: get gnirehtet rust version"
+  # Make sure to enable developer mode and usb debugger in your device
+  ansible.builtin.unarchive:
+    src: https://github.com/Genymobile/gnirehtet/releases/download/v2.5.1/gnirehtet-rust-linux64-v{{ arch_gnirehtet_version }}.zip
+    dest: ~/data/apps/android-tools
+    remote_src: true
+    creates: ~/data/apps/android-tools/gnirehtet-rust-linux64
+  notify: handler_ensure_gnirehtet_service
