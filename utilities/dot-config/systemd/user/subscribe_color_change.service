@@ -1,0 +1,9 @@
+[Unit]
+Description=Subscribe to color changes
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/bin/dbus_listen_color_change
+
+[Install]
+WantedBy=graphical-session.target

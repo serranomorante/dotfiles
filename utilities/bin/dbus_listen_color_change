@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+# thanks: https://github.com/systemd/systemd/issues/26310#issuecomment-1685170189
+
+# Set nvim color mode based on system color
+
+set -euo pipefail
+
+# Filter to the portal Settings signal (correct bus name/interface)
+match="\
+type='signal',\
+sender='org.freedesktop.portal.Desktop',\
+interface='org.freedesktop.portal.Settings',\
+member='SettingChanged',\
+path='/org/freedesktop/portal/desktop',\
+arg0='org.kde.kdeglobals.General',\
+arg1='ColorScheme'"
+
+# Force line buffering and use the user/session bus
+while IFS= read -r data; do
+    theme=$(echo $data | jq .payload.data[2].data)
+    server_list=$(nvr --serverlist)
+
+    if [[ -n "$server_list" ]]; then
+        while IFS= read -r server_name; do
+            if [[ "$theme" == *"BreezeLight"* ]]; then
+                nvr --servername "$server_name" -c 'ColorMode light'
+            else
+                nvr --servername "$server_name" -c 'ColorMode dark'
+            fi
+        done <<<"$server_list"
+    else
+        echo "No Neovim servers found."
+    fi
+done < <(busctl --user monitor --match "$match" --json=short)
