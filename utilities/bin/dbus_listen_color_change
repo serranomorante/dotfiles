@@ -24,9 +24,9 @@ while IFS= read -r data; do
     if [[ -n "$server_list" ]]; then
         while IFS= read -r server_name; do
             if [[ "$theme" == *"BreezeLight"* ]]; then
-                nvr --servername "$server_name" -c 'ColorMode light'
+                nvr --servername "$server_name" --nostart -c 'ColorMode light'
             else
-                nvr --servername "$server_name" -c 'ColorMode dark'
+                nvr --servername "$server_name" --nostart -c 'ColorMode dark'
             fi
         done <<<"$server_list"
     else
