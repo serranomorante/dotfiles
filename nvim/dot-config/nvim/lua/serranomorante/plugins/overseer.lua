@@ -153,6 +153,7 @@ local function keys()
           "20-50,20-60 [Full editor setup]",
           "10-170,20-170 [Full AI setup]",
           "10-170,40-20 [Full browser extensions]",
+          "10-180,10-181 [Full borg backup setup]",
           "10-system-tools,20-dev-tools,30-lang-tools,40-PKM,80-for-my-eyes-only [Base setup]",
         })
         -- Add private playbooks

@@ -32,6 +32,8 @@ borg create \
     --stats \
     --show-rc \
     --compression lz4 \
+    --exclude '**/node_modules' \
+    --exclude '**/.turbo' \
     \
     ::'{hostname}-{now:%Y-%m-%d_%H_%M_%S}' \
     {% for dir in files %}
