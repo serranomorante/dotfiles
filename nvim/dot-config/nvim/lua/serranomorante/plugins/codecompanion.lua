@@ -117,7 +117,7 @@ local function opts()
         end,
       },
     },
-    strategies = {
+    interactions = {
       chat = {
         adapter = "gemini",
         tools = {
@@ -162,10 +162,10 @@ local function opts()
           yank_code = {
             modes = { n = "gy" },
           },
-          pin = {
+          buffer_sync_all = {
             modes = { n = "gp" },
           },
-          watch = {
+          buffer_sync_diff = {
             modes = { n = "gw" },
           },
           next_chat = {
@@ -192,7 +192,7 @@ local function opts()
           system_prompt = {
             modes = { n = "gs" },
           },
-          memory = {
+          rules = {
             modes = { n = "gM" },
           },
           yolo_mode = {
@@ -260,7 +260,7 @@ local function opts()
     },
     prompt_library = {
       ["Write jsdocs"] = {
-        strategy = "inline",
+        interaction = "inline",
         description = "Write jsdoc documentation",
         opts = {
           short_name = "docs",
@@ -273,11 +273,11 @@ local function opts()
         },
       },
       ["Generate a Commit Message"] = {
-        strategy = "inline",
+        interaction = "inline",
         description = "Generate a commit message",
         opts = {
           index = 10,
-          is_default = true,
+          is_preset = true,
           is_slash_cmd = true,
           short_name = "commit",
           auto_submit = true,
