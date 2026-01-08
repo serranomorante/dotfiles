@@ -17,6 +17,20 @@ local function api_key_gen(provider)
   )
 end
 
+---Give hints on why your gemini_cli adapter might not be working
+local function error_if_gemini_settings_mismatch(args)
+  vim.schedule(function()
+    local gemini_settings = utils.load_json_file(vim.env.HOME .. "/.gemini/settings.json")
+    if gemini_settings then
+      local _, selected_type = pcall(function() return gemini_settings.security.auth.selectedType end)
+      if selected_type and selected_type ~= args.auth_method then
+        local message = "Gemini selected type is %s but you configured %s in ~/.gemini/settings.json"
+        vim.api.nvim_echo({ { message:format(selected_type, args.auth_method) } }, false, { err = true })
+      end
+    end
+  end)
+end
+
 local function init()
   ---Expand 'cc' into 'CodeCompanion' in the command line
   vim.cmd([[cab cc CodeCompanion]])
@@ -57,6 +71,9 @@ end
 
 local function opts()
   local ok, private_opts = pcall(require, "serranomorante.private-opts")
+  ---@type "oauth-personal"|"gemini-api-key"
+  local auth_method = "oauth-personal"
+  error_if_gemini_settings_mismatch({ auth_method = auth_method })
   local _opts = {
     ignore_warnings = true,
     display = {
@@ -87,8 +104,7 @@ local function opts()
               },
             },
             defaults = {
-              ---@type "oauth-personal"|"gemini-api-key"
-              auth_method = "oauth-personal", --oauth-personal is the only method that works now
+              auth_method = auth_method, --oauth-personal is the only method that works now
               timeout = 20000, -- 20 seconds
             },
             env = {

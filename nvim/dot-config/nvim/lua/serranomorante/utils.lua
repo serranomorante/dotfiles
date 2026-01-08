@@ -506,6 +506,24 @@ function M.mkdir(dirname, perms)
   end
 end
 
+---@param filepath string
+---@return string?
+M.read_file = function(filepath)
+  if not M.exists(filepath) then return nil end
+  local fd = assert(vim.uv.fs_open(filepath, "r", 420)) -- 0644
+  local stat = assert(vim.uv.fs_fstat(fd))
+  local content = vim.uv.fs_read(fd, stat.size)
+  vim.uv.fs_close(fd)
+  return content
+end
+
+---@param filepath string
+---@return any?
+M.load_json_file = function(filepath)
+  local content = M.read_file(filepath)
+  if content then return vim.json.decode(content, { luanil = { object = true } }) end
+end
+
 ---@param filename string
 ---@param contents string
 function M.write_file(filename, contents)
