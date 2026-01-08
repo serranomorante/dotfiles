@@ -265,7 +265,7 @@
     dest: "{{ ansible_facts.env.HOME }}/.local/share/applications/brave-browser.desktop"
     marker: "# {mark} ANSIBLE MANAGED BLOCK"
     insertafter: "^\\[Desktop Entry\\]"
-    block: Exec=bravennn --load-extension={{ browser_local_extensions | map(attribute='path') | join(',') }} %u
+    block: Exec=brave --load-extension={{ browser_local_extensions | map(attribute='path') | join(',') }} %U
   notify: handler_update_desktop_database
 
 - name: "[archlinux] Setup browser tools: copy chromium desktop file to user directory"
