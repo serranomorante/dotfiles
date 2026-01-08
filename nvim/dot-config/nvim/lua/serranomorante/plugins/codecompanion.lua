@@ -79,6 +79,13 @@ local function opts()
         end,
         gemini_cli = function()
           return require("codecompanion.adapters").extend("gemini_cli", {
+            commands = {
+              pro_2_5 = {
+                "gemini",
+                "--model=gemini-2.5-pro",
+                "--experimental-acp",
+              },
+            },
             defaults = {
               ---@type "oauth-personal"|"gemini-api-key"
               auth_method = "oauth-personal", --oauth-personal is the only method that works now
