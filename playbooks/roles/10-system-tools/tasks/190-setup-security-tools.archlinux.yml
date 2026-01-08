@@ -138,6 +138,15 @@
     keyrings: "{{ keyrings }}"
   when: var_stat_setup_kwallet.stat.exists
 
+- name: "[archlinux] Setup security tools: ensure path"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  loop:
+    - ~/.local/share/dbus-1
+    - ~/.local/share/dbus-1/services/
+
 - name: "[archlinux] Setup security tools: setup secrets service"
   # https://wiki.archlinux.org/title/KDE_Wallet#Automatic_D-Bus_activation
   ansible.builtin.copy:

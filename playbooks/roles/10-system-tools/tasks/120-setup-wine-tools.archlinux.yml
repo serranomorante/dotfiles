@@ -89,6 +89,15 @@
     owner: root
     mode: "644"
 
+- name: "[archlinux] Wine tools: ensure path"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  loop:
+    - ~/data/apps
+    - ~/data/apps/virt-tools
+
 - name: "[archlinux] Wine tools: unarchive"
   ansible.builtin.unarchive:
     src: https://github.com/Kron4ek/Wine-Builds/releases/download/9.21/wine-9.21-staging-tkg-amd64.tar.xz

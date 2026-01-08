@@ -74,6 +74,12 @@
       - pipewire
     name: "{{ ansible_facts.env.USER }}"
 
+- name: "[archlinux] Setup audio tools: ensure path"
+  ansible.builtin.file:
+    path: /etc/sysctl.d/
+    state: directory
+    mode: "755"
+
 - name: "[archlinux] Setup audio tools: max user freq"
   # https://wiki.archlinux.org/title/Professional_audio#Optimizing_system_configuration
   become: true
