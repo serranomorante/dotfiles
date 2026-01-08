@@ -19,8 +19,7 @@ local function init()
     pattern = vim.tbl_keys(require("conform").formatters_by_ft),
     group = vim.api.nvim_create_augroup("conform_formatexpr", { clear = true }),
     callback = function(args)
-      vim.bo[args.buf].formatexpr =
-        string.format("v:lua.require'conform'.formatexpr(%s)", vim.fn.string({}))
+      vim.bo[args.buf].formatexpr = string.format("v:lua.require'conform'.formatexpr(%s)", vim.fn.string({}))
     end,
   })
 end
@@ -51,7 +50,6 @@ function M.opts()
       json = gen_fmt(ft_tools.json.fmts, { stop_after_first = true }),
       jsonc = gen_fmt(ft_tools.json.fmts, { stop_after_first = true }),
       markdown = gen_fmt(ft_tools.markdown.fmts, { stop_after_first = true }),
-      vue = gen_fmt(ft_tools.vue.fmts, { stop_after_first = false }),
       javascript = gen_fmt(ft_tools.javascript.fmts, { stop_after_first = true }),
       typescript = gen_fmt(ft_tools.typescript.fmts, { stop_after_first = true }),
       javascriptreact = gen_fmt(ft_tools.javascriptreact.fmts, { stop_after_first = true }),
