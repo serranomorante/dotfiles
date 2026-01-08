@@ -79,6 +79,11 @@ local function opts()
         end,
         gemini_cli = function()
           return require("codecompanion.adapters").extend("gemini_cli", {
+            defaults = {
+              ---@type "oauth-personal"|"gemini-api-key"
+              auth_method = "oauth-personal", --oauth-personal is the only method that works now
+              timeout = 20000, -- 20 seconds
+            },
             env = {
               GEMINI_API_KEY = api_key_gen("gemini"),
             },
@@ -302,6 +307,9 @@ local function opts()
           },
         },
       },
+    },
+    opts = {
+      log_level = "INFO", -- or "TRACE"
     },
   }
   return vim.tbl_deep_extend("force", _opts, ok and private_opts or {})
