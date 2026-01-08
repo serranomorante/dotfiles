@@ -30,6 +30,7 @@ local groups = {
   FloatingSuggest = { bg = bg .. "Grey3" },
   CocMenuSel = { link = "PmenuSel" },
   CocInlayHint = { link = "CursorColumn" },
+  CocCodeLens = { link = "Comment" },
   qfDirName = { link = "Directory", default = true },
   qfFileName = { link = "CursorLineNr", default = true },
   qfSubmatch = { fg = fg .. "Red" },
