@@ -14,5 +14,6 @@ vim.api.nvim_create_user_command("ColorMode", switch_color_mode, {
 ---Sync color mode on startup based on system colorscheme
 vim.schedule(function()
   local color_mode = vim.fn.system('grep "ColorScheme=" ~/.config/kdeglobals | cut -d "=" -f2')
+  if color_mode and #color_mode == 0 then return end
   switch_color_mode({ args = color_mode == "BreezeDark\n" and "dark" or "light" })
 end)
