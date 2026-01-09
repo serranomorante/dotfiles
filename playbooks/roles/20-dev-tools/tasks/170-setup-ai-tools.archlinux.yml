@@ -2,8 +2,8 @@
 - name: "[archlinux] Setup ai tools: ensure mcp servers"
   ansible.builtin.shell: >
     source ~/.bashrc &&
-    {{ ansible_facts.env.HOME }}/.volta/bin/volta run --node {{ node_system_default_version }} $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) install --global {{
-    item.name }}@{{ item.version | default('latest') }}
+    {{ ansible_facts.env.HOME }}/.volta/bin/volta run --node {{ node_system_default_version }}
+    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) install --global {{ item.name }}@{{ item.version | default('latest') }}
   changed_when: true
   when: fact_npm_global_outdated[item.name] is defined or fact_npm_global_installed.dependencies[item.name] is undefined
   loop:
@@ -81,6 +81,22 @@
     dest: ~/.config/mcphub/servers.json
     mode: "644"
   register: var_mcp_hub_servers_json
+
+- name: "[archlinux] Setup ai tools: get gemini settings file"
+  ansible.builtin.set_fact:
+    gemini_settings_json: "{{ lookup('file', '~/.gemini/settings.json') | default({}) | from_json }}"
+
+- name: "[archlinux] Setup ai tools: combine gemini settings with mcphub servers"
+  ansible.builtin.set_fact:
+    gemini_settings_json: "{{ lookup('file', '~/.config/mcphub/servers.json') | default({}) | from_json | combine(gemini_settings_json) }}"
+  when: gemini_settings_json.values() | length != 0
+
+- name: "[archlinux] Setup ai tools: override gemini settings file"
+  ansible.builtin.copy:
+    dest: ~/.gemini/settings.json
+    content: "{{ gemini_settings_json }}"
+    mode: "644"
+  when: gemini_settings_json.values() | length != 0
 
 - name: "[archlinux] Setup ai tools: restart server list"
   ansible.builtin.command: ~/bin/nvim --headless -c "lua require("mcphub").get_hub_instance():restart()" -c "quit"
