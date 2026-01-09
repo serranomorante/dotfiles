@@ -34,6 +34,7 @@ borg create \
     --compression lz4 \
     --exclude '**/node_modules' \
     --exclude '**/.turbo' \
+    --exclude '**/.git' \
     \
     ::'{hostname}-{now:%Y-%m-%d_%H_%M_%S}' \
     {% for dir in files %}
