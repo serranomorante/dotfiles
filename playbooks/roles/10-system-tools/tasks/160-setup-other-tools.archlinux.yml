@@ -114,5 +114,7 @@
 - name: "[archlinux] Other tools: install packages"
   become: true
   ansible.builtin.package:
-    name: firejail
+    name:
+      - firejail
+      - tree
     state: present
