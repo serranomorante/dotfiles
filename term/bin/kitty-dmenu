@@ -32,4 +32,4 @@ for socket in $sockets; do
         { [[ ! "$error_msg" =~ "No matching windows for expression" ]] && notify-send "Error: $error_msg"; }
 done
 
-kitty -d $selected_path
+kitty -d $selected_path --session ~/.config/kitty/default.kitty-session
