@@ -75,7 +75,7 @@
   loop: "{{ treesitter_parsers }}"
 
 - name: "[archlinux] Editor tools: build treesitter parsers"
-  ansible.builtin.command: ~/data/bin/tree-sitter build -o ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
+  ansible.builtin.command: ~/bin/tree-sitter build -o ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
   args:
     creates: ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
     chdir: ~/data/repos/{{ item.repo | basename }}/{{ item.build_folder | default(None) }}
