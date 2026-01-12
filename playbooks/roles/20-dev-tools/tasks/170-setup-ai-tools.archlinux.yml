@@ -83,23 +83,34 @@
     mode: "644"
   register: var_mcp_hub_servers_json
 
+- name: "[archlinux] Setup ai tools: restart server list"
+  ansible.builtin.command: ~/bin/nvim --headless -c "lua require("mcphub").get_hub_instance():restart()" -c "quit"
+  changed_when: true
+  when: var_mcp_hub_servers_json.changed
+  ignore_errors: true
+
+- name: "[archlinux] Setup ai tools: stat gemini settings"
+  ansible.builtin.stat:
+    path: ~/.gemini/settings.json
+  register: var_stat_gemini_settings
+
 - name: "[archlinux] Setup ai tools: get gemini settings file"
   ansible.builtin.set_fact:
     gemini_settings_json: "{{ lookup('file', '~/.gemini/settings.json') | default({}) | from_json }}"
+  when: var_stat_gemini_settings.stat.exists
 
 - name: "[archlinux] Setup ai tools: combine gemini settings with mcphub servers"
   ansible.builtin.set_fact:
     gemini_settings_json: "{{ lookup('file', '~/.config/mcphub/servers.json') | default({}) | from_json | combine(gemini_settings_json) }}"
-  when: gemini_settings_json.values() | length != 0
+  when:
+    - var_stat_gemini_settings.stat.exists
+    - gemini_settings_json.values() | length != 0
 
 - name: "[archlinux] Setup ai tools: override gemini settings file"
   ansible.builtin.copy:
     dest: ~/.gemini/settings.json
     content: "{{ gemini_settings_json }}"
     mode: "644"
-  when: gemini_settings_json.values() | length != 0
-
-- name: "[archlinux] Setup ai tools: restart server list"
-  ansible.builtin.command: ~/bin/nvim --headless -c "lua require("mcphub").get_hub_instance():restart()" -c "quit"
-  changed_when: true
-  when: var_mcp_hub_servers_json.changed
+  when:
+    - var_stat_gemini_settings.stat.exists
+    - gemini_settings_json.values() | length != 0
