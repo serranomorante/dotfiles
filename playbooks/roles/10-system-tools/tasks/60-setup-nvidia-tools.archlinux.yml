@@ -26,6 +26,12 @@
     mode: "644"
   notify: handler_mkinitcpio_allpresets
 
+- name: "[archlinux] Nvidia tools: check nvidia-persistenced service"
+  ansible.builtin.command: systemctl list-unit-files nvidia-persistenced.service
+  changed_when: true
+  ignore_errors: true
+  register: var_nvidia_persistenced_service
+
 - name: "[archlinux] Nvidia tools: enable nvidia-persistenced service"
   become: true
   ansible.builtin.systemd_service:
@@ -33,6 +39,7 @@
     name: nvidia-persistenced.service
     enabled: true
     masked: false
+  when: "'nvidia-persistenced.service' in var_nvidia_persistenced_service.stdout"
 
 - name: "[archlinux] Nvidia tools: add config files"
   become: true
