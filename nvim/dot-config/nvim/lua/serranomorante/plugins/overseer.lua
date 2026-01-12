@@ -16,7 +16,6 @@ end
 local function keys()
   local overseer = require("overseer")
   local nnn_explorer = require("overseer.template.editor-tasks.TASK__nnn_explorer")
-  local lazygit = require("overseer.template.system-tasks.TASK__run_lazygit")
   local open_markdown_preview = require("overseer.template.editor-tasks.TASK__open_markdown_preview")
 
   vim.keymap.set("n", "<leader>oo", "<cmd>OverseerToggle<CR>", { desc = "Overseer: Toggle the overseer window" })
@@ -74,28 +73,7 @@ local function keys()
     )
   end, { desc = "Toggle explorer" })
 
-  local previous_task = nil
-  vim.keymap.set("n", "<leader>w", function()
-    if previous_task and previous_task.status == "RUNNING" then
-      overseer.run_action(previous_task, "open float")
-      return
-    end
-    overseer.run_task({ autostart = false, name = lazygit.name }, function(task)
-      if not task then return end
-      previous_task = task
-      utils.force_very_fullscreen_float(task)
-      utils.start_insert_mode(task)
-      utils.attach_keymaps(task)
-      task:start()
-      vim.keymap.set("t", "<leader>", "<space>", { buffer = task:get_bufnr(), nowait = true })
-      vim.keymap.set(
-        "t",
-        "q",
-        function() overseer.run_action(task, "close term window") end,
-        { buffer = task:get_bufnr() }
-      )
-    end)
-  end)
+  vim.keymap.set("n", "<leader>w", function() utils.cmd({ "kitten", "@", "action", "goto_tab", "2" }) end)
 
   vim.keymap.set("n", "<leader>tp", function()
     local lines = {}

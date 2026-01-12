@@ -34,6 +34,10 @@ os:
 promptToReturnFromSubprocess: false
 notARepository: 'quit'
 customCommands:
+  - key: "q"
+    description: "Custom: Go to nvim tab instead of quitting"
+    context: "global"
+    command: "kitten @ action goto_tab 1"
   # From local branches, compare selected branch against checked out branch
   - key: "D"
     description: "Custom: Compare selected branch against checked out branch"
