@@ -40,15 +40,34 @@
     virtualenv_command: /usr/bin/python3 -m venv
     state: present
 
+- name: "[archlinux] Setup HPI - clone h"
+  ansible.builtin.git:
+    repo: "{{ item }}"
+    dest: ~/data/repos/{{ item | basename }}
+    version: main
+    depth: 1
+    force: true
+    single_branch: true
+  loop:
+    - https://github.com/hypothesis/h # because I want to self-host
+    - https://github.com/hypothesis/bouncer
+
+- name: "[archlinux] Setup HPI - get python version from h repo"
+  ansible.builtin.command: cat .python-version
+  register: var_h_python_version
+  args:
+    chdir: ~/data/repos/h
+  changed_when: true
+
 - name: "[archlinux] Setup HPI - ensure hypothesis domain points to local instance"
   ansible.builtin.replace:
-    path: ~/data/apps/PKM/.venv/lib/python3.13/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
+    path: ~/data/apps/PKM/.venv/lib/python{{ var_h_python_version.stdout }}/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
     regexp: "(domain=)None\\,"
     replace: '\1"localhost:5000",'
 
 - name: "[archlinux] Setup HPI - replace https"
   ansible.builtin.replace:
-    path: ~/data/apps/PKM/.venv/lib/python3.13/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
+    path: ~/data/apps/PKM/.venv/lib/python{{ var_h_python_version.stdout }}/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
     regexp: "https"
     replace: "http"
 
@@ -68,18 +87,6 @@
     xdg-mime default nvr_nvim_open.desktop x-scheme-handler/editor
   changed_when: true
   notify: handler_update_desktop_database
-
-- name: "[archlinux] Setup HPI - clone h"
-  ansible.builtin.git:
-    repo: "{{ item }}"
-    dest: ~/data/repos/{{ item | basename }}
-    version: main
-    depth: 1
-    force: true
-    single_branch: true
-  loop:
-    - https://github.com/hypothesis/h # because I want to self-host
-    - https://github.com/hypothesis/bouncer
 
 - name: "[archlinux] Setup HPI - generate patch tempdir"
   ansible.builtin.tempfile:
@@ -123,13 +130,6 @@
   ansible.builtin.command: sg docker -c "docker network create dbs"
   changed_when: false
   when: docker_network_dbs_exists.stdout == "0"
-
-- name: "[archlinux] Setup HPI - get python version from h repo"
-  ansible.builtin.command: cat .python-version
-  register: var_h_python_version
-  args:
-    chdir: ~/data/repos/h
-  changed_when: true
 
 - name: "[archlinux] Setup HPI - clean dependencies"
   ansible.builtin.file:
