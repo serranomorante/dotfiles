@@ -64,6 +64,7 @@
   loop:
     - 1701
     - 9001
+  ignore_errors: true
 
 - name: "[archlinux] Graphic tablet peripheral: weylus - ensure uinput group"
   become: true

@@ -63,12 +63,14 @@
   community.general.ufw:
     default: deny
     direction: incoming
+  ignore_errors: true
 
 - name: "[archlinux] Setup security tools: default allow outgoing"
   become: true
   community.general.ufw:
     default: allow
     direction: outgoing
+  ignore_errors: true
 
 - name: "[archlinux] Setup security tools: setup ufw"
   # From: /etc/ufw/applications.d
@@ -79,11 +81,13 @@
   loop:
     - SSH
     - WWW Full
+  ignore_errors: true
 
 - name: "[archlinux] Setup security tools: enable ufw"
   become: true
   community.general.ufw:
     state: enabled
+  ignore_errors: true
 
 - name: "[archlinux] Setup security tools: get nvim keyrings"
   ansible.builtin.shell: >
