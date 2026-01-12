@@ -11,6 +11,14 @@
       - tcpdump
       - bustle
 
+- name: "[archlinux] Setup security tools: ensure deprecated packages"
+  # These packages might be removed by arch in the future
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: kwallet5
+  ignore_errors: true
+
 - name: "[archlinux] Other tools: ensure kwalletcli folder"
   ansible.builtin.file:
     path: "{{ item }}"
