@@ -1,3 +1,7 @@
-launch
-new_tab lazygit
+launch --title base-title
+new_tab GIT
 launch lazygit
+new_tab AI
+layout stack
+launch gemini
+launch claude
