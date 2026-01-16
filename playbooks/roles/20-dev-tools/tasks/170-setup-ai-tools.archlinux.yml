@@ -114,3 +114,29 @@
   when:
     - var_stat_gemini_settings.stat.exists
     - gemini_settings_json.values() | length != 0
+
+- name: "[archlinux] Setup ai tools: stat claude settings"
+  ansible.builtin.stat:
+    path: ~/.claude.json
+  register: var_stat_claude_settings
+
+- name: "[archlinux] Setup ai tools: get claude settings file"
+  ansible.builtin.set_fact:
+    claude_settings_json: "{{ lookup('file', '~/.claude.json') | default({}) | from_json }}"
+  when: var_stat_claude_settings.stat.exists
+
+- name: "[archlinux] Setup ai tools: combine claude settings with mcphub servers"
+  ansible.builtin.set_fact:
+    claude_settings_json: "{{ lookup('file', '~/.config/mcphub/servers.json') | default({}) | from_json | combine(claude_settings_json) }}"
+  when:
+    - var_stat_claude_settings.stat.exists
+    - claude_settings_json.values() | length != 0
+
+- name: "[archlinux] Setup ai tools: override claude settings file"
+  ansible.builtin.copy:
+    dest: ~/.claude.json
+    content: "{{ claude_settings_json }}"
+    mode: "644"
+  when:
+    - var_stat_claude_settings.stat.exists
+    - claude_settings_json.values() | length != 0
