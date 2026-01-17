@@ -1,0 +1,10 @@
+---
+- hosts: arch_user
+  gather_facts: true
+  vars:
+    user_os: "{{ ansible_facts.distribution | lower | replace(' ', '') }}"
+
+  roles:
+    # <An incremental number>--<Group multiple roles by this name>--<Anything else specific to this role>
+    - role: 10--system--initial-setup
+      tags: 10--system--initial-setup

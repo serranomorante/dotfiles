@@ -1,0 +1,1 @@
+/usr/bin/arch-chroot /mnt sh -c "eval \"\$SSH_ORIGINAL_COMMAND\""

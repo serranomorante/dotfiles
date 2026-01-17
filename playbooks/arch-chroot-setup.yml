@@ -1,0 +1,221 @@
+---
+- hosts: arch_chroot
+  gather_facts: true
+  tasks:
+    - name: lsblk
+      ansible.builtin.command: lsblk -f
+      register: var_lsblk
+      changed_when: true
+
+    - name: print lsblk
+      ansible.builtin.debug:
+        msg: "{{ var_lsblk.stdout_lines }}"
+
+    - name: set useful facts
+      ansible.builtin.set_fact:
+        username: <the username for your system>
+        user_password: <put your user password here>
+        is_chroot: "{{ 'mnt' not in var_lsblk.stdout }}"
+
+    - name: your not in chroot
+      ansible.builtin.command: echo
+      changed_when: true
+      failed_when: not is_chroot
+
+    - name: get disk 1 device lsblk data
+      # get my 500GB device
+      ansible.builtin.command: lsblk --json --nvme --filter 'SIZE < 900000000000' --output NAME,SIZE
+      changed_when: true
+      register: var_device1_lsblk_data
+
+    - name: get disk 2 device lsblk data
+      # get my 1TB device
+      ansible.builtin.command: lsblk --json --nvme --filter 'SIZE > 900000000000' --output NAME,SIZE
+      changed_when: true
+      register: var_device2_lsblk_data
+
+    - name: set devices data fact
+      ansible.builtin.set_fact:
+        device1_facts: "{{ var_device1_lsblk_data.stdout | default({}) | from_json }}"
+        device2_facts: "{{ var_device2_lsblk_data.stdout | default({}) | from_json }}"
+
+    - name: set some useful facts
+      ansible.builtin.set_fact:
+        boot_partition: "{{ device1_facts.blockdevices.0.name }}p1"
+        swap_partition: "{{ device1_facts.blockdevices.0.name }}p2"
+        root_partition: "{{ device1_facts.blockdevices.0.name }}p3"
+        home_partition: "{{ device2_facts.blockdevices.0.name }}p1"
+
+    - name: get root uuid
+      ansible.builtin.command: lsblk --json --filter 'NAME =~ "{{ root_partition }}"' --output NAME,UUID
+      register: var_root_partition_uuid
+      changed_when: true
+
+    - name: get swap uuid
+      ansible.builtin.command: lsblk --json --filter 'NAME =~ "{{ swap_partition }}"' --output NAME,UUID
+      register: var_swap_partition_uuid
+      changed_when: true
+
+    - name: get home uuid
+      ansible.builtin.command: lsblk --json --filter 'NAME =~ "{{ home_partition }}"' --output NAME,UUID
+      register: var_home_partition_uuid
+      changed_when: true
+
+    - name: install packages
+      ansible.builtin.package:
+        name:
+          - networkmanager
+          - os-prober
+          - linux-headers
+          - base-devel
+          - openssh
+          - git
+          - ansible
+          - sbctl
+        state: present
+
+    - name: enable services
+      ansible.builtin.systemd_service:
+        scope: system
+        name: "{{ item }}"
+        enabled: true
+        masked: false
+      loop:
+        - NetworkManager.service
+        - sshd.service
+
+    - name: create user
+      ansible.builtin.command: useradd -mG wheel {{ username }}
+      changed_when: true
+
+    - name: install venv
+      ansible.builtin.command: python -m venv .venv
+      args:
+        chdir: /root
+      changed_when: true
+
+    - name: set fact
+      ansible.builtin.set_fact:
+        ansible_python_interpreter: /root/.venv/bin/python3
+
+    - name: install pexpect
+      ansible.builtin.command: /root/.venv/bin/pip3 install pexpect
+      changed_when: true
+
+    - name: setup pass for user
+      ansible.builtin.expect:
+        command: passwd {{ username }}
+        responses:
+          "password:":
+            - "{{ user_password }}"
+            - "{{ user_password }}"
+
+    - name: configure mkinitcpio
+      ansible.builtin.lineinfile:
+        path: /etc/mkinitcpio.conf
+        state: present
+        regexp: "^HOOKS="
+        line: HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt filesystems fsck)
+
+    - name: configure linux-lts.preset
+      ansible.builtin.replace:
+        path: /etc/mkinitcpio.d/linux-lts.preset
+        regexp: '#.?default_uki="\/efi'
+        replace: 'default_uki="/boot'
+
+    - name: install systemd-boot
+      ansible.builtin.command: bootctl install
+      changed_when: true
+
+    - name: set root password
+      ansible.builtin.expect:
+        command: passwd
+        timeout: 10
+        responses:
+          "password:":
+            - "{{ user_password }}"
+            - "{{ user_password }}"
+
+    - name: ensure vconsole.conf file
+      # Otherwise the mkinitcpio command will fail
+      ansible.builtin.file:
+        path: /etc/vconsole.conf
+        state: touch
+        mode: "644"
+
+    - name: prepare crypttab home
+      ansible.builtin.replace:
+        path: /etc/crypttab
+        regexp: "^#.?home .*"
+        replace: "home  UUID={{ (var_home_partition_uuid.stdout | from_json).blockdevices.0.uuid }}  none  tpm2-device=auto"
+
+    - name: ensure fstab for home
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        regexp: "/dev/mapper/home"
+        line: "/dev/mapper/home  /home  ext4  defaults  0 0"
+        state: present
+
+    - name: ensure folder
+      ansible.builtin.file:
+        path: /etc/cmdline.d
+        state: directory
+        mode: "755"
+
+    - name: permit root login
+      ansible.builtin.replace:
+        path: /etc/ssh/sshd_config
+        regexp: "^#.?PermitRootLogin.*"
+        replace: "PermitRootLogin  yes"
+
+    - name: regenerate initramfs
+      ansible.builtin.command: mkinitcpio --allpresets
+      changed_when: true
+
+    - name: set sbctl status
+      ansible.builtin.command: sbctl status
+      changed_when: true
+      register: var_sbctl_status
+
+    - name: set useful fact
+      ansible.builtin.set_fact:
+        is_sbctl_in_setup_mode: "{{ 'sbctl is not installed' in (var_sbctl_status.stdout | default('')) }}"
+        is_secure_boot_disabled: "{{ 'Disabled' in (var_sbctl_status.stdout | default('')) }}"
+
+    - name: create keys
+      ansible.builtin.command: sbctl create-keys
+      changed_when: true
+      register: var_sbctl_create_keys
+      when:
+        - is_sbctl_in_setup_mode
+        - is_secure_boot_disabled
+
+    - name: enroll the keys
+      # use `-m -f` at the end for framework laptop
+      ansible.builtin.command: sbctl enroll-keys --microsoft
+      changed_when: true
+      when:
+        - is_secure_boot_disabled
+        - var_sbctl_create_keys is success
+
+    - name: get files that need sign
+      ansible.builtin.command: sbctl verify
+      register: var_sbctl_verify_files
+      changed_when: true
+
+    - name: set fact for unsigned files
+      ansible.builtin.set_fact:
+        unsigned_files: "{{ (unsigned_files | default([])) + [file] }}"
+      vars:
+        file: "{{ item | regex_replace('^[^/]*(/boot/.*) is not signed$', '\\1') }}"
+      when: "'/boot/' in file"
+      loop: "{{ var_sbctl_verify_files.stdout_lines }}"
+
+    - name: sign files
+      ansible.builtin.command: sbctl sign -s {{ item }}
+      changed_when: true
+      loop: "{{ unsigned_files }}"
+
+    - name: regenerate initramfs
+      ansible.builtin.command: mkinitcpio --allpresets
+      changed_when: true

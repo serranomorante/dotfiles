@@ -1,0 +1,305 @@
+---
+- name: set passwords
+  ansible.builtin.set_fact:
+    luks_pass: <put your luks pass here>
+    tpm_pin: <put your tmp2 pin here>
+
+- name: update system clock
+  ansible.builtin.command: timedatectl
+  changed_when: true
+
+- name: update
+  ansible.builtin.command: pacman -Sy --noconfirm
+  changed_when: true
+
+- name: install packages
+  ansible.builtin.package:
+    name:
+      - tpm2-tss
+      - sbctl
+    state: present
+
+- name: get disk 1 device lsblk data
+  # get my 500GB device
+  ansible.builtin.command: lsblk --json --nvme --filter 'SIZE < 900000000000' --output NAME,SIZE
+  changed_when: true
+  register: var_device1_lsblk_data
+
+- name: get disk 2 device lsblk data
+  # get my 1TB device
+  ansible.builtin.command: lsblk --json --nvme --filter 'SIZE > 900000000000' --output NAME,SIZE
+  changed_when: true
+  register: var_device2_lsblk_data
+
+- name: register sbctl status
+  ansible.builtin.command: sbctl status | grep -Poi 'secure boot:(.*enable)' | wc -l
+  register: var_sbctl_status
+  changed_when: true
+  ignore_errors: true
+
+- name: set devices data fact
+  ansible.builtin.set_fact:
+    device1_facts: "{{ var_device1_lsblk_data.stdout | default({}) | from_json }}"
+    device2_facts: "{{ var_device2_lsblk_data.stdout | default({}) | from_json }}"
+
+- name: set some useful facts
+  ansible.builtin.set_fact:
+    boot_partition: "{{ device1_facts.blockdevices.0.name }}p1"
+    swap_partition: "{{ device1_facts.blockdevices.0.name }}p2"
+    root_partition: "{{ device1_facts.blockdevices.0.name }}p3"
+    home_partition: "{{ device2_facts.blockdevices.0.name }}p1"
+    is_secure_boot_enabled: var_sbctl_status.stdout | int > 0
+
+- name: Before secure boot is enabled
+  when: not is_secure_boot_enabled
+  block:
+    - name: install venv
+      ansible.builtin.command: python -m venv .venv
+      args:
+        chdir: /root
+      changed_when: true
+
+    - name: set fact
+      ansible.builtin.set_fact:
+        ansible_python_interpreter: /root/.venv/bin/python3
+
+    - name: install pexpect
+      ansible.builtin.command: /root/.venv/bin/pip3 install pexpect
+      changed_when: true
+
+    - name: setup boot, root and swap partitions
+      ansible.builtin.expect:
+        command: fdisk /dev/{{ device1_facts.blockdevices.0.name }}
+        echo: true
+        timeout: 10
+        responses:
+          "Command \\(m for help\\):":
+            - g
+            # EFI
+            - false
+            - t
+            # Swap
+            - false
+            - t
+            # Root
+            - false
+            - t
+            - w
+          "Partition number [^:]*:":
+            - ""
+            - ""
+            - ""
+            - ""
+            - ""
+          "First sector [^:]*:":
+            - ""
+            - ""
+            - ""
+          "Last sector[^:]*:":
+            - +1G
+            - +8G
+            - ""
+          "Do you want to remove the signature[^:]*:":
+            - true
+            - true
+            - true
+          "Partition type or alias [^:]*:":
+            - 1
+            - 19
+            - 23
+
+    - name: setup home partition
+      ansible.builtin.expect:
+        command: fdisk /dev/{{ device2_facts.blockdevices.0.name }}
+        echo: true
+        timeout: 10
+        responses:
+          "Command \\(m for help\\):":
+            - g
+            # Home
+            - false
+            - t
+            - w
+          "Partition number [^:]*:":
+            - ""
+          "First sector [^:]*:":
+            - ""
+          "Last sector[^:]*:":
+            - ""
+          "Do you want to remove the signature[^:]*:":
+            - true
+          "Partition type or alias [^:]*:":
+            - 42
+
+    - name: create the luks volume for root
+      ansible.builtin.expect:
+        command: cryptsetup luksFormat /dev/{{ root_partition }}
+        timeout: 10
+        responses:
+          "Are you sure[^:]*:": "YES"
+          "Enter passphrase for [^:]*:": "{{ luks_pass }}"
+          "Verify passphrase:": "{{ luks_pass }}"
+      changed_when: true
+
+    - name: mount the root luks volume
+      ansible.builtin.expect:
+        command: cryptsetup open /dev/{{ root_partition }} root
+        timeout: 10
+        responses:
+          "Enter passphrase for [^:]*:": "{{ luks_pass }}"
+      changed_when: true
+
+    - name: create filesystem on unlocked luks root device
+      ansible.builtin.command: mkfs.ext4 /dev/mapper/root
+      changed_when: true
+
+    - name: mount root volume to mnt
+      ansible.builtin.command: mount /dev/mapper/root /mnt
+      changed_when: true
+
+    - name: create the luks volume for swap
+      ansible.builtin.expect:
+        command: cryptsetup luksFormat --label swap /dev/{{ swap_partition }}
+        timeout: 10
+        responses:
+          "Are you sure[^:]*:": "YES"
+          "Enter passphrase for [^:]*:": "{{ luks_pass }}"
+          "Verify passphrase:": "{{ luks_pass }}"
+      changed_when: true
+
+    - name: open the swap luks container
+      ansible.builtin.expect:
+        command: cryptsetup open /dev/disk/by-label/swap swap
+        timeout: 10
+        responses:
+          "Enter passphrase for [^:]*:": "{{ luks_pass }}"
+      changed_when: true
+
+    - name: create filesystem inside swap volume
+      ansible.builtin.command: mkswap /dev/mapper/swap
+      changed_when: true
+
+    - name: enable swap for paging
+      ansible.builtin.command: swapon /dev/mapper/swap
+      changed_when: true
+
+    - name: format the boot partition
+      ansible.builtin.command: mkfs.fat -F 32 /dev/{{ boot_partition }}
+      changed_when: true
+
+    - name: mount the boot partition
+      ansible.builtin.command: mount --mkdir /dev/{{ boot_partition }} /mnt/boot
+      changed_when: true
+
+    - name: create the luks volume for home
+      ansible.builtin.expect:
+        command: cryptsetup luksFormat /dev/{{ home_partition }}
+        timeout: 10
+        responses:
+          "Are you sure[^:]*:": "YES"
+          "Enter passphrase for [^:]*:": "{{ luks_pass }}"
+          "Verify passphrase:": "{{ luks_pass }}"
+      changed_when: true
+
+    - name: mount the home luks volume
+      ansible.builtin.expect:
+        command: cryptsetup open /dev/{{ home_partition }} home
+        timeout: 10
+        responses:
+          "Enter passphrase for [^:]*:": "{{ luks_pass }}"
+      changed_when: true
+
+    - name: create filesystem on unlocked luks home device
+      ansible.builtin.command: mkfs.ext4 /dev/mapper/home
+      changed_when: true
+
+    - name: mount the home volume
+      ansible.builtin.command: mount --mkdir /dev/mapper/home /mnt/home
+      changed_when: true
+
+    - name: pacstrap step
+      ansible.builtin.command: pacstrap /mnt base linux-lts linux-firmware vim amd-ucode python
+      changed_when: true
+
+    - name: copy ssh_chroot script
+      ansible.builtin.copy:
+        src: ssh_chroot
+        dest: /root/ssh_chroot
+        mode: "770"
+
+    - name: ensure ssh folder
+      ansible.builtin.file:
+        path: /mnt/root/.ssh
+        state: directory
+        mode: "700"
+
+    - name: copy ssh auth keys
+      ansible.builtin.copy:
+        src: ~/.ssh/authorized_keys
+        dest: /mnt/root/.ssh/authorized_keys
+        remote_src: true
+        mode: "644"
+
+- name: After secure boot is enabled
+  when: is_secure_boot_enabled
+  block:
+    - name: setup recovery keys
+      ansible.builtin.expect:
+        command: systemd-cryptenroll /dev/{{ item }} --recovery-key
+        timeout: 5
+        responses:
+          "enter current passphrase for disk[^:]*:": "{{ luks_pass }}"
+      loop:
+        - "{{ root_partition }}"
+        - "{{ swap_partition }}"
+        - "{{ home_partition }}"
+      register: var_recovery_keys
+      changed_when: true
+
+    - name: set recovery keys
+      ansible.builtin.set_fact:
+        recovery_keys: "{{ recovery_keys | default({}) | combine({item.item: key | regex_replace('^.*39m([a-zA-Z0-9\\-]*).*$', '\\1')}) }}"
+      vars:
+        key: "{{ item.stdout_lines[1:4] | map('regex_replace', '^\\s+(.*)', '\\1') | join('') }}"
+      when: item.stdout_lines | list | length > 1
+      loop: "{{ var_recovery_keys.results }}"
+
+    - name: Copy your recovery keys
+      ansible.builtin.debug:
+        msg: "{{ recovery_keys }}"
+
+    - name: enroll the root tpm
+      ansible.builtin.expect:
+        command: systemd-cryptenroll /dev/{{ item }} --tpm2-with-pin=yes --tpm2-device=auto
+          --tpm2-pcrs=7+15:sha256=0000000000000000000000000000000000000000000000000000000000000000
+        timeout: 30
+        responses:
+          "enter current passphrase for disk[^:]*:": "{{ luks_pass }}"
+          "enter TPM2 PIN":
+            - "{{ tpm_pin }}"
+            - "{{ tpm_pin }}"
+      changed_when: true
+      loop:
+        - "{{ root_partition }}"
+
+    - name: enroll the userspace partition tpm
+      ansible.builtin.expect:
+        command: systemd-cryptenroll /dev/{{ item }} --wipe-slot=tpm2 --tpm2-with-pin=yes --tpm2-device=auto --tpm2-pcrs=7+15
+        timeout: 30
+        responses:
+          "enter current passphrase for disk[^:]*:": "{{ luks_pass }}"
+          "enter TPM2 PIN":
+            - "{{ tpm_pin }}"
+            - "{{ tpm_pin }}"
+      changed_when: true
+      loop:
+        - "{{ swap_partition }}"
+        - "{{ home_partition }}"
+
+    - name: wipe all password slots
+      ansible.builtin.command: systemd-cryptenroll /dev/{{ item }} --wipe-slot=password
+      loop:
+        - "{{ root_partition }}"
+        - "{{ swap_partition }}"
+        - "{{ home_partition }}"
+      changed_when: true
