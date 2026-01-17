@@ -101,7 +101,7 @@
 
 - name: "[archlinux] Setup ai tools: combine gemini settings with mcphub servers"
   ansible.builtin.set_fact:
-    gemini_settings_json: "{{ lookup('file', '~/.config/mcphub/servers.json') | default({}) | from_json | combine(gemini_settings_json) }}"
+    gemini_settings_json: "{{ gemini_settings_json | combine(lookup('file', '~/.config/mcphub/servers.json') | default({}) | from_json) }}"
   when:
     - var_stat_gemini_settings.stat.exists
     - gemini_settings_json.values() | length != 0
@@ -127,7 +127,7 @@
 
 - name: "[archlinux] Setup ai tools: combine claude settings with mcphub servers"
   ansible.builtin.set_fact:
-    claude_settings_json: "{{ lookup('file', '~/.config/mcphub/servers.json') | default({}) | from_json | combine(claude_settings_json) }}"
+    claude_settings_json: "{{ claude_settings_json | combine(lookup('file', '~/.config/mcphub/servers.json') | default({}) | from_json) }}"
   when:
     - var_stat_claude_settings.stat.exists
     - claude_settings_json.values() | length != 0
