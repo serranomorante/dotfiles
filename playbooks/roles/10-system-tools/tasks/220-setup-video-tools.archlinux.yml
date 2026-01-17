@@ -11,15 +11,16 @@
     state: absent
   loop:
     - ~/temp/makepkg/davinci-resolve
-    - ~/Downloads/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
 
 - name: "[archlinux] Setup video tools: download davinci resolve"
+  # Wait 3 minutes
   ansible.builtin.command: >
-    ~/bin/nvim --headless -c "autocmd User CodeCompanionChatDone normal ZQ" -c "sleep 2" -c "CodeCompanion /download-davinci"
+    ~/bin/nvim --headless -c "autocmd User CodeCompanionChatSubmitted lua vim.defer_fn(function() vim.cmd.normal({ args = { 'ZQ' } }) end, 1000 * 60 * 3)"
+    -c "sleep 2" -c "CodeCompanion /download-davinci"
   register: var_download_davinci_result
   args:
     creates: ~/data/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
-  timeout: 120
+  timeout: 600
   ignore_errors: true
   when: is_x_display_session
 
@@ -82,6 +83,41 @@
       - mesa
       - expac
 
+- name: "[archlinux] Setup video tools: temporary give tmpfs more space"
+  become: true
+  ansible.builtin.command: mount -o remount,size=80% /tmp
+  changed_when: true
+
+- name: "[archlinux] Setup video tools: ensure davinci-resolve folder permissions"
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    group: "{{ ansible_facts.env.USER }}"
+    owner: "{{ ansible_facts.env.USER }}"
+    state: directory
+    mode: "750"
+  loop:
+    - "{{ ansible_facts.env.HOME }}"
+    - "{{ ansible_facts.env.HOME }}/data"
+    - "{{ ansible_facts.env.HOME }}/data/apps"
+    - "{{ ansible_facts.env.HOME }}/data/apps/video-tools"
+    - "{{ ansible_facts.env.HOME }}/data/apps/video-tools/qt5"
+    - "{{ ansible_facts.env.HOME }}/data/apps/video-tools/davinci-resolve"
+  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
+
+- name: "[archlinux] Setup video tools: get pre-build qt5-webengine package"
+  ansible.builtin.get_url:
+    url: https://sourceforge.net/projects/fabiololix-os-archive/files/Packages/qt5-webengine-5.15.19-4-x86_64.pkg.tar.zst/download
+    dest: ~/data/apps/video-tools/qt5/qt5-webengine-5.15.19-4-x86_64.pkg.tar.zst
+    mode: "750"
+
+- name: "[archlinux] Setup video tools: install pre-build qt5-webengine package"
+  become: true
+  ansible.builtin.command: >
+    pacman -U --needed --noconfirm "{{ ansible_facts.env.HOME }}/data/apps/video-tools/qt5/qt5-webengine-5.15.19-4-x86_64.pkg.tar.zst"
+  changed_when: true
+  timeout: 0
+
 - name: "[archlinux] Setup video tools: ensure packages (needs display)"
   # https://github.com/Ashark/davinci-resolve-checker?tab=readme-ov-file#installation
   become: true
@@ -106,6 +142,7 @@
     use: yay
     state: present
     name: opencl-amd
+  timeout: 0
   when: is_x_display_session
 
 - name: "[archlinux] Setup video tools: ensure pip deps for davinci-resolve-checker"
@@ -134,11 +171,6 @@
   changed_when: false
   when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
-- name: "[archlinux] Setup video tools: temporary give tmpfs more space"
-  become: true
-  ansible.builtin.command: mount -o remount,size=80% /tmp
-  changed_when: true
-
 - name: "[archlinux] Setup video tools: install davinci-resolve deps"
   become: true
   become_user: aur_builder
@@ -152,21 +184,6 @@
     - is_x_display_session
     - var_stat_davinci_zip.stat.exists
     - davinci_resolve_deps is success
-
-- name: "[archlinux] Setup video tools: ensure davinci-resolve folder permissions"
-  become: true
-  ansible.builtin.file:
-    path: "{{ item }}"
-    group: "{{ ansible_facts.env.USER }}"
-    owner: "{{ ansible_facts.env.USER }}"
-    mode: "750"
-  loop:
-    - "{{ ansible_facts.env.HOME }}"
-    - "{{ ansible_facts.env.HOME }}/data"
-    - "{{ ansible_facts.env.HOME }}/data/apps"
-    - "{{ ansible_facts.env.HOME }}/data/apps/video-tools"
-    - "{{ ansible_facts.env.HOME }}/data/apps/video-tools/davinci-resolve"
-  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: upgrade pkg sums to prevent yay error"
   ansible.builtin.command: updpkgsums
