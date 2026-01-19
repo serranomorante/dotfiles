@@ -1,5 +1,9 @@
 {
   "mcpServers": {
+    "figma_http": {
+      "url": "https://mcp.figma.com/mcp",
+      "type": "http"
+    },
     "reaper": {
       "command": "{{ reaper_mcp_server_setup.repo_path }}/.venv/bin/uv",
       "args": [
