@@ -62,55 +62,6 @@
   when: var_bitwarden_install.changed and var_bitwarden_install is success
   notify: "10-system-tools : handler_update_desktop_database"
 
-- name: "[archlinux] Other tools: add no-internet group"
-  become: true
-  ansible.builtin.group:
-    state: present
-    name: no-internet
-
-- name: "[archlinux] Other tools: add user to no-internet group"
-  become: true
-  ansible.builtin.user:
-    append: true
-    groups: no-internet
-    name: "{{ ansible_facts.env.USER }}"
-
-- name: "[archlinux] Other tools: block internet using iptables"
-  become: true
-  ansible.builtin.iptables:
-    action: insert
-    rule_num: 1
-    chain: OUTPUT
-    gid_owner: no-internet
-    jump: REJECT
-
-- name: "[archlinux] Other tools: block internet using iptables"
-  become: true
-  ansible.builtin.iptables:
-    action: append
-    rule_num: 1
-    destination: 192.168.1.0/24
-    chain: OUTPUT
-    gid_owner: no-internet
-    jump: ACCEPT
-
-- name: "[archlinux] Other tools: block internet using iptables"
-  become: true
-  ansible.builtin.iptables:
-    action: append
-    rule_num: 1
-    destination: 127.0.0.0/8
-    chain: OUTPUT
-    gid_owner: no-internet
-    jump: ACCEPT
-
-- name: "force-handler"
-  ansible.builtin.command: echo
-  changed_when: true
-  notify:
-    - handler_save_iptables
-    - handler_ensure_iptables_service
-
 - name: "[archlinux] Other tools: install packages"
   become: true
   ansible.builtin.package:

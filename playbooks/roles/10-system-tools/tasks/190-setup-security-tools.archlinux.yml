@@ -96,6 +96,7 @@
   community.general.ufw:
     state: enabled
   ignore_errors: true
+  notify: handler_disable_iptables_service
 
 - name: "[archlinux] Setup security tools: get nvim keyrings"
   ansible.builtin.shell: >
