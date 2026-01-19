@@ -145,16 +145,16 @@
     masked: false
 
 - name: handler_kill_reaper_wineserver
-  # ps aux is more effective than wineserver -k
   ansible.builtin.shell: >
     set -o pipefail &&
+    $WINESERVER -k &&
+    sleep 1 &&
     for pid in $(ps aux | grep "[w]ine" | awk '{print $2}'); do kill -9 $pid; done
   timeout: 60
   changed_when: true
-  environment:
-    WINEPREFIX: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix }) }}"
   register: var_kill_reaper_wineserver
-  failed_when: var_kill_reaper_wineserver.rc != 0
+  ignore_errors: true
 
 - name: handler_restart_remind_service
   ansible.builtin.systemd_service:

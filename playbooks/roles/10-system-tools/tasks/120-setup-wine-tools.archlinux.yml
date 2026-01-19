@@ -97,14 +97,14 @@
   loop:
     - ~/data/apps
     - ~/data/apps/virt-tools
+    - ~/data/apps/virt-tools/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64
 
 - name: "[archlinux] Wine tools: unarchive"
   ansible.builtin.unarchive:
-    src: https://github.com/Kron4ek/Wine-Builds/releases/download/9.21/wine-9.21-staging-tkg-amd64.tar.xz
-    dest: ~/data/apps/virt-tools
+    src: https://github.com/Kron4ek/Wine-Builds/releases/download/{{ arch_wine_staging_version }}/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64.tar.xz
+    dest: ~/data/apps/virt-tools/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64
     remote_src: true
-    creates: ~/data/apps/virt-tools/wine-staging-tkg
-    extra_opts: ["--one-top-level"]
+    creates: ~/data/apps/virt-tools/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64
 
 - name: "[archlinux] Wine tools: apply sysctl changes without rebooting"
   become: true
