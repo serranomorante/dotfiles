@@ -110,6 +110,8 @@
     url: https://sourceforge.net/projects/fabiololix-os-archive/files/Packages/qt5-webengine-5.15.19-4-x86_64.pkg.tar.zst/download
     dest: ~/data/apps/video-tools/qt5/qt5-webengine-5.15.19-4-x86_64.pkg.tar.zst
     mode: "750"
+  ignore_errors: true
+  register: var_get_qt5_webengine
 
 - name: "[archlinux] Setup video tools: install pre-build qt5-webengine package"
   become: true
@@ -117,6 +119,7 @@
     pacman -U --needed --noconfirm "{{ ansible_facts.env.HOME }}/data/apps/video-tools/qt5/qt5-webengine-5.15.19-4-x86_64.pkg.tar.zst"
   changed_when: true
   timeout: 0
+  when: var_get_qt5_webengine is success
 
 - name: "[archlinux] Setup video tools: ensure packages (needs display)"
   # https://github.com/Ashark/davinci-resolve-checker?tab=readme-ov-file#installation
