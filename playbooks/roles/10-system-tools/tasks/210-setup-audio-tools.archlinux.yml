@@ -112,12 +112,19 @@
     dest: /etc/cmdline.d/audio.conf
     mode: "644"
 
+- name: "[archlinux] Setup audio tools: stat cpupower config file"
+  become: true
+  ansible.builtin.stat:
+    path: /etc/default/cpupower-service.conf
+  register: var_cpupower
+
 - name: "[archlinux] Setup audio tools: governor performance"
   become: true
   ansible.builtin.replace:
-    path: /etc/default/cpupower
-    regexp: ".?governor=.*"
-    replace: "governor='performance'"
+    path: "{{ var_cpupower.stat.path }}"
+    regexp: "^#GOVERNOR=.*"
+    replace: "GOVERNOR='performance'"
+  when: var_cpupower.stat.exists
 
 - name: "[archlinux] Setup audio tools: ensure system services"
   become: true
