@@ -19,6 +19,7 @@ vim.go.viewoptions = vim.o.viewoptions:gsub(",curdir", "")
 
 vim.wo.number = true
 vim.bo.expandtab = true
+vim.bo.scrollback = 1000000
 vim.o.tabstop = 4
 vim.bo.softtabstop = 4
 vim.go.tabclose = "left"
