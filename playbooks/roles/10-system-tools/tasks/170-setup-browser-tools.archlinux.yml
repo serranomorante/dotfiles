@@ -112,6 +112,8 @@
     src: "{{ playwright_mcp_tempdir.path }}/playwright_mcp_auth_token.patch"
     basedir: ~/data/repos/playwright-mcp
     strip: 1
+  ignore_errors: true
+  register: var_patch_playwright_mcp
   when: fact_changed_extensions['playwright-mcp'] and 'stdout' in var_playwright_mcp_browser_key
 
 - name: "[archlinux] Setup browser tools: build playwright mcp"
@@ -120,9 +122,11 @@
     $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) ci npm &&
     $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) run build
   args:
-    chdir: ~/data/repos/playwright-mcp/extension
+    chdir: ~/data/repos/playwright-mcp/packages/extension
   changed_when: fact_changed_extensions['playwright-mcp']
-  when: fact_changed_extensions['playwright-mcp']
+  when:
+    - fact_changed_extensions['playwright-mcp']
+    - var_patch_playwright_mcp is success
 
 - name: "[archlinux] Setup browser tools: patch NewTab-Redirect extension"
   ansible.posix.patch:

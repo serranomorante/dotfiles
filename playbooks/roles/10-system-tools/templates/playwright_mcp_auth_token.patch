@@ -1,7 +1,7 @@
-diff --git a/extension/src/ui/authToken.tsx b/extension/src/ui/authToken.tsx
-index 699cf2f..3ba97da 100644
---- a/extension/src/ui/authToken.tsx
-+++ b/extension/src/ui/authToken.tsx
+diff --git a/packages/extension/src/ui/authToken.tsx b/packages/extension/src/ui/authToken.tsx
+index 699cf2f..0e48a93 100644
+--- a/packages/extension/src/ui/authToken.tsx
++++ b/packages/extension/src/ui/authToken.tsx
 @@ -24,7 +24,7 @@ export const AuthTokenSection: React.FC<{}> = ({}) => {
    const [isExampleExpanded, setIsExampleExpanded] = useState<boolean>(false);
  

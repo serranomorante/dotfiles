@@ -21,7 +21,7 @@ chrome_devtools_mcp_server_setup:
   exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/chrome-devtools-mcp"
 
 playwright_mcp_server_setup:
-  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/mcp-server-playwright"
+  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/playwright-mcp"
   keyrings:
     folder: dev-tools
     passkey: playwright_mcp_browser_key
