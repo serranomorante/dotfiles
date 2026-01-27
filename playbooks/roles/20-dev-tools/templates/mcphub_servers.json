@@ -4,6 +4,10 @@
       "url": "https://mcp.figma.com/mcp",
       "type": "http"
     },
+    "Sentry": {
+      "url": "https://mcp.sentry.dev/mcp",
+      "type": "http"
+    },
     "reaper": {
       "command": "{{ reaper_mcp_server_setup.repo_path }}/.venv/bin/uv",
       "args": [
