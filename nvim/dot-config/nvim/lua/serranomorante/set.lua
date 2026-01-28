@@ -18,6 +18,7 @@ vim.opt.secure = true
 vim.go.viewoptions = vim.o.viewoptions:gsub(",curdir", "")
 
 vim.wo.number = true
+vim.wo.foldtext = ""
 vim.bo.expandtab = true
 vim.bo.scrollback = 1000000
 vim.o.tabstop = 4

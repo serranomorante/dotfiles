@@ -47,6 +47,7 @@ local function opts()
     open_fold_hl_timeout = 400,
     close_fold_kinds_for_ft = { default = {} },
     enable_get_fold_virt_text = false,
+    override_foldtext = false,
     preview = {
       win_config = {
         winblend = 0,
