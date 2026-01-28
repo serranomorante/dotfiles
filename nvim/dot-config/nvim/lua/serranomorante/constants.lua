@@ -111,6 +111,11 @@ M.KEYRINGS = {
     passkey = "anthropic-api-key",
     wallet = "kdewallet"
   },
+  claude_code = {
+    folder = "dev-tools",
+    passkey = "claude-code-token",
+    wallet = "kdewallet"
+  },
   openai = {
     folder = "dev-tools",
     passkey = "openai-api-key",

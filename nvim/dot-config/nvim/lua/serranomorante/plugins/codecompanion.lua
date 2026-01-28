@@ -7,7 +7,7 @@ local M = {}
 
 M.PLUGIN = "codecompanion"
 
----@param provider "openai"|"gemini"|"anthropic"
+---@param provider "openai"|"gemini"|"anthropic"|"claude_code"
 local function api_key_gen(provider)
   return string.format(
     "cmd: kwallet-query --folder %s --read-password %s %s",
@@ -90,7 +90,8 @@ local function opts()
         claude_code = function()
           return require("codecompanion.adapters").extend("claude_code", {
             env = {
-              ANTHROPIC_API_KEY = api_key_gen("anthropic"),
+              -- ANTHROPIC_API_KEY = api_key_gen("anthropic"),
+              CLAUDE_CODE_OAUTH_TOKEN = api_key_gen("claude_code"),
             },
           })
         end,
