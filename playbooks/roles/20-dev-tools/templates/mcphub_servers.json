@@ -40,14 +40,10 @@
       "command": "{{ chrome_devtools_mcp_server_setup.exe_path }}",
       "args": ["--browserUrl=http://localhost:9222"]
     },
-    "playwright": {
-      "command": "{{ playwright_mcp_server_setup.exe_path }}",
-      "args": ["--executable-path=/usr/bin/chromium", "--browser=chromium"]
-    },
     "Context7": {
       "command": "{{ context7_mcp_server_setup.exe_path }}"
     },
-    "playwright-extension": {
+    "playwright": {
       "command": "{{ playwright_mcp_server_setup.exe_path }}",
       "args": [
         "--extension",
