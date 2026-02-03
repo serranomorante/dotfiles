@@ -129,7 +129,6 @@
     name:
       - mesa-utils
       - lib32-mesa-utils
-      - lib32-opencl-mesa
       - handbrake-cli
       - python-distro
       - opencl-nvidia
