@@ -170,3 +170,38 @@
     src: 99-disable-hibernate.rules
     dest: /etc/polkit-1/rules.d/99-disable-hibernate.rules
     mode: "600"
+
+- name: "[archlinux] Setup desktop: set timezone to Europe/Madrid"
+  become: true
+  community.general.timezone:
+    name: Europe/Madrid
+
+- name: "[archlinux] Setup desktop: sync hardware clock"
+  become: true
+  ansible.builtin.command: hwclock --systohc
+  changed_when: true
+
+- name: "[archlinux] Setup desktop: enable ntp (systemd-timesyncd)"
+  become: true
+  ansible.builtin.systemd_service:
+    name: systemd-timesyncd
+    enabled: true
+    state: started
+
+- name: "[archlinux] Setup desktop: configure locales"
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/locale.gen
+    regexp: "^#?({{ item }})"
+    line: "\\1"
+    backrefs: true
+  loop:
+    - en_US.UTF-8 UTF-8
+    - es_ES.UTF-8 UTF-8
+  register: var_locales
+
+- name: "[archlinux] Setup desktop: generate locales"
+  become: true
+  ansible.builtin.command: locale-gen
+  when: var_locales.changed
+  changed_when: true
