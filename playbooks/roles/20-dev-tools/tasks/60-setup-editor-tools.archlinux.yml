@@ -104,16 +104,12 @@
     mode: "755"
   loop: "{{ treesitter_parsers }}"
 
-# Create this entry kdewallet/neovim/intelephense using kwalletmanager
 - name: "[archlinux] Editor tools: setup intelephense key if available"
   ansible.builtin.shell: |
     mkdir -p ~/data/intelephense
     {{ kwallet_query_cmd }} && echo "$({{ kwallet_query_cmd }})" > ~/data/intelephense/licence.txt
   vars:
-    folder_entry: intelephense
-    wallet_name: kdewallet
-    folder_name: neovim
-    kwallet_query_cmd: kwallet-query -r {{ folder_entry }} {{ wallet_name }} -f {{ folder_name }}
+    kwallet_query_cmd: kwallet-query --folder dev-tools --read-password intelephense-key kdewallet
   args:
     creates: ~/data/intelephense/licence.txt
   ignore_errors: true

@@ -78,6 +78,13 @@ neovim_plugins:
   - folder: opt
     repo: jbyuki/one-small-step-for-vimkind
     name: osv
+
+intelephense_setup:
+  keyrings:
+    folder: dev-tools
+    passkey: intelephense-key
+    wallet: kdewallet
+
 treesitter_parsers:
   - repo: https://github.com/tree-sitter/tree-sitter-typescript
     # in case of monorepo
