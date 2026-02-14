@@ -7,6 +7,14 @@
       - plasma-pa
       - pulseaudio
 
+- name: "[archlinux] Setup audio tools: ensure aur packages"
+  become: true
+  become_user: aur_builder
+  aur:
+    use: yay
+    state: present
+    name: patchance
+
 - name: "[archlinux] Setup audio tools: remove conflicting packages"
   become: true
   ansible.builtin.package:
@@ -36,6 +44,7 @@
       - cpupower
       - helvum
       - alsa-utils
+      - python-qtpy
       - rtirq
       - reaper
   notify: handler_ensure_rtirq_service
