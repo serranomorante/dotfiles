@@ -202,7 +202,7 @@ function M.refresh_codelens(args)
     M.del_buffer_autocmd("lsp_codelens_augroup", buf)
     return
   end
-  if vim.g.codelens_enabled then vim.lsp.codelens.refresh({ bufnr = buf }) end
+  if vim.g.codelens_enabled then vim.lsp.codelens.enable(true, { bufnr = buf }) end
 end
 
 ---Simple setTimeout wrapper

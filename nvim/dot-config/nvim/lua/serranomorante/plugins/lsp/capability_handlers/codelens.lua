@@ -16,7 +16,7 @@ return {
       buffer = bufnr,
       callback = function(event)
         if not codelens_is_enabled then return end
-        vim.lsp.codelens.refresh({ bufnr = event.buf })
+        vim.lsp.codelens.enable(true, { bufnr = event.buf })
       end,
     })
 
@@ -27,7 +27,7 @@ return {
       callback = function(event)
         if not vim.list_contains({ "CustomUndo", "CustomRedo" }, event.match) then return end
         if not codelens_is_enabled then return end
-        vim.lsp.codelens.refresh({ bufnr = event.buf })
+        vim.lsp.codelens.enable(true, { bufnr = event.buf })
       end,
     })
 
@@ -39,21 +39,21 @@ return {
         { "CodeLens " },
         { utils.bool2str(codelens_is_enabled), codelens_is_enabled and "DiagnosticOk" or "Comment" },
       }, false, {})
-      return codelens_is_enabled and vim.lsp.codelens.refresh({ bufnr = bufnr })
-        or vim.lsp.codelens.clear(client.id, bufnr)
+      return codelens_is_enabled and vim.lsp.codelens.enable(true, { bufnr = bufnr })
+        or vim.lsp.codelens.enable(false, { client_id = client.id, bufnr = bufnr })
     end, opts_with_desc("Toggle codelens"))
 
     vim.keymap.set("n", "<leader>ll", function()
       if not codelens_is_enabled then return end
-      vim.lsp.codelens.refresh({ bufnr = bufnr })
+      vim.lsp.codelens.enable(true, { bufnr = bufnr })
     end, opts_with_desc("Refresh codelens"))
 
     ---Refresh manually right now for a start
-    if codelens_is_enabled then vim.lsp.codelens.refresh({ bufnr = bufnr }) end
+    if codelens_is_enabled then vim.lsp.codelens.enable(true, { bufnr = bufnr }) end
   end,
 
   detach = function(client_id, bufnr)
-    vim.lsp.codelens.clear(client_id, bufnr)
+    vim.lsp.codelens.enable(false, { client_id = client_id, bufnr = bufnr })
     vim.api.nvim_buf_del_keymap(bufnr, "n", "<leader>uL")
     vim.api.nvim_buf_del_keymap(bufnr, "n", "<leader>ll")
   end,
