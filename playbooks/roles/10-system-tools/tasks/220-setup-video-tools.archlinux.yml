@@ -147,14 +147,12 @@
       - blender
   when: is_x_display_session
 
-- name: "[archlinux] Setup video tools: ensure aur packages"
+- name: "[archlinux] Setup video tools: ensure absent packages"
+  # this also makes CUDA work on davinci-resolve
   become: true
-  become_user: aur_builder
-  aur:
-    use: yay
-    state: present
-    name: opencl-amd
-  timeout: 0
+  ansible.builtin.package:
+    state: absent
+    name: opencl-mesa
   when: is_x_display_session
 
 - name: "[archlinux] Setup video tools: ensure pip deps for davinci-resolve-checker"
