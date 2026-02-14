@@ -11,6 +11,16 @@
     state: absent
   loop:
     - ~/temp/makepkg/davinci-resolve
+    - ~/makepkg/davinci-resolve
+
+- name: "[archlinux] Setup video tools: fix permission denied issue with davinci install"
+  become: true
+  become_user: aur_builder
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - ~/makepkg/davinci-resolve
 
 - name: "[archlinux] Setup video tools: download davinci resolve"
   # Wait 3 minutes
