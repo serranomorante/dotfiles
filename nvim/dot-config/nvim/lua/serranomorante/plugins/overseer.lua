@@ -39,18 +39,6 @@ local function keys()
     "<cmd>OverseerTaskAction<CR>",
     { desc = "Overseer: Run an action on the most recent task" }
   )
-  vim.keymap.set(
-    "n",
-    "<leader>oa",
-    "<cmd>OverseerTaskAction<CR>",
-    { desc = "Overseer: Run open float action on the most recent task" }
-  )
-  vim.keymap.set(
-    "n",
-    "<leader>os",
-    "<cmd>OverseerTaskAction<CR>",
-    { desc = "Overseer: Select a task to run an action on" }
-  )
 
   vim.keymap.set("n", "<leader>lm", function()
     overseer.run_task({ name = open_markdown_preview.name }, function(task)
