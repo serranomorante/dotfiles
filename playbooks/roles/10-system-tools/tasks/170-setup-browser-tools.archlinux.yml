@@ -76,6 +76,7 @@
       version: v{{ facebook_react_extension_version }}
     - repo: https://github.com/karlicoss/promnesia
     - repo: https://github.com/microsoft/playwright-mcp
+      version: "v{{ local_playwright_mcp_version }}"
 
 - name: "[archlinux] Setup browser tools: set fact fact_changed_extensions"
   ansible.builtin.set_fact:

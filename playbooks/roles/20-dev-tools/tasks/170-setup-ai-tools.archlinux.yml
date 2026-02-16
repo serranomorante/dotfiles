@@ -14,6 +14,7 @@
     - name: chrome-devtools-mcp
     - name: playwright
     - name: "@playwright/mcp"
+      version: "{{ local_playwright_mcp_version }}"
     - name: mcp-figma-comment-summary
     - name: "@upstash/context7-mcp"
     - name: cloudframework-projects-mcp

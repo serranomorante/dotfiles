@@ -8,6 +8,7 @@ local_extension_vimium: gdianalakofefgedjabillacncbbpeoh
 local_extension_promnesia: phjbangbkhghaapdoklnbbipfkdmdjgk
 local_hypothesis_extension: eajkghkpdleogcecilhonjdokiipfmdb
 local_playwright_mcp: jakfalbnbhgkpmoaakfflhflbfpkailf
+local_playwright_mcp_version: 0.0.64
 
 browser_local_extensions:
   - name: hypothesis-extension
@@ -28,6 +29,6 @@ browser_local_extensions:
     repo: https://github.com/kg8m/chrome-show-tab-numbers
   - name: playwright-mcp-extension
     repo: https://github.com/microsoft/playwright-mcp
-    path: "{{ prefix | default(ansible_facts.env.HOME) }}/data/repos/playwright-mcp/extension/dist"
+    path: "{{ prefix | default(ansible_facts.env.HOME) }}/data/repos/playwright-mcp/packages/extension/dist"
 
 facebook_react_extension_version: 19.2.0
