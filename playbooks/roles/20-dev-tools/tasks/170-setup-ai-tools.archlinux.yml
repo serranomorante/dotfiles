@@ -1,4 +1,10 @@
 ---
+- name: "[archlinux] Setup ai tools: install packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name: openai-codex
+
 - name: "[archlinux] Setup ai tools: ensure mcp servers"
   ansible.builtin.shell: >
     source ~/.bashrc &&
@@ -19,6 +25,7 @@
     - name: "@upstash/context7-mcp"
     - name: cloudframework-projects-mcp
     - name: "@zed-industries/claude-code-acp"
+    - name: "@zed-industries/codex-acp"
 
 - name: "[archlinux] Setup ai tools: register playwright path"
   ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which playwright"
@@ -142,3 +149,21 @@
   when:
     - var_stat_claude_settings.stat.exists
     - claude_settings_json.values() | length != 0
+
+- name: "[archlinux] Setup ai tools: create codex config folder"
+  ansible.builtin.file:
+    path: ~/.codex
+    state: directory
+    mode: "744"
+
+- name: "[archlinux] Setup ai tools: load mcphub servers.json"
+  ansible.builtin.set_fact:
+    mcphub_servers_json: "{{ lookup('file', '~/.config/mcphub/servers.json') | from_json }}"
+
+- name: "[archlinux] Setup ai tools: write codex mcp_servers into config.toml"
+  ansible.builtin.blockinfile:
+    path: ~/.codex/config.toml
+    create: true
+    mode: "644"
+    marker: "# {mark} ANSIBLE MANAGED MCP SERVERS (mcphub -> codex)"
+    block: "{{ lookup('template', 'codex_mcp_servers.toml.j2') }}"

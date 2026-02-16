@@ -1,0 +1,17 @@
+{#-
+  Generates Codex CLI MCP server config from ~/.config/mcphub/servers.json
+  Note: Codex currently supports only STDIO MCP servers, so we only include entries with "command".
+-#}
+{% macro toml_string(value) -%}{{ (value | string) | replace('\\', '\\\\') | replace('"', '\\"') }}{%- endmacro %}
+
+# Generated from ~/.config/mcphub/servers.json (mcpServers.*)
+# Only STDIO servers (with "command") are included.
+{% for item in (mcphub_servers_json.mcpServers | dict2items | selectattr('value.command', 'defined') | sort(attribute='key')) %}
+
+[mcp_servers."{{ toml_string(item.key) }}"]
+command = "{{ toml_string(item.value.command) }}"
+args = [{% for arg in (item.value.args | default([])) %}"{{ toml_string(arg) }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+{% if item.value.env is defined %}
+env = { {% for env_item in (item.value.env | dict2items | sort(attribute='key')) %}"{{ toml_string(env_item.key) }}" = "{{ toml_string(env_item.value) }}"{% if not loop.last %}, {% endif %}{% endfor %} }
+{% endif %}
+{% endfor %}

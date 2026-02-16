@@ -113,6 +113,18 @@ local function opts()
             },
           })
         end,
+        acp = {
+          codex = function()
+            return require("codecompanion.adapters").extend("codex", {
+              defaults = {
+                auth_method = "openai-api-key", -- "openai-api-key"|"codex-api-key"|"chatgpt"
+              },
+              env = {
+                OPENAI_API_KEY = api_key_gen("openai"),
+              },
+            })
+          end,
+        },
       },
       http = {
         gemini = function()

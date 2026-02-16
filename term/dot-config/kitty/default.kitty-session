@@ -1,7 +1,15 @@
+layout stack
+
 launch --title base-title
+
 new_tab GIT
 launch lazygit
-new_tab AI
-layout stack
-launch --hold gemini
+
+new_tab claude
 launch --hold claude
+
+new_tab codex
+launch --hold codex
+
+new_tab gemini
+launch --hold gemini
