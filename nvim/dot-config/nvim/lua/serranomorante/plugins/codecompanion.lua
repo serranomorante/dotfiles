@@ -79,7 +79,7 @@ local function opts()
     display = {
       chat = {
         intro_message = "",
-        auto_scroll = false,
+        auto_scroll = true,
       },
     },
     diff = {
