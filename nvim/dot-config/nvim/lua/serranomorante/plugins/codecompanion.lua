@@ -286,8 +286,22 @@ local function opts()
         enabled = true,
         ---@type CodeCompanion.History.Opts
         opts = {
-          auto_generate_title = false,
+          auto_generate_title = true,
+          title_generation_opts = {
+            adapter = "openai",
+            model = "gpt-4.1",
+            refresh_every_n_prompts = 1,
+            max_refreshes = 3,
+          },
           chat_filter = function(chat_data) return constants.CWD == chat_data.cwd end,
+          summary = {
+            create_summary_keymap = "<C-g>s",
+            browse_summaries_keymap = "<C-g>b",
+            generation_opts = {
+              adapter = "openai",
+              model = "gpt-4.1",
+            },
+          },
         },
       },
       mcphub = {
