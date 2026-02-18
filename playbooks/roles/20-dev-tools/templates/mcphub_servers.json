@@ -38,7 +38,7 @@
     },
     "chrome-devtools": {
       "command": "{{ chrome_devtools_mcp_server_setup.exe_path }}",
-      "args": ["--browserUrl=http://localhost:9222"]
+      "args": ["--browser-url=http://127.0.0.1:9222"]
     },
     "Context7": {
       "command": "{{ context7_mcp_server_setup.exe_path }}"
@@ -47,6 +47,7 @@
       "command": "{{ playwright_mcp_server_setup.exe_path }}",
       "args": [
         "--extension",
+        "--shared-browser-context",
         "--executable-path",
         "/usr/bin/chromium",
         "--browser",

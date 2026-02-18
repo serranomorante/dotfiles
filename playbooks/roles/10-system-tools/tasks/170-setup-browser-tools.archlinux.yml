@@ -76,7 +76,6 @@
       version: v{{ facebook_react_extension_version }}
     - repo: https://github.com/karlicoss/promnesia
     - repo: https://github.com/microsoft/playwright-mcp
-      version: "v{{ local_playwright_mcp_version }}"
 
 - name: "[archlinux] Setup browser tools: set fact fact_changed_extensions"
   ansible.builtin.set_fact:
@@ -95,6 +94,13 @@
     passkey: "{{ playwright_mcp_server_setup.keyrings.passkey }}"
     wallet: "{{ playwright_mcp_server_setup.keyrings.wallet }}"
 
+- name: "[archlinux] Setup browser tools: register var_playwright_mcp_extension_key"
+  ansible.builtin.command: >
+    sed -nE "s/.*extensionPublicKey[^']*'([^']*)'.*/\1/p" ~/data/repos/playwright-mcp/packages/extension/tests/extension.spec.ts
+  changed_when: true
+  register: var_playwright_mcp_extension_key
+  ignore_errors: true
+
 - name: "[archlinux] Setup browser tools: create playwright_mcp_tempdir"
   ansible.builtin.tempfile:
     state: directory
@@ -108,13 +114,23 @@
     mode: "644"
   when: fact_changed_extensions['playwright-mcp'] and 'stdout' in var_playwright_mcp_browser_key
 
+- name: "[archlinux] Setup browser tools: dynamically generate playwright_mcp_auth_token.patch"
+  ansible.builtin.template:
+    src: playwright_mcp_public_key.patch
+    dest: "{{ playwright_mcp_tempdir.path }}/playwright_mcp_public_key.patch"
+    mode: "644"
+  when: fact_changed_extensions['playwright-mcp'] and 'stdout' in var_playwright_mcp_extension_key
+
 - name: "[archlinux] Setup browser tools: patch playwright mcp extension"
   ansible.posix.patch:
-    src: "{{ playwright_mcp_tempdir.path }}/playwright_mcp_auth_token.patch"
+    src: "{{ item }}"
     basedir: ~/data/repos/playwright-mcp
     strip: 1
   ignore_errors: true
   register: var_patch_playwright_mcp
+  loop:
+    - "{{ playwright_mcp_tempdir.path }}/playwright_mcp_auth_token.patch"
+    - "{{ playwright_mcp_tempdir.path }}/playwright_mcp_public_key.patch"
   when: fact_changed_extensions['playwright-mcp'] and 'stdout' in var_playwright_mcp_browser_key
 
 - name: "[archlinux] Setup browser tools: build playwright mcp"

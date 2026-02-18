@@ -1,0 +1,10 @@
+diff --git a/packages/extension/manifest.json b/packages/extension/manifest.json
+index 7948f91..6dd70ff 100644
+--- a/packages/extension/manifest.json
++++ b/packages/extension/manifest.json
+@@ -1,4 +1,5 @@
+ {
++  "key": "{{ (var_playwright_mcp_extension_key | default({})).stdout | default(None) }}",
+   "manifest_version": 3,
+   "name": "Playwright MCP Bridge",
+   "version": "0.0.68",
