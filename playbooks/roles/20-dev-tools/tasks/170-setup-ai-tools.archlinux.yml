@@ -25,6 +25,7 @@
     - name: cloudframework-projects-mcp
     - name: "@zed-industries/claude-code-acp"
     - name: "@zed-industries/codex-acp"
+    - name: "@postman/postman-mcp-server"
 
 - name: "[archlinux] Setup ai tools: register playwright path"
   ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which playwright"
@@ -67,6 +68,16 @@
     folder: "{{ figma_mcp_server_setup.keyrings.folder }}"
     passkey: "{{ figma_mcp_server_setup.keyrings.passkey }}"
     wallet: "{{ figma_mcp_server_setup.keyrings.wallet }}"
+
+- name: "[archlinux] Setup ai tools: register postman api key"
+  ansible.builtin.command: kwallet-query --folder {{ folder }} --read-password {{ passkey }} {{ wallet }}
+  changed_when: true
+  register: mcp_server_postman_key
+  ignore_errors: true
+  vars:
+    folder: "{{ postman_mcp_commentary_server_setup.keyrings.folder }}"
+    passkey: "{{ postman_mcp_commentary_server_setup.keyrings.passkey }}"
+    wallet: "{{ postman_mcp_commentary_server_setup.keyrings.wallet }}"
 
 - name: "[archlinux] Setup ai tools: register playwright_mcp_browser_key"
   ansible.builtin.command: kwallet-query --folder {{ folder }} --read-password {{ passkey }} {{ wallet }}

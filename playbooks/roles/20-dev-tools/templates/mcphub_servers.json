@@ -33,6 +33,12 @@
         "FIGMA_ACCESS_TOKEN": "{{ (mcp_server_figma_key | default({})).stdout | default(None) }}"
       }
     },
+    "postman-mcp": {
+      "command": "{{ postman_mcp_commentary_server_setup.exe_path }}",
+      "env": {
+        "POSTMAN_API_KEY": "{{ (mcp_server_postman_key | default({})).stdout | default(None) }}"
+      }
+    },
     "cf-projects": {
       "command": "{{ cf_projects_mcp_server_setup.exe_path }}"
     },
