@@ -1,6 +1,25 @@
 ---
+- name: "[archlinux] Automation utilities: ensure packages"
+  become: true
+  ansible.builtin.pacman:
+    state: present
+    name:
+      - perl # needed to build xdotool
+      - ydotool
+
+- name: "[archlinux] Automation utilities: ensure ydotoold service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: ydotool.service
+    enabled: true
+    masked: false
+
 - name: "[archlinux] Automation utilities: ensure xdotool"
   become: true
-  ansible.builtin.package:
+  become_user: aur_builder
+  aur:
+    use: yay
     state: present
-    name: xdotool
+    name: xdotool-git
+  environment:
+    PATH: "/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl"
