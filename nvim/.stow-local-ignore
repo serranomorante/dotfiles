@@ -5,3 +5,4 @@
 
 ^/patches/.*
  \.mypy_cache.*
+^/\.claude
