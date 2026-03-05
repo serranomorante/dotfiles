@@ -245,9 +245,6 @@ local function opts()
           copilot_stats = {
             modes = { n = "gS" },
           },
-          super_diff = {
-            modes = { n = "gD" },
-          },
         },
         slash_commands = {
           image = {
