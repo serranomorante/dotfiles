@@ -26,6 +26,7 @@
     - name: "@zed-industries/claude-code-acp"
     - name: "@zed-industries/codex-acp"
     - name: "@postman/postman-mcp-server"
+    - name: postman-cli
 
 - name: "[archlinux] Setup ai tools: register playwright path"
   ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which playwright"
