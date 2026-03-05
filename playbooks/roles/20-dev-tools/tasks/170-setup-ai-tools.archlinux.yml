@@ -23,7 +23,7 @@
     - name: mcp-figma-comment-summary
     - name: "@upstash/context7-mcp"
     - name: cloudframework-projects-mcp
-    - name: "@zed-industries/claude-code-acp"
+    - name: "@zed-industries/claude-agent-acp"
     - name: "@zed-industries/codex-acp"
     - name: "@postman/postman-mcp-server"
     - name: postman-cli
