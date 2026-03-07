@@ -68,10 +68,11 @@ return {
       string.format("%s/dotfiles/playbooks/inventory.ini", HOME),
       "--tags",
       utils.wrap_in_single_quotes(
-        vim.fn.join(
-          vim.tbl_map(function(item) return (item:match("^(%d+-%d+)") or item) end, vim.fn.split(params.task_id, ",")),
-          ","
-        )
+        "setup,"
+          .. vim.fn.join(
+            vim.tbl_map(function(item) return (item:match("^(%d+-%d+)") or item) end, vim.fn.split(params.task_id, ",")),
+            ","
+          )
       ),
     }
     if params.skip_tags then vim.list_extend(args, { "--skip-tags", params.skip_tags }) end
