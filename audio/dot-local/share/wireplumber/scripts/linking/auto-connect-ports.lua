@@ -37,7 +37,7 @@ local MAPPINGS = {
   ---Youtube music sink -> Multimedia sink
   ---YouTube Music Desktop App (media.class = "Stream/Output/Audio")
   ---capture.sink_node.multimedia (media.class = "Audio/Sink")
-  ["YouTube Music Desktop App"] = "capture.sink_node.multimedia"
+  ["YouTube Music Desktop App"] = "capture.sink_node.multimedia",
 }
 
 SimpleEventHook({
@@ -51,6 +51,11 @@ SimpleEventHook({
   execute = function(event)
     ---@diagnostic disable-next-line: unused-local
     local source, om, si, si_props, si_flags, target = lutils:unwrap_select_target_event(event)
+
+    ---bypass the hook if the target is already picked up
+    if target then
+      return
+    end
 
     ---bypass the hook if the target is already picked up
     if target then

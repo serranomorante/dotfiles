@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Best-effort: wait briefly for REAPER and target sink ports to exist, then link.
+for _ in $(seq 1 40); do
+  if pw-link -o | rg -q '^REAPER:out1$' \
+    && pw-link -o | rg -q '^REAPER:out2$' \
+    && pw-link -i | rg -q '^capture.sink_node.music-production:playback_FL$' \
+    && pw-link -i | rg -q '^capture.sink_node.music-production:playback_FR$'; then
+    break
+  fi
+  sleep 0.1
+done
+
+pw-link REAPER:out1 capture.sink_node.music-production:playback_FL 2>/dev/null || true
+pw-link REAPER:out2 capture.sink_node.music-production:playback_FR 2>/dev/null || true

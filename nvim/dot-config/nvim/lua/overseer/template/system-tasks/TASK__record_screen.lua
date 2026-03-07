@@ -8,7 +8,7 @@ return {
     audio_source = {
       desc = "Audio source",
       type = "enum",
-      choices = { "source_node.work_audio" },
+      choices = { "source_node.work_audio", "source_node.music-production-audio" },
       default = "source_node.work_audio",
       order = 1,
     },
@@ -41,10 +41,15 @@ return {
       {
         cmd = "sleep 2", -- give time before starting to record
       },
-      {
-        cmd = ffmpeg_cmd,
-      },
     }
+    if params.audio_source == "source_node.music-production-audio" then
+      table.insert(tasks, {
+        cmd = "~/.local/bin/connect-reaper-to-music-production",
+      })
+    end
+    table.insert(tasks, {
+      cmd = ffmpeg_cmd,
+    })
     if params.output and params.output ~= "mp4" then table.insert(tasks, { "shell", cmd = convert_to }) end
     return {
       name = task_name,
