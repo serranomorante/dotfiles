@@ -15,10 +15,10 @@ local lu = require("luaunit")
 ---SINK: You have to send audio to a sink (so the sink can output it to your speakers). Watch out for the media.class that converts
 ---these sinks/playbacks into sources.
 local MAPPINGS = {
-  ---BTAdapter -> Multimedia sink
+  ---BTAdapter -> Physical output sink (monitor-only, keep it out of recording mix)
   ---BTAdapter (media.class = "Stream/Output/Audio")
-  ---capture.sink_node.multimedia (media.class = "Audio/Sink")
-  ["BTAdapter"] = "capture.sink_node.multimedia",
+  ---alsa_output.usb-Burr-Brown_from_TI_USB_Audio_CODEC-00.analog-stereo-output (media.class = "Audio/Sink")
+  ["BTAdapter"] = "alsa_output.usb-Burr-Brown_from_TI_USB_Audio_CODEC-00.analog-stereo-output",
   ["Brave"] = "capture.sink_node.multimedia",
   ["Firefox"] = "capture.sink_node.multimedia",
   ["ALSA plug-in [plexamp]"] = "capture.sink_node.multimedia",
@@ -30,14 +30,14 @@ local MAPPINGS = {
   ---capture.source_filter.rnnoise (media.class = "Stream/Input/Audio" )
   ---Mic (media.class = "Audio/Source")
   ["capture.source_filter.rnnoise"] = "Mic",
-  ---Chromium sink -> Normalizer sink
+  ---Chromium sink -> Multimedia sink
   ---Chromium (media.class = "Stream/Output/Audio")
-  ---capture.source_filter.ebur128_normalize (media.class = "Audio/Sink")
-  ["Chromium"] = "capture.source_filter.ebur128_normalize", -- will fallback to default if not available
-  ---Youtube music sink -> Normalizer sink
+  ---capture.sink_node.multimedia (media.class = "Audio/Sink")
+  ["Chromium"] = "capture.sink_node.multimedia", -- will fallback to default if not available
+  ---Youtube music sink -> Multimedia sink
   ---YouTube Music Desktop App (media.class = "Stream/Output/Audio")
-  ---capture.source_filter.ebur128_normalize (media.class = "Audio/Sink")
-  ["YouTube Music Desktop App"] = "capture.source_filter.ebur128_normalize"
+  ---capture.sink_node.multimedia (media.class = "Audio/Sink")
+  ["YouTube Music Desktop App"] = "capture.sink_node.multimedia"
 }
 
 SimpleEventHook({
