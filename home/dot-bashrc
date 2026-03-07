@@ -3,6 +3,7 @@
 #
 
 # If not running interactively, don't do anything
+# Prefer not using next line some programs might stop working
 # [[ $- != *i* ]] && return
 
 # alias ls='ls --color=auto'
@@ -101,7 +102,7 @@ export PATH="$VOLTA_HOME/tools/image/node/22.19.0/bin:$PATH" # version is replac
 ## BEGIN ANSIBLE MANAGED BLOCK - SETUP PYTHON
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="/usr/bin/pyenv:$PATH"
-eval "$(pyenv init -)"
+eval "$(pyenv init - bash)"
 ## END ANSIBLE MANAGED BLOCK - SETUP PYTHON
 ## BEGIN ANSIBLE MANAGED BLOCK - SETUP ENCRYPTION
 export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
