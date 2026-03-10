@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+kdeglobals_path="${XDG_CONFIG_HOME:-$HOME/.config}/kdeglobals"
+color_scheme=""
+
+if [[ -r "$kdeglobals_path" ]]; then
+    color_scheme="$(grep -m1 '^ColorScheme=' "$kdeglobals_path" | cut -d '=' -f2- || true)"
+fi
+
+if [[ -z "$color_scheme" ]]; then
+    exec delta --detect-dark-light=always "$@"
+fi
+
+if [[ "$color_scheme" == *Dark* ]]; then
+    exec delta --dark "$@"
+fi
+
+exec delta --light "$@"

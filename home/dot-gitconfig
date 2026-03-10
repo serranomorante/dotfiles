@@ -29,7 +29,7 @@ features = settings interactive decorations
 
 [delta "settings"]
 true-color = always
-dark = true
+detect-dark-light = always
 paging = never
 line-numbers = true
 hyperlinks = true
