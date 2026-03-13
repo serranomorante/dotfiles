@@ -1,0 +1,197 @@
+diff --git a/config.def.h b/config.def.h
+index 932f9d0..b496225 100644
+--- a/config.def.h
++++ b/config.def.h
+@@ -80,6 +80,7 @@ static const Key keys[] = {
+ 	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} },
+ 	{ MODKEY,                       XK_space,  setlayout,      {0} },
+ 	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
++	{ MODKEY,                       XK_s,      swapfocus,      {0} },
+ 	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
+ 	{ MODKEY|ShiftMask,             XK_0,      tag,            {.ui = ~0 } },
+ 	{ MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },
+diff --git a/config.h b/config.h
+index 3be0766..44647f9 100644
+--- a/config.h
++++ b/config.h
+@@ -99,6 +99,7 @@ static const Key keys[] = {
+ 	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} },
+ 	{ MODKEY,                       XK_space,  setlayout,      {0} },
+ 	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
++	{ MODKEY,                       XK_s,      swapfocus,      {0} },
+ 	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
+ 	{ MODKEY|ShiftMask,             XK_0,      tag,            {.ui = ~0 } },
+ 	{ MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },
+diff --git a/dwm.c b/dwm.c
+index 9b6b315..90eaab0 100644
+--- a/dwm.c
++++ b/dwm.c
+@@ -130,6 +130,7 @@ struct Monitor {
+ 	Client *clients;
+ 	Client *sel;
+ 	Client *stack;
++	Client **prevclient;
+ 	Monitor *next;
+ 	Window barwin;
+ 	const Layout *lt[2];
+@@ -175,6 +176,7 @@ static void focus(Client *c);
+ static void focusin(XEvent *e);
+ static void focusmon(const Arg *arg);
+ static void focusstack(const Arg *arg);
++static unsigned int focushistorytag(Monitor *m);
+ static Atom getatomprop(Client *c, Atom prop);
+ static int getrootptr(int *x, int *y);
+ static long getstate(Window w);
+@@ -212,6 +214,7 @@ static void setup(void);
+ static void seturgent(Client *c, int urg);
+ static void showhide(Client *c);
+ static void spawn(const Arg *arg);
++static void swapfocus(const Arg *arg);
+ static void tag(const Arg *arg);
+ static void tagmon(const Arg *arg);
+ static void tile(Monitor *m);
+@@ -529,6 +532,7 @@ cleanupmon(Monitor *mon)
+ 	}
+ 	XUnmapWindow(dpy, mon->barwin);
+ 	XDestroyWindow(dpy, mon->barwin);
++	free(mon->prevclient);
+ 	free(mon);
+ }
+ 
+@@ -666,6 +670,7 @@ createmon(void)
+ 	m->topbar = topbar;
+ 	m->lt[0] = &layouts[0];
+ 	m->lt[1] = &layouts[1 % LENGTH(layouts)];
++	m->prevclient = ecalloc(LENGTH(tags) + 1, sizeof(Client *));
+ 	strncpy(m->ltsymbol, layouts[0].symbol, sizeof m->ltsymbol);
+ 	return m;
+ }
+@@ -887,6 +892,20 @@ focusstack(const Arg *arg)
+ 	}
+ }
+ 
++unsigned int
++focushistorytag(Monitor *m)
++{
++	unsigned int tagset, index;
++
++	tagset = m->tagset[m->seltags] & TAGMASK;
++	if (tagset && !(tagset & (tagset - 1))) {
++		for (index = 1; !(tagset & 1); index++, tagset >>= 1)
++			;
++		return index;
++	}
++	return 0;
++}
++
+ Atom
+ getatomprop(Client *c, Atom prop)
+ {
+@@ -1703,6 +1722,34 @@ spawn(const Arg *arg)
+ 	}
+ }
+ 
++void
++swapfocus(const Arg *arg)
++{
++	Client *c;
++	Client *prev;
++
++	(void)arg;
++	if (!selmon->sel)
++		return;
++
++	prev = selmon->prevclient[focushistorytag(selmon)];
++	if (prev && prev != selmon->sel && prev->mon == selmon && ISVISIBLE(prev)) {
++		focus(prev);
++		restack(selmon);
++		return;
++	}
++
++	for (c = selmon->sel->next; c && !ISVISIBLE(c); c = c->next)
++		;
++	if (!c)
++		for (c = selmon->clients; c && !ISVISIBLE(c); c = c->next)
++			;
++	if (c) {
++		focus(c);
++		restack(selmon);
++	}
++}
++
+ void
+ tag(const Arg *arg)
+ {
+@@ -1799,10 +1846,15 @@ void
+ toggleview(const Arg *arg)
+ {
+ 	unsigned int newtagset = selmon->tagset[selmon->seltags] ^ (arg->ui & TAGMASK);
++	unsigned int tagindex;
++	Client *prev;
+ 
+ 	if (newtagset) {
+ 		selmon->tagset[selmon->seltags] = newtagset;
++		tagindex = focushistorytag(selmon);
++		prev = selmon->prevclient[tagindex];
+ 		focus(NULL);
++		selmon->prevclient[tagindex] = prev;
+ 		arrange(selmon);
+ 	}
+ }
+@@ -1812,6 +1864,7 @@ unfocus(Client *c, int setfocus)
+ {
+ 	if (!c)
+ 		return;
++	c->mon->prevclient[focushistorytag(c->mon)] = c;
+ 	grabbuttons(c, 0);
+     if (c->isfloating)
+         XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColFloat].pixel);
+@@ -1827,10 +1880,14 @@ void
+ unmanage(Client *c, int destroyed)
+ {
+ 	Monitor *m = c->mon;
++	unsigned int i;
+ 	XWindowChanges wc;
+ 
+ 	detach(c);
+ 	detachstack(c);
++	for (i = 0; i <= LENGTH(tags); i++)
++		if (m->prevclient[i] == c)
++			m->prevclient[i] = NULL;
+ 	if (!destroyed) {
+ 		wc.border_width = c->oldbw;
+ 		XGrabServer(dpy); /* avoid race conditions */
+@@ -2101,12 +2158,18 @@ updatewmhints(Client *c)
+ void
+ view(const Arg *arg)
+ {
++	unsigned int tagindex;
++	Client *prev;
++
+ 	if ((arg->ui & TAGMASK) == selmon->tagset[selmon->seltags])
+ 		return;
+ 	selmon->seltags ^= 1; /* toggle sel tagset */
+ 	if (arg->ui & TAGMASK)
+ 		selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
++	tagindex = focushistorytag(selmon);
++	prev = selmon->prevclient[tagindex];
+ 	focus(NULL);
++	selmon->prevclient[tagindex] = prev;
+ 	arrange(selmon);
+ }
+ 
+@@ -2180,10 +2243,13 @@ void
+ zoom(const Arg *arg)
+ {
+ 	Client *c = selmon->sel;
++	unsigned int tagindex = focushistorytag(selmon);
+ 
+ 	if (!selmon->lt[selmon->sellt]->arrange || !c || c->isfloating)
+ 		return;
+-	if (c == nexttiled(selmon->clients) && !(c = nexttiled(c->next)))
++	selmon->prevclient[tagindex] = nexttiled(selmon->clients);
++	if (c == nexttiled(selmon->clients)
++	&& !(c = selmon->prevclient[tagindex] = nexttiled(c->next)))
+ 		return;
+ 	pop(c);
+ }

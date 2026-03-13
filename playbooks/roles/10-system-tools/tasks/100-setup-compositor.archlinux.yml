@@ -73,7 +73,6 @@
     - https://dwm.suckless.org/patches/save_floats/dwm-savefloats-6.0.diff
     - https://dwm.suckless.org/patches/alpha/dwm-fixborders-6.2.diff
     - https://dwm.suckless.org/patches/float_border_color/dwm-float-border-color-20231008-3a7ea45f.diff
-    - https://dwm.suckless.org/patches/swapfocus/dwm-swapfocus-20160731-56a31dc.diff
     - https://dwm.suckless.org/patches/floatrules/dwm-floatrules-20210801-138b405.diff
     - https://raw.githubusercontent.com/bakkeby/patches/refs/heads/master/dwm/dwm-unmanaged-6.6.diff
     - https://dwm.suckless.org/patches/focusonnetactive/dwm-focusonnetactive-6.2.diff
@@ -102,10 +101,6 @@
     - ~/data/repos/dwm/patches/dwm-float-border-color-20231008-3a7ea45f.diff
     - fix-dwm-float-border-color-20231008-3a7ea45f.patch
     - config-dwm-float-border-color-20231008-3a7ea45f.patch
-    # swapfocus
-    - ~/data/repos/dwm/patches/dwm-swapfocus-20160731-56a31dc.diff
-    - fix-dwm-swapfocus-20160731-56a31dc.patch
-    - config-dwm-swapfocus-20160731-56a31dc.patch
     # floatrules
     - ~/data/repos/dwm/patches/dwm-floatrules-20210801-138b405.diff
     # dwm-unmanaged
@@ -113,6 +108,8 @@
     - fix-dwm-unmanaged-6.6.patch
     # dwm-focusonnetactive-6.2
     - ~/data/repos/dwm/patches/dwm-focusonnetactive-6.2.diff
+    # per-tag swapfocus
+    - fix-dwm-swapfocus-pertag.patch
     # My changes. Always leave this last.
     - make-dwm-debuggable.patch
     - custom.patch
