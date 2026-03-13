@@ -31,6 +31,13 @@
     $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) install --global yarn@1.22.22
   changed_when: true
 
+- name: "[archlinux] Setup node: install pnpm"
+  ansible.builtin.shell: >
+    source ~/.bashrc &&
+    {{ ansible_facts.env.HOME }}/.volta/bin/volta run --node {{ node_system_default_version }}
+    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) install --global pnpm@latest
+  changed_when: true
+
 - name: "[archlinux] Setup node: list outdated npm global packages"
   ansible.builtin.shell: >
     source ~/.bashrc &&

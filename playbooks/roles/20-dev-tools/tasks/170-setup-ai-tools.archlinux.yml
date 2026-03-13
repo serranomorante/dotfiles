@@ -25,8 +25,41 @@
     - name: cloudframework-projects-mcp
     - name: "@zed-industries/claude-agent-acp"
     - name: "@zed-industries/codex-acp"
-    - name: "@postman/postman-mcp-server"
     - name: postman-cli
+
+- name: "[archlinux] Setup ai tools: ensure postman mcp project path"
+  ansible.builtin.file:
+    path: "{{ postman_mcp_commentary_server_setup.project_path }}"
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Setup ai tools: write postman mcp package.json"
+  ansible.builtin.copy:
+    dest: "{{ postman_mcp_commentary_server_setup.project_path }}/package.json"
+    mode: "644"
+    content: |
+      {
+        "name": "postman-mcp-server-local",
+        "private": true,
+        "dependencies": {
+          "@postman/postman-mcp-server": "{{ postman_mcp_commentary_server_setup.version }}"
+        }
+      }
+  register: var_postman_mcp_package_json
+
+- name: "[archlinux] Setup ai tools: stat postman mcp server binary"
+  ansible.builtin.stat:
+    path: "{{ postman_mcp_commentary_server_setup.exe_path }}"
+  register: var_stat_postman_mcp_server
+
+- name: "[archlinux] Setup ai tools: ensure postman mcp server"
+  ansible.builtin.shell: >
+    source ~/.bashrc &&
+    {{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/pnpm install --prod
+  args:
+    chdir: "{{ postman_mcp_commentary_server_setup.project_path }}"
+  changed_when: true
+  when: var_postman_mcp_package_json.changed or not var_stat_postman_mcp_server.stat.exists
 
 - name: "[archlinux] Setup ai tools: register playwright path"
   ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which playwright"

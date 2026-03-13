@@ -18,7 +18,9 @@ figma_mcp_commentary_server_setup:
     wallet: kdewallet
 
 postman_mcp_commentary_server_setup:
-  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/postman-mcp-server"
+  project_path: "{{ ansible_facts.env.HOME }}/.local/share/postman-mcp-server"
+  exe_path: "{{ postman_mcp_commentary_server_setup.project_path }}/node_modules/.bin/postman-mcp-server"
+  version: latest
   keyrings:
     folder: dev-tools
     passkey: postman-mcp
