@@ -139,6 +139,23 @@
     - "{{ playwright_mcp_server_setup }}"
     - "{{ intelephense_setup }}"
 
+- name: "[archlinux] Setup security tools: stat private cloud tools defaults"
+  ansible.builtin.stat:
+    path: ~/dotfiles/for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/defaults/main/main.vars.yml
+  register: var_stat_private_cloud_tools_defaults
+
+- name: "[archlinux] Setup security tools: load private cloud tools defaults"
+  ansible.builtin.include_vars:
+    file: ../../../../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/defaults/main/main.vars.yml
+  when: var_stat_private_cloud_tools_defaults.stat.exists
+
+- name: "[archlinux] Setup security tools: set private cloud tools keyrings facts"
+  ansible.builtin.set_fact:
+    keyrings: "{{ (keyrings | default([])) | union([prowlarr_qbittorrent_plugin_setup.keyrings]) }}"
+  when:
+    - var_stat_private_cloud_tools_defaults.stat.exists
+    - prowlarr_qbittorrent_plugin_setup is defined
+
 - name: "[archlinux] Setup security tools: stat setup-kwallet"
   ansible.builtin.stat:
     path: ~/dotfiles/for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/templates/setup-kwallet
