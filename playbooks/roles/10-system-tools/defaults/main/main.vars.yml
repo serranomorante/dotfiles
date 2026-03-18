@@ -25,6 +25,8 @@ arch_ytmdesktop_wine_setup:
 
 arch_wine_prefixes:
   - "{{ arch_reaper_wine_setup }}"
+  - wine_prefix: "{{ arch_synthv_wine_prefix }}"
+    architecture: win64
   - "{{ arch_gather_wine_setup }}"
 
 arch_ansible_long_retries_config:

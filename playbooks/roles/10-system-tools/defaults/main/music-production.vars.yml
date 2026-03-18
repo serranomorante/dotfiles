@@ -8,6 +8,8 @@ arch_reaper_sws_extension_setup:
   version: 2.14.0.7
   backup_path: ~/data/Downloads/music-production
 
+arch_synthv_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-synthv2"
+
 arch_reaper_wine_setup:
   version: "758"
   backup_path: ~/data/Downloads/music-production
