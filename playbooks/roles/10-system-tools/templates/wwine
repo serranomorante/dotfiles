@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'EOF'
+usage: wwine --prefix <alias-or-path> [--arch <arch>] <tool> [tool-args...]
+
+tools: wine, winecfg, wineserver, winetricks, wineboot
+EOF
+}
+
+die() {
+  printf 'wwine: %s\n' "$1" >&2
+  exit 1
+}
+
+prefix=""
+arch=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --prefix)
+      shift
+      [[ $# -gt 0 ]] || die "missing value for --prefix"
+      prefix="$1"
+      ;;
+    --prefix=*)
+      prefix="${1#*=}"
+      ;;
+    --arch)
+      shift
+      [[ $# -gt 0 ]] || die "missing value for --arch"
+      arch="$1"
+      ;;
+    --arch=*)
+      arch="${1#*=}"
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      die "unknown option: $1"
+      ;;
+    *)
+      break
+      ;;
+  esac
+  shift
+done
+
+[[ -n "$prefix" ]] || {
+  usage
+  die "--prefix is required"
+}
+[[ $# -gt 0 ]] || {
+  usage
+  die "missing tool"
+}
+
+resolved_prefix=""
+
+case "$prefix" in
+{% for name, config in wwine_prefix_aliases.items() %}
+  {{ name }})
+    resolved_prefix="{{ config.path }}"
+    {% if config.architecture is defined %}
+    [[ -n "$arch" ]] || arch="{{ config.architecture }}"
+    {% endif %}
+    ;;
+{% endfor %}
+  *)
+    resolved_prefix="$prefix"
+    ;;
+esac
+
+export WINEVERPATH="{{ wine_env_vars.WINEVERPATH }}"
+export WINELOADER="{{ wine_env_vars.WINELOADER }}"
+export WINESERVER="{{ wine_env_vars.WINESERVER }}"
+export WINEDLLPATH="{{ wine_env_vars.WINEDLLPATH }}"
+export LD_LIBRARY_PATH="{{ wine_env_vars.LD_LIBRARY_PATH }}"
+export PATH="{{ wine_env_vars.PATH }}"
+export WINEFSYNC="{{ wine_env_vars.WINEFSYNC }}"
+export WINEPREFIX="$resolved_prefix"
+
+if [[ -n "$arch" ]]; then
+  export WINEARCH="$arch"
+fi
+
+tool="$1"
+shift
+
+case "$tool" in
+  wine)
+    exec "$WINELOADER" "$@"
+    ;;
+  winecfg)
+    exec "$WINEVERPATH/bin/winecfg" "$@"
+    ;;
+  wineserver)
+    exec "$WINESERVER" "$@"
+    ;;
+  wineboot)
+    exec "$WINEVERPATH/bin/wineboot" "$@"
+    ;;
+  winetricks)
+    exec winetricks "$@"
+    ;;
+  *)
+    usage
+    die "unsupported tool: $tool"
+    ;;
+esac

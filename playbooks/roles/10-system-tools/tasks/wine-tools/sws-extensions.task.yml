@@ -9,10 +9,10 @@
 
 - name: "[archlinux] Wine tools: install sws extension"
   ansible.builtin.command: >
+    wwine --prefix reaper
     wine start /unix
     '{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe'
   timeout: 60
-  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix }) }}"
   changed_when: true
   when: var_new_sws_extension_version_downloaded.changed and is_x_display_session
   register: var_sws_install
