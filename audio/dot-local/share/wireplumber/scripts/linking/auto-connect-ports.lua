@@ -7,7 +7,7 @@
 
 local lutils = require("linking-utils")
 log = Log.open_topic("s-linking")
-local lu = require("luaunit")
+-- local lu = require("luaunit")
 
 ---The order is: source -> sink
 ---SOURCE: You get audio from a source/capture (unless that source was marked as sink using media.class = Audio/Sink). You can then pass that audio
