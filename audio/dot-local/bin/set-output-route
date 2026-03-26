@@ -1,0 +1,238 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly UMC22_SINK_PATTERN='^alsa_output\.usb-Burr-Brown_from_TI_USB_Audio_CODEC.*analog-stereo-output$'
+
+usage() {
+  cat <<'EOF'
+Usage:
+  set-output-route list
+  set-output-route status
+  set-output-route <multimedia|music-production|all> <headphones|monitors|umc22|motherboard|node:<node.name>>
+
+Examples:
+  set-output-route multimedia monitors
+  set-output-route music-production headphones
+  set-output-route all node:alsa_output.pci-0000_00_1f.3.analog-stereo
+EOF
+}
+
+die() {
+  printf 'set-output-route: %s\n' "$*" >&2
+  exit 1
+}
+
+require_commands() {
+  local cmd
+  for cmd in pw-link grep awk sort uniq sed; do
+    command -v "$cmd" >/dev/null 2>&1 || die "missing required command: $cmd"
+  done
+}
+
+refresh_ports() {
+  INPUT_PORTS="$(pw-link -i 2>/dev/null || true)"
+  [[ -n "$INPUT_PORTS" ]] || die "could not query PipeWire input ports"
+  LINKS="$(pw-link -l 2>/dev/null || true)"
+}
+
+list_physical_sink_nodes() {
+  printf '%s\n' "$INPUT_PORTS" \
+    | grep -E '^[^[:space:]]+:playback_(FL|FR)$' \
+    | sed -E 's/:playback_(FL|FR)$//' \
+    | sort \
+    | uniq \
+    | while IFS= read -r node; do
+        case "$node" in
+          capture.*|input.*)
+            continue
+            ;;
+        esac
+        if printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${node}:playback_FL" \
+          && printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${node}:playback_FR"; then
+          printf '%s\n' "$node"
+        fi
+      done
+}
+
+resolve_umc22_sink() {
+  printf '%s\n' "$PHYSICAL_SINKS" | grep -Em1 "$UMC22_SINK_PATTERN" || true
+}
+
+resolve_motherboard_sink() {
+  printf '%s\n' "$PHYSICAL_SINKS" \
+    | grep -Ev "$UMC22_SINK_PATTERN" \
+    | grep -m1 '^alsa_output\.' || true
+}
+
+resolve_target_node() {
+  local target=$1
+  case "$target" in
+    headphones|umc22)
+      resolve_umc22_sink
+      ;;
+    monitors|motherboard)
+      resolve_motherboard_sink
+      ;;
+    node:*)
+      printf '%s\n' "${target#node:}"
+      ;;
+    *)
+      if printf '%s\n' "$PHYSICAL_SINKS" | grep -Fxq "$target"; then
+        printf '%s\n' "$target"
+      fi
+      ;;
+  esac
+}
+
+logical_output_node() {
+  case "$1" in
+    multimedia)
+      printf '%s\n' 'sink_node.multimedia'
+      ;;
+    music-production)
+      printf '%s\n' 'sink_node.music-production'
+      ;;
+    *)
+      die "unknown logical sink: $1"
+      ;;
+  esac
+}
+
+linked_targets_for_source_port() {
+  local source_port=$1
+  printf '%s\n' "$LINKS" | awk -v src="$source_port" '
+    $0 == src { active = 1; next }
+    /^[^[:space:]]/ { active = 0 }
+    active && $1 == "|->" { print $2 }
+  '
+}
+
+physical_target_nodes_for_logical() {
+  local logical=$1
+  local output_node
+  output_node="$(logical_output_node "$logical")"
+
+  {
+    linked_targets_for_source_port "${output_node}:output_FL"
+    linked_targets_for_source_port "${output_node}:output_FR"
+  } \
+    | grep -E ':playback_(FL|FR)$' \
+    | sed -E 's/:playback_(FL|FR)$//' \
+    | sort \
+    | uniq
+}
+
+status_line_for_logical() {
+  local logical=$1
+  local targets
+  targets="$(physical_target_nodes_for_logical "$logical")"
+
+  if [[ -z "$targets" ]]; then
+    printf '%s -> unassigned\n' "$logical"
+    return
+  fi
+
+  printf '%s -> %s\n' "$logical" "$(printf '%s' "$targets" | paste -sd ',' -)"
+}
+
+disconnect_physical_links() {
+  local logical=$1
+  local output_node source_port target_port channel
+  output_node="$(logical_output_node "$logical")"
+
+  for channel in FL FR; do
+    source_port="${output_node}:output_${channel}"
+    while IFS= read -r target_port; do
+      [[ -n "$target_port" ]] || continue
+      case "$target_port" in
+        *":playback_${channel}")
+          pw-link -d "$source_port" "$target_port" 2>/dev/null || true
+          ;;
+      esac
+    done < <(linked_targets_for_source_port "$source_port")
+  done
+}
+
+connect_logical_to_target() {
+  local logical=$1
+  local target_node=$2
+  local output_node
+  output_node="$(logical_output_node "$logical")"
+
+  printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${target_node}:playback_FL" \
+    || die "target sink is missing FL playback port: $target_node"
+  printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${target_node}:playback_FR" \
+    || die "target sink is missing FR playback port: $target_node"
+
+  disconnect_physical_links "$logical"
+  pw-link "${output_node}:output_FL" "${target_node}:playback_FL"
+  pw-link "${output_node}:output_FR" "${target_node}:playback_FR"
+}
+
+print_status() {
+  local umc22 motherboard
+  umc22="$(resolve_umc22_sink)"
+  motherboard="$(resolve_motherboard_sink)"
+
+  printf 'presets:\n'
+  printf '  headphones -> %s\n' "${umc22:-unavailable}"
+  printf '  monitors   -> %s\n' "${motherboard:-unavailable}"
+  printf 'logical sinks:\n'
+  status_line_for_logical multimedia
+  status_line_for_logical music-production
+}
+
+route_one() {
+  local logical=$1
+  local target=$2
+  local resolved_target
+
+  resolved_target="$(resolve_target_node "$target")"
+  [[ -n "$resolved_target" ]] || die "could not resolve target: $target"
+
+  if [[ "$target" == "monitors" || "$target" == "motherboard" ]]; then
+    local umc22
+    umc22="$(resolve_umc22_sink)"
+    [[ -n "$umc22" ]] || die "UMC22 sink is not available"
+    [[ "$resolved_target" != "$umc22" ]] \
+      || die "independent monitor routing is unavailable: no second physical sink was found"
+  fi
+
+  connect_logical_to_target "$logical" "$resolved_target"
+  printf '%s -> %s\n' "$logical" "$resolved_target"
+}
+
+main() {
+  require_commands
+  refresh_ports
+  PHYSICAL_SINKS="$(list_physical_sink_nodes)"
+
+  case "${1:-}" in
+    list)
+      [[ -n "$PHYSICAL_SINKS" ]] || die "no physical sinks found"
+      printf '%s\n' "$PHYSICAL_SINKS"
+      ;;
+    status)
+      print_status
+      ;;
+    multimedia|music-production)
+      [[ $# -eq 2 ]] || die "expected: set-output-route $1 <target>"
+      route_one "$1" "$2"
+      ;;
+    all)
+      [[ $# -eq 2 ]] || die "expected: set-output-route all <target>"
+      route_one multimedia "$2"
+      refresh_ports
+      route_one music-production "$2"
+      ;;
+    -h|--help|'')
+      usage
+      ;;
+    *)
+      usage >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"
