@@ -487,8 +487,8 @@ end
 ---@return string[]
 function M.ts_compatible_filetypes()
   local filetypes = {}
-  for filetype, tooling in pairs(tools.by_filetype) do
-    if vim.tbl_count(tooling.parsers) > 0 then table.insert(filetypes, filetype) end
+  for filetype, tooling in pairs(tools.by_filetype or {}) do
+    if vim.tbl_count(tooling.parsers or {}) > 0 then table.insert(filetypes, filetype) end
   end
   return filetypes
 end
