@@ -52,39 +52,71 @@
         is_x_display_session: "{{ var_is_x_display_session.rc == 0 }}"
       tags: always
 
-  roles:
-    - role: 10-system-tools
-      tags: 10-system-tools
-    - role: 20-dev-tools
-      tags: 20-dev-tools
-    - role: 30-lang-tools
-      tags: 30-lang-tools
-    - role: 40-PKM
-      tags: 40-PKM
-    - role: 50-cloud-tools
-      tags: 50-cloud-tools
-
   tasks:
-    - name: Include 60-for-my-eyes-only if present
-      ansible.builtin.include_role:
-        name: ../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only # noqa role-name[path]
-        apply:
-          tags: 60-for-my-eyes-only
-      tags: always
-      when: fact_roles['../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only/tasks/main.yml']
+    - block:
+        - name: Run 10-system-tools role
+          ansible.builtin.import_role:
+            name: 10-system-tools
+          tags: [10-system-tools]
 
-    - name: Include 70-for-my-eyes-only if present
-      ansible.builtin.include_role:
-        name: ../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only # noqa role-name[path]
-        apply:
-          tags: 70-for-my-eyes-only
-      tags: always
-      when: fact_roles['../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/tasks/main.yml']
+        - name: Run 20-dev-tools role
+          ansible.builtin.import_role:
+            name: 20-dev-tools
+          tags: [20-dev-tools]
 
-    - name: Include 80-for-my-eyes-only if present
-      ansible.builtin.include_role:
-        name: ../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only # noqa role-name[path]
-        apply:
-          tags: 80-for-my-eyes-only
-      tags: always
-      when: fact_roles['../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/tasks/main.yml']
+        - name: Run 30-lang-tools role
+          ansible.builtin.import_role:
+            name: 30-lang-tools
+          tags: [30-lang-tools]
+
+        - name: Run 40-PKM role
+          ansible.builtin.import_role:
+            name: 40-PKM
+          tags: [40-PKM]
+
+        - name: Run 50-cloud-tools role
+          ansible.builtin.import_role:
+            name: 50-cloud-tools
+          tags: [50-cloud-tools]
+
+        - name: Include 60-for-my-eyes-only if present
+          ansible.builtin.include_role:
+            name: ../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only # noqa role-name[path]
+            apply:
+              tags: 60-for-my-eyes-only
+          tags: always
+          when: fact_roles['../for-my-eyes-only/playbooks/roles/60-for-my-eyes-only/tasks/main.yml']
+
+        - name: Include 70-for-my-eyes-only if present
+          ansible.builtin.include_role:
+            name: ../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only # noqa role-name[path]
+            apply:
+              tags: 70-for-my-eyes-only
+          tags: always
+          when: fact_roles['../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/tasks/main.yml']
+
+        - name: Include 80-for-my-eyes-only if present
+          ansible.builtin.include_role:
+            name: ../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only # noqa role-name[path]
+            apply:
+              tags: 80-for-my-eyes-only
+          tags: always
+          when: fact_roles['../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/tasks/main.yml']
+      always:
+        - name: Flush handlers before AUR teardown
+          ansible.builtin.meta: flush_handlers
+          when:
+            - user_os in ['archlinux']
+            - "'localhost' in var_argv.ansible_facts.argv"
+          tags:
+            - setup
+            - 10-system-tools
+
+        - name: Remove temporary AUR passwordless sudoers rule
+          ansible.builtin.import_tasks: roles/10-system-tools/tasks/teardown-aur-passwordless.archlinux.yml
+          when:
+            - user_os in ['archlinux']
+            - "'localhost' in var_argv.ansible_facts.argv"
+          tags:
+            - setup
+            - 10-system-tools
