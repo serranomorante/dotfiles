@@ -56,6 +56,12 @@
     mode: "644"
   notify: handler_update_desktop_database
 
+- name: "[archlinux] Setup audio tools: setup launch-reaper-linux file"
+  ansible.builtin.template:
+    src: launch-reaper-linux
+    dest: ~/.local/bin/launch-reaper-linux
+    mode: "755"
+
 - name: "[archlinux] Setup audio tools: ensure user services"
   ansible.builtin.systemd_service:
     scope: user

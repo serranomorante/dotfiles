@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# {{ ansible_managed }}
+set -euo pipefail
+
+"{{ ansible_facts.env.HOME }}/.local/bin/connect-reaper-to-music-production" &
+exec kitty --hold -o env=WINEPREFIX='{{ arch_reaper_wine_setup.wine_prefix }}' -o env=WINEDEBUG=-all,+err {% for env in wine_env_vars.items() %}-o env={{ env | join('=') }} {% endfor %} {% for env in pipewire_latency_vars.items() %}-o env={{ env | join('=') }} {% endfor %} --directory='~/data/audio-pjs' firejail --profile={{ ansible_facts.env.HOME }}/.config/firejail/wine.local /usr/bin/reaper

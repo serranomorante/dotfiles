@@ -1,16 +1,55 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Best-effort: wait briefly for REAPER and target sink ports to exist, then link.
-for _ in $(seq 1 40); do
-  if pw-link -o | rg -q '^REAPER:out1$' \
-    && pw-link -o | rg -q '^REAPER:out2$' \
-    && pw-link -i | rg -q '^capture.sink_node.music-production:playback_FL$' \
-    && pw-link -i | rg -q '^capture.sink_node.music-production:playback_FR$'; then
+readonly REAPER_LEFT_PORT='REAPER:out1'
+readonly REAPER_RIGHT_PORT='REAPER:out2'
+readonly TARGET_LEFT_PORT='capture.sink_node.music-production:playback_FL'
+readonly TARGET_RIGHT_PORT='capture.sink_node.music-production:playback_FR'
+
+linked_targets_for_source_port() {
+  local links source_port
+  source_port=$1
+  links="$(pw-link -l 2>/dev/null || true)"
+  printf '%s\n' "$links" | awk -v src="$source_port" '
+    $0 == src { active = 1; next }
+    /^[^[:space:]]/ { active = 0 }
+    active && $1 == "|->" { print $2 }
+  '
+}
+
+disconnect_non_target_links() {
+  local source_port expected_target target_port
+  source_port=$1
+  expected_target=$2
+
+  while IFS= read -r target_port; do
+    [[ -n "$target_port" ]] || continue
+    [[ "$target_port" == "$expected_target" ]] && continue
+    pw-link -d "$source_port" "$target_port" 2>/dev/null || true
+  done < <(linked_targets_for_source_port "$source_port")
+}
+
+# Best-effort: wait for REAPER and target sink ports to exist, then enforce exclusive links.
+for _ in $(seq 1 150); do
+  if pw-link -o | rg -q "^${REAPER_LEFT_PORT}$" \
+    && pw-link -o | rg -q "^${REAPER_RIGHT_PORT}$" \
+    && pw-link -i | rg -q "^${TARGET_LEFT_PORT}$" \
+    && pw-link -i | rg -q "^${TARGET_RIGHT_PORT}$"; then
     break
   fi
   sleep 0.1
 done
 
-pw-link REAPER:out1 capture.sink_node.music-production:playback_FL 2>/dev/null || true
-pw-link REAPER:out2 capture.sink_node.music-production:playback_FR 2>/dev/null || true
+if ! pw-link -o | rg -q "^${REAPER_LEFT_PORT}$" \
+  || ! pw-link -o | rg -q "^${REAPER_RIGHT_PORT}$" \
+  || ! pw-link -i | rg -q "^${TARGET_LEFT_PORT}$" \
+  || ! pw-link -i | rg -q "^${TARGET_RIGHT_PORT}$"; then
+  printf 'connect-reaper-to-music-production: REAPER or target sink ports were not ready in time\n' >&2
+  exit 0
+fi
+
+disconnect_non_target_links "$REAPER_LEFT_PORT" "$TARGET_LEFT_PORT"
+disconnect_non_target_links "$REAPER_RIGHT_PORT" "$TARGET_RIGHT_PORT"
+
+pw-link "$REAPER_LEFT_PORT" "$TARGET_LEFT_PORT" 2>/dev/null || true
+pw-link "$REAPER_RIGHT_PORT" "$TARGET_RIGHT_PORT" 2>/dev/null || true

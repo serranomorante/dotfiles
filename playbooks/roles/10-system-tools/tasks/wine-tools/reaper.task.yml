@@ -51,6 +51,12 @@
     mode: "644"
   notify: handler_update_desktop_database
 
+- name: "[archlinux] Wine tools: setup launch-reaper-wine file"
+  ansible.builtin.template:
+    src: launch-reaper-wine
+    dest: ~/.local/bin/launch-reaper-wine
+    mode: "755"
+
 - name: "[archlinux] Wine tools: check file exists"
   ansible.builtin.stat:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
