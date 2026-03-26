@@ -14,31 +14,49 @@ log = Log.open_topic("s-linking")
 ---to other sinks.
 ---SINK: You have to send audio to a sink (so the sink can output it to your speakers). Watch out for the media.class that converts
 ---these sinks/playbacks into sources.
-local MAPPINGS = {
+local LOGICAL_SINKS = {
+  multimedia = "capture.sink_node.multimedia",
+  work = "capture.sink_node.work",
+  ["music-production"] = "capture.sink_node.music-production",
+}
+
+local APP_TARGETS = {
   ---BTAdapter -> Physical output sink (monitor-only, keep it out of recording mix)
   ---BTAdapter (media.class = "Stream/Output/Audio")
   ---alsa_output.usb-Burr-Brown_from_TI_USB_Audio_CODEC-00.analog-stereo-output (media.class = "Audio/Sink")
-  ["BTAdapter"] = "alsa_output.usb-Burr-Brown_from_TI_USB_Audio_CODEC-00.analog-stereo-output",
-  ["Brave"] = "capture.sink_node.multimedia",
-  ["Firefox"] = "capture.sink_node.multimedia",
-  ["ALSA plug-in [plexamp]"] = "capture.sink_node.multimedia",
+  ["BTAdapter"] = { node = "alsa_output.usb-Burr-Brown_from_TI_USB_Audio_CODEC-00.analog-stereo-output" },
+  ["Brave"] = { logical_sink = "multimedia" },
+  ["Firefox"] = { logical_sink = "multimedia" },
+  ["ALSA plug-in [plexamp]"] = { logical_sink = "multimedia" },
   ---Denoiser source -> chromium input source?
   ---Chromium input (media.class = "Stream/Input/Audio")
   ---source_filter.rnnoise (media.class = "Audio/Source")
-  ["Chromium input"] = "source_filter.rnnoise",
+  ["Chromium input"] = { node = "source_filter.rnnoise" },
   ---Mic source -> Denoiser source
   ---capture.source_filter.rnnoise (media.class = "Stream/Input/Audio" )
   ---Mic (media.class = "Audio/Source")
-  ["capture.source_filter.rnnoise"] = "Mic",
-  ---Chromium sink -> Multimedia sink
+  ["capture.source_filter.rnnoise"] = { node = "Mic" },
+  ---Chromium sink -> Work sink
   ---Chromium (media.class = "Stream/Output/Audio")
-  ---capture.sink_node.multimedia (media.class = "Audio/Sink")
-  ["Chromium"] = "capture.sink_node.multimedia", -- will fallback to default if not available
+  ---capture.sink_node.work (media.class = "Audio/Sink")
+  ["Chromium"] = { logical_sink = "work" }, -- will fallback to default if not available
   ---Youtube music sink -> Multimedia sink
   ---YouTube Music Desktop App (media.class = "Stream/Output/Audio")
   ---capture.sink_node.multimedia (media.class = "Audio/Sink")
-  ["YouTube Music Desktop App"] = "capture.sink_node.multimedia",
+  ["YouTube Music Desktop App"] = { logical_sink = "multimedia" },
 }
+
+local function resolve_target_name(target)
+  if not target then
+    return nil
+  end
+
+  if target.logical_sink then
+    return LOGICAL_SINKS[target.logical_sink]
+  end
+
+  return target.node
+end
 
 SimpleEventHook({
   name = "linking/auto-connect-ports",
@@ -62,13 +80,13 @@ SimpleEventHook({
       return
     end
 
-    ---@type string
-    local TARGET = MAPPINGS[si_props["node.name"]]
-    if not TARGET then
+    local target_config = APP_TARGETS[si_props["node.name"]]
+    local target_name = resolve_target_name(target_config)
+    if not target_name then
       return
     end
 
-    local picked_target = om:lookup({ Constraint({ "node.name", "=", TARGET }) })
+    local picked_target = om:lookup({ Constraint({ "node.name", "=", target_name }) })
 
     if not picked_target then
       return

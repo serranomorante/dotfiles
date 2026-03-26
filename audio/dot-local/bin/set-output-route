@@ -2,16 +2,21 @@
 set -euo pipefail
 
 readonly UMC22_SINK_PATTERN='^alsa_output\.usb-Burr-Brown_from_TI_USB_Audio_CODEC.*analog-stereo-output$'
+readonly LOGICAL_SINKS=(multimedia work music-production)
 
 usage() {
-  cat <<'EOF'
+  local logical_list
+  logical_list="$(printf '%s|' "${LOGICAL_SINKS[@]}")"
+  logical_list="${logical_list%|}"
+  cat <<EOF
 Usage:
   set-output-route list
   set-output-route status
-  set-output-route <multimedia|music-production|all> <headphones|monitors|umc22|motherboard|node:<node.name>>
+  set-output-route <${logical_list}|all> <headphones|monitors|umc22|motherboard|node:<node.name>>
 
 Examples:
   set-output-route multimedia monitors
+  set-output-route work monitors
   set-output-route music-production headphones
   set-output-route all node:alsa_output.pci-0000_00_1f.3.analog-stereo
 EOF
@@ -84,18 +89,23 @@ resolve_target_node() {
   esac
 }
 
+is_logical_sink() {
+  local logical=$1 known
+  for known in "${LOGICAL_SINKS[@]}"; do
+    [[ "$known" == "$logical" ]] && return 0
+  done
+  return 1
+}
+
 logical_output_node() {
-  case "$1" in
-    multimedia)
-      printf '%s\n' 'sink_node.multimedia'
-      ;;
-    music-production)
-      printf '%s\n' 'sink_node.music-production'
-      ;;
-    *)
-      die "unknown logical sink: $1"
-      ;;
-  esac
+  local logical=$1
+
+  if is_logical_sink "$logical"; then
+    printf 'sink_node.%s\n' "$logical"
+    return
+  fi
+
+  die "unknown logical sink: $logical"
 }
 
 linked_targets_for_source_port() {
@@ -170,7 +180,7 @@ connect_logical_to_target() {
 }
 
 print_status() {
-  local umc22 motherboard
+  local logical umc22 motherboard
   umc22="$(resolve_umc22_sink)"
   motherboard="$(resolve_motherboard_sink)"
 
@@ -178,8 +188,9 @@ print_status() {
   printf '  headphones -> %s\n' "${umc22:-unavailable}"
   printf '  monitors   -> %s\n' "${motherboard:-unavailable}"
   printf 'logical sinks:\n'
-  status_line_for_logical multimedia
-  status_line_for_logical music-production
+  for logical in "${LOGICAL_SINKS[@]}"; do
+    status_line_for_logical "$logical"
+  done
 }
 
 route_one() {
@@ -203,34 +214,47 @@ route_one() {
 }
 
 main() {
-  require_commands
-  refresh_ports
-  PHYSICAL_SINKS="$(list_physical_sink_nodes)"
+  local command logical
+  command="${1:-}"
 
-  case "${1:-}" in
+  case "$command" in
+    -h|--help|'')
+      usage
+      ;;
     list)
+      require_commands
+      refresh_ports
+      PHYSICAL_SINKS="$(list_physical_sink_nodes)"
       [[ -n "$PHYSICAL_SINKS" ]] || die "no physical sinks found"
       printf '%s\n' "$PHYSICAL_SINKS"
       ;;
     status)
+      require_commands
+      refresh_ports
+      PHYSICAL_SINKS="$(list_physical_sink_nodes)"
       print_status
       ;;
-    multimedia|music-production)
-      [[ $# -eq 2 ]] || die "expected: set-output-route $1 <target>"
-      route_one "$1" "$2"
-      ;;
     all)
-      [[ $# -eq 2 ]] || die "expected: set-output-route all <target>"
-      route_one multimedia "$2"
+      require_commands
       refresh_ports
-      route_one music-production "$2"
-      ;;
-    -h|--help|'')
-      usage
+      PHYSICAL_SINKS="$(list_physical_sink_nodes)"
+      [[ $# -eq 2 ]] || die "expected: set-output-route all <target>"
+      for logical in "${LOGICAL_SINKS[@]}"; do
+        route_one "$logical" "$2"
+        refresh_ports
+      done
       ;;
     *)
-      usage >&2
-      exit 1
+      if is_logical_sink "$command"; then
+        require_commands
+        refresh_ports
+        PHYSICAL_SINKS="$(list_physical_sink_nodes)"
+        [[ $# -eq 2 ]] || die "expected: set-output-route $command <target>"
+        route_one "$command" "$2"
+      else
+        usage >&2
+        exit 1
+      fi
       ;;
   esac
 }
