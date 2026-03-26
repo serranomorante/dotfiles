@@ -26,7 +26,7 @@
       become: true
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.borg_repo }}'
       environment:
-        BORG_KEYS_DIR: "{{ ansible_facts.env.USER }}/.config/borg-root/keys"
+        BORG_KEYS_DIR: "{{ ansible_facts.env.HOME }}/.config/borg-root/keys"
         BORG_PASSCOMMAND: >
           /usr/local/bin/run_as_user -u {{ ansible_facts.env.USER }}
             kwallet-query
@@ -87,7 +87,7 @@
       become: true
       ansible.builtin.command: borg key export "{{ item.borg_repo }}" "{{ ansible_facts.env.HOME }}/data/secrets/backup-borg-root-keyfiles/{{ keyfilename }}"
       environment:
-        BORG_KEYS_DIR: "{{ ansible_facts.env.USER }}/.config/borg-root/keys"
+        BORG_KEYS_DIR: "{{ ansible_facts.env.HOME }}/.config/borg-root/keys"
         BORG_PASSCOMMAND: >
           /usr/local/bin/run_as_user -u {{ ansible_facts.env.USER }}
             kwallet-query
