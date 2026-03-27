@@ -10,6 +10,7 @@
       - ksshaskpass
       - tcpdump
       - bustle
+      - libsecret
 
 - name: "[archlinux] Setup security tools: ensure deprecated packages"
   # These packages might be removed by arch in the future
@@ -185,3 +186,71 @@
     src: org.freedesktop.secrets.service
     dest: ~/.local/share/dbus-1/services/org.freedesktop.secrets.service
     mode: "644"
+
+- name: "[archlinux] Setup security tools: get docker credential secretservice helper"
+  ansible.builtin.get_url:
+    url: https://github.com/docker/docker-credential-helpers/releases/download/v{{ arch_docker_credential_helpers_version }}/docker-credential-secretservice-v{{ arch_docker_credential_helpers_version }}.linux-amd64
+    dest: ~/bin/docker-credential-secretservice
+    mode: "755"
+
+- name: "[archlinux] Setup security tools: ensure docker config path"
+  ansible.builtin.file:
+    path: ~/.docker
+    state: directory
+    mode: "700"
+
+- name: "[archlinux] Setup security tools: stat docker config"
+  ansible.builtin.stat:
+    path: ~/.docker/config.json
+  register: var_stat_docker_config
+
+- name: "[archlinux] Setup security tools: initialize docker config fact"
+  ansible.builtin.set_fact:
+    docker_config_json: {}
+
+- name: "[archlinux] Setup security tools: load docker config"
+  ansible.builtin.set_fact:
+    docker_config_json: "{{ lookup('file', '~/.docker/config.json') | from_json }}"
+  when: var_stat_docker_config.stat.exists
+  no_log: true
+
+- name: "[archlinux] Setup security tools: set docker auth entries fact"
+  ansible.builtin.set_fact:
+    docker_auth_entries: "{{ docker_config_json.auths | default({}) | dict2items | selectattr('value.auth', 'defined') | list }}"
+  no_log: true
+
+- name: "[archlinux] Setup security tools: migrate docker auths into secretservice"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/docker-credential-secretservice"
+      - store
+    stdin: "{{ {'ServerURL': item.key, 'Username': docker_auth_username, 'Secret': docker_auth_secret} | to_json }}"
+    stdin_add_newline: false
+  vars:
+    decoded_docker_auth: "{{ item.value.auth | b64decode }}"
+    docker_auth_username: "{{ decoded_docker_auth | regex_replace('^([^:]+):.*$', '\\1') }}"
+    docker_auth_secret: "{{ decoded_docker_auth | regex_replace('^[^:]+:(.*)$', '\\1') }}"
+  loop: "{{ docker_auth_entries }}"
+  when: docker_auth_entries | length != 0
+  changed_when: true
+  no_log: true
+
+- name: "[archlinux] Setup security tools: set desired docker config fact"
+  ansible.builtin.set_fact:
+    desired_docker_config_json: >-
+      {{
+        (
+          docker_config_json
+          | combine({'credsStore': 'secretservice'}, recursive=True)
+          | dict2items
+          | rejectattr('key', 'equalto', 'auths')
+          | list
+          | items2dict
+        )
+      }}
+
+- name: "[archlinux] Setup security tools: write docker config"
+  ansible.builtin.copy:
+    dest: ~/.docker/config.json
+    content: "{{ desired_docker_config_json | to_json }}"
+    mode: "600"
