@@ -19,7 +19,7 @@
       when: "user_os in ['archlinux']"
       loop_control:
         loop_var: task_file
-  tags: ["10-20"]
+  tags: [setup, "10-20"]
 
 - block:
     - name: Setup dotfiles are setup
