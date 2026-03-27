@@ -19,6 +19,7 @@ else
         ~/data/work/cf/repos \
         ~/data/work/gp/repos \
         ~/data/notes \
+        ~/data/dev-pjs \
         -mindepth 1 -maxdepth 1 -type d | fzf --prompt='Select cwd: ' >/tmp/$uuid"
     selected_path=$(</tmp/$uuid)
 fi
