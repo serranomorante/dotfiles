@@ -10,8 +10,12 @@
   ansible.builtin.command: /usr/local/bin/brew install cmake --cask
 
 - name: "[macosx] Graphic tablet peripheral: ensure typescript"
-  ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/npm install typescript -g"
-  changed_when: false
+  community.general.npm:
+    name: typescript
+    version: "{{ typescript_npm_version }}"
+    global: true
+    state: present
+    executable: "{{ node_volta_home }}/bin/volta run --node {{ node_system_default_version }} npm"
 
 - name: "[macosx] Graphic tablet peripheral: ensure repos folder"
   ansible.builtin.file:

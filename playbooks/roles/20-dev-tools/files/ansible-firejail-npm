@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Npm-shaped adapter for community.general.npm.
+# Ansible expects an executable that behaves like npm, while the generic
+# fj-node wrapper expects <network-mode> <project> -- <command...>. Keep the
+# npm-specific sandbox and prefix wiring here so fj-node stays generic-only.
+#
+# Examples:
+#   ANSIBLE_FIREJAIL_NPM_NODE_VERSION=22.19.0 ansible-firejail-npm --version
+#   ANSIBLE_FIREJAIL_NPM_NODE_VERSION=22.19.0 ANSIBLE_FIREJAIL_NPM_PREFIX=/abs/prefix ansible-firejail-npm install --global yarn
+
+SCRIPT_NAME=ansible-firejail-npm
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
+source "${script_dir}/firejail-wrapper-common.bash"
+
+main() {
+    require_env ANSIBLE_FIREJAIL_NPM_NODE_VERSION
+
+    local real_home=${HOME:-}
+    local volta_home=${ANSIBLE_FIREJAIL_NPM_VOLTA_HOME:-${real_home}/.volta}
+    local node_version=${ANSIBLE_FIREJAIL_NPM_NODE_VERSION}
+    local node_root=${volta_home}/tools/image/node/${node_version}
+    local npm_executable=${node_root}/bin/npm
+    local prefix_dir=${ANSIBLE_FIREJAIL_NPM_PREFIX:-}
+    local cwd_root
+    cwd_root=$(pwd -P)
+    local wrapper_args=()
+    local work_root
+    local cache_root=${ANSIBLE_FIREJAIL_NPM_CACHE_DIR:-}
+    local state_root=${ANSIBLE_FIREJAIL_NPM_STATE_DIR:-}
+    local data_root=${ANSIBLE_FIREJAIL_NPM_DATA_DIR:-}
+    local writable_paths=${ANSIBLE_FIREJAIL_NPM_WRITABLE_PATHS:-}
+    local userconfig_path=${ANSIBLE_FIREJAIL_NPM_USERCONFIG:-/dev/null}
+    local delegated_env
+
+    [[ -x "$npm_executable" ]] || die "unable to resolve npm for node ${node_version}: ${npm_executable}"
+
+    if [[ -n "$prefix_dir" ]]; then
+        [[ "$prefix_dir" == /* ]] || die "ANSIBLE_FIREJAIL_NPM_PREFIX must be an absolute path"
+        work_root=$(canonicalize_existing_dir "$prefix_dir") || die "unable to resolve npm prefix: ${prefix_dir}"
+    else
+        work_root=$(canonicalize_existing_dir "$cwd_root") || die "unable to resolve npm work root: ${cwd_root}"
+    fi
+
+    if [[ -n "$cache_root" ]]; then
+        cache_root=$(canonicalize_existing_dir "$cache_root") || die "unable to resolve npm cache dir: ${cache_root}"
+        writable_paths+=$'\n'"$cache_root"
+    fi
+    if [[ -n "$state_root" ]]; then
+        state_root=$(canonicalize_existing_dir "$state_root") || die "unable to resolve npm state dir: ${state_root}"
+        writable_paths+=$'\n'"$state_root"
+    fi
+    if [[ -n "$data_root" ]]; then
+        data_root=$(canonicalize_existing_dir "$data_root") || die "unable to resolve npm data dir: ${data_root}"
+        writable_paths+=$'\n'"$data_root"
+    fi
+
+    if [[ -n "$prefix_dir" ]]; then
+        wrapper_args+=("--prefix" "$work_root")
+    fi
+
+    [[ "$userconfig_path" == "/dev/null" || "$userconfig_path" == /* ]] || die "ANSIBLE_FIREJAIL_NPM_USERCONFIG must be an absolute path"
+
+    delegated_env=(
+        /usr/bin/env
+        "PATH=${node_root}/bin:${PATH:-/usr/local/bin:/usr/bin:/bin}"
+        "FJ_NODE_PROFILE=fj-node-ansible.profile"
+        "FJ_NODE_NO_CHDIR=1"
+        "FJ_NODE_NPMRC_PATH=${userconfig_path}"
+        "FJ_NODE_EXTRA_PATHS=${ANSIBLE_FIREJAIL_NPM_EXTRA_PATHS:-}"
+        "FJ_NODE_WRITABLE_PATHS=${writable_paths}"
+        "NPM_CONFIG_IGNORE_SCRIPTS=${NPM_CONFIG_IGNORE_SCRIPTS:-false}"
+    )
+    if [[ -n "$prefix_dir" ]]; then
+        delegated_env+=("NPM_CONFIG_PREFIX=${work_root}")
+    fi
+    if [[ -n "$cache_root" ]]; then
+        delegated_env+=("XDG_CACHE_HOME=${cache_root}")
+        delegated_env+=("NPM_CONFIG_CACHE=${NPM_CONFIG_CACHE:-${cache_root}/npm}")
+    fi
+    if [[ -n "$state_root" ]]; then
+        delegated_env+=("XDG_STATE_HOME=${state_root}")
+    fi
+    if [[ -n "$data_root" ]]; then
+        delegated_env+=("XDG_DATA_HOME=${data_root}")
+    fi
+
+    exec "${delegated_env[@]}" \
+        "${script_dir}/fj-node" online "$work_root" -- \
+        "$npm_executable" "${wrapper_args[@]}" "$@"
+}
+
+main "$@"

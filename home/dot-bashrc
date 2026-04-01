@@ -80,7 +80,9 @@ if command -v fzf &>/dev/null; then
     eval "$(fzf --bash)"
 fi
 
-alias nvim='~/bin/nvim $(nvr --nostart -s --servername "$NVIM_KITTY_LISTEN_ADDRESS" &>/dev/null && echo --server || echo --listen) "$NVIM_KITTY_LISTEN_ADDRESS"'
+nvim() {
+    "$HOME/bin/nvim" "$@"
+}
 
 # https://github.com/mfussenegger/nvim-dap/blob/e64ebf3309154b578a03c76229ebf51c37898118/doc/dap.txt#L960
 # Available log levels:

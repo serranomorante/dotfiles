@@ -11,10 +11,37 @@
       - kitty-terminfo
     state: present
 
+- name: "[archlinux] Setup terminal tools: ensure uv tool writable paths"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  loop:
+    - "{{ ansible_facts.env.HOME }}/.local/bin"
+    - "{{ ansible_facts.env.HOME }}/.local/share/uv"
+    - "{{ ansible_facts.env.HOME }}/.local/share/uv/tools"
+
 - name: "[archlinux] Setup terminal tools: uv ensure packages"
-  ansible.builtin.command: uv tool install --python=3.12 {{ item.package_name }}
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/uv-tools"
+      - --
+      - uv
+      - tool
+      - install
+      - --python=3.12
+      - "{{ item.package_name }}"
   args:
     creates: "{{ item.creates }}"
+  environment:
+    UV_TOOL_DIR: "{{ ansible_facts.env.HOME }}/.local/share/uv/tools"
+    UV_TOOL_BIN_DIR: "{{ ansible_facts.env.HOME }}/.local/bin"
+    FJ_PY_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/.local/bin
+      {{ ansible_facts.env.HOME }}/.local/share/uv
+      {{ ansible_facts.env.HOME }}/.local/share/uv/tools
   loop:
     - package_name: isd-tui
       creates: ~/.local/bin/isd
@@ -23,8 +50,25 @@
   timeout: 0
 
 - name: "[archlinux] Editor tools: update vectorcode"
-  ansible.builtin.command: uv tool upgrade --python=3.12 vectorcode
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/uv-tools"
+      - --
+      - uv
+      - tool
+      - upgrade
+      - --python=3.12
+      - vectorcode
   changed_when: "(nvim_plugin_result_by_repo['Davidyz/VectorCode'] | default({})).changed | default(false)"
+  environment:
+    UV_TOOL_DIR: "{{ ansible_facts.env.HOME }}/.local/share/uv/tools"
+    UV_TOOL_BIN_DIR: "{{ ansible_facts.env.HOME }}/.local/bin"
+    FJ_PY_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/.local/bin
+      {{ ansible_facts.env.HOME }}/.local/share/uv
+      {{ ansible_facts.env.HOME }}/.local/share/uv/tools
   when: "(nvim_plugin_result_by_repo['Davidyz/VectorCode'] | default({})).changed | default(false)"
 
 - name: "[archlinux] Setup terminal tools: install kitty nightly"

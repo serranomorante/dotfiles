@@ -28,6 +28,7 @@ vim.filetype.add({
     [".*/udev%-rules/.*%.rules"] = "udevrules",
     [".*/keyd/.*%.conf"] = "gitignore",
     [".*keyd.*%.conf"] = "gitignore",
+    [".*%.inc"] = "gitignore",
   },
 })
 

@@ -1,13 +1,20 @@
 ---
+- name: "[archlinux] Python tools: ensure virtualenv parent directory"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/data/apps/python-tools"
+    state: directory
+    mode: "755"
+
 - name: "[archlinux] Python tools: ensure virtualenv python packages"
   ansible.builtin.pip:
     name:
       - pip
       - hatch
       - poetry
-    virtualenv: ~/data/apps/python-tools/.venv
-    virtualenv_command: /usr/bin/python3 -m venv
+    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
     state: present
+  environment:
+    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/python-tools/.venv"
 
 - name: "[archlinux] Python tools: symlink python tools"
   ansible.builtin.file:

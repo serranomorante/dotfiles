@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run Node-based tooling inside Firejail.
+# This wrapper only handles the generic project-oriented workflow:
+# sandbox one project and execute a command inside it.
+# The profiles keep HOME exposure narrow; this wrapper adds the project or
+# command-specific paths plus the minimal env needed by the Node tool. Custom
+# wrappers can override the profile, chdir behavior, and selected forwarded env
+# vars via FJ_NODE_* env vars.
+#
+# Examples:
+#   fj-node online /path/to/project -- npm install
+#   fj-node local /path/to/project -- node script.js
+
+SCRIPT_NAME=fj-node
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
+source "${script_dir}/firejail-wrapper-common.bash"
+
+setup_node_env() {
+    local real_home=$1
+    local path_value=$2
+    local userconfig_path=$3
+    local ignore_scripts=$4
+
+    init_clean_env
+    append_common_terminal_env
+    append_env_literal HOME "$real_home"
+    append_env_literal PATH "$path_value"
+    append_env_literal NPM_CONFIG_UPDATE_NOTIFIER "${NPM_CONFIG_UPDATE_NOTIFIER:-false}"
+    append_env_literal NPM_CONFIG_FUND "${NPM_CONFIG_FUND:-false}"
+    append_env_literal NPM_CONFIG_USERCONFIG "$userconfig_path"
+    append_env_literal NPM_CONFIG_IGNORE_SCRIPTS "$ignore_scripts"
+    append_env_if_set NPM_CONFIG_PREFIX
+    append_env_if_set XDG_CACHE_HOME
+    append_env_if_set XDG_STATE_HOME
+    append_env_if_set XDG_DATA_HOME
+    append_env_if_set NPM_CONFIG_CACHE
+    append_env_if_set npm_config_store_dir
+    append_env_names_if_set "${FJ_NODE_FORWARD_ENV:-}"
+}
+
+resolve_profile_path() {
+    local real_home=$1
+    local profile_name=${FJ_NODE_PROFILE:-fj-node.profile}
+
+    if [[ "$profile_name" == /* ]]; then
+        printf '%s\n' "$profile_name"
+    else
+        firejail_profile_path "$real_home" "$profile_name"
+    fi
+}
+
+# Generic project mode: <network-mode> <project> -- <command ...>
+run_generic_mode() {
+    require_command_separator "$@"
+    command -v /usr/bin/firejail >/dev/null 2>&1 || die "firejail is required"
+
+    local network_mode=$1
+    local project_root
+    project_root=$(canonicalize_existing_dir "$2") || die "unable to resolve project path: $2"
+    shift 3
+
+    local real_home=${HOME:-}
+    local path_value=${PATH:-/usr/local/bin:/usr/bin:/bin}
+    local profile_path
+    local userconfig_path=${FJ_NODE_NPMRC_PATH:-/dev/null}
+    profile_path=$(resolve_profile_path "$real_home")
+
+    init_firejail_args "$profile_path" "$network_mode"
+    FIREJAIL_ARGS+=("--whitelist=${project_root}")
+    append_paths ro "${FJ_NODE_EXTRA_PATHS:-}"
+    append_paths rw "${FJ_NODE_WRITABLE_PATHS:-}"
+
+    if [[ "$userconfig_path" != "/dev/null" ]]; then
+        [[ "$userconfig_path" == /* ]] || die "FJ_NODE_NPMRC_PATH must be an absolute path"
+        append_optional_path ro "$userconfig_path"
+    fi
+
+    # The profile controls which host paths are visible and writable. Keep the
+    # runtime env minimal here and assume any external writable paths already exist.
+    setup_node_env "$real_home" "$path_value" "$userconfig_path" "${NPM_CONFIG_IGNORE_SCRIPTS:-true}"
+    if [[ "${FJ_NODE_NO_CHDIR:-0}" != "1" ]]; then
+        cd "$project_root"
+    fi
+    exec "${FIREJAIL_ARGS[@]}" "${ENV_ARGS[@]}" "$@"
+}
+
+run_generic_mode "$@"

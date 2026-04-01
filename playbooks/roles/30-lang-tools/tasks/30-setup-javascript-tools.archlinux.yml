@@ -1,15 +1,22 @@
 ---
-- name: "[archlinux] Javascript language: ensure eslint_d"
-  ansible.builtin.shell: >
-    source ~/.bashrc &&
-    {{ ansible_facts.env.HOME }}/.volta/bin/volta run --node {{ node_system_default_version }}
-    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) install --global {{ item.name }}@{{ item.version | default('latest') }}
-  changed_when: fact_npm_global_outdated[item.name] is defined or fact_npm_global_installed.dependencies[item.name] is undefined
-  when: fact_npm_global_outdated[item.name] is defined or fact_npm_global_installed.dependencies[item.name] is undefined
-  loop:
-    - name: eslint
-    - name: eslint_d
-    - name: js-beautify
+- name: "[archlinux] Javascript language: ensure npm packages"
+  community.general.npm:
+    name: "{{ item.name }}"
+    version: "{{ item.version }}"
+    global: true
+    state: present
+    executable: "{{ ansible_firejail_npm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
+    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_javascript_npm_prefix }}"
+  loop: "{{ node_javascript_npm_packages }}"
+
+- name: "[archlinux] Javascript language: symlink npm binaries"
+  ansible.builtin.file:
+    src: "{{ node_javascript_npm_prefix }}/bin/{{ item.1 }}"
+    dest: "{{ node_user_bin_dir }}/{{ item.1 }}"
+    state: link
+  loop: "{{ node_javascript_npm_packages | subelements('bins') }}"
 
 - name: "[archlinux] Javascript language: ensure FORMATTERS (using aur)"
   become: true
@@ -27,6 +34,7 @@
     force: true
     single_branch: true
     version: v{{ vscode_js_debug_version }}
+  register: var_clone_vscode_js_debug
 
 - name: "[archlinux] Javascript language: apply custom patch"
   ansible.builtin.command: git apply ~/dotfiles/assets/patches/vscode_js_debug_stderr.patch
@@ -34,11 +42,27 @@
     chdir: ~/data/repos/vscode-js-debug
   changed_when: false
 
-- name: "[archlinux] Javascript language: install vscode-js-debug"
-  ansible.builtin.shell: |
-    source ~/.bashrc
-    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) ci
-    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npx) gulp dapDebugServer
+- name: "[archlinux] Javascript language: stat vscode-js-debug build"
+  ansible.builtin.stat:
+    path: ~/data/repos/vscode-js-debug/dist/src/dapDebugServer.js
+  register: var_stat_vscode_js_debug
+
+- name: "[archlinux] Javascript language: install vscode-js-debug npm packages"
+  community.general.npm:
+    path: "{{ ansible_facts.env.HOME }}/data/repos/vscode-js-debug"
+    ci: true
+    executable: "{{ ansible_firejail_npm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
+  when: var_clone_vscode_js_debug.changed or not var_stat_vscode_js_debug.stat.exists
+
+- name: "[archlinux] Javascript language: build vscode-js-debug"
+  ansible.builtin.command:
+    argv:
+      - "{{ node_system_default_node_path }}"
+      - "{{ node_system_default_npx_path }}"
+      - gulp
+      - dapDebugServer
   args:
     chdir: ~/data/repos/vscode-js-debug
-    creates: ~/data/repos/vscode-js-debug/dist/src/dapDebugServer.js
+  when: var_clone_vscode_js_debug.changed or not var_stat_vscode_js_debug.stat.exists

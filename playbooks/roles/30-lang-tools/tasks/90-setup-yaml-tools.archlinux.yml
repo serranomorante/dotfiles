@@ -6,6 +6,23 @@
     name: yamllint
 
 - name: "[archlinux] Yaml language: ensure ansible-lint"
-  ansible.builtin.command: uv tool install --python=3.12 ansible-lint
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/uv-tools"
+      - --
+      - uv
+      - tool
+      - install
+      - --python=3.12
+      - ansible-lint
   args:
     creates: ~/.local/bin/ansible-lint
+  environment:
+    UV_TOOL_DIR: "{{ ansible_facts.env.HOME }}/.local/share/uv/tools"
+    UV_TOOL_BIN_DIR: "{{ ansible_facts.env.HOME }}/.local/bin"
+    FJ_PY_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/.local/bin
+      {{ ansible_facts.env.HOME }}/.local/share/uv
+      {{ ansible_facts.env.HOME }}/.local/share/uv/tools

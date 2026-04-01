@@ -5,3 +5,37 @@ vscode_js_debug_version: 1.96.0
 arch_superhtml_version: 0.5.3
 noise_suppression_for_voice_version: "1.10"
 vscode_go_version: "0.44"
+node_javascript_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/javascript-tools/.npm"
+node_javascript_npm_packages:
+  - name: eslint
+    version: 10.1.0
+    bins:
+      - eslint
+  - name: eslint_d
+    version: 15.0.2
+    bins:
+      - eslint_d
+  - name: js-beautify
+    version: 1.15.4
+    bins:
+      - js-beautify
+      - css-beautify
+      - html-beautify
+node_markdown_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/note-taking-tools/utilities/.npm"
+node_markdown_npm_packages:
+  - name: "@mermaid-js/mermaid-cli"
+    version: 11.12.0
+    bins:
+      - mmdc
+  - name: mermaid-filter
+    version: 1.4.7
+    bins:
+      - mermaid-filter
+  - name: mathjax-pandoc-filter
+    version: 0.4.1
+    bins:
+      - mathjax-pandoc-filter
+  - name: markdownlint-cli
+    version: 0.48.0
+    bins:
+      - markdownlint

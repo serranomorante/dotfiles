@@ -5,27 +5,45 @@
     state: present
     name: openai-codex
 
-- name: "[archlinux] Setup ai tools: ensure mcp servers"
-  ansible.builtin.shell: >
-    source ~/.bashrc &&
-    {{ ansible_facts.env.HOME }}/.volta/bin/volta run --node {{ node_system_default_version }}
-    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) install --global {{ item.name }}@{{ item.version | default('latest') }}
-  changed_when: true
-  when: fact_npm_global_outdated[item.name] is defined or fact_npm_global_installed.dependencies[item.name] is undefined
-  loop:
-    - name: mcp-hub
-    - name: figma-developer-mcp
-    - name: "@anthropic-ai/claude-code"
-    - name: "@google/gemini-cli"
-    - name: chrome-devtools-mcp
-    - name: playwright
-    - name: "@playwright/mcp"
-    - name: mcp-figma-comment-summary
-    - name: "@upstash/context7-mcp"
-    - name: cloudframework-projects-mcp
-    - name: "@zed-industries/claude-agent-acp"
-    - name: "@zed-industries/codex-acp"
-    - name: postman-cli
+- name: "[archlinux] Setup ai tools: ensure npm prefix"
+  ansible.builtin.file:
+    path: "{{ node_ai_npm_prefix }}"
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Setup ai tools: ensure npm packages"
+  community.general.npm:
+    name: "{{ item.name }}"
+    version: "{{ item.version }}"
+    global: true
+    state: present
+    executable: "{{ ansible_firejail_npm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
+    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_ai_npm_prefix }}"
+  loop: "{{ node_ai_npm_packages }}"
+
+- name: "[archlinux] Setup ai tools: symlink npm package binaries"
+  ansible.builtin.file:
+    state: link
+    src: "{{ node_ai_npm_prefix }}/bin/{{ item.1 }}"
+    dest: "{{ node_user_bin_dir }}/{{ item.1 }}"
+  loop: "{{ node_ai_npm_packages | subelements('bins') }}"
+
+- name: "[archlinux] Setup ai tools: remove postman mcp from global npm prefix"
+  community.general.npm:
+    name: "@postman/postman-mcp-server"
+    global: true
+    state: absent
+    executable: "{{ ansible_firejail_npm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
+    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_ai_npm_prefix }}"
+
+- name: "[archlinux] Setup ai tools: remove postman mcp global symlink"
+  ansible.builtin.file:
+    path: "{{ node_user_bin_dir }}/postman-mcp-server"
+    state: absent
 
 - name: "[archlinux] Setup ai tools: ensure postman mcp project path"
   ansible.builtin.file:
@@ -33,49 +51,56 @@
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup ai tools: write postman mcp package.json"
-  ansible.builtin.copy:
-    dest: "{{ postman_mcp_commentary_server_setup.project_path }}/package.json"
-    mode: "644"
-    content: |
-      {
-        "name": "postman-mcp-server-local",
-        "private": true,
-        "dependencies": {
-          "@postman/postman-mcp-server": "{{ postman_mcp_commentary_server_setup.version }}"
-        }
-      }
-  register: var_postman_mcp_package_json
-
-- name: "[archlinux] Setup ai tools: stat postman mcp server binary"
+- name: "[archlinux] Setup ai tools: stat postman pnpm modules metadata"
   ansible.builtin.stat:
-    path: "{{ postman_mcp_commentary_server_setup.exe_path }}"
-  register: var_stat_postman_mcp_server
+    path: "{{ postman_mcp_commentary_server_setup.project_path }}/node_modules/.modules.yaml"
+  register: var_stat_postman_mcp_modules_yaml
+
+- name: "[archlinux] Setup ai tools: read postman pnpm modules metadata"
+  ansible.builtin.slurp:
+    src: "{{ postman_mcp_commentary_server_setup.project_path }}/node_modules/.modules.yaml"
+  register: var_slurp_postman_mcp_modules_yaml
+  when: var_stat_postman_mcp_modules_yaml.stat.exists
+
+- name: "[archlinux] Setup ai tools: extract postman pnpm store path"
+  ansible.builtin.set_fact:
+    postman_mcp_node_modules_store_dir: >-
+      {{
+        (
+          var_slurp_postman_mcp_modules_yaml.content
+          | b64decode
+          | from_yaml
+        ).storeDir | default('')
+      }}
+  when: var_stat_postman_mcp_modules_yaml.stat.exists
+
+- name: "[archlinux] Setup ai tools: remove legacy postman node_modules"
+  ansible.builtin.file:
+    path: "{{ postman_mcp_commentary_server_setup.project_path }}/node_modules"
+    state: absent
+  when:
+    - var_stat_postman_mcp_modules_yaml.stat.exists
+    - postman_mcp_node_modules_store_dir | length > 0
+    - postman_mcp_node_modules_store_dir != postman_mcp_commentary_server_setup.host_store_dir
+    - not postman_mcp_node_modules_store_dir.startswith(postman_mcp_commentary_server_setup.host_store_dir ~ '/')
 
 - name: "[archlinux] Setup ai tools: ensure postman mcp server"
-  ansible.builtin.shell: >
-    source ~/.bashrc &&
-    {{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/pnpm install --prod
-  args:
-    chdir: "{{ postman_mcp_commentary_server_setup.project_path }}"
-  changed_when: true
-  when: var_postman_mcp_package_json.changed or not var_stat_postman_mcp_server.stat.exists
-
-- name: "[archlinux] Setup ai tools: register playwright path"
-  ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which playwright"
-  register: var_playwright_global_path
-  changed_when: false
-
-- name: "[archlinux] Setup ai tools: symlink playwright"
-  ansible.builtin.file:
-    state: link
-    src: "{{ var_playwright_global_path.stdout }}"
-    dest: ~/bin/playwright
+  community.general.pnpm:
+    name: "@postman/postman-mcp-server"
+    version: "{{ postman_mcp_commentary_server_setup.version }}"
+    path: "{{ postman_mcp_commentary_server_setup.project_path }}"
+    production: true
+    state: present
+    executable: "{{ ansible_firejail_pnpm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_PNPM_NODE_VERSION: "{{ node_system_default_version }}"
 
 - name: "[archlinux] Setup ai tools: execute playwright install"
-  ansible.builtin.shell: |
-    source ~/.bashrc
-    ~/bin/playwright install
+  ansible.builtin.command:
+    argv:
+      - "{{ node_system_default_node_path }}"
+      - "{{ node_ai_npm_prefix }}/bin/playwright"
+      - install
   environment:
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
   args:
@@ -88,10 +113,36 @@
     version: main
 
 - name: "[archlinux] Setup ai tools: ensure reaper-mcp-server"
-  ansible.builtin.shell: uv venv --seed && uv pip install . && uv pip install uv
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ reaper_mcp_server_setup.repo_path }}"
+      - --
+      - uv
+      - venv
+      - --seed
+      - .venv
   args:
     creates: "{{ reaper_mcp_server_setup.repo_path }}/.venv/bin/activate"
     chdir: "{{ reaper_mcp_server_setup.repo_path }}"
+
+- name: "[archlinux] Setup ai tools: install reaper-mcp-server"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ reaper_mcp_server_setup.repo_path }}"
+      - --
+      - "{{ reaper_mcp_server_setup.repo_path }}/.venv/bin/python"
+      - -m
+      - pip
+      - install
+      - .
+      - uv
+  args:
+    chdir: "{{ reaper_mcp_server_setup.repo_path }}"
+  changed_when: true
 
 - name: "[archlinux] Setup ai tools: register figma api key"
   ansible.builtin.command: kwallet-query --folder {{ folder }} --read-password {{ passkey }} {{ wallet }}

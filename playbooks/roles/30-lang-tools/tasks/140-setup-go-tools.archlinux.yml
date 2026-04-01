@@ -15,11 +15,22 @@
     single_branch: true
     version: release-v{{ vscode_go_version }}
 
-- name: "[archlinux] Go language: install vscode-go"
-  ansible.builtin.shell: |
-    source ~/.bashrc
-    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) ci
-    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) run compile
+- name: "[archlinux] Go language: install vscode-go npm packages"
+  community.general.npm:
+    path: "{{ ansible_facts.env.HOME }}/data/repos/vscode-go/extension"
+    ci: true
+    executable: "{{ ansible_firejail_npm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
+  changed_when: false
+
+- name: "[archlinux] Go language: build vscode-go"
+  ansible.builtin.command:
+    argv:
+      - "{{ node_system_default_node_path }}"
+      - "{{ node_system_default_npm_path }}"
+      - run
+      - compile
   args:
     chdir: ~/data/repos/vscode-go/extension
   changed_when: false

@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run Python tooling inside Firejail.
+# This wrapper only handles the generic project-oriented workflow:
+# sandbox one project and execute a command inside it.
+# The profiles keep HOME exposure narrow; this wrapper adds the project or
+# command-specific paths plus the minimal env needed by the Python tool. Custom
+# wrappers can override the profile, chdir behavior, and selected forwarded env
+# vars via FJ_PY_* env vars.
+#
+# Examples:
+#   fj-py online /path/to/project -- uv venv .venv
+#   fj-py offline /path/to/project -- python -m pytest
+
+SCRIPT_NAME=fj-py
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
+source "${script_dir}/firejail-wrapper-common.bash"
+
+print_help() {
+    cat <<'EOF'
+Usage:
+  fj-py <online|local|offline> <project> -- <command ...>
+  fj-py -h|--help
+
+Run Python tooling inside Firejail with <project> as the sandboxed work root.
+The wrapper starts from a clean environment, then forwards only the variables
+it explicitly knows about plus names listed in FJ_PY_FORWARD_ENV.
+
+Network modes:
+  online   Allow normal network access.
+  local    Allow Unix sockets only.
+  offline  Disable networking.
+
+Path controls:
+  FJ_PY_EXTRA_PATHS     Newline-delimited absolute paths exposed read-only.
+  FJ_PY_WRITABLE_PATHS  Newline-delimited absolute paths exposed read-write.
+  FJ_PY_FORWARD_ENV     Newline-delimited environment variable names to forward.
+  FJ_PY_PROFILE         Firejail profile name or absolute profile path.
+
+Examples:
+  fj-py online /path/to/project -- uv venv .venv
+  fj-py offline /path/to/project -- python -m pytest
+
+  cd ~/dir1
+  venv=$HOME/dir2/.venv
+  FJ_PY_PROFILE=fj-py-interactive.profile \
+  FJ_PY_EXTRA_PATHS=$venv \
+  fj-py local . -- bash -lc 'source "$HOME/dir2/.venv/bin/activate"; exec bash -i'
+
+  # Use FJ_PY_WRITABLE_PATHS=$venv instead of FJ_PY_EXTRA_PATHS=$venv when the
+  # command needs to install packages or otherwise modify that external venv.
+EOF
+}
+
+setup_python_env() {
+    local real_home=$1
+    local path_value=$2
+    local pip_config_file=$3
+    local pycache_root=$4
+
+    init_clean_env
+    append_common_terminal_env
+    append_env_literal HOME "$real_home"
+    append_env_literal PATH "$path_value"
+    append_env_literal PIP_DISABLE_PIP_VERSION_CHECK "${PIP_DISABLE_PIP_VERSION_CHECK:-1}"
+    append_env_literal PIP_CONFIG_FILE "$pip_config_file"
+    append_env_literal PYTHONPYCACHEPREFIX "$pycache_root"
+    append_env_if_set PYENV_VERSION
+    append_env_if_set UV_TOOL_DIR
+    append_env_if_set UV_TOOL_BIN_DIR
+    append_env_if_set UV_PROJECT_ENVIRONMENT
+    append_env_if_set UV_PYTHON_INSTALL_DIR
+    append_env_if_set UV_PYTHON_BIN_DIR
+
+    # External virtualenvs need explicit path exposure via FJ_PY_EXTRA_PATHS
+    # or FJ_PY_WRITABLE_PATHS before activation can source their activate file.
+    # EXTRA is read-only; WRITABLE allows package installs. FJ_PY_FORWARD_ENV
+    # is only needed when the invoked command refers to a host env var such as
+    # VIRTUAL_ENV instead of spelling out the path directly.
+    #
+    # Interactive shells should use FJ_PY_PROFILE=fj-py-interactive.profile so
+    # Firejail keeps the real /dev/pts terminal available for tty/stty/job control.
+    append_env_names_if_set "${FJ_PY_FORWARD_ENV:-}"
+}
+
+resolve_profile_path() {
+    local real_home=$1
+    local profile_name=${FJ_PY_PROFILE:-fj-py.profile}
+
+    if [[ "$profile_name" == /* ]]; then
+        printf '%s\n' "$profile_name"
+    else
+        firejail_profile_path "$real_home" "$profile_name"
+    fi
+}
+
+# <network-mode> <project> -- <command ...>
+main() {
+    case "${1:-}" in
+    -h | --help)
+        print_help
+        return 0
+        ;;
+    esac
+
+    require_command_separator "$@"
+    command -v /usr/bin/firejail >/dev/null 2>&1 || die "firejail is required"
+
+    local network_mode=$1
+    local project_root
+    project_root=$(canonicalize_existing_dir "$2") || die "unable to resolve project path: $2"
+    shift 3
+
+    local real_home=${HOME:-}
+    local path_value=${PATH:-/usr/local/bin:/usr/bin:/bin}
+    local profile_path
+    local pip_config_file=${FJ_PY_PIP_CONFIG_FILE:-/dev/null}
+    local pycache_root
+    pycache_root="${FJ_PY_PYCACHEPREFIX:-${real_home}/.cache/python/pycacheprefix}"
+    profile_path=$(resolve_profile_path "$real_home")
+
+    [[ "$pycache_root" == /* ]] || die "FJ_PY_PYCACHEPREFIX must be an absolute path"
+
+    init_firejail_args "$profile_path" "$network_mode"
+    FIREJAIL_ARGS+=("--whitelist=${project_root}")
+    append_paths ro "${FJ_PY_EXTRA_PATHS:-}"
+    append_paths rw "${FJ_PY_WRITABLE_PATHS:-}"
+
+    if [[ "$pip_config_file" != "/dev/null" ]]; then
+        [[ "$pip_config_file" == /* ]] || die "FJ_PY_PIP_CONFIG_FILE must be an absolute path"
+        append_optional_path ro "$pip_config_file"
+    fi
+
+    # The profile controls which host paths are visible and writable. Keep the
+    # runtime env minimal here and assume any external writable paths already exist.
+    setup_python_env "$real_home" "$path_value" "$pip_config_file" "$pycache_root"
+    if [[ "${FJ_PY_NO_CHDIR:-0}" != "1" ]]; then
+        cd "$project_root"
+    fi
+    exec "${FIREJAIL_ARGS[@]}" "${ENV_ARGS[@]}" "$@"
+}
+
+main "$@"

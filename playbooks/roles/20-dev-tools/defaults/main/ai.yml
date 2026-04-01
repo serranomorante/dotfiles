@@ -3,15 +3,71 @@ reaper_mcp_server_setup:
   repo_path: "{{ ansible_facts.env.HOME }}/data/repos/reaper-mcp-server"
   projects_dir: "{{ ansible_facts.env.HOME }}/data/audio-pjs"
 
+node_ai_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/.npm"
+node_ai_npm_packages:
+  - name: mcp-hub
+    version: 4.2.1
+    bins:
+      - mcp-hub
+  - name: figma-developer-mcp
+    version: 0.8.0
+    bins:
+      - figma-developer-mcp
+  - name: "@anthropic-ai/claude-code"
+    version: 2.1.90
+    bins:
+      - claude
+  - name: "@google/gemini-cli"
+    version: 0.36.0
+    bins:
+      - gemini
+  - name: chrome-devtools-mcp
+    version: 0.21.0
+    bins:
+      - chrome-devtools-mcp
+      - chrome-devtools
+  - name: playwright
+    version: 1.59.1
+    bins:
+      - playwright
+  - name: "@playwright/mcp"
+    version: 0.0.70
+    bins:
+      - playwright-mcp
+  - name: mcp-figma-comment-summary
+    version: 2.0.0
+    bins:
+      - mcp-figma-comment-summary
+  - name: "@upstash/context7-mcp"
+    version: 2.1.6
+    bins:
+      - context7-mcp
+  - name: cloudframework-projects-mcp
+    version: 1.5.0
+    bins:
+      - cloudframework-projects-mcp
+  - name: "@zed-industries/claude-agent-acp"
+    version: 0.23.1
+    bins:
+      - claude-agent-acp
+  - name: "@zed-industries/codex-acp"
+    version: 0.11.1
+    bins:
+      - codex-acp
+  - name: postman-cli
+    version: 1.33.2
+    bins:
+      - postman
+
 figma_mcp_server_setup:
-  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/figma-developer-mcp"
+  exe_path: "{{ node_user_bin_dir }}/figma-developer-mcp"
   keyrings:
     folder: dev-tools
     passkey: mcp-cf-figma
     wallet: kdewallet
 
 figma_mcp_commentary_server_setup:
-  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/mcp-figma-comment-summary"
+  exe_path: "{{ node_user_bin_dir }}/mcp-figma-comment-summary"
   keyrings:
     folder: dev-tools
     passkey: mcp-cf-figma
@@ -19,25 +75,26 @@ figma_mcp_commentary_server_setup:
 
 postman_mcp_commentary_server_setup:
   project_path: "{{ ansible_facts.env.HOME }}/.local/share/postman-mcp-server"
-  exe_path: "{{ postman_mcp_commentary_server_setup.project_path }}/node_modules/.bin/postman-mcp-server"
-  version: latest
+  host_store_dir: "{{ ansible_facts.env.HOME }}/.local/share/pnpm/store"
+  exe_path: "{{ postman_mcp_commentary_server_setup.project_path }}/node_modules/@postman/postman-mcp-server/dist/src/index.js"
+  version: 2.8.4
   keyrings:
     folder: dev-tools
     passkey: postman-mcp
     wallet: kdewallet
 
 chrome_devtools_mcp_server_setup:
-  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/chrome-devtools-mcp"
+  exe_path: "{{ node_user_bin_dir }}/chrome-devtools-mcp"
 
 playwright_mcp_server_setup:
-  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/playwright-mcp"
+  exe_path: "{{ node_user_bin_dir }}/playwright-mcp"
   keyrings:
     folder: dev-tools
     passkey: playwright_mcp_browser_key
     wallet: kdewallet
 
 context7_mcp_server_setup:
-  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/context7-mcp"
+  exe_path: "{{ node_user_bin_dir }}/context7-mcp"
 
 cf_projects_mcp_server_setup:
-  exe_path: "{{ ansible_facts.env.HOME }}/.volta/tools/image/node/{{ node_system_default_version }}/bin/cloudframework-projects-mcp"
+  exe_path: "{{ node_user_bin_dir }}/cloudframework-projects-mcp"

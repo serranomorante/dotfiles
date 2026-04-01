@@ -22,6 +22,11 @@
   tags: ["30-20"]
 
 - block:
+    - name: Prepare volta, npm, node, etc before javascript setup
+      ansible.builtin.include_role:
+        name: 20-dev-tools
+        tasks_from: node
+
     - name: Setup javascript tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
@@ -82,6 +87,11 @@
   tags: ["30-90"]
 
 - block:
+    - name: Prepare node before tools setup
+      ansible.builtin.include_role:
+        name: 20-dev-tools
+        tasks_from: node
+
     - name: Setup markdown tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
@@ -126,6 +136,11 @@
   tags: ["30-130"]
 
 - block:
+    - name: Prepare volta, npm, node, etc before go setup
+      ansible.builtin.include_role:
+        name: 20-dev-tools
+        tasks_from: node
+
     - name: Setup go tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:

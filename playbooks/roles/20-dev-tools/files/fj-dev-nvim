@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Open Neovim inside Firejail using the current directory as the default
+# writable work root. Existing file or directory arguments are whitelisted so
+# opening paths outside the cwd still works without a separate project wrapper.
+#
+# Examples:
+#   fj-dev-nvim
+#   fj-dev-nvim --net
+#   fj-dev-nvim ~/dotfiles
+#   fj-dev-nvim --root ~/dotfiles -- init.lua
+
+SCRIPT_NAME=fj-dev-nvim
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
+source "${script_dir}/firejail-wrapper-common.bash"
+
+canonicalize_existing_path() {
+    local path=$1
+    local dir
+    local base
+
+    [[ -e "$path" ]] || return 1
+    if [[ -d "$path" ]]; then
+        canonicalize_existing_dir "$path"
+        return 0
+    fi
+
+    dir=$(dirname "$path")
+    base=$(basename "$path")
+    dir=$(canonicalize_existing_dir "$dir") || return 1
+    printf '%s/%s\n' "$dir" "$base"
+}
+
+add_rw_path() {
+    local candidate=$1
+    local parent=
+
+    [[ -n "$candidate" ]] || return 0
+    if [[ ! -e "$candidate" ]]; then
+        if [[ "$candidate" == */* ]]; then
+            parent=$(dirname "$candidate")
+            [[ -d "$parent" ]] || return 0
+            candidate=$parent
+        else
+            return 0
+        fi
+    fi
+
+    if [[ -d "$candidate" ]]; then
+        candidate=$(canonicalize_existing_dir "$candidate") || return 0
+    else
+        candidate=$(canonicalize_existing_path "$candidate") || return 0
+        candidate=$(dirname "$candidate")
+    fi
+
+    RW_PATHS+="${candidate}"$'\n'
+}
+
+network_mode=local
+work_root=$(pwd -P)
+nvim_args=()
+real_home=${HOME:-}
+path_value=${PATH:-/usr/local/bin:/usr/bin:/bin}
+profile_path=$(firejail_profile_path "$real_home" "fj-dev-nvim.profile")
+nvim_bin="${real_home}/bin/nvim"
+forward_env=$'FZF_DEFAULT_COMMAND\nFZF_DEFAULT_OPTS\nFZF_DEFAULT_OPTS_FILE\nKITTY_LISTEN_ON\nNVIM_KITTY_LISTEN_ADDRESS'
+RW_PATHS=
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --net)
+        network_mode=online
+        shift
+        ;;
+    --root)
+        [[ $# -ge 2 ]] || die "expected a directory after --root"
+        work_root=$(canonicalize_existing_dir "$2") || die "unable to resolve work root: $2"
+        shift 2
+        ;;
+    --)
+        shift
+        nvim_args+=("$@")
+        break
+        ;;
+    *)
+        nvim_args+=("$1")
+        shift
+        ;;
+    esac
+done
+
+command -v /usr/bin/firejail >/dev/null 2>&1 || die "firejail is required"
+[[ -n "$real_home" ]] || die "HOME is required"
+[[ -x "$nvim_bin" ]] || die "missing Neovim wrapper: ${nvim_bin}"
+
+add_rw_path "$work_root"
+for arg in "${nvim_args[@]}"; do
+    [[ "$arg" == -* ]] && continue
+    add_rw_path "$arg"
+done
+
+init_firejail_args "$profile_path" "$network_mode"
+append_paths rw "$RW_PATHS"
+
+init_clean_env
+append_common_terminal_env
+append_env_literal HOME "$real_home"
+append_env_literal PATH "$path_value"
+append_env_names_if_set "$forward_env"
+
+cd "$work_root"
+exec "${FIREJAIL_ARGS[@]}" "${ENV_ARGS[@]}" "$nvim_bin" "${nvim_args[@]}"

@@ -1,9 +1,47 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
+# Wrapper around the real Neovim binary so `sudo nvim` still resolves the
+# original user's HOME/runtime paths, and so kitty-bound sessions can reuse an
+# existing server with `--server` or start one with `--listen` automatically.
+
 # Make it work with sudo
-ORIGINAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+ORIGINAL_HOME=
+if [[ -n "${SUDO_USER:-}" ]]; then
+    ORIGINAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6 || true)
+fi
 if [ -z "$ORIGINAL_HOME" ]; then
-  ORIGINAL_HOME=$HOME
+    ORIGINAL_HOME=$HOME
 fi
 
-VIMRUNTIME=$ORIGINAL_HOME/.local/share/nvim/runtime "$ORIGINAL_HOME/.local/bin/nvim" "$@"
+real_nvim="$ORIGINAL_HOME/.local/bin/nvim"
+server_address="${NVIM_KITTY_LISTEN_ADDRESS:-}"
+argv=("$@")
+
+# Reuse the kitty-tied Neovim server automatically when one is configured,
+# but stay out of the way for explicit client-server invocations.
+if [[ -n "$server_address" ]]; then
+    has_explicit_server_flag=0
+
+    for arg in "${argv[@]}"; do
+        case "$arg" in
+        # See https://neovim.io/doc/user/remote.html for Neovim's client-server
+        # flags, including the unsupported remote-wait variants we still detect.
+        --listen | --server | --remote | --remote-silent | --remote-wait | --remote-wait-silent | --remote-tab | --remote-tab-silent | --remote-tab-wait | --remote-tab-wait-silent | --remote-send | --remote-expr | --remote-ui)
+            has_explicit_server_flag=1
+            break
+            ;;
+        esac
+    done
+
+    if [[ "$has_explicit_server_flag" -eq 0 ]]; then
+        if nvr --nostart -s --servername "$server_address" &>/dev/null; then
+            argv=(--server "$server_address" "${argv[@]}")
+        else
+            argv=(--listen "$server_address" "${argv[@]}")
+        fi
+    fi
+fi
+
+VIMRUNTIME="$ORIGINAL_HOME/.local/share/nvim/runtime" "$real_nvim" "${argv[@]}"

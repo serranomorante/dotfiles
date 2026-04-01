@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Pnpm-shaped adapter for community.general.pnpm.
+# Ansible expects an executable that behaves like pnpm, while the generic
+# fj-node wrapper expects <network-mode> <project> -- <command...>. Keep the
+# pnpm-specific sandbox and store wiring here so fj-node stays generic-only.
+#
+# Examples:
+#   ANSIBLE_FIREJAIL_PNPM_NODE_VERSION=22.19.0 ansible-firejail-pnpm --version
+#   ANSIBLE_FIREJAIL_PNPM_NODE_VERSION=22.19.0 ansible-firejail-pnpm install
+
+SCRIPT_NAME=ansible-firejail-pnpm
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
+source "${script_dir}/firejail-wrapper-common.bash"
+
+main() {
+    require_env ANSIBLE_FIREJAIL_PNPM_NODE_VERSION
+
+    local real_home=${HOME:-}
+    local volta_home=${ANSIBLE_FIREJAIL_PNPM_VOLTA_HOME:-${real_home}/.volta}
+    local node_version=${ANSIBLE_FIREJAIL_PNPM_NODE_VERSION}
+    local node_root=${volta_home}/tools/image/node/${node_version}
+    local pnpm_executable=${node_root}/bin/pnpm
+    local work_root
+    work_root=$(pwd -P)
+    local cache_root=${ANSIBLE_FIREJAIL_PNPM_CACHE_DIR:-}
+    local state_root=${ANSIBLE_FIREJAIL_PNPM_STATE_DIR:-}
+    local data_root=${ANSIBLE_FIREJAIL_PNPM_DATA_DIR:-}
+    local store_root=${ANSIBLE_FIREJAIL_PNPM_STORE_DIR:-}
+    local writable_paths=${ANSIBLE_FIREJAIL_PNPM_WRITABLE_PATHS:-}
+    local userconfig_path=${ANSIBLE_FIREJAIL_PNPM_USERCONFIG:-/dev/null}
+    local delegated_env
+
+    [[ -x "$pnpm_executable" ]] || die "unable to resolve pnpm for node ${node_version}: ${pnpm_executable}"
+    work_root=$(canonicalize_existing_dir "$work_root") || die "unable to canonicalize work root: ${work_root}"
+
+    if [[ -n "$cache_root" ]]; then
+        cache_root=$(canonicalize_existing_dir "$cache_root") || die "unable to resolve pnpm cache dir: ${cache_root}"
+        writable_paths+=$'\n'"$cache_root"
+    fi
+    if [[ -n "$state_root" ]]; then
+        state_root=$(canonicalize_existing_dir "$state_root") || die "unable to resolve pnpm state dir: ${state_root}"
+        writable_paths+=$'\n'"$state_root"
+    fi
+    if [[ -n "$data_root" ]]; then
+        data_root=$(canonicalize_existing_dir "$data_root") || die "unable to resolve pnpm data dir: ${data_root}"
+        writable_paths+=$'\n'"$data_root"
+    fi
+    if [[ -n "$store_root" ]]; then
+        store_root=$(canonicalize_existing_dir "$store_root") || die "unable to resolve pnpm store dir: ${store_root}"
+        writable_paths+=$'\n'"$store_root"
+    fi
+
+    [[ "$userconfig_path" == "/dev/null" || "$userconfig_path" == /* ]] || die "ANSIBLE_FIREJAIL_PNPM_USERCONFIG must be an absolute path"
+
+    delegated_env=(
+        /usr/bin/env
+        "PATH=${node_root}/bin:${PATH:-/usr/local/bin:/usr/bin:/bin}"
+        "FJ_NODE_PROFILE=fj-node-ansible.profile"
+        "FJ_NODE_NO_CHDIR=1"
+        "FJ_NODE_NPMRC_PATH=${userconfig_path}"
+        "FJ_NODE_EXTRA_PATHS=${ANSIBLE_FIREJAIL_PNPM_EXTRA_PATHS:-}"
+        "FJ_NODE_WRITABLE_PATHS=${writable_paths}"
+        "NPM_CONFIG_IGNORE_SCRIPTS=${NPM_CONFIG_IGNORE_SCRIPTS:-false}"
+    )
+    if [[ -n "$cache_root" ]]; then
+        delegated_env+=("XDG_CACHE_HOME=${cache_root}")
+        delegated_env+=("NPM_CONFIG_CACHE=${NPM_CONFIG_CACHE:-${cache_root}/npm}")
+    fi
+    if [[ -n "$state_root" ]]; then
+        delegated_env+=("XDG_STATE_HOME=${state_root}")
+    fi
+    if [[ -n "$data_root" ]]; then
+        delegated_env+=("XDG_DATA_HOME=${data_root}")
+    fi
+    if [[ -n "$store_root" ]]; then
+        delegated_env+=("npm_config_store_dir=${store_root}")
+    fi
+
+    exec "${delegated_env[@]}" \
+        "${script_dir}/fj-node" online "$work_root" -- \
+        "$pnpm_executable" "$@"
+}
+
+main "$@"

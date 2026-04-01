@@ -1,6 +1,30 @@
 ---
 plantuml_compiled_jar_version: 1.2024.6
 node_system_default_version: 22.19.0
+node_user_bin_dir: "{{ ansible_facts.env.HOME }}/bin"
+node_volta_home: "{{ ansible_facts.env.HOME }}/.volta"
+node_system_default_bin_dir: "{{ node_volta_home }}/tools/image/node/{{ node_system_default_version }}/bin"
+node_system_default_node_path: "{{ node_system_default_bin_dir }}/node"
+node_system_default_npm_path: "{{ node_system_default_bin_dir }}/npm"
+node_system_default_npx_path: "{{ node_system_default_bin_dir }}/npx"
+python_firejail_executable: "{{ node_user_bin_dir }}/fj-py"
+node_firejail_executable: "{{ node_user_bin_dir }}/fj-node"
+nvim_firejail_executable: "{{ node_user_bin_dir }}/fj-dev-nvim"
+ansible_firejail_npm_executable: "{{ node_user_bin_dir }}/ansible-firejail-npm"
+ansible_firejail_pnpm_executable: "{{ node_user_bin_dir }}/ansible-firejail-pnpm"
+node_package_manager_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/node-package-managers/.npm"
+node_package_manager_packages:
+  - name: yarn
+    version: 1.22.22
+    bins:
+      - yarn
+      - yarnpkg
+  - name: pnpm
+    version: 10.33.0
+    bins:
+      - pnpm
+      - pnpx
+typescript_npm_version: 6.0.2
 rust_version: 1.75.0
 tmux_version: 3.5a
 archlinux_neovim_version: master

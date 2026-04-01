@@ -1,4 +1,44 @@
 ---
+- name: "[archlinux] Neovim: ensure user bin directory"
+  ansible.builtin.file:
+    path: "{{ node_user_bin_dir }}"
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Neovim: ensure firejail profile directory"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/.config/firejail"
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Neovim: install firejail profile"
+  ansible.builtin.template:
+    src: fj-dev-nvim.profile
+    dest: "{{ ansible_facts.env.HOME }}/.config/firejail/fj-dev-nvim.profile"
+    mode: "644"
+
+- name: "[archlinux] Neovim: install firejail wrapper helper"
+  ansible.builtin.copy:
+    src: firejail-wrapper-common.bash
+    dest: "{{ node_user_bin_dir }}/firejail-wrapper-common.bash"
+    mode: "755"
+
+- name: "[archlinux] Neovim: install firejail Neovim wrapper"
+  ansible.builtin.copy:
+    src: fj-dev-nvim
+    dest: "{{ nvim_firejail_executable }}"
+    mode: "755"
+
+- name: "[archlinux] Neovim: remove old firejail dev wrappers"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ ansible_facts.env.HOME }}/.config/firejail/fj-dev-node.profile"
+    - "{{ ansible_facts.env.HOME }}/.config/firejail/fj-dev-python.profile"
+    - "{{ node_user_bin_dir }}/fj-dev-node"
+    - "{{ node_user_bin_dir }}/fj-dev-python"
+
 - name: "[archlinux] Neovim: ensure Neovim - clone"
   ansible.builtin.git:
     repo: https://github.com/neovim/neovim

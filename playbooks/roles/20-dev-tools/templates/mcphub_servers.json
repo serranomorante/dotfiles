@@ -21,37 +21,54 @@
       ]
     },
     "Figma": {
-      "command": "{{ figma_mcp_server_setup.exe_path }}",
+      "command": "{{ node_system_default_node_path }}",
       "args": [
+        "{{ figma_mcp_server_setup.exe_path }}",
         "--figma-api-key={{ (mcp_server_figma_key | default({})).stdout | default(None) }}",
         "--stdio"
       ]
     },
     "figma-comments": {
-      "command": "{{ figma_mcp_commentary_server_setup.exe_path }}",
+      "command": "{{ node_system_default_node_path }}",
+      "args": [
+        "{{ figma_mcp_commentary_server_setup.exe_path }}"
+      ],
       "env": {
         "FIGMA_ACCESS_TOKEN": "{{ (mcp_server_figma_key | default({})).stdout | default(None) }}"
       }
     },
     "postman-mcp": {
-      "command": "{{ postman_mcp_commentary_server_setup.exe_path }}",
+      "command": "{{ node_system_default_node_path }}",
+      "args": [
+        "{{ postman_mcp_commentary_server_setup.exe_path }}"
+      ],
       "env": {
         "POSTMAN_API_KEY": "{{ (mcp_server_postman_key | default({})).stdout | default(None) }}"
       }
     },
     "cf-projects": {
-      "command": "{{ cf_projects_mcp_server_setup.exe_path }}"
+      "command": "{{ node_system_default_node_path }}",
+      "args": [
+        "{{ cf_projects_mcp_server_setup.exe_path }}"
+      ]
     },
     "chrome-devtools": {
-      "command": "{{ chrome_devtools_mcp_server_setup.exe_path }}",
-      "args": ["--browser-url=http://127.0.0.1:9222"]
+      "command": "{{ node_system_default_node_path }}",
+      "args": [
+        "{{ chrome_devtools_mcp_server_setup.exe_path }}",
+        "--browser-url=http://127.0.0.1:9222"
+      ]
     },
     "Context7": {
-      "command": "{{ context7_mcp_server_setup.exe_path }}"
+      "command": "{{ node_system_default_node_path }}",
+      "args": [
+        "{{ context7_mcp_server_setup.exe_path }}"
+      ]
     },
     "playwright": {
-      "command": "{{ playwright_mcp_server_setup.exe_path }}",
+      "command": "{{ node_system_default_node_path }}",
       "args": [
+        "{{ playwright_mcp_server_setup.exe_path }}",
         "--extension",
         "--shared-browser-context",
         "--executable-path",

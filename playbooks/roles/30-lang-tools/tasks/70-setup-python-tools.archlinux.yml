@@ -7,27 +7,30 @@
       - pydocstyle
       - pylsp-mypy
       - python-lsp-ruff # disables pycodestyle, pyflakes, mccabe, autopep8, yapf
-    virtualenv: ~/data/apps/lang-tools/pylsp/.venv
-    virtualenv_command: /usr/bin/python3 -m venv
+    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
     state: present
+  environment:
+    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/pylsp/.venv"
 
 - name: "[archlinux] Python language: ensure debugpy venv"
   ansible.builtin.pip:
     name:
       - pip
       - debugpy
-    virtualenv: ~/data/apps/lang-tools/debugpy/.venv
-    virtualenv_command: /usr/bin/python3 -m venv
+    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
     state: present
+  environment:
+    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/debugpy/.venv"
 
 - name: "[archlinux] Python language: ensure python tools"
   ansible.builtin.pip:
     name:
       - pip
       - cookiecutter
-    virtualenv: ~/data/apps/lang-tools/python-tools/.venv
-    virtualenv_command: /usr/bin/python3 -m venv
+    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
     state: present
+  environment:
+    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/python-tools/.venv"
 
 - name: "[archlinux] Python language: ensure symlinks"
   ansible.builtin.file:
@@ -44,9 +47,10 @@
     name:
       - pip
       - torch
-    virtualenv: ~/data/apps/lang-tools/ml-tools/.venv
-    virtualenv_command: python -m venv
+      - numpy
+    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
     state: present
   environment:
     PYENV_VERSION: "{{ python_ml_version }}"
+    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/ml-tools/.venv"
   timeout: 0

@@ -18,26 +18,6 @@
     - marksman
   changed_when: false
 
-- name: "[archlinux] Editor code generation: register volta's default node path"
-  ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which node"
-  register: var_system_default_node
-  changed_when: false
-
-- name: "[archlinux] Editor code generation: register volta's eslint_d path"
-  ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which eslint_d"
-  register: var_system_default_eslint_d
-  changed_when: false
-
-- name: "[archlinux] Editor code generation: register volta's eslint_d path"
-  ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which js-beautify"
-  register: var_system_default_js_beautify
-  changed_when: false
-
-- name: "[archlinux] Editor code generation: register volta's mcp-hub path"
-  ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta run --node '{{ node_system_default_version }}' which mcp-hub"
-  register: var_mcp_hub
-  changed_when: false
-
 - name: "[archlinux] Editor code generation: ensure binaries code-generation"
   ansible.builtin.blockinfile:
     dest: ~/.config/nvim/lua/serranomorante/binaries.lua
@@ -49,10 +29,10 @@
         {% for pkg_path in binaries.results -%}
           {{ pkg_path.executable | replace("-", "_") }} = function() return "{{ pkg_path.stdout }}" end,
         {% endfor %}
-        system_default_node = function() return "{{ var_system_default_node.stdout }}" end,
-        mcp_hub_executable = function() return "{{ var_mcp_hub.stdout }}" end,
-        eslint_d_executable = function() return "{{ var_system_default_eslint_d.stdout }}" end,
-        js_beautify_executable = function() return "{{ var_system_default_js_beautify.stdout }}" end,
+        system_default_node = function() return "{{ node_system_default_node_path }}" end,
+        mcp_hub_executable = function() return "{{ node_user_bin_dir }}/mcp-hub" end,
+        eslint_d_executable = function() return "{{ node_user_bin_dir }}/eslint_d" end,
+        js_beautify_executable = function() return "{{ node_user_bin_dir }}/js-beautify" end,
         vscode_js_debug_dap_executable = function() return vim.env.HOME .. "/data/repos/vscode-js-debug/dist/src/dapDebugServer.js" end,
         cppdbg_dap_executable = function() return vim.env.HOME .. "/data/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7" end,
         pylsp = function() return vim.env.HOME .. "/bin/pylsp" end,

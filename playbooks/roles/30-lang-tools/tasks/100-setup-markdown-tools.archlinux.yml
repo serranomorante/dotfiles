@@ -37,18 +37,23 @@
     aur_only: true
 
 - name: "[archlinux] Markdown language: ensure npm packages"
-  ansible.builtin.shell: >
-    source ~/.bashrc &&
-    {{ ansible_facts.env.HOME }}/.volta/bin/volta run --node {{ node_system_default_version }}
-    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) install --global {{ item.package }}@latest
-  changed_when: true
-  # if not installed or if not updated
-  when: fact_npm_global_outdated[item.package] is defined or fact_npm_global_installed.dependencies[item.package] is undefined
-  loop:
-    - { package: "@mermaid-js/mermaid-cli", name: mmdc }
-    - { package: mermaid-filter }
-    - { package: mathjax-pandoc-filter }
-    - { package: markdownlint-cli, name: markdownlint }
+  community.general.npm:
+    name: "{{ item.name }}"
+    version: "{{ item.version }}"
+    global: true
+    state: present
+    executable: "{{ ansible_firejail_npm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
+    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_markdown_npm_prefix }}"
+  loop: "{{ node_markdown_npm_packages }}"
+
+- name: "[archlinux] Markdown language: symlink npm binaries"
+  ansible.builtin.file:
+    src: "{{ node_markdown_npm_prefix }}/bin/{{ item.1 }}"
+    dest: "{{ node_user_bin_dir }}/{{ item.1 }}"
+    state: link
+  loop: "{{ node_markdown_npm_packages | subelements('bins') }}"
 
 - name: "[archlinux] Markdown language: ensure virtualenv packages"
   ansible.builtin.pip:
@@ -61,9 +66,10 @@
       - mdformat-frontmatter
       - mdformat-web
       - mdformat-wikilink
-    virtualenv: ~/data/apps/note-taking-tools/utilities/.venv
-    virtualenv_command: /usr/bin/python3 -m venv
+    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
     state: present
+  environment:
+    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/note-taking-tools/utilities/.venv"
 
 - name: "[archlinux] Markdown language: symlink virtualenv packages"
   ansible.builtin.file:

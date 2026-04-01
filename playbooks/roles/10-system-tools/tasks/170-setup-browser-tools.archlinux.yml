@@ -133,11 +133,42 @@
     - "{{ playwright_mcp_tempdir.path }}/playwright_mcp_public_key.patch"
   when: fact_changed_extensions['playwright-mcp'] and 'stdout' in var_playwright_mcp_browser_key
 
+- name: "[archlinux] Setup browser tools: stat playwright mcp package lock"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/data/repos/playwright-mcp/package-lock.json"
+  register: var_stat_playwright_mcp_package_lock
+  when:
+    - fact_changed_extensions['playwright-mcp']
+    - var_patch_playwright_mcp is success
+
+- name: "[archlinux] Setup browser tools: ensure playwright mcp package lock exists"
+  ansible.builtin.assert:
+    that:
+      - var_stat_playwright_mcp_package_lock.stat.exists
+    fail_msg: "playwright-mcp package-lock.json is required at the repo root for npm ci"
+  when:
+    - fact_changed_extensions['playwright-mcp']
+    - var_patch_playwright_mcp is success
+
+- name: "[archlinux] Setup browser tools: install playwright mcp npm packages"
+  community.general.npm:
+    path: "{{ ansible_facts.env.HOME }}/data/repos/playwright-mcp"
+    ci: true
+    executable: "{{ ansible_firejail_npm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
+  changed_when: fact_changed_extensions['playwright-mcp']
+  when:
+    - fact_changed_extensions['playwright-mcp']
+    - var_patch_playwright_mcp is success
+
 - name: "[archlinux] Setup browser tools: build playwright mcp"
-  ansible.builtin.shell: >
-    source ~/.bashrc &&
-    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) ci npm &&
-    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) run build
+  ansible.builtin.command:
+    argv:
+      - "{{ node_system_default_node_path }}"
+      - "{{ node_system_default_npm_path }}"
+      - run
+      - build
   args:
     chdir: ~/data/repos/playwright-mcp/packages/extension
   changed_when: fact_changed_extensions['playwright-mcp']
@@ -164,14 +195,27 @@
   args:
     creates: ~/data/apps/browser-tools/chrome/extensions/identity.pem
 
+- name: "[archlinux] Setup browser tools: stat promnesia build"
+  ansible.builtin.stat:
+    path: ~/data/repos/promnesia/extension/dist/chrome/manifest.json
+  register: var_stat_promnesia_build
+
+- name: "[archlinux] Setup browser tools: install promnesia npm packages"
+  community.general.npm:
+    path: "{{ ansible_facts.env.HOME }}/data/repos/promnesia/extension"
+    ci: true
+    executable: "{{ ansible_firejail_npm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
+  when: not var_stat_promnesia_build.stat.exists
+  ignore_errors: true
+
 - name: "[archlinux] Setup browser tools: build promnesia"
-  ansible.builtin.shell: |
-    $({{ ansible_facts.env.HOME }}/.volta/bin/volta which npm) ci
-    /usr/bin/python build --chrome --release
+  ansible.builtin.command: /usr/bin/python build --chrome --release
   args:
     chdir: ~/data/repos/promnesia/extension
-    creates: ~/data/repos/promnesia/extension/dist/chrome/manifest.json
   register: var_build_promnesia
+  when: not var_stat_promnesia_build.stat.exists
   ignore_errors: true
 
 - name: "[archlinux] Setup browser tools: register build dirs exists"

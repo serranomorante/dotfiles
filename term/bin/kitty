@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 
-NVIM_KITTY_LISTEN_ADDRESS="/tmp/$(uuidgen)" ~/.local/kitty.app/bin/kitty "$@"
+runtime_root=${XDG_RUNTIME_DIR:-"$HOME/.cache/nvim"}
+NVIM_KITTY_LISTEN_ADDRESS="${runtime_root}/nvim-kitty-$(uuidgen).sock" ~/.local/kitty.app/bin/kitty "$@"

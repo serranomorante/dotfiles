@@ -18,9 +18,10 @@
       - pip
       - redis
       - ansible
-    virtualenv: ~/data/apps/persistence-tools/.venv
-    virtualenv_command: /usr/bin/python3 -m venv
+    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
     state: latest
+  environment:
+    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/persistence-tools/.venv"
 
 - name: "[archlinux] Persistence tools: symlink virtualenv ansible"
   ansible.builtin.file:

@@ -22,7 +22,7 @@
     name:
       - pip
       - promnesia
-      - ~/data/repos/HPI
+      - "{{ ansible_facts.env.HOME }}/data/repos/HPI"
       # Optional dependencies
       - bs4
       - lxml
@@ -36,9 +36,12 @@
       - git+https://github.com/karlicoss/hypexport
       - browserexport
       - cachew
-    virtualenv: ~/data/apps/PKM/.venv
-    virtualenv_command: /usr/bin/python3 -m venv
+    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
     state: present
+  environment:
+    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/PKM/.venv"
+    ANSIBLE_FIREJAIL_PIP_EXTRA_PATHS: |
+      {{ ansible_facts.env.HOME }}/data/repos/HPI
 
 - name: "[archlinux] Setup HPI - clone h"
   ansible.builtin.git:
@@ -190,6 +193,9 @@
       --password hypothesis
   args:
     chdir: ~/data/repos/h
+  environment:
+    PYENV_VERSION: "{{ var_h_python_version.stdout }}"
+    VIRTUALENV_PIP: "24.0"
   register: ensure_hypothesis_user_result
   changed_when: "'commands succeeded' in ensure_hypothesis_user_result.stdout"
   failed_when:
@@ -204,6 +210,9 @@
   changed_when: "'commands succeeded' in ensure_admin_user_result.stdout"
   args:
     chdir: ~/data/repos/h
+  environment:
+    PYENV_VERSION: "{{ var_h_python_version.stdout }}"
+    VIRTUALENV_PIP: "24.0"
 
 - name: "[archlinux] Setup HPI - register authclient exists"
   # You must apply the `hypothesis_new_command.patch` patch first.
@@ -213,6 +222,9 @@
   register: register_auth_client_exists_result
   args:
     chdir: ~/data/repos/h
+  environment:
+    PYENV_VERSION: "{{ var_h_python_version.stdout }}"
+    VIRTUALENV_PIP: "24.0"
   changed_when: false
 
 - name: "[archlinux] Setup HPI - create new OAuth client"
@@ -226,6 +238,9 @@
   register: create_new_oauth_client_result
   args:
     chdir: ~/data/repos/h
+  environment:
+    PYENV_VERSION: "{{ var_h_python_version.stdout }}"
+    VIRTUALENV_PIP: "24.0"
   when: "'Auth client not found' in register_auth_client_exists_result.stdout"
   changed_when: "'commands succeeded' in create_new_oauth_client_result.stdout"
 

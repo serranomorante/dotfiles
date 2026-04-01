@@ -13,15 +13,46 @@
       - tk
       - uv
 
-- name: "[archlinux] Setup python: register pyenv binary"
-  ansible.builtin.command: which pyenv
-  register: pyenv_executable
-  changed_when: false
-
 - name: "[archlinux] Setup python: ensure user bin directory"
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/bin"
+    path: "{{ ansible_facts.env.HOME }}/bin"
     state: directory
+    mode: "755"
+
+- name: "[archlinux] Setup python: ensure firejail profile directory"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/.config/firejail"
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Setup python: install firejail profiles"
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "{{ ansible_facts.env.HOME }}/.config/firejail/{{ item }}"
+    mode: "644"
+  loop:
+    - dev-tools-common.inc
+    - dev-editor-shell-common.inc
+    - fj-py.profile
+    - fj-py-interactive.profile
+    - fj-py-ansible.profile
+
+- name: "[archlinux] Setup python: install firejail wrapper helper"
+  ansible.builtin.copy:
+    src: firejail-wrapper-common.bash
+    dest: "{{ ansible_facts.env.HOME }}/bin/firejail-wrapper-common.bash"
+    mode: "755"
+
+- name: "[archlinux] Setup python: install generic firejail python wrapper"
+  ansible.builtin.copy:
+    src: fj-py
+    dest: "{{ python_firejail_executable }}"
+    mode: "755"
+
+- name: "[archlinux] Setup python: install ansible firejail pip wrapper"
+  ansible.builtin.copy:
+    src: ansible-firejail-pip
+    dest: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
     mode: "755"
 
 - name: "[archlinux] Setup python: ensure startup setup scripts"
@@ -33,7 +64,7 @@
     block: |
       {% if 'dot-bashrc' in item.script %}
       export PYENV_ROOT="$HOME/.pyenv"
-      export PATH="{{ pyenv_executable.stdout }}:$PATH"
+      export PATH="/usr/bin/pyenv:$PATH"
       eval "$(pyenv init - bash)"
       {% endif %}
   loop:
@@ -54,8 +85,24 @@
   changed_when: false
 
 - name: "[archlinux] Setup python: upgrade pip for managed versions"
-  ansible.builtin.command: pyenv exec python -m pip install --upgrade pip
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/python-package-installs/pyenv-{{ item }}"
+      - --
+      - pyenv
+      - exec
+      - python
+      - -m
+      - pip
+      - install
+      - --upgrade
+      - pip
   environment:
     PYENV_VERSION: "{{ item }}"
+    FJ_PY_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/.pyenv/versions/{{ item }}
+      {{ ansible_facts.env.HOME }}/.pyenv/shims
   loop: "{{ python_versions }}"
   changed_when: true

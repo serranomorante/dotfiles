@@ -61,6 +61,7 @@
       - ncdu
       - btop
       - bluez
+      - firejail
       # - kde-applications
   timeout: 0
   notify:

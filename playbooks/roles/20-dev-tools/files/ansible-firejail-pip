@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Pip-shaped adapter for ansible.builtin.pip.
+# Ansible expects an executable that behaves like pip, while the generic fj-py
+# wrapper expects <network-mode> <project> -- <command...>. Keep only the venv
+# bootstrap and pip adapter logic here, then delegate sandbox execution to fj-py.
+#
+# Examples:
+#   ANSIBLE_FIREJAIL_PIP_VENV=/abs/path/.venv ansible-firejail-pip install hatch
+#   PYENV_VERSION=3.13.2 ANSIBLE_FIREJAIL_PIP_VENV=/abs/path/.venv ansible-firejail-pip list
+
+SCRIPT_NAME=ansible-firejail-pip
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
+source "${script_dir}/firejail-wrapper-common.bash"
+
+venv_needs_rebuild() {
+    local venv_dir=$1
+    local requested_python=$2
+    local current_python
+
+    [[ -e "$venv_dir/bin/python" ]] || return 0
+    current_python=$(readlink -f "$venv_dir/bin/python" 2>/dev/null || true)
+    [[ -n "$current_python" ]] || return 0
+    [[ "$current_python" != "$requested_python" ]]
+}
+
+expand_user_args() {
+    local real_home=$1
+    shift
+
+    local arg
+    EXPANDED_ARGS=()
+    for arg in "$@"; do
+        if [[ -n "$real_home" && "$arg" == "~/"* ]]; then
+            EXPANDED_ARGS+=("$real_home/${arg#~/}")
+        else
+            EXPANDED_ARGS+=("$arg")
+        fi
+    done
+}
+
+is_read_only_command() {
+    case "${1:-}" in
+    "" | list | freeze | show | inspect | check | config | cache | completion | debug | help | --help | -h)
+        return 0
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
+is_create_venv_command() {
+    case "${1:-}" in
+    install)
+        return 0
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
+main() {
+    require_env ANSIBLE_FIREJAIL_PIP_VENV
+    command -v pyenv >/dev/null 2>&1 || die "pyenv is required"
+
+    local real_home=${HOME:-}
+    local venv_dir=${ANSIBLE_FIREJAIL_PIP_VENV}
+    local venv_parent
+    venv_parent=$(dirname "$venv_dir")
+    local venv_python_target="$venv_dir/bin/python"
+    local sandbox_python=/usr/bin/python3
+    local subcommand=${1:-}
+    local base_python
+
+    [[ "$venv_dir" == /* ]] || die "ANSIBLE_FIREJAIL_PIP_VENV must be an absolute path"
+
+    base_python=$(pyenv which python) || die "unable to resolve python via pyenv"
+    base_python=$(readlink -f "$base_python")
+
+    if [[ ! -x "$venv_dir/bin/python" ]]; then
+        if is_create_venv_command "$subcommand"; then
+            "$base_python" -m venv "$venv_dir"
+        elif is_read_only_command "$subcommand"; then
+            exit 0
+        else
+            exit 0
+        fi
+    fi
+
+    if is_create_venv_command "$subcommand" && venv_needs_rebuild "$venv_dir" "$base_python"; then
+        rm -rf "$venv_dir"
+        "$base_python" -m venv "$venv_dir"
+    fi
+
+    [[ -x "$venv_dir/bin/python" ]] || die "virtual environment is missing python executable: ${venv_dir}/bin/python"
+
+    expand_user_args "$real_home" "$@"
+    local pip_config_file=${ANSIBLE_FIREJAIL_PIP_CONFIG_FILE:-/dev/null}
+    exec /usr/bin/env \
+        FJ_PY_PROFILE=fj-py-ansible.profile \
+        FJ_PY_NO_CHDIR=1 \
+        FJ_PY_PIP_CONFIG_FILE="$pip_config_file" \
+        FJ_PY_EXTRA_PATHS="${ANSIBLE_FIREJAIL_PIP_EXTRA_PATHS:-}" \
+        FJ_PY_WRITABLE_PATHS="${ANSIBLE_FIREJAIL_PIP_WRITABLE_PATHS:-}" \
+        "${script_dir}/fj-py" online "$venv_parent" -- \
+        "$sandbox_python" -m pip --python "$venv_python_target" "${EXPANDED_ARGS[@]}"
+}
+
+main "$@"

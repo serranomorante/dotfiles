@@ -160,9 +160,10 @@
     name:
       - distro
       - pylspci
-    virtualenv: ~/data/apps/video-tools/.venv
-    virtualenv_command: /usr/bin/python3 -m venv
+    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
     state: present
+  environment:
+    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/video-tools/.venv"
 
 - name: "[archlinux] Setup video tools: clone davinci-resolve-checker repo"
   ansible.builtin.git:
