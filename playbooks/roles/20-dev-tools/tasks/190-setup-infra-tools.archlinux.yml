@@ -1,0 +1,124 @@
+---
+- name: "[archlinux] Setup infra tools: install packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - yq
+      - kustomize
+      - kubectl
+
+- name: "[archlinux] Setup infra tools: setup k3s"
+  vars:
+    k3s_install_version: "v1.26.3+k3s1"
+    k3s_install_exec: "server --disable=traefik"
+    k3s_install_script_path: /tmp/get.k3s.sh
+    k3s_system_kubeconfig_path: /etc/rancher/k3s/k3s.yaml
+    k3s_user_kubeconfig_dir: "{{ ansible_facts.env.HOME }}/.kube"
+    k3s_user_kubeconfig_path: "{{ k3s_user_kubeconfig_dir }}/config"
+    k3s_service_env_path: /etc/systemd/system/k3s.service.env
+  block:
+    - name: "[archlinux] Setup infra tools: inspect k3s version"
+      become: true
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/k3s
+          - --version
+      register: var_k3s_version
+      changed_when: false
+      failed_when: false
+
+    - name: "[archlinux] Setup infra tools: stat k3s service env"
+      become: true
+      ansible.builtin.stat:
+        path: "{{ k3s_service_env_path }}"
+      register: var_k3s_service_env
+
+    - name: "[archlinux] Setup infra tools: read k3s service env"
+      become: true
+      ansible.builtin.slurp:
+        src: "{{ k3s_service_env_path }}"
+      register: var_k3s_service_env_slurp
+      when: var_k3s_service_env.stat.exists
+
+    - name: "[archlinux] Setup infra tools: determine whether k3s reinstall is required"
+      ansible.builtin.set_fact:
+        k3s_reinstall_required: >-
+          {{
+            var_k3s_version.rc != 0
+            or k3s_install_version not in (var_k3s_version.stdout | default(''))
+            or k3s_install_exec not in ((var_k3s_service_env_slurp.content | default('')) | b64decode)
+          }}
+
+    - name: "[archlinux] Setup infra tools: download k3s install script"
+      become: true
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: "{{ k3s_install_script_path }}"
+        mode: "755"
+      when: k3s_reinstall_required
+
+    - name: "[archlinux] Setup infra tools: install k3s"
+      become: true
+      ansible.builtin.command:
+        argv:
+          - "{{ k3s_install_script_path }}"
+      environment:
+        INSTALL_K3S_VERSION: "{{ k3s_install_version }}"
+        INSTALL_K3S_EXEC: "{{ k3s_install_exec }}"
+        K3S_KUBECONFIG_MODE: "644"
+      changed_when: true
+      when: k3s_reinstall_required
+
+    - name: "[archlinux] Setup infra tools: ensure k3s service"
+      become: true
+      ansible.builtin.systemd_service:
+        name: k3s
+        enabled: false
+        state: started
+
+    - name: "[archlinux] Setup infra tools: wait for k3s kubeconfig"
+      become: true
+      ansible.builtin.wait_for:
+        path: "{{ k3s_system_kubeconfig_path }}"
+        timeout: 120
+
+    - name: "[archlinux] Setup infra tools: fix k3s kubeconfig permissions"
+      become: true
+      ansible.builtin.file:
+        path: "{{ k3s_system_kubeconfig_path }}"
+        state: file
+        mode: "0644"
+
+    - name: "[archlinux] Setup infra tools: ensure user kube directory"
+      ansible.builtin.file:
+        path: "{{ k3s_user_kubeconfig_dir }}"
+        state: directory
+        mode: "755"
+
+    - name: "[archlinux] Setup infra tools: install user kubeconfig"
+      become: true
+      become_user: "{{ ansible_facts.env.USER }}"
+      ansible.builtin.copy:
+        src: "{{ k3s_system_kubeconfig_path }}"
+        dest: "{{ k3s_user_kubeconfig_path }}"
+        remote_src: true
+        mode: "0644"
+
+    - name: "[archlinux] Setup infra tools: wait for kubectl node access"
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - get
+          - nodes
+          - -o
+          - name
+      environment:
+        KUBECONFIG: "{{ k3s_user_kubeconfig_path }}"
+      register: var_k3s_nodes
+      changed_when: false
+      retries: 20
+      delay: 6
+      until:
+        - var_k3s_nodes.rc == 0
+        - var_k3s_nodes.stdout_lines | length > 0
