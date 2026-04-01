@@ -1,5 +1,19 @@
 local M = {}
 
+---@param diagnostic? vim.Diagnostic
+---@param bufnr integer
+local function open_diagnostic_jump_float(diagnostic, bufnr)
+  if not diagnostic then return end
+
+  vim.diagnostic.open_float({
+    bufnr = bufnr,
+    scope = "line",
+    border = "single",
+    source = true,
+    focus = false,
+  })
+end
+
 local function init()
   vim.lsp.config("*", {
     roor_markers = {
@@ -20,7 +34,7 @@ local function init()
     },
     virtual_text = { source = true },
     float = { border = "single", source = true },
-    jump = { float = { scope = "line" } },
+    jump = { on_jump = open_diagnostic_jump_float },
   })
 end
 
