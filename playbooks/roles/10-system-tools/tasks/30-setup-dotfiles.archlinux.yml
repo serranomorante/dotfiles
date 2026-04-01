@@ -102,6 +102,8 @@
 - name: "[archlinux] Dotfiles: apply stow public packages"
   ansible.builtin.command: >
     stow --dotfiles --no-folding
+    --ignore=\.codex
+    --ignore=\.claude
     dunst
     lazygit
     nvim
@@ -119,7 +121,11 @@
   changed_when: false
 
 - name: "[archlinux] Dotfiles: apply stow private package"
-  ansible.builtin.command: stow --dotfiles --no-folding for-my-eyes-only
+  ansible.builtin.command: >
+    stow --dotfiles --no-folding
+    --ignore=\.codex
+    --ignore=\.claude
+    for-my-eyes-only
   args:
     chdir: ~/dotfiles
   changed_when: false

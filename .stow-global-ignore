@@ -22,3 +22,5 @@ _darcs
 ^/COPYING
 
 ^/docs
+
+(^|/)\.codex$

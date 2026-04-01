@@ -1,2 +1,5 @@
 \.mypy_cache.*
 \.editorconfig.*
+^/\.codex$
+__pycache__
+\.pyc$

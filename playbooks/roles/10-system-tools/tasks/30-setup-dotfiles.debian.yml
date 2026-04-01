@@ -46,6 +46,8 @@
 - name: "[debian] Dotfiles: apply stow"
   ansible.builtin.command: >
     ~/.local/bin/stow --dotfiles
+    --ignore=\.codex
+    --ignore=\.claude
     nvim
     tmux
   args:

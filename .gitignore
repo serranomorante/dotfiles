@@ -20,3 +20,4 @@ nvim/dot-config/nvim/parser
 nvim/dot-config/nvim/queries
 utilities/dot-config/remind
 .gitconfig
+.codex
