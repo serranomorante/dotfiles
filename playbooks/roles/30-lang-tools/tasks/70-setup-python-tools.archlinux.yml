@@ -38,3 +38,15 @@
     - { dir: python-tools, bin: cookiecutter }
     - { dir: debugpy, bin: debugpy }
     - { dir: pylsp, bin: pylsp }
+
+- name: "[archlinux] Python language: ensure ML dependencies"
+  ansible.builtin.pip:
+    name:
+      - pip
+      - torch
+    virtualenv: ~/data/apps/lang-tools/ml-tools/.venv
+    virtualenv_command: python -m venv
+    state: present
+  environment:
+    PYENV_VERSION: "{{ python_ml_version }}"
+  timeout: 0

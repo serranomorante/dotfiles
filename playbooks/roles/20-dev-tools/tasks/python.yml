@@ -1,0 +1,22 @@
+---
+- block:
+    - name: Setup python
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 30-setup-python.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["20-30"]
+
+- block:
+    - name: Setup python tools
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 40-setup-python-tools.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["20-40"]

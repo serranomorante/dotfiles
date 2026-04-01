@@ -98,3 +98,10 @@ treesitter_parsers:
     filetype: kitty
   - repo: https://github.com/milisims/tree-sitter-org
     filetype: org
+
+python_ml_version: 3.14.3
+
+python_versions:
+  - 3.11.2
+  - 3.11.3
+  - "{{ python_ml_version }}"
