@@ -16,7 +16,7 @@ git:
   autoForwardBranches: none
   branchLogCmd: "git log --graph --color=always --abbrev-commit --decorate --date=relative --pretty=medium --oneline {{branchName}} --"
   autoStageResolvedConflicts: false
-  autoFetch: true
+  autoFetch: false
   pagers:
     # Delta is provided by Git's diff.external config.
     - useExternalDiffGitConfig: true
@@ -28,6 +28,8 @@ os:
   editInTerminal: false
   open: 'open_in_nvim lazygit_open "$(printf %q {{filename}})"'
   openDirInEditor: 'open_in_nvim lazygit_open_dir_in_editor "{{dir}}"'
+refresher:
+  refreshInterval: 1
 promptToReturnFromSubprocess: false
 notARepository: 'quit'
 customCommands:
