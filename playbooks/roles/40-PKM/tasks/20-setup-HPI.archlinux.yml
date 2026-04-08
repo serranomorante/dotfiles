@@ -111,7 +111,6 @@
     mode: "644"
   loop:
     - hypothesis_h.patch
-    - hypothesis_new_command.patch
 
 - name: "[archlinux] Setup HPI - patch hypothesis h"
   ansible.posix.patch:
@@ -120,7 +119,43 @@
     strip: 1
   loop:
     - "{{ var_hypothesis_tempdir.path }}/hypothesis_h.patch"
-    - "{{ var_hypothesis_tempdir.path }}/hypothesis_new_command.patch"
+
+- name: "[archlinux] Setup HPI - ensure authclient find command"
+  ansible.builtin.blockinfile:
+    path: ~/data/repos/h/h/cli/commands/authclient.py
+    insertafter: '^    click\.echo\(message\)$'
+    marker: "# {mark} hypothesis authclient find"
+    block: |
+
+      @authclient.command()
+      @click.option("--name", prompt=True, help="The name of the client")
+      @click.option(
+          "--authority",
+          prompt=False,
+          help="The authority (domain name) of the resources managed by the client",
+      )
+      @click.option(
+          "--redirect-uri",
+          prompt=False,
+          help="URI for browser redirect after authorization",
+      )
+      @click.pass_context
+      def find(ctx, name, authority, redirect_uri):
+          """Find the newest OAuth client matching the provided attributes."""
+          request = ctx.obj["bootstrap"]()
+
+          query = request.db.query(models.AuthClient).filter(
+              models.AuthClient.name == name
+          )
+          if authority is not None:
+              query = query.filter(models.AuthClient.authority == authority)
+          if redirect_uri is not None:
+              query = query.filter(models.AuthClient.redirect_uri == redirect_uri)
+          exists = query.order_by(models.AuthClient.created.desc()).first()
+          if not exists:
+              click.echo("Auth client not found")
+              return
+          click.echo(f"Client ID: {exists.id}")
 
 - name: "[archlinux] Setup HPI - remove tempdir"
   ansible.builtin.file:
@@ -215,10 +250,11 @@
     VIRTUALENV_PIP: "24.0"
 
 - name: "[archlinux] Setup HPI - register authclient exists"
-  # You must apply the `hypothesis_new_command.patch` patch first.
   ansible.builtin.command: >
     pyenv exec tox -qe dev -- sh bin/hypothesis --dev authclient find
       --name "Chrome Extension"
+      --authority "localhost"
+      --redirect-uri "chrome-extension://{{ local_hypothesis_extension }}"
   register: register_auth_client_exists_result
   args:
     chdir: ~/data/repos/h
@@ -287,9 +323,12 @@
   ansible.builtin.shell: >
     source ~/.bashrc &&
     make build SETTINGS_FILE=settings/custom-dev.json
+  register: prepare_hypothesis_extension_result
   args:
-    creates: ~/data/repos/hypothesis-extension/build/manifest.json
     chdir: ~/data/repos/hypothesis-extension
+  changed_when:
+    - "'Nothing to be done' not in prepare_hypothesis_extension_result.stdout"
+    - "'Nothing to be done' not in prepare_hypothesis_extension_result.stderr"
 
 - name: "[archlinux] Setup HPI: version to extensionator path"
   ansible.builtin.shell: set -o pipefail && fd 'extensionator' ~/.local/share/gem/ruby -t x -1 | grep -oP "\/\K\d[^/]+" -m 1

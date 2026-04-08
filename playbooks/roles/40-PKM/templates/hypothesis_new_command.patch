@@ -1,40 +1,56 @@
 diff --git a/h/cli/commands/authclient.py b/h/cli/commands/authclient.py
-index f0b1244..62ef96b 100644
+index f0b1244..9b997df 100644
 --- a/h/cli/commands/authclient.py
 +++ b/h/cli/commands/authclient.py
-@@ -58,3 +58,16 @@ def add(ctx, name, authority, type_, redirect_uri, grant_type):  # noqa: PLR0913
+@@ -58,3 +58,25 @@ def add(ctx, name, authority, type_, redirect_uri, grant_type):  # noqa: PLR0913
          message += f"\nClient Secret: {secret}"
  
      click.echo(message)
 +
 +@authclient.command()
 +@click.option("--name", prompt=True, help="The name of the client")
++@click.option(
++    "--authority",
++    prompt=False,
++    help="The authority (domain name) of the resources managed by the client",
++)
++@click.option(
++    "--redirect-uri",
++    prompt=False,
++    help="URI for browser redirect after authorization",
++)
 +@click.pass_context
-+def find(ctx, name):
-+    """Find fist OAuth client by name."""
++def find(ctx, name, authority, redirect_uri):
++    """Find the newest OAuth client matching the provided attributes."""
 +    request = ctx.obj["bootstrap"]()
 +
-+    exists = models.AuthClient.get_by_name(request.db, name)
++    exists = models.AuthClient.find(
++        request.db, name=name, authority=authority, redirect_uri=redirect_uri
++    )
 +    if not exists:
 +        click.echo("Auth client not found")
 +        return
 +    click.echo(f"Client ID: {exists.id}")
 diff --git a/h/models/auth_client.py b/h/models/auth_client.py
-index bf3dca8..1e8a7b3 100644
+index bf3dca8..f0ac4c1 100644
 --- a/h/models/auth_client.py
 +++ b/h/models/auth_client.py
-@@ -117,5 +117,14 @@ class AuthClient(Base, Timestamps):
-         nullable=False,
+@@ -117,6 +117,18 @@ class AuthClient(Base, Timestamps):
+        server_default=sa.sql.expression.false(),
+        nullable=False,
      )
  
 +    @classmethod
-+    def get_by_name(cls, session, name):
-+        """Fetch first OAuth client by name."""
-+        return (
-+            session.query(cls)
-+            .filter(cls.name == name)
-+            .first()
-+        )
++    def find(cls, session, name=None, authority=None, redirect_uri=None):
++        """Fetch the newest OAuth client matching the provided attributes."""
++        query = session.query(cls)
++        if name is not None:
++            query = query.filter(cls.name == name)
++        if authority is not None:
++            query = query.filter(cls.authority == authority)
++        if redirect_uri is not None:
++            query = query.filter(cls.redirect_uri == redirect_uri)
++        return query.order_by(cls.created.desc()).first()
 +
      def __repr__(self):
          return f"AuthClient(id={self.id!r})"
