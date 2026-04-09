@@ -16,6 +16,65 @@
     validate: visudo -cf %s
 
 - block:
+    - name: "[archlinux] Setup backup tools: stat private browser defaults"
+      ansible.builtin.stat:
+        path: ~/dotfiles/for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/defaults/main/main.vars.yml
+      register: var_stat_private_browser_defaults
+
+    - name: "[archlinux] Setup backup tools: load private browser defaults"
+      ansible.builtin.include_vars:
+        file: ../../../../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/defaults/main/main.vars.yml
+        name: private_browser_defaults
+      when: var_stat_private_browser_defaults.stat.exists
+
+    - name: "[archlinux] Setup backup tools: set managed browser profile backup candidates"
+      ansible.builtin.set_fact:
+        managed_browser_profile_backup_candidates: >-
+          {{
+            (managed_browser_profile_backup_candidates | default([]))
+            + (
+              (
+                (item.profiles | default([]) | length) > 0
+              )
+              | ternary(
+                [item.root ~ '/Local State']
+                + (
+                  item.profiles
+                  | map(attribute='profile')
+                  | map('regex_replace', '^', item.root ~ '/')
+                  | list
+                ),
+                []
+              )
+            )
+          }}
+      loop:
+        - root: "{{ ansible_facts.env.HOME }}/.config/BraveSoftware/Brave-Browser"
+          profiles: "{{ ((private_browser_defaults | default({})).brave_profiles) | default([]) }}"
+        - root: "{{ ansible_facts.env.HOME }}/.config/chromium"
+          profiles: "{{ ((private_browser_defaults | default({})).chromium_profiles) | default([]) }}"
+      when: var_stat_private_browser_defaults.stat.exists
+
+    - name: "[archlinux] Setup backup tools: stat managed browser profile backup candidates"
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop: "{{ managed_browser_profile_backup_candidates | default([]) }}"
+      register: var_managed_browser_profile_backup_candidates
+
+    - name: "[archlinux] Setup backup tools: extend user-data backup paths with managed browser profiles"
+      ansible.builtin.set_fact:
+        user_data_backup_env: >-
+          {{
+            user_data_backup_env
+            | union(
+              var_managed_browser_profile_backup_candidates.results
+              | selectattr('stat.exists')
+              | map(attribute='item')
+              | list
+            )
+          }}
+      when: (var_managed_browser_profile_backup_candidates.results | default([]) | length) > 0
+
     - name: "[archlinux] Setup backup tools: stat local backup drives"
       ansible.builtin.stat:
         path: "{{ item }}"
@@ -65,6 +124,7 @@
         borg_repo: "{{ item.repo }}"
         keyrings: "{{ item.keyrings }}"
         files: "{{ item.files }}"
+        excludes: "{{ item.excludes | default([]) }}"
       loop: "{{ archlinux_borg_repos_env }}"
 
     - name: "[archlinux] Setup backup tools: ensure borg backup timer"

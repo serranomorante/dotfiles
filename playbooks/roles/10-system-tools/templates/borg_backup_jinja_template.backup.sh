@@ -35,13 +35,18 @@ borg create \
     --exclude '**/node_modules' \
     --exclude '**/.turbo' \
     --exclude '**/.git' \
+    {% for exclude in excludes | default([]) %}
+{% set shell_safe_exclude = (exclude | regex_replace('^~', ansible_facts.env.HOME)) | to_json %}
+    --exclude {{ shell_safe_exclude }} \
+    {% endfor %}
     \
     ::'{hostname}-{now:%Y-%m-%d_%H_%M_%S}' \
     {% for dir in files %}
+{% set shell_safe_dir = (dir | regex_replace('^~', ansible_facts.env.HOME)) | to_json %}
 {% if not loop.last %}
-{{ dir }} \
+{{ shell_safe_dir }} \
     {% else %}
-{{ dir }}
+{{ shell_safe_dir }}
 {% endif %}
 {% endfor %}
 
