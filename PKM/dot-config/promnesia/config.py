@@ -24,6 +24,7 @@ SOURCES = [
             "*.lock",
             "*.scss",
             "*.err",
+            "*.plist",
             "*/tags",
             "*/Gemfile",
             "*/assets/*",
