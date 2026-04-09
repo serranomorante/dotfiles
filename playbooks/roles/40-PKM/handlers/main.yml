@@ -4,6 +4,7 @@
     scope: user
     name: hypothesis-self-hosted.service
     enabled: true
+    state: restarted
     masked: false
 
 - name: handler_ensure_hypothesis_bouncer_self_hosted_service
@@ -11,6 +12,7 @@
     scope: user
     name: hypothesis-bouncer-self-hosted.service
     enabled: true
+    state: restarted
     masked: false
 
 - name: handler_ensure_backup_hypothesis_sql_service

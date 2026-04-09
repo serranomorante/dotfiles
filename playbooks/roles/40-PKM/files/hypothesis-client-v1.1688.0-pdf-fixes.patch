@@ -1,0 +1,219 @@
+--- a/src/types/pdfjs.ts
++++ b/src/types/pdfjs.ts
+@@ -67,6 +67,11 @@
+   getMetadata(): Promise<PDFDocumentMetadata>;
+ 
+   /**
++   * Return a proxy for a page in the document.
++   */
++  getPage(pageNumber: number): Promise<PDFPageProxy>;
++
++  /**
+    * @return A promise that is resolved when the document's data is loaded.
+    *         It is resolved with an {Object} that contains the `length` property
+    *         that indicates size of the PDF data in bytes.
+--- a/src/annotator/integrations/pdf-metadata.ts
++++ b/src/annotator/integrations/pdf-metadata.ts
+@@ -62,6 +62,10 @@
+     return app.downloadComplete;
+   }
+ 
++  if (!app.pdfDocument) {
++    return false;
++  }
++
+   await app.pdfDocument.getDownloadInfo();
+   return true;
+ }
+@@ -95,6 +99,8 @@
+       }
+ 
+       return new Promise(resolve => {
++        let pollTimer: ReturnType<typeof setInterval> | null = null;
++
+         const finish = () => {
+           if (app.eventBus) {
+             app.eventBus.off('documentload', finish);
+@@ -102,11 +108,25 @@
+           } else {
+             window.removeEventListener('documentload', finish);
+           }
++          if (pollTimer) {
++            clearInterval(pollTimer);
++          }
+           resolve(app);
+         };
+ 
++        if (app.pdfDocument) {
++          finish();
++          return;
++        }
++
+         // Listen for "documentloaded" event which signals that the document
+         // has been downloaded and the first page has been rendered.
++        pollTimer = setInterval(() => {
++          if (app.pdfDocument) {
++            finish();
++          }
++        }, 50);
++
+         if (app.eventBus) {
+           // PDF.js >= v1.6.210 dispatch events via an internal event bus.
+           // PDF.js < v2.5.207 also dispatches events to the DOM.
+--- a/src/annotator/anchoring/pdf.ts
++++ b/src/annotator/anchoring/pdf.ts
+@@ -167,8 +167,16 @@
+   }
+ 
+   const getPageText = async () => {
+-    const pageView = await getPageView(pageIndex);
+-    const textContent = await pageView.pdfPage.getTextContent({
++    const pageView = getPDFViewer().getPageView(pageIndex);
++    const pdfPage =
++      pageView?.pdfPage ??
++      (await PDFViewerApplication.pdfDocument?.getPage(pageIndex + 1));
++
++    if (!pdfPage) {
++      throw new Error('Unable to load PDF page');
++    }
++
++    const textContent = await pdfPage.getTextContent({
+       // Deprecated option, set for compatibility with older PDF.js releases.
+       normalizeWhitespace: true,
+     });
+--- a/src/annotator/guest.ts
++++ b/src/annotator/guest.ts
+@@ -19,6 +19,7 @@
+   SideBySideOptions,
+ } from '../types/annotator';
+ import type { Target } from '../types/api';
++import type { PDFViewerApplication } from '../types/pdfjs';
+ import type {
+   HostToGuestCalls,
+   GuestToHostCalls,
+@@ -475,10 +476,45 @@
+    * Retrieve metadata for the current document.
+    */
+   async getDocumentInfo(): Promise<DocumentInfo> {
++    const pdfWindow = window as Window & {
++      PDFViewerApplication?: PDFViewerApplication | null;
++    };
++    const pdfApp = pdfWindow.PDFViewerApplication;
++    const pdfDocument = pdfApp?.pdfDocument;
++    const fingerprint = Array.isArray(pdfDocument?.fingerprints)
++      ? pdfDocument.fingerprints[0]
++      : pdfDocument?.fingerprint;
++    const fallbackURI = pdfApp?.url
++      ? normalizeURI(pdfApp.url)
++      : fingerprint
++        ? `urn:x-pdf:${fingerprint}`
++        : location.href;
++    const fallbackMetadata: DocumentInfo['metadata'] = {
++      title: document.title || '',
++      link: [
++        ...(fingerprint ? [{ href: `urn:x-pdf:${fingerprint}` }] : []),
++        ...(pdfApp?.url ? [{ href: normalizeURI(pdfApp.url) }] : []),
++      ],
++      documentFingerprint: fingerprint || '',
++    };
++    const withFallback = <T>(
++      promise: Promise<T> | undefined,
++      fallback: T,
++    ): Promise<T> =>
++      Promise.race([
++        promise ?? Promise.resolve(fallback),
++        new Promise<T>(resolve => {
++          setTimeout(() => resolve(fallback), 1500);
++        }),
++      ]);
++
+     const [uri, metadata, segmentInfo] = await Promise.all([
+-      this._integration.uri(),
+-      this._integration.getMetadata(),
+-      this._integration.segmentInfo?.(),
++      withFallback(this._integration.uri(), fallbackURI),
++      withFallback(this._integration.getMetadata(), fallbackMetadata),
++      withFallback<DocumentInfo['segmentInfo']>(
++        this._integration.segmentInfo?.(),
++        undefined,
++      ),
+     ]);
+ 
+     return {
+@@ -940,7 +976,7 @@
+   async createAnnotationFromSelection({
+     highlight = false,
+   } = {}): Promise<AnnotationData> {
+-    const ranges = this.selectedRanges;
++    const ranges = this.selectedRanges.map(range => range.cloneRange());
+     this.selectedRanges = [];
+ 
+     const info = await this.getDocumentInfo();
+--- a/src/annotator/components/AdderToolbar.tsx
++++ b/src/annotator/components/AdderToolbar.tsx
+@@ -7,6 +7,7 @@
+ } from '@hypothesis/frontend-shared';
+ import type { IconComponent } from '@hypothesis/frontend-shared/lib/types';
+ import classnames from 'classnames';
++import type { JSX } from 'preact';
+ 
+ import { useShortcut } from '../../shared/shortcut';
+ 
+@@ -61,6 +62,7 @@
+   icon?: IconComponent;
+   label: string;
+   onClick: () => void;
++  onMouseDown?: JSX.MouseEventHandler<HTMLButtonElement>;
+   shortcut: string | null;
+ };
+ 
+@@ -69,6 +71,7 @@
+   icon: Icon,
+   label,
+   onClick,
++  onMouseDown,
+   shortcut,
+ }: ToolbarButtonProps) {
+   useShortcut(shortcut, onClick);
+@@ -89,7 +92,8 @@
+         // will also darken any descendant Icon
+         'hover:group-hover:text-grey-9',
+       )}
+-      onClick={onClick}
++      onMouseDown={onMouseDown}
++      onClick={onMouseDown ? undefined : onClick}
+       title={title}
+       size="custom"
+       variant="custom"
+@@ -261,12 +265,20 @@
+       >
+         <ToolbarButton
+           icon={AnnotateIcon}
++          onMouseDown={event => {
++            event.preventDefault();
++            onCommand('annotate');
++          }}
+           onClick={() => onCommand('annotate')}
+           label="Annotate"
+           shortcut={annotateShortcut}
+         />
+         <ToolbarButton
+           icon={HighlightIcon}
++          onMouseDown={event => {
++            event.preventDefault();
++            onCommand('highlight');
++          }}
+           onClick={() => onCommand('highlight')}
+           label="Highlight"
+           shortcut={highlightShortcut}
+@@ -281,6 +293,10 @@
+             />
+             <ToolbarButton
+               badgeCount={annotationCount}
++              onMouseDown={event => {
++                event.preventDefault();
++                onCommand('show');
++              }}
+               onClick={() => onCommand('show')}
+               label="Show"
+               shortcut={showShortcut}

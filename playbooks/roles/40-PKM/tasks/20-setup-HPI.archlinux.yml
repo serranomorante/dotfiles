@@ -286,19 +286,94 @@
       '\\1') | first }}"
     cacheable: true
 
-- name: "[archlinux] Setup HPI: clone hypothesis browser extension"
+- name: "[archlinux] Setup HPI: clone hypothesis client"
   ansible.builtin.git:
-    repo: "{{ item.repo }}"
-    dest: "~/data/repos/{{ item.name | default(item.repo) | basename }}"
-    version: "{{ item.version | default('HEAD') }}"
+    repo: https://github.com/hypothesis/client
+    dest: ~/data/repos/client
+    version: "v{{ hypothesis_client_version }}"
     depth: 1
     force: true
     single_branch: true
-  register: result
-  loop:
-    - repo: https://github.com/hypothesis/browser-extension
-      name: hypothesis-extension
-      version: "v{{ hypothesis_browser_extension_version }}"
+  register: hypothesis_client_clone_result
+
+- name: "[archlinux] Setup HPI: patch hypothesis client PDF source fixes"
+  ansible.posix.patch:
+    src: hypothesis-client-v{{ hypothesis_client_version }}-pdf-fixes.patch
+    basedir: ~/data/repos/client
+    strip: 1
+  register: hypothesis_client_patch_result
+
+- name: "[archlinux] Setup HPI: check hypothesis client dependency install"
+  ansible.builtin.stat:
+    path: ~/data/repos/client/node_modules/@hypothesis/frontend-build/package.json
+  register: hypothesis_client_dependency_install_result
+
+- name: "[archlinux] Setup HPI: install hypothesis client dependencies"
+  ansible.builtin.shell: >
+    source ~/.bashrc &&
+    ./.yarn/releases/yarn-3.6.0.cjs install --mode=skip-build
+  register: install_hypothesis_client_dependencies_result
+  args:
+    chdir: ~/data/repos/client
+  when:
+    - hypothesis_client_clone_result.changed
+      or hypothesis_client_patch_result.changed
+      or not hypothesis_client_dependency_install_result.stat.exists
+  changed_when: true
+
+- name: "[archlinux] Setup HPI: check hypothesis client build"
+  ansible.builtin.stat:
+    path: ~/data/repos/client/build/manifest.json
+  register: hypothesis_client_build_result
+
+- name: "[archlinux] Setup HPI: build hypothesis client"
+  ansible.builtin.shell: >
+    source ~/.bashrc &&
+    ./.yarn/releases/yarn-3.6.0.cjs build
+  register: build_hypothesis_client_result
+  args:
+    chdir: ~/data/repos/client
+  when:
+    - hypothesis_client_clone_result.changed
+      or hypothesis_client_patch_result.changed
+      or install_hypothesis_client_dependencies_result.changed | default(false)
+      or not hypothesis_client_build_result.stat.exists
+  changed_when: true
+
+- name: "[archlinux] Setup HPI: ensure hypothesis client dist dir"
+  ansible.builtin.file:
+    path: ~/data/repos/client/dist
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Setup HPI: check hypothesis client tarball"
+  ansible.builtin.stat:
+    path: ~/data/repos/client/dist/hypothesis-{{ hypothesis_client_version }}-local.tgz
+  register: hypothesis_client_tarball_result
+
+- name: "[archlinux] Setup HPI: pack hypothesis client tarball"
+  ansible.builtin.shell: >
+    source ~/.bashrc &&
+    ./.yarn/releases/yarn-3.6.0.cjs pack --out dist/hypothesis-{{ hypothesis_client_version }}-local.tgz
+  register: pack_hypothesis_client_result
+  args:
+    chdir: ~/data/repos/client
+  when:
+    - hypothesis_client_clone_result.changed
+      or hypothesis_client_patch_result.changed
+      or build_hypothesis_client_result.changed | default(false)
+      or not hypothesis_client_tarball_result.stat.exists
+  changed_when: true
+
+- name: "[archlinux] Setup HPI: clone hypothesis browser extension"
+  ansible.builtin.git:
+    repo: https://github.com/hypothesis/browser-extension
+    dest: ~/data/repos/hypothesis-extension
+    version: "v{{ hypothesis_browser_extension_version }}"
+    depth: 1
+    force: true
+    single_branch: true
+  register: hypothesis_extension_clone_result
 
 - name: "[archlinux] Setup HPI: patch hypothesis extension"
   ansible.posix.patch:
@@ -318,6 +393,40 @@
 
 - name: "[archlinux] Setup HPI: force handler_ensure_hypothesis_oauth_client_id trigger"
   ansible.builtin.meta: flush_handlers
+
+- name: "[archlinux] Setup HPI: remove old hypothesis client patch resolution"
+  ansible.builtin.replace:
+    path: ~/data/repos/hypothesis-extension/package.json
+    regexp: ',\n  "resolutions": \{\n    "hypothesis@\^[^"]+": "patch:[^"]+"\n  \}'
+    replace: ''
+  register: hypothesis_extension_remove_patch_resolution_result
+
+- name: "[archlinux] Setup HPI: use local hypothesis client tarball in extension"
+  ansible.builtin.replace:
+    path: ~/data/repos/hypothesis-extension/package.json
+    regexp: '"hypothesis": "[^"]+"'
+    replace: '"hypothesis": "file:../client/dist/hypothesis-{{ hypothesis_client_version }}-local.tgz"'
+  register: hypothesis_extension_local_client_dependency_result
+
+- name: "[archlinux] Setup HPI: check hypothesis extension dependency install"
+  ansible.builtin.stat:
+    path: ~/data/repos/hypothesis-extension/node_modules/hypothesis/build/manifest.json
+  register: hypothesis_extension_dependency_manifest_result
+
+- name: "[archlinux] Setup HPI: install hypothesis extension dependencies"
+  ansible.builtin.shell: >
+    source ~/.bashrc &&
+    ./.yarn/releases/yarn-3.6.1.cjs install --mode=skip-build
+  register: install_hypothesis_extension_dependencies_result
+  args:
+    chdir: ~/data/repos/hypothesis-extension
+  when:
+    - hypothesis_extension_clone_result.changed
+      or hypothesis_extension_remove_patch_resolution_result.changed
+      or hypothesis_extension_local_client_dependency_result.changed
+      or pack_hypothesis_client_result.changed | default(false)
+      or not hypothesis_extension_dependency_manifest_result.stat.exists
+  changed_when: true
 
 - name: "[archlinux] Setup HPI: prepare hypothesis extension"
   ansible.builtin.shell: >
