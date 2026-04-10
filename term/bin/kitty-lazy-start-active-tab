@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+socket_target=${KITTY_LISTEN_ON:-unix:@kitty}
+
+get_active_ai_tab() {
+    kitten @ --to "$socket_target" ls 2>/dev/null | jq -r '
+        .[]
+        | select(.is_focused)
+        | .tabs[]
+        | select(.is_active)
+        | . as $tab
+        | $tab.windows[]
+        | select(.is_active)
+        | [$tab.title, (.id | tostring), (.user_vars.lazy_started // "")]
+        | @tsv
+    ' | head -n 1
+}
+
+for _ in $(seq 1 20); do
+    if ! tab_info=$(get_active_ai_tab); then
+        exit 0
+    fi
+
+    IFS=$'\t' read -r tab_title window_id lazy_started <<<"$tab_info"
+
+    case "$tab_title" in
+        claude|codex|gemini) ;;
+        *)
+            exit 0
+            ;;
+    esac
+
+    if [[ $lazy_started == "1" ]]; then
+        exit 0
+    fi
+
+    kitten @ --to "$socket_target" set-user-vars --match "id:${window_id}" lazy_started=1 >/dev/null 2>&1
+    kitten @ --to "$socket_target" send-text --match "id:${window_id}" "${tab_title}"$'\r' >/dev/null 2>&1
+    exit 0
+done
+
+exit 0

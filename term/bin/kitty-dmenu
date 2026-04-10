@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 if [[ $# -eq 1 ]]; then
+    uuid=$(uuidgen)
     selected_path=$1
 else
     uuid=$(uuidgen)
@@ -34,4 +35,4 @@ for socket in $sockets; do
         { [[ ! "$error_msg" =~ "No matching windows for expression" ]] && notify-send "Error: $error_msg"; }
 done
 
-kitty -d $selected_path --session ~/.config/kitty/default.kitty-session
+exec kitty -d "$selected_path" --session ~/.config/kitty/default.kitty-session

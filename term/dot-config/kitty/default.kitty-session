@@ -6,10 +6,12 @@ new_tab GIT
 launch lazygit
 
 new_tab claude
-launch --hold claude
+launch
 
 new_tab codex
-launch --hold codex
+launch
 
 new_tab gemini
-launch --hold gemini
+launch
+
+focus_tab 0
