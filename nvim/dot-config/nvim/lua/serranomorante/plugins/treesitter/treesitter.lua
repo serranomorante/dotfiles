@@ -1,6 +1,3 @@
-local utils = require("serranomorante.utils")
-local tools = require("serranomorante.tools")
-
 local M = {}
 
 local function keys()
@@ -155,39 +152,25 @@ local function keys()
   )
 end
 
-function M.config()
-  require("nvim-treesitter").install(
-    utils.merge_tools(
-      "treesitter",
-      tools.by_filetype.asm,
-      tools.by_filetype.javascript,
-      tools.by_filetype.go,
-      tools.by_filetype.c,
-      tools.by_filetype.rust,
-      tools.by_filetype.fish,
-      tools.by_filetype.toml,
-      tools.by_filetype.lua,
-      tools.by_filetype.json,
-      tools.by_filetype.yaml,
-      tools.by_filetype.bash,
-      tools.by_filetype.tmux,
-      tools.by_filetype.vim,
-      tools.by_filetype.diff,
-      tools.by_filetype.markdown,
-      tools.by_filetype.gitcommit,
-      tools.by_filetype.html,
-      tools.by_filetype.xml,
-      tools.by_filetype.css,
-      tools.by_filetype.python,
-      tools.by_filetype.php,
-      tools.by_filetype.svelte,
-      tools.by_filetype.sshconfig,
-      tools.by_filetype.gitignore,
-      tools.by_filetype.editorconfig,
-      tools.by_filetype.all
-    )
-  )
+local function register_language_aliases()
+  local aliases = {
+    bash = { "sh" },
+    git_config = { "gitconfig", "systemd", "conf", "cfg" },
+    javascript = { "javascriptreact" },
+    json = { "jsonc" },
+    ssh_config = { "sshconfig", "sshdconfig" },
+    tsx = { "typescriptreact" },
+    udev = { "udevrules" },
+    vue = { "html" },
+    yaml = { "yaml.ansible" },
+  }
 
+  for lang, filetypes in pairs(aliases) do
+    vim.treesitter.language.register(lang, filetypes)
+  end
+end
+
+function M.config()
   require("nvim-treesitter-textobjects").setup({
     select = { lookahead = true },
     move = { set_jumps = true },
@@ -195,28 +178,7 @@ function M.config()
 
   keys()
 
-  vim.treesitter.language.register("git_config", "systemd")
-  vim.treesitter.language.register("git_config", "conf")
-  vim.treesitter.language.register("vue", "html")
-  vim.treesitter.language.register("ssh_config", "sshdconfig")
-  vim.treesitter.language.register("git_config", "cfg")
-
-  vim.api.nvim_create_autocmd("User", {
-    pattern = "TSUpdate",
-    callback = function()
-      for filetype, tool in pairs({ kitty = tools.by_filetype.kitty, org = tools.by_filetype.org }) do
-        for _, parser in ipairs(tool.parsers) do
-          if parser:sub(1, #"file:") == "file:" then -- "file:" is only from my dotfiles
-            require("nvim-treesitter.parsers")[filetype] = {
-              install_info = {
-                path = "~/.config/nvim/parser/",
-              },
-            }
-          end
-        end
-      end
-    end,
-  })
+  register_language_aliases()
 end
 
 return M

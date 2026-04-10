@@ -69,16 +69,42 @@
     repo: "{{ item.repo }}"
     dest: ~/data/repos/{{ item.repo | basename }}
     version: "{{ item.version | default('HEAD') }}"
-    depth: 1
     force: true
+    recursive: false
     single_branch: true
+  register: treesitter_clone_results
+  loop: "{{ treesitter_parsers }}"
+
+- name: "[archlinux] Editor tools: clone treesitter queries source"
+  ansible.builtin.git:
+    repo: "{{ treesitter_queries_repo.repo }}"
+    dest: ~/data/repos/nvim-treesitter
+    version: "{{ treesitter_queries_repo.version }}"
+    force: true
+    recursive: false
+    single_branch: true
+
+- name: "[archlinux] Editor tools: build lookup of treesitter clone results by filetype (init)"
+  ansible.builtin.set_fact:
+    treesitter_clone_result_by_filetype: {}
+
+- name: "[archlinux] Editor tools: build lookup of treesitter clone results by filetype"
+  ansible.builtin.set_fact:
+    treesitter_clone_result_by_filetype: "{{ treesitter_clone_result_by_filetype | combine({item.item.filetype: item}) }}"
+  loop: "{{ treesitter_clone_results.results }}"
+
+- name: "[archlinux] Editor tools: remove stale built treesitter parsers after repo updates"
+  ansible.builtin.file:
+    path: ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
+    state: absent
+  when: "(treesitter_clone_result_by_filetype[item.filetype] | default({})).changed | default(false)"
   loop: "{{ treesitter_parsers }}"
 
 - name: "[archlinux] Editor tools: build treesitter parsers"
   ansible.builtin.command: ~/bin/tree-sitter build -o ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
   args:
     creates: ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
-    chdir: ~/data/repos/{{ item.repo | basename }}/{{ item.build_folder | default(None) }}
+    chdir: ~/data/repos/{{ item.repo | basename }}/{{ item.location | default('') }}
   loop: "{{ treesitter_parsers }}"
 
 - name: "[archlinux] Editor tools: ensure nvim treesitter folders"
@@ -97,12 +123,28 @@
     mode: "755"
   loop: "{{ treesitter_parsers }}"
 
-- name: "[archlinux] Editor tools: copy treesitter queries to nvim"
+- name: "[archlinux] Editor tools: copy nvim-treesitter runtime queries to nvim"
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/rsync
+      - -a
+      - --delete
+      - ~/data/repos/nvim-treesitter/runtime/queries/
+      - ~/.config/nvim/queries/
+  changed_when: true
+
+- name: "[archlinux] Editor tools: copy custom treesitter queries to nvim"
   ansible.builtin.copy:
-    src: ~/data/repos/{{ item.repo | basename }}/queries/
+    src: ~/data/repos/{{ item.repo | basename }}/{{ item.location | default('') }}/queries/
     dest: ~/.config/nvim/queries/{{ item.filetype }}/
     mode: "755"
+  when: "(item.query_source | default('parser')) == 'parser'"
   loop: "{{ treesitter_parsers }}"
+
+- name: "[archlinux] Editor tools: remove nvim-treesitter plugin"
+  ansible.builtin.file:
+    path: ~/.local/share/nvim/site/pack/plugins/start/nvim-treesitter
+    state: absent
 
 - name: "[archlinux] Editor tools: setup intelephense key if available"
   ansible.builtin.shell: |
@@ -127,13 +169,6 @@
 - name: "[archlinux] Editor tools: generate helptags"
   ansible.builtin.command: ~/bin/nvim --headless -c "helptags ALL" -c "quit"
   changed_when: false
-
-- name: "[archlinux] Editor tools: update treesitter parsers"
-  ansible.builtin.command: nvim --headless -c "TSUpdate" -c "sleep 60" -c "quit!"
-  environment:
-    NVIM_KITTY_LISTEN_ADDRESS: null
-  changed_when: "(nvim_plugin_result_by_repo['nvim-treesitter/nvim-treesitter'] | default({})).changed | default(false)"
-  when: "(nvim_plugin_result_by_repo['nvim-treesitter/nvim-treesitter'] | default({})).changed | default(false)"
 
 - name: "[archlinux] Editor tools: update coc extensions"
   ansible.builtin.command: nvim --headless -c "CocStart" -c "sleep 2" -c "CocUpdate" -c "sleep 60" -c "quit!"
