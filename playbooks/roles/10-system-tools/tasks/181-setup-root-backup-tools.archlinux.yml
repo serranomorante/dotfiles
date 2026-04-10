@@ -62,6 +62,7 @@
         owner: root
         mode: "644"
       loop:
+        - backup.slice
         - borg-root-backup@.service
         - every-8-hours-backup@.timer
 

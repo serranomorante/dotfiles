@@ -5,6 +5,8 @@ Description=Run %i backup every hour
 Persistent=true
 OnBootSec=10min
 OnUnitActiveSec=1h
+AccuracySec=15min
+RandomizedDelaySec=45min
 Unit=borg-backup@%i.service
 
 [Install]

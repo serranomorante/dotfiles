@@ -6,6 +6,8 @@ Description=Backup hypothesis sql
 Persistent=true
 OnBootSec=1h
 OnUnitActiveSec=8h
+AccuracySec=10min
+RandomizedDelaySec=30min
 Unit=backup-hypothesis-sql.service
 
 [Install]

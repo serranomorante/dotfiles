@@ -4,6 +4,12 @@ Description=Backup hypothesis sql
 
 [Service]
 Type=oneshot
+Slice=backup.slice
+MemoryAccounting=yes
+IOAccounting=yes
+Nice=15
+IOSchedulingClass=idle
+IOWeight=50
 ExecStartPre=mkdir -p %h/data/PKM/data/sql/hypothesis
 ExecStart=/usr/bin/bash -c "docker compose exec postgres pg_dump postgres -U postgres > %h/data/PKM/data/sql/hypothesis/dumpfile"
 WorkingDirectory=%h/data/repos/h

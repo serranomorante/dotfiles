@@ -1,0 +1,9 @@
+[Unit]
+Description=Background backup workload slice
+
+[Slice]
+MemoryAccounting=yes
+IOAccounting=yes
+CPUQuota=40%
+MemoryHigh=1G
+MemoryMax=2G

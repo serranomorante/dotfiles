@@ -9,6 +9,9 @@ Environment="CHROME_EXTENSION_ID={{ local_hypothesis_extension }}"
 Environment="HYPOTHESIS_URL=http://localhost:5000"
 ExecStart=make dev
 Restart=always
+MemoryAccounting=yes
+MemoryHigh=1G
+MemoryMax=2G
 
 [Install]
 WantedBy=graphical-session.target

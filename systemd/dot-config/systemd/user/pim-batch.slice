@@ -1,0 +1,9 @@
+[Unit]
+Description=PIM batch workload slice
+
+[Slice]
+MemoryAccounting=yes
+IOAccounting=yes
+CPUQuota=50%
+MemoryHigh=768M
+MemoryMax=1536M

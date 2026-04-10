@@ -4,6 +4,9 @@ After=plasma-workspace.target
 
 [Service]
 ExecStart=/usr/local/bin/keyd-application-mapper
+MemoryAccounting=yes
+MemoryHigh=150M
+MemoryMax=300M
 
 [Install]
 WantedBy=plasma-workspace.target

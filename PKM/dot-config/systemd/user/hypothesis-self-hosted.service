@@ -6,6 +6,9 @@ After=graphical-session.target
 WorkingDirectory=%h/data/repos/h
 ExecStart=make dev --debug
 Restart=always
+MemoryAccounting=yes
+MemoryHigh=1G
+MemoryMax=2G
 
 [Install]
 WantedBy=graphical-session.target

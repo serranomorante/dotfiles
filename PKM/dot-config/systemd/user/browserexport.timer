@@ -6,6 +6,8 @@ Description=Perform a browserexport and merge afterwards
 Persistent=true
 OnBootSec=1h
 OnUnitActiveSec=8h
+AccuracySec=10min
+RandomizedDelaySec=30min
 Unit=browserexport.service
 
 [Install]

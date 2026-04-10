@@ -5,4 +5,10 @@ Description=PKM %i export service
 
 [Service]
 Type=oneshot
+Slice=pim-batch.slice
+MemoryAccounting=yes
+IOAccounting=yes
+Nice=15
+IOSchedulingClass=idle
+IOWeight=50
 ExecStart=%h/bin/%i.sh

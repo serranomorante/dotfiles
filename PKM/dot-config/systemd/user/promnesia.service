@@ -9,3 +9,6 @@ WantedBy=graphical-session.target
 ExecStart=%h/data/apps/PKM/.venv/bin/python3 -m promnesia serve --db %h/.local/share/promnesia/promnesia.sqlite --timezone Europe/Madrid --host 0.0.0.0 --port 13131
 Type=simple
 Restart=always
+MemoryAccounting=yes
+MemoryHigh=400M
+MemoryMax=700M

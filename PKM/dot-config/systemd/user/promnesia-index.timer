@@ -6,6 +6,8 @@ Description=Promnesia index timer
 Persistent=true
 OnBootSec=10min
 OnUnitActiveSec=1h
+AccuracySec=10min
+RandomizedDelaySec=20min
 Unit=promnesia-index.service
 
 [Install]

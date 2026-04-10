@@ -7,6 +7,8 @@ Description=PKM %i export timer
 Persistent=true
 OnBootSec=10min
 OnUnitActiveSec=2h
+AccuracySec=10min
+RandomizedDelaySec=20min
 Unit=PKM-export@%i.service
 
 [Install]
