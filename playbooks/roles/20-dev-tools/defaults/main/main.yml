@@ -69,7 +69,7 @@ neovim_plugins:
     repo: stevearc/conform.nvim
     name: conform
   - folder: start
-    repo: sindrets/diffview.nvim
+    repo: dlyongemallo/diffview.nvim
     name: diffview
   - folder: start
     repo: lewis6991/gitsigns.nvim
