@@ -2,7 +2,6 @@
 - hosts: localhost,all
   gather_facts: false
   vars:
-    user_os: "{{ ansible_facts.distribution | lower | replace(' ', '') }}"
     is_x_display_session: false
 
   pre_tasks:
@@ -14,12 +13,19 @@
     - name: "Setup playbook: gather facts conditionally"
       ansible.builtin.gather_facts:
       when:
-        - "'localhost' in var_argv.ansible_facts.argv or 'phone2' in var_argv.ansible_facts.argv"
+        - inventory_hostname == 'localhost' or inventory_hostname == 'phone2' or 'arch_user' in group_names
       tags: always
 
     - name: "Setup playbook: populate service facts"
       ansible.builtin.service_facts:
-      when: "'localhost' in var_argv.ansible_facts.argv"
+      when:
+        - inventory_hostname == 'localhost' or inventory_hostname == 'phone2' or 'arch_user' in group_names
+      tags: always
+
+    - name: "Setup playbook: set user_os"
+      ansible.builtin.set_fact:
+        user_os: "{{ ansible_facts.distribution | lower | replace(' ', '') }}"
+      when: ansible_facts.distribution is defined
       tags: always
 
     - name: "Setup roles: set var"
@@ -106,8 +112,9 @@
         - name: Flush handlers before AUR teardown
           ansible.builtin.meta: flush_handlers
           when:
+            - user_os is defined
             - user_os in ['archlinux']
-            - "'localhost' in var_argv.ansible_facts.argv"
+            - inventory_hostname == 'localhost' or inventory_hostname == 'phone2' or 'arch_user' in group_names
           tags:
             - setup
             - 10-system-tools
@@ -115,8 +122,9 @@
         - name: Remove temporary AUR passwordless sudoers rule
           ansible.builtin.import_tasks: roles/10-system-tools/tasks/teardown-aur-passwordless.archlinux.yml
           when:
+            - user_os is defined
             - user_os in ['archlinux']
-            - "'localhost' in var_argv.ansible_facts.argv"
+            - inventory_hostname == 'localhost' or inventory_hostname == 'phone2' or 'arch_user' in group_names
           tags:
             - setup
             - 10-system-tools

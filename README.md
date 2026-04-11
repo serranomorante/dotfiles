@@ -4,11 +4,16 @@ These dotfiles help me replicate my exact system after OS upgrades or after a fr
 
 The system is intented to be used just by me, but you can extract any useful configs from this repo if you want.
 
+You might see files like `dot-bashrc` instead of `.bashrc` on this repo. I use `stow --dotfiles` command to symlink those `dot-bashrc` into `.bashrc` files. Using this convention helps with the fact that `.bashrc` (or any other file that starts with a literal dot) are hidden by default on some explorers, code editors, etc.
+
 ## How to replicate the full system
 
 If you want to install my system (why would you want that?) you can, but you need **a fresh arch linux installation**:
 
-> warning: if you're gonna do this on a virtual machine, enable 3D acceleration and pre-allocate the disk space instead of using dynamic disk allocation.
+### Prerequisits
+
+- Only for machines with 2 nvme drives. These playbooks follow the strict convention of system partitions on physical drive 1 and home partition on physical drive 2. Even if you try to test this on a virtual machine, you must setup 2 nvme drives on that virtual machine.
+- 
 
 > only tested on AMD with NVIDIA gpu using linux-lts
 
@@ -48,7 +53,7 @@ My secret keys and data.
 
 **Important**: this will format your partitions and delete all your data, remove any external drives before proceding
 
-**Important**: this arch install is meant for 2 drives: drive 1 (500GB) is going to have the EFI, swap and root partitions, drive 2 (1TB) is going to have home partition. Everything except EFI partition will be encrypted. `EFI`, `swap` and `root` partitions are mounted automatically by `systemd-gpt-auto-generator` while home is mounted by crypttab + fstab.
+**Important**: this arch install is meant for 2 nvme drives: drive 1 (min 40GB) is going to have the EFI, swap and root partitions, drive 2 (min 40GB) is going to have home partition. Everything except EFI partition will be encrypted. `EFI`, `swap` and `root` partitions are mounted automatically by `systemd-gpt-auto-generator` while home is mounted by crypttab + fstab.
 
 I dislike installing arch manually.
 
@@ -60,16 +65,13 @@ Disable secure boot and reset/clear the existent keys.
 
 You need 2 public ssh authorization keys on your **booted usb system**
 
-The reason behind this is that one of those two keys is going to run commands in a chroot environment automatically for us.
-
-`cat ~/.ssh/authorized_keys`
-
 ```sh
-...your public ssh key number one
-command="/root/ssh_chroot" ...the rest of your public ssh key number two
+# the email doesn't matter
+ssh-keygen -t ed25519 -C "arch_user@example.com" -f ~/.ssh/ed25519.arch_user -N ""
+ssh-keygen -t ed25519 -C "arch_chroot@example.com" -f ~/.ssh/ed25519.arch_chroot -N ""
 ```
 
-`command="/root/ssh_chroot"` is the thing that is going to force that some ansible operations run on a chroot environment.
+The reason behind this is that one of those two keys is going to run commands in a chroot environment automatically for us.
 
 On your host system, you need this client ssh config
 
@@ -79,13 +81,28 @@ On your host system, you need this client ssh config
 Host arch-chroot
 HostName <the ip of your booted usb system>
 User root
-IndentityFile ~/.ssh/your private ssh key...arch_chroot
+IdentitiesOnly yes
+IdentityFile ~/.ssh/your private ssh key...arch_chroot
 
 Host arch-user
 HostName <the ip of your booted usb system>
 User root
-IndentityFile ~/.ssh/your private ssh key...arch_user
+IdentitiesOnly yes
+IdentityFile ~/.ssh/your private ssh key...arch_user
 ```
+
+`IdentitiesOnly yes` is required here. Otherwise `ssh-agent` may offer a different loaded key first, and `arch-chroot` can end up authenticating as `arch-user`, which bypasses the forced `command="/root/ssh_chroot"` behavior.
+
+On the guest system:
+
+`vim ~/.ssh/authorized_keys`
+
+```sh
+...<your arch_user ssh key (public)>
+command="/root/ssh_chroot" <your arch_chroot ssh key (public)>
+```
+
+`command="/root/ssh_chroot"` is the thing that is going to force that some ansible operations run on a chroot environment.
 
 And finally your ansible inventory should reflect these 2 hosts
 
@@ -100,6 +117,21 @@ arch-chroot
 **Important**: you might need to run `rm -rf ~/.ansible` at some point if ansible cache is giving you problems
 
 **Important**: these playbook are not design in a indempotent way, everything should work ok on the first run otherwise it will format the partitions again and again.
+
+As last step you need to fill these variables in the ansible files:
+
+You need to gather this info:
+
+- **system_disk_by_id**\
+  Execute: `ls -l /dev/disk/by-id | grep nvme`
+- **home_disk_by_id**\
+  Same here, execute: `ls -l /dev/disk/by-id | grep nvme`
+- **luks_pass**\
+  The password to encrypt your drives
+- **tpm_pin**\
+  The password you will input everytime your machine boots.
+- **username**
+- **user password**
 
 Now you can run the playbooks like this:
 

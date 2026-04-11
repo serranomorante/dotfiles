@@ -13,8 +13,15 @@
 
     - name: set useful facts
       ansible.builtin.set_fact:
-        username: <the username for your system>
-        user_password: <put your user password here>
+        username: ""
+        user_password: ""
+        # Find whole-disk NVMe by-id entries with:
+        #   ls -l /dev/disk/by-id | grep nvme
+        # Then copy the disk symlink name (not a -partN one), for example:
+        #   nvme-Samsung_SSD_990_PRO_1TB_S7...
+        # You can paste either the bare name above or the full /dev/disk/by-id/... path.
+        system_disk_by_id: ""
+        home_disk_by_id: ""
         is_chroot: "{{ 'mnt' not in var_lsblk.stdout }}"
 
     - name: your not in chroot
@@ -22,42 +29,61 @@
       changed_when: true
       failed_when: not is_chroot
 
-    - name: get disk 1 device lsblk data
-      # get my 500GB device
-      ansible.builtin.command: lsblk --json --nvme --filter 'SIZE < 900000000000' --output NAME,SIZE
-      changed_when: true
-      register: var_device1_lsblk_data
-
-    - name: get disk 2 device lsblk data
-      # get my 1TB device
-      ansible.builtin.command: lsblk --json --nvme --filter 'SIZE > 900000000000' --output NAME,SIZE
-      changed_when: true
-      register: var_device2_lsblk_data
-
-    - name: set devices data fact
+    - name: normalize disk by-id paths
       ansible.builtin.set_fact:
-        device1_facts: "{{ var_device1_lsblk_data.stdout | default({}) | from_json }}"
-        device2_facts: "{{ var_device2_lsblk_data.stdout | default({}) | from_json }}"
+        system_disk: >-
+          {{ system_disk_by_id if system_disk_by_id is match('^/dev/disk/by-id/')
+          else '/dev/disk/by-id/' ~ system_disk_by_id }}
+        home_disk: >-
+          {{ home_disk_by_id if home_disk_by_id is match('^/dev/disk/by-id/')
+          else '/dev/disk/by-id/' ~ home_disk_by_id }}
+
+    - name: check disk by-id paths
+      ansible.builtin.stat:
+        path: "{{ disk_path }}"
+      loop:
+        - "{{ system_disk }}"
+        - "{{ home_disk }}"
+      loop_control:
+        loop_var: disk_path
+      register: var_disk_by_id_stats
+
+    - name: fail when a disk by-id path is missing
+      ansible.builtin.fail:
+        msg: "Disk path {{ disk_stat.item }} does not exist. Set system_disk_by_id/home_disk_by_id to valid /dev/disk/by-id entries."
+      when: not disk_stat.stat.exists
+      loop_control:
+        loop_var: disk_stat
+      loop: "{{ var_disk_by_id_stats.results }}"
+
+    - name: resolve selected disks to device nodes
+      ansible.builtin.set_fact:
+        system_disk_device: >-
+          {{ (var_disk_by_id_stats.results | selectattr('disk_path', 'equalto', system_disk) |
+          map(attribute='stat.lnk_source') | first) }}
+        home_disk_device: >-
+          {{ (var_disk_by_id_stats.results | selectattr('disk_path', 'equalto', home_disk) |
+          map(attribute='stat.lnk_source') | first) }}
 
     - name: set some useful facts
       ansible.builtin.set_fact:
-        boot_partition: "{{ device1_facts.blockdevices.0.name }}p1"
-        swap_partition: "{{ device1_facts.blockdevices.0.name }}p2"
-        root_partition: "{{ device1_facts.blockdevices.0.name }}p3"
-        home_partition: "{{ device2_facts.blockdevices.0.name }}p1"
+        boot_partition: "{{ system_disk_device }}p1"
+        swap_partition: "{{ system_disk_device }}p2"
+        root_partition: "{{ system_disk_device }}p3"
+        home_partition: "{{ home_disk_device }}p1"
 
     - name: get root uuid
-      ansible.builtin.command: lsblk --json --filter 'NAME =~ "{{ root_partition }}"' --output NAME,UUID
+      ansible.builtin.command: blkid -s UUID -o value {{ root_partition }}
       register: var_root_partition_uuid
       changed_when: true
 
     - name: get swap uuid
-      ansible.builtin.command: lsblk --json --filter 'NAME =~ "{{ swap_partition }}"' --output NAME,UUID
+      ansible.builtin.command: blkid -s UUID -o value {{ swap_partition }}
       register: var_swap_partition_uuid
       changed_when: true
 
     - name: get home uuid
-      ansible.builtin.command: lsblk --json --filter 'NAME =~ "{{ home_partition }}"' --output NAME,UUID
+      ansible.builtin.command: blkid -s UUID -o value {{ home_partition }}
       register: var_home_partition_uuid
       changed_when: true
 
@@ -66,12 +92,12 @@
         name:
           - networkmanager
           - os-prober
-          - linux-headers
           - base-devel
           - openssh
           - git
           - ansible
           - sbctl
+          - virtualbox-guest-utils
         state: present
 
     - name: enable services
@@ -110,6 +136,30 @@
             - "{{ user_password }}"
             - "{{ user_password }}"
 
+    - name: enable sudo for wheel group
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        regexp: "^#?\\s*%wheel\\s+ALL=\\(ALL(?::ALL)?\\)\\s+ALL$"
+        line: "%wheel ALL=(ALL:ALL) ALL"
+        validate: visudo -cf %s
+
+    - name: create .ssh directory for user
+      ansible.builtin.file:
+        path: /home/{{ username }}/.ssh
+        state: directory
+        owner: "{{ username }}"
+        group: "{{ username }}"
+        mode: "0700"
+
+    - name: copy root authorized_keys to user
+      ansible.builtin.copy:
+        src: /root/.ssh/authorized_keys
+        dest: /home/{{ username }}/.ssh/authorized_keys
+        remote_src: true
+        owner: "{{ username }}"
+        group: "{{ username }}"
+        mode: "0600"
+
     - name: configure mkinitcpio
       ansible.builtin.lineinfile:
         path: /etc/mkinitcpio.conf
@@ -147,7 +197,7 @@
       ansible.builtin.replace:
         path: /etc/crypttab
         regexp: "^#.?home .*"
-        replace: "home  UUID={{ (var_home_partition_uuid.stdout | from_json).blockdevices.0.uuid }}  none  tpm2-device=auto"
+        replace: "home  UUID={{ var_home_partition_uuid.stdout }}  none  tpm2-device=auto"
 
     - name: ensure fstab for home
       ansible.builtin.lineinfile:
