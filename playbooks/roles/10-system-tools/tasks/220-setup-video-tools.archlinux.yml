@@ -185,7 +185,7 @@
 - name: "[archlinux] Setup video tools: install davinci-resolve deps"
   become: true
   become_user: aur_builder
-  aur:
+  kewlfft.aur.aur:
     use: yay
     state: present
     name: "{{ davinci_resolve_deps.stdout | regex_findall('(.*)\n') }}"
@@ -217,7 +217,7 @@
 - name: "[archlinux] Setup video tools: install davinci-resolve"
   become: true
   become_user: aur_builder
-  aur:
+  kewlfft.aur.aur:
     use: makepkg
     name: davinci-resolve
     state: latest

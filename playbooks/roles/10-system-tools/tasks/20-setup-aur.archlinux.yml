@@ -1,18 +1,63 @@
 ---
-- name: "[archlinux] AUR: ensure aur - Create modules folder"
-  ansible.builtin.file:
-    state: directory
-    path: "{{ item }}"
-    mode: "755"
-  loop:
-    - ~/.ansible/plugins
-    - ~/.ansible/plugins/modules
+- name: "[archlinux] AUR: check repo-local kewlfft.aur module checkout"
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/collections/ansible_collections/kewlfft/aur/plugins/modules/aur.py"
+  register: var_kewlfft_aur_module
+  delegate_to: localhost
+  run_once: true
 
-- name: "[archlinux] AUR: ensure ansible aur helper"
+- name: "[archlinux] AUR: remove incomplete kewlfft.aur checkout"
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/collections/ansible_collections/kewlfft/aur"
+    state: absent
+  when: not var_kewlfft_aur_module.stat.exists
+  delegate_to: localhost
+  run_once: true
+
+- name: "[archlinux] AUR: ensure repo-local collection path"
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/collections/ansible_collections/kewlfft/aur"
+    state: directory
+    mode: "755"
+  delegate_to: localhost
+  run_once: true
+
+- name: "[archlinux] AUR: create temp dir for upstream collection download"
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: kewlfft-aur-
+  register: var_kewlfft_aur_tmpdir
+  when: not var_kewlfft_aur_module.stat.exists
+  delegate_to: localhost
+  run_once: true
+
+- name: "[archlinux] AUR: download upstream kewlfft.aur collection archive"
   ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/kewlfft/ansible-aur/master/plugins/modules/aur.py
-    dest: ~/.ansible/plugins/modules/aur.py
+    url: https://github.com/kewlfft/ansible-aur/archive/refs/heads/master.tar.gz
+    dest: "{{ var_kewlfft_aur_tmpdir.path }}/kewlfft-aur.tar.gz"
     mode: "644"
+  when: not var_kewlfft_aur_module.stat.exists
+  delegate_to: localhost
+  run_once: true
+
+- name: "[archlinux] AUR: unpack upstream kewlfft.aur collection on controller"
+  ansible.builtin.unarchive:
+    src: "{{ var_kewlfft_aur_tmpdir.path }}/kewlfft-aur.tar.gz"
+    dest: "{{ playbook_dir }}/collections/ansible_collections/kewlfft/aur"
+    remote_src: true
+    extra_opts:
+      - --strip-components=1
+  when: not var_kewlfft_aur_module.stat.exists
+  delegate_to: localhost
+  run_once: true
+
+- name: "[archlinux] AUR: remove temp dir for upstream collection download"
+  ansible.builtin.file:
+    path: "{{ var_kewlfft_aur_tmpdir.path }}"
+    state: absent
+  when: not var_kewlfft_aur_module.stat.exists
+  delegate_to: localhost
+  run_once: true
 
 - name: "[archlinux] AUR: Create the `aur_builder` user"
   become: true

@@ -2,7 +2,7 @@
 - name: "[archlinux] PHP language: ensure packages"
   become: true
   become_user: aur_builder
-  aur:
+  kewlfft.aur.aur:
     use: yay
     state: present
     name:
@@ -18,7 +18,7 @@
 - name: "[archlinux] PHP language: ensure packages (using aur)"
   become: true
   become_user: aur_builder
-  aur:
+  kewlfft.aur.aur:
     use: yay
     state: present
     name:
