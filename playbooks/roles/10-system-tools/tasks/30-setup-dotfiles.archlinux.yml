@@ -11,7 +11,48 @@
   become: true
   ansible.builtin.package:
     state: present
-    name: stow
+    name:
+      - git
+      - rsync
+      - stow
+
+- name: "[archlinux] Dotfiles: download dotfiles"
+  ansible.builtin.git:
+    repo: https://github.com/serranomorante/dotfiles.git
+    dest: ~/dotfiles
+    recursive: false
+    force: true
+    depth: 1
+    version: main
+  when: inventory_hostname != 'localhost'
+
+- name: "[archlinux] Dotfiles: stat local private dotfiles"
+  delegate_to: localhost
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/../for-my-eyes-only"
+  register: var_arch_local_private_dotfiles
+  when: inventory_hostname != 'localhost'
+
+- name: "[archlinux] Dotfiles: ensure remote private dotfiles dir"
+  ansible.builtin.file:
+    path: ~/dotfiles/for-my-eyes-only
+    state: directory
+    mode: "755"
+  when:
+    - inventory_hostname != 'localhost'
+    - var_arch_local_private_dotfiles.stat.exists
+
+- name: "[archlinux] Dotfiles: sync private dotfiles from controller"
+  delegate_to: localhost
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../for-my-eyes-only/"
+    dest: "{{ ansible_facts.env.HOME }}/dotfiles/for-my-eyes-only/"
+    delete: true
+    rsync_opts:
+      - "--exclude=.git"
+  when:
+    - inventory_hostname != 'localhost'
+    - var_arch_local_private_dotfiles.stat.exists
 
 - name: "[archlinux] Dotfiles: remove problematic files"
   ansible.builtin.file:
@@ -42,7 +83,12 @@
     dest: ~/.config/
     mode: "644"
 
-- name: "[archlinux] Dotfiles: apply stow"
+- name: "[archlinux] Dotfiles: stat private stow package"
+  ansible.builtin.stat:
+    path: ~/dotfiles/for-my-eyes-only
+  register: var_arch_private_dotfiles
+
+- name: "[archlinux] Dotfiles: apply stow public packages"
   ansible.builtin.command: >
     stow --dotfiles --no-folding
     dunst
@@ -57,7 +103,13 @@
     utilities
     term
     PKM
-    for-my-eyes-only
   args:
     chdir: ~/dotfiles
   changed_when: false
+
+- name: "[archlinux] Dotfiles: apply stow private package"
+  ansible.builtin.command: stow --dotfiles --no-folding for-my-eyes-only
+  args:
+    chdir: ~/dotfiles
+  changed_when: false
+  when: var_arch_private_dotfiles.stat.exists

@@ -68,6 +68,12 @@
     - "10-system-tools : handler_ensure_docker_service"
     - "10-system-tools : handler_ensure_bluetooth_service"
 
+- name: "[archlinux] Setup desktop: remove docker kernel modules file"
+  become: true
+  ansible.builtin.file:
+    path: /etc/modules-load.d/docker.conf
+    state: absent
+
 - name: flush_handlers
   ansible.builtin.meta: flush_handlers
 
@@ -128,6 +134,12 @@
   ansible.builtin.command: which pinentry-qt
   register: var_pinentry_path
   changed_when: false
+
+- name: "[archlinux] Setup desktop: ensure ~/.gnupg"
+  ansible.builtin.file:
+    path: ~/.gnupg
+    state: directory
+    mode: "700"
 
 - name: "[archlinux] Setup desktop: ensure gpg-agent.conf"
   ansible.builtin.template:

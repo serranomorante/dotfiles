@@ -62,6 +62,7 @@
   ansible.builtin.copy:
     src: "{{ treesitter_tempdir.path }}/tree-sitter-linux-x64"
     dest: ~/bin/tree-sitter
+    remote_src: true
     mode: "755"
 
 - name: "[archlinux] Editor tools: clone treesitter parsers"
@@ -171,7 +172,7 @@
   changed_when: false
 
 - name: "[archlinux] Editor tools: update coc extensions"
-  ansible.builtin.command: nvim --headless -c "CocStart" -c "sleep 2" -c "CocUpdate" -c "sleep 60" -c "quit!"
+  ansible.builtin.command: ~/bin/nvim --headless -c "CocStart" -c "sleep 2" -c "CocUpdate" -c "sleep 60" -c "quit!"
   environment:
     NVIM_KITTY_LISTEN_ADDRESS: null
   changed_when: "(nvim_plugin_result_by_repo['neoclide/coc.nvim'] | default({})).changed | default(false)"

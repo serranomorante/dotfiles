@@ -11,7 +11,7 @@
 - name: "[archlinux] Setup infra tools: setup k3s"
   vars:
     k3s_install_version: "v1.26.3+k3s1"
-    k3s_install_exec: "server --disable=traefik"
+    k3s_install_exec: "server --disable=traefik --snapshotter=native"
     k3s_install_script_path: /tmp/get.k3s.sh
     k3s_system_kubeconfig_path: /etc/rancher/k3s/k3s.yaml
     k3s_user_kubeconfig_dir: "{{ ansible_facts.env.HOME }}/.kube"

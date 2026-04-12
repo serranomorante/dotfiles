@@ -76,6 +76,13 @@
     enabled: true
     masked: false
 
+- name: handler_reset_failed_docker_service
+  listen: handler_ensure_docker_service
+  become: true
+  ansible.builtin.command: systemctl reset-failed docker.service
+  changed_when: false
+  failed_when: false
+
 - name: handler_ensure_docker_service
   become: true
   ansible.builtin.systemd_service:
@@ -84,6 +91,11 @@
     state: started
     enabled: true
     masked: false
+    daemon_reload: true
+  register: var_docker_service
+  retries: 3
+  delay: 5
+  until: var_docker_service is succeeded
 
 - name: handler_ensure_bluetooth_service
   become: true
@@ -147,7 +159,7 @@
 - name: handler_kill_reaper_wineserver
   ansible.builtin.shell: >
     set -o pipefail &&
-    wwine --prefix reaper wineserver -k &&
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper wineserver -k &&
     sleep 1 &&
     for pid in $(ps aux | grep "[w]ine" | awk '{print $2}'); do kill -9 $pid; done
   timeout: 60

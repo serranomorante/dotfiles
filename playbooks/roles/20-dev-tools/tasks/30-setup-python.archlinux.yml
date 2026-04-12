@@ -5,6 +5,7 @@
   ansible.builtin.package:
     state: present
     name:
+      - python-pip
       - pyenv
       - base-devel
       - openssl
@@ -83,6 +84,13 @@
 - name: "[archlinux] Setup python: rehash shims"
   ansible.builtin.command: pyenv rehash
   changed_when: false
+
+- name: "[archlinux] Setup python: ensure package install project dirs"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/python-package-installs/pyenv-{{ item }}"
+    state: directory
+    mode: "755"
+  loop: "{{ python_versions }}"
 
 - name: "[archlinux] Setup python: upgrade pip for managed versions"
   ansible.builtin.command:

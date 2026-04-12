@@ -117,6 +117,7 @@
     src: "{{ item }}"
     basedir: ~/data/repos/h
     strip: 1
+    remote_src: true
   loop:
     - "{{ var_hypothesis_tempdir.path }}/hypothesis_h.patch"
 
@@ -163,6 +164,61 @@
     state: absent
   when: var_hypothesis_tempdir.path is defined
 
+- name: "[archlinux] Setup HPI - ensure docker config directory"
+  become: true
+  ansible.builtin.file:
+    path: /etc/docker
+    state: directory
+    mode: "755"
+  when: inventory_hostname != 'localhost'
+
+- name: "[archlinux] Setup HPI - configure docker for guest networking"
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    mode: "644"
+    content: |
+      {
+        "iptables": false,
+        "ip6tables": false
+      }
+  when: inventory_hostname != 'localhost'
+
+- name: "[archlinux] Setup HPI - ensure docker service"
+  become: true
+  ansible.builtin.command: systemctl reset-failed docker.service
+  changed_when: false
+  failed_when: false
+
+- name: "[archlinux] Setup HPI - start docker service"
+  become: true
+  ansible.builtin.systemd_service:
+    scope: system
+    name: docker.service
+    state: started
+    enabled: true
+    masked: false
+    daemon_reload: true
+  register: var_hpi_docker_service
+  retries: 3
+  delay: 5
+  until: var_hpi_docker_service is succeeded
+  failed_when: false
+
+- name: "[archlinux] Setup HPI - wait for docker daemon access"
+  ansible.builtin.shell: >
+    sg docker -c "docker info >/dev/null"
+  register: var_hpi_docker_info
+  changed_when: false
+  retries: 10
+  delay: 3
+  until: var_hpi_docker_info.rc == 0
+  failed_when: false
+
+- name: "[archlinux] Setup HPI - set self hosted availability fact"
+  ansible.builtin.set_fact:
+    hpi_self_hosted_available: "{{ var_hpi_docker_info.rc == 0 }}"
+
 - name: "[archlinux] Setup HPI - register docker dbs network exists"
   # The docker-compose file of the h repo needs this network to exist
   ansible.builtin.shell: >
@@ -170,11 +226,14 @@
     sg docker -c "docker network ls --filter name=dbs --format 'json' | wc -l"
   register: docker_network_dbs_exists
   changed_when: false
+  when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - create dbs network"
   ansible.builtin.command: sg docker -c "docker network create dbs"
   changed_when: false
-  when: docker_network_dbs_exists.stdout == "0"
+  when:
+    - hpi_self_hosted_available
+    - docker_network_dbs_exists.stdout == "0"
 
 - name: "[archlinux] Setup HPI - clean dependencies"
   ansible.builtin.file:
@@ -196,6 +255,7 @@
   timeout: 0
   notify:
     - "40-PKM : handler_ensure_hypothesis_self_hosted_service"
+  when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - ensure h db"
   ansible.builtin.shell: >
@@ -211,6 +271,7 @@
   timeout: 0
   notify:
     - "40-PKM : handler_ensure_hypothesis_self_hosted_service"
+  when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - add CHROME_EXTENSION_ID env to bouncer"
   ansible.builtin.template:
@@ -218,6 +279,7 @@
     dest: ~/.config/systemd/user/
     mode: "644"
   notify: "40-PKM : handler_ensure_hypothesis_bouncer_self_hosted_service"
+  when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - ensure hypothesis user"
   # These credentials will not be used on production environments
@@ -237,6 +299,7 @@
     - "'stdout' in ensure_hypothesis_user_result"
     - "'duplicate key value violates unique constraint' not in ensure_hypothesis_user_result.stdout"
     - "'commands succeeded' not in ensure_hypothesis_user_result.stdout"
+  when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - ensure admin user"
   ansible.builtin.command: >
@@ -248,6 +311,7 @@
   environment:
     PYENV_VERSION: "{{ var_h_python_version.stdout }}"
     VIRTUALENV_PIP: "24.0"
+  when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - register authclient exists"
   ansible.builtin.command: >
@@ -262,6 +326,7 @@
     PYENV_VERSION: "{{ var_h_python_version.stdout }}"
     VIRTUALENV_PIP: "24.0"
   changed_when: false
+  when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - create new OAuth client"
   ansible.builtin.command: >
@@ -277,7 +342,9 @@
   environment:
     PYENV_VERSION: "{{ var_h_python_version.stdout }}"
     VIRTUALENV_PIP: "24.0"
-  when: "'Auth client not found' in register_auth_client_exists_result.stdout"
+  when:
+    - hpi_self_hosted_available
+    - "'Auth client not found' in register_auth_client_exists_result.stdout"
   changed_when: "'commands succeeded' in create_new_oauth_client_result.stdout"
 
 - name: "[archlinux] Setup HPI - set_fact hypothesis client id"
@@ -285,6 +352,7 @@
     hypothesis_oauth_client_id: "{{ create_new_oauth_client_result.stdout | default(register_auth_client_exists_result.stdout) | regex_search('Client ID: ([\\w-]*)',
       '\\1') | first }}"
     cacheable: true
+  when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI: clone hypothesis client"
   ansible.builtin.git:

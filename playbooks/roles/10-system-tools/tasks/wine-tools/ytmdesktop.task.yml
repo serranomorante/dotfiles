@@ -7,7 +7,7 @@
 
 - name: "[archlinux] Wine tools: install ytmdesktop"
   ansible.builtin.command: >
-    wwine --prefix '{{ arch_ytmdesktop_wine_setup.wine_prefix }}'
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ arch_ytmdesktop_wine_setup.wine_prefix }}'
     wine start /unix '{{ arch_ytmdesktop_wine_setup.backup_path }}/YouTube.Music.Desktop.App-{{ arch_ytmdesktop_wine_setup.version }}.Setup.exe'
   timeout: 60
   args:

@@ -1,4 +1,10 @@
 ---
+- name: "[archlinux] Javascript language: ensure npm prefix"
+  ansible.builtin.file:
+    path: "{{ node_javascript_npm_prefix }}"
+    state: directory
+    mode: "755"
+
 - name: "[archlinux] Javascript language: ensure npm packages"
   community.general.npm:
     name: "{{ item.name }}"
@@ -18,13 +24,21 @@
     state: link
   loop: "{{ node_javascript_npm_packages | subelements('bins') }}"
 
-- name: "[archlinux] Javascript language: ensure FORMATTERS (using aur)"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
+- name: "[archlinux] Javascript language: ensure prettierd"
+  community.general.npm:
+    name: "@fsouza/prettierd"
+    global: true
     state: present
-    name: prettierd
+    executable: "{{ ansible_firejail_npm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
+    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_javascript_npm_prefix }}"
+
+- name: "[archlinux] Javascript language: symlink prettierd"
+  ansible.builtin.file:
+    src: "{{ node_javascript_npm_prefix }}/bin/prettierd"
+    dest: "{{ node_user_bin_dir }}/prettierd"
+    state: link
 
 - name: "[archlinux] Javascript language: clone vscode-js-debug"
   ansible.builtin.git:
@@ -63,6 +77,8 @@
       - "{{ node_system_default_npx_path }}"
       - gulp
       - dapDebugServer
+  environment:
+    PATH: "{{ node_system_default_bin_dir }}:{{ ansible_facts.env.PATH }}"
   args:
     chdir: ~/data/repos/vscode-js-debug
   when: var_clone_vscode_js_debug.changed or not var_stat_vscode_js_debug.stat.exists

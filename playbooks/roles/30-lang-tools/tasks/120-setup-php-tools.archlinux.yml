@@ -15,17 +15,6 @@
       - composer
       - xdebug
 
-- name: "[archlinux] PHP language: ensure packages (using aur)"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name:
-      - phpactor
-      - vscode-php-debug
-      - symfony-cli
-
 - name: "[archlinux] PHP language: enable extensions"
   become: true
   ansible.builtin.replace:
@@ -59,3 +48,14 @@
       zend_extension=xdebug.so
       xdebug.mode = debug
       xdebug.start_with_request = yes
+
+- name: "[archlinux] PHP language: ensure packages (using aur)"
+  become: true
+  become_user: aur_builder
+  kewlfft.aur.aur:
+    use: yay
+    state: present
+    name:
+      - phpactor
+      - vscode-php-debug
+      - symfony-cli

@@ -159,6 +159,11 @@
   tags: ["10-140"]
 
 - block:
+    - name: Prepare python before persistence setup
+      ansible.builtin.include_role:
+        name: 20-dev-tools
+        tasks_from: python
+
     - name: Setup persistence tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:

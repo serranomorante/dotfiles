@@ -11,9 +11,18 @@
   become: true
   ansible.builtin.package:
     state: present
+    name: marksman
+
+- name: "[archlinux] Markdown language: ensure aur packages"
+  become: true
+  become_user: aur_builder
+  kewlfft.aur.aur:
+    use: yay
+    state: present
     name:
-      - marksman
-      - mdcat
+      - mdcat-bin
+      - mathjax
+    aur_only: true
 
 - name: "[archlinux] Markdown language: ensure aur texlive"
   become: true
@@ -27,14 +36,11 @@
     state: present
     name: texlive-xetex
 
-- name: "[archlinux] Markdown language: ensure aur packages"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name: mathjax
-    aur_only: true
+- name: "[archlinux] Markdown language: ensure npm prefix"
+  ansible.builtin.file:
+    path: "{{ node_markdown_npm_prefix }}"
+    state: directory
+    mode: "755"
 
 - name: "[archlinux] Markdown language: ensure npm packages"
   community.general.npm:

@@ -21,6 +21,12 @@
     - "{{ ansible_facts.env.HOME }}/.local/share/uv"
     - "{{ ansible_facts.env.HOME }}/.local/share/uv/tools"
 
+- name: "[archlinux] Setup terminal tools: ensure uv tool project dir"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/uv-tools"
+    state: directory
+    mode: "755"
+
 - name: "[archlinux] Setup terminal tools: uv ensure packages"
   ansible.builtin.command:
     argv:

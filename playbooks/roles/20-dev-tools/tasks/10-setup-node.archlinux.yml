@@ -71,27 +71,31 @@
   ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta install node@{{ node_system_default_version }}"
   changed_when: true
 
-- name: "[archlinux] Setup node: ensure package manager prefix"
+- name: "[archlinux] Setup node: ensure volta tool project dir"
   ansible.builtin.file:
-    path: "{{ node_package_manager_npm_prefix }}"
+    path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools"
     state: directory
     mode: "755"
 
 - name: "[archlinux] Setup node: ensure package managers"
-  community.general.npm:
-    name: "{{ item.name }}"
-    version: "{{ item.version }}"
-    global: true
-    state: present
-    executable: "{{ ansible_firejail_npm_executable }}"
+  ansible.builtin.command:
+    argv:
+      - "{{ node_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools"
+      - --
+      - "{{ ansible_facts.env.HOME }}/.volta/bin/volta"
+      - install
+      - "{{ item.name }}@{{ item.version }}"
   environment:
-    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
-    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_package_manager_npm_prefix }}"
+    FJ_NODE_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/.volta
   loop: "{{ node_package_manager_packages }}"
+  changed_when: true
 
 - name: "[archlinux] Setup node: symlink package manager binaries"
   ansible.builtin.file:
-    src: "{{ node_package_manager_npm_prefix }}/bin/{{ item.1 }}"
+    src: "{{ node_volta_home }}/bin/{{ item.1 }}"
     dest: "{{ node_user_bin_dir }}/{{ item.1 }}"
     state: link
   loop: "{{ node_package_manager_packages | subelements('bins') }}"

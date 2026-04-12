@@ -7,7 +7,7 @@
 
 - name: "[archlinux] Wine tools: install audiogridder server"
   ansible.builtin.command: >
-    wwine --prefix reaper
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
     wine start /unix '{{ arch_audiogridder_wine_setup.backup_path }}/AudioGridderServer_{{ arch_audiogridder_wine_setup.version }}.exe'
   timeout: 60
   args:
