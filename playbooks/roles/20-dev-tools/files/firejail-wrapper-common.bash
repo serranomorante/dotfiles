@@ -111,7 +111,9 @@ init_firejail_args() {
 
     case "$network_mode" in
     online)
-        FIREJAIL_ARGS+=(--protocol=unix,inet,inet6)
+        # Allow netlink in online mode so Node/libuv can enumerate interfaces.
+        # Vite hits os.networkInterfaces() when host binding is wildcard/true.
+        FIREJAIL_ARGS+=(--protocol=unix,inet,inet6,netlink)
         ;;
     local)
         FIREJAIL_ARGS+=(--protocol=unix)
