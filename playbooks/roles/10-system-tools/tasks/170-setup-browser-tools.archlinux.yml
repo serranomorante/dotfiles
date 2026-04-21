@@ -75,7 +75,7 @@
     - repo: https://github.com/facebook/react
       version: v{{ facebook_react_extension_version }}
     - repo: https://github.com/karlicoss/promnesia
-    - repo: https://github.com/microsoft/playwright-mcp
+    - repo: https://github.com/microsoft/playwright
 
 - name: "[archlinux] Setup browser tools: set fact fact_changed_extensions"
   ansible.builtin.set_fact:
@@ -86,20 +86,13 @@
 
 - name: "[archlinux] Setup browser tools: register var_playwright_mcp_browser_key"
   ansible.builtin.command: kwallet-query --folder {{ folder }} --read-password {{ passkey }} {{ wallet }}
-  changed_when: true
+  changed_when: false
   register: var_playwright_mcp_browser_key
   ignore_errors: true
   vars:
     folder: "{{ playwright_mcp_server_setup.keyrings.folder }}"
     passkey: "{{ playwright_mcp_server_setup.keyrings.passkey }}"
     wallet: "{{ playwright_mcp_server_setup.keyrings.wallet }}"
-
-- name: "[archlinux] Setup browser tools: register var_playwright_mcp_extension_key"
-  ansible.builtin.command: >
-    sed -nE "s/.*extensionPublicKey[^']*'([^']*)'.*/\1/p" ~/data/repos/playwright-mcp/packages/extension/tests/extension.spec.ts
-  changed_when: true
-  register: var_playwright_mcp_extension_key
-  ignore_errors: true
 
 - name: "[archlinux] Setup browser tools: create playwright_mcp_tempdir"
   ansible.builtin.tempfile:
@@ -112,55 +105,48 @@
     src: playwright_mcp_auth_token.patch
     dest: "{{ playwright_mcp_tempdir.path }}/playwright_mcp_auth_token.patch"
     mode: "644"
-  when: fact_changed_extensions['playwright-mcp'] and 'stdout' in var_playwright_mcp_browser_key
-
-- name: "[archlinux] Setup browser tools: dynamically generate playwright_mcp_auth_token.patch"
-  ansible.builtin.template:
-    src: playwright_mcp_public_key.patch
-    dest: "{{ playwright_mcp_tempdir.path }}/playwright_mcp_public_key.patch"
-    mode: "644"
-  when: fact_changed_extensions['playwright-mcp'] and 'stdout' in var_playwright_mcp_extension_key
+  when:
+    - fact_changed_extensions['playwright']
+    - (var_playwright_mcp_browser_key.stdout | default('') | trim | length) > 0
 
 - name: "[archlinux] Setup browser tools: patch playwright mcp extension"
   ansible.posix.patch:
     src: "{{ item }}"
-    basedir: ~/data/repos/playwright-mcp
+    basedir: ~/data/repos/playwright
     strip: 1
   ignore_errors: true
   register: var_patch_playwright_mcp
   loop:
     - "{{ playwright_mcp_tempdir.path }}/playwright_mcp_auth_token.patch"
-    - "{{ playwright_mcp_tempdir.path }}/playwright_mcp_public_key.patch"
-  when: fact_changed_extensions['playwright-mcp'] and 'stdout' in var_playwright_mcp_browser_key
+  when:
+    - fact_changed_extensions['playwright']
+    - (var_playwright_mcp_browser_key.stdout | default('') | trim | length) > 0
 
 - name: "[archlinux] Setup browser tools: stat playwright mcp package lock"
   ansible.builtin.stat:
-    path: "{{ ansible_facts.env.HOME }}/data/repos/playwright-mcp/package-lock.json"
+    path: "{{ ansible_facts.env.HOME }}/data/repos/playwright/package-lock.json"
   register: var_stat_playwright_mcp_package_lock
   when:
-    - fact_changed_extensions['playwright-mcp']
-    - var_patch_playwright_mcp is success
+    - fact_changed_extensions['playwright']
 
 - name: "[archlinux] Setup browser tools: ensure playwright mcp package lock exists"
   ansible.builtin.assert:
     that:
       - var_stat_playwright_mcp_package_lock.stat.exists
-    fail_msg: "playwright-mcp package-lock.json is required at the repo root for npm ci"
+    fail_msg: "playwright package-lock.json is required at the repo root for npm ci"
   when:
-    - fact_changed_extensions['playwright-mcp']
-    - var_patch_playwright_mcp is success
+    - fact_changed_extensions['playwright']
 
 - name: "[archlinux] Setup browser tools: install playwright mcp npm packages"
   community.general.npm:
-    path: "{{ ansible_facts.env.HOME }}/data/repos/playwright-mcp"
+    path: "{{ ansible_facts.env.HOME }}/data/repos/playwright"
     ci: true
     executable: "{{ ansible_firejail_npm_executable }}"
   environment:
     ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
-  changed_when: fact_changed_extensions['playwright-mcp']
+  changed_when: fact_changed_extensions['playwright']
   when:
-    - fact_changed_extensions['playwright-mcp']
-    - var_patch_playwright_mcp is success
+    - fact_changed_extensions['playwright']
 
 - name: "[archlinux] Setup browser tools: build playwright mcp"
   ansible.builtin.command:
@@ -170,11 +156,25 @@
       - run
       - build
   args:
-    chdir: ~/data/repos/playwright-mcp/packages/extension
-  changed_when: fact_changed_extensions['playwright-mcp']
+    chdir: ~/data/repos/playwright/packages/extension
+  changed_when: fact_changed_extensions['playwright']
   when:
-    - fact_changed_extensions['playwright-mcp']
-    - var_patch_playwright_mcp is success
+    - fact_changed_extensions['playwright']
+
+- name: "[archlinux] Setup browser tools: read playwright mcp dist manifest"
+  ansible.builtin.slurp:
+    src: "{{ ansible_facts.env.HOME }}/data/repos/playwright/packages/extension/dist/manifest.json"
+  register: var_playwright_mcp_dist_manifest
+  when:
+    - fact_changed_extensions['playwright']
+
+- name: "[archlinux] Setup browser tools: ensure playwright mcp dist manifest has a valid key"
+  ansible.builtin.assert:
+    that:
+      - ((var_playwright_mcp_dist_manifest.content | b64decode | from_json).key | default('') | trim | length) > 0
+    fail_msg: "playwright-mcp dist/manifest.json is missing a valid key after build"
+  when:
+    - fact_changed_extensions['playwright']
 
 - name: "[archlinux] Setup browser tools: patch NewTab-Redirect extension"
   ansible.posix.patch:
