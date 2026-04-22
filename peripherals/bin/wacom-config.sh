@@ -9,8 +9,8 @@ set_button_if_supported() {
     local button="$2"
     local action="$3"
 
-    if xsetwacom --get "$device" "Button $button" >/dev/null 2>&1; then
-        xsetwacom --set "$device" "Button $button" "$action" >/dev/null 2>&1 || true
+    if xsetwacom --get "$device" Button "$button" >/dev/null 2>&1; then
+        xsetwacom --set "$device" Button "$button" "$action" >/dev/null 2>&1 || true
     fi
 }
 
@@ -45,8 +45,11 @@ xsetwacom --set "${stylus_name}" "PanScrollThreshold" 200 >/dev/null 2>&1 || tru
 set_button_if_supported "${stylus_name}" 3 "0"
 
 # Disable tablet buttons
-for button in 1 2 3 4 5 6 7 8; do
-    set_button_if_supported "${pad_name}" "$button" "0"
+#
+# On this Intuos S pad, the fourth physical express key is exposed by
+# xsetwacom as Button 8 rather than Button 4.
+for button in 1 2 3 8; do
+    xsetwacom --set "${pad_name}" Button "$button" "0" >/dev/null 2>&1 || true
 done
 
 full_window_size=$(xrandr -q | grep -Po '\bcurrent\b\s(\d+)\sx\s(\d+)')
