@@ -296,6 +296,12 @@ function M.get_cursor_position()
   return bufname, line, col
 end
 
+local function rg_command(search, opts)
+  local grep_cmd = "rg -e " .. search:gsub("\\'", "\\x27") -- escape single quotes
+  if opts.json then grep_cmd = string.format("%s %s", grep_cmd, "--json") end
+  return grep_cmd
+end
+
 ---Grep with ripgrep
 ---@param search string
 ---@param opts table?
@@ -306,8 +312,7 @@ function M.grep_with_rg(search, opts)
     vim.api.nvim_echo({ { "Empty search pattern" } }, false, { err = true })
     return {}
   end
-  local grep_cmd = "rg -e " .. search:gsub("\\'", "\\x27") -- escape single quotes
-  if opts.json then grep_cmd = string.format("%s %s", grep_cmd, "--json") end
+  local grep_cmd = rg_command(search, opts)
   local content = vim.fn.join(vim.fn.systemlist(grep_cmd), ",")
   if vim.api.nvim_get_vvar("shell_error") > 0 then
     vim.api.nvim_echo({ { content } }, false, { err = true })
@@ -466,52 +471,287 @@ end
 ---@field type "begin"|"match"|"end"
 ---@field data RGData
 
----RipGrep json output to quickfix list items
----@param json RGContent[]
-function M.rg_json_to_qfitems(json)
+---@param text string
+---@param offset integer 0-based byte offset
+---@return integer line_offset 0-based
+---@return integer col 1-based byte column
+---@return integer line_start 1-based byte index
+local function rg_byte_offset_to_qf_position(text, offset)
+  local line_offset = 0
+  local line_start = 0
+  local search_from = 1
+
+  while true do
+    local newline = text:find("\n", search_from, true)
+    if not newline or newline > offset then break end
+
+    line_offset = line_offset + 1
+    line_start = newline
+    search_from = newline + 1
+  end
+
+  return line_offset, offset - line_start + 1, line_start + 1
+end
+
+---@param text string
+---@param line_start integer 1-based byte index
+local function rg_line_text_at(text, line_start)
+  local line_end = text:find("\n", line_start, true)
+  return text:sub(line_start, line_end and line_end - 1 or #text)
+end
+
+local function vim_very_nomagic_escape(text) return text:gsub("\\", "\\\\"):gsub("/", "\\/") end
+
+local function qf_exact_line_pattern(line_text, col, end_col)
+  local match_end = math.min(math.max(end_col or col, col), #line_text)
+  local before = line_text:sub(1, col - 1)
+  local match = line_text:sub(col, match_end)
+  local after = line_text:sub(match_end + 1)
+
+  return "\\m^\\V"
+    .. vim_very_nomagic_escape(before)
+    .. "\\zs"
+    .. vim_very_nomagic_escape(match)
+    .. vim_very_nomagic_escape(after)
+    .. "\\m$"
+end
+
+local function should_add_rg_qf_pattern(line_text, entries_count, opts)
+  local pattern_limit = opts.pattern_limit or 5000
+  local pattern_line_max = opts.pattern_line_max or 500
+  if pattern_limit ~= false and entries_count >= pattern_limit then return false end
+  return #line_text <= pattern_line_max
+end
+
+local function rg_json_match_to_qfitems(item, opts, entries_count)
+  opts = opts or {}
+  entries_count = entries_count or 0
   ---@type vim.quickfix.entry[]
   local entries = {}
-  for json_index, item in pairs(json) do
-    local prev_new_line_match_end = 1
 
-    ---Detect the "end" item so we can gather if the search was --multiline or not
-    local end_item_found_cache = false
-    local count = json_index + 1
-    while not end_item_found_cache and json[count] and json[count].type ~= "end" do
-      count = count + 1
+  local lines_text = item.data.lines and item.data.lines.text
+  if item.type ~= "match" or not lines_text then return entries end
+
+  for _, submatch in ipairs(item.data.submatches or {}) do
+    local line_offset, col, line_start = rg_byte_offset_to_qf_position(lines_text, submatch.start)
+    local end_line_offset, end_col =
+      rg_byte_offset_to_qf_position(lines_text, math.max(submatch["end"] - 1, submatch.start))
+    local line_text = rg_line_text_at(lines_text, line_start)
+    local qfitem = {
+      text = line_text,
+      filename = item.data.path.text,
+      lnum = item.data.line_number + line_offset,
+      col = col,
+      end_lnum = item.data.line_number + end_line_offset,
+      end_col = end_col,
+      user_data = { submatch = submatch.match.text },
+    }
+    if should_add_rg_qf_pattern(line_text, entries_count + #entries, opts) then
+      qfitem.pattern = qf_exact_line_pattern(line_text, col, line_offset == end_line_offset and end_col or #line_text)
     end
-    local is_multiline = json[count] and json[count].data.stats.matched_lines > json[count].data.stats.matches
-    end_item_found_cache = item.type == "end" and false or true
+    table.insert(entries, qfitem)
+  end
 
+  return entries
+end
+
+---RipGrep json output to quickfix list items
+---@param json RGContent[]
+---@param opts table?
+function M.rg_json_to_qfitems(json, opts)
+  opts = opts or {}
+  ---@type vim.quickfix.entry[]
+  local entries = {}
+  for _, item in ipairs(json) do
     ---Inner loop is required due to: https://github.com/BurntSushi/ripgrep/issues/1983
     ---and https://github.com/BurntSushi/ripgrep/issues/2779
-    for i, submatch in pairs(item.data.submatches or {}) do
-      if is_multiline then
-        local new_line_match_end = item.data.lines.text:find("\n", submatch["end"]) + 1
-        local text = item.data.lines.text:sub(prev_new_line_match_end, new_line_match_end)
-        local col, end_col = M.rel_cols(submatch.start, submatch["end"], prev_new_line_match_end)
-        table.insert(entries, {
-          text = text,
-          filename = item.data.path.text,
-          lnum = item.data.line_number + ((i - 1) * vim.tbl_count(vim.fn.split(submatch.match.text, "\n"))),
-          col = col,
-          end_col = end_col,
-          user_data = { submatch = submatch.match.text },
-        })
-        prev_new_line_match_end = new_line_match_end or 1
-      else
-        table.insert(entries, {
-          text = item.data.lines.text,
-          filename = item.data.path.text,
-          lnum = item.data.line_number,
-          col = submatch.start + 1,
-          end_col = submatch["end"],
-          user_data = { submatch = submatch.match.text },
-        })
-      end
-    end
+    vim.list_extend(entries, rg_json_match_to_qfitems(item, opts, #entries))
   end
   return entries, vim.tbl_count(entries)
+end
+
+---@class GrepQfOpts
+---@field batch_size? integer
+---@field context? table
+---@field on_finish? fun(count: integer, exit_code: integer)
+---@field parse_batch_size? integer
+---@field pattern_limit? integer|false
+---@field pattern_line_max? integer
+---@field title_prefix? string
+
+---@param search string
+---@param opts GrepQfOpts?
+function M.grep_with_rg_to_qflist(search, opts)
+  opts = opts or {}
+  if search == "''" then
+    vim.api.nvim_echo({ { "Empty search pattern" } }, false, { err = true })
+    return { cancel = function() end }
+  end
+
+  local batch_size = opts.batch_size or 1000
+  local parse_batch_size = opts.parse_batch_size or 1000
+  local title_prefix = opts.title_prefix or "Grep"
+  local running_title = ("[%s] running: %s"):format(title_prefix, search)
+  local final_title = ("[%s] %%d results: %s"):format(title_prefix, search)
+
+  vim.fn.setqflist({}, " ", { title = running_title, items = {}, context = opts.context })
+
+  local state = {
+    cancelled = false,
+    count = 0,
+    drain_scheduled = false,
+    err_tail = "",
+    errors = {},
+    exit_code = nil,
+    exited = false,
+    finished = false,
+    head = 1,
+    job_id = nil,
+    jumped = false,
+    lines = {},
+    pending_items = {},
+    qf_id = vim.fn.getqflist({ id = 0 }).id,
+    stdout_tail = "",
+  }
+
+  local function compact_queue()
+    if state.head > 1000 then
+      state.lines = vim.list_slice(state.lines, state.head)
+      state.head = 1
+    end
+  end
+
+  local function update_title(title) vim.fn.setqflist({}, "a", { id = state.qf_id, title = title }) end
+
+  local function flush_items()
+    if vim.tbl_isempty(state.pending_items) then return end
+
+    local items = state.pending_items
+    state.pending_items = {}
+    vim.fn.setqflist({}, "a", { id = state.qf_id, items = items, title = final_title:format(state.count) })
+
+    if not state.jumped then
+      state.jumped = true
+      vim.cmd.cfirst({ mods = { emsg_silent = true } })
+      vim.cmd.normal({ "zz", bang = true })
+    end
+  end
+
+  local finish
+  local schedule_drain
+
+  local function process_json_line(line)
+    if line == "" then return end
+
+    local ok, item = pcall(vim.json.decode, line, { luanil = { object = true } })
+    if not ok then
+      table.insert(state.errors, item)
+      return
+    end
+
+    local entries = rg_json_match_to_qfitems(item, opts, state.count)
+    if vim.tbl_isempty(entries) then return end
+
+    state.count = state.count + #entries
+    vim.list_extend(state.pending_items, entries)
+    if #state.pending_items >= batch_size then flush_items() end
+  end
+
+  schedule_drain = function()
+    if state.drain_scheduled or state.cancelled then return end
+    state.drain_scheduled = true
+
+    vim.schedule(function()
+      state.drain_scheduled = false
+      if state.cancelled then return end
+
+      local processed = 0
+      while state.head <= #state.lines and processed < parse_batch_size do
+        process_json_line(state.lines[state.head])
+        state.head = state.head + 1
+        processed = processed + 1
+      end
+      compact_queue()
+
+      if state.head <= #state.lines then
+        schedule_drain()
+      elseif state.exited then
+        finish()
+      end
+    end)
+  end
+
+  finish = function()
+    if state.finished or state.cancelled then return end
+    state.finished = true
+    flush_items()
+    update_title(final_title:format(state.count))
+
+    local exit_code = state.exit_code or 0
+    if state.count == 0 and exit_code <= 1 then
+      vim.api.nvim_echo({ { ("[%s] No results: %s"):format(title_prefix, search) } }, false, { err = true })
+    elseif exit_code > 1 then
+      local msg = table.concat(state.errors, "\n")
+      if msg == "" then msg = ("rg exited with code %d"):format(exit_code) end
+      vim.api.nvim_echo({ { msg } }, false, { err = true })
+    else
+      vim.api.nvim_echo({ { final_title:format(state.count), "DiagnosticOk" } }, false, {})
+    end
+
+    if opts.on_finish then opts.on_finish(state.count, exit_code) end
+  end
+
+  local function queue_stdout(data)
+    if not data or vim.tbl_isempty(data) then return end
+
+    data[1] = state.stdout_tail .. (data[1] or "")
+    state.stdout_tail = table.remove(data) or ""
+    vim.list_extend(state.lines, data)
+    schedule_drain()
+  end
+
+  local function collect_stderr(data)
+    if not data or vim.tbl_isempty(data) then return end
+
+    data[1] = state.err_tail .. (data[1] or "")
+    state.err_tail = table.remove(data) or ""
+    vim.list_extend(state.errors, vim.tbl_filter(function(line) return line ~= "" end, data))
+  end
+
+  state.job_id = vim.fn.jobstart(rg_command(search, { json = true }), {
+    on_exit = function(_, code)
+      if state.stdout_tail ~= "" then
+        table.insert(state.lines, state.stdout_tail)
+        state.stdout_tail = ""
+      end
+      if state.err_tail ~= "" then
+        table.insert(state.errors, state.err_tail)
+        state.err_tail = ""
+      end
+      state.exit_code = code
+      state.exited = true
+      schedule_drain()
+    end,
+    on_stderr = function(_, data) collect_stderr(data) end,
+    on_stdout = function(_, data) queue_stdout(data) end,
+    stderr_buffered = false,
+    stdin = "null",
+    stdout_buffered = false,
+  })
+
+  if state.job_id <= 0 then
+    state.cancelled = true
+    vim.api.nvim_echo({ { "Could not start rg", "DiagnosticError" } }, false, { err = true })
+  end
+
+  return {
+    cancel = function()
+      if state.finished or state.cancelled then return end
+      state.cancelled = true
+      if state.job_id and state.job_id > 0 then vim.fn.jobstop(state.job_id) end
+      update_title(("[%s] cancelled: %s"):format(title_prefix, search))
+    end,
+  }
 end
 
 ---Treesitter compatible filetypes

@@ -2,23 +2,16 @@
 
 local utils = require("serranomorante.utils")
 
+local active_grep
+
 ---@param command_args vim.api.keyset.create_user_command.command_args
 local function grep(command_args)
-  local items, count = utils.rg_json_to_qfitems(utils.grep_with_rg(command_args.args, { json = true }))
-  if count == 0 then
-    local msg = "[Grep] No results: %s"
-    return vim.api.nvim_echo({ { msg:format(command_args.args) } }, false, { err = true })
-  end
-
-  local msg = "[Grep] %d results: %s"
-  vim.api.nvim_echo({ { msg:format(count, command_args.args), "DiagnosticOk" } }, false, {})
-  vim.fn.setqflist(
-    {},
-    " ",
-    { title = msg:format(count, command_args.args), items = items, context = { name = "user.grep" } }
-  )
-  vim.cmd.cfirst({ mods = { emsg_silent = true } })
-  vim.cmd.normal({ "zz", bang = true })
+  if active_grep then active_grep.cancel() end
+  active_grep = utils.grep_with_rg_to_qflist(command_args.args, {
+    context = { name = "user.grep" },
+    title_prefix = "Grep",
+    on_finish = function() active_grep = nil end,
+  })
 end
 
 vim.api.nvim_create_user_command(
