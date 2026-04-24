@@ -7,6 +7,12 @@
       - plasma-pa
       - pulseaudio
 
+- name: "[archlinux] Setup audio tools: install plexamp"
+  community.general.flatpak:
+    name: com.plexamp.Plexamp
+    state: latest
+  ignore_errors: true
+
 - name: "[archlinux] Setup audio tools: ensure aur packages"
   become: true
   become_user: aur_builder
