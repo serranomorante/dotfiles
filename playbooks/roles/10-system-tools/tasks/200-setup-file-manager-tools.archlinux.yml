@@ -8,7 +8,8 @@
     single_branch: true
     version: "{{ item.version | default('HEAD') }}"
   loop:
-    - { repo: https://github.com/jarun/nnn, version: master }
+    - { repo: https://github.com/jarun/nnn, version: v5.2 }
+  register: var_nnn_repo
 
 - name: "[archlinux] Setup file manager: ensure deps"
   become: true
@@ -19,6 +20,7 @@
       - pkg-config
       - ncurses
       - imagemagick
+      - chafa
       - readline
       - mpv
       - ffmpegthumbnailer
@@ -46,13 +48,18 @@
   changed_when: true
   notify: handler_restart_xdg_desktop_portal_termfilechooser
 
+- name: "[archlinux] Setup file manager: check nnn binary"
+  ansible.builtin.stat:
+    path: ~/.local/bin/nnn
+  register: var_nnn_binary
+
 - name: "[archlinux] Setup file manager: build nnn"
   ansible.builtin.command: make O_NERD=1 O_GITSTATUS=1 O_PCRE2=1 strip install
   environment:
     PREFIX: "{{ ansible_facts.env.HOME }}/.local"
   args:
     chdir: ~/data/repos/nnn
-    creates: ~/.local/bin/nnn
+  when: var_nnn_repo is changed or not var_nnn_binary.stat.exists
 
 - name: "[archlinux] Setup file manager: ensure dest folder"
   ansible.builtin.file:
