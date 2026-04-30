@@ -12,11 +12,15 @@ local FORMAT_OPTS = {
   lsp_format = "never",
 }
 
-local function init()
+---@param opts conform.setupOpts
+local function setup_formatexpr_autocmd(opts)
+  local patterns = vim.tbl_keys(opts.formatters_by_ft or {})
+  if vim.tbl_isempty(patterns) then return end
+
   ---https://github.com/stevearc/conform.nvim/pull/238#issuecomment-1846253082
   vim.api.nvim_create_autocmd("FileType", {
     desc = "Set formatexpr per buffer using conform.formatexpr",
-    pattern = vim.tbl_keys(require("conform").formatters_by_ft),
+    pattern = patterns,
     group = vim.api.nvim_create_augroup("conform_formatexpr", { clear = true }),
     callback = function(args)
       vim.bo[args.buf].formatexpr = string.format("v:lua.require'conform'.formatexpr(%s)", vim.fn.string({}))
@@ -65,11 +69,12 @@ function M.opts()
 end
 
 function M.config()
-  init()
   keys()
 
   local conform = require(M.PLUGIN)
-  conform.setup(M.opts())
+  local opts = M.opts()
+  conform.setup(opts)
+  setup_formatexpr_autocmd(opts)
 
   local format = conform.format
   ---Patch `conform.format(...)` to always have a callback, even on `conform.formatexpr()` calls.
