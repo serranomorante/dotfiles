@@ -54,10 +54,11 @@
     - inventory_hostname != 'localhost'
     - var_arch_local_private_dotfiles.stat.exists
 
-- name: "[archlinux] Dotfiles: remove problematic files"
-  ansible.builtin.file:
-    state: absent
+- name: "[archlinux] Dotfiles: stat problematic files"
+  ansible.builtin.stat:
     path: "{{ item }}"
+    follow: false
+  register: var_arch_problematic_files
   loop:
     - ~/.config/gromit-mpx.ini
     - ~/.config/mimeapps.list
@@ -76,6 +77,15 @@
     - ~/.bash_profile
     - ~/.bashrc
     - ~/.local/share/applications/wine-protocol-dreamtonics-svstudio2.desktop
+
+- name: "[archlinux] Dotfiles: remove problematic files"
+  ansible.builtin.file:
+    state: absent
+    path: "{{ item.item }}"
+  loop: "{{ var_arch_problematic_files.results }}"
+  when:
+    - item.stat.exists
+    - not item.stat.islnk
 
 - name: "[archlinux] Setup browser tools: setup ktrashrc"
   ansible.builtin.template:
