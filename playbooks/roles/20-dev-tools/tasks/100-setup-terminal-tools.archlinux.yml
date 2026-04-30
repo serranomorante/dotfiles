@@ -9,7 +9,19 @@
       - bison
       - make
       - kitty-terminfo
+      - gawk
+      - bash-completion
     state: present
+
+- name: "[archlinux] Setup terminal tools: ensure ble.sh aur package"
+  become: true
+  become_user: aur_builder
+  kewlfft.aur.aur:
+    use: yay
+    state: present
+    name: blesh-git
+    aur_only: true
+  timeout: 0
 
 - name: "[archlinux] Setup terminal tools: ensure uv tool writable paths"
   ansible.builtin.file:

@@ -1,0 +1,7 @@
+bleopt highlight_syntax=1
+bleopt highlight_filename=1
+bleopt highlight_variable=1
+
+[[ -r /etc/profile.d/bash_completion.sh ]] && source /etc/profile.d/bash_completion.sh
+ble-import -d integration/fzf-completion
+ble-import -d integration/fzf-key-bindings

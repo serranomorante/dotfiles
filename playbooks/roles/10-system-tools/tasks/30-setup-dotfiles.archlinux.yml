@@ -76,6 +76,7 @@
     - ~/.config/mouseless/config.yaml
     - ~/.bash_profile
     - ~/.bashrc
+    - ~/.blerc
     - ~/.local/share/applications/wine-protocol-dreamtonics-svstudio2.desktop
 
 - name: "[archlinux] Dotfiles: remove problematic files"
