@@ -152,11 +152,16 @@
   ansible.builtin.command:
     argv:
       - "{{ node_system_default_node_path }}"
-      - "{{ node_system_default_npm_path }}"
-      - run
+      - "{{ ansible_facts.env.HOME }}/data/repos/playwright/node_modules/vite/bin/vite.js"
       - build
+      - --config
+      - "{{ item }}"
+      - --clearScreen=false
   args:
     chdir: ~/data/repos/playwright/packages/extension
+  loop:
+    - vite.config.mts
+    - vite.sw.config.mts
   changed_when: fact_changed_extensions['playwright']
   when:
     - fact_changed_extensions['playwright']
