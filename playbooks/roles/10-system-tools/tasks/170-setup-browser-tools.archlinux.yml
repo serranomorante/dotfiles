@@ -39,6 +39,9 @@
     dest: ~/data/apps/browser-tools/chrome/chrome-session-dump-linux
     force: true
     mode: "755"
+    timeout: 30
+  register: var_chrome_session_dump_download
+  failed_when: false
 
 - name: "[archlinux] Setup browser tools: symlink chrome-session-dump"
   ansible.builtin.file:
