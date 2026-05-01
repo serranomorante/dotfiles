@@ -11,7 +11,4 @@ launch
 new_tab codex
 launch
 
-new_tab gemini
-launch
-
 focus_tab 0
