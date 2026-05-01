@@ -205,6 +205,102 @@
   until: var_hpi_docker_service is succeeded
   failed_when: false
 
+- name: "[archlinux] Setup HPI - ensure ansible docker config directory"
+  ansible.builtin.file:
+    path: ~/.config/ansible-docker
+    state: directory
+    mode: "700"
+
+- name: "[archlinux] Setup HPI - configure ansible docker credential helper"
+  ansible.builtin.copy:
+    dest: ~/.config/ansible-docker/config.json
+    mode: "600"
+    content: |
+      {
+        "auths": {},
+        "credsStore": "hpi-noop"
+      }
+
+- name: "[archlinux] Setup HPI - ensure ansible docker credential helper directory"
+  ansible.builtin.file:
+    path: ~/.local/share/ansible-docker-bin
+    state: directory
+    mode: "700"
+
+- name: "[archlinux] Setup HPI - remove old ansible docker wrapper"
+  ansible.builtin.file:
+    path: ~/.local/share/ansible-docker-bin/docker
+    state: absent
+
+- name: "[archlinux] Setup HPI - configure ansible docker credential helper"
+  ansible.builtin.copy:
+    dest: ~/.local/share/ansible-docker-bin/docker-credential-hpi-noop
+    mode: "700"
+    content: |
+      #!/bin/sh
+      case "$1" in
+        get)
+          cat >/dev/null
+          printf '{}\n'
+          exit 0
+          ;;
+        store|erase)
+          cat >/dev/null
+          exit 0
+          ;;
+        list)
+          printf '{}\n'
+          exit 0
+          ;;
+        *)
+          printf 'unsupported docker credential helper command: %s\n' "$1" >&2
+          exit 1
+          ;;
+      esac
+
+- name: "[archlinux] Setup HPI - inspect docker credential config"
+  ansible.builtin.shell: |
+    source ~/.bashrc
+    export DOCKER_CONFIG="{{ ansible_facts.env.HOME }}/.config/ansible-docker"
+    export PATH="{{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH"
+    printf 'HOME=%s\n' "$HOME"
+    printf 'DOCKER_CONFIG=%s\n' "$DOCKER_CONFIG"
+    printf 'helper=%s\n' "$(command -v docker-credential-hpi-noop)"
+    printf 'docker=%s\n' "$(command -v docker)"
+    docker --version
+    docker compose version
+    if grep -niE 'secretservice' "$DOCKER_CONFIG/config.json" 2>/dev/null; then
+      exit 42
+    fi
+    printf 'docker credential helper is hpi-noop\n'
+  args:
+    executable: /bin/bash
+  register: hpi_docker_credential_config
+  changed_when: false
+  failed_when: hpi_docker_credential_config.rc not in [0, 42]
+
+- name: "[archlinux] Setup HPI - inspect docker credential config in docker group"
+  ansible.builtin.shell: |
+    sg docker -c 'source ~/.bashrc
+    export DOCKER_CONFIG="{{ ansible_facts.env.HOME }}/.config/ansible-docker"
+    export PATH="{{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH"
+    printf "HOME=%s\n" "$HOME"
+    printf "DOCKER_CONFIG=%s\n" "$DOCKER_CONFIG"
+    printf "DOCKER_AUTH_CONFIG=%s\n" "${DOCKER_AUTH_CONFIG:+set}"
+    printf "helper=%s\n" "$(command -v docker-credential-hpi-noop)"
+    printf "docker=%s\n" "$(command -v docker)"
+    docker --version
+    docker compose version
+    if grep -niE "secretservice" "$DOCKER_CONFIG/config.json" 2>/dev/null; then
+      exit 42
+    fi
+    printf "docker credential helper is hpi-noop\n"'
+  args:
+    executable: /bin/bash
+  register: hpi_docker_group_credential_config
+  changed_when: false
+  failed_when: hpi_docker_group_credential_config.rc not in [0, 42]
+
 - name: "[archlinux] Setup HPI - wait for docker daemon access"
   ansible.builtin.shell: >
     sg docker -c "docker info >/dev/null"
@@ -243,7 +339,7 @@
 - name: "[archlinux] Setup HPI - ensure h services"
   ansible.builtin.shell: >
     source ~/.bashrc &&
-    sg docker -c "make services"
+    sg docker -c 'source ~/.bashrc && export DOCKER_CONFIG={{ ansible_facts.env.HOME }}/.config/ansible-docker && export PATH={{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH && PYENV_VERSION={{ var_h_python_version.stdout }} VIRTUALENV_PIP=24.0 make services'
   register: ensure_h_services_result
   args:
     chdir: ~/data/repos/h
@@ -260,7 +356,7 @@
 - name: "[archlinux] Setup HPI - ensure h db"
   ansible.builtin.shell: >
     source ~/.bashrc &&
-    sg docker -c "make db"
+    sg docker -c 'source ~/.bashrc && export DOCKER_CONFIG={{ ansible_facts.env.HOME }}/.config/ansible-docker && export PATH={{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH && PYENV_VERSION={{ var_h_python_version.stdout }} VIRTUALENV_PIP=24.0 make db'
   register: ensure_h_db_result
   args:
     chdir: ~/data/repos/h
