@@ -66,6 +66,49 @@
     create_home: true
     group: wheel
 
+- name: "[archlinux] AUR: ensure aur_builder gnupg directory"
+  become: true
+  ansible.builtin.file:
+    path: /home/aur_builder/.gnupg
+    state: directory
+    owner: aur_builder
+    group: wheel
+    mode: "700"
+
+- name: "[archlinux] AUR: configure aur_builder gpg keyserver"
+  become: true
+  ansible.builtin.copy:
+    dest: /home/aur_builder/.gnupg/gpg.conf
+    owner: aur_builder
+    group: wheel
+    mode: "600"
+    content: |
+      keyserver hkps://keyserver.ubuntu.com
+  register: var_aur_builder_gpg_config
+
+- name: "[archlinux] AUR: configure aur_builder dirmngr keyserver"
+  become: true
+  ansible.builtin.copy:
+    dest: /home/aur_builder/.gnupg/dirmngr.conf
+    owner: aur_builder
+    group: wheel
+    mode: "600"
+    content: |
+      keyserver hkps://keyserver.ubuntu.com
+      keyserver hkps://keys.openpgp.org
+  register: var_aur_builder_dirmngr_config
+
+- name: "[archlinux] AUR: reload aur_builder dirmngr"
+  become: true
+  become_user: aur_builder
+  ansible.builtin.command:
+    argv:
+      - gpgconf
+      - --kill
+      - dirmngr
+  changed_when: false
+  when: var_aur_builder_gpg_config.changed or var_aur_builder_dirmngr_config.changed
+
 - name: "[archlinux] AUR: Allow the `aur_builder` user to run `sudo pacman` without a password"
   become: true
   ansible.builtin.lineinfile:

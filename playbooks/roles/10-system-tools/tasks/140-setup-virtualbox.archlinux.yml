@@ -14,7 +14,6 @@
     use: yay
     state: present
     name:
-      - cryptomator
       - virtualbox
       - virtualbox-host-modules-lts
       - virtualbox-guest-iso # https://wiki.archlinux.org/title/VirtualBox#Guest_additions
