@@ -16,9 +16,6 @@ if [ -f "$HOME/.credsrc" ]; then
   . "$HOME/.credsrc"
 fi
 
-# Moved from `.bashrc` here because of `babelfish` incompatibility
-PS1='[\u@\h \W]\$ '
-
 # Allow script to be executed by udev
 # Context: https://stackoverflow.com/a/14263308
 # Thanks: https://unix.stackexchange.com/a/10126

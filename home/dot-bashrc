@@ -124,6 +124,7 @@ if command -v nnn &>/dev/null; then
     alias nnn='nnn -GJRHdaAog -Tt'
 fi
 
+PS1='[\u@\h \W]\$ '
 [ -n "$NNNLVL" ] && PS1="N$NNNLVL $PS1"
 
 export PATH="$PATH:$HOME/.local/share/yabridge"
