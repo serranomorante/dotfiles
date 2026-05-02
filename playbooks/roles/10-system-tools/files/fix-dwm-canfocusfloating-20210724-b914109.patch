@@ -1,0 +1,107 @@
+diff --git a/config.def.h b/config.def.h
+index b3b6a88..9a51a8a 100644
+--- a/config.def.h
++++ b/config.def.h
+@@ -72,7 +72,7 @@ static const Key keys[] = {
+ 	{ MODKEY,                       XK_d,      incnmaster,     {.i = -1 } },
+ 	{ MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
+ 	{ MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },
+-  { MODKEY,                       XK_s,      togglecanfocusfloating,   {0} },
++	{ MODKEY|ControlMask,           XK_s,      togglecanfocusfloating, {0} },
+ 	{ MODKEY,                       XK_Return, zoom,           {0} },
+ 	{ MODKEY,                       XK_Tab,    view,           {0} },
+ 	{ MODKEY|ShiftMask,             XK_c,      killclient,     {0} },
+@@ -116,4 +116,3 @@ static const Button buttons[] = {
+ 	{ ClkTagBar,            MODKEY,         Button1,        tag,            {0} },
+ 	{ ClkTagBar,            MODKEY,         Button3,        toggletag,      {0} },
+ };
+-
+diff --git a/dwm.c b/dwm.c
+index 49542a1..590cbaf 100644
+--- a/dwm.c
++++ b/dwm.c
+@@ -93,7 +93,7 @@ struct Client {
+ 	int basew, baseh, incw, inch, maxw, maxh, minw, minh, hintsvalid;
+ 	int bw, oldbw;
+ 	unsigned int tags;
+-	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
++	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen, cantfocus;
+ 	int floatborderpx;
+ 	int hasfloatbw;
+ 	Client *next;
+@@ -200,7 +200,7 @@ static Monitor *recttomon(int x, int y, int w, int h);
+ static void resize(Client *c, int x, int y, int w, int h, int interact);
+ static void resizeclient(Client *c, int x, int y, int w, int h);
+ static void resizemouse(const Arg *arg);
+-static void resetcanfocusfloating();
++static void resetcanfocusfloating(void);
+ static void restack(Monitor *m);
+ static void run(void);
+ static void scan(void);
+@@ -883,11 +883,11 @@ focusstack(const Arg *arg)
+ 			for (c = selmon->clients; c && (!ISVISIBLE(c) || c->cantfocus); c = c->next);
+ 	} else {
+ 		for (i = selmon->clients; i != selmon->sel; i = i->next)
+-      if (ISVISIBLE(i) && !i->cantfocus)
++			if (ISVISIBLE(i) && !i->cantfocus)
+ 				c = i;
+ 		if (!c)
+ 			for (; i; i = i->next)
+-        if (ISVISIBLE(i) && !i->cantfocus)
++				if (ISVISIBLE(i) && !i->cantfocus)
+ 					c = i;
+ 	}
+ 	if (c) {
+@@ -1829,6 +1829,52 @@ togglefloating(const Arg *arg)
+ 		selmon->sel->sfh = selmon->sel->h;
+ 		XSetWindowBorder(dpy, selmon->sel->win, scheme[SchemeSel][ColBorder].pixel);
+ 	}
++	resetcanfocusfloating();
++	arrange(selmon);
++}
++
++void
++resetcanfocusfloating(void)
++{
++	Client *c;
++
++	for (c = selmon->clients; c; c = c->next)
++		if (c->isfloating)
++			c->cantfocus = 0;
++
++	arrange(selmon);
++}
++
++void
++togglecanfocusfloating(const Arg *arg)
++{
++	unsigned int n;
++	Client *c, *cf = NULL;
++
++	(void)arg;
++	if (!selmon->sel)
++		return;
++
++	for (c = selmon->clients; c; c = c->next)
++		if (c->cantfocus)
++			cf = c;
++
++	if (cf) {
++		resetcanfocusfloating();
++		focus(cf);
++	} else {
++		for (n = 0, c = selmon->clients; c; c = c->next)
++			if (c->isfloating)
++				c->cantfocus = !c->cantfocus;
++			else
++				n++;
++
++		if (n && selmon->sel->isfloating) {
++			c = nexttiled(selmon->clients);
++			focus(c);
++		}
++	}
++
+ 	arrange(selmon);
+ }
+ 

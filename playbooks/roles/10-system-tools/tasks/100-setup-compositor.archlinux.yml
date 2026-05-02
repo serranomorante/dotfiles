@@ -76,6 +76,7 @@
     - https://dwm.suckless.org/patches/floatrules/dwm-floatrules-20210801-138b405.diff
     - https://raw.githubusercontent.com/bakkeby/patches/refs/heads/master/dwm/dwm-unmanaged-6.6.diff
     - https://dwm.suckless.org/patches/focusonnetactive/dwm-focusonnetactive-6.2.diff
+    - https://dwm.suckless.org/patches/canfocusfloating/dwm-canfocusfloating-20210724-b914109.diff
   loop_control:
     pause: 1
 
@@ -110,6 +111,9 @@
     - ~/data/repos/dwm/patches/dwm-focusonnetactive-6.2.diff
     # per-tag swapfocus
     - fix-dwm-swapfocus-pertag.patch
+    # dwm-canfocusfloating
+    - ~/data/repos/dwm/patches/dwm-canfocusfloating-20210724-b914109.diff
+    - fix-dwm-canfocusfloating-20210724-b914109.patch
     # My changes. Always leave this last.
     - make-dwm-debuggable.patch
     - custom.patch
