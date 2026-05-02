@@ -1,4 +1,10 @@
 ---
+- name: "[archlinux] Nvidia tools: require nvidia hardware fact"
+  ansible.builtin.assert:
+    that:
+      - arch_has_nvidia_gpu is defined
+    fail_msg: "arch_has_nvidia_gpu must be set by the playbook pre_tasks before running nvidia tools."
+
 - name: "[archlinux] Nvidia tools: ensure nvidia packages"
   become: true
   ansible.builtin.package:
@@ -8,7 +14,9 @@
       - nvidia-settings
       - nvidia-utils
       - lib32-nvidia-utils
-  when: is_x_display_session
+  when:
+    - arch_has_nvidia_gpu
+    - is_x_display_session
 
 - name: "[archlinux] Nvidia tools: ensure aur packages"
   become: true
@@ -17,6 +25,7 @@
     use: yay
     state: present
     name: nvidia-prime-rtd3pm
+  when: arch_has_nvidia_gpu
 
 - name: "[archlinux] Nvidia tools: add kernel param"
   become: true
@@ -25,12 +34,14 @@
     dest: /etc/cmdline.d/video.conf
     mode: "644"
   notify: handler_mkinitcpio_allpresets
+  when: arch_has_nvidia_gpu
 
 - name: "[archlinux] Nvidia tools: check nvidia-persistenced service"
   ansible.builtin.command: systemctl list-unit-files nvidia-persistenced.service
   changed_when: true
   ignore_errors: true
   register: var_nvidia_persistenced_service
+  when: arch_has_nvidia_gpu
 
 - name: "[archlinux] Nvidia tools: enable nvidia-persistenced service"
   become: true
@@ -39,7 +50,9 @@
     name: nvidia-persistenced.service
     enabled: true
     masked: false
-  when: "'nvidia-persistenced.service' in var_nvidia_persistenced_service.stdout"
+  when:
+    - arch_has_nvidia_gpu
+    - "'nvidia-persistenced.service' in var_nvidia_persistenced_service.stdout"
 
 - name: "[archlinux] Nvidia tools: add config files"
   become: true
@@ -50,3 +63,15 @@
   loop:
     - src: nvidia/80-igpu-primary-egpu-offload.conf
       dest: /etc/X11/xorg.conf.d/80-igpu-primary-egpu-offload.conf
+  when: arch_has_nvidia_gpu
+
+- name: "[archlinux] Nvidia tools: remove nvidia-only config when no nvidia gpu is present"
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/X11/xorg.conf.d/80-igpu-primary-egpu-offload.conf
+    - /etc/cmdline.d/video.conf
+  notify: handler_mkinitcpio_allpresets
+  when: not arch_has_nvidia_gpu

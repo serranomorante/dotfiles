@@ -3,12 +3,20 @@
 # Xsetup - run as root before the login dialog appears
 # This file should be copied into /usr/share/sddm/scripts/Xsetup
 
-xrandr --setprovideroutputsource modesetting NVIDIA-0
-xrandr --auto
+{% if arch_has_nvidia_gpu | default(false) | bool %}
+if command -v xrandr >/dev/null 2>&1; then
+    xrandr --setprovideroutputsource modesetting NVIDIA-0 || true
+    xrandr --auto || true
+fi
 
 # https://wiki.archlinux.org/title/NVIDIA/Troubleshooting#System_freeze_when_the_display_powers_off_or_on_resume
 # Set a max limit on the graphics gpu
-nvidia-smi -lgc 139,300
+if command -v nvidia-smi >/dev/null 2>&1; then
+    nvidia-smi -lgc 139,300 || true
+fi
 
 # Under-clock the graphics memory
-nvidia-settings -a "GPUMemoryTransferRateOffset[0x3]=-2000" -c :0
+if command -v nvidia-settings >/dev/null 2>&1; then
+    nvidia-settings -a "GPUMemoryTransferRateOffset[0x3]=-2000" -c :0 || true
+fi
+{% endif %}

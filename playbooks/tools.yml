@@ -28,6 +28,24 @@
       when: ansible_facts.distribution is defined
       tags: always
 
+    - name: "Setup playbook: detect nvidia hardware"
+      ansible.builtin.shell: grep -Ril '^0x10de$' /sys/bus/pci/devices/*/vendor
+      register: var_nvidia_pci_devices
+      changed_when: false
+      failed_when: false
+      when:
+        - user_os is defined
+        - user_os in ['archlinux']
+      tags: always
+
+    - name: "Setup playbook: set nvidia hardware fact"
+      ansible.builtin.set_fact:
+        arch_has_nvidia_gpu: "{{ var_nvidia_pci_devices.rc == 0 }}"
+      when:
+        - user_os is defined
+        - user_os in ['archlinux']
+      tags: always
+
     - name: "Setup roles: set var"
       ansible.builtin.stat:
         path: "{{ item }}"

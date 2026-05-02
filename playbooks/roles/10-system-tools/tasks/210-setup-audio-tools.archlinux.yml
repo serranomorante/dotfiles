@@ -139,13 +139,35 @@
     path: /etc/default/cpupower-service.conf
   register: var_cpupower
 
+- name: "[archlinux] Setup audio tools: check cpupower performance governor support"
+  ansible.builtin.command:
+    argv:
+      - grep
+      - -qw
+      - performance
+      - /sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors
+  register: var_cpupower_performance_governor
+  changed_when: false
+  failed_when: false
+
 - name: "[archlinux] Setup audio tools: governor performance"
   become: true
-  ansible.builtin.replace:
+  ansible.builtin.lineinfile:
     path: "{{ var_cpupower.stat.path }}"
-    regexp: "^#GOVERNOR=.*"
-    replace: "GOVERNOR='performance'"
-  when: var_cpupower.stat.exists
+    regexp: "^#?GOVERNOR=.*"
+    line: "GOVERNOR='performance'"
+  when:
+    - var_cpupower.stat.exists
+    - var_cpupower_performance_governor.rc == 0
+
+- name: "[archlinux] Setup audio tools: ensure cpupower service"
+  become: true
+  ansible.builtin.systemd_service:
+    scope: system
+    name: cpupower.service
+    enabled: "{{ var_cpupower_performance_governor.rc == 0 }}"
+    masked: false
+    state: "{{ (var_cpupower_performance_governor.rc == 0) | ternary('started', 'stopped') }}"
 
 - name: "[archlinux] Setup audio tools: ensure system services"
   become: true
@@ -155,5 +177,4 @@
     enabled: true
     masked: false
   loop:
-    - cpupower.service
     - bluetooth.service
