@@ -89,6 +89,7 @@ return {
         PREVENT_QUIT = true,
       },
       components = {
+        { "on_complete_notify", system = "always" },
         "defaults_without_dispose",
       },
     }
