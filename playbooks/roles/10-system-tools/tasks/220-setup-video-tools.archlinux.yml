@@ -92,6 +92,7 @@
     name:
       - mesa
       - expac
+      - guvcview
 
 - name: "[archlinux] Setup video tools: temporary give tmpfs more space"
   become: true
