@@ -1,0 +1,80 @@
+diff --git a/dwm.c b/dwm.c
+index 590cbaf..122e30a 100644
+--- a/dwm.c
++++ b/dwm.c
+@@ -160,6 +160,7 @@ static void checkotherwm(void);
+ static void cleanup(void);
+ static void cleanupmon(Monitor *mon);
+ static void clientmessage(XEvent *e);
++static int canfocus(Client *c);
+ static void configure(Client *c);
+ static void configurenotify(XEvent *e);
+ static void configurerequest(XEvent *e);
+@@ -819,13 +820,11 @@ expose(XEvent *e)
+ void
+ focus(Client *c)
+ {
+-	if (!c || !ISVISIBLE(c))
+-		for (c = selmon->stack; c && !ISVISIBLE(c); c = c->snext);
++	if (!canfocus(c))
++		for (c = selmon->stack; c && !canfocus(c); c = c->snext);
+ 	if (selmon->sel && selmon->sel != c)
+ 		unfocus(selmon->sel, 0);
+ 	if (c) {
+-		if (c->cantfocus)
+-			return;
+ 		if (c->mon != selmon)
+ 			selmon = c->mon;
+ 		if (c->isurgent)
+@@ -846,6 +845,12 @@ focus(Client *c)
+ 	drawbars();
+ }
+ 
++static int
++canfocus(Client *c)
++{
++	return c && ISVISIBLE(c) && !c->cantfocus;
++}
++
+ /* there are some broken focus acquiring clients needing extra handling */
+ void
+ focusin(XEvent *e)
+@@ -1738,16 +1743,23 @@ swapfocus(const Arg *arg)
+ 		return;
+ 
+ 	prev = selmon->prevclient[focushistorytag(selmon)];
+-	if (prev && prev != selmon->sel && prev->mon == selmon && ISVISIBLE(prev)) {
++	if (prev && prev != selmon->sel && prev->mon == selmon && canfocus(prev)) {
+ 		focus(prev);
+ 		restack(selmon);
+ 		return;
+ 	}
+ 
+-	for (c = selmon->sel->next; c && !ISVISIBLE(c); c = c->next)
++	if (!canfocus(selmon->sel)) {
++		focus(NULL);
++		if (selmon->sel)
++			restack(selmon);
++		return;
++	}
++
++	for (c = selmon->sel->next; c && !canfocus(c); c = c->next)
+ 		;
+ 	if (!c)
+-		for (c = selmon->clients; c && !ISVISIBLE(c); c = c->next)
++		for (c = selmon->clients; c && !canfocus(c); c = c->next)
+ 			;
+ 	if (c) {
+ 		focus(c);
+@@ -1915,7 +1927,10 @@ unfocus(Client *c, int setfocus)
+ {
+ 	if (!c)
+ 		return;
+-	c->mon->prevclient[focushistorytag(c->mon)] = c;
++	if (!c->cantfocus)
++		c->mon->prevclient[focushistorytag(c->mon)] = c;
++	else if (c->mon->prevclient[focushistorytag(c->mon)] == c)
++		c->mon->prevclient[focushistorytag(c->mon)] = NULL;
+ 	grabbuttons(c, 0);
+     if (c->isfloating)
+         XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColFloat].pixel);

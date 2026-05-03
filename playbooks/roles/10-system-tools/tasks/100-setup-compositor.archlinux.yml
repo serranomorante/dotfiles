@@ -114,6 +114,7 @@
     # dwm-canfocusfloating
     - ~/data/repos/dwm/patches/dwm-canfocusfloating-20210724-b914109.diff
     - fix-dwm-canfocusfloating-20210724-b914109.patch
+    - fix-dwm-canfocusfloating-focus-state.patch
     # My changes. Always leave this last.
     - make-dwm-debuggable.patch
     - custom.patch
