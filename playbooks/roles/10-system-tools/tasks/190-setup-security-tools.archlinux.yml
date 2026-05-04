@@ -11,6 +11,7 @@
       - tcpdump
       - bustle
       - libsecret
+      - python-gobject
 
 - name: "[archlinux] Setup security tools: get cryptomator AUR metadata"
   ansible.builtin.uri:
@@ -99,39 +100,11 @@
       - cryptomator
   timeout: 600
 
-- name: "[archlinux] Setup security tools: ensure deprecated packages"
-  # These packages might be removed by arch in the future
-  become: true
-  ansible.builtin.package:
-    state: present
-    name: kwallet5
-  ignore_errors: true
-
-- name: "[archlinux] Other tools: ensure kwalletcli folder"
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
+- name: "[archlinux] Setup security tools: setup kwallet password writer"
+  ansible.builtin.template:
+    src: kwallet-write-password
+    dest: ~/bin/kwallet-write-password
     mode: "755"
-  loop:
-    - ~/data/apps/security-tools
-    - ~/data/apps/security-tools/kwalletcli
-
-- name: "[archlinux] Other tools: download pre-compiled kwalletcli"
-  ansible.builtin.unarchive:
-    src: https://gitlab.com/stefanwimmer128/pkgbuilds/-/package_files/188019197/download
-    dest: ~/data/apps/security-tools/kwalletcli/
-    remote_src: true
-
-- name: "[archlinux] Other tools: symlink kwalletcli"
-  ansible.builtin.file:
-    src: ~/data/apps/security-tools/kwalletcli/usr/bin/{{ item }}
-    dest: ~/bin/{{ item }}
-    state: link
-  loop:
-    - kwalletaskpass
-    - kwalletcli_getpin
-    - kwalletcli
-    - pinentry-kwallet
 
 - name: "[archlinux] Setup security tools: enable services"
   ansible.builtin.systemd_service:
