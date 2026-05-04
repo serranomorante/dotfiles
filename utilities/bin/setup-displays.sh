@@ -18,22 +18,39 @@ fi
 
 xr_output="$(xrandr --query)"
 
+first_connected_output() {
+  printf '%s\n' "$xr_output" | awk '/ connected/{print $1; exit}'
+}
+
+first_connected_output_except() {
+  local ignored="$1"
+  printf '%s\n' "$xr_output" | awk -v ignored="$ignored" '/ connected/ && $1 != ignored {print $1; exit}'
+}
+
 # Prefer laptop panel names first (eDP/LVDS). Some setups expose only DP-*
-# names, so fall back to DP if needed.
+# names, so fall back to DP if needed. In VMs the output can be named
+# Virtual-1, VGA-1, or similar, so use the first connected output as the final
+# fallback.
 internal="$(printf '%s\n' "$xr_output" | awk '/^(eDP|LVDS)[^ ]* connected/{print $1; exit}')"
 if [[ -z "$internal" ]]; then
   internal="$(printf '%s\n' "$xr_output" | awk '/^DP[^ ]* connected/{print $1; exit}')"
 fi
+if [[ -z "$internal" ]]; then
+  internal="$(first_connected_output)"
+fi
 
-external="$(printf '%s\n' "$xr_output" | awk '/^HDMI[^ ]* connected/{print $1; exit}')"
+external="$(printf '%s\n' "$xr_output" | awk -v internal="$internal" '/^HDMI[^ ]* connected/ && $1 != internal {print $1; exit}')"
 
 if [[ -z "$external" ]]; then
   # In case USB-C is connected via another DP output.
   external="$(printf '%s\n' "$xr_output" | awk -v internal="$internal" '/^DP[^ ]* connected/{if ($1 != internal) {print $1; exit}}')"
 fi
+if [[ -z "$external" ]]; then
+  external="$(first_connected_output_except "$internal")"
+fi
 
 if [[ -z "$internal" ]]; then
-  warn "no se detecto monitor interno conectado (eDP/LVDS/DP)"
+  warn "no se detecto ningun monitor conectado"
   exit 0
 fi
 
