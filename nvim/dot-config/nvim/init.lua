@@ -1,10 +1,14 @@
 vim.loader.enable()
-require("vim._extui").enable({
+
+local ui2_available, ui2 = pcall(require, "vim._core.ui2")
+if ui2_available then ui2.enable({
   msg = {
-    target = "msg",
-    timeout = 4000,
+    targets = "msg",
+    msg = {
+      timeout = 4000,
+    },
   },
-})
+}) end
 
 vim.filetype.add({
   filename = {

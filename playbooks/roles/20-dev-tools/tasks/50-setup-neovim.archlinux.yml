@@ -46,6 +46,7 @@
     force: true
     single_branch: true
     version: "{{ archlinux_neovim_version }}"
+  register: var_neovim_repo
 
 - name: "[archlinux] Neovim: ensure neovim build dependencies"
   become: true
@@ -56,14 +57,53 @@
       - ninja
       - ccache # recommended here: https://github.com/neovim/neovim/issues/26979#issuecomment-1885240317
 
-- name: "[archlinux] Neovim: remove .deps"
-  become: true
+- name: "[archlinux] Neovim: check build binary"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/data/repos/neovim/build/bin/nvim"
+  register: var_neovim_build_binary
+
+- name: "[archlinux] Neovim: check installed binary"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.local/bin/nvim"
+  register: var_neovim_installed_binary
+
+- name: "[archlinux] Neovim: check installed runtime"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.local/share/nvim/runtime/filetype.lua"
+  register: var_neovim_installed_runtime
+
+- name: "[archlinux] Neovim: check installed revision marker"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.local/share/nvim/runtime/.ansible-neovim-revision"
+  register: var_neovim_installed_revision_marker
+
+- name: "[archlinux] Neovim: read installed revision marker"
+  ansible.builtin.slurp:
+    src: "{{ ansible_facts.env.HOME }}/.local/share/nvim/runtime/.ansible-neovim-revision"
+  register: var_neovim_installed_revision
+  when: var_neovim_installed_revision_marker.stat.exists
+
+- name: "[archlinux] Neovim: decide if build/install is required"
+  ansible.builtin.set_fact:
+    var_neovim_needs_install: >-
+      {{
+        var_neovim_repo.changed
+        or not var_neovim_build_binary.stat.exists
+        or not var_neovim_installed_binary.stat.exists
+        or not var_neovim_installed_runtime.stat.exists
+        or not var_neovim_installed_revision_marker.stat.exists
+        or ((var_neovim_installed_revision.content | b64decode | trim) != (var_neovim_repo.after | trim))
+      }}
+
+- name: "[archlinux] Neovim: remove stale build and installed runtime"
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
   loop:
     - "{{ ansible_facts.env.HOME }}/data/repos/neovim/.deps"
-    - /usr/local/share/nvim/runtime
+    - "{{ ansible_facts.env.HOME }}/data/repos/neovim/build"
+    - "{{ ansible_facts.env.HOME }}/.local/share/nvim/runtime"
+  when: var_neovim_needs_install
 
 - name: "[archlinux] Neovim: ensure neovim - build"
   ansible.builtin.shell: >
@@ -73,5 +113,12 @@
     CCACHE_DISABLE: true
   args:
     chdir: ~/data/repos/neovim
-    creates: ~/data/repos/neovim/build/bin/nvim
+  when: var_neovim_needs_install
   timeout: 0
+
+- name: "[archlinux] Neovim: record installed revision"
+  ansible.builtin.copy:
+    content: "{{ var_neovim_repo.after }}\n"
+    dest: "{{ ansible_facts.env.HOME }}/.local/share/nvim/runtime/.ansible-neovim-revision"
+    mode: "644"
+  when: var_neovim_needs_install
