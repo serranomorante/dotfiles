@@ -1,6 +1,7 @@
 local utils = require("serranomorante.utils")
 local coc_utils = require("serranomorante.plugins.coc.utils")
 local lsp_utils = require("serranomorante.plugins.lsp.utils")
+local markdown_images = require("serranomorante.markdown_images")
 
 local bufnr = vim.api.nvim_get_current_buf()
 
@@ -24,3 +25,5 @@ elseif lsp_utils.should_enable(bufnr) then
 else
   require("serranomorante.plugins.nvim-ufo").config()
 end
+
+markdown_images.attach(bufnr)
