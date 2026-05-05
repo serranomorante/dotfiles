@@ -4,17 +4,53 @@
 
 enter_mouseless_mode=leftcontrol+rightcontrol
 leave_mouseless_mode=leftalt+rightalt
+warpd_last_location="$HOME/bin/warpd-last-location"
+toggle_armed=0
+
+run_warpd_last_location() {
+    action="$1"
+    output="$("$warpd_last_location" "$action" 2>&1)"
+    rc="$?"
+
+    if [ "$rc" -ne 0 ]; then
+        logger -t keyd-observer "warpd-last-location $action failed with rc=$rc: $output"
+    fi
+
+    return "$rc"
+}
 
 keyd listen | while read x; do
     case "$x" in
+    +tab_as_modifier)
+        toggle_armed=1
+        ;;
+
+    -tab_as_modifier)
+        toggle_armed=0
+        ;;
+
     +signal_escape)
         [ -n "$warpd_pid" ] && kill $warpd_pid >/dev/null 2>&1
         ;;
 
     +signal_open_warpd_overlay)
         keyd do $leave_mouseless_mode &
-        ( (warpd --config ~/.config/warpd/config --hint --oneshot --foreground && keyd do $enter_mouseless_mode && warpd_pid="") >/dev/null 2>&1 &)
+        ( (
+            run_warpd_last_location run-hint
+            keyd do "$enter_mouseless_mode"
+            warpd_pid=""
+        ) >/dev/null 2>&1 &)
         warpd_pid=$(pgrep -f "warpd")
+        ;;
+
+    +signal_toggle_warpd_last_location)
+        [ "$toggle_armed" -eq 1 ] || continue
+        toggle_armed=0
+        keyd do $leave_mouseless_mode &
+        ( (
+            run_warpd_last_location toggle
+            keyd do "$enter_mouseless_mode"
+        ) >/dev/null 2>&1 &)
         ;;
 
     +signal_type_from_clipboard)
