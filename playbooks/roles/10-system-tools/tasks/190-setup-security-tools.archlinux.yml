@@ -200,6 +200,17 @@
     - "{{ playwright_mcp_server_setup }}"
     - "{{ intelephense_setup }}"
 
+- name: "[archlinux] Setup security tools: set video tools keyrings facts"
+  ansible.builtin.set_fact:
+    keyrings: >-
+      {{
+        (keyrings | default([]))
+        | union([
+          davinci_resolve_blackmagic_email_keyring,
+          davinci_resolve_blackmagic_password_keyring,
+        ])
+      }}
+
 - name: "[archlinux] Setup security tools: stat private cloud tools defaults"
   ansible.builtin.stat:
     path: ~/dotfiles/for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/defaults/main/main.vars.yml

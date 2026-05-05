@@ -28,6 +28,144 @@
     state: directory
     mode: "755"
 
+- name: "[archlinux] Setup video tools: get installed davinci-resolve version"
+  ansible.builtin.command: pacman -Q davinci-resolve
+  changed_when: false
+  failed_when: false
+  register: var_pacman_davinci_resolve
+
+- name: "[archlinux] Setup video tools: set installed davinci-resolve facts"
+  ansible.builtin.set_fact:
+    var_davinci_resolve_installed_version: >-
+      {{
+        var_pacman_davinci_resolve.stdout.split()[1].split('-')[0]
+        if var_pacman_davinci_resolve.rc == 0 and (var_pacman_davinci_resolve.stdout.split() | length) > 1
+        else ''
+      }}
+    var_davinci_resolve_version_installed: >-
+      {{
+        var_pacman_davinci_resolve.rc == 0 and
+        (var_pacman_davinci_resolve.stdout.split() | length) > 1 and
+        var_pacman_davinci_resolve.stdout.split()[1].split('-')[0] == arch_davinci_resolve_version
+      }}
+
+- name: "[archlinux] Setup video tools: stat davinci-resolve zip package before download"
+  ansible.builtin.stat:
+    path: ~/data/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+  register: var_stat_davinci_zip_before_download
+
+- name: "[archlinux] Setup video tools: stat claude executable"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/bin/claude"
+  register: var_stat_claude_executable
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - not var_stat_davinci_zip_before_download.stat.exists
+
+- name: "[archlinux] Setup video tools: stat mcp server config"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.config/mcphub/servers.json"
+  register: var_stat_mcp_servers_json
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - not var_stat_davinci_zip_before_download.stat.exists
+
+- name: "[archlinux] Setup video tools: register davinci resolve blackmagic email"
+  ansible.builtin.command: >-
+    kwallet-query --folder {{ davinci_resolve_blackmagic_email_keyring.folder }}
+    --read-password {{ davinci_resolve_blackmagic_email_keyring.passkey }}
+    {{ davinci_resolve_blackmagic_email_keyring.wallet }}
+  changed_when: false
+  failed_when: false
+  register: var_davinci_resolve_blackmagic_email
+  no_log: true
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - not var_stat_davinci_zip_before_download.stat.exists
+    - (var_stat_claude_executable.stat.exists | default(false))
+    - (var_stat_mcp_servers_json.stat.exists | default(false))
+
+- name: "[archlinux] Setup video tools: register davinci resolve blackmagic password"
+  ansible.builtin.command: >-
+    kwallet-query --folder {{ davinci_resolve_blackmagic_password_keyring.folder }}
+    --read-password {{ davinci_resolve_blackmagic_password_keyring.passkey }}
+    {{ davinci_resolve_blackmagic_password_keyring.wallet }}
+  changed_when: false
+  failed_when: false
+  register: var_davinci_resolve_blackmagic_password
+  no_log: true
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - not var_stat_davinci_zip_before_download.stat.exists
+    - (var_stat_claude_executable.stat.exists | default(false))
+    - (var_stat_mcp_servers_json.stat.exists | default(false))
+
+- name: "[archlinux] Setup video tools: download davinci resolve with claude"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/claude"
+      - --print
+      - --permission-mode
+      - bypassPermissions
+      - --mcp-config
+      - "{{ ansible_facts.env.HOME }}/.config/mcphub/servers.json"
+      - --allowedTools
+      - mcp__playwright__*
+  args:
+    creates: "{{ ansible_facts.env.HOME }}/data/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip"
+    chdir: "{{ ansible_facts.env.HOME }}/Downloads"
+    stdin: |
+      Use the Playwright MCP browser tools to download DaVinci Resolve for Linux.
+
+      Requirements:
+      - Use the browser, not shell commands, to access Blackmagic Design.
+      - Do not print, log, summarize, or expose the password.
+      - Navigate to https://apps.cloud.blackmagicdesign.com/davinci-resolve
+      - Wait 4 seconds after navigation before deciding what page loaded.
+      - If you are redirected to a login page, fill the login form with:
+        - Email: {{ var_davinci_resolve_blackmagic_email.stdout | trim }}
+        - Password: {{ var_davinci_resolve_blackmagic_password.stdout | trim }}
+      - Submit the login form.
+      - Confirm the browser reaches https://apps.cloud.blackmagicdesign.com/davinci-resolve
+      - Scroll to the bottom of the page.
+      - Click the "Download Linux" button.
+      - Accept the default browser download location and filename.
+      - Wait until the download has been initiated and the browser reports the download action.
+
+      Expected completed file path after the browser download finishes:
+      {{ ansible_facts.env.HOME }}/Downloads/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+  changed_when: true
+  timeout: 1200
+  register: var_download_davinci_result
+  ignore_errors: true
+  no_log: true
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - not var_stat_davinci_zip_before_download.stat.exists
+    - (var_davinci_resolve_blackmagic_email.rc | default(1)) == 0
+    - (var_davinci_resolve_blackmagic_email.stdout | default('') | trim | length) > 0
+    - (var_davinci_resolve_blackmagic_password.rc | default(1)) == 0
+    - (var_davinci_resolve_blackmagic_password.stdout | default('') | trim | length) > 0
+
+- name: "[archlinux] Setup video tools: wait for davinci to download"
+  ansible.builtin.wait_for:
+    path: ~/Downloads/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+    msg: Timeout waiting for davinci resolve to download
+    delay: 5
+    timeout: 600
+  timeout: 0
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - var_download_davinci_result is defined
+    - var_download_davinci_result is succeeded
+    - var_download_davinci_result.changed | default(false)
+
 - name: "[archlinux] Setup video tools: stat downloaded davinci resolve file"
   ansible.builtin.stat:
     path: ~/Downloads/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
@@ -40,6 +178,7 @@
     creates: ~/data/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
   when:
     - is_x_display_session
+    - not var_davinci_resolve_version_installed
     - var_stat_downloaded_davinci_resolve_file.stat.exists
     - ((var_stat_downloaded_davinci_resolve_file.stat.size / 1024 / 1024) | int > 1000) # at least greater than 1G
 
@@ -54,14 +193,20 @@
     dest: ~/data/apps/video-tools/
     remote_src: true
     creates: ~/data/apps/video-tools/davinci-resolve/PKGBUILD
-  when: is_x_display_session and var_stat_davinci_zip.stat.exists
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: ensure same davinci-resolve version"
   ansible.builtin.replace:
     path: ~/data/apps/video-tools/davinci-resolve/PKGBUILD
     regexp: "^pkgver=.*"
     replace: "pkgver={{ arch_davinci_resolve_version }}"
-  when: is_x_display_session and var_stat_davinci_zip.stat.exists
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: ensure packages"
   become: true
@@ -92,23 +237,34 @@
     - "{{ ansible_facts.env.HOME }}/data/apps/video-tools"
     - "{{ ansible_facts.env.HOME }}/data/apps/video-tools/qt5"
     - "{{ ansible_facts.env.HOME }}/data/apps/video-tools/davinci-resolve"
-  when: is_x_display_session and var_stat_davinci_zip.stat.exists
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: get pre-build qt5-webengine package"
   ansible.builtin.get_url:
-    url: https://sourceforge.net/projects/fabiololix-os-archive/files/Packages/qt5-webengine-5.15.19-4-x86_64.pkg.tar.zst/download
-    dest: ~/data/apps/video-tools/qt5/qt5-webengine-5.15.19-4-x86_64.pkg.tar.zst
+    url: https://sourceforge.net/projects/fabiololix-os-archive/files/Packages/qt5-webengine-{{ qt5_webengine_version }}-x86_64.pkg.tar.zst/download
+    dest: ~/data/apps/video-tools/qt5/qt5-webengine-{{ qt5_webengine_version }}-x86_64.pkg.tar.zst
     mode: "750"
   ignore_errors: true
   register: var_get_qt5_webengine
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: install pre-build qt5-webengine package"
   become: true
   ansible.builtin.command: >
-    pacman -U --needed --noconfirm "{{ ansible_facts.env.HOME }}/data/apps/video-tools/qt5/qt5-webengine-5.15.19-4-x86_64.pkg.tar.zst"
+    pacman -U --needed --noconfirm "{{ ansible_facts.env.HOME }}/data/apps/video-tools/qt5/qt5-webengine-{{ qt5_webengine_version }}-x86_64.pkg.tar.zst"
   changed_when: true
   timeout: 0
-  when: var_get_qt5_webengine is success
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - var_stat_davinci_zip.stat.exists
+    - var_get_qt5_webengine is success
 
 - name: "[archlinux] Setup video tools: ensure packages (needs display)"
   # https://github.com/Ashark/davinci-resolve-checker?tab=readme-ov-file#installation
@@ -159,7 +315,10 @@
     chdir: ~/data/apps/video-tools/davinci-resolve
   register: davinci_resolve_deps
   changed_when: false
-  when: is_x_display_session and var_stat_davinci_zip.stat.exists
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: install davinci-resolve deps"
   become: true
@@ -171,6 +330,7 @@
   timeout: 0
   when:
     - is_x_display_session
+    - not var_davinci_resolve_version_installed
     - var_stat_davinci_zip.stat.exists
     - davinci_resolve_deps is success
 
@@ -179,7 +339,10 @@
   args:
     chdir: "{{ ansible_facts.env.HOME }}/data/apps/video-tools/davinci-resolve"
   changed_when: true
-  when: is_x_display_session and var_stat_davinci_zip.stat.exists
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: setup makepkg folder on aur_builder user"
   become: true
@@ -206,6 +369,7 @@
     PKGEXT: ".pkg.tar"
   when:
     - is_x_display_session
+    - not var_davinci_resolve_version_installed
     - var_stat_davinci_zip.stat.exists
     - davinci_resolve_deps is success
   timeout: 0

@@ -5,6 +5,15 @@ debian_fzf_version: 0.55.0
 debian_rg_version: 14.0.3
 debian_fd_version: 10.1.0
 arch_davinci_resolve_version: "20.3.2"
+qt5_webengine_version: 5.15.19-4.1
+davinci_resolve_blackmagic_email_keyring:
+  folder: creative-tools
+  passkey: davinci-resolve-blackmagic-email
+  wallet: kdewallet
+davinci_resolve_blackmagic_password_keyring:
+  folder: creative-tools
+  passkey: davinci-resolve-blackmagic-pass
+  wallet: kdewallet
 arch_yay_version: HEAD
 arch_nvidia_libs_version: 0.8.5
 arch_mouseless_click_version: 0.4.2
