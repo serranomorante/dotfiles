@@ -30,7 +30,7 @@ function M.builder(params)
   elseif not utils.exists(params.startdir) then
     startdir = vim.fn.fnamemodify(startdir, ":h")
   end
-  if startdir then table.insert(args, "'" .. startdir .. "'") end
+  if startdir then table.insert(args, startdir) end
   return {
     name = TASK_NAME,
     cmd = "nnn",
