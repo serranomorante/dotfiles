@@ -14,6 +14,7 @@ end, { desc = "Toggle wrap" })
 
 -- New file
 vim.keymap.set("n", "<leader>nb", "<cmd>enew<CR>", { desc = "New buffer" })
+vim.keymap.set("n", "<leader>p", "<cmd>PasteClipboardImage<CR>", { desc = "Paste clipboard image" })
 
 ---Closing vim
 vim.keymap.set("n", "ZQ", function()

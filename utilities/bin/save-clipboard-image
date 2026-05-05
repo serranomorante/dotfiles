@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+prog="${0##*/}"
+
+usage() {
+    cat <<EOF
+Usage: $prog DIRECTORY [FILENAME]
+
+Save the current clipboard image into DIRECTORY. If DIRECTORY does not exist,
+it is created. When FILENAME is omitted, a timestamped name is used.
+
+Examples:
+  $prog ~/Pictures/clipboard
+  $prog /tmp/captures screenshot.png
+EOF
+}
+
+die() {
+    printf '%s: %s\n' "$prog" "$1" >&2
+    exit 1
+}
+
+have() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+extension_for_mime() {
+    case "$1" in
+    image/png) printf 'png' ;;
+    image/jpeg | image/jpg) printf 'jpg' ;;
+    image/webp) printf 'webp' ;;
+    image/gif) printf 'gif' ;;
+    image/bmp) printf 'bmp' ;;
+    image/tiff) printf 'tiff' ;;
+    image/svg+xml) printf 'svg' ;;
+    *) printf 'img' ;;
+    esac
+}
+
+pick_mime() {
+    local available="$1"
+    local mime
+
+    for mime in \
+        image/png \
+        image/jpeg \
+        image/jpg \
+        image/webp \
+        image/gif \
+        image/bmp \
+        image/tiff \
+        image/svg+xml; do
+        if printf '%s\n' "$available" | grep -Fxq "$mime"; then
+            printf '%s\n' "$mime"
+            return 0
+        fi
+    done
+
+    printf '%s\n' "$available" | awk '/^image\// { print; exit }'
+}
+
+save_with_wl_paste() {
+    local target_dir="$1"
+    local filename="${2:-}"
+    local types mime ext output
+
+    types="$(wl-paste --list-types 2>/dev/null || true)"
+    mime="$(pick_mime "$types")"
+    [[ -n "$mime" ]] || die "no image found in clipboard"
+
+    ext="$(extension_for_mime "$mime")"
+    if [[ -z "$filename" ]]; then
+        filename="clipboard-image-$(date +%Y%m%d-%H%M%S).$ext"
+    fi
+
+    output="$target_dir/$filename"
+    wl-paste --no-newline --type "$mime" >"$output"
+    printf '%s\n' "$output"
+}
+
+save_with_xclip() {
+    local target_dir="$1"
+    local filename="${2:-}"
+    local types mime ext output
+
+    types="$(xclip -selection clipboard -t TARGETS -o 2>/dev/null || true)"
+    mime="$(pick_mime "$types")"
+    [[ -n "$mime" ]] || die "no image found in clipboard"
+
+    ext="$(extension_for_mime "$mime")"
+    if [[ -z "$filename" ]]; then
+        filename="clipboard-image-$(date +%Y%m%d-%H%M%S).$ext"
+    fi
+
+    output="$target_dir/$filename"
+    xclip -selection clipboard -t "$mime" -o >"$output"
+    printf '%s\n' "$output"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    usage
+    exit 0
+fi
+
+[[ $# -ge 1 && $# -le 2 ]] || {
+    usage >&2
+    exit 1
+}
+
+target_dir="$1"
+filename="${2:-}"
+
+mkdir -p "$target_dir"
+[[ -d "$target_dir" ]] || die "could not create directory: $target_dir"
+
+if have wl-paste && [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+    save_with_wl_paste "$target_dir" "$filename"
+elif have xclip && [[ -n "${DISPLAY:-}" ]]; then
+    save_with_xclip "$target_dir" "$filename"
+elif have wl-paste; then
+    save_with_wl_paste "$target_dir" "$filename"
+elif have xclip; then
+    save_with_xclip "$target_dir" "$filename"
+else
+    die "install wl-clipboard for Wayland or xclip for X11"
+fi
