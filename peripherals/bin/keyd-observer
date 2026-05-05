@@ -1,11 +1,53 @@
 #!/usr/bin/env sh
 
+# Bridges keyd layer signals to user-session actions.
+#
+# keyd emits short-lived "signal_*" layers when specific shortcuts are pressed.
+# This observer keeps one `keyd listen` process open and reacts to those signals:
+# opening/reopening the warpd hint overlay, toggling between the current cursor
+# position and the last warpd-selected point, temporarily leaving/re-entering
+# mouseless mode, typing clipboard snippets, and launching terminal helpers.
+#
+# The warpd path is latency-sensitive. Repeated tab+f should cancel the current
+# overlay and open a fresh one without entering mouseless, so this script keeps
+# direct worker PIDs and generation tokens instead of relying on process scans.
+
 # https://unix.stackexchange.com/questions/152310/how-to-correctly-start-an-application-from-a-shell
 
 enter_mouseless_mode=leftcontrol+rightcontrol
 leave_mouseless_mode=leftalt+rightalt
 warpd_last_location="$HOME/bin/warpd-last-location"
+
+# Reopening warpd must be fast: keep the exact worker PID and kill it directly
+# on the next tab+f instead of scanning processes. The generation file prevents
+# a superseded worker from re-entering mouseless after a newer overlay starts.
+state_dir="${XDG_RUNTIME_DIR:-/tmp}/keyd-observer"
+warpd_generation_file="$state_dir/warpd-generation"
+warpd_generation=0
+warpd_worker_pid=""
 toggle_armed=0
+
+next_warpd_generation() {
+    mkdir -p "$state_dir" || return 1
+    warpd_generation=$((warpd_generation + 1))
+    printf '%s\n' "$warpd_generation" >"$warpd_generation_file"
+}
+
+is_current_warpd_generation() {
+    [ -r "$warpd_generation_file" ] || return 1
+    read -r current_generation <"$warpd_generation_file" || return 1
+    [ "$current_generation" = "$1" ]
+}
+
+stop_current_warpd_overlay() {
+    [ -n "${warpd_worker_pid:-}" ] || return 0
+
+    # The worker forwards TERM to its warpd child, so killing this PID closes the
+    # current overlay without a pgrep round trip.
+    kill "$warpd_worker_pid" >/dev/null 2>&1 || true
+    wait "$warpd_worker_pid" 2>/dev/null || true
+    warpd_worker_pid=""
+}
 
 run_warpd_last_location() {
     action="$1"
@@ -19,6 +61,41 @@ run_warpd_last_location() {
     return "$rc"
 }
 
+start_warpd_hint_worker() {
+    generation="$1"
+    output_file="$state_dir/run-hint.$generation.log"
+
+    (
+        helper_pid=""
+
+        stop_helper() {
+            [ -n "${helper_pid:-}" ] && kill "$helper_pid" >/dev/null 2>&1 || true
+            [ -n "${helper_pid:-}" ] && wait "$helper_pid" 2>/dev/null || true
+            rm -f "$output_file"
+            exit 143
+        }
+
+        trap stop_helper HUP INT TERM
+
+        "$warpd_last_location" run-hint >"$output_file" 2>&1 &
+        helper_pid="$!"
+        wait "$helper_pid"
+        rc="$?"
+        helper_pid=""
+        trap - HUP INT TERM
+
+        if [ "$rc" -ne 0 ] && [ "$rc" -ne 143 ]; then
+            output="$(sed -n '1,3p' "$output_file")"
+            logger -t keyd-observer "warpd-last-location run-hint failed with rc=$rc: $output"
+        fi
+
+        rm -f "$output_file"
+        is_current_warpd_generation "$generation" && keyd do "$enter_mouseless_mode"
+    ) >/dev/null 2>&1 &
+
+    warpd_worker_pid="$!"
+}
+
 keyd listen | while read x; do
     case "$x" in
     +tab_as_modifier)
@@ -30,17 +107,15 @@ keyd listen | while read x; do
         ;;
 
     +signal_escape)
-        [ -n "$warpd_pid" ] && kill $warpd_pid >/dev/null 2>&1
+        stop_current_warpd_overlay
         ;;
 
     +signal_open_warpd_overlay)
+        next_warpd_generation || continue
+        generation="$warpd_generation"
+        stop_current_warpd_overlay
         keyd do $leave_mouseless_mode &
-        ( (
-            run_warpd_last_location run-hint
-            keyd do "$enter_mouseless_mode"
-            warpd_pid=""
-        ) >/dev/null 2>&1 &)
-        warpd_pid=$(pgrep -f "warpd")
+        start_warpd_hint_worker "$generation"
         ;;
 
     +signal_toggle_warpd_last_location)

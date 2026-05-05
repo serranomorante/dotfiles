@@ -139,9 +139,32 @@ with_lock() {
 
 run_hint() {
     before_xy="$(current_xy)" || before_xy=""
+    mkdir -p "$state_dir" || return 1
 
-    output="$(warpd --config "${WARPD_CONFIG:-$HOME/.config/warpd/config}" --hint --oneshot --foreground)"
+    output_file="$state_dir/run-hint.$$"
+    warpd_child=""
+
+    # keyd-observer may cancel this helper when tab+f is pressed again. Keep
+    # warpd as a direct child and forward termination so the old overlay closes
+    # immediately, while still allowing stdout parsing on a normal selection.
+    stop_warpd_child() {
+        [ -n "${warpd_child:-}" ] && kill "$warpd_child" >/dev/null 2>&1 || true
+        [ -n "${warpd_child:-}" ] && wait "$warpd_child" 2>/dev/null || true
+        rm -f "$output_file"
+        exit 143
+    }
+
+    trap stop_warpd_child HUP INT TERM
+
+    warpd --config "${WARPD_CONFIG:-$HOME/.config/warpd/config}" --hint --oneshot --foreground >"$output_file" &
+    warpd_child="$!"
+    wait "$warpd_child"
     rc=$?
+    warpd_child=""
+
+    IFS= read -r output <"$output_file" || output=""
+    rm -f "$output_file"
+    trap - HUP INT TERM
 
     set -- $output
     if [ "$#" -ge 2 ] && is_int "$1" && is_int "$2"; then
