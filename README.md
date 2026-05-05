@@ -2,15 +2,13 @@
 
 The exact state of my personal computer (the one that I use everyday) is declared here as ansible playbooks and config files (everything is here except my data).
 
-Even though you can install it I believe this OS is unusable for anyone but me. You can still gather any useful configs from here if you want.
+Even though you can install it I believe the resulting system is unusable for anyone but me. You can still gather any useful configs from here if you want.
 
-I run `ansible-playbook -K tools.yml -l localhost --tags all` and after a few minutes (1 hour on fresh systems) I'm ready to start working as if nothing has ever happened.
+I run `ansible-playbook -K tools.yml -l localhost --tags all` and after a few minutes (1 hour on fresh installs) I'm ready to start working as if nothing has ever happened.
 
 > You might see files like `dot-bashrc` on this repo. They get automatically translated into `.bashrc` files by ansible and stow. I use `dot-*` because a literal dot would make the file hidden by default on file explorers.
 
 I started a youtube channel to talk more about my workflow, setup and ansible.
-
-![](https://youtu.be/wMLjJtSI9uM)
 
 ## How to replicate the full system
 
@@ -63,11 +61,11 @@ I did a video about it [here](/home/aaaa/dotfiles/assets/media/2026-05-04-23-16-
 
 This ansible playbook was run from a remote computer. I haven't tested executing these playbooks from inside the arch bootable usb and I don't recommend you try to do it this way unless you have at least 8GB on your usb.
 
-Requirements:
+### Requirements
 
-Disable secure boot and reset/clear the existent keys.
-
-You need 2 public ssh authorization keys on your **booted usb system**
+- 2 nvme physical drives
+- Disable secure boot and reset/clear the existent keys.
+- You need 2 public ssh authorization keys on your **booted usb system**
 
 Use this command to generate the keys:
 
