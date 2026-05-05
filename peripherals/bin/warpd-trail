@@ -1,0 +1,493 @@
+#!/usr/bin/env sh
+
+# Draws a very short visual trail between two screen coordinates without moving
+# the real mouse pointer. This is meant to run after warpd has already moved the
+# pointer to the selected target: the pointer remains at the target, while this
+# helper briefly paints an input-transparent X11 overlay from the previous point
+# to the new one and exits.
+#
+# The shell wrapper compiles a tiny X11 helper into the user's cache on first
+# use. That keeps the dotfile easy to stow/test while making repeated calls use a
+# single native process instead of repeatedly spawning heavier UI toolkits.
+
+set -eu
+
+usage() {
+    printf 'usage: %s <from_x> <from_y> <to_x> <to_y>\n' "$0" >&2
+    exit 2
+}
+
+is_int() {
+    case "${1:-}" in
+    '' | -)
+        return 1
+        ;;
+    -*)
+        n="${1#-}"
+        ;;
+    *)
+        n="$1"
+        ;;
+    esac
+
+    case "$n" in
+    '' | *[!0-9]*)
+        return 1
+        ;;
+    esac
+}
+
+[ "$#" -eq 4 ] || usage
+is_int "$1" && is_int "$2" && is_int "$3" && is_int "$4" || usage
+
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/warpd-trail"
+helper="$cache_dir/warpd-trail-x11-v6"
+
+compile_helper() {
+    command -v cc >/dev/null 2>&1 || {
+        printf 'warpd-trail: cc is required to build the cached X11 helper\n' >&2
+        return 1
+    }
+
+    mkdir -p "$cache_dir"
+    src="$cache_dir/warpd-trail-x11-v6.c"
+
+    cat >"$src" <<'EOF'
+#include <X11/Xatom.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/extensions/shape.h>
+#include <X11/extensions/Xfixes.h>
+
+#include <errno.h>
+#include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+
+static int parse_int(const char *s, int *out) {
+    char *end = NULL;
+    long value;
+
+    errno = 0;
+    value = strtol(s, &end, 10);
+    if (errno != 0 || end == s || *end != '\0') {
+        return 0;
+    }
+
+    *out = (int)value;
+    return 1;
+}
+
+static int env_int(const char *name, int fallback, int min, int max) {
+    const char *value = getenv(name);
+    int parsed;
+
+    if (value == NULL || !parse_int(value, &parsed)) {
+        return fallback;
+    }
+
+    if (parsed < min) {
+        return min;
+    }
+    if (parsed > max) {
+        return max;
+    }
+
+    return parsed;
+}
+
+static void sleep_ms(int ms) {
+    struct timespec req;
+
+    if (ms <= 0) {
+        return;
+    }
+
+    req.tv_sec = ms / 1000;
+    req.tv_nsec = (long)(ms % 1000) * 1000000L;
+    while (nanosleep(&req, &req) == -1 && errno == EINTR) {
+    }
+}
+
+static unsigned char clamp_u8(int value) {
+    if (value < 0) {
+        return 0;
+    }
+    if (value > 255) {
+        return 255;
+    }
+    return (unsigned char)value;
+}
+
+static void blend_pixel(uint32_t *pixels, int width, int height, int x, int y,
+                        int r, int g, int b, int a) {
+    uint32_t dst;
+    int da, dr, dg, db;
+    int sr, sg, sb;
+    int out_a, out_r, out_g, out_b;
+
+    if (x < 0 || y < 0 || x >= width || y >= height || a <= 0) {
+        return;
+    }
+
+    a = clamp_u8(a);
+    sr = r * a / 255;
+    sg = g * a / 255;
+    sb = b * a / 255;
+
+    dst = pixels[y * width + x];
+    da = (int)((dst >> 24) & 0xff);
+    dr = (int)((dst >> 16) & 0xff);
+    dg = (int)((dst >> 8) & 0xff);
+    db = (int)(dst & 0xff);
+
+    out_a = a + da * (255 - a) / 255;
+    out_r = sr + dr * (255 - a) / 255;
+    out_g = sg + dg * (255 - a) / 255;
+    out_b = sb + db * (255 - a) / 255;
+
+    pixels[y * width + x] = ((uint32_t)clamp_u8(out_a) << 24) |
+                            ((uint32_t)clamp_u8(out_r) << 16) |
+                            ((uint32_t)clamp_u8(out_g) << 8) |
+                            (uint32_t)clamp_u8(out_b);
+}
+
+static void draw_dot(uint32_t *pixels, int width, int height, double cx,
+                     double cy, double radius, int r, int g, int b,
+                     double alpha) {
+    int min_x = (int)floor(cx - radius - 1.0);
+    int max_x = (int)ceil(cx + radius + 1.0);
+    int min_y = (int)floor(cy - radius - 1.0);
+    int max_y = (int)ceil(cy + radius + 1.0);
+    int x, y;
+
+    for (y = min_y; y <= max_y; y++) {
+        for (x = min_x; x <= max_x; x++) {
+            double dx = ((double)x + 0.5) - cx;
+            double dy = ((double)y + 0.5) - cy;
+            double d = sqrt(dx * dx + dy * dy);
+            double edge;
+
+            if (d > radius) {
+                continue;
+            }
+
+            edge = 1.0 - (d / radius);
+            blend_pixel(pixels, width, height, x, y, r, g, b,
+                        (int)(alpha * edge * edge));
+        }
+    }
+}
+
+static void draw_segment(uint32_t *pixels, int width, int height, double x1,
+                         double y1, double x2, double y2, double radius, int r,
+                         int g, int b, double alpha) {
+    double dx = x2 - x1;
+    double dy = y2 - y1;
+    double distance = sqrt(dx * dx + dy * dy);
+    int steps = (int)(distance / (radius * 0.45));
+    int i;
+
+    if (steps < 1) {
+        steps = 1;
+    }
+
+    for (i = 0; i <= steps; i++) {
+        double t = (double)i / (double)steps;
+        draw_dot(pixels, width, height, x1 + dx * t, y1 + dy * t, radius, r,
+                 g, b, alpha);
+    }
+}
+
+static void draw_tapered_segment(uint32_t *pixels, int width, int height,
+                                 double x1, double y1, double x2, double y2,
+                                 double start_radius, double end_radius, int r,
+                                 int g, int b, double alpha) {
+    double dx = x2 - x1;
+    double dy = y2 - y1;
+    double distance = sqrt(dx * dx + dy * dy);
+    int steps = (int)(distance / (end_radius * 0.42));
+    int i;
+
+    if (steps < 1) {
+        steps = 1;
+    }
+
+    for (i = 0; i <= steps; i++) {
+        double t = (double)i / (double)steps;
+        double eased = t * t;
+        double radius = start_radius + (end_radius - start_radius) * eased;
+        draw_dot(pixels, width, height, x1 + dx * t, y1 + dy * t, radius, r,
+                 g, b, alpha);
+    }
+}
+
+static void mix_color(double t, int r1, int g1, int b1, int r2, int g2, int b2,
+                      int *r, int *g, int *b) {
+    if (t < 0.0) {
+        t = 0.0;
+    }
+    if (t > 1.0) {
+        t = 1.0;
+    }
+
+    *r = (int)((double)r1 + ((double)r2 - r1) * t);
+    *g = (int)((double)g1 + ((double)g2 - g1) * t);
+    *b = (int)((double)b1 + ((double)b2 - b1) * t);
+}
+
+static void draw_comet_tail(uint32_t *pixels, int width, int height, double x1,
+                            double y1, double x2, double y2, double radius) {
+    double dx = x2 - x1;
+    double dy = y2 - y1;
+    double distance = sqrt(dx * dx + dy * dy);
+    double px = 0.0;
+    double py = 0.0;
+    int steps = (int)(distance / (radius * 0.33));
+    int i;
+
+    if (distance > 1.0) {
+        px = -dy / distance;
+        py = dx / distance;
+    }
+    if (steps < 1) {
+        steps = 1;
+    }
+
+    for (i = 0; i <= steps; i++) {
+        double t = (double)i / (double)steps;
+        double head_weight = t * t;
+        double tail_weight = 1.0 - t;
+        double x = x1 + dx * t;
+        double y = y1 + dy * t;
+        int r, g, b;
+
+        /* Soft ice-blue coma: broad and transparent at the tail, tighter near
+         * the white head. */
+        mix_color(t, 150, 225, 255, 232, 248, 255, &r, &g, &b);
+        draw_dot(pixels, width, height, x, y,
+                 radius * (1.95 - head_weight * 0.85), r, g, b,
+                 34.0 + 56.0 * head_weight);
+
+        /* Slight asymmetry keeps the trail from looking like a UI stroke. */
+        draw_dot(pixels, width, height,
+                 x + px * radius * 0.72 * tail_weight,
+                 y + py * radius * 0.72 * tail_weight,
+                 radius * (1.25 - head_weight * 0.55), 126, 210, 255,
+                 22.0 + 30.0 * head_weight);
+        draw_dot(pixels, width, height,
+                 x - px * radius * 0.45 * tail_weight,
+                 y - py * radius * 0.45 * tail_weight,
+                 radius * (0.95 - head_weight * 0.35), 198, 238, 255,
+                 16.0 + 24.0 * head_weight);
+
+        /* Bright core: starts as a fine white line and becomes the comet head. */
+        mix_color(t, 235, 250, 255, 255, 255, 246, &r, &g, &b);
+        draw_dot(pixels, width, height, x, y,
+                 radius * (0.12 + head_weight * 0.58), r, g, b,
+                 96.0 + 126.0 * head_weight);
+    }
+}
+
+static Visual *find_argb_visual(Display *display, int screen, int *depth_out) {
+    XVisualInfo template;
+    XVisualInfo *infos;
+    Visual *visual = NULL;
+    int count = 0;
+    int i;
+
+    template.screen = screen;
+    template.depth = 32;
+    template.class = TrueColor;
+    infos = XGetVisualInfo(display, VisualScreenMask | VisualDepthMask |
+                                        VisualClassMask,
+                           &template, &count);
+    if (infos == NULL || count == 0) {
+        return NULL;
+    }
+
+    for (i = 0; i < count; i++) {
+        if (infos[i].red_mask == 0xff0000 &&
+            infos[i].green_mask == 0x00ff00 &&
+            infos[i].blue_mask == 0x0000ff) {
+            visual = infos[i].visual;
+            *depth_out = infos[i].depth;
+            break;
+        }
+    }
+
+    if (visual == NULL) {
+        visual = infos[0].visual;
+        *depth_out = infos[0].depth;
+    }
+
+    XFree(infos);
+    return visual;
+}
+
+static int min_int(int a, int b) { return a < b ? a : b; }
+static int max_int(int a, int b) { return a > b ? a : b; }
+
+int main(int argc, char **argv) {
+    int from_x, from_y, to_x, to_y;
+    int duration_ms = env_int("WARPD_TRAIL_DURATION_MS", 220, 20, 1000);
+    int hold_ms = env_int("WARPD_TRAIL_HOLD_MS", 180, 0, 1000);
+    int frames = env_int("WARPD_TRAIL_FRAMES", 24, 3, 90);
+    int radius = env_int("WARPD_TRAIL_RADIUS", 14, 2, 60);
+    int red = env_int("WARPD_TRAIL_RED", 196, 0, 255);
+    int green = env_int("WARPD_TRAIL_GREEN", 236, 0, 255);
+    int blue = env_int("WARPD_TRAIL_BLUE", 255, 0, 255);
+    int margin = radius * 10 + 36;
+    int left, top, width, height;
+    int screen, depth = 32;
+    int frame, delay_ms;
+    Display *display;
+    Window root, win;
+    Visual *visual;
+    Colormap colormap;
+    XSetWindowAttributes attrs;
+    XImage *image;
+    uint32_t *pixels;
+    GC gc;
+    XserverRegion empty_region;
+
+    if (argc != 5 || !parse_int(argv[1], &from_x) ||
+        !parse_int(argv[2], &from_y) || !parse_int(argv[3], &to_x) ||
+        !parse_int(argv[4], &to_y)) {
+        fprintf(stderr, "usage: %s <from_x> <from_y> <to_x> <to_y>\n",
+                argv[0]);
+        return 2;
+    }
+
+    if (abs(to_x - from_x) < 2 && abs(to_y - from_y) < 2) {
+        return 0;
+    }
+
+    display = XOpenDisplay(NULL);
+    if (display == NULL) {
+        fprintf(stderr, "warpd-trail: could not open X display\n");
+        return 1;
+    }
+
+    screen = DefaultScreen(display);
+    root = RootWindow(display, screen);
+    visual = find_argb_visual(display, screen, &depth);
+    if (visual == NULL) {
+        fprintf(stderr, "warpd-trail: no 32-bit ARGB X11 visual available\n");
+        XCloseDisplay(display);
+        return 1;
+    }
+
+    left = min_int(from_x, to_x) - margin;
+    top = min_int(from_y, to_y) - margin;
+    width = max_int(from_x, to_x) - min_int(from_x, to_x) + margin * 2 + 1;
+    height = max_int(from_y, to_y) - min_int(from_y, to_y) + margin * 2 + 1;
+    if (width < 1) {
+        width = 1;
+    }
+    if (height < 1) {
+        height = 1;
+    }
+
+    colormap = XCreateColormap(display, root, visual, AllocNone);
+    memset(&attrs, 0, sizeof(attrs));
+    attrs.override_redirect = True;
+    attrs.colormap = colormap;
+    attrs.background_pixel = 0;
+    attrs.border_pixel = 0;
+    win = XCreateWindow(display, root, left, top, (unsigned int)width,
+                        (unsigned int)height, 0, depth, InputOutput, visual,
+                        CWOverrideRedirect | CWColormap | CWBackPixel |
+                            CWBorderPixel,
+                        &attrs);
+
+    empty_region = XFixesCreateRegion(display, NULL, 0);
+    XFixesSetWindowShapeRegion(display, win, ShapeInput, 0, 0, empty_region);
+    XFixesDestroyRegion(display, empty_region);
+
+    XStoreName(display, win, "warpd-trail");
+    XMapRaised(display, win);
+    XFlush(display);
+
+    pixels = calloc((size_t)width * (size_t)height, sizeof(uint32_t));
+    if (pixels == NULL) {
+        XDestroyWindow(display, win);
+        XFreeColormap(display, colormap);
+        XCloseDisplay(display);
+        return 1;
+    }
+
+    image = XCreateImage(display, visual, (unsigned int)depth, ZPixmap, 0,
+                         (char *)pixels, (unsigned int)width,
+                         (unsigned int)height, 32, 0);
+    if (image == NULL) {
+        free(pixels);
+        XDestroyWindow(display, win);
+        XFreeColormap(display, colormap);
+        XCloseDisplay(display);
+        return 1;
+    }
+
+    gc = XCreateGC(display, win, 0, NULL);
+    delay_ms = duration_ms / frames;
+
+    for (frame = 1; frame <= frames; frame++) {
+        double raw_t = (double)frame / (double)frames;
+        double t = 1.0 - pow(1.0 - raw_t, 3.0);
+        double start_x = (double)from_x - (double)left;
+        double start_y = (double)from_y - (double)top;
+        double end_x = (double)to_x - (double)left;
+        double end_y = (double)to_y - (double)top;
+        double head_x = ((double)from_x + ((double)to_x - from_x) * t) -
+                        (double)left;
+        double head_y = ((double)from_y + ((double)to_y - from_y) * t) -
+                        (double)top;
+
+        memset(pixels, 0, (size_t)width * (size_t)height * sizeof(uint32_t));
+
+        draw_comet_tail(pixels, width, height, start_x, start_y, head_x, head_y,
+                        (double)radius);
+
+        draw_dot(pixels, width, height, start_x, start_y,
+                 (double)radius * 0.9, red, green, blue, 60.0);
+        draw_dot(pixels, width, height, start_x, start_y,
+                 (double)radius * 0.32, 240, 252, 255, 130.0);
+
+        draw_dot(pixels, width, height, end_x, end_y, (double)radius * 1.9,
+                 150, 225, 255, 42.0);
+        draw_dot(pixels, width, height, head_x, head_y, (double)radius * 1.28,
+                 170, 228, 255, 118.0);
+        draw_dot(pixels, width, height, head_x, head_y, (double)radius * 0.72,
+                 255, 255, 245, 245.0);
+        draw_dot(pixels, width, height, head_x, head_y, (double)radius * 0.34,
+                 255, 255, 255, 255.0);
+
+        XPutImage(display, win, gc, image, 0, 0, 0, 0, (unsigned int)width,
+                  (unsigned int)height);
+        XFlush(display);
+        sleep_ms(delay_ms);
+    }
+
+    sleep_ms(hold_ms);
+
+    XFreeGC(display, gc);
+    image->data = (char *)pixels;
+    XDestroyImage(image);
+    XDestroyWindow(display, win);
+    XFreeColormap(display, colormap);
+    XCloseDisplay(display);
+
+    return 0;
+}
+EOF
+
+    cc "$src" -O2 -o "$helper" -lX11 -lXext -lXfixes -lm
+}
+
+[ -x "$helper" ] || compile_helper
+
+exec "$helper" "$1" "$2" "$3" "$4"

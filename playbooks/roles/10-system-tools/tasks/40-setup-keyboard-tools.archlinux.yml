@@ -17,6 +17,7 @@
       - libxi
       - libxinerama
       - libxft
+      - libxext
       - libxfixes
       - libxtst
       - libx11

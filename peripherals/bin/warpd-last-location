@@ -15,6 +15,7 @@ last_file="$state_dir/last"
 previous_file="$state_dir/previous"
 lock_dir="$state_dir/lock"
 same_xy_threshold=50
+warpd_trail="${WARPD_TRAIL:-$HOME/bin/warpd-trail}"
 
 is_int() {
     case "$1" in
@@ -103,6 +104,11 @@ save_previous_xy_force() {
     save_xy_file "$previous_file" "$1" "$2"
 }
 
+show_trail() {
+    [ -x "$warpd_trail" ] || return 0
+    "$warpd_trail" "$1" "$2" "$3" "$4" >/dev/null 2>&1 &
+}
+
 current_xy() {
     location="$(xdotool getmouselocation --shell 2>/dev/null)" || return 1
     eval "$location"
@@ -174,6 +180,7 @@ run_hint() {
         if [ -n "$before_xy" ]; then
             set -- $before_xy
             save_previous_xy_force "$1" "$2" >/dev/null 2>&1 || true
+            show_trail "$1" "$2" "$last_x" "$last_y"
         fi
 
         save_last_xy "$last_x" "$last_y" >/dev/null 2>&1 || true
