@@ -603,7 +603,7 @@ function M.fzf(opts)
   vim.fn.jobstart(cmd, {
     term = true,
     on_exit = function()
-      vim.api.nvim_win_close(term_winnr, true)
+      if vim.api.nvim_win_is_valid(term_winnr) then pcall(vim.api.nvim_win_close, term_winnr, true) end
       local temp_content = vim.fn.readfile(tempname)
       if #temp_content > 0 then
         if opts.sink then
