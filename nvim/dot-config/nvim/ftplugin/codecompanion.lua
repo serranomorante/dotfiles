@@ -1,5 +1,0 @@
-local winid = vim.api.nvim_get_current_win()
-vim.api.nvim_set_option_value("winhl", "Normal:CustomAIChatBg,LineNr:CustomAILineNr", { win = winid })
-vim.api.nvim_set_option_value("signcolumn", "yes:1", { win = winid })
-vim.api.nvim_set_option_value("cursorline", true, { win = winid })
-vim.api.nvim_set_option_value("cursorlineopt", "number", { win = winid })

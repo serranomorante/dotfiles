@@ -31,8 +31,3 @@ Some reasoning behind my current plugin list.
 | nvim-fundo                  | --                                                                                                                                                                               |
 | vim-rsi                     | --                                                                                                                                                                               |
 | guess-indent                | --                                                                                                                                                                               |
-| codecompanion.nvim          | --                                                                                                                                                                               |
-| codecompanion-history.nvim  | --                                                                                                                                                                               |
-| mcphub.nvim                 | --                                                                                                                                                                               |
-| VectorCode                  | --                                                                                                                                                                               |
-| img-clip.nvim               | --                                                                                                                                                                               |

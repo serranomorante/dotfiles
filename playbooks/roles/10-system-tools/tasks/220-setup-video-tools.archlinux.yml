@@ -22,32 +22,11 @@
   loop:
     - ~/makepkg/davinci-resolve
 
-- name: "[archlinux] Setup video tools: download davinci resolve"
-  # Wait 3 minutes
-  ansible.builtin.command: >
-    ~/bin/nvim --headless -c "autocmd User CodeCompanionChatSubmitted lua vim.defer_fn(function() vim.cmd.normal({ args = { 'ZQ' } }) end, 1000 * 60 * 3)"
-    -c "sleep 2" -c "CodeCompanion /download-davinci"
-  register: var_download_davinci_result
-  args:
-    creates: ~/data/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
-  timeout: 600
-  ignore_errors: true
-  when: is_x_display_session
-
 - name: "[archlinux] Setup video tools: ensure davinci-resolve folder"
   ansible.builtin.file:
     path: ~/data/apps/video-tools/davinci-resolve
     state: directory
     mode: "755"
-
-- name: "[archlinux] Setup video tools: wait for davinci to download"
-  ansible.builtin.wait_for:
-    path: ~/Downloads/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
-    msg: Timeout waiting for davinci resolve to download
-    delay: 5
-    timeout: 600
-  timeout: 0
-  when: (var_download_davinci_result | default({})).changed and is_x_display_session
 
 - name: "[archlinux] Setup video tools: stat downloaded davinci resolve file"
   ansible.builtin.stat:
@@ -61,7 +40,6 @@
     creates: ~/data/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
   when:
     - is_x_display_session
-    - (var_download_davinci_result | default({})).changed
     - var_stat_downloaded_davinci_resolve_file.stat.exists
     - ((var_stat_downloaded_davinci_resolve_file.stat.size / 1024 / 1024) | int > 1000) # at least greater than 1G
 
@@ -76,14 +54,14 @@
     dest: ~/data/apps/video-tools/
     remote_src: true
     creates: ~/data/apps/video-tools/davinci-resolve/PKGBUILD
-  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
+  when: is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: ensure same davinci-resolve version"
   ansible.builtin.replace:
     path: ~/data/apps/video-tools/davinci-resolve/PKGBUILD
     regexp: "^pkgver=.*"
     replace: "pkgver={{ arch_davinci_resolve_version }}"
-  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
+  when: is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: ensure packages"
   become: true
@@ -114,7 +92,7 @@
     - "{{ ansible_facts.env.HOME }}/data/apps/video-tools"
     - "{{ ansible_facts.env.HOME }}/data/apps/video-tools/qt5"
     - "{{ ansible_facts.env.HOME }}/data/apps/video-tools/davinci-resolve"
-  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
+  when: is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: get pre-build qt5-webengine package"
   ansible.builtin.get_url:
@@ -181,7 +159,7 @@
     chdir: ~/data/apps/video-tools/davinci-resolve
   register: davinci_resolve_deps
   changed_when: false
-  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
+  when: is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: install davinci-resolve deps"
   become: true
@@ -192,7 +170,6 @@
     name: "{{ davinci_resolve_deps.stdout | regex_findall('(.*)\n') }}"
   timeout: 0
   when:
-    - (var_download_davinci_result | default({})).changed
     - is_x_display_session
     - var_stat_davinci_zip.stat.exists
     - davinci_resolve_deps is success
@@ -202,7 +179,7 @@
   args:
     chdir: "{{ ansible_facts.env.HOME }}/data/apps/video-tools/davinci-resolve"
   changed_when: true
-  when: (var_download_davinci_result | default({})).changed and is_x_display_session and var_stat_davinci_zip.stat.exists
+  when: is_x_display_session and var_stat_davinci_zip.stat.exists
 
 - name: "[archlinux] Setup video tools: setup makepkg folder on aur_builder user"
   become: true
@@ -228,7 +205,6 @@
     # https://wiki.archlinux.org/title/DaVinci_Resolve
     PKGEXT: ".pkg.tar"
   when:
-    - (var_download_davinci_result | default({})).changed
     - is_x_display_session
     - var_stat_davinci_zip.stat.exists
     - davinci_resolve_deps is success

@@ -185,13 +185,6 @@
     src: mcphub_servers.json
     dest: ~/.config/mcphub/servers.json
     mode: "644"
-  register: var_mcp_hub_servers_json
-
-- name: "[archlinux] Setup ai tools: restart server list"
-  ansible.builtin.command: ~/bin/nvim --headless -c "lua require("mcphub").get_hub_instance():restart()" -c "quit"
-  changed_when: true
-  when: var_mcp_hub_servers_json.changed
-  ignore_errors: true
 
 - name: "[archlinux] Setup ai tools: stat gemini settings"
   ansible.builtin.stat:

@@ -38,8 +38,6 @@ local groups = {
   CustomOperatorPending = { bg = fg .. "Blue" },
   CustomDapReplBg = { bg = bg == "NvimDark" and "#192335" or "#b8cef7" },
   CustomEphemeralMsgBg = { bg = bg == "NvimDark" and "#10264d" or "#93abd9" },
-  CustomAIChatBg = { bg = bg == "NvimDark" and "#323a50" or "#b7c5ea" },
-  CustomAILineNr = { fg = fg .. "Grey4" },
   CustomAerialBg = { bg = bg .. "Grey3" },
   CustomAerialTitle = { fg = fg .. "Cyan", bg = bg .. "Grey3", bold = true },
   DiagnosticUnderlineError = { sp = fg .. "Red", undercurl = true },
