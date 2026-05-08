@@ -10,7 +10,7 @@
 set -eu
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/warpd-marker"
-helper="$cache_dir/warpd-marker-x11-v19"
+helper="$cache_dir/warpd-marker-x11-v20"
 
 compile_helper() {
     command -v cc >/dev/null 2>&1 || {
@@ -19,7 +19,7 @@ compile_helper() {
     }
 
     mkdir -p "$cache_dir"
-    src="$cache_dir/warpd-marker-x11-v19.c"
+    src="$cache_dir/warpd-marker-x11-v20.c"
 
     cat >"$src" <<'EOF'
 #include <X11/Xatom.h>
@@ -370,7 +370,10 @@ int main(void) {
     char default_state_dir[PATH_MAX];
     char last_path[PATH_MAX];
     char previous_path[PATH_MAX];
-    int threshold = env_int("WARPD_MARKER_SAME_XY_THRESHOLD", 50, 1, 500);
+    int threshold = env_int(
+        "WARPD_MARKER_SAME_XY_THRESHOLD",
+        env_int("WARPD_LAST_LOCATION_SAME_XY_THRESHOLD", 120, 1, 500), 1,
+        500);
     int poll_ms = env_int("WARPD_MARKER_POLL_MS", 100, 20, 2000);
     int size = env_int("WARPD_MARKER_SIZE", 32, 16, 160);
     int outer_width = env_int("WARPD_MARKER_OUTER_WIDTH", 0, 0, 10);

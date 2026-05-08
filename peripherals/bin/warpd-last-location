@@ -15,7 +15,7 @@ state_dir="${XDG_RUNTIME_DIR:-/tmp}/warpd-last-location"
 last_file="$state_dir/last"
 previous_file="$state_dir/previous"
 lock_dir="$state_dir/lock"
-same_xy_threshold=50
+same_xy_threshold="${WARPD_LAST_LOCATION_SAME_XY_THRESHOLD:-120}"
 warpd_trail="${WARPD_TRAIL:-$HOME/bin/warpd-trail}"
 
 is_int() {
@@ -40,6 +40,24 @@ is_int() {
         ;;
     esac
 }
+
+clamp_int() {
+    value="$1"
+    min="$2"
+    max="$3"
+    fallback="$4"
+
+    is_int "$value" || value="$fallback"
+    if [ "$value" -lt "$min" ]; then
+        value="$min"
+    elif [ "$value" -gt "$max" ]; then
+        value="$max"
+    fi
+
+    printf '%s\n' "$value"
+}
+
+same_xy_threshold="$(clamp_int "$same_xy_threshold" 1 500 120)"
 
 abs() {
     n="$1"
