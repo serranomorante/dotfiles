@@ -42,6 +42,17 @@ system actions.
   operational rule that would help future work, update the relevant document in
   `docs/` as part of the same change. Keep those notes vendor-neutral and
   focused on repository practice rather than tool-specific memory.
+- For one-time migrations that remove an implementation pattern, clean up any
+  stale files directly as part of the change when appropriate. Do not add a
+  permanent Ansible task just to remove artifacts that the new implementation
+  can no longer regenerate.
+- When adding scripts that compile and cache embedded helpers or other generated
+  runtime artifacts, include the compile/cache refresh step in the owning
+  Ansible task. The script may still compile on demand for normal use, but the
+  playbook should precompile or refresh the cache so applying dotfiles does not
+  require a separate manual compilation step. If a refreshed artifact is used by
+  a long-running service, have the Ansible task notify a restart handler only
+  when the artifact actually changed.
 
 ## Validation
 

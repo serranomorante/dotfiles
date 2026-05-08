@@ -91,6 +91,11 @@ mouseless config
   owns keyboard-driven mouse movement and mouse buttons
 ```
 
+`warpd-marker` and `warpd-trail` compile their embedded X11 helpers into stable
+cache paths under `~/.cache`. Do not bump helper filenames for code changes; the
+wrappers compare the generated C source with the cached source and rebuild when
+needed. The keyboard-tools Ansible task precompiles the stable helpers.
+
 When fixing keyboard conflicts, first identify who consumes the key:
 
 - keyd mapping

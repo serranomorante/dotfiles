@@ -13,7 +13,7 @@
 set -eu
 
 usage() {
-    printf 'usage: %s <from_x> <from_y> <to_x> <to_y>\n' "$0" >&2
+    printf 'usage: %s [--compile-cache]|<from_x> <from_y> <to_x> <to_y>\n' "$0" >&2
     exit 2
 }
 
@@ -37,22 +37,23 @@ is_int() {
     esac
 }
 
-[ "$#" -eq 4 ] || usage
-is_int "$1" && is_int "$2" && is_int "$3" && is_int "$4" || usage
-
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/warpd-trail"
-helper="$cache_dir/warpd-trail-x11-v7"
+helper="$cache_dir/warpd-trail-x11"
+src="$cache_dir/warpd-trail-x11.c"
 
 compile_helper() {
+    emit_status="${1:-0}"
+
     command -v cc >/dev/null 2>&1 || {
         printf 'warpd-trail: cc is required to build the cached X11 helper\n' >&2
         return 1
     }
 
     mkdir -p "$cache_dir"
-    src="$cache_dir/warpd-trail-x11-v7.c"
+    tmp_src="$src.$$.tmp.c"
+    tmp_helper="$helper.$$"
 
-    cat >"$src" <<'EOF'
+    cat >"$tmp_src" <<'EOF'
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -485,9 +486,38 @@ int main(int argc, char **argv) {
 }
 EOF
 
-    cc "$src" -O2 -o "$helper" -lX11 -lXext -lXfixes -lm
+    if [ -x "$helper" ] && [ -r "$src" ] && cmp -s "$tmp_src" "$src"; then
+        rm -f "$tmp_src"
+        [ "$emit_status" -eq 1 ] && printf 'unchanged\n'
+        return 0
+    fi
+
+    if ! cc "$tmp_src" -O2 -o "$tmp_helper" -lX11 -lXext -lXfixes -lm; then
+        rm -f "$tmp_src" "$tmp_helper"
+        return 1
+    fi
+
+    mv -f "$tmp_src" "$src"
+    mv -f "$tmp_helper" "$helper"
+    [ "$emit_status" -eq 1 ] && printf 'compiled\n'
 }
 
-[ -x "$helper" ] || compile_helper
+needs_compile() {
+    [ ! -x "$helper" ] || [ ! -r "$src" ] || [ "$0" -nt "$helper" ] ||
+        [ "$0" -nt "$src" ]
+}
+
+case "${1:-}" in
+--compile-cache)
+    [ "$#" -eq 1 ] || usage
+    compile_helper 1
+    exit
+    ;;
+esac
+
+[ "$#" -eq 4 ] || usage
+is_int "$1" && is_int "$2" && is_int "$3" && is_int "$4" || usage
+
+needs_compile && compile_helper
 
 exec "$helper" "$1" "$2" "$3" "$4"

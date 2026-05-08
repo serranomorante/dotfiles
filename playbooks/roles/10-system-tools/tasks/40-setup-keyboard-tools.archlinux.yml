@@ -82,6 +82,32 @@
     - keyd-observer.service
     - warpd-marker.service
 
+- name: "[archlinux] Keyboard peripheral: ensure X11 helper cache dirs"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/.cache/{{ item }}"
+    state: directory
+    mode: "755"
+  loop:
+    - warpd-marker
+    - warpd-trail
+
+- name: "[archlinux] Keyboard peripheral: compile warpd marker X11 helper"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/warpd-marker"
+      - --compile-cache
+  register: var_warpd_marker_compile_cache
+  changed_when: "'compiled' in var_warpd_marker_compile_cache.stdout_lines"
+  notify: "10-system-tools : handler_restart_warpd_marker_service"
+
+- name: "[archlinux] Keyboard peripheral: compile warpd trail X11 helper"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/warpd-trail"
+      - --compile-cache
+  register: var_warpd_trail_compile_cache
+  changed_when: "'compiled' in var_warpd_trail_compile_cache.stdout_lines"
+
 - name: "[archlinux] Keyboard peripheral: ensure xinput dir"
   become: true
   ansible.builtin.file:
