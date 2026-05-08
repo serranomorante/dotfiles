@@ -41,7 +41,7 @@ is_int() {
 is_int "$1" && is_int "$2" && is_int "$3" && is_int "$4" || usage
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/warpd-trail"
-helper="$cache_dir/warpd-trail-x11-v6"
+helper="$cache_dir/warpd-trail-x11-v7"
 
 compile_helper() {
     command -v cc >/dev/null 2>&1 || {
@@ -50,7 +50,7 @@ compile_helper() {
     }
 
     mkdir -p "$cache_dir"
-    src="$cache_dir/warpd-trail-x11-v6.c"
+    src="$cache_dir/warpd-trail-x11-v7.c"
 
     cat >"$src" <<'EOF'
 #include <X11/Xatom.h>
@@ -334,9 +334,9 @@ static int max_int(int a, int b) { return a > b ? a : b; }
 
 int main(int argc, char **argv) {
     int from_x, from_y, to_x, to_y;
-    int duration_ms = env_int("WARPD_TRAIL_DURATION_MS", 220, 20, 1000);
-    int hold_ms = env_int("WARPD_TRAIL_HOLD_MS", 180, 0, 1000);
-    int frames = env_int("WARPD_TRAIL_FRAMES", 24, 3, 90);
+    int duration_ms = env_int("WARPD_TRAIL_DURATION_MS", 150, 20, 1000);
+    int hold_ms = env_int("WARPD_TRAIL_HOLD_MS", 100, 0, 1000);
+    int frames = env_int("WARPD_TRAIL_FRAMES", 18, 3, 90);
     int radius = env_int("WARPD_TRAIL_RADIUS", 14, 2, 60);
     int red = env_int("WARPD_TRAIL_RED", 196, 0, 255);
     int green = env_int("WARPD_TRAIL_GREEN", 236, 0, 255);
