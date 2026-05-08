@@ -49,6 +49,11 @@ stop_current_warpd_overlay() {
     warpd_worker_pid=""
 }
 
+enter_mouseless_mode_after_hint() {
+    stop_current_warpd_overlay
+    keyd do "$enter_mouseless_mode"
+}
+
 run_warpd_last_location() {
     action="$1"
     output="$("$warpd_last_location" "$action" 2>&1)"
@@ -121,11 +126,16 @@ keyd listen | while read x; do
     +signal_toggle_warpd_last_location)
         [ "$toggle_armed" -eq 1 ] || continue
         toggle_armed=0
+        stop_current_warpd_overlay
         keyd do $leave_mouseless_mode &
         ( (
             run_warpd_last_location toggle
             keyd do "$enter_mouseless_mode"
         ) >/dev/null 2>&1 &)
+        ;;
+
+    +signal_enter_mouseless_mode)
+        enter_mouseless_mode_after_hint &
         ;;
 
     +signal_type_from_clipboard)

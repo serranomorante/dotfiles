@@ -108,8 +108,11 @@ Many source files are not active until the user deploys them:
 
 - keyd config templates need Ansible or manual install to `/etc/keyd/default.conf`.
 - systemd units need stowing/reload/restart depending on the change.
-- scripts under stowed packages are usually active immediately when linked into
-  `~/bin`.
+- scripts under stowed packages are usually active immediately for new
+  invocations once linked into `~/bin`.
+- scripts run by long-lived user services, such as `keyd-observer.service`, need
+  the relevant `systemctl --user restart ...` before the running session uses
+  the new script code.
 - helper scripts that compile cached binaries may need a cache version bump when
   embedded source code changes.
 
