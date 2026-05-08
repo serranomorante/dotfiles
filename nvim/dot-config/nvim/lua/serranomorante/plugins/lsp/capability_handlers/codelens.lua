@@ -8,7 +8,6 @@ return {
 
     local augroup = data.augroup
     local bufnr = data.bufnr
-    local client = data.client
 
     vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost", "InsertLeave" }, {
       desc = "Refresh codelens",
@@ -40,7 +39,7 @@ return {
         { utils.bool2str(codelens_is_enabled), codelens_is_enabled and "DiagnosticOk" or "Comment" },
       }, false, {})
       return codelens_is_enabled and vim.lsp.codelens.enable(true, { bufnr = bufnr })
-        or vim.lsp.codelens.enable(false, { client_id = client.id, bufnr = bufnr })
+        or vim.lsp.codelens.enable(false, { bufnr = bufnr })
     end, opts_with_desc("Toggle codelens"))
 
     vim.keymap.set("n", "<leader>ll", function()
@@ -52,8 +51,7 @@ return {
     if codelens_is_enabled then vim.lsp.codelens.enable(true, { bufnr = bufnr }) end
   end,
 
-  detach = function(client_id, bufnr)
-    vim.lsp.codelens.enable(false, { client_id = client_id, bufnr = bufnr })
+  detach = function(_, bufnr)
     vim.api.nvim_buf_del_keymap(bufnr, "n", "<leader>uL")
     vim.api.nvim_buf_del_keymap(bufnr, "n", "<leader>ll")
   end,
