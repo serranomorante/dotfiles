@@ -99,6 +99,13 @@ When fixing keyboard conflicts, first identify who consumes the key:
 Then prefer the smallest translation at the layer that already owns similar
 conflicts.
 
+## Terminal And Kitty
+
+Kitty configuration belongs in `term/dot-config/kitty/kitty.conf`; helper
+wrappers and scripts belong under `term/bin/` unless they are editor-specific.
+The configured `kitty_mod` is `ctrl+shift`, so avoid adding shifted follow-up
+keys to kitty chord mappings such as `kitty_mod+a>...`.
+
 ## Window Manager
 
 dwm is built from upstream plus local patches. Most behavior changes belong in
