@@ -6,4 +6,19 @@
     name:
       - difftastic
       - git-delta
-      - lazygit
+
+- name: "[archlinux] Git tools: remove stable lazygit package"
+  become: true
+  ansible.builtin.package:
+    state: absent
+    name: lazygit
+
+- name: "[archlinux] Git tools: ensure lazygit from master"
+  become: true
+  become_user: aur_builder
+  kewlfft.aur.aur:
+    use: yay
+    state: latest
+    name: lazygit-git
+    aur_only: true
+  timeout: 0

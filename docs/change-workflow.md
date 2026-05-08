@@ -141,5 +141,13 @@ When changing Ansible playbooks, include exactly one suggested
 `ansible-playbook` command in the final response. Combine all relevant tags in a
 single `--tags` value instead of listing multiple commands.
 
+If the requested playbook scope includes AUR tasks, such as tasks using
+`kewlfft.aur.aur`, make sure the AUR setup task runs first by including the
+`10-20` tag before the requested tag in that single command. This prepares
+`aur_builder`, `yay`, and the repo-local AUR collection from
+`playbooks/roles/10-system-tools/tasks/20-setup-aur.archlinux.yml`. For example,
+use `--tags 10-20,20-90` when applying a `20-90` task file that installs AUR
+packages.
+
 If active-system testing is needed, say which service or command would apply the
 change before running it.
