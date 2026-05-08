@@ -288,6 +288,17 @@
     - /etc/chromium/policies/managed/browser-custom-policy.json
     - /etc/opt/edge/policies/managed/browser-custom-policy.json
 
+- name: "[archlinux] Setup browser tools: create browser initial preferences"
+  become: true
+  ansible.builtin.template:
+    src: browser-initial-preferences.json
+    dest: "{{ item }}"
+    owner: root
+    mode: "644"
+  loop:
+    - /opt/brave-bin/initial_preferences
+    - /usr/lib/chromium/initial_preferences
+
 - name: "[archlinux] Setup browser tools: create firefox policy file for all users"
   become: true
   ansible.builtin.template:
