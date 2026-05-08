@@ -1,0 +1,16 @@
+{
+  "policies": {
+    "Preferences": {
+      "ui.key.menuAccessKey": {
+        "Value": 0,
+        "Status": "default",
+        "Type": "number"
+      },
+      "ui.key.menuAccessKeyFocuses": {
+        "Value": false,
+        "Status": "default",
+        "Type": "boolean"
+      }
+    }
+  }
+}

@@ -273,6 +273,8 @@
     - /etc/opt/edge
     - /etc/opt/edge/policies
     - /etc/opt/edge/policies/managed
+    - /etc/firefox
+    - /etc/firefox/policies
 
 - name: "[archlinux] Setup browser tools: create browser policy file for all users"
   become: true
@@ -285,6 +287,14 @@
     - /etc/brave/policies/managed/browser-custom-policy.json
     - /etc/chromium/policies/managed/browser-custom-policy.json
     - /etc/opt/edge/policies/managed/browser-custom-policy.json
+
+- name: "[archlinux] Setup browser tools: create firefox policy file for all users"
+  become: true
+  ansible.builtin.template:
+    src: firefox-policies.json
+    dest: /etc/firefox/policies/policies.json
+    owner: root
+    mode: "644"
 
 - name: "[archlinux] Setup browser tools: create extensions directory for all users"
   become: true
