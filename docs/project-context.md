@@ -1,0 +1,98 @@
+# Project Context
+
+This repository declares the working state of a personal computer through
+Ansible playbooks, GNU Stow packages, scripts, templates, patches, and user
+services. It is optimized for one specific daily-driver setup, so changes should
+preserve the existing workflow over generic portability.
+
+Use this document as the starting point when making changes. For a directory
+overview, read [repository-map.md](./repository-map.md). For edit and
+verification expectations, read [change-workflow.md](./change-workflow.md).
+
+## System Model
+
+- `~/dotfiles` is the source of truth for user configuration.
+- `~/dotfiles/playbooks` contains the Ansible entrypoints and roles that install
+  packages, build tools, apply patches, and stow dotfile packages.
+- Public dotfile packages live as top-level directories such as `peripherals`,
+  `nvim`, `term`, `tmux`, `audio`, `utilities`, `systemd`, `home`, and `PKM`.
+- Private configuration may exist under `for-my-eyes-only`. Treat it as
+  user-owned and do not inspect or modify it unless a task explicitly requires
+  it.
+- Files named `dot-*` are intended to become dotfiles through Stow. For example,
+  `dot-config/foo` maps to `~/.config/foo`.
+
+## Main Entrypoints
+
+- Full system setup:
+
+  ```sh
+  cd ~/dotfiles/playbooks
+  ansible-playbook -K tools.yml -l localhost --tags all
+  ```
+
+- Main local playbook:
+
+  ```text
+  playbooks/tools.yml
+  ```
+
+- Main role order:
+
+  ```text
+  10-system-tools
+  20-dev-tools
+  30-lang-tools
+  40-PKM
+  50-cloud-tools
+  private roles under for-my-eyes-only, when present
+  ```
+
+- Dotfile stowing is handled by:
+
+  ```text
+  playbooks/roles/10-system-tools/tasks/30-setup-dotfiles.*.yml
+  ```
+
+## Daily Workflow Hot Spots
+
+- Keyboard remapping and mouse-free workflow:
+
+  - `playbooks/roles/10-system-tools/templates/keyd-default.conf`
+  - `peripherals/bin/keyd-observer`
+  - `peripherals/bin/warpd-last-location`
+  - `peripherals/bin/warpd-trail`
+  - `peripherals/dot-config/mouseless/config.yaml`
+  - `peripherals/dot-mouseless/configs/config.yaml`
+
+- Window manager setup:
+
+  - `playbooks/roles/10-system-tools/tasks/100-setup-compositor.archlinux.yml`
+  - `playbooks/roles/10-system-tools/files/*dwm*.patch`
+  - `playbooks/roles/10-system-tools/files/custom.patch`
+
+- Editor and dev shell:
+
+  - `nvim/`
+  - `term/`
+  - `playbooks/roles/20-dev-tools/`
+  - `playbooks/roles/30-lang-tools/`
+
+- User services:
+
+  - `systemd/dot-config/systemd/user/`
+  - `peripherals/dot-config/systemd/user/`
+
+## Safety Rules
+
+- Prefer small, targeted changes that follow the existing file layout.
+- Do not run destructive commands or broad system-changing commands unless the
+  task explicitly asks for it.
+- Do not run Ansible, reload systemd, or restart services unless the task asks
+  for active-system application or verification.
+- Preserve user changes in the working tree. Check `git status --short` before
+  staging or committing.
+- Stage only the files related to the requested change.
+- Keep generated, cache, and machine-local state out of commits unless the repo
+  already tracks that class of file intentionally.
+
