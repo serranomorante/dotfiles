@@ -1,5 +1,5 @@
 diff --git a/config.h b/config.h
-index 56ee471..804042a 100644
+index 56ee471..2ef0718 100644
 --- a/config.h
 +++ b/config.h
 @@ -1,9 +1,9 @@
@@ -66,14 +66,16 @@ index 56ee471..804042a 100644
  	{ MODKEY,                       XK_b,      togglebar,      {0} },
  	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
  	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
-@@ -82,6 +97,7 @@ static const Key keys[] = {
+@@ -82,7 +97,8 @@ static const Key keys[] = {
  	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} },
  	{ MODKEY,                       XK_space,  setlayout,      {0} },
  	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
+-	{ MODKEY,                       XK_s,      swapfocus,      {0} },
 +	{ MODKEY|ControlMask,           XK_f,      togglecanfocusfloating, {0} },
- 	{ MODKEY,                       XK_s,      swapfocus,      {0} },
++	{ MODKEY,                       XK_a,      swapfocus,      {0} },
  	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
  	{ MODKEY|ShiftMask,             XK_0,      tag,            {.ui = ~0 } },
+ 	{ MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },
 @@ -118,4 +134,3 @@ static const Button buttons[] = {
  	{ ClkTagBar,            MODKEY,         Button1,        tag,            {0} },
  	{ ClkTagBar,            MODKEY,         Button3,        toggletag,      {0} },
