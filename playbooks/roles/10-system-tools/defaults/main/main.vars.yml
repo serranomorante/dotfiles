@@ -1,6 +1,13 @@
 ---
 debian_stow_version: 2.4.1
 macos_stow_version: 2.4.1
+dotfiles_stow_options:
+  - --dotfiles
+  - --no-folding
+dotfiles_stow_ignore_patterns:
+  - \.codex
+  - \.claude
+dotfiles_stow_wrapper_path: "{{ ansible_facts.env.HOME }}/bin/dotfiles-stow"
 dotfiles_public_stow_packages:
   - dunst
   - lazygit
@@ -14,6 +21,7 @@ dotfiles_public_stow_packages:
   - utilities
   - term
   - PKM
+dotfiles_agent_context_source_name: AGENTS.md
 dotfiles_agent_context_symlink_names:
   - CLAUDE.md
   - GEMINI.md

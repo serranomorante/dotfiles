@@ -1,0 +1,12 @@
+---
+- name: "Dotfiles: ensure stow wrapper directory"
+  ansible.builtin.file:
+    path: "{{ dotfiles_stow_wrapper_path | dirname }}"
+    state: directory
+    mode: "755"
+
+- name: "Dotfiles: install stow wrapper"
+  ansible.builtin.template:
+    src: dotfiles-stow
+    dest: "{{ dotfiles_stow_wrapper_path }}"
+    mode: "755"

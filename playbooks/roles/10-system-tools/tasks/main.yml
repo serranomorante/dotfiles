@@ -22,6 +22,10 @@
   tags: [setup, "10-20"]
 
 - block:
+    - name: Setup dotfiles stow wrapper
+      ansible.builtin.include_tasks: 30-setup-dotfiles-wrapper.yml
+      when: "user_os in ['archlinux', 'debian', 'otherlinux', 'macosx']"
+
     - name: Setup dotfiles are setup
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:

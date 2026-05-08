@@ -60,7 +60,11 @@ Important conventions:
 - Keep each top-level package focused on one area of the system.
 - `.stow-local-ignore` files prevent irrelevant files from being linked into
   `$HOME`.
-- Stow is invoked with `--dotfiles --no-folding`, so package structure matters.
+- Stow is invoked through the generated `~/bin/dotfiles-stow` wrapper, which
+  applies `dotfiles_stow_options` and `dotfiles_stow_ignore_patterns` from the
+  `10-system-tools` defaults, plus the configured agent context filenames. The
+  wrapper always changes to the generated user's `~/dotfiles` before invoking
+  Stow, so it can be run from any directory.
 
 ## Keyboard And Mouse-Free Workflow
 

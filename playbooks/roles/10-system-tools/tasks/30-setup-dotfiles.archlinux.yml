@@ -100,28 +100,14 @@
   register: var_arch_private_dotfiles
 
 - name: "[archlinux] Dotfiles: apply stow public packages"
-  ansible.builtin.command: >
-    stow --dotfiles --no-folding
-    --ignore=\.codex
-    --ignore=\.claude
-    --ignore=AGENTS\.md
-    --ignore=CLAUDE\.md
-    --ignore=GEMINI\.md
-    {{ dotfiles_public_stow_packages | join(' ') }}
-  args:
-    chdir: ~/dotfiles
+  ansible.builtin.command:
+    argv: "{{ [dotfiles_stow_wrapper_path] + dotfiles_public_stow_packages }}"
   changed_when: false
 
 - name: "[archlinux] Dotfiles: apply stow private package"
-  ansible.builtin.command: >
-    stow --dotfiles --no-folding
-    --ignore=\.codex
-    --ignore=\.claude
-    --ignore=AGENTS\.md
-    --ignore=CLAUDE\.md
-    --ignore=GEMINI\.md
-    for-my-eyes-only
-  args:
-    chdir: ~/dotfiles
+  ansible.builtin.command:
+    argv:
+      - "{{ dotfiles_stow_wrapper_path }}"
+      - for-my-eyes-only
   changed_when: false
   when: var_arch_private_dotfiles.stat.exists

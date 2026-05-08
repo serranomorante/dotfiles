@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+# {{ ansible_managed }}
+#
+# Run GNU Stow from the managed dotfiles repository with this workstation's
+# default Stow options and ignore patterns. This keeps manual and Ansible Stow
+# calls consistent, regardless of the caller's current directory.
+set -eu
+
+dotfiles_stow_dir={{ (ansible_facts.env.HOME + '/dotfiles') | quote }}
+
+if command -v stow >/dev/null 2>&1; then
+    stow_bin=$(command -v stow)
+elif [ -x "$HOME/.local/bin/stow" ]; then
+    stow_bin="$HOME/.local/bin/stow"
+else
+    echo "dotfiles-stow: stow not found" >&2
+    exit 127
+fi
+
+cd "$dotfiles_stow_dir"
+
+{% set stow_ignore_patterns = dotfiles_stow_ignore_patterns + (([dotfiles_agent_context_source_name] + dotfiles_agent_context_symlink_names) | map('regex_escape') | list) %}
+set -- {% for option in dotfiles_stow_options %}{{ option | quote }} {% endfor %}{% for pattern in stow_ignore_patterns %}--ignore={{ pattern | quote }} {% endfor %}"$@"
+
+exec "$stow_bin" "$@"

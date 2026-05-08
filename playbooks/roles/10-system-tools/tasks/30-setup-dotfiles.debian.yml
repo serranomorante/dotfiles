@@ -44,15 +44,9 @@
   changed_when: false
 
 - name: "[debian] Dotfiles: apply stow"
-  ansible.builtin.command: >
-    ~/.local/bin/stow --dotfiles
-    --ignore=\.codex
-    --ignore=\.claude
-    --ignore=AGENTS\.md
-    --ignore=CLAUDE\.md
-    --ignore=GEMINI\.md
-    nvim
-    tmux
-  args:
-    chdir: ~/dotfiles
+  ansible.builtin.command:
+    argv:
+      - "{{ dotfiles_stow_wrapper_path }}"
+      - nvim
+      - tmux
   changed_when: false
