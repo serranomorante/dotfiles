@@ -81,6 +81,9 @@ keyd-observer
 warpd-last-location
   wraps warpd hint/toggle behavior and stores cursor points in tmpfs
 
+warpd-marker
+  keeps a small input-transparent X11 marker on the point tab+g would jump to
+
 warpd-trail
   draws a visual overlay after a warpd jump without moving the real cursor
 

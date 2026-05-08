@@ -1,0 +1,11 @@
+[Unit]
+Description=warpd target marker
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/bin/warpd-marker
+Restart=on-failure
+RestartSec=1s
+
+[Install]
+WantedBy=graphical-session.target

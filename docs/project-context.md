@@ -76,6 +76,7 @@ verification expectations, read [change-workflow.md](./change-workflow.md).
   - `playbooks/roles/10-system-tools/templates/keyd-default.conf`
   - `peripherals/bin/keyd-observer`
   - `peripherals/bin/warpd-last-location`
+  - `peripherals/bin/warpd-marker`
   - `peripherals/bin/warpd-trail`
   - `peripherals/dot-config/mouseless/config.yaml`
   - `peripherals/dot-mouseless/configs/config.yaml`

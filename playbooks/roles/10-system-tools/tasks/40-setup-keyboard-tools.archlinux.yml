@@ -80,6 +80,7 @@
   loop:
     - kbdrate.service
     - keyd-observer.service
+    - warpd-marker.service
 
 - name: "[archlinux] Keyboard peripheral: ensure xinput dir"
   become: true
