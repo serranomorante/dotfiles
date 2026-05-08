@@ -42,6 +42,16 @@ system actions.
   operational rule that would help future work, update the relevant document in
   `docs/` as part of the same change. Keep those notes vendor-neutral and
   focused on repository practice rather than tool-specific memory.
+- After reaching a working solution in an interactive session, actively check
+  whether the change revealed a new convention, operational rule, or maintenance
+  expectation that belongs in `docs/`. Documentation updates should include new
+  guidance when useful, not only edits to existing text.
+- If a fix requires a manual operational step that is part of maintaining this
+  workstation, prefer encoding that step in the owning Ansible task or handler
+  so future runs can reproduce it. Do this especially when the step is not
+  obvious to run manually, such as rebuilding generated caches, refreshing
+  helper binaries, or restarting only the services affected by a changed
+  artifact.
 - For one-time migrations that remove an implementation pattern, clean up any
   stale files directly as part of the change when appropriate. Do not add a
   permanent Ansible task just to remove artifacts that the new implementation
