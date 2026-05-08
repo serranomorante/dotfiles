@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Purpose: Adapt Git's diff.external arguments to the delta pager used by lazygit.
+# Notes: Git passes temporary files here, so this script regenerates a normal diff.
+
+set -euo pipefail
+
+if (($# < 7)); then
+    printf 'usage: %s path old-file old-hex old-mode new-file new-hex new-mode\n' "$0" >&2
+    exit 2
+fi
+
+path="$1"
+old_file="$2"
+new_file="$5"
+pager="$HOME/dotfiles/lazygit/dot-config/lazygit/delta-theme-pager"
+git_diff_cmd=(git -c diff.external= diff --no-index --no-ext-diff --no-color -- "$old_file" "$new_file")
+
+delta_args=()
+if [[ -n "${LAZYGIT_COLUMNS:-}" ]]; then
+    delta_args+=(--width="$LAZYGIT_COLUMNS")
+fi
+
+sed_args=()
+add_rewrite_path_expr() {
+    local source_path="$1"
+    local label="$2"
+    local source_pattern
+    local label_replacement
+
+    if [[ "$source_path" == /dev/null ]]; then
+        return
+    fi
+
+    source_pattern="$(printf '%s' "${source_path#/}" | sed 's/[.[\*^$()+?{}|\\/]/\\&/g')"
+    label_replacement="$(printf '%s' "$label/$path" | sed 's/[&\\/]/\\&/g')"
+
+    sed_args+=(-e "s	$source_pattern	$label_replacement	g")
+}
+
+if [[ -n "${DELTA_THEME_EXTERNAL_DIFF_ACTIVE:-}" ]]; then
+    GIT_EXTERNAL_DIFF= "${git_diff_cmd[@]}"
+    exit "$?"
+fi
+export DELTA_THEME_EXTERNAL_DIFF_ACTIVE=1
+
+add_rewrite_path_expr "$old_file" a
+add_rewrite_path_expr "$new_file" b
+
+set +e
+GIT_EXTERNAL_DIFF= "${git_diff_cmd[@]}" | sed "${sed_args[@]}" | "$pager" "${delta_args[@]}"
+statuses=("${PIPESTATUS[@]}")
+set -e
+
+if ((statuses[0] > 1)); then
+    exit "${statuses[0]}"
+fi
+
+if ((statuses[1] != 0)); then
+    exit "${statuses[1]}"
+fi
+
+exit "${statuses[2]}"

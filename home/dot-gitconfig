@@ -23,6 +23,7 @@ conflictstyle = diff3
 
 [diff]
 colorMoved = default
+external = bash ~/dotfiles/lazygit/dot-config/lazygit/delta-theme-external-diff
 
 [delta]
 features = settings interactive decorations

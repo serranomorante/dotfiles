@@ -15,7 +15,8 @@ start here when deciding which file owns a behavior.
 - `audio/`: audio production and routing configuration/scripts.
 - `utilities/`: general user scripts and utility configs.
 - `dunst/`: notification daemon configuration.
-- `lazygit/`: lazygit configuration.
+- `lazygit/`: lazygit configuration. See [lazygit.md](./lazygit.md) for pager
+  and diff setup.
 - `home/`: generic home-directory dotfiles.
 - `PKM/`: personal knowledge management tooling.
 - `assets/`: static assets, patches, scripts, services, udev rules, and media.

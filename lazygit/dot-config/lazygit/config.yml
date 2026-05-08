@@ -12,19 +12,15 @@ gui:
 keybinding:
   universal:
     quit: <disabled>
-    # based on: https://github.com/jesseduffield/lazygit/blob/master/docs/Custom_Pagers.md#delta
 git:
   autoForwardBranches: none
   branchLogCmd: "git log --graph --color=always --abbrev-commit --decorate --date=relative --pretty=medium --oneline {{branchName}} --"
   autoStageResolvedConflicts: false
   autoFetch: true
   pagers:
-    - colorArg: always
-      # uncomment if you want to use difftastic
-      # externalDiffCommand: difft --color=always
-      pager: 'bash -c "$HOME/dotfiles/lazygit/dot-config/lazygit/delta-theme-pager"'
-      # based on: https://github.com/jesseduffield/lazygit/issues/4366#issuecomment-3496862317
-      # based on: https://github.com/jesseduffield/lazygit/issues/996#issuecomment-1624329763
+    # Delta is provided by Git's diff.external config.
+    - useExternalDiffGitConfig: true
+    - externalDiffCommand: difft --color=always
 os:
   edit: 'open_in_nvim.sh lazygit_edit "$(printf %q {{filename}})"'
   editAtLine: 'open_in_nvim.sh lazygit_edit_at_line "$(printf %q {{filename}})" "{{line}}"'
