@@ -21,3 +21,11 @@ nvim/dot-config/nvim/queries
 utilities/dot-config/remind
 .gitconfig
 .codex
+
+# Generated agent context compatibility symlinks. AGENTS.md at the repository
+# root is the source of truth and should remain tracked.
+/CLAUDE.md
+/GEMINI.md
+/*/AGENTS.md
+/*/CLAUDE.md
+/*/GEMINI.md

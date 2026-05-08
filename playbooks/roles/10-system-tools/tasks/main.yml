@@ -33,6 +33,12 @@
   tags: [setup, "10-30"]
 
 - block:
+    - name: Setup agent context symlinks
+      ansible.builtin.include_tasks: 31-setup-agent-context-links.yml
+      when: "user_os in ['archlinux', 'debian', 'otherlinux', 'macosx']"
+  tags: [setup, "10-31"]
+
+- block:
     - name: Prepare go before mouseless setup
       ansible.builtin.include_role:
         name: 20-dev-tools

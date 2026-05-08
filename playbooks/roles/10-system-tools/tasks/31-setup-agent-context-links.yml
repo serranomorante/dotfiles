@@ -1,0 +1,16 @@
+---
+- name: "Dotfiles: setup root agent context compatibility symlinks"
+  ansible.builtin.file:
+    src: AGENTS.md
+    dest: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item }}"
+    state: link
+    force: true
+  loop: "{{ dotfiles_agent_context_symlink_names }}"
+
+- name: "Dotfiles: setup package agent context symlinks"
+  ansible.builtin.file:
+    src: ../AGENTS.md
+    dest: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item.0 }}/{{ item.1 }}"
+    state: link
+    force: true
+  loop: "{{ dotfiles_public_stow_packages | product(['AGENTS.md'] + dotfiles_agent_context_symlink_names) | list }}"

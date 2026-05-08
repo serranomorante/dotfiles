@@ -48,6 +48,9 @@
     ~/.local/bin/stow --dotfiles
     --ignore=\.codex
     --ignore=\.claude
+    --ignore=AGENTS\.md
+    --ignore=CLAUDE\.md
+    --ignore=GEMINI\.md
     nvim
     tmux
   args:

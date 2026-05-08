@@ -104,18 +104,10 @@
     stow --dotfiles --no-folding
     --ignore=\.codex
     --ignore=\.claude
-    dunst
-    lazygit
-    nvim
-    peripherals
-    audio
-    playbooks
-    systemd
-    tmux
-    home
-    utilities
-    term
-    PKM
+    --ignore=AGENTS\.md
+    --ignore=CLAUDE\.md
+    --ignore=GEMINI\.md
+    {{ dotfiles_public_stow_packages | join(' ') }}
   args:
     chdir: ~/dotfiles
   changed_when: false
@@ -125,6 +117,9 @@
     stow --dotfiles --no-folding
     --ignore=\.codex
     --ignore=\.claude
+    --ignore=AGENTS\.md
+    --ignore=CLAUDE\.md
+    --ignore=GEMINI\.md
     for-my-eyes-only
   args:
     chdir: ~/dotfiles
