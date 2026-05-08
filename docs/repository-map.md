@@ -105,6 +105,12 @@ wrappers and scripts belong under `term/bin/` unless they are editor-specific.
 The configured `kitty_mod` is `ctrl+shift`, so avoid adding shifted follow-up
 keys to kitty chord mappings such as `kitty_mod+a>...`.
 
+For app-specific kitty macros, prefer scoping the window at launch with
+`--var=...` and binding with `map --when-focus-on var:...`. When a single key
+needs stateful toggle behavior, a kitty user var updated via `remote_control
+set-user-vars` can keep the state local to that window without adding a helper
+script.
+
 ## Window Manager
 
 dwm is built from upstream plus local patches. Most behavior changes belong in

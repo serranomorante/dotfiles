@@ -3,7 +3,7 @@ layout stack
 launch --title base-title
 
 new_tab GIT
-launch lazygit
+launch --var=is_lazygit=1 lazygit
 
 new_tab claude
 launch
