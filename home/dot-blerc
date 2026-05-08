@@ -5,3 +5,13 @@ bleopt highlight_variable=1
 [[ -r /etc/profile.d/bash_completion.sh ]] && source /etc/profile.d/bash_completion.sh
 ble-import -d integration/fzf-completion
 ble-import -d integration/fzf-key-bindings
+
+function dotfiles/fzf-history-widget.lazy {
+  ble-import integration/fzf-key-bindings || return 1
+  fzf-history-widget
+}
+
+# Keep Ctrl-R stable while the deferred fzf integration is still loading.
+ble-bind -m emacs   -x C-r dotfiles/fzf-history-widget.lazy
+ble-bind -m vi_imap -x C-r dotfiles/fzf-history-widget.lazy
+ble-bind -m vi_nmap -s C-r 'i\C-r'
