@@ -3,10 +3,11 @@
 # Tracks the last warpd-selected point and the previous cursor point in tmpfs.
 # `run-hint` records the cursor position before opening warpd as `previous`,
 # then stores the selected warpd target as `last`. `toggle` jumps between these
-# two points: if the cursor is already near `last`, it moves to `previous`;
-# otherwise it moves to `last` and refreshes `previous` only when the current
-# point is far enough from both stored points. The proximity threshold prevents
-# tiny cursor adjustments from collapsing the two toggle endpoints.
+# two points with the same visual trail used after a hint selection: if the
+# cursor is already near `last`, it moves to `previous`; otherwise it moves to
+# `last` and refreshes `previous` only when the current point is far enough from
+# both stored points. The proximity threshold prevents tiny cursor adjustments
+# from collapsing the two toggle endpoints.
 
 set -u
 
@@ -208,11 +209,19 @@ toggle() {
         set -- $previous_xy
         target_x="$1"
         target_y="$2"
+        moving_to_last=0
 
         same_xy "$current_x" "$current_y" "$target_x" "$target_y" && return 0
-        warpd --move "$target_x $target_y" >/dev/null 2>&1 || return 1
     else
-        warpd --move "$last_x $last_y" >/dev/null 2>&1 || return 1
+        target_x="$last_x"
+        target_y="$last_y"
+        moving_to_last=1
+    fi
+
+    warpd --move "$target_x $target_y" >/dev/null 2>&1 || return 1
+    show_trail "$current_x" "$current_y" "$target_x" "$target_y"
+
+    if [ "$moving_to_last" -eq 1 ]; then
         save_previous_xy "$current_x" "$current_y"
     fi
 }
