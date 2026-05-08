@@ -23,7 +23,6 @@ fi
 sed_args=()
 add_rewrite_path_expr() {
     local source_path="$1"
-    local label="$2"
     local source_pattern
     local label_replacement
 
@@ -32,7 +31,7 @@ add_rewrite_path_expr() {
     fi
 
     source_pattern="$(printf '%s' "${source_path#/}" | sed 's/[.[\*^$()+?{}|\\/]/\\&/g')"
-    label_replacement="$(printf '%s' "$label/$path" | sed 's/[&\\/]/\\&/g')"
+    label_replacement="$(printf '%s' "$path" | sed 's/[&\\/]/\\&/g')"
 
     sed_args+=(-e "s	$source_pattern	$label_replacement	g")
 }
@@ -43,8 +42,8 @@ if [[ -n "${DELTA_THEME_EXTERNAL_DIFF_ACTIVE:-}" ]]; then
 fi
 export DELTA_THEME_EXTERNAL_DIFF_ACTIVE=1
 
-add_rewrite_path_expr "$old_file" a
-add_rewrite_path_expr "$new_file" b
+add_rewrite_path_expr "$new_file"
+add_rewrite_path_expr "$old_file"
 
 set +e
 GIT_EXTERNAL_DIFF= "${git_diff_cmd[@]}" | sed "${sed_args[@]}" | "$pager" "${delta_args[@]}"

@@ -53,6 +53,11 @@ traps and long-lived temporary patch files in this script. Prefer streaming
 `git diff` through the path rewrite and pager, and keep the internal `git diff`
 invocation isolated from `diff.external` and `GIT_EXTERNAL_DIFF`.
 
+Rewrite temporary and working-tree paths to the repository path only, without
+adding `a/` or `b/` labels. The internal `git diff --no-index` output already
+adds diff-side prefixes where they belong; adding them in the replacement makes
+delta treat `b/<path>` as the real file path for hyperlinks.
+
 ## Validation
 
 For lazygit config changes, use the smallest checks that match the edit:
