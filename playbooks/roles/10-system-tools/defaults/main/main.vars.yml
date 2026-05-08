@@ -16,7 +16,6 @@ dotfiles_public_stow_packages:
   - audio
   - playbooks
   - systemd
-  - tmux
   - home
   - utilities
   - term

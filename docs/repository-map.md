@@ -10,8 +10,7 @@ start here when deciding which file owns a behavior.
 - `peripherals/`: keyboard, mouse, tablet, keyd, mouseless, warpd, and related
   user services/scripts.
 - `nvim/`: Neovim config and wrappers.
-- `term/`: terminal wrappers and Kitty-related tooling.
-- `tmux/`: tmux configuration.
+- `term/`: terminal wrappers, Kitty-related tooling, and tmux configuration.
 - `systemd/`: user-level systemd units that are not tied to a narrower package.
 - `audio/`: audio production and routing configuration/scripts.
 - `utilities/`: general user scripts and utility configs.

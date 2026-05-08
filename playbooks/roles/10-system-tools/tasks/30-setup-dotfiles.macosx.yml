@@ -56,5 +56,5 @@
     argv:
       - "{{ dotfiles_stow_wrapper_path }}"
       - nvim
-      - tmux
+      - term
   changed_when: false

@@ -130,7 +130,7 @@
       {% endif %}
     mode: "644"
   loop:
-    - { script: ~/dotfiles/tmux/dot-config/tmux/tmux.conf }
+    - { script: ~/dotfiles/term/dot-config/tmux/tmux.conf }
 
 - name: "[archlinux] Setup terminal tools: clone tmux"
   ansible.builtin.stat:

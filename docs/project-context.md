@@ -30,7 +30,7 @@ verification expectations, read [change-workflow.md](./change-workflow.md).
 - `~/dotfiles/playbooks` contains the Ansible entrypoints and roles that install
   packages, build tools, apply patches, and stow dotfile packages.
 - Public dotfile packages live as top-level directories such as `peripherals`,
-  `nvim`, `term`, `tmux`, `audio`, `utilities`, `systemd`, `home`, and `PKM`.
+  `nvim`, `term`, `audio`, `utilities`, `systemd`, `home`, and `PKM`.
 - Private configuration may exist under `for-my-eyes-only`. Treat it as
   user-owned and do not inspect or modify it unless a task explicitly requires
   it.
