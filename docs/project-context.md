@@ -37,6 +37,13 @@ verification expectations, read [change-workflow.md](./change-workflow.md).
 - Files named `dot-*` are intended to become dotfiles through Stow. For example,
   `dot-config/foo` maps to `~/.config/foo`.
 
+## Input Preferences
+
+- Keep paired modifier keys available symmetrically by default. The user
+  actively uses both left and right variants of Shift, Control, Alt, and similar
+  modifier pairs, so do not repurpose only one side as a dedicated shortcut key
+  unless explicitly requested.
+
 ## Main Entrypoints
 
 - Full system setup:

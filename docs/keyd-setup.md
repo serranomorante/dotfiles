@@ -2,6 +2,21 @@
 
 Guides related to my keyd setup.
 
+## Repeat previous key
+
+Both Meta keys are overloaded in `keyd-default.conf`: holding either key keeps
+normal Meta behavior, while tapping either key runs keyd's `repeat()` action
+through `overloadt2` with a 120 ms tap window. This repeats the last emitted key
+or macro, so typing three backticks can be done as:
+
+```text
+` meta meta
+```
+
+Use `overloadt2`, not plain `overload`, for this binding. `repeat()` holds the
+previous output until the repeat key is released; plain `overload` runs tap
+actions during the physical key release and can leave the repeated key held.
+
 ## Latin chars with keyd
 
 > This guide is specific to xorg only
