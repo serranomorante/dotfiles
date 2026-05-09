@@ -36,6 +36,7 @@ fi
 # Enable relative mode (aka "mouse mode")
 # https://support.wacom.com/hc/en-us/articles/1500006340122-What-is-Absolute-Positioning
 xsetwacom --set "${stylus_name}" Mode "Relative" >/dev/null 2>&1 || true
+xsetwacom --set "${stylus_name}" Rotate "half" >/dev/null 2>&1 || true
 
 # Use stylus to scroll
 set_button_if_supported "${stylus_name}" 2 "pan"
