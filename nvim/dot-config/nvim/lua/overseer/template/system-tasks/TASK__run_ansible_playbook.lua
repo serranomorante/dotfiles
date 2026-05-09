@@ -79,6 +79,13 @@ return {
     if params.force_handlers then table.insert(args, "--force-handlers") end
     if params.verbose then table.insert(args, "-" .. params.verbose) end
     if params.pass then vim.g.pass = params.pass end
+    local components = {
+      { "on_complete_notify", system = "always" },
+      "defaults_without_dispose",
+    }
+    if params.pass and params.pass ~= "" then
+      table.insert(components, 1, { "system-components.COMPONENT__send_become_password", password = params.pass })
+    end
     return {
       name = task_name .. string.format(" %s", params.task_id),
       cmd = "ansible-playbook",
@@ -87,10 +94,7 @@ return {
       metadata = {
         PREVENT_QUIT = true,
       },
-      components = {
-        { "on_complete_notify", system = "always" },
-        "defaults_without_dispose",
-      },
+      components = components,
     }
   end,
 }

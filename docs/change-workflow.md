@@ -131,6 +131,11 @@ Many source files are not active until the user deploys them:
 - systemd units need stowing/reload/restart depending on the change.
 - scripts under stowed packages are usually active immediately for new
   invocations once linked into `~/bin`.
+- new files under stowed packages must be stowed before the active system can
+  see them. Existing symlinked files update immediately when edited, but newly
+  created files need `~/bin/dotfiles-stow <package>` or an Ansible dotfile setup
+  run. Mention this in the final response whenever adding new files under
+  packages such as `nvim/`, `term/`, `peripherals/`, or `utilities/`.
 - scripts run by long-lived user services, such as `keyd-observer.service`, need
   the relevant `systemctl --user restart ...` before the running session uses
   the new script code.

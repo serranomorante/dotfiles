@@ -65,6 +65,11 @@ Important conventions:
   `10-system-tools` defaults, plus the configured agent context filenames. The
   wrapper always changes to the generated user's `~/dotfiles` before invoking
   Stow, so it can be run from any directory.
+- Existing symlinked files update in place when edited in the repository, but
+  newly added files under a stowed package are not active until that package is
+  stowed again. For example, after adding a file under `nvim/`, run
+  `~/bin/dotfiles-stow nvim` or include the dotfile setup task in the next
+  Ansible run.
 
 ## Keyboard And Mouse-Free Workflow
 
