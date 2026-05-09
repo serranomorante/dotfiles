@@ -107,6 +107,17 @@ When fixing keyboard conflicts, first identify who consumes the key:
 Then prefer the smallest translation at the layer that already owns similar
 conflicts.
 
+## Graphic Tablet
+
+Wacom tablet behavior is split between Xorg defaults and runtime reapply hooks:
+
+- Initial driver defaults that must exist before the first proximity event
+  belong under `playbooks/roles/10-system-tools/files/wacom/` and are copied to
+  `/etc/X11/xorg.conf.d/` by the `50-setup-graphic-tablet-tools` task.
+- Runtime-only `xsetwacom` actions and settings that depend on current display
+  geometry belong in `peripherals/bin/wacom-config.sh`, which is called by both
+  `wacom.service` and `setup-displays.sh`.
+
 ## Terminal And Kitty
 
 Kitty configuration belongs in `term/dot-config/kitty/kitty.conf`; helper

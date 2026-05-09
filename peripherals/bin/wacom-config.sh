@@ -1,66 +1,80 @@
 #!/bin/bash
+# Purpose: Apply runtime-only Wacom Intuos settings after Xorg adds the tablet.
+# Notes: Static defaults live in 71-intuos-s-relative.conf. Keep this script for
+# xsetwacom actions and settings that depend on the current display layout.
+
+stylus_name="Wacom Intuos S Pen stylus" # hard-coded as this might never change
+fallback_deceleration="1.77778"
 
 warn() {
     printf 'wacom-config: %s\n' "$1" >&2
 }
 
-set_button_if_supported() {
-    local device="$1"
-    local button="$2"
-    local action="$3"
+device_id_for_name() {
+    local name="$1"
 
-    if xsetwacom --get "$device" Button "$button" >/dev/null 2>&1; then
-        xsetwacom --set "$device" Button "$button" "$action" >/dev/null 2>&1 || true
+    printf '%s\n' "$list" | awk -v name="$name" '
+        index($0, name) {
+            for (i = 1; i <= NF; i++) {
+                if ($i == "id:") {
+                    print $(i + 1)
+                    exit
+                }
+            }
+        }
+    '
+}
+
+display_deceleration() {
+    local screen_size width height
+
+    screen_size=$(xrandr --query 2>/dev/null | awk '
+        /^Screen / {
+            for (i = 1; i <= NF; i++) {
+                if ($i == "current") {
+                    gsub(",", "", $(i + 1))
+                    gsub(",", "", $(i + 3))
+                    print $(i + 1), $(i + 3)
+                    exit
+                }
+            }
+        }
+    ')
+
+    width=$(printf '%s\n' "$screen_size" | awk '{print $1}')
+    height=$(printf '%s\n' "$screen_size" | awk '{print $2}')
+
+    if [ -n "$width" ] && [ -n "$height" ] && [ "$height" -gt 0 ] 2>/dev/null; then
+        awk -v width="$width" -v height="$height" 'BEGIN { printf "%.5f\n", width / height }'
+        return
     fi
+
+    printf '%s\n' "$fallback_deceleration"
 }
 
 for i in $(seq 10); do
-    if xsetwacom list devices | grep -q Wacom; then
+    list=$(xsetwacom list devices 2>/dev/null || true)
+    stylus=$(device_id_for_name "$stylus_name")
+
+    if [ -n "${stylus}" ]; then
         break
     fi
     sleep 1
 done
 
-list=$(xsetwacom list devices)
-pad=$(echo "${list}" | grep Wacom | awk '/pad/{print $7}')
-stylus=$(echo "${list}" | grep Wacom | awk '/stylus/{print $7}')
-
-stylus_name="Wacom Intuos S Pen stylus" # hard-coded as this might never change
-pad_name="Wacom Intuos S Pad pad"       # hard-coded as this might never change
-speed_prop_id=$(xinput list-props "${stylus}" | grep "Constant Deceleration" | grep -Po '\(\K[^\)]+')
-
-if [ -z "${pad}" ]; then
+if [ -z "${stylus}" ]; then
+    warn "no se encontro ${stylus_name}"
     exit 0
 fi
 
-# Enable relative mode (aka "mouse mode")
-# https://support.wacom.com/hc/en-us/articles/1500006340122-What-is-Absolute-Positioning
-xsetwacom --set "${stylus_name}" Mode "Relative" >/dev/null 2>&1 || true
-xsetwacom --set "${stylus_name}" Rotate "half" >/dev/null 2>&1 || true
+# `pan` is a complex xsetwacom action, so it cannot be expressed as a static
+# xorg.conf Button option.
+xsetwacom --set "${stylus_name}" Button 2 "pan" >/dev/null 2>&1 || true
 
-# Use stylus to scroll
-set_button_if_supported "${stylus_name}" 2 "pan"
-xsetwacom --set "${stylus_name}" "PanScrollThreshold" 200 >/dev/null 2>&1 || true
+deceleration=$(display_deceleration)
 
-# Disable stylus buttons
-set_button_if_supported "${stylus_name}" 3 "0"
-
-# Disable tablet buttons
-#
-# On this Intuos S pad, the fourth physical express key is exposed by
-# xsetwacom as Button 8 rather than Button 4.
-for button in 1 2 3 8; do
-    xsetwacom --set "${pad_name}" Button "$button" "0" >/dev/null 2>&1 || true
-done
-
-full_window_size=$(xrandr -q | grep -Po '\bcurrent\b\s(\d+)\sx\s(\d+)')
-x_window_size=$(echo $full_window_size | awk '{print $2}')
-y_window_size=$(echo $full_window_size | awk '{print $4}')
-speed=$(awk "BEGIN {print $x_window_size/$y_window_size}")
-
-# Decelerate pointer speed
-if [ -n "${speed_prop_id}" ]; then
-    xinput set-prop "${stylus}" "${speed_prop_id}" "$speed" >/dev/null 2>&1 || true
+if xinput list-props "${stylus}" | grep -q "Device Accel Constant Deceleration"; then
+    xinput set-prop "${stylus}" "Device Accel Constant Deceleration" "$deceleration" >/dev/null 2>&1 || true
 else
     warn "no se encontro propiedad 'Constant Deceleration' para ${stylus_name}"
 fi

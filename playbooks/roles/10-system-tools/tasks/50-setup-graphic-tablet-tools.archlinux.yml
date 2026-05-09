@@ -39,6 +39,20 @@
     - { source: ~/dotfiles/assets/udev-rules/95-monitor-hotplug.rules, dest: /etc/udev/rules.d/95-monitor-hotplug.rules }
   notify: "10-system-tools : handler_reload_udev_rules"
 
+- name: "[archlinux] Graphic tablet peripheral: ensure Xorg config dir"
+  become: true
+  ansible.builtin.file:
+    state: directory
+    path: /etc/X11/xorg.conf.d
+    mode: "755"
+
+- name: "[archlinux] Graphic tablet peripheral: copy Xorg config"
+  become: true
+  ansible.builtin.copy:
+    src: wacom/71-intuos-s-relative.conf
+    dest: /etc/X11/xorg.conf.d/71-intuos-s-relative.conf
+    mode: "644"
+
 - name: "[archlinux] Graphic tablet peripheral: ensure wacom service"
   ansible.builtin.systemd_service:
     scope: user
