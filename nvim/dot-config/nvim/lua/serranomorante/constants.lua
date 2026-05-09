@@ -66,15 +66,6 @@ M.CWD = vim.fn.getcwd()
 local ok, binaries = pcall(require, "serranomorante.binaries")
 M.BINARIES = ok and binaries or {}
 
----@type overseer.JobstartStrategyOpts
-M.fullscreen_jobstart_opts = {
-  "jobstart",
-  wrap_opts = {
-    width = vim.o.columns,
-    height = vim.o.lines - 3,
-  },
-}
-
 M.NUMBERED_MARKS = { "'0", "'1", "'2", "'3", "'4", "'5", "'6", "'7", "'8", "'9" }
 M.GLOBAL_MARKS = {
   ["'A"] = nil,
@@ -109,28 +100,28 @@ M.KEYRINGS = {
   anthropic = {
     folder = "dev-tools",
     passkey = "anthropic-api-key",
-    wallet = "kdewallet"
+    wallet = "kdewallet",
   },
   claude_code = {
     folder = "dev-tools",
     passkey = "claude-code-token",
-    wallet = "kdewallet"
+    wallet = "kdewallet",
   },
   openai = {
     folder = "dev-tools",
     passkey = "openai-api-key",
-    wallet = "kdewallet"
+    wallet = "kdewallet",
   },
   gemini = {
     folder = "dev-tools",
     passkey = "gemini-api-key",
-    wallet = "kdewallet"
+    wallet = "kdewallet",
   },
   davinci = {
     folder = "creative-tools",
     passkey = "davinci-resolve-blackmagic-pass",
-    wallet = "kdewallet"
-  }
+    wallet = "kdewallet",
+  },
 }
 
 return M

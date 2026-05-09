@@ -35,7 +35,6 @@ function M.builder(params)
     name = TASK_NAME,
     cmd = "nnn",
     args = args,
-    strategy = constants.fullscreen_jobstart_opts,
     env = {
       EDITOR = "open_in_nvim.sh nnn_explorer",
       VISUAL = "open_in_nvim.sh nnn_explorer",

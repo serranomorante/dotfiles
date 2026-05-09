@@ -82,7 +82,6 @@ return {
     return {
       name = task_name .. string.format(" %s", params.task_id),
       cmd = "ansible-playbook",
-      strategy = constants.fullscreen_jobstart_opts,
       args = args,
       cwd = ("%s/dotfiles/playbooks"):format(HOME),
       metadata = {
