@@ -2,14 +2,6 @@ local utils = require("serranomorante.utils")
 
 local M = {}
 
----@param task overseer.Task
-local function open_float_after_callback(task)
-  vim.schedule(function()
-    if not task or not task:get_bufnr() then return end
-    pcall(require("overseer").run_action, task, "open float")
-  end)
-end
-
 local function init()
   vim.api.nvim_create_autocmd("FileType", {
     desc = "Force the task builder to always enter on insertmode",
@@ -161,7 +153,7 @@ local function keys()
               if not task then return end
               utils.force_very_fullscreen_float(task)
               utils.attach_keymaps(task)
-              open_float_after_callback(task)
+              utils.schedule_open_overseer_task_float(task)
             end)
           end
         end)
@@ -205,7 +197,7 @@ local function opts()
         run = function(task)
           require("overseer").run_action(task, "restart")
           utils.attach_keymaps(task)
-          open_float_after_callback(task)
+          utils.schedule_open_overseer_task_float(task)
         end,
       },
       ["Quit & save ffmpeg recording"] = {

@@ -714,6 +714,14 @@ function M.attach_keymaps(task)
 end
 
 ---@param task overseer.Task
+function M.schedule_open_overseer_task_float(task)
+  vim.schedule(function()
+    if not task or not task:get_bufnr() then return end
+    pcall(require("overseer").run_action, task, "open float")
+  end)
+end
+
+---@param task overseer.Task
 function M.force_very_fullscreen_float(task)
   vim.api.nvim_create_autocmd("BufEnter", {
     buffer = task:get_bufnr(),

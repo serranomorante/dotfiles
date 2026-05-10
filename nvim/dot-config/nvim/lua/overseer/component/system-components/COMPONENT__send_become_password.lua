@@ -1,4 +1,5 @@
 local PROMPT = "BECOME password:"
+local utils = require("serranomorante.utils")
 
 local function output_to_string(data)
   if type(data) == "string" then return data end
@@ -44,7 +45,7 @@ local comp = {
         if not self.output_tail:find(PROMPT, 1, true) then return end
 
         self.sent = true
-        vim.schedule(function() pcall(require("overseer").run_action, task, "open float") end)
+        utils.schedule_open_overseer_task_float(task)
 
         local job_id = task_job_id(task)
         if not job_id then

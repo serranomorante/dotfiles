@@ -29,9 +29,9 @@ return {
     },
   },
   constructor = function(params)
-    local overseer = require("overseer")
     local parser = require("overseer.parser")
     local parser_defn = params.parser or {}
+    local utils = require("serranomorante.utils")
 
     return {
       on_init = function(self)
@@ -43,7 +43,7 @@ return {
         if vim.islist(data) and data ~= nil then
           for _, line in ipairs(data) do
             local is_passphrase_prompt = string.match(line, "Passphrase:")
-            if is_passphrase_prompt ~= nil then overseer.run_action(task, "open float") end
+            if is_passphrase_prompt ~= nil then utils.schedule_open_overseer_task_float(task) end
           end
         end
       end,
