@@ -143,6 +143,18 @@ Kitty configuration belongs in `term/dot-config/kitty/kitty.conf`; helper
 wrappers and scripts belong under `term/bin/` unless they are editor-specific.
 The configured `kitty_mod` is `ctrl+shift`, so avoid adding shifted follow-up
 keys to kitty chord mappings such as `kitty_mod+a>...`.
+Kitty picker helpers that need cross-process state should use `cachectl` only
+for rebuildable runtime values such as remote-control sockets, open working
+directories, or project-directory indexes. Picker startup should prefer cached
+data first, then fire one immediate background refresh when a list may be stale.
+That refresh should write the freshly rebuilt data back to `cachectl` before
+reloading the visible list.
+When a Kitty picker stays open on an `fzf` list that can change, prefer an
+`fzf --listen` Unix socket plus a one-shot background reload so the visible list
+can update without restarting the picker.
+Avoid `fzf --track` for these one-shot reload pickers unless there is a specific
+need to preserve cursor identity across reloads; it can leave the highlighted
+row offset from the active query after the reload lands.
 
 For app-specific kitty macros, prefer scoping the window at launch with
 `--var=...` and binding with `map --when-focus-on var:...`. When a single key

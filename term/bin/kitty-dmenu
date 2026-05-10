@@ -1,38 +1,165 @@
 #!/usr/bin/env bash
+# Purpose: Pick a project directory, focus an existing Kitty there, or open one.
 
-if [[ $# -eq 1 ]]; then
-    uuid=$(uuidgen)
-    selected_path=$1
-else
-    uuid=$(uuidgen)
-    kitty --class kitty-dmenu -o tab_bar_style=hidden sh -c "
-        find \
-        ~/data/pjs \
-        ~/data/repos \
-        ~/data/courses \
-        ~/data/issues \
-        ~/dotfiles \
-        ~/.local/share/Cryptomator/mnt \
-        ~/.local/share/nvim/site/pack/plugins/start \
-        ~/.local/share/nvim/site/pack/plugins/opt \
-        ~/.local/share/nvim/gp \
-        ~/data/work/at/repos \
-        ~/data/work/cf/repos \
-        ~/data/work/gp/repos \
-        ~/data/notes \
-        ~/data/dev-pjs \
-        -mindepth 1 -maxdepth 1 -type d | fzf --prompt='Select cwd: ' >/tmp/$uuid"
-    selected_path=$(</tmp/$uuid)
+source "$HOME/dotfiles/term/bin/kitty-dmenu-common.bash"
+
+KITTY_DMENU_PROJECT_CACHE_KEY=${KITTY_DMENU_PROJECT_CACHE_KEY:-project-dirs-v1}
+KITTY_DMENU_PROJECT_CACHE_TTL=${KITTY_DMENU_PROJECT_CACHE_TTL:-604800}
+KITTY_DMENU_PROJECT_CACHE_TRUST_SECONDS=${KITTY_DMENU_PROJECT_CACHE_TRUST_SECONDS:-300}
+
+project_roots=(
+    "$HOME/data/pjs"
+    "$HOME/data/repos"
+    "$HOME/data/courses"
+    "$HOME/data/issues"
+    "$HOME/dotfiles"
+    "$HOME/.local/share/Cryptomator/mnt"
+    "$HOME/.local/share/nvim/site/pack/plugins/start"
+    "$HOME/.local/share/nvim/site/pack/plugins/opt"
+    "$HOME/.local/share/nvim/gp"
+    "$HOME/data/work/at/repos"
+    "$HOME/data/work/cf/repos"
+    "$HOME/data/work/gp/repos"
+    "$HOME/data/notes"
+    "$HOME/data/dev-pjs"
+)
+
+project_root_signature() {
+    local root mtime
+
+    {
+        for root in "${project_roots[@]}"; do
+            [[ -d $root ]] || continue
+            mtime=$(stat -Lc %Y "$root" 2>/dev/null) || continue
+            printf '%s=%s\n' "$root" "$mtime"
+        done
+    } | sha256sum | awk '{ print $1 }'
+}
+
+build_project_dirs() {
+    local root
+    local existing_roots=()
+
+    for root in "${project_roots[@]}"; do
+        [[ -d $root ]] && existing_roots+=("$root")
+    done
+
+    ((${#existing_roots[@]} > 0)) || return 0
+    find "${existing_roots[@]}" -mindepth 1 -maxdepth 1 -type d 2>/dev/null
+}
+
+project_dirs_cache_set() {
+    local signature=$1
+    local dirs=$2
+    local now=$3
+
+    if [[ -n $dirs ]]; then
+        {
+            printf '%s\n' "$now"
+            printf '%s\n' "$signature"
+            printf '%s\n' "$dirs"
+        } | kitty_dmenu_cache_set "$KITTY_DMENU_PROJECT_CACHE_KEY" "$KITTY_DMENU_PROJECT_CACHE_TTL"
+    else
+        kitty_dmenu_cache_del "$KITTY_DMENU_PROJECT_CACHE_KEY"
+    fi
+}
+
+project_dirs() {
+    local now signature cached cached_timestamp cached_rest cached_signature cached_dirs dirs
+
+    now=$(date +%s)
+
+    if cached=$(kitty_dmenu_cache_get "$KITTY_DMENU_PROJECT_CACHE_KEY") && [[ -n $cached ]]; then
+        cached_timestamp=${cached%%$'\n'*}
+        cached_rest=${cached#*$'\n'}
+        cached_signature=${cached_rest%%$'\n'*}
+        cached_dirs=${cached_rest#*$'\n'}
+
+        if [[ $cached_timestamp =~ ^[0-9]+$ ]] &&
+            ((now >= cached_timestamp && now - cached_timestamp < KITTY_DMENU_PROJECT_CACHE_TRUST_SECONDS)) &&
+            [[ -n $cached_dirs ]]; then
+            printf '%s\n' "$cached_dirs"
+            return 0
+        fi
+
+        signature=$(project_root_signature)
+
+        if [[ $cached_signature == "$signature" ]]; then
+            project_dirs_cache_set "$signature" "$cached_dirs" "$now"
+            printf '%s\n' "$cached_dirs"
+            return 0
+        fi
+    fi
+
+    signature=${signature:-$(project_root_signature)}
+    dirs=$(build_project_dirs)
+    if [[ -n $dirs ]]; then
+        project_dirs_cache_set "$signature" "$dirs" "$now"
+        printf '%s\n' "$dirs"
+    else
+        kitty_dmenu_cache_del "$KITTY_DMENU_PROJECT_CACHE_KEY"
+    fi
+}
+
+project_dirs_cached() {
+    local cached cached_rest cached_dirs
+
+    if cached=$(kitty_dmenu_cache_get "$KITTY_DMENU_PROJECT_CACHE_KEY") && [[ -n $cached ]]; then
+        cached_rest=${cached#*$'\n'}
+        cached_dirs=${cached_rest#*$'\n'}
+        if [[ $cached != "$cached_rest" && $cached_rest != "$cached_dirs" && -n $cached_dirs ]]; then
+            printf '%s\n' "$cached_dirs"
+        fi
+    fi
+}
+
+project_dirs_refresh() {
+    local now signature dirs
+
+    now=$(date +%s)
+    signature=$(project_root_signature)
+    dirs=$(build_project_dirs)
+    project_dirs_cache_set "$signature" "$dirs" "$now"
+    [[ -n $dirs ]] && printf '%s\n' "$dirs"
+}
+
+kitty_dmenu_main() {
+    local tmpdir choices_file selected_file selected_path
+
+    if [[ $# -eq 1 ]]; then
+        selected_path=$1
+    else
+        tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/kitty-dmenu.XXXXXX") || exit 1
+        trap 'rm -rf "$tmpdir"' EXIT
+
+        choices_file=$tmpdir/choices
+        selected_file=$tmpdir/selected
+
+        project_dirs_cached >"$choices_file"
+
+        kitty --class kitty-dmenu -o tab_bar_style=hidden bash -c \
+            'source "$HOME/dotfiles/term/bin/kitty-dmenu"
+            kitty_dmenu_run_refreshing_fzf "$1" "$2" "Select cwd: " project_dirs_refresh' \
+            bash "$choices_file" "$selected_file" || true
+
+        if [[ -f $selected_file ]]; then
+            selected_path=$(<"$selected_file")
+        else
+            selected_path=
+        fi
+    fi
+
+    if [[ -z $selected_path ]]; then
+        exit 0
+    fi
+
+    if kitty_dmenu_focus_cwd "$selected_path"; then
+        exit 0
+    fi
+
+    exec kitty -d "$selected_path" --session ~/.config/kitty/default.kitty-session
+}
+
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+    kitty_dmenu_main "$@"
 fi
-
-if [[ -z $selected_path ]]; then
-    exit 0
-fi
-
-sockets=$(lsof -U 2>/dev/null | grep -oE @kitty-[0-9]+)
-for socket in $sockets; do
-    error_msg=$(kitten @ --to "unix:$socket" focus-window --match "cwd:^${selected_path}$" 2>&1) && exit 0 ||
-        { [[ ! "$error_msg" =~ "No matching windows for expression" ]] && notify-send "Error: $error_msg"; }
-done
-
-exec kitty -d "$selected_path" --session ~/.config/kitty/default.kitty-session

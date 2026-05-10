@@ -1,26 +1,49 @@
 #!/usr/bin/env bash
+# Purpose: Pick one currently open Kitty working directory and focus it.
 
-sockets=$(lsof -U 2>/dev/null | grep -oE @kitty-[0-9]+)
-entries=()
-declare -A seen_cwds
-for socket in $sockets; do
-    temp_output=()
-    readarray -t temp_output < <(kitten @ --to "unix:$socket" ls | jq -r '.[].tabs.[].windows.[].cwd')
-    for cwd in "${temp_output[@]}"; do
-        if [[ -n "$cwd" && -z "${seen_cwds[$cwd]}" ]]; then
-            seen_cwds["$cwd"]=1
-            entries+=("$cwd|$socket")
-        fi
-    done
-done
+source "$HOME/dotfiles/term/bin/kitty-dmenu-common.bash"
 
-uuid=$(uuidgen)
-kitty --class kitty-dmenu -o tab_bar_style=hidden sh -c "
-	\$(printf '%s\n' $(printf "'%s' " "${entries[@]}") | cut -d '|' -f1 | fzf --prompt='Select cwd: ' > /tmp/$uuid.current)
-"
+kitty_dmenu_currently_opened_main() {
+    local tmpdir entries_file choices_file selected_file selected socket
 
-selected=$(</tmp/$uuid.current)
-if [[ -n "$selected" ]]; then
-    socket=$(printf '%s\n' $(printf "'%s' " "${entries[@]}") | grep "${selected}|" | cut -d '|' -f 2 | cut -d "'" -f 1)
-    error_msg=$(kitten @ --to "unix:$socket" focus-window --match "cwd:^${selected}$" 2>&1) || notify-send "Error: $error_msg"
+    tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/kitty-dmenu-current.XXXXXX") || exit 1
+    trap 'rm -rf "$tmpdir"' EXIT
+
+    entries_file=$tmpdir/entries.tsv
+    choices_file=$tmpdir/choices
+    selected_file=$tmpdir/selected
+
+    kitty_dmenu_cached_window_entries >"$entries_file"
+    awk -F '\t' '{ print $1 }' "$entries_file" >"$choices_file"
+
+    kitty --class kitty-dmenu -o tab_bar_style=hidden bash -c \
+        'source "$HOME/dotfiles/term/bin/kitty-dmenu-common.bash"
+        kitty_dmenu_run_refreshing_fzf "$1" "$2" "Select cwd: " kitty_dmenu_open_cwd_choices "$3"' \
+        bash "$choices_file" "$selected_file" "$entries_file" || true
+
+    if [[ -f $selected_file ]]; then
+        selected=$(<"$selected_file")
+    else
+        selected=
+    fi
+    [[ -n $selected ]] || exit 0
+
+    socket=$(awk -F '\t' -v cwd="$selected" '$1 == cwd { print $2; exit }' "$entries_file")
+
+    if [[ -n $socket ]] && kitty_dmenu_focus_cwd_on_sockets "$selected" "$socket"; then
+        exit 0
+    fi
+
+    kitty_dmenu_window_entries 1 >"$entries_file"
+    socket=$(awk -F '\t' -v cwd="$selected" '$1 == cwd { print $2; exit }' "$entries_file")
+
+    if [[ -n $socket ]]; then
+        kitty_dmenu_focus_cwd_on_sockets "$selected" "$socket" || notify-send "Error: no matching Kitty window for $selected"
+    else
+        notify-send "Error: no matching Kitty window for $selected"
+    fi
+}
+
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+    kitty_dmenu_currently_opened_main "$@"
 fi
