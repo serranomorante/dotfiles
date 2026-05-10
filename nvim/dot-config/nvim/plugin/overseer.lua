@@ -1,1 +1,1 @@
-require("serranomorante.plugins.overseer").config()
+require("serranomorante.plugins.jobs.overseer").config()

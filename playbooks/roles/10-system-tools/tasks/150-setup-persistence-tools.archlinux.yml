@@ -1,14 +1,14 @@
 ---
-- name: "[archlinux] Persistence tools: ensure packages"
+- name: "[archlinux] Persistence tools: ensure valkey packages"
   become: true
   ansible.builtin.package:
     state: present
-    name: redis
+    name: valkey
 
-- name: "[archlinux] Persistence tools: enable redis service and ensure is not masked"
+- name: "[archlinux] Persistence tools: enable valkey service and ensure is not masked"
   become: true
   ansible.builtin.systemd_service:
-    name: redis.service
+    name: valkey.service
     enabled: true
     masked: false
 
@@ -16,6 +16,7 @@
   ansible.builtin.pip:
     name:
       - pip
+      # Ansible's redis fact cache client also talks to Valkey.
       - redis
       - ansible
     executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"

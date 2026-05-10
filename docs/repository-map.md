@@ -71,6 +71,20 @@ Important conventions:
   `~/bin/dotfiles-stow nvim` or include the dotfile setup task in the next
   Ansible run.
 
+## Neovim
+
+Task-runner and job-management modules belong under
+`nvim/dot-config/nvim/lua/serranomorante/plugins/jobs/`. Runtime plugin
+entrypoints under `nvim/dot-config/nvim/plugin/` should only load those modules.
+
+## Shared Runtime Cache
+
+Use Valkey for small cross-process runtime caches that need to be shared by
+Neovim, Kitty helpers, shell scripts, or Python scripts. `utilities/bin/cachectl`
+wraps `valkey-cli` with the repository key namespace
+`dotfiles:cache:v1:<namespace>:<key>` and requires TTLs for stored values.
+Values should be cheap to rebuild and should not be committed.
+
 ## Keyboard And Mouse-Free Workflow
 
 The keyboard/mouse stack is split across keyd, a small observer script, warpd,
