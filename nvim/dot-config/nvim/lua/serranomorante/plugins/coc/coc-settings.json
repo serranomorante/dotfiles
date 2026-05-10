@@ -6,7 +6,7 @@
   },
   "suggest.noselect": true,
   "codeLens.enable": true,
-  "codeLens.position": "eol",
+  "codeLens.position": "top",
   "diagnostic.enableHighlightLineNumber": false,
   "diagnostic.enableSign": false,
   "diagnostic.virtualText": true,
