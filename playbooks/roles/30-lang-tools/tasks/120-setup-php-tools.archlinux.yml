@@ -1,4 +1,8 @@
 ---
+# Two PHP runtimes live side by side on this workstation:
+#   - `php` is the current major (8.5+); invoked as `php`.
+#   - `php-legacy` is 8.3.x for work projects pinned below 8.5; invoked as
+#     `php-legacy` with its own /etc/php-legacy tree and module dir.
 - name: "[archlinux] PHP language: ensure packages"
   become: true
   become_user: aur_builder
@@ -12,42 +16,74 @@
       - php-gd
       - php-sodium
       - php-redis
+      - php-igbinary
+      - php-grpc
+      - php-legacy
+      - php-legacy-pgsql
+      - php-legacy-xsl
+      - php-legacy-gd
+      - php-legacy-sodium
+      - php-legacy-redis
+      - php-legacy-igbinary
+      - php-legacy-grpc
+      - php-legacy-xdebug
       - composer
       - xdebug
 
 - name: "[archlinux] PHP language: enable extensions"
   become: true
   ansible.builtin.replace:
-    path: /etc/php/php.ini
-    regexp: "^;extension={{ item }}$"
-    replace: "extension={{ item }}"
+    path: "{{ item.0 }}"
+    regexp: "^;extension={{ item.1 }}$"
+    replace: "extension={{ item.1 }}"
+  loop: "{{ ['/etc/php/php.ini', '/etc/php-legacy/php.ini'] | product([ 'gd', 'iconv', 'intl', 'mysqli', 'pdo_pgsql', 'pgsql', 'sodium', 'xsl', ]) | list }}"
+
+# redis depends on igbinary; igbinary must be loaded first or redis fails with
+# `undefined symbol: igbinary_serialize`. Both ship in conf.d with the extension
+# line commented out by default.
+- name: "[archlinux] PHP language: enable igbinary extension"
+  become: true
+  ansible.builtin.replace:
+    path: "{{ item }}"
+    regexp: "^;extension=igbinary\\.so$"
+    replace: "extension=igbinary.so"
   loop:
-    - gd
-    - iconv
-    - intl
-    - pdo_pgsql
-    - pgsql
-    - sodium
-    - xsl
-    - red
+    - /etc/php/conf.d/igbinary.ini
+    - /etc/php-legacy/conf.d/igbinary.ini
 
 - name: "[archlinux] PHP language: enable redis extension"
   become: true
   ansible.builtin.replace:
-    path: /etc/php/conf.d/redis.ini
+    path: "{{ item }}"
     regexp: "^;extension=redis$"
     replace: "extension=redis"
+  loop:
+    - /etc/php/conf.d/redis.ini
+    - /etc/php-legacy/conf.d/redis.ini
+
+- name: "[archlinux] PHP language: enable grpc extension"
+  become: true
+  ansible.builtin.replace:
+    path: "{{ item }}"
+    regexp: "^;extension=grpc\\.so$"
+    replace: "extension=grpc.so"
+  loop:
+    - /etc/php/conf.d/grpc.ini
+    - /etc/php-legacy/conf.d/grpc.ini
 
 - name: "[archlinux] PHP language: add xdebug options"
   become: true
   ansible.builtin.blockinfile:
-    dest: /etc/php/conf.d/xdebug.ini
+    dest: "{{ item }}"
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP XDEBUG"
     insertafter: "EOF"
     block: |
       zend_extension=xdebug.so
       xdebug.mode = debug
       xdebug.start_with_request = yes
+  loop:
+    - /etc/php/conf.d/xdebug.ini
+    - /etc/php-legacy/conf.d/xdebug.ini
 
 - name: "[archlinux] PHP language: ensure packages (using aur)"
   become: true

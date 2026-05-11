@@ -1,0 +1,12 @@
+#!/bin/sh
+# Purpose: run composer with the php-legacy runtime. A per-invocation
+# PATH shim makes plain `php` calls inside composer scripts (e.g.
+# `php vendor/.../dispatcher.php` in a composer.json "serve") resolve
+# to /usr/bin/php-legacy.
+# Notes: the shim only affects descendants of this wrapper through
+# PATH; `php` elsewhere is unchanged.
+
+shim="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/composer-legacy"
+mkdir -p "$shim"
+ln -snf /usr/bin/php-legacy "$shim/php"
+PATH="$shim:$PATH" exec /usr/bin/composer "$@"
