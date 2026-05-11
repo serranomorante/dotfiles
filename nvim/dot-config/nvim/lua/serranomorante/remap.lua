@@ -26,6 +26,8 @@ vim.keymap.set("n", "ZQ", function()
   then
     return "<cmd>echohl DiagnosticWarn | echom 'You have running tasks!' | echohl None<CR>"
   end
+
+  if utils.has_remote_uis() then return "<cmd>detach<CR>" end
   return "<cmd>qa!<CR>"
 end, { expr = true, desc = 'Quit without checking for changes (same as ":q!")' })
 

@@ -32,10 +32,10 @@ promptToReturnFromSubprocess: false
 notARepository: 'quit'
 customCommands:
   - key: "q"
-    description: "Custom: Go to nvim tab instead of quitting"
+    description: "Custom: Go back to previous tab (mirrors kitty_mod+w)"
     context: "global"
-    command: "kitten @ action goto_tab 1"
-  # From local branches, compare selected branch against checked out branch
+    command: "kitten @ action goto_tab -1 && kitten @ launch --type=background --allow-remote-control kitty-lazy-start-active-tab"
+    # From local branches, compare selected branch against checked out branch
   - key: "D"
     description: "Custom: Compare selected branch against checked out branch"
     context: "localBranches"

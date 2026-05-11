@@ -352,6 +352,8 @@ function M.nvim_started_without_args()
   return not vim.g.using_stdin and (vim.tbl_count(cmdline) <= 1 or vim.list_contains(cmdline, "--listen"))
 end
 
+function M.has_remote_uis() return vim.tbl_count(vim.api.nvim_list_uis()) > 1 end
+
 ---Check if current cwd is home
 function M.cwd_is_home() return vim.fn.getcwd() == vim.env.HOME end
 

@@ -21,6 +21,33 @@ The `difftastic` and `git-delta` packages are declared in:
 playbooks/roles/20-dev-tools/tasks/90-setup-git-tools.archlinux.yml
 ```
 
+## Lazygit Focus And Editor Handoff
+
+Lazygit is launched from `term/dot-config/kitty/default.kitty-session`, and
+`open_in_nvim.sh focus_lazygit` (built on the shared kitty helpers in
+`term/bin/kitty-window-utils.sh`) finds the lazygit window by matching
+`cmdline:lazygit`.
+
+The bindings wired around lazygit:
+
+- `<leader>w` in Neovim focuses the lazygit window via
+  `open_in_nvim.sh focus_lazygit`.
+- The lazygit custom `q` mirrors Kitty's `kitty_mod+w`: it returns to the
+  previously active Kitty tab via `kitten @ action goto_tab -1` and triggers
+  `kitty-lazy-start-active-tab` so AI tabs get initialized on return. Keep
+  these two bindings in sync if `kitty_mod+w` changes.
+- Lazygit editor callbacks (`lazygit_edit`, `lazygit_open`, etc.) only send
+  the remote edit request. Neovim focuses its own Kitty window from its remote
+  edit autocmd after the buffer is displayed.
+
+For `<leader>w`, keep the cmdline-based focus helper because it needs to find
+the lazygit window regardless of tab position. The `q` binding intentionally
+uses `goto_tab -1` because "previously active tab" *is* the semantic.
+
+See [nvim-kitty-integration.md](./nvim-kitty-integration.md) for the
+per-window Neovim server socket, Kitty window matching, and helper internals
+that the lazygit handoff builds on.
+
 ## Delta External Diff Adapter
 
 Do not point `diff.external` directly at `delta`.

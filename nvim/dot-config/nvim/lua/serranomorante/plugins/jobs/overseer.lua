@@ -61,7 +61,12 @@ local function keys()
     )
   end, { desc = "Toggle explorer" })
 
-  vim.keymap.set("n", "<leader>w", function() utils.cmd({ "kitten", "@", "action", "goto_tab", "2" }) end)
+  vim.keymap.set(
+    "n",
+    "<leader>w",
+    function() utils.cmd({ "open_in_nvim.sh", "focus_lazygit" }, false) end,
+    { desc = "Focus lazygit kitty window" }
+  )
 
   vim.keymap.set(
     "n",

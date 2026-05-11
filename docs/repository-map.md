@@ -162,6 +162,32 @@ needs stateful toggle behavior, a kitty user var updated via `remote_control
 set-user-vars` can keep the state local to that window without adding a helper
 script.
 
+### Kitty User Var Naming Convention
+
+Kitty user vars are for window-local state, not for identifying which app a
+window is running. Focus helpers, `map --when-focus-on`, and
+`kitten @ focus-window --match` should prefer `cmdline:<process>` matching for
+app identity so stale user vars cannot outlive the process that set them.
+
+- Use `<app>_<attribute>` (snake_case) for app-scoped state attached to a
+  window. Examples in use: `lazygit_preview_fullscreen`, `lazy_started`.
+- Use `"1"` and `""` (or `"0"`) for booleans so `var:name=1` and `not
+  var:name=1` work as expected. `--var=name` with no value is treated as
+  truthy by Kitty, but prefer the explicit `name=1` form so the same string
+  can be matched in `jq` over `user_vars`.
+- Lifecycle-pair every state var that mirrors transient UI state: whatever
+  sets it should also clear it when the state ends, so the value does not
+  mislead later bindings in the same Kitty window.
+
+Shared kitty window helpers (focus matching, JSON scoring, etc.) live in
+`term/bin/kitty-window-utils.sh`. Source it from POSIX sh and pass process
+names for app identity. App-specific focus helpers (e.g. `kitty_focus_lazygit`)
+belong to the owning script.
+
+See [nvim-kitty-integration.md](./nvim-kitty-integration.md) for the
+per-window Neovim server socket and Kitty window matching that exercise this
+convention end to end.
+
 ## Window Manager
 
 dwm is built from upstream plus local patches. Most behavior changes belong in

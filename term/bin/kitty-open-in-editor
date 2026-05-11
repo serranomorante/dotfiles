@@ -1,34 +1,68 @@
 #!/usr/bin/env bash
+# Purpose: Edit a file in an existing Kitty window whose cwd is a prefix of the
+#   given path. Sends the file (and optional line) to that window's Neovim via
+#   open_in_nvim.sh; Neovim focuses its own Kitty window after the remote edit.
+# Usage: kitty-open-in-editor PATH[:LINE:]
 
-sockets=$(lsof -U 2>/dev/null | grep -oE @kitty-[0-9]+)
-entries=()
-declare -A seen_cwds
-for socket in $sockets; do
-    temp_output=()
-    readarray -t temp_output < <(kitten @ --to "unix:$socket" ls | jq -r '.[].tabs.[].windows.[].cwd')
-    for cwd in "${temp_output[@]}"; do
-        if [[ -n "$cwd" && "$*" == "$cwd"* ]]; then
-            if [[ "$*" =~ ^([^:]+):([^:]+): ]]; then
-                file="${BASH_REMATCH[1]}"
-                line="${BASH_REMATCH[2]}"
-                kitty @ --to "unix:$socket" run open_in_nvim.sh kitty_simple_edit_at_line "$file" "$line"
-            else
-                file="$*"
-                kitty @ --to "unix:$socket" run open_in_nvim.sh kitty_simple_edit "$file"
-            fi
+source "$HOME/dotfiles/term/bin/kitty-dmenu-common.bash"
 
-            # Focus the correct window
-            if error_msg=$(kitten @ --to "unix:$socket" focus-window --match "cwd:^${cwd}$" 2>&1); then
-                found_match=true
-                break 2 # Break out of both loops on success
-            else
-                notify-send "Error focusing window: $error_msg"
-            fi
-        fi
-    done
-done
-
-if [[ "$found_match" != true ]]; then
-    echo "No matching kitty window found for path: $*" >&2
-    exit 1
+target=${*:-}
+if [[ -z $target ]]; then
+    echo "Usage: kitty-open-in-editor PATH[:LINE:]" >&2
+    exit 2
 fi
+
+if [[ $target =~ ^([^:]+):([^:]+): ]]; then
+    file=${BASH_REMATCH[1]}
+    line=${BASH_REMATCH[2]}
+else
+    file=$target
+    line=
+fi
+
+send_edit_to_kitty() {
+    local socket=$1
+
+    if [[ -n $line ]]; then
+        kitten @ --to "unix:$socket" run open_in_nvim.sh kitty_simple_edit_at_line "$file" "$line" >/dev/null
+    else
+        kitten @ --to "unix:$socket" run open_in_nvim.sh kitty_simple_edit "$file" >/dev/null
+    fi
+}
+
+try_open_on_entries() {
+    local entries=$1
+    local cwd socket
+
+    while IFS=$'\t' read -r cwd socket; do
+        [[ -n $cwd && -n $socket ]] || continue
+        [[ $target == "$cwd"* ]] || continue
+
+        if send_edit_to_kitty "$socket"; then
+            return 0
+        fi
+    done <<<"$entries"
+
+    return 1
+}
+
+attempt() {
+    local force_refresh=$1
+    local sockets=()
+    local entries
+
+    readarray -t sockets < <(kitty_dmenu_socket_list "$force_refresh")
+    ((${#sockets[@]} > 0)) || return 1
+
+    entries=$(kitty_dmenu_collect_window_entries "${sockets[@]}")
+    [[ -n $entries ]] || return 1
+
+    try_open_on_entries "$entries"
+}
+
+if attempt 0 || attempt 1; then
+    exit 0
+fi
+
+echo "No matching kitty window found for path: $target" >&2
+exit 1

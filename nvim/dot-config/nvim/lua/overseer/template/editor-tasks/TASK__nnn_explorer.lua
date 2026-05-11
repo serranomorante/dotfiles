@@ -1,5 +1,4 @@
 local utils = require("serranomorante.utils")
-local constants = require("serranomorante.constants")
 
 ---@type overseer.TemplateDefinition
 ---@diagnostic disable-next-line: missing-fields
