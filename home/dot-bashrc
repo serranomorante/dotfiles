@@ -152,6 +152,8 @@ export LESS_TERMCAP_ue=$'\e[0m'        # reset underline
 export GROFF_NO_SGR=1                  # for konsole and gnome-terminal
 # https://stackoverflow.com/a/19871578/5353461
 export MANPAGER='less -s -M +Gg'
+# https://unix.stackexchange.com/q/596473
+export LESS=-j10
 
 # https://unix.stackexchange.com/a/684760
 _edit_wo_executing() {
