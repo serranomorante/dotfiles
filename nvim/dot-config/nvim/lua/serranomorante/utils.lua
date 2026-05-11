@@ -359,6 +359,8 @@ function M.cwd_is_home() return vim.fn.getcwd() == vim.env.HOME end
 
 function M.cwd_is_dwm() return vim.fn.getcwd() == vim.env.HOME .. "/data/repos/dwm" end
 
+function M.cwd_is_dotfiles() return vim.fn.getcwd() == vim.env.HOME .. "/dotfiles" end
+
 function M.cwd_is_notes() return vim.fn.getcwd() == vim.env.HOME .. "/data/notes/foam" end
 
 ---@class OpenQfList

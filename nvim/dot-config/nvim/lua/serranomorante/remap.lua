@@ -99,26 +99,34 @@ vim.keymap.set("n", "z.", "<cmd>normal! zszH<CR>", { desc = "Horizontally center
 
 vim.keymap.set({ "n", "x", "o" }, "'", "`", { desc = "Make single quote act like backtick" })
 
-vim.keymap.set("n", "<leader>ff", ":Find ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES, { desc = "Find files" })
-vim.keymap.set(
-  "n",
-  "<leader>fw",
-  ":Grep ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES,
-  { desc = "Grep text [You must escape single quotes and pipes]" }
-)
+local FIND_EX_CMD = ":Find ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES
+vim.keymap.set("n", "<leader>ff", FIND_EX_CMD, { desc = "Find files" })
+vim.keymap.set("n", "<leader>f_", function()
+  if utils.cwd_is_dotfiles() then return FIND_EX_CMD end
+  return ":Find '' ~/dotfiles" .. constants.POSITION_CURSOR_BETWEEN_QUOTES
+end, { desc = "Find in dotfiles", expr = true })
+
+local GREP_EX_CMD = ":Grep ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES
+vim.keymap.set("n", "<leader>fw", GREP_EX_CMD, { desc = "Grep text [You must escape single quotes and pipes]" })
+vim.keymap.set("n", "<leader>g_", function()
+  if utils.cwd_is_dotfiles() then return GREP_EX_CMD end
+  return ":Grep '' ~/dotfiles" .. constants.POSITION_CURSOR_BETWEEN_QUOTES
+end, { desc = "Grep in dotfiles [You must escape single quotes and pipes]", expr = true })
 vim.keymap.set(
   "n",
   "<leader>fh",
   ":Helpgrep ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES,
   { desc = "Grep on vim help pages" }
 )
+
 vim.keymap.set("n", "<leader>fb", ":b <Tab><Tab>", { desc = "Open recent buffers in wildmenu" }) -- will go directly to the second most recent buffer
-vim.keymap.set(
-  "n",
-  "<leader>fc",
-  ":Grep '<C-r><C-w>\\b'" .. constants.POSITION_CURSOR_BETWEEN_QUOTES .. "\\b",
-  { desc = "Grep word under cursor" }
-)
+
+local GREP_UNDER_CURSOR_EX_CMD = ":Grep '<C-r><C-w>\\b'" .. constants.POSITION_CURSOR_BETWEEN_QUOTES .. "\\b"
+vim.keymap.set("n", "<leader>fc", GREP_UNDER_CURSOR_EX_CMD, { desc = "Grep word under cursor" })
+vim.keymap.set("n", "<leader>gc", function()
+  if utils.cwd_is_dotfiles() then return GREP_UNDER_CURSOR_EX_CMD end
+  return ":Grep '<C-r><C-w>\\b' ~/dotfiles" .. constants.POSITION_CURSOR_BETWEEN_QUOTES .. "\\b"
+end, { desc = "Grep word under cursor in dotfiles", expr = true })
 vim.keymap.set({ "x", "v" }, "<leader>fv", function()
   local start_pos, end_pos, mode = vim.fn.getpos("v"), vim.fn.getpos("."), vim.fn.mode()
   local region = vim.fn.getregion(start_pos, end_pos, { type = mode })
