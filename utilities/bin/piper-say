@@ -1,0 +1,236 @@
+#!/bin/sh
+# Purpose: Speak text with the managed Piper neural TTS install.
+# Usage: piper-say "text"; printf '%s\n' "text" | piper-say
+# Notes: Prefer the Firejail-isolated Piper HTTP server. Fall back to offline
+# Piper CLI synthesis, then let callers fall back to non-Piper TTS if needed.
+
+set -eu
+
+usage() {
+    cat <<'EOF'
+Usage:
+  piper-say [text...]
+  command | piper-say
+
+Environment:
+  PIPER_TTS_ROOT=$HOME/data/apps/dev-tools/ai-tools/piper-tts
+  PIPER_TTS_VOICE_DIR=$PIPER_TTS_ROOT/voices
+  PIPER_TTS_PYTHON=$PIPER_TTS_ROOT/.venv/bin/python
+  PIPER_TTS_RUN_DIR=$PIPER_TTS_ROOT/run
+  PIPER_TTS_FJ_PY=$HOME/bin/fj-py
+  PIPER_TTS_VOICE=en_US-lessac-medium
+  PIPER_TTS_ENGLISH_VOICE=en_US-lessac-medium
+  PIPER_TTS_SPANISH_VOICE=es_ES-sharvard-medium
+  TTS_SAY_LANG=en          # selects English or Spanish voice when PIPER_TTS_VOICE is unset
+  PIPER_TTS_DEFAULT_SPEAKER_ID=0
+  PIPER_TTS_SPEAKER_ID=      # optional explicit speaker id
+  PIPER_TTS_SPEAKER=         # optional speaker name, e.g. F
+  PIPER_TTS_URL=http://127.0.0.1:10200
+  PIPER_TTS_SANDBOX=piper-tts
+  PIPER_TTS_LENGTH_SCALE=1.15
+  PIPER_TTS_SENTENCE_SILENCE=0.2
+  PIPER_TTS_VOLUME=1.0
+  TTS_RUNTIME_DIR=$XDG_RUNTIME_DIR/tts
+EOF
+}
+
+json_string() {
+    awk '
+        BEGIN { first = 1; printf "\"" }
+        {
+            if (!first) printf "\\n"
+            first = 0
+            for (i = 1; i <= length($0); i++) {
+                c = substr($0, i, 1)
+                if (c == "\\") printf "\\\\"
+                else if (c == "\"") printf "\\\""
+                else if (c == "\t") printf "\\t"
+                else printf "%s", c
+            }
+        }
+        END { printf "\"" }
+    '
+}
+
+has_speakable_text() {
+    awk '
+        /[[:alnum:]]/ { found = 1 }
+        END { exit found ? 0 : 1 }
+    '
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    usage
+    exit 0
+fi
+
+if [ "$#" -gt 0 ]; then
+    text=$*
+else
+    text=$(cat)
+fi
+
+[ -n "$text" ] || exit 0
+printf '%s\n' "$text" | has_speakable_text || exit 0
+
+piper_root=${PIPER_TTS_ROOT:-"$HOME/data/apps/dev-tools/ai-tools/piper-tts"}
+voice_dir=${PIPER_TTS_VOICE_DIR:-"$piper_root/voices"}
+venv_python=${PIPER_TTS_PYTHON:-"$piper_root/.venv/bin/python"}
+run_dir=${PIPER_TTS_RUN_DIR:-"$piper_root/run"}
+fj_py=${PIPER_TTS_FJ_PY:-"$HOME/bin/fj-py"}
+piper_url=${PIPER_TTS_URL:-http://127.0.0.1:10200}
+sandbox_name=${PIPER_TTS_SANDBOX:-piper-tts}
+length_scale=${PIPER_TTS_LENGTH_SCALE:-1.15}
+sentence_silence=${PIPER_TTS_SENTENCE_SILENCE:-0.2}
+volume=${PIPER_TTS_VOLUME:-1.0}
+speaker=${PIPER_TTS_SPEAKER-}
+speaker_id=${PIPER_TTS_SPEAKER_ID-}
+tts_runtime_dir=${TTS_RUNTIME_DIR:-${XDG_RUNTIME_DIR:-/tmp}/tts}
+tts_pid_dir=$tts_runtime_dir/pids
+tts_pid_file=
+player_pid=
+player_label=
+
+register_tts_pid() {
+    label=$1
+    pid=$2
+    mkdir -p "$tts_pid_dir"
+    printf '%s %s\n' "$pid" "$label" >"$tts_pid_dir/$label.$pid"
+}
+
+if [ -n "${PIPER_TTS_VOICE:-}" ]; then
+    voice=$PIPER_TTS_VOICE
+else
+    case "${TTS_SAY_LANG:-en}" in
+    es*)
+        voice=${PIPER_TTS_SPANISH_VOICE:-es_ES-sharvard-medium}
+        ;;
+    *)
+        voice=${PIPER_TTS_ENGLISH_VOICE:-en_US-lessac-medium}
+        ;;
+    esac
+fi
+
+if [ -z "$speaker" ] && [ -z "$speaker_id" ]; then
+    speaker_id=${PIPER_TTS_DEFAULT_SPEAKER_ID-0}
+fi
+
+if [ -n "$speaker" ] && [ -z "$speaker_id" ]; then
+    case "$speaker" in
+    M) speaker_id=0 ;;
+    F) speaker_id=1 ;;
+    esac
+fi
+
+case "$speaker_id" in
+"" | *[!0-9]*)
+    if [ -n "$speaker_id" ]; then
+        printf '%s\n' "piper-say: PIPER_TTS_SPEAKER_ID must be an integer" >&2
+        exit 2
+    fi
+    ;;
+esac
+
+[ -x "$venv_python" ] || exit 127
+[ -x "$fj_py" ] || exit 127
+[ -f "$voice_dir/$voice.onnx" ] || exit 127
+[ -f "$voice_dir/$voice.onnx.json" ] || exit 127
+
+mkdir -p "$run_dir"
+tmp_wav=$(mktemp "$run_dir/piper-say.XXXXXX.wav")
+tmp_json=$(mktemp "$run_dir/piper-say.XXXXXX.json")
+tts_pid_file=$tts_pid_dir/piper-say.$$
+register_tts_pid "piper-say" "$$"
+
+cleanup() {
+    if [ -n "$player_pid" ]; then
+        kill "$player_pid" >/dev/null 2>&1 || true
+        [ -n "$player_label" ] && rm -f "$tts_pid_dir/$player_label.$player_pid"
+    fi
+    rm -f "$tts_pid_file"
+    rm -f "$tmp_wav" "$tmp_json"
+}
+interrupt() {
+    cleanup
+    exit 130
+}
+terminate() {
+    cleanup
+    exit 143
+}
+trap cleanup EXIT
+trap interrupt INT
+trap terminate TERM
+
+play_wav() {
+    if command -v pw-play >/dev/null 2>&1; then
+        pw-play "$tmp_wav" &
+        player_pid=$!
+        player_label=pw-play
+    elif command -v paplay >/dev/null 2>&1; then
+        paplay "$tmp_wav" &
+        player_pid=$!
+        player_label=paplay
+    elif command -v aplay >/dev/null 2>&1; then
+        aplay -q "$tmp_wav" &
+        player_pid=$!
+        player_label=aplay
+    else
+        return 127
+    fi
+    register_tts_pid "$player_label" "$player_pid"
+    wait "$player_pid"
+    rm -f "$tts_pid_dir/$player_label.$player_pid"
+    player_pid=
+    player_label=
+}
+
+write_payload() {
+    text_json=$(printf '%s\n' "$text" | json_string)
+    voice_json=$(printf '%s\n' "$voice" | json_string)
+    {
+        printf '{"text":%s,"voice":%s,"length_scale":%s' "$text_json" "$voice_json" "$length_scale"
+        if [ -n "$speaker" ]; then
+            speaker_json=$(printf '%s\n' "$speaker" | json_string)
+            printf ',"speaker":%s' "$speaker_json"
+        fi
+        if [ -n "$speaker_id" ]; then
+            printf ',"speaker_id":%s' "$speaker_id"
+        fi
+        printf '}\n'
+    } >"$tmp_json"
+}
+
+try_http_server() {
+    command -v /usr/bin/firejail >/dev/null 2>&1 || return 1
+    command -v curl >/dev/null 2>&1 || return 1
+    write_payload
+    /usr/bin/firejail --join="$sandbox_name" \
+        /usr/bin/env -i PATH=/usr/bin:/bin \
+        curl -fsS -X POST \
+        -H 'Content-Type: application/json' \
+        --data-binary @- \
+        "$piper_url" <"$tmp_json" >"$tmp_wav" 2>/dev/null
+    [ -s "$tmp_wav" ]
+}
+
+run_cli() {
+    set -- \
+        "$venv_python" -m piper \
+        -m "$voice" \
+        --data-dir "$voice_dir" \
+        -f "$tmp_wav" \
+        --length-scale "$length_scale" \
+        --sentence-silence "$sentence_silence" \
+        --volume "$volume"
+    if [ -n "$speaker_id" ]; then
+        set -- "$@" --speaker "$speaker_id"
+    fi
+    "$fj_py" offline "$piper_root" -- "$@" -- "$text"
+}
+
+if ! try_http_server; then
+    run_cli
+fi
+
+play_wav

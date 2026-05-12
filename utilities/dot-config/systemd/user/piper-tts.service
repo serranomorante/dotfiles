@@ -1,0 +1,12 @@
+[Unit]
+Description=Local Piper neural TTS HTTP server
+After=default.target
+
+[Service]
+Environment="FJ_PY_PROFILE=fj-py-piper-server.profile"
+ExecStart=%h/bin/fj-py offline %h/data/apps/dev-tools/ai-tools/piper-tts -- %h/data/apps/dev-tools/ai-tools/piper-tts/.venv/bin/python -m piper.http_server -m en_US-lessac-medium --data-dir %h/data/apps/dev-tools/ai-tools/piper-tts/voices --host 127.0.0.1 --port 10200
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=default.target

@@ -4,6 +4,17 @@ reaper_mcp_server_setup:
   projects_dir: "{{ ansible_facts.env.HOME }}/data/audio-pjs"
 
 node_ai_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/.npm"
+piper_tts_setup:
+  project_path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/piper-tts"
+  venv_path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/piper-tts/.venv"
+  voice_dir: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/piper-tts/voices"
+  python_version: "3.11.3"
+  version: "1.4.2"
+  service_name: piper-tts.service
+  default_voice: en_US-lessac-medium
+  voices:
+    - en_US-lessac-medium
+    - es_ES-sharvard-medium
 node_ai_npm_packages:
   - name: mcp-hub
     version: 4.2.1

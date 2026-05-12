@@ -1,0 +1,202 @@
+#!/bin/sh
+# Purpose: Poll the current Kitty screen and speak only newly visible stable
+# lines. This is better than stream parsing for full-screen TUIs.
+# Usage: tts-screen; TTS_SCREEN_MATCH=id:123 tts-screen
+# Notes: Requires Kitty remote control. It keeps a per-run cache of spoken
+# normalized lines so redraws and cursor movement do not repeat old content.
+
+set -eu
+
+usage() {
+    cat <<'EOF'
+Usage:
+  tts-screen
+
+Environment:
+  TTS_SCREEN_SAY=tts-say
+  TTS_SCREEN_INTERVAL=0.7
+  TTS_SCREEN_STABLE_POLLS=2
+  TTS_SCREEN_MAX_CHARS=450
+  TTS_SCREEN_MAX_LINES=8
+  TTS_SCREEN_SKIP_INITIAL=0
+  TTS_SCREEN_MATCH=id:$KITTY_WINDOW_ID
+  TTS_SCREEN_EXTENT=screen
+  TTS_RUNTIME_DIR=$XDG_RUNTIME_DIR/tts
+EOF
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    usage
+    exit 0
+fi
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+say_cmd=${TTS_SCREEN_SAY:-tts-say}
+interval=${TTS_SCREEN_INTERVAL:-0.7}
+stable_polls=${TTS_SCREEN_STABLE_POLLS:-2}
+max_chars=${TTS_SCREEN_MAX_CHARS:-450}
+max_lines=${TTS_SCREEN_MAX_LINES:-8}
+skip_initial=${TTS_SCREEN_SKIP_INITIAL:-0}
+extent=${TTS_SCREEN_EXTENT:-screen}
+tts_runtime_dir=${TTS_RUNTIME_DIR:-${XDG_RUNTIME_DIR:-/tmp}/tts}
+tts_pid_dir=$tts_runtime_dir/pids
+tts_stop_file=$tts_runtime_dir/stop
+tts_pid_file=
+
+register_tts_pid() {
+    mkdir -p "$tts_pid_dir"
+    tts_pid_file=$tts_pid_dir/tts-screen.$$
+    printf '%s %s\n' "$$" "tts-screen" >"$tts_pid_file"
+}
+
+case "$say_cmd" in
+*/*) ;;
+*)
+    if ! command -v "$say_cmd" >/dev/null 2>&1 && [ -x "$script_dir/$say_cmd" ]; then
+        say_cmd=$script_dir/$say_cmd
+    fi
+    ;;
+esac
+
+if [ -n "${TTS_SCREEN_MATCH:-}" ]; then
+    match=$TTS_SCREEN_MATCH
+elif [ -n "${KITTY_WINDOW_ID:-}" ]; then
+    match=id:$KITTY_WINDOW_ID
+else
+    match=state:focused
+fi
+
+command -v kitten >/dev/null 2>&1 || {
+    printf '%s\n' "tts-screen: kitten is required" >&2
+    exit 127
+}
+
+tmp_dir=${TMPDIR:-/tmp}/tts-screen.$$
+mkdir -p "$tmp_dir"
+rm -f "$tts_stop_file"
+register_tts_pid
+prev_file=$tmp_dir/prev
+curr_file=$tmp_dir/curr
+spoken_file=$tmp_dir/spoken
+new_file=$tmp_dir/new
+: >"$prev_file"
+: >"$spoken_file"
+
+cleanup() {
+    rm -rf "$tmp_dir"
+    [ -n "$tts_pid_file" ] && rm -f "$tts_pid_file"
+}
+interrupt() {
+    cleanup
+    exit 130
+}
+terminate() {
+    cleanup
+    exit 143
+}
+trap cleanup EXIT
+trap interrupt INT
+trap terminate TERM
+
+normalize_screen() {
+    awk '
+        {
+            gsub(/\r/, "")
+            gsub(/\t/, " ")
+            gsub(/[[:space:]][[:space:]]+/, " ")
+            sub(/^[[:space:]]+/, "")
+            sub(/[[:space:]]+$/, "")
+            if ($0 == "") next
+            if ($0 ~ /^[. ]+$/) next
+            if ($0 ~ /^[|:;,_=-]+$/) next
+            if ($0 !~ /[[:alnum:]]/) next
+            print
+        }
+    '
+}
+
+snapshot() {
+    kitten @ get-text --match "$match" --extent "$extent" 2>/dev/null |
+        normalize_screen >"$curr_file"
+}
+
+mark_seen() {
+    cat "$curr_file" >>"$spoken_file"
+    sort -u "$spoken_file" -o "$spoken_file"
+}
+
+build_new_lines() {
+    awk '
+        NR == FNR {
+            seen[$0] = 1
+            next
+        }
+        !seen[$0] && !emitted[$0] {
+            print
+            emitted[$0] = 1
+        }
+    ' "$spoken_file" "$curr_file" >"$new_file"
+}
+
+speak_new_lines() {
+    awk -v max_chars="$max_chars" -v max_lines="$max_lines" '
+        BEGIN { chars = 0; lines = 0 }
+        {
+            add = length($0) + (chars > 0 ? 1 : 0)
+            if (lines >= max_lines || (chars + add) > max_chars) exit
+            if (chars > 0) printf " "
+            printf "%s", $0
+            chars += add
+            lines += 1
+        }
+        END {
+            if (chars > 0) printf "\n"
+        }
+    ' "$new_file" | {
+        IFS= read -r speech || exit 0
+        [ -n "$speech" ] || exit 0
+        "$say_cmd" "$speech" || true
+    }
+}
+
+stable_count=0
+initialized=0
+
+while :; do
+    [ ! -e "$tts_stop_file" ] || exit 0
+
+    if ! snapshot; then
+        sleep "$interval"
+        continue
+    fi
+
+    if cmp -s "$curr_file" "$prev_file"; then
+        stable_count=$((stable_count + 1))
+    else
+        stable_count=1
+        cp "$curr_file" "$prev_file"
+    fi
+
+    if [ "$stable_count" -lt "$stable_polls" ]; then
+        sleep "$interval"
+        continue
+    fi
+
+    if [ "$initialized" = "0" ]; then
+        initialized=1
+        if [ "$skip_initial" = "1" ]; then
+            mark_seen
+            sleep "$interval"
+            continue
+        fi
+    fi
+
+    build_new_lines
+    if [ -s "$new_file" ]; then
+        [ ! -e "$tts_stop_file" ] || exit 0
+        speak_new_lines
+        mark_seen
+    fi
+
+    sleep "$interval"
+done

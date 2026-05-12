@@ -1,0 +1,201 @@
+#!/bin/sh
+# Purpose: Speak text from arguments or stdin using the most reliable local TTS
+# backend available on the machine.
+# Usage: tts-say "text"; printf '%s\n' "text" | tts-say
+# Notes: Defaults to Piper with Speech Dispatcher and eSpeak NG fallbacks so it
+# can work from a plain TTY when the graphical session is unusable.
+
+set -eu
+
+usage() {
+    cat <<'EOF'
+Usage:
+  tts-say [text...]
+  command | tts-say
+
+Environment:
+  TTS_SAY_BACKEND=auto|piper|spd-say|espeak-ng
+  TTS_SAY_LANG=en
+  TTS_SAY_RATE=-25         # Speech Dispatcher rate, -100..100
+  TTS_SAY_PITCH=0          # Speech Dispatcher pitch, -100..100
+  TTS_SAY_PITCH_RANGE=-20  # Speech Dispatcher pitch range, -100..100
+  TTS_SAY_PUNCT=none       # none|some|most|all
+  TTS_SAY_WAIT=1           # wait for Speech Dispatcher to finish
+  TTS_PIPER_SAY=piper-say  # Piper wrapper path or command name
+  TTS_RUNTIME_DIR=$XDG_RUNTIME_DIR/tts
+  TTS_ESPEAK_SPEED=135     # eSpeak NG words per minute
+  TTS_ESPEAK_WORD_GAP=3    # eSpeak NG word gap, units of 10ms
+  TTS_ESPEAK_PITCH=45      # eSpeak NG pitch, 0..99
+  TTS_ESPEAK_RANGE=35      # eSpeak NG pitch range, 0..99
+EOF
+}
+
+tts_runtime_dir=${TTS_RUNTIME_DIR:-${XDG_RUNTIME_DIR:-/tmp}/tts}
+tts_pid_dir=$tts_runtime_dir/pids
+tts_pid_file=
+
+register_tts_pid() {
+    mkdir -p "$tts_pid_dir"
+    tts_pid_file=$tts_pid_dir/tts-say.$$
+    printf '%s %s\n' "$$" "tts-say" >"$tts_pid_file"
+}
+
+cleanup_tts_pid() {
+    [ -n "$tts_pid_file" ] && rm -f "$tts_pid_file"
+}
+interrupt_tts() {
+    cleanup_tts_pid
+    exit 130
+}
+terminate_tts() {
+    cleanup_tts_pid
+    exit 143
+}
+
+strip_terminal_control() {
+    awk '
+        BEGIN {
+            esc = sprintf("%c", 27)
+            bel = sprintf("%c", 7)
+        }
+        {
+            gsub(esc "\\][^" bel "]*(" bel "|" esc "\\\\)", "")
+            gsub(esc "\\[[0-?]*[ -/]*[@-~]", "")
+            gsub(/\r/, "\n")
+            gsub(/[[:cntrl:]]/, " ")
+            gsub(/[[:space:]][[:space:]]+/, " ")
+            sub(/^[[:space:]]+/, "")
+            sub(/[[:space:]]+$/, "")
+            if (length($0) > 0) print
+        }
+    '
+}
+
+normalize_for_speech() {
+    sed \
+        -e 's#\([[:space:]]\|^\)~/# home slash #g' \
+        -e 's#/home/aaaa/# home aaaa slash #g' \
+        -e 's#/tmp/# tmp slash #g' \
+        -e 's#\([[:space:]]\|^\)--# option #g' \
+        -e 's#/# slash #g' \
+        -e 's#_# underscore #g' \
+        -e 's#-># goes to #g' \
+        -e 's#=># maps to #g' \
+        -e 's#==# equals #g' \
+        -e 's#!=# not equals #g' \
+        -e 's#[{}[\]()]# #g' \
+        -e 's#[|<>`"'"'"']# #g' \
+        -e 's#[[:space:]][[:space:]]*# #g'
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    usage
+    exit 0
+fi
+
+register_tts_pid
+trap cleanup_tts_pid EXIT
+trap interrupt_tts INT
+trap terminate_tts TERM
+
+if [ "$#" -gt 0 ]; then
+    raw_text=$*
+else
+    raw_text=$(cat)
+fi
+
+text=$(
+    printf '%s\n' "$raw_text" |
+        strip_terminal_control |
+        normalize_for_speech |
+        awk 'BEGIN { first = 1 } {
+            if (!first) printf " "
+            printf "%s", $0
+            first = 0
+        }'
+)
+
+[ -n "$text" ] || exit 0
+
+backend=${TTS_SAY_BACKEND:-auto}
+lang=${TTS_SAY_LANG:-en}
+rate=${TTS_SAY_RATE:--25}
+pitch=${TTS_SAY_PITCH:-0}
+pitch_range=${TTS_SAY_PITCH_RANGE:--20}
+punct=${TTS_SAY_PUNCT:-none}
+wait=${TTS_SAY_WAIT:-1}
+espeak_speed=${TTS_ESPEAK_SPEED:-135}
+espeak_word_gap=${TTS_ESPEAK_WORD_GAP:-3}
+espeak_pitch=${TTS_ESPEAK_PITCH:-45}
+espeak_range=${TTS_ESPEAK_RANGE:-35}
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+piper_say=${TTS_PIPER_SAY:-piper-say}
+case "$piper_say" in
+*/*) ;;
+*)
+    if command -v "$piper_say" >/dev/null 2>&1; then
+        piper_say=$(command -v "$piper_say")
+    elif [ -x "$script_dir/$piper_say" ]; then
+        piper_say=$script_dir/$piper_say
+    fi
+    ;;
+esac
+
+say_piper() {
+    TTS_SAY_LANG=$lang "$piper_say" "$text"
+}
+
+say_spd() {
+    if [ "$wait" = "0" ]; then
+        spd-say -l "$lang" -r "$rate" -p "$pitch" -R "$pitch_range" -m "$punct" -- "$text"
+    else
+        spd-say -w -l "$lang" -r "$rate" -p "$pitch" -R "$pitch_range" -m "$punct" -- "$text"
+    fi
+}
+
+say_espeak() {
+    espeak-ng -v "$lang" -s "$espeak_speed" -g "$espeak_word_gap" -p "$espeak_pitch" -P "$espeak_range" -- "$text"
+}
+
+case "$backend" in
+auto)
+    if [ -x "$piper_say" ] && say_piper 2>/dev/null; then
+        exit 0
+    fi
+    if command -v spd-say >/dev/null 2>&1 && say_spd 2>/dev/null; then
+        exit 0
+    fi
+    if command -v espeak-ng >/dev/null 2>&1; then
+        say_espeak
+        exit 0
+    fi
+    printf '%s\n' "tts-say: neither spd-say nor espeak-ng is available" >&2
+    exit 127
+    ;;
+piper)
+    [ -x "$piper_say" ] || {
+        printf '%s\n' "tts-say: piper-say is not available" >&2
+        exit 127
+    }
+    say_piper
+    ;;
+spd-say)
+    command -v spd-say >/dev/null 2>&1 || {
+        printf '%s\n' "tts-say: spd-say is not available" >&2
+        exit 127
+    }
+    say_spd
+    ;;
+espeak-ng)
+    command -v espeak-ng >/dev/null 2>&1 || {
+        printf '%s\n' "tts-say: espeak-ng is not available" >&2
+        exit 127
+    }
+    say_espeak
+    ;;
+*)
+    printf '%s\n' "tts-say: unsupported backend: $backend" >&2
+    exit 2
+    ;;
+esac

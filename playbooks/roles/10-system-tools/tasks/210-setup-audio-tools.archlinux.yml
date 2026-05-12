@@ -45,6 +45,8 @@
       - lib32-pipewire-jack
       - wireplumber
       - plasma-pa
+      - speech-dispatcher
+      - espeak-ng
       - realtime-privileges
       - base-devel
       - cpupower

@@ -1,0 +1,89 @@
+#!/bin/sh
+# Purpose: Run an interactive CLI command in a pseudo-terminal and speak its
+# output stream while keeping the original terminal usable.
+# Usage: tts-pty bash; tts-pty codex; tts-pty claude
+# Notes: Uses util-linux script(1), so full-screen TUIs may produce noisy
+# redraws. Use tts-tui for redraw-heavy TUIs in Kitty.
+
+set -eu
+
+usage() {
+    cat <<'EOF'
+Usage:
+  tts-pty <command> [args...]
+
+Examples:
+  tts-pty bash
+  tts-pty codex
+  tts-pty claude
+
+Related:
+  tts-tui
+  tts-stream
+  tts-stop
+
+Environment:
+  TTS_PTY_SAY=tts-say
+  TTS_PTY_STREAM=tts-stream
+EOF
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ] || [ "$#" -eq 0 ]; then
+    usage
+    exit 0
+fi
+
+command -v script >/dev/null 2>&1 || {
+    printf '%s\n' "tts-pty: util-linux script(1) is required" >&2
+    exit 127
+}
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+say_cmd=${TTS_PTY_SAY:-tts-say}
+stream_cmd=${TTS_PTY_STREAM:-tts-stream}
+
+resolve_sibling_command() {
+    name=$1
+    case "$name" in
+    */*)
+        printf '%s\n' "$name"
+        ;;
+    *)
+        if command -v "$name" >/dev/null 2>&1; then
+            command -v "$name"
+        elif [ -x "$script_dir/$name" ]; then
+            printf '%s\n' "$script_dir/$name"
+        else
+            printf '%s\n' "$name"
+        fi
+        ;;
+    esac
+}
+
+say_cmd=$(resolve_sibling_command "$say_cmd")
+stream_cmd=$(resolve_sibling_command "$stream_cmd")
+
+runtime_dir=${XDG_RUNTIME_DIR:-/tmp}
+log_dir=$runtime_dir/tts-pty
+mkdir -p "$log_dir"
+log_file=$log_dir/session-$(date +%Y%m%d-%H%M%S)-$$.log
+: >"$log_file"
+
+cleanup() {
+    if [ "${tail_pid:-}" ]; then
+        kill "$tail_pid" >/dev/null 2>&1 || true
+    fi
+}
+trap cleanup EXIT INT TERM
+
+"$say_cmd" "PTY TTS started. Log: $log_file" >/dev/null 2>&1 || true
+tail -n +1 -F "$log_file" 2>/dev/null | "$stream_cmd" &
+tail_pid=$!
+
+set +e
+script -qef -O "$log_file" -- "$@"
+status=$?
+set -e
+
+"$say_cmd" "PTY TTS finished with code $status." >/dev/null 2>&1 || true
+exit "$status"

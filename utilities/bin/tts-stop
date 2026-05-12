@@ -1,0 +1,67 @@
+#!/bin/sh
+# Purpose: Stop queued or currently playing local TTS speech.
+# Usage: tts-stop
+
+set -eu
+
+usage() {
+    cat <<'EOF'
+Usage:
+  tts-stop
+
+Environment:
+  TTS_RUNTIME_DIR=$XDG_RUNTIME_DIR/tts
+
+Stops active repository TTS pollers, speech processes, and backend playback.
+EOF
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    usage
+    exit 0
+fi
+
+tts_runtime_dir=${TTS_RUNTIME_DIR:-${XDG_RUNTIME_DIR:-/tmp}/tts}
+tts_pid_dir=$tts_runtime_dir/pids
+tts_stop_file=$tts_runtime_dir/stop
+
+mkdir -p "$tts_runtime_dir"
+: >"$tts_stop_file"
+
+kill_registered_pid() {
+    pid=$1
+    label=$2
+
+    case "$pid" in
+    "" | *[!0-9]*) return 0 ;;
+    esac
+
+    if [ -r "/proc/$pid/cmdline" ]; then
+        cmdline=$(tr '\000' ' ' <"/proc/$pid/cmdline")
+        case "$cmdline" in
+        *"$label"*) ;;
+        *) return 0 ;;
+        esac
+    fi
+
+    kill -TERM "$pid" >/dev/null 2>&1 || return 0
+    sleep 0.2
+    kill -0 "$pid" >/dev/null 2>&1 && kill -KILL "$pid" >/dev/null 2>&1 || true
+}
+
+if [ -d "$tts_pid_dir" ]; then
+    for pid_file in "$tts_pid_dir"/*; do
+        [ -f "$pid_file" ] || continue
+        IFS=' ' read -r pid label <"$pid_file" || true
+        kill_registered_pid "$pid" "$label"
+        rm -f "$pid_file"
+    done
+fi
+
+if command -v spd-say >/dev/null 2>&1; then
+    spd-say -C >/dev/null 2>&1 || true
+fi
+
+if command -v pkill >/dev/null 2>&1; then
+    pkill -u "$USER" -x espeak-ng >/dev/null 2>&1 || true
+fi

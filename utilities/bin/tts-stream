@@ -1,0 +1,99 @@
+#!/bin/sh
+# Purpose: Convert a stream of terminal output into ordered spoken chunks.
+# Usage: command 2>&1 | tts-stream
+# Notes: This is intentionally line-oriented; it avoids trying to interpret
+# full-screen terminal UIs and speaks stable text as it lands.
+
+set -eu
+
+usage() {
+    cat <<'EOF'
+Usage:
+  command 2>&1 | tts-stream
+
+Environment:
+  TTS_STREAM_MAX_CHARS=350
+  TTS_STREAM_MIN_CHARS=1
+  TTS_STREAM_SAY=tts-say
+EOF
+}
+
+strip_terminal_control() {
+    awk '
+        BEGIN {
+            esc = sprintf("%c", 27)
+            bel = sprintf("%c", 7)
+        }
+        {
+            gsub(esc "\\][^" bel "]*(" bel "|" esc "\\\\)", "")
+            gsub(esc "\\[[0-?]*[ -/]*[@-~]", "")
+            gsub(/\r/, "\n")
+            gsub(/[[:cntrl:]]/, " ")
+            gsub(/[[:space:]][[:space:]]+/, " ")
+            sub(/^[[:space:]]+/, "")
+            sub(/[[:space:]]+$/, "")
+            print
+        }
+    '
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    usage
+    exit 0
+fi
+
+say_cmd=${TTS_STREAM_SAY:-tts-say}
+max_chars=${TTS_STREAM_MAX_CHARS:-350}
+min_chars=${TTS_STREAM_MIN_CHARS:-1}
+buffer=
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+case "$say_cmd" in
+*/*) ;;
+*)
+    if ! command -v "$say_cmd" >/dev/null 2>&1 && [ -x "$script_dir/$say_cmd" ]; then
+        say_cmd=$script_dir/$say_cmd
+    fi
+    ;;
+esac
+
+flush_buffer() {
+    [ -n "$buffer" ] || return 0
+    if [ "${#buffer}" -ge "$min_chars" ]; then
+        "$say_cmd" "$buffer" || true
+    fi
+    buffer=
+}
+
+while IFS= read -r line || [ -n "$line" ]; do
+    clean=$(printf '%s\n' "$line" | strip_terminal_control)
+
+    case "$clean" in
+    "Script started on "* | "Script done on "*)
+        continue
+        ;;
+    "" | "█" | "▌" | "▍" | "▎" | "▏" | "…" | "." | ".." | "...")
+        flush_buffer
+        continue
+        ;;
+    esac
+
+    if [ -z "$buffer" ]; then
+        buffer=$clean
+    else
+        buffer="$buffer $clean"
+    fi
+
+    case "$clean" in
+    *"." | *"?" | *"!" | *":" | *";")
+        flush_buffer
+        continue
+        ;;
+    esac
+
+    if [ "${#buffer}" -ge "$max_chars" ]; then
+        flush_buffer
+    fi
+done
+
+flush_buffer

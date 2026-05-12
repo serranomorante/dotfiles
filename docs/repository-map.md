@@ -85,6 +85,22 @@ wraps `valkey-cli` with the repository key namespace
 `dotfiles:cache:v1:<namespace>:<key>` and requires TTLs for stored values.
 Values should be cheap to rebuild and should not be committed.
 
+## Dev Tool Sandboxing
+
+Python and Node package-manager installs and routine tool execution should use
+the Firejail wrappers owned by `playbooks/roles/20-dev-tools/`. See
+[firejail-dev-tools.md](./firejail-dev-tools.md) for wrapper contracts,
+Ansible adapter examples, network modes, and profile guidance.
+
+## Voice TTS Workflows
+
+Text-to-speech wrappers for narrating terminal commands, TUIs, and AI CLIs
+live in `utilities/bin/` and are documented in
+[voice-agent-workflows.md](./voice-agent-workflows.md). The baseline path
+should stay usable from a plain TTY, so prefer official Arch packages such as
+`speech-dispatcher` and `espeak-ng` over optional AUR neural TTS engines for
+the fallback layer.
+
 ## Keyboard And Mouse-Free Workflow
 
 The keyboard/mouse stack is split across keyd, a small observer script, warpd,

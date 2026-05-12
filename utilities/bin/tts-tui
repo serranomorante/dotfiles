@@ -1,0 +1,105 @@
+#!/bin/sh
+# Purpose: Run an interactive TUI command while a Kitty screen-state poller
+# speaks only newly visible stable lines.
+# Usage: tts-tui nnn; tts-tui lazygit; tts-tui codex
+# Notes: This is app-agnostic. It passes the command through directly and does
+# not need per-application entries.
+
+set -eu
+
+usage() {
+    cat <<'EOF'
+Usage:
+  tts-tui <command> [args...]
+
+Examples:
+  tts-tui nnn
+  tts-tui lazygit
+  tts-tui htop
+  tts-tui codex
+
+Related:
+  tts-pty
+  tts-screen
+  tts-stop
+
+Environment:
+  TTS_TUI_SAY=tts-say
+  TTS_TUI_SCREEN=tts-screen
+  TTS_SCREEN_MATCH=id:$KITTY_WINDOW_ID
+  TTS_SCREEN_SKIP_INITIAL=1
+EOF
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ] || [ "$#" -eq 0 ]; then
+    usage
+    exit 0
+fi
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+say_cmd=${TTS_TUI_SAY:-tts-say}
+screen_cmd=${TTS_TUI_SCREEN:-tts-screen}
+
+resolve_sibling_command() {
+    name=$1
+    case "$name" in
+    */*)
+        printf '%s\n' "$name"
+        ;;
+    *)
+        if command -v "$name" >/dev/null 2>&1; then
+            command -v "$name"
+        elif [ -x "$script_dir/$name" ]; then
+            printf '%s\n' "$script_dir/$name"
+        else
+            printf '%s\n' "$name"
+        fi
+        ;;
+    esac
+}
+
+say_cmd=$(resolve_sibling_command "$say_cmd")
+screen_cmd=$(resolve_sibling_command "$screen_cmd")
+
+command -v kitten >/dev/null 2>&1 || {
+    printf '%s\n' "tts-tui: kitten is required" >&2
+    exit 127
+}
+
+if [ -n "${TTS_SCREEN_MATCH:-}" ]; then
+    screen_match=$TTS_SCREEN_MATCH
+elif [ -n "${KITTY_WINDOW_ID:-}" ]; then
+    screen_match=id:$KITTY_WINDOW_ID
+else
+    screen_match=state:focused
+fi
+
+cleanup() {
+    if [ "${screen_pid:-}" ]; then
+        kill "$screen_pid" >/dev/null 2>&1 || true
+        wait "$screen_pid" 2>/dev/null || true
+    fi
+}
+interrupt() {
+    cleanup
+    exit 130
+}
+terminate() {
+    cleanup
+    exit 143
+}
+trap cleanup EXIT
+trap interrupt INT
+trap terminate TERM
+
+"$say_cmd" "TUI TTS started." >/dev/null 2>&1 || true
+TTS_SCREEN_MATCH=$screen_match TTS_SCREEN_SKIP_INITIAL=${TTS_SCREEN_SKIP_INITIAL:-1} "$screen_cmd" &
+screen_pid=$!
+
+set +e
+"$@"
+status=$?
+set -e
+
+"$say_cmd" "TUI TTS finished with code $status." >/dev/null 2>&1 || true
+exit "$status"

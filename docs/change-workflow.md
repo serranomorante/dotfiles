@@ -31,9 +31,19 @@ system actions.
   `Purpose:` one or two lines describing what the script does; `Usage:` only
   when invocation is not obvious; `Notes:` only for important side effects,
   assumptions, or external state.
+- Script `--help` output is part of the script contract. When adding, removing,
+  or renaming supported command-line options or environment variables, update
+  the script's help text in the same change so discoverable documentation stays
+  aligned with runtime behavior.
 - Avoid new dependencies unless the playbooks declare them.
 - If a new runtime dependency is required, add it to the relevant Ansible task
   and do not install it manually unless asked.
+- For Python, Node, npm, pnpm, and similar language package-manager activity,
+  prefer the repository Firejail wrappers instead of raw package-manager
+  commands. In Ansible, use `ansible-firejail-pip`,
+  `ansible-firejail-npm`, or `ansible-firejail-pnpm` when possible. For
+  runtime Python/Node tooling, prefer `fj-py` or `fj-node` with the narrowest
+  viable network mode. See [firejail-dev-tools.md](./firejail-dev-tools.md).
 - For Ansible templates, include an appropriate file-format comment containing
   `{{ ansible_managed }}` near the top unless the target format cannot carry
   comments.

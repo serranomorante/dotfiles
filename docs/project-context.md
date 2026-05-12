@@ -43,6 +43,11 @@ verification expectations, read [change-workflow.md](./change-workflow.md).
   actively uses both left and right variants of Shift, Control, Alt, and similar
   modifier pairs, so do not repurpose only one side as a dedicated shortcut key
   unless explicitly requested.
+- When recommending open source tools, libraries, or frameworks during assistant
+  sessions, prefer established and trustworthy projects. Avoid low-star,
+  little-used GitHub projects unless the user explicitly asks for niche or
+  experimental options, and verify current repository health when the
+  recommendation would influence a meaningful time or setup investment.
 
 ## Main Entrypoints
 

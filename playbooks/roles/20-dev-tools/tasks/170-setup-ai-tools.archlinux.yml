@@ -3,7 +3,62 @@
   become: true
   ansible.builtin.package:
     state: present
-    name: openai-codex
+    name:
+      - curl
+      - openai-codex
+
+- name: "[archlinux] Setup ai tools: ensure piper tts directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  loop:
+    - "{{ piper_tts_setup.project_path }}"
+    - "{{ piper_tts_setup.voice_dir }}"
+    - "{{ piper_tts_setup.project_path }}/run"
+
+- name: "[archlinux] Setup ai tools: ensure piper tts venv packages"
+  ansible.builtin.pip:
+    name: "piper-tts[http]=={{ piper_tts_setup.version }}"
+    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
+    state: present
+  environment:
+    ANSIBLE_FIREJAIL_PIP_VENV: "{{ piper_tts_setup.venv_path }}"
+    PYENV_VERSION: "{{ piper_tts_setup.python_version }}"
+
+- name: "[archlinux] Setup ai tools: download piper tts voices"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ piper_tts_setup.project_path }}"
+      - --
+      - "{{ piper_tts_setup.venv_path }}/bin/python"
+      - -m
+      - piper.download_voices
+      - --data-dir
+      - "{{ piper_tts_setup.voice_dir }}"
+      - "{{ item }}"
+  args:
+    creates: "{{ piper_tts_setup.voice_dir }}/{{ item }}.onnx"
+  environment:
+    PYENV_VERSION: "{{ piper_tts_setup.python_version }}"
+  loop: "{{ piper_tts_setup.voices }}"
+  timeout: 0
+
+- name: "[archlinux] Setup ai tools: stat piper tts user service"
+  ansible.builtin.stat:
+    path: ~/.config/systemd/user/{{ piper_tts_setup.service_name }}
+  register: var_piper_tts_user_service
+
+- name: "[archlinux] Setup ai tools: ensure piper tts user service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: "{{ piper_tts_setup.service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: var_piper_tts_user_service.stat.exists
 
 - name: "[archlinux] Setup ai tools: ensure npm prefix"
   ansible.builtin.file:
