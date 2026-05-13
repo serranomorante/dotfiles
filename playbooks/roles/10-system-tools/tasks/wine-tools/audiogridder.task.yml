@@ -42,6 +42,8 @@
     dest: ~/.vst3/
     creates: ~/.vst3/**/AudioGridder.so
     remote_src: true
+  timeout: 60
+  ignore_errors: true
 
 - name: "[archlinux] Wine tools: setup audiogridder.desktop file"
   ansible.builtin.template:
