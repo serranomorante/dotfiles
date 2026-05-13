@@ -23,26 +23,26 @@ playbooks/roles/20-dev-tools/tasks/90-setup-git-tools.archlinux.yml
 
 ## Lazygit Focus And Editor Handoff
 
-Lazygit is launched from `term/dot-config/kitty/default.kitty-session`, and
-`open_in_nvim.sh focus_lazygit` (built on the shared kitty helpers in
-`term/bin/kitty-window-utils.sh`) finds the lazygit window by matching
-`cmdline:lazygit`.
+Lazygit is launched through Kitty's quick-access-terminal kitten. The panel
+settings live in `term/dot-config/kitty/quick-access-terminal.conf`. Every
+toggle goes through the shared `term/bin/kitty-lazygit-quick-access` wrapper,
+which invokes the kitten with
+`--instance-group="$KITTY_OS_INSTANCE_ID"` so each Kitty OS window owns an
+independent panel.
 
 The bindings wired around lazygit:
 
-- `<leader>w` in Neovim focuses the lazygit window via
-  `open_in_nvim.sh focus_lazygit`.
-- The lazygit custom `q` mirrors Kitty's `kitty_mod+w`: it returns to the
-  previously active Kitty tab via `kitten @ action goto_tab -1` and triggers
-  `kitty-lazy-start-active-tab` so AI tabs get initialized on return. Keep
-  these two bindings in sync if `kitty_mod+w` changes.
-- Lazygit editor callbacks (`lazygit_edit`, `lazygit_open`, etc.) only send
-  the remote edit request. Neovim focuses its own Kitty window from its remote
-  edit autocmd after the buffer is displayed.
-
-For `<leader>w`, keep the cmdline-based focus helper because it needs to find
-the lazygit window regardless of tab position. The `q` binding intentionally
-uses `goto_tab -1` because "previously active tab" *is* the semantic.
+- `kitty_mod+s` in Kitty is the single toggle for the lazygit quick-access
+  panel. It runs the wrapper via `launch --type=background`. Neovim
+  intentionally has no keymap for this — the binding lives only in Kitty.
+- `q` inside lazygit fires a custom command that re-runs the wrapper, letting
+  the kitten hide the panel. Lazygit's universal `quit` is `<disabled>` so the
+  custom binding owns `q`.
+- Lazygit editor callbacks (`lazygit_edit`, `lazygit_open`, etc.) send remote
+  edit requests to the target Neovim through nvr. Neovim's remote-edit autocmd
+  focuses its own Kitty window after the buffer is displayed, and
+  quick-access-terminal's `hide_on_focus_loss yes` hides the lazygit panel when
+  focus leaves it.
 
 See [nvim-kitty-integration.md](./nvim-kitty-integration.md) for the
 per-window Neovim server socket, Kitty window matching, and helper internals

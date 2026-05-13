@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# Toggle the lazygit quick-access kitty panel for the current Kitty OS
+# instance.
+#
+# The quick-access-terminal kitten scopes panels by --instance-group, so this
+# wrapper passes the current KITTY_OS_INSTANCE_ID (set by term/bin/kitty) to
+# keep each Kitty OS window's panel independent. The default fallback only
+# matters when the kitten is invoked from outside the kitty wrapper.
+
+exec kitten quick-access-terminal \
+    --instance-group="${KITTY_OS_INSTANCE_ID:-default}" \
+    lazygit

@@ -197,8 +197,8 @@ app identity so stale user vars cannot outlive the process that set them.
 
 Shared kitty window helpers (focus matching, JSON scoring, etc.) live in
 `term/bin/kitty-window-utils.sh`. Source it from POSIX sh and pass process
-names for app identity. App-specific focus helpers (e.g. `kitty_focus_lazygit`)
-belong to the owning script.
+names for app identity. App-specific focus helpers belong to the owning
+script.
 
 See [nvim-kitty-integration.md](./nvim-kitty-integration.md) for the
 per-window Neovim server socket and Kitty window matching that exercise this

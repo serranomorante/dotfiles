@@ -6,8 +6,6 @@
 #   Use `exec >/tmp/open_in_nvim.out 2>&1` to log output into file. You can then run
 #   `watch -n 1 -d cat /tmp/open_in_nvim.out` to see the logs in realtime.
 
-. "$HOME/dotfiles/term/bin/kitty-window-utils.sh"
-
 app="$1"
 servername=${NVIM_KITTY_LISTEN_ADDRESS:-}
 
@@ -16,19 +14,7 @@ nvim_center_view='vim.cmd.normal({ "zz", bang = true })'
 nvim_close_term_win="pcall(vim.api.nvim_win_close, 0, false)"
 nvim_edit="vim.cmd.edit({ [[$1]], mods = { emsg_silent = true }})" # don't use `nvr --remote` because it doesn't respect shortmess
 
-kitty_focus_lazygit() {
-    if kitty_focus_match "state:focused_os_window and cmdline:lazygit"; then
-        return 0
-    fi
-
-    window_id=$(kitty_target_window_id lazygit) || return 1
-    kitty_focus_window_id "$window_id"
-}
-
 case $app in
-focus_lazygit)
-    kitty_focus_lazygit || true
-    ;;
 nnn_search)
     nvr --servername "$servername" --nostart -c "NNNSearch $1 $PWD/$nnn"
     ;;

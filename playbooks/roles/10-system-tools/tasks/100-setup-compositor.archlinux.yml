@@ -115,6 +115,9 @@
     - ~/data/repos/dwm/patches/dwm-canfocusfloating-20210724-b914109.diff
     - fix-dwm-canfocusfloating-20210724-b914109.patch
     - fix-dwm-canfocusfloating-focus-state.patch
+    # advertise extra EWMH atoms so kitty/GLFW layer-shell windows
+    # (e.g. `kitten quick-access-terminal`) can be created under dwm
+    - add-dwm-ewmh-atoms.patch
     # My changes. Always leave this last.
     - make-dwm-debuggable.patch
     - custom.patch

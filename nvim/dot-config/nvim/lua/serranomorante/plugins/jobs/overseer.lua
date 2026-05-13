@@ -63,13 +63,6 @@ local function keys()
 
   vim.keymap.set(
     "n",
-    "<leader>w",
-    function() utils.cmd({ "open_in_nvim.sh", "focus_lazygit" }, false) end,
-    { desc = "Focus lazygit kitty window" }
-  )
-
-  vim.keymap.set(
-    "n",
     "<leader>tp",
     function() require("serranomorante.plugins.jobs.ansible_task_picker").select() end,
     { desc = "Show a list of ansible tasks in vim.ui.select" }
