@@ -1,9 +1,15 @@
 [Unit]
 Description=Start dunst for user
-After=graphical-session.target
+PartOf=graphical-session.target
+# Must start before plasmashell so dunst owns org.freedesktop.Notifications
+# first; plasmashell then defers to dunst for notification delivery.
+Before=plasma-plasmashell.service
 
 [Service]
+Type=dbus
+BusName=org.freedesktop.Notifications
 ExecStart=/usr/bin/dunst
 
 [Install]
+WantedBy=plasma-workspace.target
 WantedBy=graphical-session.target
