@@ -70,55 +70,69 @@
       changed_when: true
       when: k3s_reinstall_required
 
-    - name: "[archlinux] Setup infra tools: ensure k3s service"
-      become: true
-      ansible.builtin.systemd_service:
-        name: k3s
-        enabled: false
-        state: started
+    # Runtime tasks below depend on k3s actually running. On a freshly
+    # provisioned host these can fail until the machine has been rebooted
+    # (kernel modules, cgroup state, etc.). Skip the rest of the block on
+    # failure instead of aborting the whole play.
+    - name: "[archlinux] Setup infra tools: k3s runtime bring-up"
+      block:
+        - name: "[archlinux] Setup infra tools: ensure k3s service"
+          become: true
+          ansible.builtin.systemd_service:
+            name: k3s
+            enabled: false
+            state: started
 
-    - name: "[archlinux] Setup infra tools: wait for k3s kubeconfig"
-      become: true
-      ansible.builtin.wait_for:
-        path: "{{ k3s_system_kubeconfig_path }}"
-        timeout: 120
+        - name: "[archlinux] Setup infra tools: wait for k3s kubeconfig"
+          become: true
+          ansible.builtin.wait_for:
+            path: "{{ k3s_system_kubeconfig_path }}"
+            timeout: 120
 
-    - name: "[archlinux] Setup infra tools: fix k3s kubeconfig permissions"
-      become: true
-      ansible.builtin.file:
-        path: "{{ k3s_system_kubeconfig_path }}"
-        state: file
-        mode: "0644"
+        - name: "[archlinux] Setup infra tools: fix k3s kubeconfig permissions"
+          become: true
+          ansible.builtin.file:
+            path: "{{ k3s_system_kubeconfig_path }}"
+            state: file
+            mode: "0644"
 
-    - name: "[archlinux] Setup infra tools: ensure user kube directory"
-      ansible.builtin.file:
-        path: "{{ k3s_user_kubeconfig_dir }}"
-        state: directory
-        mode: "755"
+        - name: "[archlinux] Setup infra tools: ensure user kube directory"
+          ansible.builtin.file:
+            path: "{{ k3s_user_kubeconfig_dir }}"
+            state: directory
+            mode: "755"
 
-    - name: "[archlinux] Setup infra tools: install user kubeconfig"
-      become: true
-      become_user: "{{ ansible_facts.env.USER }}"
-      ansible.builtin.copy:
-        src: "{{ k3s_system_kubeconfig_path }}"
-        dest: "{{ k3s_user_kubeconfig_path }}"
-        remote_src: true
-        mode: "0644"
+        - name: "[archlinux] Setup infra tools: install user kubeconfig"
+          become: true
+          become_user: "{{ ansible_facts.env.USER }}"
+          ansible.builtin.copy:
+            src: "{{ k3s_system_kubeconfig_path }}"
+            dest: "{{ k3s_user_kubeconfig_path }}"
+            remote_src: true
+            mode: "0644"
 
-    - name: "[archlinux] Setup infra tools: wait for kubectl node access"
-      ansible.builtin.command:
-        argv:
-          - kubectl
-          - get
-          - nodes
-          - -o
-          - name
-      environment:
-        KUBECONFIG: "{{ k3s_user_kubeconfig_path }}"
-      register: var_k3s_nodes
-      changed_when: false
-      retries: 20
-      delay: 6
-      until:
-        - var_k3s_nodes.rc == 0
-        - var_k3s_nodes.stdout_lines | length > 0
+        - name: "[archlinux] Setup infra tools: wait for kubectl node access"
+          ansible.builtin.command:
+            argv:
+              - kubectl
+              - get
+              - nodes
+              - -o
+              - name
+          environment:
+            KUBECONFIG: "{{ k3s_user_kubeconfig_path }}"
+          register: var_k3s_nodes
+          changed_when: false
+          retries: 20
+          delay: 6
+          until:
+            - var_k3s_nodes.rc == 0
+            - var_k3s_nodes.stdout_lines | length > 0
+      rescue:
+        - name: "[archlinux] Setup infra tools: warn on k3s runtime failure"
+          ansible.builtin.debug:
+            msg: >-
+              k3s runtime tasks failed (service start, kubeconfig wait, or
+              kubectl probe). This is expected on a freshly installed host
+              that has not been rebooted yet. Reboot and re-run the playbook
+              to finish k3s setup.
