@@ -4,7 +4,7 @@
 KITTY_DMENU_CACHE_NAMESPACE=${KITTY_DMENU_CACHE_NAMESPACE:-kitty-dmenu}
 KITTY_DMENU_SOCKET_CACHE_KEY=${KITTY_DMENU_SOCKET_CACHE_KEY:-sockets-v1}
 KITTY_DMENU_SOCKET_CACHE_TTL=${KITTY_DMENU_SOCKET_CACHE_TTL:-10}
-KITTY_DMENU_WINDOW_CACHE_KEY=${KITTY_DMENU_WINDOW_CACHE_KEY:-open-cwds-v1}
+KITTY_DMENU_WINDOW_CACHE_KEY=${KITTY_DMENU_WINDOW_CACHE_KEY:-open-cwds-v2}
 # Keep the last open-cwd list for fast startup; fzf's one-shot refresh owns freshness.
 KITTY_DMENU_WINDOW_CACHE_TTL=${KITTY_DMENU_WINDOW_CACHE_TTL:-604800}
 
@@ -225,6 +225,28 @@ kitty_dmenu_focus_cwd_on_sockets() {
     return 1
 }
 
+kitty_dmenu_focus_window_id_on_socket() {
+    local socket=$1
+    local window_id=$2
+    local error_msg
+
+    [[ -n $socket && -n $window_id ]] || return 1
+
+    if error_msg=$(kitten @ --to "unix:$socket" focus-window --match "id:$window_id" 2>&1); then
+        return 0
+    fi
+
+    case $error_msg in
+    *"No matching windows for expression"* | *"Failed to connect"* | *"Connection refused"* | *"connection refused"*)
+        ;;
+    *)
+        notify-send "Error: $error_msg"
+        ;;
+    esac
+
+    return 1
+}
+
 kitty_dmenu_focus_cwd() {
     local selected_path=$1
     local sockets=()
@@ -254,10 +276,12 @@ kitty_dmenu_collect_window_entries() {
         index=$((index + 1))
         (
             kitten @ --to "unix:$socket" ls 2>/dev/null |
-                jq -r --arg socket "$socket" '
-                    .[]?.tabs[]?.windows[]?
-                    | select(.cwd != null and .cwd != "")
-                    | [.cwd, $socket]
+                jq -r --arg socket "$socket" --arg home "$HOME" '
+                    .[]?
+                    | select(.wm_class == "kitty")
+                    | .tabs[]?.windows[]?
+                    | select(.cwd != null and .cwd != "" and .cwd != $home)
+                    | [.cwd, $socket, .id, (.last_focused_at // 0)]
                     | @tsv
                 ' >"$file"
         ) &
@@ -268,7 +292,9 @@ kitty_dmenu_collect_window_entries() {
         wait "$pid" || true
     done
 
-    awk -F '\t' 'NF >= 2 && $1 != "" && !seen[$1]++ { print $1 "\t" $2 }' "$tmpdir"/*.tsv 2>/dev/null
+    awk -F '\t' 'NF >= 2 && $1 != "" { print }' "$tmpdir"/*.tsv 2>/dev/null |
+        sort -t $'\t' -k4,4gr |
+        awk -F '\t' '!seen[$1]++ { print }'
     rm -rf "$tmpdir"
 }
 

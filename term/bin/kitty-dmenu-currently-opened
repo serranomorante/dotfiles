@@ -4,7 +4,7 @@
 source "$HOME/dotfiles/term/bin/kitty-dmenu-common.bash"
 
 kitty_dmenu_currently_opened_main() {
-    local tmpdir entries_file choices_file selected_file selected socket
+    local tmpdir entries_file choices_file selected_file selected socket window_id
 
     tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/kitty-dmenu-current.XXXXXX") || exit 1
     trap 'rm -rf "$tmpdir"' EXIT
@@ -28,18 +28,18 @@ kitty_dmenu_currently_opened_main() {
     fi
     [[ -n $selected ]] || exit 0
 
-    socket=$(awk -F '\t' -v cwd="$selected" '$1 == cwd { print $2; exit }' "$entries_file")
+    read -r socket window_id < <(awk -F '\t' -v cwd="$selected" '$1 == cwd { print $2, $3; exit }' "$entries_file")
 
-    if [[ -n $socket ]] && kitty_dmenu_focus_cwd_on_sockets "$selected" "$socket"; then
+    if kitty_dmenu_focus_window_id_on_socket "$socket" "$window_id" ||
+        { [[ -n $socket ]] && kitty_dmenu_focus_cwd_on_sockets "$selected" "$socket"; }; then
         exit 0
     fi
 
     kitty_dmenu_window_entries 1 >"$entries_file"
-    socket=$(awk -F '\t' -v cwd="$selected" '$1 == cwd { print $2; exit }' "$entries_file")
+    read -r socket window_id < <(awk -F '\t' -v cwd="$selected" '$1 == cwd { print $2, $3; exit }' "$entries_file")
 
-    if [[ -n $socket ]]; then
-        kitty_dmenu_focus_cwd_on_sockets "$selected" "$socket" || notify-send "Error: no matching Kitty window for $selected"
-    else
+    if ! kitty_dmenu_focus_window_id_on_socket "$socket" "$window_id" &&
+        ! { [[ -n $socket ]] && kitty_dmenu_focus_cwd_on_sockets "$selected" "$socket"; }; then
         notify-send "Error: no matching Kitty window for $selected"
     fi
 }
