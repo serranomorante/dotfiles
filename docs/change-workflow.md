@@ -24,6 +24,10 @@ system actions.
 
 - Match the existing style of the file.
 - Keep shell scripts POSIX `sh` unless the file already requires Bash.
+- Executable scripts intended to be run from `~/bin` or another `PATH`
+  directory should not include a language extension such as `.sh` in the
+  command name. Keep extensions only for sourced libraries, generated snippets,
+  or legacy files that are not being renamed in the current change.
 - Keep comments useful and short. Add comments when they explain non-obvious
   behavior or latency-sensitive tradeoffs.
 - Scripts should start with a brief header after the shebang, and after any

@@ -12,7 +12,7 @@ enabled = false
 verbose = true
 
 [core]
-editor = open_in_nvim.sh git_editor
+editor = open_in_nvim git_editor
 pager = delta
 
 [interactive]

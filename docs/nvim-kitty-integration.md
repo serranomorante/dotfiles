@@ -26,7 +26,7 @@ $XDG_RUNTIME_DIR/nvim-kitty-cwd-home__aaaa__dotfiles__playbooks.sock
 
 Multiple Kitty windows launched from the same directory target the same Neovim
 server socket. This keeps external tools able to call either
-`open_in_nvim.sh --cwd <cwd>` or `open_in_nvim.sh --servername <socket>`
+`open_in_nvim --cwd <cwd>` or `open_in_nvim --servername <socket>`
 without discovering a random per-window UUID first. `--cwd .` resolves to the
 caller's current working directory before deriving the socket name.
 
@@ -83,7 +83,7 @@ Shared, generic kitty window helpers live in
   focused window wins.
 
 App-specific focus helpers live in the owning script. For the Neovim/lazygit
-handoff, `nvim/bin/open_in_nvim.sh` sends the remote edit directly to the
+handoff, `nvim/bin/open_in_nvim` sends the remote edit directly to the
 CWD-derived Neovim server. Neovim's autocmd focuses the Neovim Kitty window
 after the remote edit displays a buffer, and Kitty's quick-access-terminal
 configuration hides the lazygit panel on focus loss. Showing the panel is owned
@@ -95,7 +95,7 @@ Kitty window state is small, cheap to query, and easy to make stale.
 
 ## Consumers
 
-- `nvim/bin/open_in_nvim.sh` sends remote edit requests to the configured
+- `nvim/bin/open_in_nvim` sends remote edit requests to the configured
   Neovim server. It defaults to `NVIM_KITTY_LISTEN_ADDRESS`, accepts
   `--cwd <cwd>` to derive the predictable CWD socket, and accepts
   `--servername <socket>` when a tool already knows the exact server socket.

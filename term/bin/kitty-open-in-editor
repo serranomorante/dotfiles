@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Purpose: Edit a file in an existing Kitty window whose cwd is a prefix of the
 #   given path. Sends the file (and optional line) to that window's Neovim via
-#   open_in_nvim.sh; Neovim focuses its own Kitty window after the remote edit.
+#   open_in_nvim; Neovim focuses its own Kitty window after the remote edit.
 # Usage: kitty-open-in-editor PATH[:LINE:]
 
 source "$HOME/dotfiles/term/bin/kitty-dmenu-common.bash"
@@ -24,9 +24,9 @@ send_edit_to_kitty() {
     local socket=$1
 
     if [[ -n $line ]]; then
-        kitten @ --to "unix:$socket" run open_in_nvim.sh kitty_simple_edit_at_line "$file" "$line" >/dev/null
+        kitten @ --to "unix:$socket" run open_in_nvim kitty_simple_edit_at_line "$file" "$line" >/dev/null
     else
-        kitten @ --to "unix:$socket" run open_in_nvim.sh kitty_simple_edit "$file" >/dev/null
+        kitten @ --to "unix:$socket" run open_in_nvim kitty_simple_edit "$file" >/dev/null
     fi
 }
 
