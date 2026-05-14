@@ -266,6 +266,9 @@ Neovim debugging, Python development setup, and hardware-specific notes. Prefer
 adding focused docs there instead of expanding the root README with long
 implementation details.
 
+- Browser launcher resource limits are documented in
+  [browser-resource-limits.md](./browser-resource-limits.md).
+
 ## KDE Runtime Configuration
 
 KDE global shortcut settings are tracked in

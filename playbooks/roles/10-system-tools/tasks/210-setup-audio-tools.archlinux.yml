@@ -13,6 +13,34 @@
     state: latest
   ignore_errors: true
 
+- name: "[archlinux] Setup audio tools: check plexamp desktop file"
+  ansible.builtin.stat:
+    path: /var/lib/flatpak/exports/share/applications/com.plexamp.Plexamp.desktop
+  register: var_plexamp_desktop_file
+
+- name: "[archlinux] Setup audio tools: copy plexamp desktop file to user directory"
+  ansible.builtin.copy:
+    src: /var/lib/flatpak/exports/share/applications/com.plexamp.Plexamp.desktop
+    dest: ~/.local/share/applications/com.plexamp.Plexamp.desktop
+    mode: "644"
+  when: var_plexamp_desktop_file.stat.exists
+
+- name: "[archlinux] Setup audio tools: clean plexamp exec line"
+  ansible.builtin.lineinfile:
+    dest: ~/.local/share/applications/com.plexamp.Plexamp.desktop
+    regexp: "^Exec=.*"
+    state: absent
+  when: var_plexamp_desktop_file.stat.exists
+
+- name: "[archlinux] Setup audio tools: ensure plexamp resource-limited desktop"
+  ansible.builtin.blockinfile:
+    dest: ~/.local/share/applications/com.plexamp.Plexamp.desktop
+    marker: "# {mark} ANSIBLE MANAGED BLOCK"
+    insertafter: "^\\[Desktop Entry\\]"
+    block: Exec={{ ansible_facts.env.HOME }}/bin/app-cgroup-launch plexamp /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=startplexamp --file-forwarding com.plexamp.Plexamp @@u %U @@
+  when: var_plexamp_desktop_file.stat.exists
+  notify: handler_update_desktop_database
+
 - name: "[archlinux] Setup audio tools: ensure aur packages"
   become: true
   become_user: aur_builder

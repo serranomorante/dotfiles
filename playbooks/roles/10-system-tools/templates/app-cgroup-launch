@@ -1,0 +1,55 @@
+#!/bin/sh
+# {{ ansible_managed }}
+# Purpose: Launch selected desktop applications inside user systemd cgroup scopes.
+# Notes: Existing app instances must be closed before a new launch can inherit limits.
+
+set -eu
+
+usage() {
+  echo "Usage: app-cgroup-launch <profile> <command> [args...]" >&2
+  exit 2
+}
+
+[ "$#" -ge 2 ] || usage
+
+profile=$1
+shift
+
+case "$profile" in
+{% for item in app_cgroup_profiles | dict2items %}
+  {{ item.key }})
+    unit_prefix={{ item.value.unit_prefix | quote }}
+    description={{ item.value.description | quote }}
+    cpu_quota={{ item.value.cpu_quota | quote }}
+    cpu_weight={{ item.value.cpu_weight | string | quote }}
+    io_weight={{ item.value.io_weight | string | quote }}
+    nice={{ item.value.nice | string | quote }}
+    memory_high={{ item.value.memory_high | quote }}
+    memory_max={{ item.value.memory_max | quote }}
+    ;;
+{% endfor %}
+  *)
+    usage
+    ;;
+esac
+
+unit="${unit_prefix}-$(date +%Y%m%d%H%M%S)-$$.scope"
+
+exec systemd-run \
+  --user \
+  --scope \
+  --quiet \
+  --collect \
+  --same-dir \
+  --unit="$unit" \
+  --description="$description" \
+  --nice="$nice" \
+  --property=CPUAccounting=yes \
+  --property=MemoryAccounting=yes \
+  --property=IOAccounting=yes \
+  --property="CPUQuota=$cpu_quota" \
+  --property="CPUWeight=$cpu_weight" \
+  --property="IOWeight=$io_weight" \
+  --property="MemoryHigh=$memory_high" \
+  --property="MemoryMax=$memory_max" \
+  "$@"

@@ -359,7 +359,7 @@
     dest: "{{ ansible_facts.env.HOME }}/.local/share/applications/brave-browser.desktop"
     marker: "# {mark} ANSIBLE MANAGED BLOCK"
     insertafter: "^\\[Desktop Entry\\]"
-    block: Exec=brave --load-extension={{ browser_local_extensions | map(attribute='path') | join(',') }} %U
+    block: Exec={{ ansible_facts.env.HOME }}/bin/app-cgroup-launch brave /usr/bin/brave --load-extension={{ browser_local_extensions | map(attribute='path') | join(',') }} %U
   notify: handler_update_desktop_database
 
 - name: "[archlinux] Setup browser tools: copy chromium desktop file to user directory"
@@ -382,7 +382,7 @@
     marker: "# {mark} ANSIBLE MANAGED BLOCK"
     insertafter: "^\\[Desktop Entry\\]"
     block: >
-      Exec=/usr/bin/chromium
+      Exec={{ ansible_facts.env.HOME }}/bin/app-cgroup-launch chromium /usr/bin/chromium
       --remote-debugging-port=9222
       --load-extension={% for item in browser_local_extensions if (item.hide is not defined) or (not item.hide) %}{{ item.path }}{% if not loop.last %},{% endif %}{% endfor %}
       %U

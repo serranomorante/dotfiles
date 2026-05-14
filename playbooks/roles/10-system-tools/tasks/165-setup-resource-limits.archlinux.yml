@@ -1,0 +1,6 @@
+---
+- name: "[archlinux] Resource limits: install app cgroup launcher"
+  ansible.builtin.template:
+    src: app-cgroup-launch
+    dest: ~/bin/app-cgroup-launch
+    mode: "755"

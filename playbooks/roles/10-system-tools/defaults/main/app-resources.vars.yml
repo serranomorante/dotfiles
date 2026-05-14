@@ -1,0 +1,38 @@
+---
+app_cgroup_profiles:
+  brave:
+    unit_prefix: browser-brave
+    description: Brave browser
+    cpu_quota: 400%
+    cpu_weight: 70
+    io_weight: 70
+    nice: 5
+    memory_high: 7G
+    memory_max: 12G
+  chromium:
+    unit_prefix: browser-chromium
+    description: Chromium browser
+    cpu_quota: 300%
+    cpu_weight: 50
+    io_weight: 50
+    nice: 8
+    memory_high: 5G
+    memory_max: 9G
+  plexamp:
+    unit_prefix: app-plexamp
+    description: Plexamp
+    cpu_quota: 100%
+    cpu_weight: 40
+    io_weight: 60
+    nice: 5
+    memory_high: 1G
+    memory_max: 2G
+  qbittorrent:
+    unit_prefix: app-qbittorrent
+    description: qBittorrent
+    cpu_quota: 75%
+    cpu_weight: 25
+    io_weight: 25
+    nice: 10
+    memory_high: 1G
+    memory_max: 2G

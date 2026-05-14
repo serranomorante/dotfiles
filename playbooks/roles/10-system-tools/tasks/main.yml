@@ -196,6 +196,17 @@
   tags: ["10-160"]
 
 - block:
+    - name: Setup resource limits
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 165-setup-resource-limits.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["10-165"]
+
+- block:
     - name: Prepare volta, npm, node, etc before browser setup
       ansible.builtin.include_role:
         name: 20-dev-tools
