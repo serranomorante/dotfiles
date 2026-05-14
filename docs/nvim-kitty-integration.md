@@ -38,6 +38,12 @@ Neovim server or start a new listening server in the same Kitty window. It
 stays out of the way for explicit client-server invocations
 (`--server`, `--listen`, `--remote*`, `--headless`).
 
+Kitty mappings that need a standalone Neovim UI in the newly launched Kitty
+window, such as scrollback-pager overlays, should clear
+`NVIM_KITTY_LISTEN_ADDRESS` for that launch. Otherwise the wrapper may treat the
+pager process as a client of the cwd-derived server and redirect it into an
+existing Neovim window.
+
 ## Kitty Window Matching
 
 While an interactive Neovim process is alive in a Kitty window, Kitty exposes
