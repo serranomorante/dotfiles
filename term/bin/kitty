@@ -1,7 +1,22 @@
 #!/usr/bin/env bash
 
 runtime_root=${XDG_RUNTIME_DIR:-"$HOME/.cache/nvim"}
-kitty_instance_id=$(uuidgen)
-KITTY_OS_INSTANCE_ID="$kitty_instance_id" \
-    NVIM_KITTY_LISTEN_ADDRESS="${runtime_root}/nvim-kitty-${kitty_instance_id}.sock" \
+kitty_os_instance_id=$(uuidgen)
+cwd=${PWD:-}
+
+if [[ -z "$cwd" ]]; then
+    cwd=$(pwd)
+fi
+
+cwd=${cwd%/}
+if [[ -z "$cwd" || "$cwd" == "/" ]]; then
+    cwd_key=root
+else
+    cwd_key=${cwd#/}
+    cwd_key=${cwd_key//\//__}
+    cwd_key=$(printf '%s' "$cwd_key" | tr -c 'A-Za-z0-9._-' '_')
+fi
+
+KITTY_OS_INSTANCE_ID="$kitty_os_instance_id" \
+    NVIM_KITTY_LISTEN_ADDRESS="${runtime_root}/nvim-kitty-cwd-${cwd_key}.sock" \
     ~/.local/kitty.app/bin/kitty "$@"

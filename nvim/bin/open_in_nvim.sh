@@ -6,10 +6,98 @@
 #   Use `exec >/tmp/open_in_nvim.out 2>&1` to log output into file. You can then run
 #   `watch -n 1 -d cat /tmp/open_in_nvim.out` to see the logs in realtime.
 
-app="$1"
 servername=${NVIM_KITTY_LISTEN_ADDRESS:-}
 
-shift
+servername_from_cwd() {
+    cwd=$1
+
+    if [ -z "$cwd" ] || [ "$cwd" = "." ]; then
+        cwd=${PWD:-}
+    fi
+
+    case $cwd in
+    /*) ;;
+    *)
+        if resolved_cwd=$(cd "$cwd" 2>/dev/null && pwd); then
+            cwd=$resolved_cwd
+        elif [ -n "${PWD:-}" ]; then
+            cwd=${PWD%/}/$cwd
+        fi
+        ;;
+    esac
+
+    cwd=${cwd%/}
+    if [ -z "$cwd" ] || [ "$cwd" = "/" ]; then
+        cwd_key=root
+    else
+        cwd_key=${cwd#/}
+        cwd_key=$(printf '%s' "$cwd_key" | sed 's|/|__|g' | tr -c 'A-Za-z0-9._-' '_')
+    fi
+
+    printf '%s/nvim-kitty-cwd-%s.sock\n' "${XDG_RUNTIME_DIR:-"$HOME/.cache/nvim"}" "$cwd_key"
+}
+
+usage() {
+    cat <<EOF
+Usage: open_in_nvim.sh [--servername SOCKET | --cwd CWD] SUBCOMMAND [ARG...]
+       open_in_nvim.sh [--servername SOCKET | --cwd CWD] FILE...
+
+Options:
+  --cwd CWD            Derive the Neovim server socket from a working directory.
+  --servername SOCKET  Neovim server socket to target. Defaults to
+                       NVIM_KITTY_LISTEN_ADDRESS.
+  -h, --help           Show this help.
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+    case $1 in
+    --servername)
+        if [ "$#" -lt 2 ]; then
+            printf '%s\n' "open_in_nvim.sh: --servername requires a socket path" >&2
+            exit 2
+        fi
+        servername=$2
+        shift 2
+        ;;
+    --servername=*)
+        servername=${1#--servername=}
+        shift
+        ;;
+    --cwd)
+        if [ "$#" -lt 2 ]; then
+            printf '%s\n' "open_in_nvim.sh: --cwd requires a working directory" >&2
+            exit 2
+        fi
+        servername=$(servername_from_cwd "$2")
+        shift 2
+        ;;
+    --cwd=*)
+        servername=$(servername_from_cwd "${1#--cwd=}")
+        shift
+        ;;
+    -h | --help)
+        usage
+        exit 0
+        ;;
+    --)
+        shift
+        break
+        ;;
+    -*)
+        break
+        ;;
+    *)
+        break
+        ;;
+    esac
+done
+
+app=${1:-}
+if [ "$#" -gt 0 ]; then
+    shift
+fi
+
 nvim_center_view='vim.cmd.normal({ "zz", bang = true })'
 nvim_close_term_win="pcall(vim.api.nvim_win_close, 0, false)"
 nvim_edit="vim.cmd.edit({ [[$1]], mods = { emsg_silent = true }})" # don't use `nvr --remote` because it doesn't respect shortmess
@@ -71,6 +159,9 @@ kitty_simple_edit_at_line)
     nvr --servername "$servername" --nostart -cc "lua $nvim_edit; $nvim_center_view" -c "$2"
     ;;
 *)
+    if [ -n "$app" ]; then
+        set -- "$app" "$@"
+    fi
     nvim --server "$servername" --remote "$@"
     ;;
 esac
