@@ -162,6 +162,6 @@ kitty_simple_edit_at_line)
     if [ -n "$app" ]; then
         set -- "$app" "$@"
     fi
-    nvim --server "$servername" --remote "$@"
+    nvim "$@"
     ;;
 esac
