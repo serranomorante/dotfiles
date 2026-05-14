@@ -58,6 +58,21 @@ function M.join_paths(...)
   return result
 end
 
+local function lua_pattern_escape(value) return (value:gsub("([^%w])", "%%%1")) end
+
+---@param servername? string
+---@return boolean
+function M.is_kitty_cwd_servername(servername)
+  servername = servername or vim.v.servername
+  if servername == "" then return false end
+
+  local runtime_root = (vim.env.XDG_RUNTIME_DIR or M.join_paths(vim.env.HOME, ".cache", "nvim")):gsub("/+$", "")
+  return servername:match("^" .. lua_pattern_escape(runtime_root) .. "/nvim%-kitty%-cwd%-[A-Za-z0-9._-]+%.sock$") ~= nil
+end
+
+---@return boolean
+function M.should_persist_local_state() return M.is_kitty_cwd_servername(vim.v.servername) end
+
 --- Run a shell command and capture the output and if the command succeeded or failed
 ---
 ---@param cmd string|string[] The terminal command to execute
@@ -347,10 +362,7 @@ function M.prev_qf_item(opts)
 end
 
 ---Check if nvim was started with no args and without reading from stdin
-function M.nvim_started_without_args()
-  local cmdline = vim.fn.split(unpack(vim.fn.readfile("/proc/self/cmdline")), "\n")
-  return not vim.g.using_stdin and (vim.tbl_count(cmdline) <= 1 or vim.list_contains(cmdline, "--listen"))
-end
+function M.nvim_started_without_args() return not vim.g.using_stdin and vim.fn.argc() == 0 end
 
 function M.has_remote_uis() return vim.tbl_count(vim.api.nvim_list_uis()) > 1 end
 

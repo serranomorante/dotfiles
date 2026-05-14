@@ -9,8 +9,9 @@ vim.go.guicursor = "n:block-Cursor/lCursor,a:blinkwait700-blinkoff400-blinkon250
 local cache_path = vim.fn.stdpath("cache")
 local undodir = utils.join_paths(cache_path, "undodir")
 local shadadir = utils.join_paths(cache_path, "shadadir")
-if not utils.is_directory(undodir) then vim.fn.mkdir(undodir, "p") end
-if not utils.is_directory(shadadir) then vim.fn.mkdir(shadadir, "p") end
+local persist_local_state = utils.should_persist_local_state()
+if persist_local_state and not utils.is_directory(undodir) then vim.fn.mkdir(undodir, "p") end
+if persist_local_state and not utils.is_directory(shadadir) then vim.fn.mkdir(shadadir, "p") end
 
 vim.opt.exrc = true
 vim.opt.secure = true
@@ -31,10 +32,14 @@ vim.go.showmode = false
 vim.o.swapfile = false
 vim.go.backup = false
 
+local persistent_state_key = ("%d:%s\n%d:%s"):format(#constants.CWD, constants.CWD, #vim.v.servername, vim.v.servername)
+
 vim.go.shada = "'500,<1000,%0,:1000,/1000,s500,h"
-vim.go.shadafile = utils.join_paths(shadadir, vim.fn.sha256(constants.CWD):sub(1, 8) .. ".nvim.shada")
-vim.go.undodir = undodir
-vim.o.undofile = true
+vim.go.shadafile = persist_local_state
+    and utils.join_paths(shadadir, vim.fn.sha256(persistent_state_key):sub(1, 8) .. ".nvim.shada")
+  or "NONE"
+if persist_local_state then vim.go.undodir = undodir end
+vim.o.undofile = persist_local_state
 vim.go.jumpoptions = "stack,view"
 
 vim.wo.signcolumn = "auto:2-4"
