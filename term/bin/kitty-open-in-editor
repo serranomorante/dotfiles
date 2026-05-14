@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Purpose: Edit a file in an existing Kitty window whose cwd is a prefix of the
-#   given path. Sends the file (and optional line) to that window's Neovim via
-#   open_in_nvim; Neovim focuses its own Kitty window after the remote edit.
+# Purpose: Edit a file in the CWD-derived Neovim server for the given path.
 # Usage: kitty-open-in-editor PATH[:LINE:]
 
 source "$HOME/dotfiles/term/bin/kitty-dmenu-common.bash"
@@ -20,49 +18,73 @@ else
     line=
 fi
 
-send_edit_to_kitty() {
-    local socket=$1
+send_edit_to_cwd() {
+    local cwd=$1
+    local edit_file=${2:-$file}
 
     if [[ -n $line ]]; then
-        kitten @ --to "unix:$socket" run open_in_nvim kitty_simple_edit_at_line "$file" "$line" >/dev/null
+        open_in_nvim --cwd "$cwd" kitty_simple_edit_at_line "$edit_file" "$line" >/dev/null
     else
-        kitten @ --to "unix:$socket" run open_in_nvim kitty_simple_edit "$file" >/dev/null
+        open_in_nvim --cwd "$cwd" kitty_simple_edit "$edit_file" >/dev/null
     fi
 }
 
-try_open_on_entries() {
-    local entries=$1
-    local cwd socket
+absolute_file_path() {
+    local path=$1
 
-    while IFS=$'\t' read -r cwd socket; do
-        [[ -n $cwd && -n $socket ]] || continue
-        [[ $target == "$cwd"* ]] || continue
+    case $path in
+    /*) printf '%s\n' "$path" ;;
+    *) printf '%s/%s\n' "${PWD%/}" "$path" ;;
+    esac
+}
 
-        if send_edit_to_kitty "$socket"; then
+containing_dir() {
+    local path=$1
+    local dir
+
+    if [[ -d $path ]]; then
+        dir=$path
+    else
+        dir=${path%/*}
+        [[ $dir != "$path" ]] || dir=.
+    fi
+
+    (cd "$dir" 2>/dev/null && pwd)
+}
+
+parent_dir() {
+    local dir=${1%/}
+
+    if [[ -z $dir || $dir == "/" ]]; then
+        printf '/\n'
+    else
+        dir=${dir%/*}
+        printf '%s\n' "${dir:-/}"
+    fi
+}
+
+try_open_on_parent_servers() {
+    local abs_file dir socket
+
+    abs_file=$(absolute_file_path "$file")
+    dir=$(containing_dir "$abs_file") || return 1
+
+    while true; do
+        socket=$(kitty_dmenu_nvim_servername_for_cwd "$dir")
+        if [[ -S $socket ]] && send_edit_to_cwd "$dir" "$abs_file"; then
             return 0
         fi
-    done <<<"$entries"
+
+        [[ $dir != "/" ]] || break
+        dir=$(parent_dir "$dir")
+    done
 
     return 1
 }
 
-attempt() {
-    local force_refresh=$1
-    local sockets=()
-    local entries
-
-    readarray -t sockets < <(kitty_dmenu_socket_list "$force_refresh")
-    ((${#sockets[@]} > 0)) || return 1
-
-    entries=$(kitty_dmenu_collect_window_entries "${sockets[@]}")
-    [[ -n $entries ]] || return 1
-
-    try_open_on_entries "$entries"
-}
-
-if attempt 0 || attempt 1; then
+if try_open_on_parent_servers; then
     exit 0
 fi
 
-echo "No matching kitty window found for path: $target" >&2
+echo "No matching Neovim server found for path: $target" >&2
 exit 1

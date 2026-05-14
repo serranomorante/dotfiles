@@ -104,9 +104,10 @@ Kitty window state is small, cheap to query, and easy to make stale.
   `--servername <socket>` when a tool already knows the exact server socket.
   The Neovim autocmd owns the focus handoff after those requests display a
   buffer.
-- `term/bin/kitty-open-in-editor` finds a Kitty window by cwd and sends the
-  edit request into that window. It also relies on the Neovim autocmd for the
-  final focus step.
+- `term/bin/kitty-open-in-editor` derives candidate Neovim server sockets from
+  the target file's parent directories and sends the edit request directly with
+  `open_in_nvim --cwd`. It does not enumerate Kitty remote-control sockets.
+  Neovim's autocmd still owns the final focus step.
 - Lazygit consumes those subcommands via custom commands declared in
   `lazygit/dot-config/lazygit/config.yml`. See [lazygit.md](./lazygit.md) for
   the lazygit-specific bindings.
