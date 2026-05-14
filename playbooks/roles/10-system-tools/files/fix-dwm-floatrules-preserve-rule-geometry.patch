@@ -1,0 +1,76 @@
+diff --git a/dwm.c b/dwm.c
+index 5c4f304..fdaf076 100644
+--- a/dwm.c
++++ b/dwm.c
+@@ -99,6 +99,7 @@ struct Client {
+ 	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen, cantfocus;
+ 	int floatborderpx;
+ 	int hasfloatbw;
++	int hasfloatx, hasfloaty, hasfloatw, hasfloath;
+ 	Client *next;
+ 	Client *snext;
+ 	Monitor *mon;
+@@ -323,10 +324,22 @@ applyrules(Client *c)
+ 				c->hasfloatbw = 1;
+ 			}
+ 			if (r->isfloating) {
+-				if (r->floatx >= 0) c->x = c->mon->mx + r->floatx;
+-				if (r->floaty >= 0) c->y = c->mon->my + r->floaty;
+-				if (r->floatw >= 0) c->w = r->floatw;
+-				if (r->floath >= 0) c->h = r->floath;
++				if (r->floatx >= 0) {
++					c->x = c->mon->mx + r->floatx;
++					c->hasfloatx = 1;
++				}
++				if (r->floaty >= 0) {
++					c->y = c->mon->my + r->floaty;
++					c->hasfloaty = 1;
++				}
++				if (r->floatw >= 0) {
++					c->w = r->floatw;
++					c->hasfloatw = 1;
++				}
++				if (r->floath >= 0) {
++					c->h = r->floath;
++					c->hasfloath = 1;
++				}
+ 			}
+ 			for (m = mons; m && m->num != r->monitor; m = m->next);
+ 			if (m)
+@@ -625,20 +638,28 @@ configurerequest(XEvent *e)
+ 		else if (c->isfloating || !selmon->lt[selmon->sellt]->arrange) {
+ 			m = c->mon;
+ 			if (ev->value_mask & CWX) {
+-				c->oldx = c->x;
+-				c->x = m->mx + ev->x;
++				if (!c->hasfloatx) {
++					c->oldx = c->x;
++					c->x = m->mx + ev->x;
++				}
+ 			}
+ 			if (ev->value_mask & CWY) {
+-				c->oldy = c->y;
+-				c->y = m->my + ev->y;
++				if (!c->hasfloaty) {
++					c->oldy = c->y;
++					c->y = m->my + ev->y;
++				}
+ 			}
+ 			if (ev->value_mask & CWWidth) {
+-				c->oldw = c->w;
+-				c->w = ev->width;
++				if (!c->hasfloatw) {
++					c->oldw = c->w;
++					c->w = ev->width;
++				}
+ 			}
+ 			if (ev->value_mask & CWHeight) {
+-				c->oldh = c->h;
+-				c->h = ev->height;
++				if (!c->hasfloath) {
++					c->oldh = c->h;
++					c->h = ev->height;
++				}
+ 			}
+ 			if ((c->x + c->w) > m->mx + m->mw && c->isfloating)
+ 				c->x = m->mx + (m->mw / 2 - WIDTH(c) / 2); /* center in x direction */

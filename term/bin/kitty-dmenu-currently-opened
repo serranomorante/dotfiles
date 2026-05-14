@@ -16,7 +16,7 @@ kitty_dmenu_currently_opened_main() {
     kitty_dmenu_cached_window_entries >"$entries_file"
     awk -F '\t' '{ print $1 }' "$entries_file" >"$choices_file"
 
-    kitty --class kitty-dmenu -o tab_bar_style=hidden bash -c \
+    kitty_dmenu_run_quick_access_picker open-cwds bash -c \
         'source "$HOME/dotfiles/term/bin/kitty-dmenu-common.bash"
         kitty_dmenu_run_refreshing_fzf "$1" "$2" "Select cwd: " kitty_dmenu_open_cwd_choices "$3"' \
         bash "$choices_file" "$selected_file" "$entries_file" || true

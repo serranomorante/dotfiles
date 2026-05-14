@@ -171,6 +171,14 @@ can update without restarting the picker.
 Avoid `fzf --track` for these one-shot reload pickers unless there is a specific
 need to preserve cursor identity across reloads; it can leave the highlighted
 row offset from the active query after the reload lands.
+Kitty `fzf` pickers that need their own OS window should launch through
+`kitten quick-access-terminal`, inherit the shared
+`quick-access-terminal.conf`, and keep per-picker overrides limited to sizing
+or identity values such as `lines`, `app_id`, and `background_opacity`.
+
+Kitty quick-access-terminal windows can advertise fixed `WM_NORMAL_HINTS`
+sizes and send later configure requests. DWM float geometry rules for these
+windows rely on the local floatrules preservation patch in the DWM patch stack.
 
 For app-specific kitty macros, prefer scoping the window at launch with
 `--var=...` and binding with `map --when-focus-on var:...`. When a single key

@@ -137,7 +137,7 @@ kitty_dmenu_main() {
 
         project_dirs_cached >"$choices_file"
 
-        kitty --class kitty-dmenu -o tab_bar_style=hidden bash -c \
+        kitty_dmenu_run_quick_access_picker projects bash -c \
             'source "$HOME/dotfiles/term/bin/kitty-dmenu"
             kitty_dmenu_run_refreshing_fzf "$1" "$2" "Select cwd: " project_dirs_refresh' \
             bash "$choices_file" "$selected_file" || true

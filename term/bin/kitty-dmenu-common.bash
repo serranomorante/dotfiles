@@ -116,6 +116,28 @@ kitty_dmenu_nvim_servername_for_cwd() {
     printf '%s/nvim-kitty-cwd-%s.sock\n' "${XDG_RUNTIME_DIR:-"$HOME/.cache/nvim"}" "$cwd_key"
 }
 
+kitty_dmenu_quick_access_group() {
+    local picker=$1
+
+    if [[ -n ${KITTY_OS_INSTANCE_ID:-} ]]; then
+        printf 'kitty-dmenu-%s-%s\n' "$picker" "$KITTY_OS_INSTANCE_ID"
+    else
+        printf 'kitty-dmenu-%s\n' "$picker"
+    fi
+}
+
+kitty_dmenu_run_quick_access_picker() {
+    local picker=$1
+    shift
+
+    kitten quick-access-terminal \
+        --instance-group="$(kitty_dmenu_quick_access_group "$picker")" \
+        --override lines=40 \
+        --override app_id=kitty-dmenu \
+        --override background_opacity=0.8 \
+        "$@"
+}
+
 kitty_dmenu_fzf_reload() {
     local fzf_sock=$1
     local choices_file=$2
