@@ -18,5 +18,5 @@ else
 fi
 
 KITTY_OS_INSTANCE_ID="$kitty_os_instance_id" \
-    NVIM_KITTY_LISTEN_ADDRESS="${runtime_root}/nvim-kitty-cwd-${cwd_key}.sock" \
+    NVIM_KITTY_LISTEN_ADDRESS="${NVIM_KITTY_LISTEN_ADDRESS:-${runtime_root}/nvim-kitty-cwd-${cwd_key}.sock}" \
     ~/.local/kitty.app/bin/kitty "$@"

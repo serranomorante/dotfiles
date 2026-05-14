@@ -157,7 +157,8 @@ kitty_dmenu_main() {
         exit 0
     fi
 
-    exec kitty -d "$selected_path" --session ~/.config/kitty/default.kitty-session
+    exec env NVIM_KITTY_LISTEN_ADDRESS="$(kitty_dmenu_nvim_servername_for_cwd "$selected_path")" \
+        kitty -d "$selected_path" --session ~/.config/kitty/default.kitty-session
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then

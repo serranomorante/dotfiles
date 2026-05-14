@@ -101,6 +101,21 @@ kitty_dmenu_shell_quote() {
     printf "'%s'" "${1//\'/\'\\\'\'}"
 }
 
+kitty_dmenu_nvim_servername_for_cwd() {
+    local cwd=${1%/}
+    local cwd_key
+
+    if [[ -z $cwd || $cwd == "/" ]]; then
+        cwd_key=root
+    else
+        cwd_key=${cwd#/}
+        cwd_key=${cwd_key//\//__}
+        cwd_key=$(printf '%s' "$cwd_key" | tr -c 'A-Za-z0-9._-' '_')
+    fi
+
+    printf '%s/nvim-kitty-cwd-%s.sock\n' "${XDG_RUNTIME_DIR:-"$HOME/.cache/nvim"}" "$cwd_key"
+}
+
 kitty_dmenu_fzf_reload() {
     local fzf_sock=$1
     local choices_file=$2

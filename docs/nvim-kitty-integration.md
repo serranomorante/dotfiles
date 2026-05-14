@@ -8,8 +8,11 @@ client opens or displays a buffer in that server.
 
 `term/bin/kitty` starts each Kitty UI window with a fresh
 `KITTY_OS_INSTANCE_ID` for Kitty-specific grouping, and an
-`NVIM_KITTY_LISTEN_ADDRESS` derived from the current working directory. The
-socket path lives under `$XDG_RUNTIME_DIR` and uses this readable pattern:
+`NVIM_KITTY_LISTEN_ADDRESS` derived from the current working directory unless
+the caller already provided `NVIM_KITTY_LISTEN_ADDRESS`. Launchers that open a
+specific directory, such as `term/bin/kitty-dmenu`, should provide that
+environment variable from the selected target cwd before invoking `kitty -d`.
+The socket path lives under `$XDG_RUNTIME_DIR` and uses this readable pattern:
 
 ```text
 $XDG_RUNTIME_DIR/nvim-kitty-cwd-<absolute-cwd-with-slashes-as-__>.sock
