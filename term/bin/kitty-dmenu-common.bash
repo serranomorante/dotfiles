@@ -132,8 +132,8 @@ kitty_dmenu_run_quick_access_picker() {
 
     kitten quick-access-terminal \
         --instance-group="$(kitty_dmenu_quick_access_group "$picker")" \
-        --override lines=40 \
         --override app_id=kitty-dmenu \
+        --override edge=none \
         --override background_opacity=0.8 \
         "$@"
 }

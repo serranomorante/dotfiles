@@ -176,9 +176,11 @@ Kitty `fzf` pickers that need their own OS window should launch through
 `quick-access-terminal.conf`, and keep per-picker overrides limited to sizing
 or identity values such as `lines`, `app_id`, and `background_opacity`.
 
-Kitty quick-access-terminal windows can advertise fixed `WM_NORMAL_HINTS`
-sizes and send later configure requests. DWM float geometry rules for these
-windows rely on the local floatrules preservation patch in the DWM patch stack.
+Kitty quick-access-terminal uses Kitty's panel machinery internally. On X11,
+the default `edge top` panel geometry forces full monitor width after DWM
+applies float rules, so DWM-managed quick-access windows should use
+`edge none`. DWM float geometry rules for these windows rely on the local
+floatrules preservation patch in the DWM patch stack.
 
 For app-specific kitty macros, prefer scoping the window at launch with
 `--var=...` and binding with `map --when-focus-on var:...`. When a single key

@@ -1,5 +1,5 @@
 diff --git a/dwm.c b/dwm.c
-index 5c4f304..fdaf076 100644
+index 5c4f304..dab78c6 100644
 --- a/dwm.c
 +++ b/dwm.c
 @@ -99,6 +99,7 @@ struct Client {
@@ -37,6 +37,26 @@ index 5c4f304..fdaf076 100644
  			}
  			for (m = mons; m && m->num != r->monitor; m = m->next);
  			if (m)
+@@ -356,7 +369,7 @@ applyrules(Client *c)
+ int
+ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
+ {
+-	int baseismin;
++	int baseismin, rulew = *w, ruleh = *h;
+ 	Monitor *m = c->mon;
+ 
+ 	/* set minimum possible */
+@@ -413,6 +426,10 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
+ 			*w = MIN(*w, c->maxw);
+ 		if (c->maxh)
+ 			*h = MIN(*h, c->maxh);
++		if (c->hasfloatw)
++			*w = rulew;
++		if (c->hasfloath)
++			*h = ruleh;
+ 	}
+ 	return *x != c->x || *y != c->y || *w != c->w || *h != c->h;
+ }
 @@ -625,20 +638,28 @@ configurerequest(XEvent *e)
  		else if (c->isfloating || !selmon->lt[selmon->sellt]->arrange) {
  			m = c->mon;
