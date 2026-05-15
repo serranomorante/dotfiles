@@ -135,10 +135,9 @@ kitty_dmenu_main() {
         choices_file=$tmpdir/choices
         selected_file=$tmpdir/selected
 
-        project_dirs_cached >"$choices_file"
-
         kitty_dmenu_run_quick_access_picker projects bash -c \
             'source "$HOME/dotfiles/term/bin/kitty-dmenu"
+            project_dirs_cached >"$1"
             kitty_dmenu_run_refreshing_fzf "$1" "$2" "Select cwd: " project_dirs_refresh' \
             bash "$choices_file" "$selected_file" || true
 

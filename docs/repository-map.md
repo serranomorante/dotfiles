@@ -175,6 +175,10 @@ Kitty `fzf` pickers that need their own OS window should launch through
 `kitten quick-access-terminal`, inherit the shared
 `quick-access-terminal.conf`, and keep per-picker overrides limited to sizing
 or identity values such as `lines`, `app_id`, and `background_opacity`.
+Keep the launcher path thin: create only the temporary paths needed to collect
+the result before invoking `quick-access-terminal`, then read caches and build
+the initial `fzf` choices inside the panel command so the OS window appears
+before rebuildable data work begins.
 
 Kitty quick-access-terminal uses Kitty's panel machinery internally. On X11,
 the default `edge top` panel geometry forces full monitor width after DWM
