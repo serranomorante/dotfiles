@@ -1,0 +1,92 @@
+diff --git a/dwm.c b/dwm.c
+index b6748d7..a9e4765 100644
+--- a/dwm.c
++++ b/dwm.c
+@@ -96,7 +96,7 @@ struct Client {
+ 	int basew, baseh, incw, inch, maxw, maxh, minw, minh, hintsvalid;
+ 	int bw, oldbw;
+ 	unsigned int tags;
+-	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen, cantfocus;
++	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen, cantfocus, skipfocushistory;
+ 	int floatborderpx;
+ 	int hasfloatbw;
+ 	int hasfloatx, hasfloaty, hasfloatw, hasfloath;
+@@ -150,6 +150,7 @@ typedef struct {
+ 	int floatx, floaty, floatw, floath;
+ 	int floatborderpx;
+     int unmanaged;
++	int skipfocushistory;
+ } Rule;
+ 
+ /* function declarations */
+@@ -319,6 +320,8 @@ applyrules(Client *c)
+ 			c->isfloating = r->isfloating;
+ 			c->tags |= r->tags;
+ 		    unmanaged = r->unmanaged;
++			if (r->skipfocushistory)
++				c->skipfocushistory = 1;
+ 			if (r->floatborderpx >= 0) {
+ 				c->floatborderpx = r->floatborderpx;
+ 				c->hasfloatbw = 1;
+@@ -848,10 +851,23 @@ expose(XEvent *e)
+ void
+ focus(Client *c)
+ {
++	unsigned int tagindex = 0;
++	Client *prev = NULL;
++	int preservefocushistory = 0;
++
+ 	if (!canfocus(c))
+ 		for (c = selmon->stack; c && !canfocus(c); c = c->snext);
+-	if (selmon->sel && selmon->sel != c)
++	if (selmon->sel && selmon->sel != c) {
++		preservefocushistory = c && c->skipfocushistory;
++		if (preservefocushistory) {
++			tagindex = focushistorytag(selmon);
++			prev = selmon->prevclient[tagindex];
++		}
+ 		unfocus(selmon->sel, 0);
++		if (preservefocushistory)
++			selmon->prevclient[tagindex] = prev;
++	}
++
+ 	if (c) {
+ 		if (c->mon != selmon)
+ 			selmon = c->mon;
+@@ -1134,6 +1150,9 @@ manage(Window w, XWindowAttributes *wa)
+ 	Client *c, *t = NULL;
+ 	Window trans = None;
+ 	XWindowChanges wc;
++	unsigned int tagindex = 0;
++	Client *prev = NULL;
++	int preservefocushistory = 0;
+ 
+ 	c = ecalloc(1, sizeof(Client));
+ 	c->win = w;
+@@ -1210,8 +1229,16 @@ manage(Window w, XWindowAttributes *wa)
+ 		(unsigned char *) &(c->win), 1);
+ 	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
+ 	setclientstate(c, NormalState);
+-	if (c->mon == selmon)
++	if (c->mon == selmon) {
++		preservefocushistory = c->skipfocushistory;
++		if (preservefocushistory) {
++			tagindex = focushistorytag(selmon);
++			prev = selmon->prevclient[tagindex];
++		}
+ 		unfocus(selmon->sel, 0);
++		if (preservefocushistory)
++			selmon->prevclient[tagindex] = prev;
++	}
+ 	c->mon->sel = c;
+ 	arrange(c->mon);
+ 	XMapWindow(dpy, c->win);
+@@ -1963,7 +1979,7 @@ unfocus(Client *c, int setfocus)
+ {
+ 	if (!c)
+ 		return;
+-	if (!c->cantfocus)
++	if (!c->cantfocus && !c->skipfocushistory)
+ 		c->mon->prevclient[focushistorytag(c->mon)] = c;
+ 	else if (c->mon->prevclient[focushistorytag(c->mon)] == c)
+ 		c->mon->prevclient[focushistorytag(c->mon)] = NULL;

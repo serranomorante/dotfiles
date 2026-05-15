@@ -1,5 +1,5 @@
 diff --git a/config.h b/config.h
-index 56ee471..ac034d9 100644
+index 56ee471..bfa041c 100644
 --- a/config.h
 +++ b/config.h
 @@ -1,9 +1,9 @@
@@ -21,13 +21,13 @@ index 56ee471..ac034d9 100644
 -	/* class      instance    title       tags mask     isfloating   monitor */
 -	{ "Gimp",     NULL,       NULL,       0,            1,           -1 },
 -	{ "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
-+	/* class                  instance                title                      tags mask     isfloating   monitor    float x,y,w,h    floatborderpx       unmanaged */
++	/* class                  instance                title                      tags mask     isfloating   monitor    float x,y,w,h    floatborderpx       unmanaged    skipfocushistory */
 +	{ "Plasma",               NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1,                  1 }, // make plasma windows unmanaged
 +	{ "plasma-desktop",       NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1,                  1 }, // make plasma windows unmanaged
 +	{ "plasmashell",          NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1,                  1 }, // make plasma windows unmanaged
 +	{ "plasmashell",          "plasmashell",          "Desktop @ QRect",         1 << 8,       0,           -1,        -1,-1,800,800,   -1                     }, // send plasma desktop to tag 9
-+	{ "kitty-dmenu",          "kitty-dmenu",          NULL,                      0,            1,           -1,         0, 0,1910,1070, -1                     }, // float and size kitty-dmenu window
-+	{ "kitty-lazygit",        "kitty-lazygit",        NULL,                      0,            1,           -1,         0, 0,1910,1070, -1                     }, // float and size lazygit quick-access window
++	{ "kitty-dmenu",          "kitty-dmenu",          NULL,                      0,            1,           -1,         0, 0,1910,1070, -1,                  0,           1 }, // float and size kitty-dmenu window
++	{ "kitty-lazygit",        "kitty-lazygit",        NULL,                      0,            1,           -1,         0, 0,1910,1070, -1,                  0,           1 }, // float and size lazygit quick-access window
 +	{ "jdownloader",          "jdownloader",          "JDownloader 2",           1 << 8,       0,           -1,        -1,-1,-1,-1,     -1                     }, // send jdownloader to tag 9
 +	{ NULL,                   NULL,                   "is sharing your screen.", 1 << 8,       1,           -1,        -1,-1,-1,-1,     -1                     }, // send google meet popup to tag 9
 +	{ "kcalc",                "kcalc",                NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1                     }, // make calculator floating by default
