@@ -79,11 +79,6 @@ customCommands:
     context: "commitFiles"
     loadingText: "loading DiffviewOpen"
     output: terminal
-    # From commits, extract diff into /tmp/<sha>.patch file
-  - key: '<c-q>'
-    command: git diff {{.SelectedCommit.Sha}}^! > /tmp/{{.SelectedCommit.Sha}}.patch
-    context: "commits,subCommits"
-    description: 'Custom: extract commit diff into /tmp/<sha>.patch file'
     # From files, open difftool (DiffviewOpen)
   - key: "<c-t>"
     description: 'Custom: Open difftool'
