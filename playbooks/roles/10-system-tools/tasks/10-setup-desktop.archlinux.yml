@@ -43,6 +43,7 @@
       - jq
       - arch-install-scripts # to get genfstab
       - kcalc
+      - gnumeric
       - trash-cli
       - docker
       - docker-compose
