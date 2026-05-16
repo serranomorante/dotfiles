@@ -111,3 +111,60 @@
       - for-my-eyes-only
   changed_when: false
   when: var_arch_private_dotfiles.stat.exists
+
+- name: "[archlinux] Dotfiles: stat KDE global shortcuts"
+  ansible.builtin.stat:
+    path: ~/dotfiles/utilities/dot-config/kglobalshortcutsrc
+    checksum_algorithm: sha256
+  register: var_arch_kglobalshortcutsrc
+
+- name: "[archlinux] Dotfiles: ensure KDE state marker directory"
+  ansible.builtin.file:
+    path: ~/.local/state/dotfiles
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Dotfiles: record applied KDE global shortcuts checksum"
+  ansible.builtin.copy:
+    content: "{{ var_arch_kglobalshortcutsrc.stat.checksum }}\n"
+    dest: ~/.local/state/dotfiles/kglobalshortcutsrc.sha256
+    mode: "644"
+  when: var_arch_kglobalshortcutsrc.stat.exists
+  notify: "10-system-tools : handler_restart_kglobalaccel_service"
+
+- name: "[archlinux] Dotfiles: stat Plasma clipboard service"
+  ansible.builtin.stat:
+    path: ~/dotfiles/utilities/dot-config/systemd/user/plasma-clipboard.service
+    checksum_algorithm: sha256
+  register: var_arch_plasma_clipboard_service
+
+- name: "[archlinux] Dotfiles: ensure Plasma clipboard service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: plasma-clipboard.service
+    enabled: true
+    masked: false
+    state: started
+    daemon_reload: true
+
+- name: "[archlinux] Dotfiles: record applied Plasma clipboard service checksum"
+  ansible.builtin.copy:
+    content: "{{ var_arch_plasma_clipboard_service.stat.checksum }}\n"
+    dest: ~/.local/state/dotfiles/plasma-clipboard.service.sha256
+    mode: "644"
+  when: var_arch_plasma_clipboard_service.stat.exists
+  notify: "10-system-tools : handler_restart_plasma_clipboard_service"
+
+- name: "[archlinux] Dotfiles: stat keyd observer script"
+  ansible.builtin.stat:
+    path: ~/dotfiles/peripherals/bin/keyd-observer
+    checksum_algorithm: sha256
+  register: var_arch_keyd_observer_script
+
+- name: "[archlinux] Dotfiles: record applied keyd observer checksum"
+  ansible.builtin.copy:
+    content: "{{ var_arch_keyd_observer_script.stat.checksum }}\n"
+    dest: ~/.local/state/dotfiles/keyd-observer.sha256
+    mode: "644"
+  when: var_arch_keyd_observer_script.stat.exists
+  notify: "10-system-tools : handler_restart_keyd_observer_service"

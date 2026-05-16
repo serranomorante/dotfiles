@@ -6,7 +6,8 @@
 # This observer keeps one `keyd listen` process open and reacts to those signals:
 # opening/reopening the warpd hint overlay, toggling between the current cursor
 # position and the last warpd-selected point, temporarily leaving/re-entering
-# mouseless mode, typing clipboard snippets, and launching terminal helpers.
+# mouseless mode, typing clipboard snippets, showing clipboard history, and
+# launching terminal helpers.
 #
 # The warpd path is latency-sensitive. Repeated tab+f should cancel the current
 # overlay and open a fresh one without entering mouseless, so this script keeps
@@ -141,6 +142,11 @@ keyd listen | while read x; do
     +signal_type_from_clipboard)
         keyd do $leave_mouseless_mode &
         xdotool type --clearmodifiers "$(xclip -selection clipboard -o | head -c 20)" &
+        ;;
+
+    +signal_show_clipboard_history)
+        keyd do $leave_mouseless_mode &
+        qdbus6 org.kde.klipper /klipper org.kde.klipper.klipper.showKlipperPopupMenu &
         ;;
 
     +signal_open_kitty)

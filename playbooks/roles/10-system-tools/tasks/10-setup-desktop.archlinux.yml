@@ -32,6 +32,7 @@
       - xorg
       - xorg-xinit
       - plasma
+      - plasma-workspace # owns KDE Klipper / clipboard applet
       - plasma-x11-session
       - plasma-integration
       - sddm

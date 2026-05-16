@@ -164,6 +164,25 @@
     enabled: true
     masked: false
 
+- name: handler_restart_kglobalaccel_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: plasma-kglobalaccel.service
+    state: restarted
+
+- name: handler_restart_plasma_clipboard_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: plasma-clipboard.service
+    state: restarted
+    daemon_reload: true
+
+- name: handler_restart_keyd_observer_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: keyd-observer.service
+    state: restarted
+
 - name: handler_kill_reaper_wineserver
   ansible.builtin.shell: >
     set -o pipefail &&

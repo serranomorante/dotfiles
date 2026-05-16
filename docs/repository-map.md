@@ -141,6 +141,15 @@ When fixing keyboard conflicts, first identify who consumes the key:
 
 Then prefer the smallest translation at the layer that already owns similar
 conflicts.
+If a KDE global shortcut overlaps a keyd modifier layer, prefer moving it to a
+non-`Meta` chord such as `Ctrl+Alt+V` before adding passthroughs. Plain
+`Meta+V` and `Meta+C` are owned by keyd's Gromit bindings.
+In the DWM session, `Ctrl+Alt+V` is owned by keyd and handled by
+`keyd-observer`, which calls Klipper's `org.kde.klipper.klipper.showKlipperPopupMenu`
+D-Bus method directly. Do not also bind that chord in KDE global shortcuts.
+Because `keyd-observer` is a long-running user service, the Arch dotfiles task
+tracks `peripherals/bin/keyd-observer` with a checksum marker and restarts
+`keyd-observer.service` when the stowed script changes.
 
 ## Graphic Tablet
 
@@ -239,3 +248,18 @@ Specific operational notes live in `docs/`, including keyd setup, NVIDIA setup,
 Neovim debugging, Python development setup, and hardware-specific notes. Prefer
 adding focused docs there instead of expanding the root README with long
 implementation details.
+
+## KDE Runtime Configuration
+
+KDE global shortcut settings are tracked in
+`utilities/dot-config/kglobalshortcutsrc`, which is stowed to
+`~/.config/kglobalshortcutsrc`. The active KDE session reads these shortcuts
+through the user `plasma-kglobalaccel.service`; do not update that live state by
+hand during normal maintenance. The Arch dotfiles task records a checksum for
+the tracked shortcut file under `~/.local/state/dotfiles/` and restarts
+`plasma-kglobalaccel.service` only when that checksum changes.
+In the DWM session there is no full Plasma panel, so the KDE clipboard UI is
+loaded by `utilities/dot-config/systemd/user/plasma-clipboard.service`, which
+runs `plasmawindowed --statusnotifier org.kde.plasma.clipboard`. The dotfiles
+task enables and starts that user service after stowing `utilities`, and
+restarts it only when the tracked unit file checksum changes.

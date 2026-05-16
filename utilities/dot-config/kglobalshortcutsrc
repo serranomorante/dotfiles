@@ -2,6 +2,7 @@
 _k_friendly_name=Activity Manager
 switch-to-activity-3645cd2f-5b79-44e4-be75-438943f03967=none,none,Switch to activity "Default"
 switch-to-activity-6e607d15-335a-4410-a86e-d6dd6a81dd0c=none,none,Switch to activity "Default"
+switch-to-activity-ea8fc275-9712-4b86-8d4f-a494e82d3d98=none,none,Switch to activity "Default"
 
 [KDE Keyboard Layout Switcher]
 Switch keyboard layout to English (US)=none,none,Switch keyboard layout to English (US)
@@ -206,6 +207,10 @@ pausemedia=none,Media Pause,Pause media playback
 playmedia=none,,Play media playback
 playpausemedia=none,Media Play,Play/Pause media playback
 previousmedia=none,Media Previous,Media playback previous
+seekbackwardmedia=Media Rewind,Media Rewind,Media playback seek backward 5s
+seekbackwardmedialong=,,Media playback seek backward 30s
+seekforwardmedia=Media Fast Forward,Media Fast Forward,Media playback seek forward 5s
+seekforwardmedialong=,,Media playback seek forward 30s
 stopmedia=none,Media Stop,Stop media playback
 
 [org_kde_powerdevil]
@@ -246,22 +251,33 @@ activate widget 33=none,none,Activate Application Launcher Widget
 activate widget 53=none,none,Activate Application Launcher Widget
 activate widget 74=none,none,Activate Application Launcher Widget
 activate widget 97=none,none,Activate Application Launcher Widget
-clear-history=none,none,Clear Clipboard History
+clear-history=none,,Clear Clipboard History
 clipboard_action=none,Meta+Ctrl+X,Automatic Action Popup Menu
 cycle-panels=none,Meta+Alt+P,Move keyboard focus between panels
-cycleNextAction=none,none,Next History Item
-cyclePrevAction=none,none,Previous History Item
-edit_clipboard=none,none,Edit Contents…
+cycleNextAction=none,,Next History Item
+cyclePrevAction=none,,Previous History Item
+edit_clipboard=none,,Edit Contents…
 manage activities=none,Meta+Q,Show Activity Switcher
 next activity=none,none,Walk through activities
 previous activity=none,none,Walk through activities (Reverse)
-repeat_action=none,none,Manually Invoke Action on Current Clipboard
+repeat_action=none,,Manually Invoke Action on Current Clipboard
 show dashboard=none,Ctrl+F12,Show Desktop
-show-barcode=none,none,Show Barcode…
-show-on-mouse-pos=none,Meta+V,Show Clipboard Items at Mouse Position
+show-barcode=none,,Show Barcode…
+show-on-mouse-pos=none,Ctrl+Alt+V,Show Clipboard Items at Mouse Position
 switch to next activity=none,,Switch to Next Activity
 switch to previous activity=none,,Switch to Previous Activity
-toggle do not disturb=none,none,Toggle do not disturb
+toggle do not disturb=none,,Toggle do not disturb
+
+[plasmawindowed]
+_k_friendly_name=plasmawindowed
+clear-history=,,Clear Clipboard History
+clipboard_action=Meta+Ctrl+X,Meta+Ctrl+X,Automatic Action Popup Menu
+cycleNextAction=,,Next History Item
+cyclePrevAction=,,Previous History Item
+edit_clipboard=,,Edit Contents…
+repeat_action=,,Manually Invoke Action on Current Clipboard
+show-barcode=,,Show Barcode…
+show-on-mouse-pos=none,Meta+V,Show Clipboard Items at Mouse Position
 
 [services][org.flameshot.Flameshot.desktop]
 Capture=Meta+Shift+Print
@@ -286,6 +302,8 @@ _launch=none
 _launch=none
 
 [services][org.kde.spectacle.desktop]
+CurrentMonitorScreenShot=
+OpenWithoutScreenshot=
 RectangularRegionScreenShot=none
 
 [services][org.kde.touchpadshortcuts.desktop]

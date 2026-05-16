@@ -1,0 +1,13 @@
+[Unit]
+Description=KDE Plasma clipboard applet
+After=graphical-session.target plasma-kglobalaccel.service
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/plasmawindowed --statusnotifier org.kde.plasma.clipboard
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=%h/.Xauthority"
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target
