@@ -70,6 +70,13 @@ local function keys()
 end
 
 local function opts()
+  local STATUS = require("overseer.constants").STATUS
+  local ok, record_screen_actions = pcall(require, "serranomorante.plugins.jobs.record_screen_actions")
+  if not ok then
+    record_screen_actions =
+      dofile(vim.fn.expand("~/dotfiles/nvim/dot-config/nvim/lua/serranomorante/plugins/jobs/record_screen_actions.lua"))
+  end
+
   ---@type overseer.SetupOpts
   return {
     output = {
@@ -88,7 +95,18 @@ local function opts()
     task_win = {
       padding = 0,
     },
-    actions = {
+    actions = vim.tbl_extend("force", {
+      stop = {
+        desc = "Stop a running task. Screen recordings are stopped through their control script so the file is saved.",
+        condition = function(task) return task.status == STATUS.RUNNING end,
+        run = function(task)
+          if record_screen_actions.is_record_screen_task(task) then
+            record_screen_actions.stop(task)
+          else
+            task:stop()
+          end
+        end,
+      },
       ["close term window"] = {
         desc = "Close terminal window without killing process",
         condition = function(task) return task:get_bufnr() end,
@@ -107,18 +125,7 @@ local function opts()
           utils.schedule_open_overseer_task_float(task)
         end,
       },
-      ["Quit & save ffmpeg recording"] = {
-        desc = "Send `q` to the terminal. This quits ffmpeg recording.",
-        condition = function(task)
-          return task.name:match("^ffmpeg") and task.status == require("overseer.constants").STATUS.RUNNING
-        end,
-        run = function(task)
-          utils.attach_keymaps(task)
-          require("overseer").run_action(task, "open float")
-          utils.feedkeys("q", "t")
-        end,
-      },
-    },
+    }, record_screen_actions.actions()),
     component_aliases = {
       defaults_without_dispose = {
         "on_exit_set_status",

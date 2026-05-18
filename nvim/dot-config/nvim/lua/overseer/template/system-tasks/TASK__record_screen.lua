@@ -28,37 +28,32 @@ return {
   },
   builder = function(params)
     local datefmt = os.date("%Y-%m-%d_%H-%M-%S")
-    local ffmpeg_cmd = "ffmpeg -hide_banner -f x11grab -framerate 30 -video_size 1920x1080"
-      .. " -i :0.0+0,0 -f pulse -i "
-      .. params.audio_source
-      .. " -vf 'setpts=N/FR/TB'"
-      .. " -c:v libx264 -preset veryfast -crf 23 -c:a aac -b:a 192k -pix_fmt yuv420p"
-      .. string.format(" %s/screencast_%s.mp4", params.path, datefmt)
-    local convert_to = "ffmpeg -i"
-      .. string.format(" %s/screencast_%s.mp4", params.path, datefmt)
-      .. string.format(" %s/screencast_%s.%s", params.path, datefmt, params.output)
-    local tasks = {
-      {
-        cmd = "sleep 2", -- give time before starting to record
-      },
-    }
-    if params.audio_source == "source_node.music-production-audio" then
-      table.insert(tasks, {
-        cmd = "~/.local/bin/connect-reaper-to-music-production",
-      })
-    end
-    table.insert(tasks, {
-      cmd = ffmpeg_cmd,
-    })
-    if params.output and params.output ~= "mp4" then table.insert(tasks, { "shell", cmd = convert_to }) end
+    local recording_id = string.format("record-screen-%s", datefmt)
+    local script = vim.fn.expand("~/dotfiles/audio/dot-local/bin/record-screen-ffmpeg")
+    local runtime_root = vim.env.XDG_RUNTIME_DIR or "/tmp"
+    local status_path = string.format("%s/dotfiles-record-screen/%s/status", runtime_root, recording_id)
+
     return {
       name = task_name,
-      strategy = {
-        "orchestrator",
-        tasks = tasks,
+      cmd = script,
+      args = {
+        "start",
+        "--id",
+        recording_id,
+        "--audio-source",
+        params.audio_source,
+        "--output",
+        params.output,
+        "--path",
+        params.path,
       },
       metadata = {
         PREVENT_QUIT = true,
+        record_screen = {
+          id = recording_id,
+          script = script,
+          status_path = status_path,
+        },
       },
       components = {
         { "timeout", timeout = 60 * 60 * 2 },

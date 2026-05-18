@@ -1,0 +1,399 @@
+#!/usr/bin/env bash
+# Purpose: Record the X11 screen and a PipeWire/Pulse source with ffmpeg.
+# Usage: record-screen-ffmpeg start|pause|resume|stop|status [options]
+# Notes: Pause closes the current segment cleanly; resume starts a new segment.
+#        Stop saves the recording by concatenating all completed segments.
+set -euo pipefail
+
+readonly DEFAULT_AUDIO_SOURCE='source_node.work_audio'
+readonly DEFAULT_DISPLAY=':0.0+0,0'
+readonly DEFAULT_FRAMERATE='30'
+readonly DEFAULT_OUTPUT='mp4'
+readonly DEFAULT_PATH='~/Videos'
+readonly DEFAULT_VIDEO_SIZE='1920x1080'
+readonly RUNTIME_ROOT="${XDG_RUNTIME_DIR:-/tmp}/dotfiles-record-screen"
+
+COMMAND="${1:-}"
+if [[ $# -gt 0 ]]; then
+    shift
+fi
+
+ID=''
+AUDIO_SOURCE="$DEFAULT_AUDIO_SOURCE"
+DISPLAY="$DEFAULT_DISPLAY"
+FRAMERATE="$DEFAULT_FRAMERATE"
+OUTPUT="$DEFAULT_OUTPUT"
+OUTPUT_DIR="$DEFAULT_PATH"
+VIDEO_SIZE="$DEFAULT_VIDEO_SIZE"
+
+usage() {
+    cat <<'EOF'
+Usage:
+  record-screen-ffmpeg start [--id <id>] [--audio-source <source>] [--output <mp4|mov|gif>] [--path <dir>] [--display <x11-display>] [--framerate <fps>] [--video-size <WxH>]
+  record-screen-ffmpeg pause [--id <id>]
+  record-screen-ffmpeg resume [--id <id>]
+  record-screen-ffmpeg stop [--id <id>]
+  record-screen-ffmpeg status [--id <id>]
+
+When --id is omitted for control commands, the latest started session is used.
+EOF
+}
+
+die() {
+    printf 'record-screen-ffmpeg: %s\n' "$*" >&2
+    exit 1
+}
+
+require_commands() {
+    local cmd
+    for cmd in "$@"; do
+        command -v "$cmd" >/dev/null 2>&1 || die "missing required command: $cmd"
+    done
+}
+
+expand_path() {
+    local path=$1
+    case "$path" in
+    '~')
+        printf '%s\n' "$HOME"
+        ;;
+    '~/'*)
+        printf '%s/%s\n' "$HOME" "${path#~/}"
+        ;;
+    *)
+        printf '%s\n' "$path"
+        ;;
+    esac
+}
+
+sanitize_id() {
+    printf '%s' "$1" | tr -c 'A-Za-z0-9_.-' '_'
+}
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        --id)
+            [[ $# -ge 2 ]] || die "--id requires a value"
+            ID=$2
+            shift 2
+            ;;
+        --audio-source)
+            [[ $# -ge 2 ]] || die "--audio-source requires a value"
+            AUDIO_SOURCE=$2
+            shift 2
+            ;;
+        --display)
+            [[ $# -ge 2 ]] || die "--display requires a value"
+            DISPLAY=$2
+            shift 2
+            ;;
+        --framerate)
+            [[ $# -ge 2 ]] || die "--framerate requires a value"
+            FRAMERATE=$2
+            shift 2
+            ;;
+        --output)
+            [[ $# -ge 2 ]] || die "--output requires a value"
+            OUTPUT=$2
+            shift 2
+            ;;
+        --path)
+            [[ $# -ge 2 ]] || die "--path requires a value"
+            OUTPUT_DIR=$2
+            shift 2
+            ;;
+        --video-size)
+            [[ $# -ge 2 ]] || die "--video-size requires a value"
+            VIDEO_SIZE=$2
+            shift 2
+            ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "unknown option: $1"
+            ;;
+        esac
+    done
+}
+
+latest_id() {
+    local latest_file="$RUNTIME_ROOT/latest"
+    [[ -r "$latest_file" ]] || die "no latest recording session was found"
+    ID="$(<"$latest_file")"
+    [[ -n "$ID" ]] || die "latest recording session is empty"
+}
+
+session_paths() {
+    [[ -n "$ID" ]] || latest_id
+    ID="$(sanitize_id "$ID")"
+    SESSION_DIR="$RUNTIME_ROOT/$ID"
+    CONTROL_FIFO="$SESSION_DIR/control.fifo"
+    STATUS_FILE="$SESSION_DIR/status"
+    SEGMENTS_FILE="$SESSION_DIR/segments.ffconcat"
+}
+
+status_value() {
+    local key=$1
+    [[ -r "$STATUS_FILE" ]] || return 1
+    awk -F= -v key="$key" '$1 == key { print substr($0, index($0, "=") + 1); exit }' "$STATUS_FILE"
+}
+
+ensure_session_alive() {
+    local pid
+    [[ -p "$CONTROL_FIFO" ]] || die "recording session is not accepting commands: $ID"
+    pid="$(status_value pid || true)"
+    [[ -n "$pid" ]] || die "recording session has no supervisor pid: $ID"
+    kill -0 "$pid" 2>/dev/null || die "recording session is not running: $ID"
+}
+
+send_control() {
+    local command=$1
+    ensure_session_alive
+    printf '%s\n' "$command" >"$CONTROL_FIFO"
+}
+
+write_status() {
+    local tmp="$STATUS_FILE.tmp"
+    {
+        printf 'id=%s\n' "$ID"
+        printf 'pid=%s\n' "$$"
+        printf 'state=%s\n' "$STATE"
+        printf 'audio_source=%s\n' "$AUDIO_SOURCE"
+        printf 'output=%s\n' "$FINAL_OUTPUT"
+        printf 'segments=%s\n' "${#SEGMENTS[@]}"
+        if [[ -n "${FFMPEG_PID:-}" ]]; then
+            printf 'ffmpeg_pid=%s\n' "$FFMPEG_PID"
+        fi
+    } >"$tmp"
+    mv "$tmp" "$STATUS_FILE"
+}
+
+connect_music_production_source() {
+    if [[ "$AUDIO_SOURCE" != 'source_node.music-production-audio' ]]; then
+        return
+    fi
+
+    if command -v connect-reaper-to-music-production >/dev/null 2>&1; then
+        connect-reaper-to-music-production || true
+    elif [[ -x "$HOME/dotfiles/audio/dot-local/bin/connect-reaper-to-music-production" ]]; then
+        "$HOME/dotfiles/audio/dot-local/bin/connect-reaper-to-music-production" || true
+    fi
+}
+
+start_segment() {
+    local segment input_fifo
+    connect_music_production_source
+
+    SEGMENT_INDEX=$((SEGMENT_INDEX + 1))
+    segment="$SESSION_DIR/segment_$(printf '%06d' "$SEGMENT_INDEX").mp4"
+    input_fifo="$SESSION_DIR/ffmpeg_$(printf '%06d' "$SEGMENT_INDEX").stdin"
+    mkfifo "$input_fifo"
+    exec {FFMPEG_STDIN_FD}<>"$input_fifo"
+
+    printf 'Starting segment %s\n' "$SEGMENT_INDEX"
+    ffmpeg -hide_banner -loglevel repeat+level+info \
+        -thread_queue_size 1024 -f x11grab -framerate "$FRAMERATE" -video_size "$VIDEO_SIZE" -i "$DISPLAY" \
+        -thread_queue_size 4096 -f pulse -sample_rate 48000 -channels 2 -fragment_size 192000 -i "$AUDIO_SOURCE" \
+        -map 0:v:0 -map 1:a:0 \
+        -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p \
+        -c:a aac -b:a 192k \
+        "$segment" <"$input_fifo" &
+    FFMPEG_PID=$!
+    sleep 0.2
+    if ! kill -0 "$FFMPEG_PID" 2>/dev/null; then
+        wait "$FFMPEG_PID" || true
+        FFMPEG_PID=''
+        die "ffmpeg exited before the recording segment started"
+    fi
+
+    SEGMENTS+=("$segment")
+    STATE='recording'
+    write_status
+}
+
+stop_segment() {
+    local waited=0
+    if [[ -z "${FFMPEG_PID:-}" ]]; then
+        return
+    fi
+
+    if kill -0 "$FFMPEG_PID" 2>/dev/null; then
+        printf 'Stopping segment %s\n' "$SEGMENT_INDEX"
+        printf 'q' >&"$FFMPEG_STDIN_FD" || true
+        while kill -0 "$FFMPEG_PID" 2>/dev/null && [[ "$waited" -lt 100 ]]; do
+            sleep 0.1
+            waited=$((waited + 1))
+        done
+        if kill -0 "$FFMPEG_PID" 2>/dev/null; then
+            kill -TERM "$FFMPEG_PID" 2>/dev/null || true
+        fi
+    fi
+
+    wait "$FFMPEG_PID" || true
+    exec {FFMPEG_STDIN_FD}>&- || true
+    FFMPEG_PID=''
+}
+
+write_concat_file() {
+    local segment
+    : >"$SEGMENTS_FILE"
+    for segment in "${SEGMENTS[@]}"; do
+        [[ -s "$segment" ]] || continue
+        printf "file '%s'\n" "$(basename "$segment")" >>"$SEGMENTS_FILE"
+    done
+    [[ -s "$SEGMENTS_FILE" ]] || die "no completed recording segments exist"
+}
+
+save_recording() {
+    local final_mp4="$SESSION_DIR/final.mp4"
+    write_concat_file
+
+    printf 'Saving recording to %s\n' "$FINAL_OUTPUT"
+    (
+        cd "$SESSION_DIR"
+        ffmpeg -hide_banner -y -f concat -safe 0 -i "$SEGMENTS_FILE" -c copy "$final_mp4"
+    )
+
+    if [[ "$OUTPUT" == 'mp4' ]]; then
+        mv "$final_mp4" "$FINAL_OUTPUT"
+    else
+        ffmpeg -hide_banner -y -i "$final_mp4" "$FINAL_OUTPUT"
+    fi
+}
+
+finish_recording() {
+    if [[ "${FINALIZING:-0}" -eq 1 ]]; then
+        exit 0
+    fi
+    FINALIZING=1
+    STATE='saving'
+    write_status
+    stop_segment
+    save_recording
+    STATE='complete'
+    write_status
+    printf 'Recording saved: %s\n' "$FINAL_OUTPUT"
+    exit 0
+}
+
+pause_recording() {
+    if [[ "$STATE" != 'recording' ]]; then
+        printf 'Recording is already %s\n' "$STATE"
+        return
+    fi
+    STATE='pausing'
+    write_status
+    stop_segment
+    STATE='paused'
+    write_status
+    printf 'Recording paused\n'
+}
+
+resume_recording() {
+    if [[ "$STATE" != 'paused' ]]; then
+        printf 'Recording is not paused; current state is %s\n' "$STATE"
+        return
+    fi
+    start_segment
+    printf 'Recording resumed\n'
+}
+
+handle_control() {
+    case "$1" in
+    pause)
+        pause_recording
+        ;;
+    resume)
+        resume_recording
+        ;;
+    stop)
+        finish_recording
+        ;;
+    status)
+        write_status
+        ;;
+    *)
+        printf 'Ignoring unknown control command: %s\n' "$1" >&2
+        ;;
+    esac
+}
+
+start_recording() {
+    local timestamp
+    require_commands awk basename date ffmpeg mkdir mkfifo mv rm sleep tr
+
+    [[ "$OUTPUT" == 'mp4' || "$OUTPUT" == 'mov' || "$OUTPUT" == 'gif' ]] ||
+        die "unsupported output type: $OUTPUT"
+
+    timestamp="$(date '+%Y-%m-%d_%H-%M-%S')"
+    [[ -n "$ID" ]] || ID="record-screen-$timestamp"
+    ID="$(sanitize_id "$ID")"
+    OUTPUT_DIR="$(expand_path "$OUTPUT_DIR")"
+    FINAL_OUTPUT="$OUTPUT_DIR/screencast_$timestamp.$OUTPUT"
+
+    mkdir -p "$RUNTIME_ROOT" "$OUTPUT_DIR"
+    SESSION_DIR="$RUNTIME_ROOT/$ID"
+    CONTROL_FIFO="$SESSION_DIR/control.fifo"
+    STATUS_FILE="$SESSION_DIR/status"
+    SEGMENTS_FILE="$SESSION_DIR/segments.ffconcat"
+
+    if [[ -r "$STATUS_FILE" ]]; then
+        local old_pid
+        old_pid="$(status_value pid || true)"
+        if [[ -n "$old_pid" ]] && kill -0 "$old_pid" 2>/dev/null; then
+            die "recording session is already running: $ID"
+        fi
+    fi
+
+    rm -rf "$SESSION_DIR"
+    mkdir -p "$SESSION_DIR"
+    mkfifo "$CONTROL_FIFO"
+    printf '%s\n' "$ID" >"$RUNTIME_ROOT/latest"
+
+    SEGMENT_INDEX=0
+    FFMPEG_PID=''
+    FFMPEG_STDIN_FD=''
+    FINALIZING=0
+    STATE='starting'
+    SEGMENTS=()
+    write_status
+
+    trap finish_recording INT TERM HUP
+    start_segment
+
+    while true; do
+        if IFS= read -r control_command <"$CONTROL_FIFO"; then
+            handle_control "$control_command"
+        fi
+    done
+}
+
+parse_args "$@"
+
+case "$COMMAND" in
+start)
+    start_recording
+    ;;
+pause | resume | stop)
+    require_commands awk mkdir tr
+    mkdir -p "$RUNTIME_ROOT"
+    session_paths
+    send_control "$COMMAND"
+    ;;
+status)
+    require_commands awk cat mkdir tr
+    mkdir -p "$RUNTIME_ROOT"
+    session_paths
+    [[ -r "$STATUS_FILE" ]] || die "no status found for session: $ID"
+    cat "$STATUS_FILE"
+    ;;
+-h | --help | '')
+    usage
+    ;;
+*)
+    die "unknown command: $COMMAND"
+    ;;
+esac
