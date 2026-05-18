@@ -10,4 +10,5 @@
 
 exec kitten quick-access-terminal \
     --instance-group="${KITTY_OS_INSTANCE_ID:-default}" \
+    --override app_id=kitty-lazygit \
     lazygit

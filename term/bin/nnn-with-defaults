@@ -1,0 +1,44 @@
+#!/bin/sh
+
+# Purpose: Run nnn with the repository's standard flags and environment.
+# Usage: nnn-with-defaults [--open-in-nvim] [nnn-args...]
+# Notes: Use --open-in-nvim for terminal panels/tasks that should hand file
+# opens back to the current Neovim instance through open_in_nvim.
+
+open_in_nvim=0
+
+while [ "$#" -gt 0 ]; do
+    case $1 in
+    --open-in-nvim)
+        open_in_nvim=1
+        shift
+        ;;
+    --)
+        shift
+        break
+        ;;
+    *)
+        break
+        ;;
+    esac
+done
+
+if [ "$open_in_nvim" = 1 ]; then
+    export EDITOR="open_in_nvim nnn_explorer"
+    export VISUAL="open_in_nvim nnn_explorer"
+    export NNN_OPENER="open_in_nvim nnn_explorer"
+fi
+
+if [ -z "${NNN_PLUG+x}" ]; then
+    export NNN_PLUG="s:!bash -i*;p:preview-tui;l:cdto;f:!open_in_nvim nnn_search Find*;g:!open_in_nvim nnn_search Grep*"
+fi
+
+if [ -z "${NNN_TRASH+x}" ]; then
+    export NNN_TRASH=trash
+fi
+
+if [ -z "${NNN_PREVIEWIMGPROG+x}" ] && [ "${TERM:-}" = "xterm-kitty" ] && command -v chafa >/dev/null 2>&1; then
+    export NNN_PREVIEWIMGPROG="chafa -f kitty --scale max --animate=off --clear"
+fi
+
+exec nnn -GJRHdaAog -Tt "$@"

@@ -185,8 +185,8 @@ can update without restarting the picker.
 Avoid `fzf --track` for these one-shot reload pickers unless there is a specific
 need to preserve cursor identity across reloads; it can leave the highlighted
 row offset from the active query after the reload lands.
-Kitty `fzf` pickers that need their own OS window should launch through
-`kitten quick-access-terminal`, inherit the shared
+Kitty `fzf` pickers and quick-access TUIs that need their own OS window should
+launch through `kitten quick-access-terminal`, inherit the shared
 `quick-access-terminal.conf`, and keep per-picker overrides limited to sizing
 or identity values such as `lines`, `app_id`, and `background_opacity`.
 Keep the launcher path thin: create only the temporary paths needed to collect
@@ -199,6 +199,11 @@ the default `edge top` panel geometry forces full monitor width after DWM
 applies float rules, so DWM-managed quick-access windows should use
 `edge none`. DWM float geometry rules for these windows rely on the local
 floatrules preservation patch in the DWM patch stack.
+
+Quick-access TUI wrappers should scope panels per Kitty OS window with
+`--instance-group`. Use an app-specific prefix, such as
+`nnn-$KITTY_OS_INSTANCE_ID`, when the app must coexist with another
+quick-access terminal in the same OS window.
 
 For app-specific kitty macros, prefer scoping the window at launch with
 `--var=...` and binding with `map --when-focus-on var:...`. When a single key
@@ -227,6 +232,13 @@ Shared kitty window helpers (focus matching, JSON scoring, etc.) live in
 `term/bin/kitty-window-utils.sh`. Source it from POSIX sh and pass process
 names for app identity. App-specific focus helpers belong to the owning
 script.
+
+Launch `nnn` through `term/bin/nnn-with-defaults` instead of repeating its
+standard flags or `NNN_*` environment. Use `--open-in-nvim` for Kitty panels or
+Neovim tasks that should route file opens back through `open_in_nvim`.
+The quick-access `nnn` panel sets `KITTY_NNN_QUICK_ACCESS=1`; Kitty mappings
+that are specific to that panel should match this environment variable so they
+do not affect ordinary `nnn` processes.
 
 See [nvim-kitty-integration.md](./nvim-kitty-integration.md) for the
 per-window Neovim server socket and Kitty window matching that exercise this

@@ -11,7 +11,7 @@ save="$3"
 path="$4"
 out="$5"
 
-cmd="nnn -GJRHdaAog -Tt"
+cmd="nnn-with-defaults"
 termcmd="${TERMCMD:-kitty --title 'termfilechooser'}"
 
 if [ "$save" = "1" ]; then

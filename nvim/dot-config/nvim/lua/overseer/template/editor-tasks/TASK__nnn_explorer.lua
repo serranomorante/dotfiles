@@ -19,8 +19,7 @@ M.params = {
 
 function M.builder(params)
   local args = {
-    "-GJRHdaAog",
-    "-Tt",
+    "--open-in-nvim",
     "-c",
   }
   local startdir = params.startdir
@@ -32,13 +31,9 @@ function M.builder(params)
   if startdir then table.insert(args, startdir) end
   return {
     name = TASK_NAME,
-    cmd = "nnn",
+    cmd = "nnn-with-defaults",
     args = args,
     env = {
-      EDITOR = "open_in_nvim nnn_explorer",
-      VISUAL = "open_in_nvim nnn_explorer",
-      NNN_OPENER = "open_in_nvim nnn_explorer",
-      NNN_TRASH = "trash",
       NVIM_KITTY_LISTEN_ADDRESS = vim.v.servername,
       TERM = vim.env.TERM,
     },

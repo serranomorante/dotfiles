@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# Purpose: Toggle the nnn quick-access kitty panel for the current Kitty OS
+# instance.
+# Notes: quick-access-terminal scopes panels by --instance-group. Include the
+# app name so nnn and lazygit can each keep one panel per Kitty OS window.
+
+exec kitten quick-access-terminal \
+    --instance-group="nnn-${KITTY_OS_INSTANCE_ID:-default}" \
+    --override app_id=kitty-nnn \
+    env KITTY_NNN_QUICK_ACCESS=1 nnn-with-defaults --open-in-nvim -c

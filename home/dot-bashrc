@@ -115,13 +115,8 @@ if command -v zoxide &>/dev/null; then
     eval "$(zoxide init bash)"
 fi
 
-export NNN_PLUG='s:!bash -i*;p:preview-tui;l:cdto;f:!open_in_nvim nnn_search Find*;g:!open_in_nvim nnn_search Grep*'
-export NNN_TRASH="trash"
-if [ "${TERM:-}" = "xterm-kitty" ] && command -v chafa &>/dev/null; then
-    export NNN_PREVIEWIMGPROG='chafa -f kitty --scale max --animate=off --clear'
-fi
-if command -v nnn &>/dev/null; then
-    alias nnn='nnn -GJRHdaAog -Tt'
+if command -v nnn-with-defaults &>/dev/null; then
+    alias nnn='nnn-with-defaults'
 fi
 
 PS1='[\u@\h \W]\$ '
