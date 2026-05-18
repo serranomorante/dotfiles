@@ -26,7 +26,6 @@ done
 if [ "$open_in_nvim" = 1 ]; then
     export EDITOR="open_in_nvim nnn_explorer"
     export VISUAL="open_in_nvim nnn_explorer"
-    export NNN_OPENER="open_in_nvim nnn_explorer"
 fi
 
 if [ -z "${NNN_PLUG+x}" ]; then
