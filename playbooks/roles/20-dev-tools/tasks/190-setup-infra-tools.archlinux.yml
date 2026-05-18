@@ -81,7 +81,6 @@
           ansible.builtin.systemd_service:
             name: k3s
             enabled: false
-            state: started
 
         - name: "[archlinux] Setup infra tools: wait for k3s kubeconfig"
           become: true
