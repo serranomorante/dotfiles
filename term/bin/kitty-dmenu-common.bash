@@ -282,6 +282,27 @@ kitty_dmenu_focus_cwd() {
     kitty_dmenu_focus_cwd_on_sockets "$selected_path" "${sockets[@]}"
 }
 
+kitty_dmenu_focus_cwd_from_cached_entries() {
+    local selected_path=$1
+    local entries socket window_id
+
+    entries=$(kitty_dmenu_cached_window_entries)
+    [[ -n $entries ]] || return 1
+
+    read -r socket window_id < <(
+        awk -F '\t' -v cwd="$selected_path" '$1 == cwd { print $2, $3; exit }' <<<"$entries"
+    )
+
+    [[ -n $socket ]] || return 1
+
+    kitty_dmenu_focus_window_id_on_socket "$socket" "$window_id" ||
+        kitty_dmenu_focus_cwd_on_sockets "$selected_path" "$socket"
+}
+
+kitty_dmenu_refresh_window_entries_background() {
+    kitty_dmenu_window_entries 1 >/dev/null 2>&1 &
+}
+
 kitty_dmenu_collect_window_entries() {
     local sockets=("$@")
     local tmpdir pid socket index file

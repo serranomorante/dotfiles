@@ -138,6 +138,7 @@ kitty_dmenu_main() {
         kitty_dmenu_run_quick_access_picker projects bash -c \
             'source "$HOME/dotfiles/term/bin/kitty-dmenu"
             project_dirs_cached >"$1"
+            kitty_dmenu_refresh_window_entries_background
             kitty_dmenu_run_refreshing_fzf "$1" "$2" "Select cwd: " project_dirs_refresh' \
             bash "$choices_file" "$selected_file" || true
 
@@ -152,9 +153,11 @@ kitty_dmenu_main() {
         exit 0
     fi
 
-    if kitty_dmenu_focus_cwd "$selected_path"; then
+    if kitty_dmenu_focus_cwd_from_cached_entries "$selected_path"; then
         exit 0
     fi
+
+    kitty_dmenu_refresh_window_entries_background
 
     exec env NVIM_KITTY_LISTEN_ADDRESS="$(kitty_dmenu_nvim_servername_for_cwd "$selected_path")" \
         kitty -d "$selected_path" --session ~/.config/kitty/default.kitty-session
