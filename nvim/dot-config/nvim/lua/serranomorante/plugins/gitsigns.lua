@@ -1,14 +1,29 @@
 local M = {}
 
+local function preview_height(max_height) return math.min(max_height, math.max(1, vim.o.lines - vim.o.cmdheight - 4)) end
+
+local function set_preview_height(max_height)
+  require("gitsigns.config").config.preview_config.height = preview_height(max_height)
+end
+
 local function keys(bufnr)
   ---@param desc string
   local function opts_for(desc) return { buffer = bufnr, desc = "Git: " .. desc } end
   local gs = require("gitsigns")
 
-  vim.keymap.set("n", "<leader>gl", function() gs.blame_line() end, opts_for("Blame line"))
-  vim.keymap.set("n", "<leader>gL", function() gs.blame_line({ full = true }) end, opts_for("Blame full buffer"))
+  vim.keymap.set("n", "<leader>gl", function()
+    set_preview_height(2)
+    gs.blame_line()
+  end, opts_for("Blame line"))
+  vim.keymap.set("n", "<leader>gL", function()
+    set_preview_height(20)
+    gs.blame_line({ full = true })
+  end, opts_for("Blame full buffer"))
   vim.keymap.set("n", "<leader>gd", function() gs.diffthis() end, opts_for("Diff this"))
-  vim.keymap.set("n", "<leader>gp", function() gs.preview_hunk() end, opts_for("Preview hunk"))
+  vim.keymap.set("n", "<leader>gp", function()
+    set_preview_height(20)
+    gs.preview_hunk()
+  end, opts_for("Preview hunk"))
   vim.keymap.set({ "n", "x", "o" }, "]g", function() gs.nav_hunk("next") end, opts_for("Next hunk"))
   vim.keymap.set({ "n", "x", "o" }, "[g", function() gs.nav_hunk("prev") end, opts_for("Prev hunk"))
   vim.keymap.set({ "n", "x", "o" }, "]G", function() gs.nav_hunk("last") end, opts_for("First hunk"))
@@ -39,6 +54,11 @@ local function opts()
     attach_to_untracked = true,
     max_file_length = vim.g.max_file.lines,
     sign_priority = 23,
+    preview_config = {
+      border = "rounded",
+      height = preview_height(20),
+      width = math.min(120, math.max(1, vim.o.columns - 4)),
+    },
     on_attach = keys,
   }
 end
