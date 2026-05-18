@@ -1,11 +1,36 @@
 #!/usr/bin/env bash
 
-\nvim --server $NVIM_KITTY_LISTEN_ADDRESS --remote-ui --remote-send '<cmd>TasksRunning | sleep 1 | detach<CR>'
+# Purpose: Close the active Kitty window, asking first when its Neovim server
+# has running Overseer tasks marked as unsafe to quit.
 
-result=$(cat "${NVIM_KITTY_LISTEN_ADDRESS}.tasks_running")
+set -euo pipefail
 
-if [[ "$result" == "tasks are running" ]]; then
-    kitten @ action close_window_with_confirmation
-else
+close_window() {
     kitten @ action close_window
+}
+
+close_window_with_confirmation() {
+    kitten @ action close_window_with_confirmation
+}
+
+overseer_tasks_running_expr='luaeval("(function() local ok, overseer = pcall(require, \"overseer\"); if not ok then return 0 end; local ok_constants, constants = pcall(require, \"overseer.constants\"); if not ok_constants then return 0 end; local tasks = overseer.list_tasks({ status = constants.STATUS.RUNNING, filter = function(task) return task.metadata and task.metadata.PREVENT_QUIT end }); return tasks[1] and 1 or 0 end)()")'
+servername=${NVIM_KITTY_LISTEN_ADDRESS:-}
+
+if [[ -z $servername || ! -S $servername ]]; then
+    close_window
+    exit 0
 fi
+
+if ! result=$(nvim --server "$servername" --remote-expr "$overseer_tasks_running_expr" 2>/dev/null); then
+    close_window_with_confirmation
+    exit 0
+fi
+
+case $result in
+1)
+    close_window_with_confirmation
+    ;;
+*)
+    close_window
+    ;;
+esac

@@ -119,3 +119,8 @@ Kitty window state is small, cheap to query, and easy to make stale.
   the lazygit-specific bindings.
 - Showing the lazygit panel is owned by the `kitty_mod+s` binding in
   `term/dot-config/kitty/kitty.conf`. Neovim has no keymap for it.
+- `term/bin/kitty-check-tasks-running` is the `kitty_mod+x` close helper. It
+  queries the CWD-derived Neovim server directly with
+  `nvim --server ... --remote-expr` to decide whether Overseer has running
+  tasks marked `PREVENT_QUIT`; it should not depend on a Neovim user command or
+  a sidecar state file.
