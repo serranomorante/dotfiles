@@ -74,6 +74,7 @@
     - ~/.config/kglobalshortcutsrc
     - ~/.config/plasma-org.kde.plasma.desktop-appletsrc
     - ~/.config/mouseless/config.yaml
+    - ~/.config/qBittorrent/categories.json
     - ~/.bash_profile
     - ~/.bashrc
     - ~/.blerc
