@@ -243,6 +243,10 @@ Interactive Bash shells spawned from `nnn` still load the normal shell features,
 including ble.sh. Keep nnn-specific Bash hooks guarded by `NNN_PIPE` and tolerate
 a missing or closed pipe so transient nnn shells do not report exit-time pipe
 errors.
+ble.sh customizations live in `home/dot-blerc`. The local history helper
+override avoids `history | ... q` pipelines because Bash can report
+`history: write error: Broken pipe` when a large history is piped to a consumer
+that exits after the first line.
 
 See [nvim-kitty-integration.md](./nvim-kitty-integration.md) for the
 per-window Neovim server socket and Kitty window matching that exercise this

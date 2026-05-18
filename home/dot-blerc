@@ -7,6 +7,19 @@ bleopt decode_error_kseq_vbell=
 ble-import -d integration/fzf-completion
 ble-import -d integration/fzf-key-bindings
 
+# Avoid Bash SIGPIPE noise from ble.sh's first-history-entry lookup with large
+# histories. `sed -n '1p'` still returns the first line but keeps reading stdin.
+if ((_ble_bash >= 40000)); then
+  function ble/builtin/history/.get-min {
+    if ((${_ble_trap_sig-0} == _ble_builtin_trap_EXIT)); then
+      ble/string#split-words min "$(builtin history | ble/bin/sed -n '1p')"
+    else
+      ble/util/assign-words min 'builtin history | ble/bin/sed -n "1p"'
+    fi
+    min=${min/'*'}
+  }
+fi
+
 function dotfiles/fzf-history-widget.lazy {
   ble-import integration/fzf-key-bindings || return 1
   fzf-history-widget
