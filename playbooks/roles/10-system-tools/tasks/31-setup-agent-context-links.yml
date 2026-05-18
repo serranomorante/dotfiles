@@ -7,10 +7,36 @@
     force: true
   loop: "{{ dotfiles_agent_context_symlink_names }}"
 
-- name: "Dotfiles: setup package agent context symlinks"
+- name: "Dotfiles: setup public package agent context symlinks"
   ansible.builtin.file:
     src: "../{{ dotfiles_agent_context_source_name }}"
     dest: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item.0 }}/{{ item.1 }}"
     state: link
     force: true
   loop: "{{ dotfiles_public_stow_packages | product([dotfiles_agent_context_source_name] + dotfiles_agent_context_symlink_names) | list }}"
+
+- name: "Dotfiles: stat private agent context packages"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item }}"
+  register: var_dotfiles_private_agent_context_packages
+  loop: "{{ dotfiles_private_stow_packages }}"
+
+- name: "Dotfiles: remember existing private agent context packages"
+  ansible.builtin.set_fact:
+    var_dotfiles_existing_private_agent_context_packages: "{{ var_dotfiles_private_agent_context_packages.results | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir') | map(attribute='item') | list }}"
+
+- name: "Dotfiles: setup private package agent context entrypoints"
+  ansible.builtin.file:
+    src: "../{{ dotfiles_agent_context_source_name }}"
+    dest: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item }}/{{ dotfiles_agent_context_source_name }}"
+    state: link
+    force: true
+  loop: "{{ var_dotfiles_existing_private_agent_context_packages }}"
+
+- name: "Dotfiles: setup private package agent context compatibility links"
+  ansible.builtin.file:
+    src: "{{ dotfiles_agent_context_source_name }}"
+    dest: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item.0 }}/{{ item.1 }}"
+    state: link
+    force: true
+  loop: "{{ var_dotfiles_existing_private_agent_context_packages | product(dotfiles_agent_context_symlink_names) | list }}"

@@ -21,8 +21,10 @@ start here when deciding which file owns a behavior.
 - `PKM/`: personal knowledge management tooling.
 - `assets/`: static assets, patches, scripts, services, udev rules, and media.
 - `docs/`: human-readable operational notes and project context.
-- `for-my-eyes-only/`: optional private package. Do not touch unless explicitly
-  requested.
+- `for-my-eyes-only/`: optional private package and submodule. Do not touch
+  unless explicitly requested. Package-specific private assistant context should
+  live at `for-my-eyes-only/docs/agent-context.md`; the public Ansible role
+  links shared agent entrypoints into this package when it exists.
 
 ## Ansible Structure
 
@@ -65,6 +67,9 @@ Important conventions:
   `10-system-tools` defaults, plus the configured agent context filenames. The
   wrapper always changes to the generated user's `~/dotfiles` before invoking
   Stow, so it can be run from any directory.
+- Private packages are listed separately in `dotfiles_private_stow_packages`.
+  `for-my-eyes-only/docs/agent-context.md` is also ignored by the wrapper so
+  private AI notes can remain in the package without being linked into `$HOME`.
 - Existing symlinked files update in place when edited in the repository, but
   newly added files under a stowed package are not active until that package is
   stowed again. For example, after adding a file under `nvim/`, run

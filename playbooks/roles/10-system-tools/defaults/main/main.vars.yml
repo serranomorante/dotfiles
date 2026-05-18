@@ -20,10 +20,14 @@ dotfiles_public_stow_packages:
   - utilities
   - term
   - PKM
+dotfiles_private_stow_packages:
+  - for-my-eyes-only
 dotfiles_agent_context_source_name: AGENTS.md
 dotfiles_agent_context_symlink_names:
   - CLAUDE.md
   - GEMINI.md
+dotfiles_private_agent_context_doc_paths:
+  - docs/agent-context.md
 debian_fzf_version: 0.55.0
 debian_rg_version: 14.0.3
 debian_fd_version: 10.1.0

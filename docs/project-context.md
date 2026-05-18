@@ -20,6 +20,15 @@ verification expectations, read [change-workflow.md](./change-workflow.md).
   root `AGENTS.md`, so tools launched from directories such as
   `~/dotfiles/playbooks` or `~/dotfiles/systemd` can still discover the same
   project context.
+- Private packages listed in `dotfiles_private_stow_packages`, currently
+  `for-my-eyes-only`, receive agent context links only when the package exists.
+  Their `AGENTS.md` entrypoint stays linked to the public root `AGENTS.md`, and
+  compatibility filenames such as `CLAUDE.md` and `GEMINI.md` point to that
+  package entrypoint.
+- When work explicitly involves `for-my-eyes-only`, read the shared root context
+  first and then read private assistant notes from
+  `~/dotfiles/for-my-eyes-only/docs/agent-context.md` if present. Keep
+  sensitive implementation notes there rather than in the public repository.
 - When a new tool expects a different context filename, add that filename to the
   `dotfiles_agent_context_symlink_names` variable rather than creating another
   source-of-truth document.
@@ -33,7 +42,8 @@ verification expectations, read [change-workflow.md](./change-workflow.md).
   `nvim`, `term`, `audio`, `utilities`, `systemd`, `home`, and `PKM`.
 - Private configuration may exist under `for-my-eyes-only`. Treat it as
   user-owned and do not inspect or modify it unless a task explicitly requires
-  it.
+  it. Private AI-facing notes belong under that package's `docs/` directory so
+  they can be tracked by the private submodule without exposing secrets here.
 - Files named `dot-*` are intended to become dotfiles through Stow. For example,
   `dot-config/foo` maps to `~/.config/foo`.
 

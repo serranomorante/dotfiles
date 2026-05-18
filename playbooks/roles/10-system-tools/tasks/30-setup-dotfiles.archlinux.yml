@@ -94,10 +94,11 @@
     dest: ~/.config/
     mode: "644"
 
-- name: "[archlinux] Dotfiles: stat private stow package"
+- name: "[archlinux] Dotfiles: stat private stow packages"
   ansible.builtin.stat:
-    path: ~/dotfiles/for-my-eyes-only
+    path: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item }}"
   register: var_arch_private_dotfiles
+  loop: "{{ dotfiles_private_stow_packages }}"
 
 - name: "[archlinux] Dotfiles: apply stow public packages"
   ansible.builtin.command:
@@ -106,11 +107,16 @@
 
 - name: "[archlinux] Dotfiles: apply stow private package"
   ansible.builtin.command:
-    argv:
-      - "{{ dotfiles_stow_wrapper_path }}"
-      - for-my-eyes-only
+    argv: "{{ [dotfiles_stow_wrapper_path] + (var_arch_private_dotfiles.results | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir') | map(attribute='item') | list) }}"
   changed_when: false
-  when: var_arch_private_dotfiles.stat.exists
+  when: >-
+    (
+      var_arch_private_dotfiles.results
+      | selectattr('stat.isdir', 'defined')
+      | selectattr('stat.isdir')
+      | list
+      | length
+    ) > 0
 
 - name: "[archlinux] Dotfiles: stat KDE global shortcuts"
   ansible.builtin.stat:

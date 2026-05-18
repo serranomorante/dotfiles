@@ -19,7 +19,8 @@ fi
 
 cd "$dotfiles_stow_dir"
 
-{% set stow_ignore_patterns = dotfiles_stow_ignore_patterns + (([dotfiles_agent_context_source_name] + dotfiles_agent_context_symlink_names) | map('regex_escape') | list) %}
+{% set agent_context_ignore_patterns = ([dotfiles_agent_context_source_name] + dotfiles_agent_context_symlink_names + dotfiles_private_agent_context_doc_paths) | map('regex_escape') | list %}
+{% set stow_ignore_patterns = dotfiles_stow_ignore_patterns + agent_context_ignore_patterns %}
 set -- {% for option in dotfiles_stow_options %}{{ option | quote }} {% endfor %}{% for pattern in stow_ignore_patterns %}--ignore={{ pattern | quote }} {% endfor %}"$@"
 
 exec "$stow_bin" "$@"
