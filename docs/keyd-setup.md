@@ -17,6 +17,24 @@ Use `overloadt2`, not plain `overload`, for this binding. `repeat()` holds the
 previous output until the repeat key is released; plain `overload` runs tap
 actions during the physical key release and can leave the repeated key held.
 
+## Modifier symmetry
+
+Any keyd mapping that uses a paired keyboard modifier should keep working with
+both the left and right physical modifier keys. In keyd layer headers, right Alt
+is represented as `altgr`, so every `...+alt` layer needs an equivalent
+`...+altgr` layer with the same mappings unless a task explicitly asks for an
+asymmetric binding.
+
+For example, `Ctrl+Alt+V` must include both Alt variants:
+
+```dotini
+[control+alt]
+v = layer(signal_show_clipboard_history)
+
+[control+altgr]
+v = layer(signal_show_clipboard_history)
+```
+
 ## Latin chars with keyd
 
 > This guide is specific to xorg only
