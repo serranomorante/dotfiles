@@ -239,6 +239,10 @@ Neovim tasks that should route file opens back through `open_in_nvim`.
 The quick-access `nnn` panel sets `KITTY_NNN_QUICK_ACCESS=1`; Kitty mappings
 that are specific to that panel should match this environment variable so they
 do not affect ordinary `nnn` processes.
+Interactive Bash shells spawned from `nnn` still load the normal shell features,
+including ble.sh. Keep nnn-specific Bash hooks guarded by `NNN_PIPE` and tolerate
+a missing or closed pipe so transient nnn shells do not report exit-time pipe
+errors.
 
 See [nvim-kitty-integration.md](./nvim-kitty-integration.md) for the
 per-window Neovim server socket and Kitty window matching that exercise this

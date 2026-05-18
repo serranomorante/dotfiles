@@ -124,14 +124,15 @@ PS1='[\u@\h \W]\$ '
 
 export PATH="$PATH:$HOME/.local/share/yabridge"
 
-# https://github.com/jarun/nnn/wiki/Basic-use-cases#sync-subshell-pwd
-nnn_cd() {
-    if ! [ -z "$NNN_PIPE" ]; then
-        printf "%s\0" "0c${PWD}" ! >"${NNN_PIPE}" &
-    fi
-}
+if [[ -n ${NNN_PIPE-} ]]; then
+    # https://github.com/jarun/nnn/wiki/Basic-use-cases#sync-subshell-pwd
+    nnn_cd() {
+        [[ -p ${NNN_PIPE-} ]] || return 0
+        printf "%s\0" "0c${PWD}" ! >"${NNN_PIPE}" 2>/dev/null &
+    }
 
-trap nnn_cd EXIT
+    trap nnn_cd EXIT
+fi
 
 export DJANGO_READ_DOT_ENV_FILE=True
 
