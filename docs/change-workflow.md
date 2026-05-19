@@ -158,7 +158,9 @@ Many source files are not active until the user deploys them:
 
 When changing Ansible playbooks, include exactly one suggested
 `ansible-playbook` command in the final response. Combine all relevant tags in a
-single `--tags` value instead of listing multiple commands.
+single `--tags` value instead of listing multiple commands. For active
+application commands, include `-K` so tasks that use `become` can prompt for the
+sudo password instead of failing mid-run.
 
 If the requested playbook scope includes AUR tasks, such as tasks using
 `kewlfft.aur.aur`, make sure the AUR setup task runs first by including the
