@@ -201,9 +201,10 @@
 
 - name: "[archlinux] Setup ai tools: register figma api key"
   ansible.builtin.command: kwallet-query --folder {{ folder }} --read-password {{ passkey }} {{ wallet }}
-  changed_when: true
+  changed_when: false
   register: mcp_server_figma_key
-  ignore_errors: true
+  failed_when: false
+  no_log: true
   vars:
     folder: "{{ figma_mcp_server_setup.keyrings.folder }}"
     passkey: "{{ figma_mcp_server_setup.keyrings.passkey }}"
@@ -211,9 +212,10 @@
 
 - name: "[archlinux] Setup ai tools: register postman api key"
   ansible.builtin.command: kwallet-query --folder {{ folder }} --read-password {{ passkey }} {{ wallet }}
-  changed_when: true
+  changed_when: false
   register: mcp_server_postman_key
-  ignore_errors: true
+  failed_when: false
+  no_log: true
   vars:
     folder: "{{ postman_mcp_commentary_server_setup.keyrings.folder }}"
     passkey: "{{ postman_mcp_commentary_server_setup.keyrings.passkey }}"
@@ -221,9 +223,10 @@
 
 - name: "[archlinux] Setup ai tools: register playwright_mcp_browser_key"
   ansible.builtin.command: kwallet-query --folder {{ folder }} --read-password {{ passkey }} {{ wallet }}
-  changed_when: true
+  changed_when: false
   register: var_playwright_mcp_browser_key
-  ignore_errors: true
+  failed_when: false
+  no_log: true
   vars:
     folder: "{{ playwright_mcp_server_setup.keyrings.folder }}"
     passkey: "{{ playwright_mcp_server_setup.keyrings.passkey }}"

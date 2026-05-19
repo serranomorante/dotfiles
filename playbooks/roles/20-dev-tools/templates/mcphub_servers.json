@@ -1,3 +1,6 @@
+{% set figma_api_key = (mcp_server_figma_key.stdout | default('') | trim) if (mcp_server_figma_key.rc | default(1)) == 0 else '' %}
+{% set postman_api_key = (mcp_server_postman_key.stdout | default('') | trim) if (mcp_server_postman_key.rc | default(1)) == 0 else '' %}
+{% set playwright_mcp_browser_key = (var_playwright_mcp_browser_key.stdout | default('') | trim) if (var_playwright_mcp_browser_key.rc | default(1)) == 0 else '' %}
 {
   "mcpServers": {
     "figma_http": {
@@ -23,8 +26,8 @@
     "Figma": {
       "command": "{{ node_system_default_node_path }}",
       "args": [
-        "{{ figma_mcp_server_setup.exe_path }}",
-        "--figma-api-key={{ (mcp_server_figma_key | default({})).stdout | default(None) }}",
+        "{{ figma_mcp_server_setup.exe_path }}"{% if figma_api_key | length > 0 %},
+        "--figma-api-key={{ figma_api_key }}"{% endif %},
         "--stdio"
       ]
     },
@@ -32,19 +35,19 @@
       "command": "{{ node_system_default_node_path }}",
       "args": [
         "{{ figma_mcp_commentary_server_setup.exe_path }}"
-      ],
+      ]{% if figma_api_key | length > 0 %},
       "env": {
-        "FIGMA_ACCESS_TOKEN": "{{ (mcp_server_figma_key | default({})).stdout | default(None) }}"
-      }
+        "FIGMA_ACCESS_TOKEN": "{{ figma_api_key }}"
+      }{% endif %}
     },
     "postman-mcp": {
       "command": "{{ node_system_default_node_path }}",
       "args": [
         "{{ postman_mcp_commentary_server_setup.exe_path }}"
-      ],
+      ]{% if postman_api_key | length > 0 %},
       "env": {
-        "POSTMAN_API_KEY": "{{ (mcp_server_postman_key | default({})).stdout | default(None) }}"
-      }
+        "POSTMAN_API_KEY": "{{ postman_api_key }}"
+      }{% endif %}
     },
     "cf-projects": {
       "command": "{{ node_system_default_node_path }}",
@@ -75,10 +78,10 @@
         "/usr/bin/chromium",
         "--browser",
         "chromium"
-      ],
+      ]{% if playwright_mcp_browser_key | length > 0 %},
       "env": {
-        "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "{{ (var_playwright_mcp_browser_key | default({})).stdout | default(None) }}"
-      }
+        "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "{{ playwright_mcp_browser_key }}"
+      }{% endif %}
     }
   }
 }

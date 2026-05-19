@@ -91,7 +91,8 @@
   ansible.builtin.command: kwallet-query --folder {{ folder }} --read-password {{ passkey }} {{ wallet }}
   changed_when: false
   register: var_playwright_mcp_browser_key
-  ignore_errors: true
+  failed_when: false
+  no_log: true
   vars:
     folder: "{{ playwright_mcp_server_setup.keyrings.folder }}"
     passkey: "{{ playwright_mcp_server_setup.keyrings.passkey }}"
@@ -110,6 +111,7 @@
     mode: "644"
   when:
     - fact_changed_extensions['playwright']
+    - (var_playwright_mcp_browser_key.rc | default(1)) == 0
     - (var_playwright_mcp_browser_key.stdout | default('') | trim | length) > 0
 
 - name: "[archlinux] Setup browser tools: patch playwright mcp extension"
@@ -123,6 +125,7 @@
     - "{{ playwright_mcp_tempdir.path }}/playwright_mcp_auth_token.patch"
   when:
     - fact_changed_extensions['playwright']
+    - (var_playwright_mcp_browser_key.rc | default(1)) == 0
     - (var_playwright_mcp_browser_key.stdout | default('') | trim | length) > 0
 
 - name: "[archlinux] Setup browser tools: stat playwright mcp package lock"
