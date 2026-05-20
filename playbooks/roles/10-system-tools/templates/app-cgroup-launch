@@ -35,21 +35,62 @@ esac
 
 unit="${unit_prefix}-$(date +%Y%m%d%H%M%S)-$$.scope"
 
-exec systemd-run \
-  --user \
-  --scope \
-  --quiet \
-  --collect \
-  --same-dir \
-  --unit="$unit" \
-  --description="$description" \
-  --nice="$nice" \
-  --property=CPUAccounting=yes \
-  --property=MemoryAccounting=yes \
-  --property=IOAccounting=yes \
-  --property="CPUQuota=$cpu_quota" \
-  --property="CPUWeight=$cpu_weight" \
-  --property="IOWeight=$io_weight" \
-  --property="MemoryHigh=$memory_high" \
-  --property="MemoryMax=$memory_max" \
-  "$@"
+run_scope() {
+  exec systemd-run \
+    --user \
+    --scope \
+    --quiet \
+    --collect \
+    --same-dir \
+    --unit="$unit" \
+    --description="$description" \
+    --nice="$nice" \
+    --property=CPUAccounting=yes \
+    --property=MemoryAccounting=yes \
+    --property=IOAccounting=yes \
+    --property="CPUQuota=$cpu_quota" \
+    --property="CPUWeight=$cpu_weight" \
+    --property="IOWeight=$io_weight" \
+    --property="MemoryHigh=$memory_high" \
+    --property="MemoryMax=$memory_max" \
+    "$@"
+}
+
+run_scope_on_host() {
+  systemd-run \
+    --machine="${target_user}@.host" \
+    --user \
+    --scope \
+    --quiet \
+    --collect \
+    --same-dir \
+    --unit="$unit" \
+    --description="$description" \
+    --nice="$nice" \
+    --property=CPUAccounting=yes \
+    --property=MemoryAccounting=yes \
+    --property=IOAccounting=yes \
+    --property="CPUQuota=$cpu_quota" \
+    --property="CPUWeight=$cpu_weight" \
+    --property="IOWeight=$io_weight" \
+    --property="MemoryHigh=$memory_high" \
+    --property="MemoryMax=$memory_max" \
+    "$@"
+}
+
+if systemctl --user show-environment >/dev/null 2>&1; then
+  run_scope "$@"
+fi
+
+target_user=${USER:-}
+if [ -z "$target_user" ]; then
+  target_user=$(id -un)
+fi
+
+# Some sandboxed URL handoffs cannot reach the user bus. Prefer the host user
+# manager, but fall back to a direct launch so authentication callbacks work.
+if run_scope_on_host "$@" 2>/dev/null; then
+  exit 0
+fi
+
+exec "$@"
