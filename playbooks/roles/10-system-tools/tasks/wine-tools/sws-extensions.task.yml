@@ -13,6 +13,7 @@
   loop:
     - ~/.config/REAPER/UserPlugins
     - ~/.config/REAPER/Scripts
+    - ~/.config/REAPER/Scripts/custom
 
 - name: "[archlinux] Wine tools: symlink native reaper sws extension"
   ansible.builtin.file:
@@ -25,6 +26,21 @@
       dest: ~/.config/REAPER/UserPlugins/reaper_sws-x86_64.so
     - src: /usr/lib/sws/sws_python64.py
       dest: ~/.config/REAPER/Scripts/sws_python64.py
+
+- name: "[archlinux] Wine tools: copy native reaper startup script"
+  ansible.builtin.copy:
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/scripts/reaper/__startup.lua"
+    dest: ~/.config/REAPER/Scripts/__startup.lua
+    mode: "644"
+
+- name: "[archlinux] Wine tools: copy native reaper custom scripts"
+  ansible.builtin.copy:
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/scripts/reaper/{{ item }}"
+    dest: "~/.config/REAPER/Scripts/custom/{{ item }}"
+    mode: "644"
+  loop:
+    - alternate_position.lua
+    - yabridge_focus_repair.lua
 
 - name: "[archlinux] Wine tools: get sws extension"
   ansible.builtin.get_url:
@@ -77,8 +93,10 @@
     - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts"
     - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts/custom"
 
-- name: "[archlinux] Wine tools: copy custom script"
+- name: "[archlinux] Wine tools: copy wine reaper custom scripts"
   ansible.builtin.copy:
-    src: ~/dotfiles/assets/scripts/reaper/alternate_position.lua
-    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts/custom/"
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/scripts/reaper/{{ item }}"
+    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts/custom/{{ item }}"
     mode: "644"
+  loop:
+    - alternate_position.lua

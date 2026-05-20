@@ -106,6 +106,14 @@ should stay usable from a plain TTY, so prefer official Arch packages such as
 `speech-dispatcher` and `espeak-ng` over optional AUR neural TTS engines for
 the fallback layer.
 
+## REAPER
+
+REAPER scripts that should be managed by Ansible live in
+`assets/scripts/reaper/`. Native Linux REAPER startup hooks are installed from
+`assets/scripts/reaper/__startup.lua` by the `10-120` wine-tools task into
+`~/.config/REAPER/Scripts/__startup.lua`; keep per-feature startup logic in
+separate files under `Scripts/custom/` and load them from that entrypoint.
+
 ## Keyboard And Mouse-Free Workflow
 
 The keyboard/mouse stack is split across keyd, a small observer script, warpd,
