@@ -113,6 +113,9 @@ REAPER scripts that should be managed by Ansible live in
 `assets/scripts/reaper/__startup.lua` by the `10-120` wine-tools task into
 `~/.config/REAPER/Scripts/__startup.lua`; keep per-feature startup logic in
 separate files under `Scripts/custom/` and load them from that entrypoint.
+WineASIO for Windows REAPER is built by the same `10-120` wine-tools task from
+`wine-tools/wineasio.task.yml`, installed into both the managed portable Wine
+tree and system Wine tree, and registered into the Reaper Wine prefix.
 
 ## Keyboard And Mouse-Free Workflow
 

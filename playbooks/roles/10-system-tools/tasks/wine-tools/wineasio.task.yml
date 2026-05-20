@@ -1,0 +1,205 @@
+---
+- name: "[archlinux] Wine tools: ensure wineasio build dependencies"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - base-devel
+      - pipewire-jack
+      - lib32-pipewire-jack
+
+- name: "[archlinux] Wine tools: clone wineasio"
+  ansible.builtin.git:
+    repo: "{{ arch_wineasio_setup.repo }}"
+    dest: "{{ arch_wineasio_setup.repo_path }}"
+    depth: 1
+    version: "{{ arch_wineasio_setup.version }}"
+  register: var_wineasio_repo
+
+- name: "[archlinux] Wine tools: stat wineasio build artifacts"
+  ansible.builtin.stat:
+    path: "{{ arch_wineasio_setup.repo_path }}/{{ item }}"
+  loop:
+    - build64/wineasio64.dll
+    - build32/wineasio32.dll
+  register: var_wineasio_build_artifacts
+
+- name: "[archlinux] Wine tools: make 64bit wineasio"
+  ansible.builtin.command: make 64
+  args:
+    chdir: "{{ arch_wineasio_setup.repo_path }}"
+  changed_when: true
+  when: var_wineasio_repo.changed or not var_wineasio_build_artifacts.results[0].stat.exists
+
+- name: "[archlinux] Wine tools: make 32bit wineasio"
+  ansible.builtin.command: make 32
+  args:
+    chdir: "{{ arch_wineasio_setup.repo_path }}"
+  changed_when: true
+  when: var_wineasio_repo.changed or not var_wineasio_build_artifacts.results[1].stat.exists
+
+- name: "[archlinux] Wine tools: ensure portable wineasio install dirs"
+  ansible.builtin.file:
+    path: "{{ wine_path }}/lib/wine/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - x86_64-windows
+    - x86_64-unix
+    - i386-windows
+    - i386-unix
+
+- name: "[archlinux] Wine tools: install wineasio into portable wine"
+  ansible.builtin.copy:
+    src: "{{ arch_wineasio_setup.repo_path }}/{{ item.src }}"
+    dest: "{{ wine_path }}/lib/wine/{{ item.dest }}"
+    remote_src: true
+    mode: "0644"
+  loop:
+    - src: build64/wineasio64.dll
+      dest: x86_64-windows/wineasio64.dll
+    - src: build64/wineasio64.dll.so
+      dest: x86_64-unix/wineasio64.dll.so
+    - src: build32/wineasio32.dll
+      dest: i386-windows/wineasio32.dll
+    - src: build32/wineasio32.dll.so
+      dest: i386-unix/wineasio32.dll.so
+  register: var_wineasio_portable_install
+
+- name: "[archlinux] Wine tools: ensure system wineasio install dirs"
+  become: true
+  ansible.builtin.file:
+    path: "/usr/lib/wine/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - x86_64-windows
+    - x86_64-unix
+    - i386-windows
+    - i386-unix
+
+- name: "[archlinux] Wine tools: install wineasio into system wine"
+  become: true
+  ansible.builtin.copy:
+    src: "{{ arch_wineasio_setup.repo_path }}/{{ item.src }}"
+    dest: "/usr/lib/wine/{{ item.dest }}"
+    remote_src: true
+    mode: "0644"
+  loop:
+    - src: build64/wineasio64.dll
+      dest: x86_64-windows/wineasio64.dll
+    - src: build64/wineasio64.dll.so
+      dest: x86_64-unix/wineasio64.dll.so
+    - src: build32/wineasio32.dll
+      dest: i386-windows/wineasio32.dll
+    - src: build32/wineasio32.dll.so
+      dest: i386-unix/wineasio32.dll.so
+  register: var_wineasio_system_install
+
+- name: "[archlinux] Wine tools: stat wineasio registration marker"
+  ansible.builtin.stat:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/.dotfiles-wineasio-registered"
+  register: var_wineasio_registration_marker
+
+- name: "[archlinux] Wine tools: ensure wineasio dll dirs in reaper prefix"
+  ansible.builtin.file:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/windows/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - system32
+    - syswow64
+  when: >
+    var_wineasio_portable_install.changed or
+    var_wineasio_system_install.changed or
+    not var_wineasio_registration_marker.stat.exists
+
+- name: "[archlinux] Wine tools: install wineasio fake dlls into reaper prefix"
+  ansible.builtin.copy:
+    src: "{{ wine_path }}/lib/wine/{{ item.src }}"
+    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/windows/{{ item.dest }}"
+    remote_src: true
+    mode: "0644"
+  loop:
+    - src: x86_64-windows/wineasio64.dll
+      dest: system32/wineasio64.dll
+    - src: i386-windows/wineasio32.dll
+      dest: syswow64/wineasio32.dll
+  when: >
+    var_wineasio_portable_install.changed or
+    var_wineasio_system_install.changed or
+    not var_wineasio_registration_marker.stat.exists
+
+- name: "[archlinux] Wine tools: register 32bit wineasio in reaper prefix"
+  ansible.builtin.command: >
+    {{ wine_path }}/bin/regsvr32 /s
+    {{ wine_path }}/lib/wine/i386-unix/wineasio32.dll.so
+  environment: "{{ wine_env_vars | combine({
+    'WINEPREFIX': arch_reaper_wine_setup.wine_prefix,
+    'WINEARCH': arch_reaper_wine_setup.architecture | default('win64'),
+    'WINEFSYNC': '0'
+  }) }}"
+  changed_when: true
+  when: >
+    var_wineasio_portable_install.changed or
+    var_wineasio_system_install.changed or
+    not var_wineasio_registration_marker.stat.exists
+
+- name: "[archlinux] Wine tools: register 64bit wineasio in reaper prefix"
+  ansible.builtin.command: >
+    {{ wine_path }}/bin/wine64 regsvr32 /s
+    {{ wine_path }}/lib/wine/x86_64-unix/wineasio64.dll.so
+  environment: "{{ wine_env_vars | combine({
+    'WINEPREFIX': arch_reaper_wine_setup.wine_prefix,
+    'WINEARCH': arch_reaper_wine_setup.architecture | default('win64'),
+    'WINEFSYNC': '0'
+  }) }}"
+  changed_when: true
+  when: >
+    var_wineasio_portable_install.changed or
+    var_wineasio_system_install.changed or
+    not var_wineasio_registration_marker.stat.exists
+
+- name: "[archlinux] Wine tools: mark wineasio registered"
+  ansible.builtin.file:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/.dotfiles-wineasio-registered"
+    state: touch
+    mode: "0644"
+  when: >
+    var_wineasio_portable_install.changed or
+    var_wineasio_system_install.changed or
+    not var_wineasio_registration_marker.stat.exists
+
+- name: "[archlinux] Wine tools: stat wine reaper ini for wineasio"
+  ansible.builtin.stat:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
+  register: var_wineasio_reaper_ini
+
+- name: "[archlinux] Wine tools: configure wine reaper for wineasio"
+  ansible.builtin.lineinfile:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
+    regexp: "^{{ item.key }}=.*"
+    line: "{{ item.key }}={{ item.value }}"
+    insertafter: "^\\[audioconfig\\]"
+  loop:
+    - key: mode
+      value: "{{ arch_wineasio_setup.reaper_audio_mode }}"
+    - key: asio_driver_name
+      value: '"WineASIO Driver"'
+    - key: asio_input0
+      value: "0"
+    - key: asio_input1
+      value: "1"
+    - key: asio_output0
+      value: "0"
+    - key: asio_output1
+      value: "1"
+    - key: asio_srate
+      value: "{{ arch_wineasio_setup.reaper_sample_rate }}"
+    - key: asio_srate_use
+      value: "1"
+    - key: asio_bsize
+      value: "{{ arch_wineasio_setup.reaper_block_size }}"
+    - key: asio_bsize_use
+      value: "1"
+  when: var_wineasio_reaper_ini.stat.exists

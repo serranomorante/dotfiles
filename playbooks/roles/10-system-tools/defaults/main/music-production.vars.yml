@@ -4,6 +4,14 @@ pipewire_latency_vars:
   PIPEWIRE_QUANTUM: "256/48000"
   PIPEWIRE_RATE: "1/48000"
 
+arch_wineasio_setup:
+  repo: https://github.com/wineasio/wineasio
+  repo_path: "{{ ansible_facts.env.HOME }}/data/repos/wineasio"
+  version: master
+  reaper_audio_mode: 2
+  reaper_block_size: 256
+  reaper_sample_rate: 48000
+
 arch_reaper_sws_extension_setup:
   version: 2.14.0.7
   backup_path: ~/data/Downloads/music-production

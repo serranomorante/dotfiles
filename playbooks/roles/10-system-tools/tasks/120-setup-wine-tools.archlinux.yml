@@ -209,6 +209,10 @@
   ansible.builtin.include_tasks:
     file: wine-tools/reaper.task.yml
 
+- name: "[archlinux] Wine tools: wineasio"
+  ansible.builtin.include_tasks:
+    file: wine-tools/wineasio.task.yml
+
 - name: "[archlinux] Wine tools: sws extensions"
   ansible.builtin.include_tasks:
     file: wine-tools/sws-extensions.task.yml
