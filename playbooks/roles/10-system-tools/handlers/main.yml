@@ -226,12 +226,6 @@
   ansible.builtin.command: fc-cache
   changed_when: true
 
-- name: handler_upgrade_system
-  become: true
-  community.general.pacman:
-    update_cache: true
-    upgrade: true
-
 - name: handler_mkinitcpio_allpresets
   become: true
   ansible.builtin.command: mkinitcpio --allpresets

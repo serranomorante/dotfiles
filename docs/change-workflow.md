@@ -172,3 +172,11 @@ packages.
 
 If active-system testing is needed, say which service or command would apply the
 change before running it.
+
+## Arch System Upgrades
+
+Do not run full-system upgrades from Ansible. Avoid `community.general.pacman`
+with `upgrade: true` and command tasks equivalent to `pacman -Syu` or
+`pacman -Su`. System upgrades should be an explicit operator action outside
+these workstation configuration playbooks so long-running playbook runs do not
+mix old in-memory Python or Ansible code with upgraded files on disk.
