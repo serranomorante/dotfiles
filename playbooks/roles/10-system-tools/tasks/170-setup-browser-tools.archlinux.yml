@@ -84,7 +84,7 @@
   ansible.builtin.set_fact:
     fact_changed_extensions: "{{ fact_changed_extensions | default({}) | combine({extension_name: item.changed}) }}"
   vars:
-    extension_name: "{{ item.invocation.module_args.repo | basename }}"
+    extension_name: "{{ item.item.repo | basename }}"
   loop: "{{ var_clone_chrome_extensions.results }}"
 
 - name: "[archlinux] Setup browser tools: register var_playwright_mcp_browser_key"
