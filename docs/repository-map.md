@@ -116,6 +116,10 @@ separate files under `Scripts/custom/` and load them from that entrypoint.
 WineASIO for Windows REAPER is built by the same `10-120` wine-tools task from
 `wine-tools/wineasio.task.yml`, installed into both the managed portable Wine
 tree and system Wine tree, and registered into the Reaper Wine prefix.
+Wine commands launched through `~/bin/wwine` use Wine's virtual desktop by
+default. Keep the default virtual desktop registry name as `Default`: installer
+wait loops poll `wmctrl -lx` for `explorer.exe`, and the DWM Wine rule relies on
+Wine's virtual desktop window identity staying stable.
 
 ## Keyboard And Mouse-Free Workflow
 

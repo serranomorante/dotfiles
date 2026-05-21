@@ -1,10 +1,27 @@
 #!/usr/bin/env bash
+#
+# Wrapper installed as ~/bin/wwine for running Wine tools against managed
+# prefixes with a pinned Wine build.
+#
+# The Ansible role renders the Wine executable/library environment and a small
+# alias map into this template, so callers can use stable names such as
+# `--prefix reaper` instead of repeating full WINEPREFIX paths and Wine build
+# variables. The wrapper also applies the prefix's default WINEARCH when one is
+# configured.
+#
+# By default, `wine` and `winecfg` are launched with Wine's virtual desktop
+# enabled. That keeps Windows application windows contained and predictable for
+# the music-production prefixes. Use `--no-desktop` when a command must run
+# without that registry setting, such as selected maintenance or registry
+# operations. Keep the default desktop name as `Default`: Ansible wait loops
+# match Wine virtual desktop windows through `wmctrl -lx` and `explorer.exe`,
+# while the DWM Wine rule also expects Wine's virtual desktop window title.
 
 set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: wwine --prefix <alias-or-path> [--arch <arch>] <tool> [tool-args...]
+usage: wwine --prefix <alias-or-path> [--arch <arch>] [--no-desktop] <tool> [tool-args...]
 
 tools: wine, winecfg, wineserver, winetricks, wineboot
 EOF
@@ -17,6 +34,9 @@ die() {
 
 prefix=""
 arch=""
+use_desktop=1
+desktop_name="Default"
+desktop_size="1920x1080"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -35,6 +55,24 @@ while [[ $# -gt 0 ]]; do
       ;;
     --arch=*)
       arch="${1#*=}"
+      ;;
+    --desktop)
+      use_desktop=1
+      ;;
+    --desktop=*)
+      use_desktop=1
+      desktop_size="${1#*=}"
+      ;;
+    --desktop-name)
+      shift
+      [[ $# -gt 0 ]] || die "missing value for --desktop-name"
+      desktop_name="$1"
+      ;;
+    --desktop-name=*)
+      desktop_name="${1#*=}"
+      ;;
+    --no-desktop)
+      use_desktop=0
       ;;
     --help|-h)
       usage
@@ -92,14 +130,38 @@ if [[ -n "$arch" ]]; then
   export WINEARCH="$arch"
 fi
 
+configure_desktop() {
+  if [[ "$use_desktop" == 1 ]]; then
+    "$WINELOADER" reg add 'HKEY_CURRENT_USER\Software\Wine\Explorer' /v Desktop /d "$desktop_name" /f >/dev/null
+    "$WINELOADER" reg add 'HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops' /v "$desktop_name" /d "$desktop_size" /f >/dev/null
+  else
+    "$WINELOADER" reg delete 'HKEY_CURRENT_USER\Software\Wine\Explorer' /v Desktop /f >/dev/null 2>&1 || true
+  fi
+}
+
+configure_desktop_for_wine_args() {
+  case "${1:-}" in
+    reg)
+      if [[ "$use_desktop" == 0 ]]; then
+        configure_desktop
+      fi
+      ;;
+    *)
+      configure_desktop
+      ;;
+  esac
+}
+
 tool="$1"
 shift
 
 case "$tool" in
   wine)
+    configure_desktop_for_wine_args "$@"
     exec "$WINELOADER" "$@"
     ;;
   winecfg)
+    configure_desktop
     exec "$WINEVERPATH/bin/winecfg" "$@"
     ;;
   wineserver)
