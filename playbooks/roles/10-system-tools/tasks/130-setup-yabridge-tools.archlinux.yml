@@ -4,3 +4,73 @@
     src: https://github.com/robbert-vdh/yabridge/releases/download/5.1.1/yabridge-5.1.1.tar.gz
     dest: ~/.local/share/
     remote_src: true
+
+- name: "[archlinux] Windows VST bridge tools: ensure archive cache folder"
+  ansible.builtin.file:
+    path: ~/data/apps/virt-tools
+    state: directory
+    mode: "0755"
+
+- name: "[archlinux] Windows VST bridge tools: download LinVst"
+  ansible.builtin.get_url:
+    url: "{{ arch_linvst_setup.archive_url }}"
+    dest: "~/data/apps/virt-tools/{{ arch_linvst_setup.archive_name }}"
+    checksum: "{{ arch_linvst_setup.archive_checksum }}"
+    mode: "0644"
+
+- name: "[archlinux] Windows VST bridge tools: download LinVst3"
+  ansible.builtin.get_url:
+    url: "{{ arch_linvst3_setup.archive_url }}"
+    dest: "~/data/apps/virt-tools/{{ arch_linvst3_setup.archive_name }}"
+    checksum: "{{ arch_linvst3_setup.archive_checksum }}"
+    mode: "0644"
+
+- name: "[archlinux] Windows VST bridge tools: install LinVst"
+  ansible.builtin.unarchive:
+    src: "~/data/apps/virt-tools/{{ arch_linvst_setup.archive_name }}"
+    dest: "{{ arch_linvst_setup.install_parent_path }}"
+    remote_src: true
+    creates: "{{ arch_linvst_setup.linvst_so_path }}"
+
+- name: "[archlinux] Windows VST bridge tools: install LinVst3"
+  ansible.builtin.unarchive:
+    src: "~/data/apps/virt-tools/{{ arch_linvst3_setup.archive_name }}"
+    dest: "{{ arch_linvst3_setup.install_parent_path }}"
+    remote_src: true
+    creates: "{{ arch_linvst3_setup.linvst3_so_path }}"
+
+- name: "[archlinux] Windows VST bridge tools: install LinVst server binaries"
+  become: true
+  ansible.builtin.copy:
+    src: "{{ arch_linvst_setup.install_path }}/{{ item }}"
+    dest: "/usr/bin/{{ item }}"
+    mode: "0755"
+    remote_src: true
+  loop:
+    - lin-vst-server.exe
+    - lin-vst-server.exe.so
+    - lin-vst-server32.exe
+    - lin-vst-server32.exe.so
+
+- name: "[archlinux] Windows VST bridge tools: install LinVst3 server binaries"
+  become: true
+  ansible.builtin.copy:
+    src: "{{ arch_linvst3_setup.install_path }}/{{ item }}"
+    dest: "/usr/bin/{{ item }}"
+    mode: "0755"
+    remote_src: true
+  loop:
+    - lin-vst3-server.exe
+    - lin-vst3-server.exe.so
+
+- name: "[archlinux] Windows VST bridge tools: install LinVst converters"
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "~/.local/bin/{{ item.dest }}"
+    mode: "0755"
+    remote_src: true
+  loop:
+    - src: "{{ arch_linvst_setup.install_path }}/linvstconvert"
+      dest: linvstconvert
+    - src: "{{ arch_linvst3_setup.install_path }}/linvst3convert"
+      dest: linvst3convert

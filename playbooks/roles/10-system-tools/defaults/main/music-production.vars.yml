@@ -16,6 +16,24 @@ arch_reaper_sws_extension_setup:
   version: 2.14.0.7
   backup_path: ~/data/Downloads/music-production
 
+arch_linvst_setup:
+  version: "4.9"
+  archive_name: LinVst-4.9-wine-10.x-arch.zip
+  archive_url: https://github.com/osxmidi/LinVst/releases/download/4.9/LinVst-4.9-wine-10.x-arch.zip
+  archive_checksum: sha256:08a09b3f6311ef695d5fb3fa90e883b945ae8cef8977dfa9506a9cabf9b1aff4
+  install_parent_path: "{{ ansible_facts.env.HOME }}/.local/share"
+  install_path: "{{ ansible_facts.env.HOME }}/.local/share/LinVst-4.9-wine-10.x-arch"
+  linvst_so_path: "{{ ansible_facts.env.HOME }}/.local/share/LinVst-4.9-wine-10.x-arch/linvst.so"
+
+arch_linvst3_setup:
+  version: "4.9"
+  archive_name: LinVst3-4.9-wine-10.x-arch.zip
+  archive_url: https://github.com/osxmidi/LinVst3/releases/download/4.9/LinVst3-4.9-wine-10.x-arch.zip
+  archive_checksum: sha256:87b9ec1ae800ac955204543728844af7f94fb5c424bb59672062c83b2f7c3f0b
+  install_parent_path: "{{ ansible_facts.env.HOME }}/.local/share"
+  install_path: "{{ ansible_facts.env.HOME }}/.local/share/LinVst3-4.9-wine-10.x-arch"
+  linvst3_so_path: "{{ ansible_facts.env.HOME }}/.local/share/LinVst3-4.9-wine-10.x-arch/linvst3.so"
+
 wwine_prefix_aliases:
   reaper:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}"
