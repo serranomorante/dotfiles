@@ -1,4 +1,24 @@
 ---
+- name: "[archlinux] Wine tools: stat reaper gecko plugins"
+  ansible.builtin.stat:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/windows/{{ item }}/gecko/plugin/npmshtml.dll"
+  loop:
+    - system32
+    - syswow64
+  register: var_reaper_gecko_plugins
+
+- name: "[archlinux] Wine tools: ensure gecko in reaper prefix"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper --no-desktop
+    wineboot -u
+  changed_when: true
+  timeout: 60
+  when: >
+    var_reaper_gecko_plugins.results
+    | selectattr('stat.exists', 'equalto', false)
+    | list
+    | length > 0
+
 - name: "[archlinux] Wine tools: get reaper"
   ansible.builtin.get_url:
     url: https://www.reaper.fm/files/7.x/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe

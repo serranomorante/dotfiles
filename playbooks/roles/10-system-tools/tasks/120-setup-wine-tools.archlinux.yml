@@ -44,6 +44,7 @@
     state: present
     name:
       - winetricks
+      - wine-gecko
       - wine-mono
       - libxcomposite
       - vulkan-icd-loader
