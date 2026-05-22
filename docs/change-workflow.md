@@ -170,13 +170,15 @@ If the requested playbook scope includes AUR tasks, such as tasks using
 use `--tags 10-20,20-90` when applying a `20-90` task file that installs AUR
 packages.
 
-Treat files under `playbooks/collections/ansible_collections/kewlfft/aur` as a
-repo-local checkout managed by the `10-20` AUR setup task. Do not rely on an
-unexplained direct edit there when fixing collection behavior; first inspect
-`20-setup-aur.archlinux.yml` to determine whether the durable fix belongs in
-that setup task, as a documented local patch, or in the vendored collection
-itself. If the collection module constructs its own command environment, a
-caller task `environment:` block may not override it.
+Before editing any file under `~/dotfiles`, confirm whether the file is tracked
+by the relevant Git repository. Use the repo that owns the path, including
+submodules, and check `git ls-files -- <path>` first. When the file is not
+listed, also check `git check-ignore -v -- <path>`. If the file is ignored or
+untracked, assume it is generated, downloaded, cached, or otherwise outside
+source control until you identify the owning template, setup task, generator,
+or upstream checkout.
+Durable fixes should usually change that tracked source instead of relying on a
+direct edit to an ignored file that can be replaced later.
 
 If active-system testing is needed, say which service or command would apply the
 change before running it.
