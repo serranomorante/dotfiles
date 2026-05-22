@@ -59,6 +59,15 @@
   delegate_to: localhost
   run_once: true
 
+- name: "[archlinux] AUR: force UTF-8 locale in repo-local collection commands"
+  ansible.builtin.lineinfile:
+    path: "{{ playbook_dir }}/collections/ansible_collections/kewlfft/aur/plugins/modules/aur.py"
+    regexp: "^def_lang = \\['env', .*'LANGUAGE=C'\\]$"
+    line: "def_lang = ['env', 'LANG=C.UTF-8', 'LC_ALL=C.UTF-8', 'LANGUAGE=C']"
+    backrefs: true
+  delegate_to: localhost
+  run_once: true
+
 - name: "[archlinux] AUR: Create the `aur_builder` user"
   become: true
   ansible.builtin.user:

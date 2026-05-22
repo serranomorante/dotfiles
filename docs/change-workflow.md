@@ -170,6 +170,14 @@ If the requested playbook scope includes AUR tasks, such as tasks using
 use `--tags 10-20,20-90` when applying a `20-90` task file that installs AUR
 packages.
 
+Treat files under `playbooks/collections/ansible_collections/kewlfft/aur` as a
+repo-local checkout managed by the `10-20` AUR setup task. Do not rely on an
+unexplained direct edit there when fixing collection behavior; first inspect
+`20-setup-aur.archlinux.yml` to determine whether the durable fix belongs in
+that setup task, as a documented local patch, or in the vendored collection
+itself. If the collection module constructs its own command environment, a
+caller task `environment:` block may not override it.
+
 If active-system testing is needed, say which service or command would apply the
 change before running it.
 
