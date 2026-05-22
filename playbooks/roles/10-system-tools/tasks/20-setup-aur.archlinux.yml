@@ -150,15 +150,21 @@
     version: "{{ arch_yay_version }}"
     single_branch: true
 
+- name: "[archlinux] AUR: ensure standard tmp permissions"
+  become: true
+  ansible.builtin.file:
+    path: /tmp
+    state: directory
+    owner: root
+    group: root
+    mode: "1777"
+
 - name: "[archlinux] AUR: ensure yay folder permissions"
   become: true
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: /tmp/yay
     mode: "770"
     group: wheel
-  loop:
-    - /tmp
-    - /tmp/yay
 
 - name: "[archlinux] AUR: install yay"
   become: true
