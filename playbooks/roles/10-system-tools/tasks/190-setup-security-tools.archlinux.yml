@@ -228,6 +228,28 @@
     - var_stat_private_cloud_tools_defaults.stat.exists
     - prowlarr_qbittorrent_plugin_setup is defined
 
+- name: "[archlinux] Setup security tools: set private sabnzbd keyrings facts"
+  ansible.builtin.set_fact:
+    keyrings: >-
+      {{
+        (keyrings | default([]))
+        | union([
+          {
+            "folder": sabnzbd_setup.keyrings.folder,
+            "passkey": sabnzbd_setup.keyrings.username_passkey,
+            "wallet": sabnzbd_setup.keyrings.wallet,
+          },
+          {
+            "folder": sabnzbd_setup.keyrings.folder,
+            "passkey": sabnzbd_setup.keyrings.password_passkey,
+            "wallet": sabnzbd_setup.keyrings.wallet,
+          },
+        ])
+      }}
+  when:
+    - var_stat_private_cloud_tools_defaults.stat.exists
+    - sabnzbd_setup is defined
+
 - name: "[archlinux] Setup security tools: stat setup-kwallet"
   ansible.builtin.stat:
     path: ~/dotfiles/for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/templates/setup-kwallet
@@ -241,6 +263,17 @@
   vars:
     keyrings: "{{ keyrings }}"
   when: var_stat_setup_kwallet.stat.exists
+  register: var_setup_kwallet_template
+
+- name: "[archlinux] Setup security tools: prompt for new kwallet passwords"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_user_dir }}/bin/setup-kwallet"
+  register: var_setup_kwallet_prompt
+  changed_when: "'Saved [' in var_setup_kwallet_prompt.stdout"
+  failed_when: false
+  when:
+    - var_setup_kwallet_template is changed
 
 - name: "[archlinux] Setup security tools: ensure path"
   ansible.builtin.file:
