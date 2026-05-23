@@ -21,10 +21,8 @@ local LOGICAL_SINKS = {
 }
 
 local APP_TARGETS = {
-  ---BTAdapter -> Physical output sink (monitor-only, keep it out of recording mix)
-  ---BTAdapter (media.class = "Stream/Output/Audio")
-  ---alsa_output.usb-Burr-Brown_from_TI_USB_Audio_CODEC-00.analog-stereo-output (media.class = "Audio/Sink")
-  ["BTAdapter"] = { node = "alsa_output.usb-Burr-Brown_from_TI_USB_Audio_CODEC-00.analog-stereo-output" },
+  ---BTAdapter intentionally follows WirePlumber's default sink policy.
+  ---Do not pin it here unless it must ignore the selected output device.
   ["Brave"] = { logical_sink = "multimedia" },
   ["Firefox"] = { logical_sink = "multimedia" },
   ["ALSA plug-in [plexamp]"] = { logical_sink = "multimedia" },
