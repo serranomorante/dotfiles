@@ -114,6 +114,10 @@
   args:
     chdir: ~/data/repos/neovim
   when: var_neovim_needs_install
+  register: var_neovim_build_install
+  retries: 3
+  delay: 30
+  until: var_neovim_build_install is succeeded
   timeout: 0
 
 - name: "[archlinux] Neovim: record installed revision"
