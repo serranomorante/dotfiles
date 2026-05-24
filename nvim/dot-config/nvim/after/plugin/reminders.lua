@@ -43,8 +43,18 @@ local function remind_update()
 end
 
 local function remind(args)
+  local default_flags = "-a -q"
+  for _, arg in ipairs(args.fargs) do
+    if arg == "-n" then
+      default_flags = "-q"
+      break
+    end
+  end
   local cmd = vim.fn.join({
-    "remind '-i$OnceFile=\"" .. vim.env.HOME .. "/.local/state/remind/oncefile\"' '-knotify-send %s &' -a -q",
+    "remind '-i$OnceFile=\""
+      .. vim.env.HOME
+      .. "/.local/state/remind/oncefile\"' '-knotify-send %s &' "
+      .. default_flags,
     unpack(args.fargs),
   }, " ")
   local content = vim.fn.system(vim.fn.join({ cmd, PATH }, " "))
