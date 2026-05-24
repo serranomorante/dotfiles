@@ -56,6 +56,8 @@ local function focus_current_window()
   end)
 end
 
+M.focus_current_window = focus_current_window
+
 local function note_remote_rpc()
   if not enabled() then return end
 

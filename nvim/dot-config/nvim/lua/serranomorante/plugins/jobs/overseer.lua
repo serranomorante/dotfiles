@@ -15,7 +15,6 @@ end
 
 local function keys()
   local overseer = require("overseer")
-  local nnn_explorer = require("overseer.template.editor-tasks.TASK__nnn_explorer")
   local open_markdown_preview = require("overseer.template.editor-tasks.TASK__open_markdown_preview")
 
   vim.keymap.set("n", "<leader>oo", "<cmd>OverseerToggle<CR>", { desc = "Overseer: Toggle the overseer window" })
@@ -48,17 +47,25 @@ local function keys()
   end, { desc = "Open markdown preview" })
 
   vim.keymap.set("n", "<leader>e", function()
-    overseer.run_task(
-      { autostart = false, name = nnn_explorer.name, params = { startdir = vim.fn.expand("%:p") } },
-      function(task)
-        if not task then return end
-        utils.force_very_fullscreen_float(task)
-        utils.start_insert_mode(task)
-        task:subscribe("on_output", utils.dispose_on_window_close)
-        task:subscribe("on_complete", utils.close_window_on_exit_0)
-        task:start()
-      end
-    )
+    if vim.fn.executable("kitty-nnn-quick-access") ~= 1 then
+      return vim.api.nvim_echo({ { "kitty-nnn-quick-access not found", "DiagnosticError" } }, false, {})
+    end
+
+    local args = { "kitty-nnn-quick-access" }
+    local filepath = vim.api.nvim_buf_get_name(0)
+    if filepath ~= "" and (vim.fn.filereadable(filepath) == 1 or vim.fn.isdirectory(filepath) == 1) then
+      table.insert(args, filepath)
+    end
+
+    local job_id = vim.fn.jobstart(args, {
+      detach = true,
+      env = {
+        KITTY_NNN_INSTANCE_ROLE = "nvim",
+        NVIM_KITTY_LISTEN_ADDRESS = vim.v.servername,
+      },
+    })
+
+    if job_id <= 0 then vim.api.nvim_echo({ { "Failed to launch nnn quick access", "DiagnosticError" } }, false, {}) end
   end, { desc = "Toggle explorer" })
 
   vim.keymap.set(

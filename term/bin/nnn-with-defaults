@@ -28,8 +28,21 @@ if [ "$open_in_nvim" = 1 ]; then
     export VISUAL="open_in_nvim nnn_explorer"
 fi
 
+script_path=$(readlink -f -- "$0" 2>/dev/null || printf '%s\n' "$0")
+script_dir=$(CDPATH= cd -- "$(dirname -- "$script_path")" && pwd)
+
+default_nnn_plug="s:!bash -i*;p:preview-tui;l:cdto;f:!open_in_nvim nnn_search Find*;g:!open_in_nvim nnn_search Grep*"
+quick_access_cd_plug="c:!$script_dir/nnn-quick-access-cd*"
+
 if [ -z "${NNN_PLUG+x}" ]; then
-    export NNN_PLUG="s:!bash -i*;p:preview-tui;l:cdto;f:!open_in_nvim nnn_search Find*;g:!open_in_nvim nnn_search Grep*"
+    export NNN_PLUG=$default_nnn_plug
+fi
+
+if [ -n "${NNN_QUICK_ACCESS_TARGET:-}" ]; then
+    case ";$NNN_PLUG;" in
+    *";c:"*) ;;
+    *) export NNN_PLUG="$NNN_PLUG;$quick_access_cd_plug" ;;
+    esac
 fi
 
 if [ -z "${NNN_TRASH+x}" ]; then

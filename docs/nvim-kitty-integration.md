@@ -61,6 +61,32 @@ remote edit shifts focus back to Neovim.
 The main Kitty config binds `kitty_mod+s` to a Kitty background launch of the
 wrapper, which is the single user-facing toggle for the panel.
 
+`nnn` also runs through Kitty's quick-access-terminal kitten, via
+`term/bin/kitty-nnn-quick-access`. The wrapper uses
+`nnn-<role>-$KITTY_OS_INSTANCE_ID` instance groups so the session-wide nnn panel
+and the Neovim-owned nnn panel are independent inside the same Kitty OS window.
+The default role is `session`, which is what `kitty_mod+r` uses. Neovim's
+`<leader>e` binding sets `KITTY_NNN_INSTANCE_ROLE=nvim`, invokes the same
+wrapper with the current buffer path only when the buffer is backed by a real
+file, and sets `NVIM_KITTY_LISTEN_ADDRESS` to the current server instead of
+embedding nnn in an Overseer terminal float. When a real file path is provided,
+the wrapper compares the target directory with the existing nnn child process'
+current working directory. If they match, it keeps the existing quick-access nnn
+state and just toggles the panel. If they differ, it writes a target file under
+`${XDG_RUNTIME_DIR:-/tmp}/nnn-quick-access` for that Neovim-owned panel and sends
+nnn's `;c` plugin key through the panel's own Kitty remote-control socket. That runs
+`term/bin/nnn-quick-access-cd`, which writes nnn's `0c<dir>` control message to
+`NNN_PIPE` while nnn is actively running a plugin, avoiding a panel restart. New
+`nnn` processes receive the current file or directory as nnn's positional
+`PATH`; do not pass it with `-c`, because in nnn `-c` configures the CLI opener.
+Buffers without a real file path call the wrapper without a path, so the existing
+nnn state is preserved. Keep `nnn-with-defaults --open-in-nvim` on this path so
+file opens and the nnn `Find`/`Grep` plugins continue to target the active Neovim
+server through `open_in_nvim`. `NNNSearch` explicitly calls the remote Kitty
+focus helper after writing `:Find`/`:Grep` into Neovim's command line, because
+that handoff does not necessarily enter a new buffer and therefore cannot rely
+only on the remote-edit `BufEnter` focus autocmd.
+
 ## Remote Edit Focus Handoff
 
 `nvim/dot-config/nvim/lua/serranomorante/remote_kitty_focus.lua` owns this
@@ -119,6 +145,9 @@ Kitty window state is small, cheap to query, and easy to make stale.
   the lazygit-specific bindings.
 - Showing the lazygit panel is owned by the `kitty_mod+s` binding in
   `term/dot-config/kitty/kitty.conf`. Neovim has no keymap for it.
+- Showing nnn panels is owned by `term/bin/kitty-nnn-quick-access`.
+  `kitty_mod+r` opens the session-wide panel, and Neovim's `<leader>e` opens a
+  separate Neovim-owned panel with the current buffer path.
 - `term/bin/kitty-check-tasks-running` is the `kitty_mod+x` close helper. It
   queries the CWD-derived Neovim server directly with
   `nvim --server ... --remote-expr` to decide whether Overseer has running

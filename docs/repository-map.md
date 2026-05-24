@@ -279,7 +279,15 @@ standard flags or `NNN_*` environment. Use `--open-in-nvim` for Kitty panels or
 Neovim tasks that should route file opens back through `open_in_nvim`.
 The quick-access `nnn` panel sets `KITTY_NNN_QUICK_ACCESS=1`; Kitty mappings
 that are specific to that panel should match this environment variable so they
-do not affect ordinary `nnn` processes.
+do not affect ordinary `nnn` processes. `term/bin/kitty-nnn-quick-access`
+keeps an existing panel when its nnn child is already in the requested directory,
+and uses the hidden `;c` plugin path when a real file path requires a different
+directory. That path stores the target directory in runtime state, sends the
+plugin key through the panel's own Kitty remote-control socket, and lets
+`term/bin/nnn-quick-access-cd` write `0c<dir>` to `NNN_PIPE` while nnn is
+actively reading plugin control messages.
+Pass startup paths as nnn's positional `PATH`; `-c` is nnn's CLI-opener option,
+not a directory-changing option.
 Interactive Bash shells spawned from `nnn` still load the normal shell features,
 including ble.sh. Keep nnn-specific Bash hooks guarded by `NNN_PIPE` and tolerate
 a missing or closed pipe so transient nnn shells do not report exit-time pipe

@@ -1,11 +1,109 @@
 #!/bin/sh
 
-# Purpose: Toggle the nnn quick-access kitty panel for the current Kitty OS
-# instance.
-# Notes: quick-access-terminal scopes panels by --instance-group. Include the
-# app name so nnn and lazygit can each keep one panel per Kitty OS window.
+# Purpose: Toggle the nnn quick-access Kitty panel for the current Kitty OS
+# instance, optionally starting nnn at a target path.
+# Notes: quick-access-terminal scopes panels by --instance-group. Include a
+# role so the session-wide panel and Neovim-owned panel do not affect each
+# other's state.
 
-exec kitten quick-access-terminal \
-    --instance-group="nnn-${KITTY_OS_INSTANCE_ID:-default}" \
-    --override app_id=kitty-nnn \
-    env KITTY_NNN_QUICK_ACCESS=1 nnn-with-defaults --open-in-nvim -c
+instance_role=${KITTY_NNN_INSTANCE_ROLE:-session}
+instance_group="nnn-${instance_role}-${KITTY_OS_INSTANCE_ID:-default}"
+state_dir="${XDG_RUNTIME_DIR:-/tmp}/nnn-quick-access"
+target_file="$state_dir/$instance_group.target"
+socket_path="$state_dir/$instance_group.sock"
+
+ensure_state_dir() {
+    mkdir -p "$state_dir"
+}
+
+target_dir_from_path() {
+    if [ -d "$1" ]; then
+        printf '%s\n' "$1"
+    elif [ -e "$1" ]; then
+        dirname -- "$1"
+    fi
+}
+
+write_target_dir() {
+    target_dir=$1
+    [ -n "$target_dir" ] && [ -d "$target_dir" ] || return 1
+    ensure_state_dir || return 1
+    printf '%s\n' "$target_dir" >"$target_file"
+}
+
+panel_pid_for_group() {
+    pgrep -af -- "--instance-group=$instance_group" 2>/dev/null | while IFS= read -r process; do
+        case $process in
+        *"kitty +kitten panel"*)
+            printf '%s\n' "${process%% *}"
+            return
+            ;;
+        esac
+    done
+}
+
+nnn_cwd_for_panel() {
+    panel_pid=$1
+    nnn_pid=$(pgrep -P "$panel_pid" -x nnn 2>/dev/null | head -n 1)
+    [ -n "$nnn_pid" ] || return 1
+    readlink "/proc/$nnn_pid/cwd" 2>/dev/null
+}
+
+remote_socket_for_panel() {
+    panel_pid=$1
+
+    if [ -S "$socket_path" ]; then
+        printf '%s\n' "$socket_path"
+        return
+    fi
+
+    if [ -S "$socket_path-$panel_pid" ]; then
+        printf '%s\n' "$socket_path-$panel_pid"
+        return
+    fi
+
+    for candidate in "$socket_path"-*; do
+        [ -S "$candidate" ] || continue
+        printf '%s\n' "$candidate"
+        return
+    done
+}
+
+trigger_live_cd() {
+    panel_pid=$1
+    command -v kitten >/dev/null 2>&1 || return 0
+    remote_socket=$(remote_socket_for_panel "$panel_pid")
+    [ -n "$remote_socket" ] || return 0
+    kitten @ --to "unix:$remote_socket" send-key --match all esc >/dev/null 2>&1
+    sleep 0.03
+    kitten @ --to "unix:$remote_socket" send-text --match all ';c' >/dev/null 2>&1
+}
+
+ensure_state_dir
+
+if [ "$#" -gt 0 ]; then
+    target_dir=$(target_dir_from_path "$1")
+    panel_pid=$(panel_pid_for_group)
+    if [ -n "$panel_pid" ] &&
+        [ -n "$target_dir" ] &&
+        [ "$(nnn_cwd_for_panel "$panel_pid")" != "$target_dir" ] &&
+        write_target_dir "$target_dir"; then
+        trigger_live_cd "$panel_pid" &
+    fi
+
+    kitten quick-access-terminal \
+        --instance-group="$instance_group" \
+        --override app_id=kitty-nnn \
+        --override kitty_override=allow_remote_control=socket-only \
+        --override kitty_override="listen_on=unix:$socket_path" \
+        env KITTY_NNN_QUICK_ACCESS=1 NNN_QUICK_ACCESS_TARGET="$target_file" nnn-with-defaults --open-in-nvim "$1"
+    status=$?
+    exit "$status"
+else
+    kitten quick-access-terminal \
+        --instance-group="$instance_group" \
+        --override app_id=kitty-nnn \
+        --override kitty_override=allow_remote_control=socket-only \
+        --override kitty_override="listen_on=unix:$socket_path" \
+        env KITTY_NNN_QUICK_ACCESS=1 NNN_QUICK_ACCESS_TARGET="$target_file" nnn-with-defaults --open-in-nvim
+fi

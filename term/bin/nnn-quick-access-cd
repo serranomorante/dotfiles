@@ -1,0 +1,11 @@
+#!/bin/sh
+
+target_file=${NNN_QUICK_ACCESS_TARGET:-}
+
+[ -n "$target_file" ] || exit 0
+[ -n "${NNN_PIPE:-}" ] || exit 0
+
+IFS= read -r target_dir <"$target_file" || exit 0
+[ -d "$target_dir" ] || exit 0
+
+printf '%s' "0c$target_dir" >"$NNN_PIPE"

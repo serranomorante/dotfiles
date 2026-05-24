@@ -1,5 +1,6 @@
 local utils = require("serranomorante.utils")
 local constants = require("serranomorante.constants")
+local remote_kitty_focus = require("serranomorante.remote_kitty_focus")
 
 ---Writes a Grep/Find command into vim's command-line with
 ---nnn's hovered dir prepopulated
@@ -14,6 +15,7 @@ local function nnn_search_in_dir(command_args)
   if vim.api.nvim_get_option_value("buftype", { buf = 0 }) == "terminal" then vim.api.nvim_win_close(0, true) end
   utils.feedkeys(string.format(":%s '' %s", search_type, search_dir), "n")
   utils.feedkeys(constants.POSITION_CURSOR_BETWEEN_QUOTES, "n")
+  remote_kitty_focus.focus_current_window()
 end
 
 vim.api.nvim_create_user_command("NNNSearch", nnn_search_in_dir, {
