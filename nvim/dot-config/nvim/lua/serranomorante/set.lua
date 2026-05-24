@@ -78,7 +78,7 @@ vim.go.updatetime = 50
 vim.go.timeoutlen = 500
 vim.go.showtabline = 2
 
-vim.go.inccommand = "split"
+vim.go.inccommand = "nosplit"
 
 vim.wo.list = true
 vim.go.listchars = vim.go.listchars .. ",leadmultispace:  ,trail:·,tab:→ "
