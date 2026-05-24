@@ -3,6 +3,8 @@ local M = {}
 local function keys()
   local ts_select = require("nvim-treesitter-textobjects.select")
   local ts_move = require("nvim-treesitter-textobjects.move")
+  local ts_repeat_move = require("nvim-treesitter-textobjects.repeatable_move")
+
   --- SELECT
   vim.keymap.set(
     { "x", "o" },
@@ -150,6 +152,26 @@ local function keys()
     function() ts_move.goto_previous_end("@parameter.inner") end,
     { desc = "Treesitter: Previous argument end" }
   )
+
+  --- REPEAT MOVE
+  vim.keymap.set({ "n", "x", "o" }, ";", function()
+    vim.cmd([[normal! ]] .. "m`")
+    ts_repeat_move.repeat_last_move()
+  end, { desc = "Treesitter: Repeat last move" })
+
+  vim.keymap.set({ "n", "x", "o" }, ",", function()
+    vim.cmd([[normal! ]] .. "m`")
+    ts_repeat_move.repeat_last_move_opposite()
+  end, { desc = "Treesitter: Repeat last move opposite" })
+
+  --- Restore the built-in character search behaviour overridden by repeatable_move.
+  for _, operator in ipairs({ "f", "F", "t", "T" }) do
+    vim.keymap.set({ "n", "x", "o" }, operator, function()
+      local expression = ts_repeat_move[string.format("builtin_%s_expr", operator)]()
+      return (vim.api.nvim_get_mode().mode == "niI" or vim.v.operator ~= "") and expression
+        or string.format("m`%d%s", vim.v.count1, expression)
+    end, { expr = true })
+  end
 end
 
 local function register_language_aliases()

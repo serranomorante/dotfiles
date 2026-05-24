@@ -1,5 +1,4 @@
 require("serranomorante.plugins.treesitter.treesitter").config()
-require("serranomorante.plugins.treesitter.treesitter-context").config()
 
 ---Hide all highlights from the following languages
 ---I want to keep the parsers installed, but I don't want to get its higlights.

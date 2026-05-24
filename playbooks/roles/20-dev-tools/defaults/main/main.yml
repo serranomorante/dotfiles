@@ -45,9 +45,6 @@ neovim_plugins:
     name: overseer
     version: master
   - folder: start
-    repo: nvim-treesitter/nvim-treesitter-context
-    name: treesitter-context
-  - folder: start
     repo: nvim-treesitter/nvim-treesitter-textobjects
     version: main
   - folder: start
