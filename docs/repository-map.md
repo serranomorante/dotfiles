@@ -115,6 +115,14 @@ the Firejail wrappers owned by `playbooks/roles/20-dev-tools/`. See
 [firejail-dev-tools.md](./firejail-dev-tools.md) for wrapper contracts,
 Ansible adapter examples, network modes, and profile guidance.
 
+## Private Notes
+
+The personal notes tree at `~/data/notes/foam` is private and must not be
+inspected unless a task explicitly grants access. Its agent context entrypoint
+is `AGENTS.md` inside that private tree. The `40-PKM` role's `40-50` tag creates
+tool-specific compatibility symlinks such as `CLAUDE.md` and `GEMINI.md` only
+when the private notes directory and its `AGENTS.md` file already exist.
+
 ## Voice TTS Workflows
 
 Text-to-speech wrappers for narrating terminal commands, TUIs, and AI CLIs

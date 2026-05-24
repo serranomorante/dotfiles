@@ -44,6 +44,10 @@ verification expectations, read [change-workflow.md](./change-workflow.md).
   user-owned and do not inspect or modify it unless a task explicitly requires
   it. Private AI-facing notes belong under that package's `docs/` directory so
   they can be tracked by the private submodule without exposing secrets here.
+- Personal notes under `~/data/notes/foam` are private. Do not inspect that
+  tree unless explicitly permitted. Agent-facing context for that tree belongs
+  in `~/data/notes/foam/AGENTS.md`, with compatibility symlinks managed by the
+  `40-PKM` role when the private source file exists.
 - Files named `dot-*` are intended to become dotfiles through Stow. For example,
   `dot-config/foo` maps to `~/.config/foo`.
 

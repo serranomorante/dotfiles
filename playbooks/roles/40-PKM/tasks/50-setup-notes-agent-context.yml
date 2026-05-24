@@ -1,0 +1,23 @@
+---
+- name: "PKM notes: stat foam notes directory"
+  ansible.builtin.stat:
+    path: "{{ pkm_notes_foam_agent_context_dir }}"
+  register: var_pkm_notes_foam_agent_context_dir
+
+- name: "PKM notes: stat foam agent context source"
+  ansible.builtin.stat:
+    path: "{{ pkm_notes_foam_agent_context_dir }}/{{ pkm_notes_foam_agent_context_source_name }}"
+  register: var_pkm_notes_foam_agent_context_source
+  when: var_pkm_notes_foam_agent_context_dir.stat.isdir is defined and var_pkm_notes_foam_agent_context_dir.stat.isdir
+
+- name: "PKM notes: setup foam agent context compatibility links"
+  ansible.builtin.file:
+    src: "{{ pkm_notes_foam_agent_context_source_name }}"
+    dest: "{{ pkm_notes_foam_agent_context_dir }}/{{ item }}"
+    state: link
+    force: true
+  loop: "{{ pkm_notes_foam_agent_context_symlink_names }}"
+  when:
+    - var_pkm_notes_foam_agent_context_dir.stat.isdir is defined
+    - var_pkm_notes_foam_agent_context_dir.stat.isdir
+    - var_pkm_notes_foam_agent_context_source.stat.exists | default(false)

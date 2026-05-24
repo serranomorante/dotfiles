@@ -1,3 +1,9 @@
 ---
 hypothesis_browser_extension_version: 1.1688.0
 hypothesis_client_version: "{{ hypothesis_browser_extension_version }}"
+
+pkm_notes_foam_agent_context_dir: "{{ ansible_facts.env.HOME }}/data/notes/foam"
+pkm_notes_foam_agent_context_source_name: AGENTS.md
+pkm_notes_foam_agent_context_symlink_names:
+  - CLAUDE.md
+  - GEMINI.md

@@ -42,3 +42,8 @@
       loop_control:
         loop_var: task_file
   tags: ["40-40"]
+
+- block:
+    - name: Setup notes agent context links
+      ansible.builtin.include_tasks: 50-setup-notes-agent-context.yml
+  tags: ["40-50"]
