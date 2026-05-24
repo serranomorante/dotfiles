@@ -53,6 +53,35 @@
     - /data/data/com.termux/files/home/.termux/boot
     - /data/data/com.termux/files/usr/var/service/{{ pkg }}/log # $PREFIX
     - /data/data/com.termux/files/home/.config/remind/
+    - /data/data/com.termux/files/home/.local/state/remind/
+
+- name: "[otherlinux] Setup desktop: check legacy remind oncefile"
+  ansible.builtin.stat:
+    path: /data/data/com.termux/files/home/.config/remind/oncefile
+  register: var_remind_legacy_oncefile
+
+- name: "[otherlinux] Setup desktop: check remind state oncefile"
+  ansible.builtin.stat:
+    path: /data/data/com.termux/files/home/.local/state/remind/oncefile
+  register: var_remind_state_oncefile
+
+- name: "[otherlinux] Setup desktop: migrate remind oncefile"
+  ansible.builtin.command:
+    argv:
+      - mv
+      - /data/data/com.termux/files/home/.config/remind/oncefile
+      - /data/data/com.termux/files/home/.local/state/remind/oncefile
+  when:
+    - var_remind_legacy_oncefile.stat.exists
+    - not var_remind_state_oncefile.stat.exists
+
+- name: "[otherlinux] Setup desktop: remove legacy remind oncefile"
+  ansible.builtin.file:
+    path: /data/data/com.termux/files/home/.config/remind/oncefile
+    state: absent
+  when:
+    - var_remind_legacy_oncefile.stat.exists
+    - var_remind_state_oncefile.stat.exists
 
 - name: "[otherlinux] Setup desktop: link remind"
   ansible.builtin.file:
@@ -80,7 +109,7 @@
     mode: "755"
   loop:
     - name: rem
-      content: /data/data/com.termux/files/usr/bin/remind '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-k/data/data/com.termux/files/home/bin/notify %s' -a -q "$@" /data/data/com.termux/files/home/.config/remind/reminders.rem
+      content: /data/data/com.termux/files/usr/bin/remind '-i$OnceFile="/data/data/com.termux/files/home/.local/state/remind/oncefile"' '-k/data/data/com.termux/files/home/bin/notify %s' -a -q "$@" /data/data/com.termux/files/home/.config/remind/reminders.rem
     - name: notify
       content: |
         sleep 1
@@ -92,7 +121,7 @@
     content: |
       #!/bin/sh
       exec 2>&1
-      exec /data/data/com.termux/files/usr/bin/{{ pkg }} -z '-i$OnceFile="/data/data/com.termux/files/home/.config/remind/oncefile"' '-k/data/data/com.termux/files/home/bin/notify %s' /data/data/com.termux/files/home/.config/remind/reminders.rem
+      exec /data/data/com.termux/files/usr/bin/{{ pkg }} -z '-i$OnceFile="/data/data/com.termux/files/home/.local/state/remind/oncefile"' '-k/data/data/com.termux/files/home/bin/notify %s' /data/data/com.termux/files/home/.config/remind/reminders.rem
     mode: "700"
   vars:
     pkg: remind

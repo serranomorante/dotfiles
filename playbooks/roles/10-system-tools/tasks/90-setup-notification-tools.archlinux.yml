@@ -24,6 +24,43 @@
     enabled: true
     masked: false
 
+- name: "[archlinux] Notification utilities: ensure remind state folder"
+  ansible.builtin.file:
+    path: ~/.local/state/remind
+    state: directory
+    mode: "755"
+  notify: handler_restart_remind_service
+
+- name: "[archlinux] Notification utilities: check legacy remind oncefile"
+  ansible.builtin.stat:
+    path: ~/.config/remind/oncefile
+  register: var_remind_legacy_oncefile
+
+- name: "[archlinux] Notification utilities: check remind state oncefile"
+  ansible.builtin.stat:
+    path: ~/.local/state/remind/oncefile
+  register: var_remind_state_oncefile
+
+- name: "[archlinux] Notification utilities: migrate remind oncefile"
+  ansible.builtin.command:
+    argv:
+      - mv
+      - "{{ ansible_facts['user_dir'] }}/.config/remind/oncefile"
+      - "{{ ansible_facts['user_dir'] }}/.local/state/remind/oncefile"
+  when:
+    - var_remind_legacy_oncefile.stat.exists
+    - not var_remind_state_oncefile.stat.exists
+  notify: handler_restart_remind_service
+
+- name: "[archlinux] Notification utilities: remove legacy remind oncefile"
+  ansible.builtin.file:
+    path: ~/.config/remind/oncefile
+    state: absent
+  when:
+    - var_remind_legacy_oncefile.stat.exists
+    - var_remind_state_oncefile.stat.exists
+  notify: handler_restart_remind_service
+
 - name: "[archlinux] Notification utilities: ensure dbus-1 servics folder"
   # See: https://dunst-project.org/faq/
   ansible.builtin.file:

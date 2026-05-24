@@ -180,7 +180,6 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
-local PATH = vim.env.HOME .. "/.config/remind/reminders.rem"
 vim.api.nvim_create_autocmd("BufWritePost", {
   desc = "Refresh remind database on every :w",
   group = vim.api.nvim_create_augroup("remind_update", { clear = true }),
@@ -191,9 +190,6 @@ vim.api.nvim_create_autocmd("BufWritePost", {
     if not ok then return vim.api.nvim_echo({ { vim.fn.string(error) } }, false, { err = true }) end
     vim.schedule(function()
       vim.api.nvim_echo({ { "Reminder database updated", "DiagnosticOk" } }, false, {})
-      vim.fn.system(
-        string.format("scp %s phone2:/data/data/com.termux/files/home/%s &", PATH, PATH:sub(#vim.env.HOME + 1))
-      )
     end)
   end),
 })
