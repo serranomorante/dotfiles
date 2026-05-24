@@ -21,6 +21,23 @@ node_javascript_npm_packages:
       - js-beautify
       - css-beautify
       - html-beautify
+  - name: typescript
+    version: 6.0.3
+    bins:
+      - tsc
+      - tsserver
+  - name: "@vtsls/language-server"
+    version: 0.3.0
+    bins:
+      - vtsls
+  - name: "@tailwindcss/language-server"
+    version: 0.14.29
+    bins:
+      - tailwindcss-language-server
+  - name: "@vue/language-server"
+    version: 3.3.1
+    bins:
+      - vue-language-server
 node_markdown_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/note-taking-tools/utilities/.npm"
 node_markdown_npm_packages:
   - name: "@mermaid-js/mermaid-cli"

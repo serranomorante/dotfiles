@@ -16,7 +16,7 @@ end
 
 local function init()
   vim.lsp.config("*", {
-    roor_markers = {
+    root_markers = {
       ".git",
     },
   })

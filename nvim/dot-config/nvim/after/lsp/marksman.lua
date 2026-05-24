@@ -6,4 +6,5 @@ if not constants.BINARIES.marksman then return {} end
 return {
   cmd = { constants.BINARIES.marksman(), "server" },
   filetypes = constants.markdown_aliases,
+  root_markers = { ".marksman.toml", ".git" },
 }

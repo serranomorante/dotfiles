@@ -20,6 +20,30 @@
   async: 1000
   poll: 0
   loop: "{{ neovim_plugins }}"
+  register: var_async_clone_nvim_plugins
+
+- name: "[debian] Editor tools: wait for async clone nvim plugins"
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: var_job_result
+  until: var_job_result is finished
+  retries: 100
+  delay: 10
+  loop: "{{ var_async_clone_nvim_plugins.results }}"
+
+- name: "[debian] Editor tools: build lookup of nvim plugin results by repo (init)"
+  ansible.builtin.set_fact:
+    nvim_plugin_result_by_repo: {}
+
+- name: "[debian] Editor tools: build lookup of nvim plugin results by repo"
+  ansible.builtin.set_fact:
+    nvim_plugin_result_by_repo: "{{ nvim_plugin_result_by_repo | default({}) | combine({item.item.item.repo: item}) }}"
+  loop: "{{ var_job_result.results }}"
+
+- name: "[debian] Editor tools: remove stale coc.nvim plugin"
+  ansible.builtin.file:
+    path: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim
+    state: absent
 
 - name: "[debian] Editor tools: clone universal ctags"
   ansible.builtin.git:

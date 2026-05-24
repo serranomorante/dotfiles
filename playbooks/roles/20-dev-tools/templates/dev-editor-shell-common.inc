@@ -21,7 +21,6 @@ whitelist-ro ${HOME}/bin
 whitelist-ro ${HOME}/data/apps
 
 # Writable editor and shell state that should persist on the host.
-whitelist ${HOME}/.config/coc
 whitelist ${HOME}/.cache/nvim
 whitelist ${HOME}/.local/state/nvim
 whitelist ${HOME}/.local/share/nvim

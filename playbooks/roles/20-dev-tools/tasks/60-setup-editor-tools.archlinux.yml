@@ -30,6 +30,11 @@
     nvim_plugin_result_by_repo: "{{ nvim_plugin_result_by_repo | default({}) | combine({item.item.item.repo: item}) }}"
   loop: "{{ var_job_result.results }}"
 
+- name: "[archlinux] Editor tools: remove stale coc.nvim plugin"
+  ansible.builtin.file:
+    path: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim
+    state: absent
+
 - name: "[archlinux] Editor tools: ensure aur packages"
   become: true
   become_user: aur_builder
@@ -170,13 +175,6 @@
 - name: "[archlinux] Editor tools: generate helptags"
   ansible.builtin.command: ~/bin/nvim --headless -c "helptags ALL" -c "quit"
   changed_when: false
-
-- name: "[archlinux] Editor tools: update coc extensions"
-  ansible.builtin.command: ~/bin/nvim --headless -c "CocStart" -c "sleep 2" -c "CocUpdate" -c "sleep 60" -c "quit!"
-  environment:
-    NVIM_KITTY_LISTEN_ADDRESS: null
-  changed_when: "(nvim_plugin_result_by_repo['neoclide/coc.nvim'] | default({})).changed | default(false)"
-  when: "(nvim_plugin_result_by_repo['neoclide/coc.nvim'] | default({})).changed | default(false)"
 
 - name: "[archlinux] Editor tools: sync colorscheme with system"
   ansible.builtin.command: echo

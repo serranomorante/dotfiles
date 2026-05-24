@@ -27,4 +27,15 @@ function M.should_enable(bufnr)
   return enable
 end
 
+---@param configs string|string[]
+---@param bufnr integer
+function M.enable(configs, bufnr)
+  if M.should_enable(bufnr) then
+    vim.lsp.enable(configs)
+    vim.api.nvim_exec_autocmds("FileType", { group = "nvim.lsp.enable" })
+  else
+    require("serranomorante.plugins.nvim-ufo").config()
+  end
+end
+
 return M

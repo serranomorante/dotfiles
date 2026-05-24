@@ -115,22 +115,19 @@ end
 
 ---@alias GeneralToolType "fmts"|"lsp"|"linters"|"dap"|"extra"
 ---@alias TreesitterToolType "parsers"
----@alias CocToolType "extensions"
----@alias ToolEnsureInstall table<GeneralToolType|TreesitterToolType|CocToolType, string[]>
+---@alias ToolEnsureInstall table<GeneralToolType|TreesitterToolType, string[]>
 
 ---Merges an array of `ToolEnsureInstall` specs into 1 flat array of strings
----@param installer_type? "general"|"treesitter"|"coc" Default is "general"
+---@param installer_type? "general"|"treesitter" Default is "general"
 ---@param ... ToolEnsureInstall
 ---@return string[] # A flat array of tools without duplicates
 function M.merge_tools(installer_type, ...)
   installer_type = installer_type or "general"
   local general_tool_type = { "fmts", "lsp", "linters", "dap", "extra" }
   local treesitter_tool_type = { "parsers" }
-  local coc_tool_type = { "extensions" }
   local tool_type_by_installer = {
     ["general"] = general_tool_type,
     ["treesitter"] = treesitter_tool_type,
-    ["coc"] = coc_tool_type,
   }
   local merge_result = {}
   for _, tools_table in pairs({ ... }) do

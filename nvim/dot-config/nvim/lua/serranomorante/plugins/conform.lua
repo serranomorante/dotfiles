@@ -101,7 +101,7 @@ function M.config()
   conform.formatters["ansible-lint"] = {
     prepend_args = {
       "--config-file",
-      vim.fn.stdpath("config") .. "/lua/serranomorante/plugins/coc/ansible-lint-dev.yaml",
+      vim.fn.stdpath("config") .. "/lua/serranomorante/plugins/conform/ansible-lint-dev.yaml",
     },
   }
 

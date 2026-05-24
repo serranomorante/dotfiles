@@ -1,13 +1,10 @@
 local lsp_utils = require("serranomorante.plugins.lsp.utils")
-local coc_utils = require("serranomorante.plugins.coc.utils")
 
 local bufnr = vim.api.nvim_get_current_buf()
+local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
 
-if coc_utils.should_enable(bufnr) then
-  require("serranomorante.plugins.coc").start(nil, { bufnr = bufnr })
-elseif lsp_utils.should_enable(bufnr) then
-  vim.lsp.enable({ "vtsls", "tailwindcss" })
-  vim.api.nvim_exec_autocmds("FileType", { group = "nvim.lsp.enable" })
+if filetype == "vue" then
+  lsp_utils.enable({ "vue_ls", "tailwindcss" }, bufnr)
 else
-  require("serranomorante.plugins.nvim-ufo").config()
+  lsp_utils.enable({ "vtsls", "tailwindcss" }, bufnr)
 end

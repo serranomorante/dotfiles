@@ -3,7 +3,9 @@
   become: true
   ansible.builtin.package:
     state: present
-    name: yamllint
+    name:
+      - yamllint
+      - yaml-language-server
 
 - name: "[archlinux] Yaml language: ensure ansible-lint"
   ansible.builtin.command:

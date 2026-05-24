@@ -3,13 +3,15 @@ local M = {}
 ---Useful way of organizing some common filetypes
 M.c_aliases = { "c" }
 M.python_aliases = { "python" }
-M.javascript_aliases = { "typescript", "javascript", "javascriptreact", "typescriptreact", "vue", "html" }
+M.javascript_aliases = { "typescript", "javascript", "javascriptreact", "typescriptreact" }
 M.lua_aliases = { "lua" }
 M.markdown_aliases = { "markdown" }
 M.json_aliases = { "json", "jsonc" }
 M.bash_aliases = { "sh", "bash" }
 M.fish_aliases = { "fish" }
 M.html_aliases = { "html", "htm" }
+M.css_aliases = { "css", "scss" }
+M.yaml_aliases = { "yaml", "yaml.ansible" }
 M.php_aliases = { "php" }
 M.go_aliases = { "go" }
 

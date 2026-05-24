@@ -27,7 +27,6 @@ Some reasoning behind my current plugin list.
 | diffview.nvim               | Very complete plugin, improved my git workflow by a lot                                                                                                                          |
 | nvim-dap                    | Best of the best                                                                                                                                                                 |
 | one-small-step-for-vimking  | Really good for debugging your nvim setup and plugins                                                                                                                            |
-| coc.nvim                    | -                                                                                                                                                                                |
 | nvim-fundo                  | --                                                                                                                                                                               |
 | vim-rsi                     | --                                                                                                                                                                               |
 | guess-indent                | --                                                                                                                                                                               |

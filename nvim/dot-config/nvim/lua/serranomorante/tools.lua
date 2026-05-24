@@ -7,21 +7,20 @@ M.by_filetype = {
   javascript = {
     fmts = { "eslint_d" },
     linters = { "eslint_d" },
-    lsp = { "typescript-language-server", "tailwindcss-language-server", "vtsls" },
+    lsp = { "@vtsls/language-server", "@tailwindcss/language-server" },
     dap = {
       "js-debug-adapter", -- or { "js-debug-adapter", version = "v1.82.0" },
     },
     parsers = { "javascript", "typescript", "tsx", "jsdoc", "vue" },
-    extensions = { "coc-tsserver", "@yaegassy/coc-tailwindcss3", "@yaegassy/coc-volar" },
   },
   lua = { fmts = { "stylua" }, lsp = { "lua-language-server" }, parsers = { "lua", "luap", "luadoc" } },
   json = {
     fmts = { "prettierd" },
+    lsp = { "vscode-langservers-extracted" },
     parsers = { "json" },
-    extensions = { "coc-json" },
   },
-  yaml = { fmts = { "ansible-lint" }, parsers = { "yaml" }, extensions = { "coc-yaml", "@yaegassy/coc-ansible" } },
-  c = { lsp = { "clangd" }, parsers = { "cpp" }, extensions = { "coc-clangd" } },
+  yaml = { fmts = { "ansible-lint" }, lsp = { "yaml-language-server" }, parsers = { "yaml" } },
+  c = { lsp = { "clangd" }, parsers = { "cpp" } },
   python = {
     lsp = { "python-lsp-server" },
     dap = { "debugpy" },
@@ -39,7 +38,6 @@ M.by_filetype = {
     linters = { "markdownlint" },
     fmts = { "mdformat" },
     parsers = { "markdown" },
-    extensions = { "coc-markdown-preview-enhanced", "@yaegassy/coc-marksman", "coc-markdownlint" },
   },
   toml = { parsers = { "toml" } },
   tmux = { parsers = { "tmux" } },
@@ -48,12 +46,12 @@ M.by_filetype = {
   vim = { parsers = { "vim", "vimdoc" }, lsp = { "vim-language-server" } },
   html = {
     fmts = { "prettierd", "superhtml" },
+    lsp = { "vscode-langservers-extracted", "@tailwindcss/language-server" },
     parsers = { "html" },
-    extensions = { "coc-html", "coc-html-css-support" },
   },
   xml = { parsers = { "xml" } },
-  css = { parsers = { "css", "scss" }, extensions = { "coc-css" } },
-  php = { parsers = { "php" }, extensions = { "coc-phpls" } },
+  css = { lsp = { "vscode-langservers-extracted", "@tailwindcss/language-server" }, parsers = { "css", "scss" } },
+  php = { lsp = { "phpactor" }, parsers = { "php" } },
   go = { fmts = { "gofmt" }, lsp = { "gopls" }, parsers = { "go" } },
   svelte = { parsers = { "svelte" } },
   sshconfig = { parsers = { "ssh_config" } },
@@ -79,12 +77,12 @@ M.by_filetype = {
       "mermaid",
       "udev",
     },
-    extensions = { "coc-webview" },
   },
 }
 
 ---Make sure all possible filetypes that a tool can handle are considered here
 M.by_filetype.vue = vim.deepcopy(M.by_filetype.javascript)
+table.insert(M.by_filetype.vue.lsp, "@vue/language-server")
 M.by_filetype.tsx = vim.deepcopy(M.by_filetype.javascript)
 M.by_filetype.typescript = vim.deepcopy(M.by_filetype.javascript)
 M.by_filetype.typescriptreact = vim.deepcopy(M.by_filetype.javascript)

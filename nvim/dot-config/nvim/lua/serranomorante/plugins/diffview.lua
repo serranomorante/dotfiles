@@ -68,8 +68,6 @@ local function opts()
       ---Remember: diffview will not give you the filehistorypanel's bufnr. That's why you have
       ---to use `0` instead of `bufnr`.
       diff_buf_read = function(bufnr)
-        ---fix coc.nvim lsp error on diff window
-        vim.api.nvim_buf_set_var(bufnr, "coc_enabled", 0)
         ---make sure file history panel is selected before next commands
         vim.cmd("3wincmd w")
         ---force cursor position on first history item
