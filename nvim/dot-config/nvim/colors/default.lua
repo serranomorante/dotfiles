@@ -46,6 +46,8 @@ local groups = {
   DiagnosticUnderlineHint = { sp = fg .. "Blue", undercurl = true },
   DiagnosticUnderlineOk = { sp = fg .. "Green", undercurl = true },
   MsgArea = { bg = bg == "NvimDark" and "Black" or "White" },
+  CustomMarkdownTag = { fg = fg .. "Magenta" },
+  ["@string.escape.markdown_inline"] = { link = "Comment" },
   ["@markup.heading.2.markdown"] = { fg = fg .. "Green", bg = bg .. "Green", bold = true },
   ["@markup.heading.3.markdown"] = { fg = fg .. "Blue", bg = bg .. "Blue", bold = true },
   ["@markup.heading.4.markdown"] = { fg = fg .. "Yellow", bg = bg .. "Yellow", bold = true },
