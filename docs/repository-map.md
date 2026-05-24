@@ -19,6 +19,8 @@ start here when deciding which file owns a behavior.
   and diff setup.
 - `home/`: generic home-directory dotfiles.
 - `PKM/`: personal knowledge management tooling.
+- `termux/`: Termux-only dotfiles, including add-on integrations such as
+  Termux:Widget shortcuts.
 - `assets/`: static assets, patches, scripts, services, udev rules, and media.
 - `docs/`: human-readable operational notes and project context.
 - `for-my-eyes-only/`: optional private package and submodule. Do not touch
@@ -70,6 +72,22 @@ Important conventions:
 - Private packages are listed separately in `dotfiles_private_stow_packages`.
   `for-my-eyes-only/docs/agent-context.md` is also ignored by the wrapper so
   private AI notes can remain in the package without being linked into `$HOME`.
+- Termux-specific packages are listed separately in
+  `dotfiles_otherlinux_stow_packages` and applied only by the `otherlinux`
+  dotfiles task so Android does not receive desktop package symlinks. The
+  `otherlinux` task syncs those package directories from the Ansible controller
+  before installing active files, so local package additions do not depend on
+  the phone's Git clone already containing the latest commit. Termux:Widget
+  scripts must be copied as real files under `~/.shortcuts` or `~/.termux`,
+  because the widget hides symlinks whose canonical path points elsewhere.
+  Android browsers do not use Termux's private hosts file, and unprivileged
+  Termux processes cannot bind low ports such as `80`, so browser shortcuts for
+  local web UIs should open the explicit loopback URL via `termux-open-url`.
+- Termux services with local web UIs should get a matching Termux:Widget task
+  named `<service>-gui` under `termux/dot-shortcuts/tasks/`. Keep those scripts
+  as small POSIX `sh` launchers that call `termux-open-url` with the explicit
+  `http://127.0.0.1:<port>/` URL. The `otherlinux` dotfiles task installs every
+  script in that directory as a real executable under `~/.shortcuts/tasks/`.
 - Existing symlinked files update in place when edited in the repository, but
   newly added files under a stowed package are not active until that package is
   stowed again. For example, after adding a file under `nvim/`, run

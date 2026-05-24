@@ -1,0 +1,6 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Purpose: Launch the Remind notification check from Termux:Widget.
+# Notes: Termux:Widget does not run through an interactive shell, so use an
+# absolute path to the managed Termux helper.
+
+exec /data/data/com.termux/files/home/bin/rem "$@"

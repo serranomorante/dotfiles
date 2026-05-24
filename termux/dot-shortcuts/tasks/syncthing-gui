@@ -1,0 +1,6 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Purpose: Open the local Syncthing web interface from Termux:Widget.
+# Notes: Android browsers do not use Termux's hosts file, so open the loopback
+# URL directly instead of relying on a Termux-only hostname.
+
+exec /data/data/com.termux/files/usr/bin/termux-open-url "http://127.0.0.1:8384/"

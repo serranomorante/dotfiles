@@ -4,3 +4,23 @@
     pkg install -y
     stow
   changed_when: false
+
+- name: "[otherlinux] Dotfiles: sync stow packages from controller"
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../{{ item }}/"
+    dest: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item }}/"
+    mode: preserve
+  loop: "{{ dotfiles_otherlinux_stow_packages }}"
+
+- name: "[otherlinux] Dotfiles: ensure Termux widget task directory"
+  ansible.builtin.file:
+    path: ~/.shortcuts/tasks
+    state: directory
+    mode: "700"
+
+- name: "[otherlinux] Dotfiles: install Termux widget task scripts"
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ ansible_facts.env.HOME }}/.shortcuts/tasks/{{ item | basename }}"
+    mode: "700"
+  loop: "{{ lookup('ansible.builtin.fileglob', playbook_dir + '/../termux/dot-shortcuts/tasks/*', wantlist=True) }}"

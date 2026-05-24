@@ -22,6 +22,8 @@ dotfiles_public_stow_packages:
   - PKM
 dotfiles_private_stow_packages:
   - for-my-eyes-only
+dotfiles_otherlinux_stow_packages:
+  - termux
 dotfiles_agent_context_source_name: AGENTS.md
 dotfiles_agent_context_symlink_names:
   - CLAUDE.md
