@@ -162,6 +162,13 @@ single `--tags` value instead of listing multiple commands. For active
 application commands, include `-K` so tasks that use `become` can prompt for the
 sudo password instead of failing mid-run.
 
+Before adding bootstrap, service-management, package-manager, or shared tooling
+setup to an Ansible task, search the existing playbooks for the same behavior
+and reuse the existing owner when one exists. If the requested task depends on
+that owner, leave the prerequisite there and include its tag in the single
+suggested `ansible-playbook` command instead of duplicating the setup in the new
+task.
+
 If the requested playbook scope includes AUR tasks, such as tasks using
 `kewlfft.aur.aur`, make sure the AUR setup task runs first by including the
 `10-20` tag before the requested tag in that single command. This prepares
