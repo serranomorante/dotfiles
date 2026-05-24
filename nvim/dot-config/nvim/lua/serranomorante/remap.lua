@@ -2,6 +2,38 @@ local constants = require("serranomorante.constants")
 local utils = require("serranomorante.utils")
 local events = require("serranomorante.events")
 
+local function has_running_prevent_quit_tasks()
+  local ok_overseer, overseer = pcall(require, "overseer")
+  local ok_constants, overseer_constants = pcall(require, "overseer.constants")
+  if not ok_overseer or not ok_constants then return false end
+
+  return unpack(overseer.list_tasks({
+    status = overseer_constants.STATUS.RUNNING,
+    filter = function(task) return task.metadata.PREVENT_QUIT end,
+  })) ~= nil
+end
+
+local function open_directory_mark_with_overseer(dir)
+  local ok_overseer, overseer = pcall(require, "overseer")
+  local ok_template, nnn_explorer = pcall(require, "overseer.template.editor-tasks.TASK__nnn_explorer")
+  if not ok_overseer or not ok_template then
+    vim.cmd.edit(dir)
+    return
+  end
+
+  overseer.run_task({
+    autostart = false,
+    name = nnn_explorer.name,
+    params = { startdir = dir },
+  }, function(task)
+    if not task then return end
+    utils.force_very_fullscreen_float(task)
+    task:subscribe("on_output", utils.dispose_on_window_close)
+    task:subscribe("on_complete", utils.close_window_on_exit_0)
+    task:start()
+  end)
+end
+
 -- Toggle wrap
 vim.keymap.set("n", "<leader>uw", function()
   vim.wo.wrap = not vim.wo.wrap
@@ -18,12 +50,7 @@ vim.keymap.set("n", "<leader>p", "<cmd>PasteClipboardImage<CR>", { desc = "Paste
 
 ---Closing vim
 vim.keymap.set("n", "ZQ", function()
-  if
-    unpack(require("overseer").list_tasks({
-      status = require("overseer.constants").STATUS.RUNNING,
-      filter = function(task) return task.metadata.PREVENT_QUIT end,
-    }))
-  then
+  if has_running_prevent_quit_tasks() then
     return "<cmd>echohl DiagnosticWarn | echom 'You have running tasks!' | echohl None<CR>"
   end
 
@@ -258,17 +285,7 @@ vim.keymap.set("n", "'0", function()
       and not utils.cwd_is_home()
     then
       if utils.is_directory(m.file) then
-        require("overseer").run_task({
-          autostart = false,
-          name = require("overseer.template.editor-tasks.TASK__nnn_explorer").name,
-          params = { startdir = m.file },
-        }, function(task)
-          if not task then return end
-          utils.force_very_fullscreen_float(task)
-          task:subscribe("on_output", utils.dispose_on_window_close)
-          task:subscribe("on_complete", utils.close_window_on_exit_0)
-          task:start()
-        end)
+        open_directory_mark_with_overseer(m.file)
         return
       else
         local ok, _ = pcall(vim.cmd.normal, { args = { m.mark }, bang = true }) -- pcall because it randomly fails now...

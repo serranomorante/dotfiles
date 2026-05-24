@@ -99,6 +99,12 @@ Important conventions:
 Task-runner and job-management modules belong under
 `nvim/dot-config/nvim/lua/serranomorante/plugins/jobs/`. Runtime plugin
 entrypoints under `nvim/dot-config/nvim/plugin/` should only load those modules.
+Modules required from `nvim/dot-config/nvim/after/ftplugin/` should not require
+optional plugin dependencies at top level. Check plugin availability before
+enabling plugin-specific behavior so opening a buffer still works after the
+plugin directories have been removed and before Ansible restores them. Global
+keymaps and commands should also guard optional plugin calls so basic editor
+actions such as quitting remain available without the plugin pack.
 
 ## Shared Runtime Cache
 

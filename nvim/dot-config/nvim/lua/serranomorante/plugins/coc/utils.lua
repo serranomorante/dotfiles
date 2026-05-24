@@ -1,13 +1,18 @@
-local promise = require("promise")
-local async = require("async")
 local tools = require("serranomorante.tools")
 
 local M = {}
+
+function M.is_available()
+  local promise_available = pcall(require, "promise")
+  local async_available = pcall(require, "async")
+  return vim.fn.exists(":CocStart") == 2 and promise_available and async_available
+end
 
 ---Check if buffer's filetype is compatible with any coc-extension
 ---@param bufnr integer
 ---@return boolean
 function M.has_extension_available(bufnr)
+  if not M.is_available() then return false end
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   local has_extension = false
   local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
@@ -47,6 +52,7 @@ end
 ---@vararg any
 ---@return Promise
 function M.action_async(action, ...)
+  local promise = require("promise")
   local args = { ... }
   return promise(function(resolve, reject)
     table.insert(args, function(err, res)
@@ -105,6 +111,8 @@ function M.supports_provider_feature(method, bufnr) return M.action_async("hasPr
 ---@param bufnr number
 ---@return Promise
 function M.extension_ready(bufnr)
+  local async = require("async")
+  local promise = require("promise")
   return async(function()
     local base_support = await(M.supports_provider_feature("hover", bufnr))
       or await(M.supports_provider_feature("reference", bufnr))

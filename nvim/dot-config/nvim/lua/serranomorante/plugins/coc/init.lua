@@ -61,8 +61,19 @@ end
 ---@param _ any reserved
 ---@param opts CocStartOpts
 function M.start(_, opts)
+  if not coc_utils.is_available() then
+    vim.api.nvim_buf_set_var(opts.bufnr, "coc_enabled", 0)
+    require("serranomorante.plugins.nvim-ufo").config()
+    return
+  end
+
   vim.api.nvim_buf_set_var(opts.bufnr, "coc_enabled", 1)
-  vim.cmd.CocStart()
+  local coc_started = pcall(vim.cmd.CocStart)
+  if not coc_started then
+    vim.api.nvim_buf_set_var(opts.bufnr, "coc_enabled", 0)
+    require("serranomorante.plugins.nvim-ufo").config()
+    return
+  end
 
   local WAIT_MS = 20000 -- some servers can take a really long time
   utils

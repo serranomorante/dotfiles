@@ -1,4 +1,5 @@
 local M = {}
+local configured = false
 
 ---Seems like "lsp" offers better performance: https://github.com/kevinhwang91/nvim-ufo/issues/6#issuecomment-1172346709
 ---@type table<string, UfoProviderEnum|string>
@@ -21,7 +22,9 @@ local function enhance_selector(bufnr)
     if type(err) == "string" and err:match("UfoFallbackException") then
       return ufo.getFolds(bufnr, provider_name)
     else
-      return require("promise").reject(err)
+      local ok, promise = pcall(require, "promise")
+      if ok then return promise.reject(err) end
+      return nil
     end
   end
 
@@ -32,8 +35,7 @@ local function enhance_selector(bufnr)
     :catch(function(_) return nil end)
 end
 
-local function keys()
-  local ufo = require("ufo")
+local function keys(ufo)
   vim.keymap.set("n", "zR", ufo.openAllFolds, { desc = "Ufo: Open all folds" })
   vim.keymap.set("n", "zM", ufo.closeAllFolds, { desc = "Ufo: Close all folds" })
   vim.keymap.set("n", "zr", ufo.openFoldsExceptKinds, { desc = "Ufo: Open folds except kinds" })
@@ -69,9 +71,17 @@ local function opts()
 end
 
 function M.config()
-  vim.cmd.packadd("ufo")
-  keys()
-  require("ufo").setup(opts())
+  if configured then return end
+
+  local package_loaded = pcall(vim.cmd.packadd, "ufo")
+  if not package_loaded then return end
+
+  local ok, ufo = pcall(require, "ufo")
+  if not ok then return end
+
+  keys(ufo)
+  ufo.setup(opts())
+  configured = true
 end
 
 return M
