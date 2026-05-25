@@ -39,6 +39,14 @@ system actions.
   or renaming supported command-line options or environment variables, update
   the script's help text in the same change so discoverable documentation stays
   aligned with runtime behavior.
+- Private one-command shortcuts should be exposed through the `sx` dispatcher
+  instead of adding many top-level commands to `~/bin`. Put the shortcut
+  implementation under the Stow-managed private package, include a
+  `# sx-description: ...` header in each shortcut script, and keep
+  `sx --list`, `sx --list-descriptions`, `sx --help`, and shell completion
+  aligned. When ble.sh completion is available, completion entries should show
+  the same short descriptions alongside each shortcut name; plain Bash
+  completion should remain a working fallback.
 - Avoid new dependencies unless the playbooks declare them.
 - If a new runtime dependency is required, add it to the relevant Ansible task
   and do not install it manually unless asked.

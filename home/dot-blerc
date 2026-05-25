@@ -3,7 +3,11 @@ bleopt highlight_filename=1
 bleopt highlight_variable=1
 bleopt decode_error_kseq_vbell=
 
-[[ -r /etc/profile.d/bash_completion.sh ]] && source /etc/profile.d/bash_completion.sh
+if [[ -r /etc/profile.d/bash_completion.sh ]]; then
+  source /etc/profile.d/bash_completion.sh
+elif [[ -r /usr/share/bash-completion/bash_completion ]]; then
+  source /usr/share/bash-completion/bash_completion
+fi
 ble-import -d integration/fzf-completion
 ble-import -d integration/fzf-key-bindings
 
