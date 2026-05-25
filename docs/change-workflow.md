@@ -162,8 +162,13 @@ When committing:
 
 Many source files are not active until the user deploys them:
 
-- keyd config templates need Ansible or manual install to `/etc/keyd/default.conf`.
-- systemd units need stowing/reload/restart depending on the change.
+- Do not apply durable configuration by copying files directly into active
+  system paths, creating ad hoc symlinks, reloading services, or restarting
+  units. Encode the change in the owning Stow package or Ansible task, then use
+  `~/bin/dotfiles-stow <package>` or the relevant Ansible tag to apply it.
+- keyd config templates need Ansible to install `/etc/keyd/default.conf`.
+- systemd units need stowing and then the relevant Ansible task or handler to
+  reload/restart/enable them when active application is requested.
 - scripts under stowed packages are usually active immediately for new
   invocations once linked into `~/bin`.
 - new files under stowed packages must be stowed before the active system can
