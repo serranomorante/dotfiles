@@ -1,6 +1,10 @@
 ---
 plantuml_compiled_jar_version: 1.2024.6
 node_system_default_version: 22.19.0
+node_ansible_language_server_version: 24.16.0
+node_managed_versions:
+  - "{{ node_system_default_version }}"
+  - "{{ node_ansible_language_server_version }}"
 node_user_bin_dir: "{{ ansible_facts.env.HOME }}/bin"
 node_volta_home: "{{ ansible_facts.env.HOME }}/.volta"
 node_system_default_bin_dir: "{{ node_volta_home }}/tools/image/node/{{ node_system_default_version }}/bin"

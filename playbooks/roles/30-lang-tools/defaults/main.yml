@@ -6,6 +6,10 @@ arch_superhtml_version: 0.5.3
 noise_suppression_for_voice_version: "1.10"
 vscode_go_version: "0.44"
 node_javascript_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/javascript-tools/.npm"
+node_ansible_language_server_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/ansible-language-server/.npm"
+node_ansible_language_server_npm_packages:
+  - name: "@ansible/ansible-language-server"
+    version: 26.5.0
 node_javascript_npm_packages:
   - name: eslint
     version: 10.1.0

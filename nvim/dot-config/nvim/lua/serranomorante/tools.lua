@@ -96,6 +96,7 @@ M.by_filetype.sh = vim.deepcopy(M.by_filetype.bash)
 
 M.by_filetype.jsonc = vim.deepcopy(M.by_filetype.json)
 M.by_filetype["yaml.ansible"] = vim.deepcopy(M.by_filetype.yaml)
+table.insert(M.by_filetype["yaml.ansible"].lsp, "@ansible/ansible-language-server")
 
 if vim.fn.executable("npm") == 0 then M.by_filetype.javascript = {} end
 if vim.fn.executable("pip") == 0 then M.by_filetype.python = {} end

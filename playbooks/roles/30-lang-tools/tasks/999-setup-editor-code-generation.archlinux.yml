@@ -18,6 +18,7 @@
     - tailwindcss-language-server
     - vue-language-server
     - yaml-language-server
+    - ansible-language-server
     - phpactor
     - marksman
   changed_when: false

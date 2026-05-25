@@ -28,3 +28,27 @@
       {{ ansible_facts.env.HOME }}/.local/bin
       {{ ansible_facts.env.HOME }}/.local/share/uv
       {{ ansible_facts.env.HOME }}/.local/share/uv/tools
+
+- name: "[archlinux] Yaml language: ensure ansible language server npm prefix"
+  ansible.builtin.file:
+    path: "{{ node_ansible_language_server_npm_prefix }}"
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Yaml language: ensure ansible language server npm packages"
+  community.general.npm:
+    name: "{{ item.name }}"
+    version: "{{ item.version }}"
+    global: true
+    state: present
+    executable: "{{ ansible_firejail_npm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_ansible_language_server_version }}"
+    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_ansible_language_server_npm_prefix }}"
+  loop: "{{ node_ansible_language_server_npm_packages }}"
+
+- name: "[archlinux] Yaml language: install ansible language server wrapper"
+  ansible.builtin.template:
+    src: ansible-language-server
+    dest: "{{ node_user_bin_dir }}/ansible-language-server"
+    mode: "755"

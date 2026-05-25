@@ -76,6 +76,11 @@
   tags: ["30-70"]
 
 - block:
+    - name: Prepare node before yaml setup
+      ansible.builtin.include_role:
+        name: 20-dev-tools
+        tasks_from: node
+
     - name: Setup yaml tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:

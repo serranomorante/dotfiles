@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# {{ ansible_managed }}
+exec "{{ node_volta_home }}/tools/image/node/{{ node_ansible_language_server_version }}/bin/node" "{{ node_ansible_language_server_npm_prefix }}/bin/ansible-language-server" "$@"
