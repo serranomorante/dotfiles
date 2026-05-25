@@ -20,6 +20,12 @@ system actions.
    rather than only changing the generated destination under `/etc`, `~/.config`,
    or `~/bin`.
 
+1. If a file is delivered by a Stow package, add or update the package source and
+   run the repository Stow wrapper instead of creating symlinks directly in the
+   target tree. Direct `ln -s` fixes can later conflict with Stow or hide package
+   conflicts. If Stow fails, report the exact conflict and leave unrelated target
+   files untouched rather than bypassing Stow manually.
+
 ## Editing Rules
 
 - Match the existing style of the file.
