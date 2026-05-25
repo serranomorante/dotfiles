@@ -117,8 +117,13 @@ Values should be cheap to rebuild and should not be committed.
 ## Dev Tool Sandboxing
 
 Python and Node package-manager installs and routine tool execution should use
-the Firejail wrappers owned by `playbooks/roles/20-dev-tools/`. See
-[firejail-dev-tools.md](./firejail-dev-tools.md) for wrapper contracts,
+the Firejail wrappers owned by `playbooks/roles/20-dev-tools/`. The same
+supply-chain posture applies broadly to new tools, apps, AUR packages, upstream
+binary downloads, model downloaders, installer scripts, browser automation, and
+language package registries. Use package-manager-owned installs when they keep
+ownership and upgrades reproducible, but sandbox new install or runtime paths
+unless there is a documented reason not to.
+See [firejail-dev-tools.md](./firejail-dev-tools.md) for wrapper contracts,
 Ansible adapter examples, network modes, and profile guidance.
 
 ## Private Notes
@@ -145,10 +150,10 @@ dictation also lives in `utilities/bin/`, with keyboard signals bridged through
 `peripherals/bin/keyd-observer` and
 `playbooks/roles/10-system-tools/templates/keyd-default.conf`.
 
-The voice fallback layer should stay local and reproducible. Prefer official
-Arch packages such as `speech-dispatcher`, `espeak-ng`, and `python-vosk` over
-optional AUR neural voice engines. Python-based voice engines should run through
-the repository Firejail wrappers by default; document any exception in
+The voice fallback layer should stay local and reproducible. Keep package
+ownership explicit for dependencies such as `speech-dispatcher`, `espeak-ng`,
+and `python-vosk`. Python-based voice engines should run through the repository
+Firejail wrappers by default; document any exception in
 `voice-agent-workflows.md`.
 
 ## REAPER

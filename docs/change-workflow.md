@@ -56,12 +56,19 @@ system actions.
 - Avoid new dependencies unless the playbooks declare them.
 - If a new runtime dependency is required, add it to the relevant Ansible task
   and do not install it manually unless asked.
-- For Python, Node, npm, pnpm, and similar language package-manager activity,
-  prefer the repository Firejail wrappers instead of raw package-manager
-  commands. In Ansible, use `ansible-firejail-pip`,
-  `ansible-firejail-npm`, or `ansible-firejail-pnpm` when possible. For
-  runtime Python/Node tooling, prefer `fj-py` or `fj-node` with the narrowest
-  viable network mode. See [firejail-dev-tools.md](./firejail-dev-tools.md).
+- Treat new tools, apps, model downloaders, install scripts, and language
+  package-manager flows as supply-chain-risky by default. Use pacman-managed
+  packages when they satisfy the need because they keep ownership, upgrades, and
+  removal reproducible, but do not treat them as immune to compromise. For AUR
+  packages, upstream binary downloads, `curl | sh` style installers,
+  Python, Node, npm, pnpm, Cargo, Go, and similar ecosystems, use the repository
+  Firejail wrappers for installation and runtime execution whenever the task can
+  be expressed that way. In Ansible, use `ansible-firejail-pip`,
+  `ansible-firejail-npm`, or `ansible-firejail-pnpm` when possible. For runtime
+  Python/Node tooling, prefer `fj-py` or `fj-node` with the narrowest viable
+  network mode. If sandboxing is not practical, document the reason in the
+  owning workflow doc or task comment. See
+  [firejail-dev-tools.md](./firejail-dev-tools.md).
 - For Ansible templates, include an appropriate file-format comment containing
   `{{ ansible_managed }}` near the top unless the target format cannot carry
   comments.

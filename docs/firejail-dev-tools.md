@@ -1,9 +1,44 @@
 # Firejail Dev Tool Workflow
 
-Use Firejail by default for language package-manager activity and for running
-Python or Node tooling that does not need full host access. This matters most
-from Ansible, where package-manager tasks can download and execute third-party
-code.
+Use Firejail by default for tools, apps, package-manager activity, model
+downloaders, and runtime commands that can reasonably be sandboxed. The working
+assumption is that almost any newly introduced software can be affected by a
+supply chain attack, especially when it comes from language package registries,
+AUR packages, upstream binary releases, install scripts, browser automation, AI
+tools, or model downloaders.
+
+Pacman-managed packages are useful because they keep ownership, upgrades, and
+removal reproducible, but they should not be treated as immune to compromise.
+Apply the same supply-chain posture to newly introduced software regardless of
+source. When a tool will install code, process untrusted input, or contact the
+network at runtime, prefer a Firejail wrapper/profile and expose only the paths
+and sockets the tool needs.
+
+This matters most from Ansible, where package-manager tasks can download and
+execute third-party code, but it also applies to day-to-day wrappers under
+`utilities/bin/`, `term/bin/`, and other stowed packages.
+
+## Supply Chain Policy
+
+- Prefer package-manager-owned installs over ad hoc files when they satisfy the
+  need, so ownership, upgrades, and removal stay reproducible.
+- Treat newly introduced software as supply-chain-risky regardless of whether it
+  comes from official repositories, AUR, upstream binary releases, language
+  package registries, or installer scripts.
+- If a package installs or runs tooling that does not need broad host access,
+  add a Firejail runtime wrapper or document why that is not practical.
+- Do not run `pip`, `npm`, `pnpm`, `cargo install`, Go install flows, model
+  downloaders, browser installers, or similar third-party code directly from
+  Ansible when an existing Firejail adapter or wrapper can express the workflow.
+- For runtime commands, use the narrowest viable network mode:
+  `offline` first, `local` for Unix-socket IPC, and `online` only when external
+  network access is required.
+- Keep clipboard, keyboard injection, audio playback, and other broad desktop
+  actions outside the sandbox when possible. Let the sandboxed process perform
+  only the risky parsing, inference, build, download, or package-manager work.
+- If a new install or runtime path cannot be sandboxed without breaking its core
+  purpose, add a short comment or workflow-doc note explaining the exception and
+  the privilege boundary.
 
 ## Existing Wrappers
 
@@ -47,7 +82,10 @@ Firejail namespace.
 
 ## Ansible Package Installs
 
-Use the adapter executable rather than raw `pip`, `npm`, or `pnpm`.
+Use the adapter executable rather than raw `pip`, `npm`, or `pnpm`. If a
+package manager is not covered by an existing adapter, first look for an
+existing generic wrapper such as `fj-py` or `fj-node`; add a new adapter only
+when the workflow repeats enough to justify it.
 
 Python:
 
