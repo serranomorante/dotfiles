@@ -1,0 +1,67 @@
+#!/bin/sh
+# Purpose: Trigger guarded Foam bisync from local plaintext filesystem changes.
+# Usage: foam-crypt-local-watch
+
+set -eu
+
+prog=${0##*/}
+plain_dir=${FOAM_CRYPT_PLAIN_DIR:-"$HOME/data/notes/foam"}
+foam_crypt_auto_cmd=${FOAM_CRYPT_AUTO_CMD:-"$HOME/bin/foam-crypt-auto"}
+quiet_seconds=${FOAM_CRYPT_LOCAL_QUIET:-5}
+
+die() {
+    printf '%s: %s\n' "$prog" "$*" >&2
+    exit 2
+}
+
+need_command() {
+    command -v "$1" >/dev/null 2>&1 || die "$1 is not installed"
+}
+
+need_executable() {
+    [ -x "$1" ] || die "$1 is not executable"
+}
+
+wait_for_plain_dir() {
+    while [ ! -d "$plain_dir" ]; do
+        sleep 30
+    done
+}
+
+watch_plaintext() {
+    while :; do
+        wait_for_event || {
+            sleep 10
+            continue
+        }
+
+        while timeout "$quiet_seconds" "$0" wait-for-event >/dev/null 2>&1; do
+            :
+        done
+
+        "$foam_crypt_auto_cmd" trigger local
+    done
+}
+
+wait_for_event() {
+    inotifywait -r -q \
+        -e close_write \
+        -e create \
+        -e delete \
+        -e moved_from \
+        -e moved_to \
+        "$plain_dir" >/dev/null 2>&1
+}
+
+need_command inotifywait
+need_command timeout
+need_executable "$foam_crypt_auto_cmd"
+
+if [ "${1:-}" = "wait-for-event" ]; then
+    wait_for_plain_dir
+    wait_for_event
+    exit $?
+fi
+
+wait_for_plain_dir
+watch_plaintext

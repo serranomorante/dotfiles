@@ -1,0 +1,13 @@
+[Unit]
+Description=Watch local Foam plaintext changes for rclone crypt bisync
+After=syncthing.service
+Wants=syncthing.service
+
+[Install]
+WantedBy=default.target
+
+[Service]
+Environment=FOAM_CRYPT_LOCAL_QUIET=5
+ExecStart=%h/bin/foam-crypt-local-watch
+Restart=on-failure
+RestartSec=10s

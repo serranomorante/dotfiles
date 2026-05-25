@@ -1,0 +1,13 @@
+[Unit]
+Description=Watch Foam Syncthing events for rclone crypt bisync
+After=syncthing.service
+Wants=syncthing.service
+
+[Install]
+WantedBy=default.target
+
+[Service]
+Environment=FOAM_CRYPT_COOLDOWN=15
+ExecStart=%h/bin/foam-crypt-watch
+Restart=on-failure
+RestartSec=10s

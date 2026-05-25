@@ -3,4 +3,6 @@
   become: true
   ansible.builtin.package:
     state: present
-    name: nextcloud-client
+    name:
+      - nextcloud-client
+      - rclone

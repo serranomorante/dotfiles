@@ -1,0 +1,100 @@
+#!/bin/sh
+# Purpose: Trigger guarded Foam bisync from Syncthing events.
+# Usage: foam-crypt-watch
+# Notes: Local plaintext changes are handled by foam-crypt-local-watch.
+
+set -eu
+
+prog=${0##*/}
+folder_id=${FOAM_CRYPT_SYNCTHING_FOLDER:-foam-rclone-crypt}
+foam_crypt_auto_cmd=${FOAM_CRYPT_AUTO_CMD:-"$HOME/bin/foam-crypt-auto"}
+state_dir=${FOAM_CRYPT_STATE_DIR:-"$HOME/.local/state/foam-crypt"}
+cooldown=${FOAM_CRYPT_COOLDOWN:-15}
+last_run_file=$state_dir/last-run
+
+die() {
+    printf '%s: %s\n' "$prog" "$*" >&2
+    exit 2
+}
+
+need_command() {
+    command -v "$1" >/dev/null 2>&1 || die "$1 is not installed"
+}
+
+need_executable() {
+    [ -x "$1" ] || die "$1 is not executable"
+}
+
+trigger() {
+    if systemctl --user is-active --quiet foam-crypt-auto.service; then
+        return 0
+    fi
+    if [ -f "$last_run_file" ]; then
+        now=$(date +%s)
+        last_run=$(cat "$last_run_file")
+        if [ "$last_run" -ge $((now - cooldown)) ] 2>/dev/null; then
+            return 0
+        fi
+    fi
+    "$foam_crypt_auto_cmd" trigger syncthing
+}
+
+syncthing_api_key() {
+    syncthing cli config gui apikey get
+}
+
+syncthing_api_url() {
+    addr=$(syncthing cli config gui raw-address get)
+    tls=$(syncthing cli config gui raw-use-tls get)
+    if [ "$tls" = "true" ]; then
+        printf 'https://%s\n' "$addr"
+    else
+        printf 'http://%s\n' "$addr"
+    fi
+}
+
+syncthing_curl() {
+    url=$1
+    api_key=$2
+    tls=$(syncthing cli config gui raw-use-tls get)
+    if [ "$tls" = "true" ]; then
+        curl -k -fsS -H "X-API-Key: $api_key" "$url"
+    else
+        curl -fsS -H "X-API-Key: $api_key" "$url"
+    fi
+}
+
+latest_event_id() {
+    api_key=$1
+    api_url=$2
+    syncthing_curl "$api_url/rest/events?limit=1" "$api_key" | jq -r '.[0].id // 0'
+}
+
+watch_syncthing() {
+    api_key=$(syncthing_api_key)
+    api_url=$(syncthing_api_url)
+    since=$(latest_event_id "$api_key" "$api_url")
+
+    while :; do
+        events=$(syncthing_curl "$api_url/rest/events?since=$since" "$api_key") || {
+            sleep 10
+            api_key=$(syncthing_api_key)
+            api_url=$(syncthing_api_url)
+            continue
+        }
+        since=$(printf '%s\n' "$events" | jq -r --argjson since "$since" 'map(.id) | max // $since')
+        if printf '%s\n' "$events" | jq -e --arg folder "$folder_id" '
+          any(.[]; .data.folder == $folder)
+        ' >/dev/null; then
+            trigger syncthing
+        fi
+    done
+}
+
+need_command curl
+need_executable "$foam_crypt_auto_cmd"
+need_command jq
+need_command syncthing
+
+mkdir -p "$state_dir"
+watch_syncthing

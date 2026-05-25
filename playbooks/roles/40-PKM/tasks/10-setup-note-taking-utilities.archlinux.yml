@@ -3,4 +3,20 @@
   become: true
   ansible.builtin.package:
     state: present
-    name: pandoc
+    name:
+      - curl
+      - inotify-tools
+      - jq
+      - pandoc
+
+- name: "[archlinux] Note-taking utilities: ensure foam crypt watcher"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    masked: false
+    daemon_reload: true
+  loop:
+    - foam-crypt-watch.service
+    - foam-crypt-local-watch.service

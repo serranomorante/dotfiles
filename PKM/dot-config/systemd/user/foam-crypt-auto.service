@@ -1,0 +1,8 @@
+[Unit]
+Description=Guarded Foam rclone crypt bisync
+After=syncthing.service
+
+[Service]
+Type=oneshot
+Environment=FOAM_CRYPT_DEBOUNCE=8
+ExecStart=%h/bin/foam-crypt-auto run

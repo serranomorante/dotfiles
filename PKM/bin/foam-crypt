@@ -1,0 +1,202 @@
+#!/bin/sh
+# Purpose: Manage the local rclone-crypt mirror for the Foam notes tree.
+# Usage: foam-crypt init|paths|push|pull|resync-from-plain|resync-from-crypt|bisync|cryptcheck|rsaf-config|s3drive-config
+# Notes: Syncthing should sync the encrypted directory, never the plaintext tree.
+
+set -eu
+
+prog=${0##*/}
+plain_dir=${FOAM_CRYPT_PLAIN_DIR:-"$HOME/data/notes/foam"}
+encrypted_dir=${FOAM_CRYPT_ENCRYPTED_DIR:-"$HOME/data/sync/foam-rclone-crypt"}
+local_remote=${FOAM_CRYPT_LOCAL_REMOTE:-foam_crypt_local}
+crypt_remote=${FOAM_CRYPT_REMOTE:-foam_crypt}
+
+die() {
+    printf '%s: %s\n' "$prog" "$*" >&2
+    exit 2
+}
+
+usage() {
+    cat >&2 <<EOF
+Usage:
+  $prog init [encrypted-dir]
+  $prog paths
+  $prog push [rclone flags...]
+  $prog pull [rclone flags...]
+  $prog resync-from-plain [rclone flags...]
+  $prog resync-from-crypt [rclone flags...]
+  $prog bisync [rclone flags...]
+  $prog cryptcheck [rclone flags...]
+  $prog rsaf-config <android-encrypted-dir>
+  $prog s3drive-config <android-encrypted-dir>
+
+Defaults:
+  FOAM_CRYPT_PLAIN_DIR=$plain_dir
+  FOAM_CRYPT_ENCRYPTED_DIR=$encrypted_dir
+  FOAM_CRYPT_LOCAL_REMOTE=$local_remote
+  FOAM_CRYPT_REMOTE=$crypt_remote
+EOF
+    exit 2
+}
+
+need_rclone() {
+    command -v rclone >/dev/null 2>&1 || die "rclone is not installed"
+}
+
+remote_exists() {
+    rclone listremotes | grep -Fx -- "$1:" >/dev/null 2>&1
+}
+
+read_secret() {
+    prompt=$1
+    printf '%s' "$prompt" >&2
+    stty -echo
+    IFS= read -r secret
+    stty echo
+    printf '\n' >&2
+    printf '%s' "$secret"
+}
+
+config_password() {
+    first=$(read_secret "Crypt password: ")
+    second=$(read_secret "Confirm crypt password: ")
+    [ "$first" = "$second" ] || die "passwords did not match"
+    [ -n "$first" ] || die "empty password refused"
+    printf '%s' "$first" | rclone obscure -
+}
+
+config_value() {
+    remote=$1
+    key=$2
+    config_file=$(rclone config file | awk -F ': ' '/^Configuration file is stored at:/ { getline; print }')
+    [ -f "$config_file" ] || die "rclone config file not found"
+    awk -F ' = ' -v section="[$remote]" -v key="$key" '
+        $0 == section { in_section = 1; next }
+        /^\[/ { in_section = 0 }
+        in_section && $1 == key { print $2; found = 1 }
+        END { exit found ? 0 : 1 }
+    ' "$config_file"
+}
+
+init_config() {
+    [ "$#" -le 1 ] || usage
+    [ "$#" -eq 0 ] || encrypted_dir=$1
+    need_rclone
+
+    if remote_exists "$crypt_remote"; then
+        die "rclone remote '$crypt_remote' already exists; set FOAM_CRYPT_REMOTE to use another name"
+    fi
+
+    mkdir -p "$encrypted_dir"
+
+    if ! remote_exists "$local_remote"; then
+        rclone config create "$local_remote" local --non-interactive
+    fi
+
+    password=$(config_password)
+    rclone config create "$crypt_remote" crypt \
+        remote "$local_remote:$encrypted_dir" \
+        filename_encryption standard \
+        directory_name_encryption true \
+        filename_encoding base64 \
+        suffix none \
+        password "$password" \
+        --non-interactive
+}
+
+show_paths() {
+    printf 'Plaintext: %s\n' "$plain_dir"
+    printf 'Encrypted: %s\n' "$encrypted_dir"
+    printf 'Local remote: %s\n' "$local_remote"
+    printf 'Crypt remote: %s:\n' "$crypt_remote"
+}
+
+push_plain() {
+    need_rclone
+    rclone sync "$plain_dir" "$crypt_remote:" --create-empty-src-dirs "$@"
+}
+
+pull_crypt() {
+    need_rclone
+    rclone sync "$crypt_remote:" "$plain_dir" --create-empty-src-dirs "$@"
+}
+
+resync_from_plain() {
+    push_plain "$@"
+    rclone bisync "$plain_dir" "$crypt_remote:" --resync --create-empty-src-dirs "$@"
+}
+
+resync_from_crypt() {
+    pull_crypt "$@"
+    rclone bisync "$plain_dir" "$crypt_remote:" --resync --create-empty-src-dirs "$@"
+}
+
+bisync_paths() {
+    need_rclone
+    rclone bisync "$plain_dir" "$crypt_remote:" --create-empty-src-dirs "$@"
+}
+
+cryptcheck_paths() {
+    need_rclone
+    rclone cryptcheck "$plain_dir" "$crypt_remote:" "$@"
+}
+
+rclone_android_config() {
+    [ "$#" -eq 1 ] || usage
+    need_rclone
+    password=$(config_value "$crypt_remote" password) || die "could not read password from '$crypt_remote'"
+    cat <<EOF
+[$local_remote]
+type = local
+
+[$crypt_remote]
+type = crypt
+remote = $local_remote:$1
+filename_encryption = standard
+directory_name_encryption = true
+filename_encoding = base64
+suffix = none
+password = $password
+EOF
+}
+
+[ "$#" -ge 1 ] || usage
+command=$1
+shift
+
+case $command in
+init)
+    init_config "$@"
+    ;;
+paths)
+    [ "$#" -eq 0 ] || usage
+    show_paths
+    ;;
+push)
+    push_plain "$@"
+    ;;
+pull)
+    pull_crypt "$@"
+    ;;
+resync-from-plain)
+    resync_from_plain "$@"
+    ;;
+resync-from-crypt)
+    resync_from_crypt "$@"
+    ;;
+bisync)
+    bisync_paths "$@"
+    ;;
+cryptcheck)
+    cryptcheck_paths "$@"
+    ;;
+rsaf-config)
+    rclone_android_config "$@"
+    ;;
+s3drive-config)
+    rclone_android_config "$@"
+    ;;
+*)
+    usage
+    ;;
+esac

@@ -1,0 +1,251 @@
+#!/bin/sh
+# Purpose: Run a guarded Foam rclone-crypt bisync after sync events settle.
+# Usage: foam-crypt-auto run|trigger [reason]
+# Notes: Intended for systemd user services; it refuses to run on conflicts.
+
+set -eu
+
+prog=${0##*/}
+folder_id=${FOAM_CRYPT_SYNCTHING_FOLDER:-foam-rclone-crypt}
+plain_dir=${FOAM_CRYPT_PLAIN_DIR:-"$HOME/data/notes/foam"}
+encrypted_dir=${FOAM_CRYPT_ENCRYPTED_DIR:-"$HOME/data/sync/foam-rclone-crypt"}
+foam_crypt_cmd=${FOAM_CRYPT_CMD:-"$HOME/bin/foam-crypt"}
+state_dir=${FOAM_CRYPT_STATE_DIR:-"$HOME/.local/state/foam-crypt"}
+debounce=${FOAM_CRYPT_DEBOUNCE:-8}
+stable_attempts=${FOAM_CRYPT_STABLE_ATTEMPTS:-20}
+stable_sleep=${FOAM_CRYPT_STABLE_SLEEP:-3}
+lock_file=$state_dir/auto.lock
+last_run_file=$state_dir/last-run
+trigger_file=$state_dir/trigger
+plain_fingerprint_file=$state_dir/plain.fingerprint
+encrypted_fingerprint_file=$state_dir/encrypted.fingerprint
+max_passes=${FOAM_CRYPT_MAX_PASSES:-5}
+
+die() {
+    printf '%s: %s\n' "$prog" "$*" >&2
+    exit 2
+}
+
+usage() {
+    cat >&2 <<EOF
+Usage:
+  $prog run
+  $prog trigger [reason]
+
+Environment:
+  FOAM_CRYPT_DEBOUNCE=$debounce
+  FOAM_CRYPT_STABLE_ATTEMPTS=$stable_attempts
+  FOAM_CRYPT_STABLE_SLEEP=$stable_sleep
+  FOAM_CRYPT_SYNCTHING_FOLDER=$folder_id
+EOF
+    exit 2
+}
+
+need_command() {
+    command -v "$1" >/dev/null 2>&1 || die "$1 is not installed"
+}
+
+need_executable() {
+    [ -x "$1" ] || die "$1 is not executable"
+}
+
+ensure_state_dir() {
+    mkdir -p "$state_dir"
+}
+
+trigger_run() {
+    ensure_state_dir
+    reason=${1:-manual}
+    {
+        printf '%s ' "$(date +%s%N)"
+        printf '%s\n' "$reason"
+    } >"$trigger_file"
+    systemctl --user start foam-crypt-auto.service >/dev/null 2>&1 || true
+}
+
+consume_trigger_reason() {
+    if [ -f "$trigger_file" ]; then
+        reason=$(awk 'NR == 1 { print $2 }' "$trigger_file")
+        rm -f "$trigger_file"
+        if [ -n "$reason" ]; then
+            printf '%s\n' "$reason"
+        else
+            printf 'manual\n'
+        fi
+    else
+        printf 'manual\n'
+    fi
+}
+
+syncthing_api_key() {
+    syncthing cli config gui apikey get
+}
+
+syncthing_api_url() {
+    addr=$(syncthing cli config gui raw-address get)
+    tls=$(syncthing cli config gui raw-use-tls get)
+    if [ "$tls" = "true" ]; then
+        printf 'https://%s\n' "$addr"
+    else
+        printf 'http://%s\n' "$addr"
+    fi
+}
+
+syncthing_curl() {
+    url=$1
+    api_key=$2
+    tls=$(syncthing cli config gui raw-use-tls get)
+    if [ "$tls" = "true" ]; then
+        curl -k -fsS -H "X-API-Key: $api_key" "$url"
+    else
+        curl -fsS -H "X-API-Key: $api_key" "$url"
+    fi
+}
+
+folder_status() {
+    api_key=$1
+    api_url=$2
+    syncthing_curl "$api_url/rest/db/status?folder=$folder_id" "$api_key"
+}
+
+folder_is_stable() {
+    jq -e '
+      .state == "idle"
+      and (.needTotalItems // 0) == 0
+      and (.pullErrors // 0) == 0
+      and (.errors // 0) == 0
+    ' >/dev/null
+}
+
+wait_for_syncthing_idle() {
+    api_key=$(syncthing_api_key)
+    api_url=$(syncthing_api_url)
+    attempt=1
+
+    while [ "$attempt" -le "$stable_attempts" ]; do
+        if folder_status "$api_key" "$api_url" | folder_is_stable; then
+            return 0
+        fi
+        sleep "$stable_sleep"
+        attempt=$((attempt + 1))
+    done
+
+    die "Syncthing folder '$folder_id' did not become idle"
+}
+
+conflict_path() {
+    find "$plain_dir" "$encrypted_dir" -name '*sync-conflict*' -print -quit 2>/dev/null
+}
+
+check_conflicts() {
+    conflict=$(conflict_path)
+    [ -z "$conflict" ] || die "sync conflict present: $conflict"
+}
+
+tree_fingerprint() {
+    dir=$1
+    (
+        cd "$dir" || exit 1
+        find . \( -name .stfolder -o -name .stversions \) -prune -o \
+            -type d -printf 'd\t%P\n' -o \
+            -type f -printf 'f\t%P\t%s\t%T@\n' 2>/dev/null |
+            LC_ALL=C sort |
+            sha256sum |
+            awk '{ print $1 }'
+    )
+}
+
+remember_fingerprints() {
+    tree_fingerprint "$plain_dir" >"$plain_fingerprint_file"
+    tree_fingerprint "$encrypted_dir" >"$encrypted_fingerprint_file"
+}
+
+skip_if_unchanged() {
+    reason=$1
+
+    case $reason in
+    local | plaintext)
+        fingerprint_file=$plain_fingerprint_file
+        current=$(tree_fingerprint "$plain_dir")
+        label=plaintext
+        ;;
+    syncthing)
+        fingerprint_file=$encrypted_fingerprint_file
+        current=$(tree_fingerprint "$encrypted_dir")
+        label=encrypted
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+
+    [ -f "$fingerprint_file" ] || return 1
+    previous=$(sed -n '1p' "$fingerprint_file")
+    if [ -n "$previous" ] && [ "$current" = "$previous" ]; then
+        printf '%s: %s tree unchanged after %s trigger; skipping bisync\n' "$prog" "$label" "$reason" >&2
+        return 0
+    fi
+
+    return 1
+}
+
+run_once() {
+    reason=$1
+
+    [ -d "$plain_dir" ] || die "missing plaintext directory: $plain_dir"
+    [ -d "$encrypted_dir" ] || die "missing encrypted directory: $encrypted_dir"
+
+    sleep "$debounce"
+    wait_for_syncthing_idle
+    check_conflicts
+
+    if skip_if_unchanged "$reason"; then
+        return 0
+    fi
+
+    printf '%s: running bisync after %s trigger\n' "$prog" "$reason" >&2
+    "$foam_crypt_cmd" bisync
+    remember_fingerprints
+}
+
+run_locked() {
+    need_command curl
+    need_executable "$foam_crypt_cmd"
+    need_command flock
+    need_command jq
+    need_command syncthing
+
+    ensure_state_dir
+    exec 9>"$lock_file"
+    if ! flock -n 9; then
+        exit 0
+    fi
+
+    pass=1
+    while [ "$pass" -le "$max_passes" ]; do
+        reason=$(consume_trigger_reason)
+        run_once "$reason"
+        date +%s >"$last_run_file"
+
+        [ -f "$trigger_file" ] || break
+        pass=$((pass + 1))
+    done
+}
+
+[ "$#" -ge 1 ] || usage
+command=$1
+shift
+
+case $command in
+run)
+    [ "$#" -eq 0 ] || usage
+    run_locked
+    ;;
+trigger)
+    [ "$#" -le 1 ] || usage
+    trigger_run "${1:-manual}"
+    ;;
+*)
+    usage
+    ;;
+esac
