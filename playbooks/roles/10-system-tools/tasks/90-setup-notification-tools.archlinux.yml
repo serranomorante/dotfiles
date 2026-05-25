@@ -31,6 +31,22 @@
     mode: "755"
   notify: handler_restart_remind_service
 
+- name: "[archlinux] Notification utilities: ensure remind config folder"
+  ansible.builtin.file:
+    path: ~/.config/remind
+    state: directory
+    mode: "755"
+  notify: handler_restart_remind_service
+
+- name: "[archlinux] Notification utilities: install remind helper file"
+  ansible.builtin.copy:
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/PKM/remind/00-helpers.rem"
+    dest: ~/.config/remind/00-helpers.rem
+    remote_src: true
+    follow: false
+    mode: "644"
+  notify: handler_restart_remind_service
+
 - name: "[archlinux] Notification utilities: check legacy remind oncefile"
   ansible.builtin.stat:
     path: ~/.config/remind/oncefile

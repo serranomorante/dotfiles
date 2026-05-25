@@ -109,11 +109,50 @@
     mode: "755"
   loop:
     - name: rem
-      content: /data/data/com.termux/files/usr/bin/remind '-i$OnceFile="/data/data/com.termux/files/home/.local/state/remind/oncefile"' '-k/data/data/com.termux/files/home/bin/notify %s' -a -q "$@" /data/data/com.termux/files/home/.config/remind/reminders.rem
+      content: |
+        default_flags="-a -q"
+        for arg in "$@"; do
+          if [ "$arg" = "-n" ]; then
+            default_flags="-q"
+            break
+          fi
+        done
+
+        exec /data/data/com.termux/files/usr/bin/remind '-i$OnceFile="/data/data/com.termux/files/home/.local/state/remind/oncefile"' '-k/data/data/com.termux/files/home/bin/notify %s' $default_flags "$@" /data/data/com.termux/files/home/.config/remind
     - name: notify
       content: |
         sleep 1
         termux-notification --content "$@"
+
+- name: "[otherlinux] Setup desktop: check package rem symlink"
+  ansible.builtin.stat:
+    path: /data/data/com.termux/files/usr/bin/rem
+    follow: false
+  register: var_otherlinux_package_rem
+
+- name: "[otherlinux] Setup desktop: remove package rem symlink"
+  ansible.builtin.file:
+    path: /data/data/com.termux/files/usr/bin/rem
+    state: absent
+  when:
+    - var_otherlinux_package_rem.stat.islnk | default(false)
+    - var_otherlinux_package_rem.stat.lnk_source == "remind"
+
+- name: "[otherlinux] Setup desktop: create prefix rem wrapper"
+  ansible.builtin.copy:
+    dest: /data/data/com.termux/files/usr/bin/rem
+    content: |
+      #!/bin/sh
+      default_flags="-a -q"
+      for arg in "$@"; do
+        if [ "$arg" = "-n" ]; then
+          default_flags="-q"
+          break
+        fi
+      done
+
+      exec /data/data/com.termux/files/usr/bin/remind '-i$OnceFile="/data/data/com.termux/files/home/.local/state/remind/oncefile"' '-k/data/data/com.termux/files/home/bin/notify %s' $default_flags "$@" /data/data/com.termux/files/home/.config/remind
+    mode: "755"
 
 - name: "[otherlinux] Setup desktop: add remind service"
   ansible.builtin.copy:
@@ -121,7 +160,7 @@
     content: |
       #!/bin/sh
       exec 2>&1
-      exec /data/data/com.termux/files/usr/bin/{{ pkg }} -z '-i$OnceFile="/data/data/com.termux/files/home/.local/state/remind/oncefile"' '-k/data/data/com.termux/files/home/bin/notify %s' /data/data/com.termux/files/home/.config/remind/reminders.rem
+      exec /data/data/com.termux/files/usr/bin/{{ pkg }} -z '-i$OnceFile="/data/data/com.termux/files/home/.local/state/remind/oncefile"' '-k/data/data/com.termux/files/home/bin/notify %s' /data/data/com.termux/files/home/.config/remind
     mode: "700"
   vars:
     pkg: remind

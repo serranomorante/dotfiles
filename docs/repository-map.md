@@ -129,6 +129,13 @@ is `AGENTS.md` inside that private tree. The `40-PKM` role's `40-50` tag creates
 tool-specific compatibility symlinks such as `CLAUDE.md` and `GEMINI.md` only
 when the private notes directory and its `AGENTS.md` file already exist.
 
+Remind helper files for note TODO reminders belong under
+`PKM/dot-config/remind/` and are stowed into `~/.config/remind/`. Runtime
+callers should pass `~/.config/remind/` as the Remind input directory, so Remind
+loads sorted `*.rem` files such as `00-helpers.rem` before generated
+`reminders.rem`. Keep `~/.config/remind/reminders.rem` generated from Neovim;
+durable helper functions belong in the dotfiles package instead.
+
 ## Voice TTS Workflows
 
 Text-to-speech wrappers for narrating terminal commands, TUIs, and AI CLIs

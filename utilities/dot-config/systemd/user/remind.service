@@ -3,7 +3,7 @@ Description=Start remind
 After=graphical-session.target
 
 [Service]
-ExecStart=/usr/bin/remind -z '-i$OnceFile="%h/.local/state/remind/oncefile"' '-knotify-send %%s &' %h/.config/remind/reminders.rem
+ExecStart=/usr/bin/remind -z '-i$OnceFile="%h/.local/state/remind/oncefile"' '-knotify-send %%s &' %h/.config/remind
 
 [Install]
 WantedBy=graphical-session.target

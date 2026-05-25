@@ -1,6 +1,19 @@
 local utils = require("serranomorante.utils")
 
-local PATH = vim.env.HOME .. "/.config/remind/reminders.rem"
+local REMIND_DIR = vim.env.HOME .. "/.config/remind"
+local GENERATED_PATH = REMIND_DIR .. "/reminders.rem"
+
+local function has_remind_dir()
+  if vim.fn.isdirectory(REMIND_DIR) == 0 then
+    vim.notify(
+      "Missing " .. REMIND_DIR .. "; run ~/bin/dotfiles-stow PKM",
+      vim.log.levels.ERROR
+    )
+    return false
+  end
+
+  return true
+end
 
 local function remind_update()
   local pattern =
@@ -39,10 +52,12 @@ local function remind_update()
     if remind_match:match(" AT ") then remind_match = remind_match .. " %1" end
     table.insert(items, remind_match)
   end
-  utils.write_file(PATH, vim.fn.join(items, "\n"))
+  utils.write_file(GENERATED_PATH, vim.fn.join(items, "\n"))
 end
 
 local function remind(args)
+  if not has_remind_dir() then return end
+
   local default_flags = "-a -q"
   for _, arg in ipairs(args.fargs) do
     if arg == "-n" then
@@ -57,7 +72,7 @@ local function remind(args)
       .. default_flags,
     unpack(args.fargs),
   }, " ")
-  local content = vim.fn.system(vim.fn.join({ cmd, PATH }, " "))
+  local content = vim.fn.system(vim.fn.join({ cmd, REMIND_DIR }, " "))
   if content then return vim.api.nvim_echo({ { content, "DiagnosticWarn" } }, false, {}) end
 end
 
