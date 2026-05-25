@@ -89,8 +89,6 @@ vim.keymap.set("n", ">t", "<cmd>tabmove +1<CR>", { desc = "Move tab right" })
 
 vim.keymap.set("n", "<ESC>", "<cmd>noh<CR><ESC>", { desc = "Escape and clear hlsearch" })
 
-vim.keymap.set("i", "<C-f>", "<Esc>gUiw`]a", { desc = "Make the word before the cursor uppercase" })
-
 vim.keymap.set("n", "<leader>zl", function()
   local winid = vim.api.nvim_get_current_win()
   vim.wo[winid].fillchars = vim.wo[winid].fillchars .. ",foldopen:"
@@ -318,6 +316,7 @@ vim.keymap.set({ "i", "c" }, "<C-d>", "<Delete>", { desc = "Delete character for
 vim.keymap.set({ "i", "c" }, "<A-b>", "<C-Left>", { desc = "Move word backward" })
 vim.keymap.set({ "i", "c" }, "<A-f>", "<C-Right>", { desc = "Move word forward" })
 vim.keymap.set({ "i", "c" }, "<A-d>", "<C-o>dw", { desc = "Delete word forward" })
+vim.keymap.set("i", "<A-u>", "<Esc>bvegUgi", { desc = "Make the word before the cursor uppercase" })
 
 ---https://stackoverflow.com/questions/11074440/how-to-iterate-through-the-registers-in-my-vimscript
 ---@type number[]
