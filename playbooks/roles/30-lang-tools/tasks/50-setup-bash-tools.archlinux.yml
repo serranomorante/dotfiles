@@ -18,3 +18,8 @@
     src: https://github.com/rogalmic/vscode-bash-debug/releases/download/v{{ bash_debug_adapter_version }}/bash-debug-{{ bash_debug_adapter_version }}.vsix
     dest: ~/data/apps/lang-tools/bash-debug-adapter
     remote_src: true
+
+- name: "[archlinux] Bash language: ensure DAP - bashdb is executable"
+  ansible.builtin.file:
+    path: ~/data/apps/lang-tools/bash-debug-adapter/extension/bashdb_dir/bashdb
+    mode: "755"

@@ -207,7 +207,8 @@ function M.config()
     dap.adapters.bashdb = {
       name = "bashdb",
       type = "executable",
-      command = constants.BINARIES.bashdb_dap_executable(),
+      command = constants.BINARIES.system_default_node and constants.BINARIES.system_default_node() or "node",
+      args = { constants.BINARIES.bashdb_dap_executable() },
     }
   end
 

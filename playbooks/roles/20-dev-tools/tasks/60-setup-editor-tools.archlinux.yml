@@ -1,4 +1,10 @@
 ---
+- name: "[archlinux] Editor tools: ensure file watcher packages"
+  become: true
+  ansible.builtin.package:
+    name: inotify-tools
+    state: present
+
 - name: "[archlinux] Editor tools: ensure nvim plugins"
   ansible.builtin.git:
     repo: https://github.com/{{ item.repo }}

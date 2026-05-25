@@ -1,4 +1,10 @@
 ---
+- name: "[debian] Editor tools: ensure file watcher packages"
+  become: true
+  ansible.builtin.package:
+    name: inotify-tools
+    state: present
+
 - name: "[debian] Dotfiles: ensure nvim pack folder"
   ansible.builtin.file:
     state: directory
