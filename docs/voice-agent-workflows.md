@@ -1,9 +1,10 @@
-# Voice TTS Workflows
+# Voice Workflows
 
-This document describes text-to-speech paths for narrating terminal commands,
-TUIs, and AI CLIs from a local, repository-managed stack.
+This document describes local voice workflows: text-to-speech for narrating
+terminal commands, TUIs, and AI CLIs, plus speech-to-text dictation for entering
+text from a global keyboard shortcut.
 
-## Baseline
+## Text-To-Speech Baseline
 
 Use local, repository-managed tools:
 
@@ -21,7 +22,50 @@ Piper is the quality path. `speech-dispatcher` plus `espeak-ng` remains the
 fallback because it is simple, official Arch packaging and does not depend on
 Python wheels, downloaded voice models, or a user service.
 
-## Workflow
+## Speech-To-Text Baseline
+
+Use a local, Firejail-sandboxed dictation path:
+
+- `stt-dictate` owns the user-facing toggle/cancel workflow.
+- `stt-vosk-transcribe` runs final transcription with `python-vosk`.
+- `nerd-dictation` remains available as an explicit single-language backend.
+- `pw-cat` records microphone audio through PipeWire, targeting the RNNoise
+  source `source_filter.rnnoise` by default.
+- `xclip` stores recognized text in the clipboard, and `xdotool` attempts a
+  `Ctrl+Shift+V` paste into the focused app.
+
+`stt-dictate` records one raw microphone take, then runs Vosk transcription
+through `fj-py offline` by default. Keep Python STT engines inside the
+repository Firejail workflow unless a specific audio or input limitation
+requires a documented exception. The sandbox exposes only the STT project
+directory, the Vosk model directories, and the dictation runtime directory.
+Clipboard and keyboard injection stay outside the Python sandbox.
+
+The default raw audio input is `STT_DICTATE_SOURCE=source_filter.rnnoise`, so
+the recognizer receives the noise-suppressed microphone signal. If that
+PipeWire node is not available, `stt-dictate` falls back to PipeWire's default
+source unless `STT_DICTATE_SOURCE_FALLBACK=0` is set.
+
+The baseline language mode is `STT_DICTATE_LANG=auto`, which tries both Spanish
+and English models against the same recording and selects the higher-scoring
+transcription. The managed models are:
+
+```text
+~/.local/share/vosk/vosk-model-small-es-0.42
+~/.local/share/vosk/vosk-model-small-en-us-0.15
+```
+
+The keyd path is:
+
+```text
+tab+d       toggle recording
+tab+shift+d cancel recording
+```
+
+On stop, recognized text is always copied to the clipboard before any paste
+attempt. This keeps dictation useful when the focused target cannot accept text.
+
+## Text-To-Speech Workflow
 
 Use the wrappers for terminal commands and agents when you want narrated
 output:
@@ -126,13 +170,42 @@ speaker is preferred.
 Piper. Agent output often contains separators, icons, or cursor artifacts that
 can phonemize to zero audio and trigger Piper HTTP 500 errors.
 
+## Speech-To-Text Workflow
+
+Manual checks:
+
+```sh
+stt-dictate begin
+stt-dictate end
+stt-dictate cancel
+stt-dictate status
+```
+
+Useful overrides:
+
+```sh
+STT_DICTATE_AUTO_PASTE=0 stt-dictate toggle
+STT_DICTATE_SOURCE=source_filter.rnnoise stt-dictate toggle
+STT_DICTATE_SOURCE= stt-dictate toggle
+STT_DICTATE_SOURCE_FALLBACK=0 stt-dictate toggle
+STT_DICTATE_LANG=es stt-dictate toggle
+STT_DICTATE_LANG=en stt-dictate toggle
+STT_DICTATE_FULL_SENTENCE=1 stt-dictate toggle
+STT_DICTATE_NUMBERS_AS_DIGITS=1 stt-dictate toggle
+STT_DICTATE_FIREJAIL=0 stt-dictate toggle
+STT_DICTATE_BACKEND=nerd-dictation STT_DICTATE_LANG=es stt-dictate toggle
+```
+
+`STT_DICTATE_FIREJAIL=0` is only for debugging sandbox or audio-device issues.
+Do not make unsandboxed Python execution the default.
+
 ## Constraints
 
 - `tts-pty` is not a full screen reader. Full-screen terminal UIs can redraw
   frequently, so use `tts-tui` for Kitty-hosted TUIs when possible.
 - Prefer line-oriented agent output when available.
-- Keep the stack local: do not depend on cloud TTS, a browser, or an AUR
-  neural voice model.
-- When adding Piper or another Python TTS engine, install and run it through
-  the Firejail workflow documented in
+- Keep the stack local: do not depend on cloud TTS/STT, a browser, or an AUR
+  neural voice model for the fallback layer.
+- When adding Piper, Whisper, or another Python TTS/STT engine, install and run
+  it through the Firejail workflow documented in
   [firejail-dev-tools.md](./firejail-dev-tools.md).

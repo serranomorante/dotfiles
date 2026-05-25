@@ -1,0 +1,443 @@
+#!/usr/bin/env sh
+
+# Purpose: Toggle local speech-to-text dictation through Vosk.
+# Notes: The recognized text is always copied to the clipboard before an
+# optional paste attempt, so non-text targets still leave the result available.
+
+set -u
+
+usage() {
+    cat <<'EOF'
+Usage: stt-dictate [toggle|begin|end|cancel|status]
+
+Environment:
+  STT_DICTATE_LANG=auto|es|en
+  STT_DICTATE_ES_MODEL_DIR=$XDG_DATA_HOME/vosk/vosk-model-small-es-0.42
+  STT_DICTATE_EN_MODEL_DIR=$XDG_DATA_HOME/vosk/vosk-model-small-en-us-0.15
+  STT_DICTATE_MODEL_DIR=          # legacy single-language nerd-dictation path
+  STT_DICTATE_RUNTIME_DIR=$XDG_RUNTIME_DIR/stt-dictate
+  STT_DICTATE_SOURCE=source_filter.rnnoise
+  STT_DICTATE_SOURCE_FALLBACK=1
+  STT_DICTATE_SAMPLE_RATE=44100
+  STT_DICTATE_IDLE_TIME=0.1
+  STT_DICTATE_DELAY_EXIT=0.35
+  STT_DICTATE_TIMEOUT=0
+  STT_DICTATE_FULL_SENTENCE=0
+  STT_DICTATE_NUMBERS_AS_DIGITS=0
+  STT_DICTATE_BACKEND=raw-vosk|nerd-dictation
+  STT_DICTATE_AUTO_PASTE=1
+  STT_DICTATE_PASTE_KEY=ctrl+shift+v
+  STT_DICTATE_TRANSCRIBER=$HOME/bin/stt-vosk-transcribe
+  STT_DICTATE_COMMAND=nerd-dictation
+  STT_DICTATE_FIREJAIL=1
+  STT_DICTATE_FJ_PY=$HOME/bin/fj-py
+  STT_DICTATE_PROJECT_DIR=$HOME/data/apps/audio-tools/stt-dictation
+EOF
+}
+
+die() {
+    notify "STT dictation" "$1"
+    printf '%s\n' "stt-dictate: $1" >&2
+    exit "${2:-1}"
+}
+
+notify() {
+    command -v notify-send >/dev/null 2>&1 || return 0
+    notify-send "$1" "$2" >/dev/null 2>&1 || true
+}
+
+runtime_base=${XDG_RUNTIME_DIR:-/tmp}
+data_base=${XDG_DATA_HOME:-"$HOME/.local/share"}
+runtime_dir=${STT_DICTATE_RUNTIME_DIR:-"$runtime_base/stt-dictate"}
+stt_lang=${STT_DICTATE_LANG:-auto}
+es_model_dir=${STT_DICTATE_ES_MODEL_DIR:-"$data_base/vosk/vosk-model-small-es-0.42"}
+en_model_dir=${STT_DICTATE_EN_MODEL_DIR:-"$data_base/vosk/vosk-model-small-en-us-0.15"}
+model_dir=${STT_DICTATE_MODEL_DIR:-"$es_model_dir"}
+backend=${STT_DICTATE_BACKEND:-raw-vosk}
+dictation_cmd=${STT_DICTATE_COMMAND:-nerd-dictation}
+transcriber=${STT_DICTATE_TRANSCRIBER:-"$HOME/bin/stt-vosk-transcribe"}
+firejail_enabled=${STT_DICTATE_FIREJAIL:-1}
+fj_py=${STT_DICTATE_FJ_PY:-"$HOME/bin/fj-py"}
+project_dir=${STT_DICTATE_PROJECT_DIR:-"$HOME/data/apps/audio-tools/stt-dictation"}
+dictation_source=${STT_DICTATE_SOURCE:-source_filter.rnnoise}
+source_fallback=${STT_DICTATE_SOURCE_FALLBACK:-1}
+input_method=${STT_DICTATE_INPUT:-PW-CAT}
+sample_rate=${STT_DICTATE_SAMPLE_RATE:-44100}
+idle_time=${STT_DICTATE_IDLE_TIME:-0.1}
+delay_exit=${STT_DICTATE_DELAY_EXIT:-0.35}
+timeout=${STT_DICTATE_TIMEOUT:-0}
+full_sentence=${STT_DICTATE_FULL_SENTENCE:-0}
+numbers_as_digits=${STT_DICTATE_NUMBERS_AS_DIGITS:-0}
+auto_paste=${STT_DICTATE_AUTO_PASTE:-1}
+paste_key=${STT_DICTATE_PASTE_KEY:-ctrl+shift+v}
+
+cookie_file=$runtime_dir/nerd-dictation.cookie
+pid_file=$runtime_dir/pid
+mode_file=$runtime_dir/mode
+audio_file=$runtime_dir/audio.s16le
+output_file=$runtime_dir/output
+error_file=$runtime_dir/error
+
+append_runtime_path() {
+    [ -e "$1" ] || return 0
+    stt_firejail_rw_paths="${stt_firejail_rw_paths}
+$1"
+}
+
+run_nerd_dictation() {
+    if [ "$firejail_enabled" = 1 ]; then
+        [ -x "$fj_py" ] || die "missing Firejail Python wrapper: $fj_py"
+        mkdir -p "$project_dir" || die "cannot create STT project directory: $project_dir"
+
+        stt_firejail_rw_paths=$runtime_dir
+        append_runtime_path "$runtime_base/pipewire-0"
+        append_runtime_path "$runtime_base/pulse/native"
+
+        FJ_PY_EXTRA_PATHS=$model_dir \
+            FJ_PY_WRITABLE_PATHS=$stt_firejail_rw_paths \
+            FJ_PY_FORWARD_ENV='PIPEWIRE_REMOTE
+PULSE_SERVER' \
+            "$fj_py" offline "$project_dir" -- "$dictation_cmd" "$@"
+        return $?
+    fi
+
+    "$dictation_cmd" "$@"
+}
+
+run_vosk_transcriber() {
+    language=$1
+    shift
+
+    if [ "$firejail_enabled" = 1 ]; then
+        [ -x "$fj_py" ] || die "missing Firejail Python wrapper: $fj_py"
+        mkdir -p "$project_dir" || die "cannot create STT project directory: $project_dir"
+
+        case "$language" in
+        auto)
+            stt_firejail_extra_paths=$es_model_dir
+            [ "$en_model_dir" = "$es_model_dir" ] || stt_firejail_extra_paths="${stt_firejail_extra_paths}
+$en_model_dir"
+            ;;
+        es)
+            stt_firejail_extra_paths=$es_model_dir
+            ;;
+        en)
+            stt_firejail_extra_paths=$en_model_dir
+            ;;
+        *)
+            die "unsupported STT_DICTATE_LANG: $language"
+            ;;
+        esac
+
+        transcriber_real=$(readlink -f "$transcriber" 2>/dev/null || printf '%s\n' "$transcriber")
+        stt_firejail_extra_paths="${stt_firejail_extra_paths}
+$transcriber_real"
+
+        FJ_PY_EXTRA_PATHS=$stt_firejail_extra_paths \
+            FJ_PY_WRITABLE_PATHS=$runtime_dir \
+            "$fj_py" offline "$project_dir" -- "$transcriber_real" \
+            --audio-file "$audio_file" \
+            --sample-rate "$sample_rate" \
+            --language "$language" \
+            "$@"
+        return $?
+    fi
+
+    "$transcriber" \
+        --audio-file "$audio_file" \
+        --sample-rate "$sample_rate" \
+        --language "$language" \
+        "$@"
+}
+
+read_pid() {
+    [ -r "$pid_file" ] || return 1
+    IFS= read -r pid <"$pid_file" || return 1
+    [ -n "$pid" ] || return 1
+    case "$pid" in
+    *[!0-9]*)
+        return 1
+        ;;
+    esac
+    printf '%s\n' "$pid"
+}
+
+is_running() {
+    pid=$(read_pid) || return 1
+    kill -0 "$pid" >/dev/null 2>&1
+}
+
+set_clipboard() {
+    if command -v wl-copy >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+        wl-copy
+    elif command -v xclip >/dev/null 2>&1; then
+        xclip -selection clipboard
+    else
+        return 1
+    fi
+}
+
+paste_clipboard() {
+    [ "$auto_paste" = 1 ] || return 0
+
+    if command -v xdotool >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ]; then
+        xdotool key --clearmodifiers "$paste_key" >/dev/null 2>&1
+        return $?
+    fi
+
+    if command -v ydotool >/dev/null 2>&1 && [ -n "${YDOTOOL_SOCKET:-}" ]; then
+        case "$paste_key" in
+        ctrl+shift+v)
+            ydotool key 29:1 42:1 47:1 47:0 42:0 29:0 >/dev/null 2>&1
+            return $?
+            ;;
+        esac
+    fi
+
+    return 1
+}
+
+clean_text() {
+    sed 's/[[:space:]][[:space:]]*/ /g; s/^ //; s/ $//' "$output_file"
+}
+
+pipewire_node_exists() {
+    command -v pw-cli >/dev/null 2>&1 || return 1
+    pw-cli ls Node 2>/dev/null | grep -F "node.name = \"$1\"" >/dev/null 2>&1
+}
+
+select_record_source() {
+    selected_record_source=
+    [ -n "$dictation_source" ] || return 0
+
+    if pipewire_node_exists "$dictation_source"; then
+        selected_record_source=$dictation_source
+        return 0
+    fi
+
+    if [ "$source_fallback" = 1 ]; then
+        notify "STT dictation" "Input source unavailable; using default"
+        return 0
+    fi
+
+    die "missing PipeWire input source: $dictation_source"
+}
+
+language_models_args() {
+    case "$stt_lang" in
+    auto)
+        [ -d "$es_model_dir" ] || die "missing Spanish Vosk model: $es_model_dir"
+        [ -d "$en_model_dir" ] || die "missing English Vosk model: $en_model_dir"
+        printf '%s\n' --model "es:$es_model_dir" --model "en:$en_model_dir"
+        ;;
+    es)
+        [ -d "$es_model_dir" ] || die "missing Spanish Vosk model: $es_model_dir"
+        printf '%s\n' --model "es:$es_model_dir"
+        ;;
+    en)
+        [ -d "$en_model_dir" ] || die "missing English Vosk model: $en_model_dir"
+        printf '%s\n' --model "en:$en_model_dir"
+        ;;
+    *)
+        die "unsupported STT_DICTATE_LANG: $stt_lang"
+        ;;
+    esac
+}
+
+begin_raw_vosk_dictation() {
+    command -v pw-cat >/dev/null 2>&1 || die "pw-cat is not installed"
+    [ -x "$transcriber" ] || die "missing Vosk transcriber: $transcriber"
+    language_models_args >/dev/null
+    select_record_source
+
+    mkdir -p "$runtime_dir" || die "cannot create runtime directory: $runtime_dir"
+
+    if is_running; then
+        notify "STT dictation" "Already recording"
+        return 0
+    fi
+
+    : >"$output_file"
+    : >"$error_file"
+    : >"$audio_file"
+    printf '%s\n' "raw-vosk" >"$mode_file"
+
+    if [ -n "$selected_record_source" ]; then
+        pw-cat --record --target "$selected_record_source" --format=s16 --rate "$sample_rate" --channels=1 - >"$audio_file" 2>"$error_file" &
+    else
+        pw-cat --record --format=s16 --rate "$sample_rate" --channels=1 - >"$audio_file" 2>"$error_file" &
+    fi
+    printf '%s\n' "$!" >"$pid_file"
+    notify "STT dictation" "Recording"
+}
+
+begin_dictation() {
+    if [ "$backend" = raw-vosk ]; then
+        begin_raw_vosk_dictation
+        return $?
+    fi
+
+    command -v "$dictation_cmd" >/dev/null 2>&1 || die "$dictation_cmd is not installed"
+    [ -d "$model_dir" ] || die "missing Vosk model: $model_dir"
+
+    mkdir -p "$runtime_dir" || die "cannot create runtime directory: $runtime_dir"
+
+    if is_running; then
+        notify "STT dictation" "Already recording"
+        return 0
+    fi
+
+    : >"$output_file"
+    : >"$error_file"
+    printf '%s\n' "nerd-dictation" >"$mode_file"
+
+    full_sentence_flag=
+    numbers_as_digits_flag=
+    [ "$full_sentence" = 1 ] && full_sentence_flag=--full-sentence
+    [ "$numbers_as_digits" = 1 ] && numbers_as_digits_flag=--numbers-as-digits
+
+    run_nerd_dictation begin \
+        --cookie "$cookie_file" \
+        --vosk-model-dir "$model_dir" \
+        --input "$input_method" \
+        --sample-rate "$sample_rate" \
+        --idle-time "$idle_time" \
+        --delay-exit "$delay_exit" \
+        --timeout "$timeout" \
+        --output STDOUT \
+        $full_sentence_flag \
+        $numbers_as_digits_flag \
+        >"$output_file" 2>"$error_file" &
+
+    printf '%s\n' "$!" >"$pid_file"
+    notify "STT dictation" "Recording"
+}
+
+finish_raw_vosk_dictation() {
+    if ! is_running; then
+        rm -f "$pid_file"
+        notify "STT dictation" "Not recording"
+        return 1
+    fi
+
+    pid=$(read_pid) || pid=
+    [ -n "$pid" ] && kill -INT "$pid" >/dev/null 2>&1 || true
+
+    i=0
+    while is_running && [ "$i" -lt 50 ]; do
+        sleep 0.1
+        i=$((i + 1))
+    done
+    [ -n "$pid" ] && is_running && kill "$pid" >/dev/null 2>&1 || true
+
+    rm -f "$pid_file"
+
+    set -- $(language_models_args)
+    if ! run_vosk_transcriber "$stt_lang" "$@" >"$output_file" 2>>"$error_file"; then
+        err=$(sed -n '1,4p' "$error_file")
+        [ -n "$err" ] && printf '%s\n' "$err" >&2
+        notify "STT dictation" "No text recognized"
+        return 1
+    fi
+
+    finish_output_text
+}
+
+finish_output_text() {
+    text=$(clean_text)
+
+    if [ -z "$text" ]; then
+        err=$(sed -n '1,2p' "$error_file")
+        [ -n "$err" ] && printf '%s\n' "$err" >&2
+        notify "STT dictation" "No text recognized"
+        return 1
+    fi
+
+    printf '%s' "$text" | set_clipboard || die "could not copy text to clipboard"
+
+    # Give clipboard managers a short moment to observe the new owner.
+    sleep 0.05
+    paste_clipboard || true
+    notify "STT dictation" "Copied to clipboard"
+}
+
+finish_dictation() {
+    if ! is_running; then
+        rm -f "$pid_file"
+        notify "STT dictation" "Not recording"
+        return 1
+    fi
+
+    if [ -r "$mode_file" ]; then
+        IFS= read -r mode <"$mode_file" || mode=
+        if [ "$mode" = raw-vosk ]; then
+            finish_raw_vosk_dictation
+            return $?
+        fi
+    fi
+
+    run_nerd_dictation end --cookie "$cookie_file" >/dev/null 2>&1 || true
+
+    i=0
+    while is_running && [ "$i" -lt 150 ]; do
+        sleep 0.1
+        i=$((i + 1))
+    done
+
+    if is_running; then
+        notify "STT dictation" "Still processing"
+        return 1
+    fi
+
+    rm -f "$pid_file"
+    finish_output_text
+}
+
+cancel_dictation() {
+    if is_running; then
+        if [ -r "$mode_file" ]; then
+            IFS= read -r mode <"$mode_file" || mode=
+        else
+            mode=
+        fi
+        [ "$mode" = raw-vosk ] || run_nerd_dictation cancel --cookie "$cookie_file" >/dev/null 2>&1 || true
+        pid=$(read_pid) || pid=
+        [ -n "$pid" ] && kill "$pid" >/dev/null 2>&1 || true
+    fi
+
+    rm -f "$pid_file" "$mode_file" "$cookie_file" "$audio_file" "$output_file" "$error_file"
+    notify "STT dictation" "Canceled"
+}
+
+case "${1:-toggle}" in
+toggle)
+    if is_running; then
+        finish_dictation
+    else
+        begin_dictation
+    fi
+    ;;
+begin | start)
+    begin_dictation
+    ;;
+end | stop | finish)
+    finish_dictation
+    ;;
+cancel)
+    cancel_dictation
+    ;;
+status)
+    if is_running; then
+        printf '%s\n' "recording"
+    else
+        printf '%s\n' "idle"
+    fi
+    ;;
+-h | --help | help)
+    usage
+    ;;
+*)
+    usage >&2
+    exit 2
+    ;;
+esac

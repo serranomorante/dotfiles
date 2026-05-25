@@ -152,6 +152,21 @@ For Piper:
   server's `127.0.0.1`.
 - Play the generated WAV outside Firejail with `pw-play`, `paplay`, or `aplay`.
 
+## Speech-To-Text Guidance
+
+For Python STT and dictation tools:
+
+- Run local recognition commands through `fj-py offline` by default.
+- Keep model downloads outside the runtime command path; Ansible should fetch
+  model assets explicitly, then runtime wrappers should use the local files.
+- Expose only the model directory, a small project directory, the runtime state
+  directory, and the local PipeWire/Pulse sockets needed for microphone input.
+- Do clipboard and keyboard injection outside the Python sandbox where possible,
+  so the recognizer only needs microphone access and local model files.
+- If a microphone or PipeWire limitation forces an unsandboxed debug run, gate
+  it behind an explicit environment override and document it in the voice
+  workflow notes.
+
 ## When To Add A New Profile
 
 Add a new Firejail profile only when an existing profile cannot express the

@@ -47,7 +47,9 @@
   kewlfft.aur.aur:
     use: yay
     state: present
-    name: patchance
+    name:
+      - patchance
+      - nerd-dictation-git
 
 - name: "[archlinux] Setup audio tools: remove conflicting packages"
   become: true
@@ -75,6 +77,8 @@
       - plasma-pa
       - speech-dispatcher
       - espeak-ng
+      - python-vosk
+      - unzip
       - realtime-privileges
       - base-devel
       - cpupower
@@ -84,6 +88,36 @@
       - rtirq
       - reaper
   notify: handler_ensure_rtirq_service
+
+- name: "[archlinux] Setup audio tools: ensure STT Vosk model directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  loop: >-
+    {{
+      (
+        (arch_stt_vosk_models | map(attribute='archive_path') | map('dirname') | list)
+        + (arch_stt_vosk_models | map(attribute='parent_dir') | list)
+        + [arch_stt_dictation_project_path]
+      ) | unique
+    }}
+
+- name: "[archlinux] Setup audio tools: download STT Vosk model"
+  ansible.builtin.get_url:
+    url: "{{ item.url }}"
+    dest: "{{ item.archive_path }}"
+    mode: "644"
+    timeout: 300
+  loop: "{{ arch_stt_vosk_models }}"
+
+- name: "[archlinux] Setup audio tools: unpack STT Vosk model"
+  ansible.builtin.unarchive:
+    src: "{{ item.archive_path }}"
+    dest: "{{ item.parent_dir }}"
+    remote_src: true
+    creates: "{{ item.model_dir }}"
+  loop: "{{ arch_stt_vosk_models }}"
 
 - name: "[archlinux] Setup audio tools: setup reaper-linux.desktop file"
   ansible.builtin.template:

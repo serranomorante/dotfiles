@@ -136,14 +136,20 @@ loads sorted `*.rem` files such as `00-helpers.rem` before generated
 `reminders.rem`. Keep `~/.config/remind/reminders.rem` generated from Neovim;
 durable helper functions belong in the dotfiles package instead.
 
-## Voice TTS Workflows
+## Voice Workflows
 
 Text-to-speech wrappers for narrating terminal commands, TUIs, and AI CLIs
 live in `utilities/bin/` and are documented in
-[voice-agent-workflows.md](./voice-agent-workflows.md). The baseline path
-should stay usable from a plain TTY, so prefer official Arch packages such as
-`speech-dispatcher` and `espeak-ng` over optional AUR neural TTS engines for
-the fallback layer.
+[voice-agent-workflows.md](./voice-agent-workflows.md). Speech-to-text
+dictation also lives in `utilities/bin/`, with keyboard signals bridged through
+`peripherals/bin/keyd-observer` and
+`playbooks/roles/10-system-tools/templates/keyd-default.conf`.
+
+The voice fallback layer should stay local and reproducible. Prefer official
+Arch packages such as `speech-dispatcher`, `espeak-ng`, and `python-vosk` over
+optional AUR neural voice engines. Python-based voice engines should run through
+the repository Firejail wrappers by default; document any exception in
+`voice-agent-workflows.md`.
 
 ## REAPER
 
