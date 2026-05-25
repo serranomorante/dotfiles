@@ -20,7 +20,6 @@ Some reasoning behind my current plugin list.
 | nvim-treesitter-textobjects | I got really used to some of these movements (like `vif` to select the body of a function)                                                                                       |
 | nvim-ufo                    | More performant than native folds (due to lsp). This is the exception to my second rule                                                                                          |
 | overseer.nvim               | Another exception to my second rule. Is just the most beatiful plugin and lua code I've ever seen, I use it to do almost all my interactions with the terminal                   |
-| plenary.nvim                | Dependency for other plugins (like nvim-lspconfig) but also for some of my own code                                                                                              |
 | promise-async               | Dependency for other plugins                                                                                                                                                     |
 | blame.nvim                  | Necesary, neither diffview.nvim, nor gitsigns.nvim provide this                                                                                                                  |
 | conform.nvim                | --                                                                                                                                                                               |

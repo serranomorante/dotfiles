@@ -40,10 +40,13 @@
     nvim_plugin_result_by_repo: "{{ nvim_plugin_result_by_repo | default({}) | combine({item.item.item.repo: item}) }}"
   loop: "{{ var_job_result.results }}"
 
-- name: "[debian] Editor tools: remove stale coc.nvim plugin"
+- name: "[debian] Editor tools: remove stale nvim plugins"
   ansible.builtin.file:
-    path: ~/.local/share/nvim/site/pack/plugins/start/coc.nvim
+    path: ~/.local/share/nvim/site/pack/plugins/start/{{ item }}
     state: absent
+  loop:
+    - coc.nvim
+    - plenary
 
 - name: "[debian] Editor tools: clone universal ctags"
   ansible.builtin.git:

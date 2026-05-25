@@ -37,9 +37,6 @@ debian_neovim_version: 688b961d13bd # before cmake 3.16 requirement
 arch_gnirehtet_version: 2.5.1
 neovim_plugins:
   - folder: start
-    repo: nvim-lua/plenary.nvim
-    name: plenary
-  - folder: start
     repo: kevinhwang91/promise-async # use `typings/?.lua` on .luarc.json
   - folder: start
     repo: stevearc/overseer.nvim
