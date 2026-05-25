@@ -4,4 +4,5 @@
 #Get envs with `udevadm monitor --environment --udev`
 
 KERNEL=="card0", ACTION=="add|remove|unbind", SUBSYSTEM=="drm", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="setup-displays.service"
+KERNEL=="card*-*", ACTION=="add|remove|change|bind|unbind", SUBSYSTEM=="drm", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="display-health-check.service"
 ACTION=="add|remove|unbind", SUBSYSTEM=="usb", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="setup-displays.service"

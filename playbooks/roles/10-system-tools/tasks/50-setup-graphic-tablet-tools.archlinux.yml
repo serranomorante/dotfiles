@@ -108,6 +108,13 @@
     enabled: true
     masked: false
 
+- name: "[archlinux] Graphic tablet: ensure display health timer"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: display-health-check.timer
+    enabled: true
+    masked: false
+
 - name: "[archlinux] Graphic tablet: ensure mypaint"
   # Mypaint from arch repos was failing for me
   ansible.builtin.get_url:

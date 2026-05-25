@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# Purpose: Detect and repair an X/DRM panel state mismatch.
+# Notes: This handles the case where XRandR still renders to an output while
+# the matching DRM connector is disabled or DPMS-off, leaving the panel black.
+
+set -u
+
+warn() {
+  printf 'display-health-check: %s\n' "$1" >&2
+}
+
+if ! command -v xrandr >/dev/null 2>&1; then
+  warn "xrandr is not available"
+  exit 0
+fi
+
+if ! xr_output="$(xrandr --query 2>/dev/null)"; then
+  warn "no X display available (DISPLAY=${DISPLAY:-unset}); skipping"
+  exit 0
+fi
+
+x_output_to_drm_connector() {
+  local output="$1"
+
+  case "$output" in
+    HDMI-[0-9]*)
+      printf 'HDMI-A-%s\n' "${output#HDMI-}"
+      ;;
+    *)
+      printf '%s\n' "$output"
+      ;;
+  esac
+}
+
+drm_path_for_output() {
+  local output="$1"
+  local connector path first_path
+
+  connector="$(x_output_to_drm_connector "$output")"
+
+  for path in /sys/class/drm/card*-"$connector"; do
+    [[ -d "$path" ]] || continue
+    [[ -z "${first_path:-}" ]] && first_path="$path"
+
+    if [[ -r "$path/status" ]] && [[ "$(cat "$path/status")" == "connected" ]]; then
+      printf '%s\n' "$path"
+      return 0
+    fi
+  done
+
+  [[ -n "${first_path:-}" ]] && printf '%s\n' "$first_path"
+}
+
+current_mode_rate() {
+  local output="$1"
+
+  awk -v output="$output" '
+    $1 == output && $2 == "connected" {
+      inside = 1
+      next
+    }
+    inside && /^[^[:space:]]/ {
+      inside = 0
+    }
+    inside && /\*/ {
+      mode = $1
+      for (i = 2; i <= NF; i++) {
+        if ($i ~ /\*/) {
+          rate = $i
+          gsub(/[+*]/, "", rate)
+          print mode, rate
+          exit
+        }
+      }
+    }
+  ' <<<"$xr_output"
+}
+
+rate_for_mode_except() {
+  local output="$1"
+  local mode="$2"
+  local current_rate="$3"
+
+  awk -v output="$output" -v mode="$mode" -v current_rate="$current_rate" '
+    $1 == output && $2 == "connected" {
+      inside = 1
+      next
+    }
+    inside && /^[^[:space:]]/ {
+      inside = 0
+    }
+    inside && $1 == mode {
+      for (i = 2; i <= NF; i++) {
+        rate = $i
+        gsub(/[+*]/, "", rate)
+        if (rate != current_rate) {
+          print rate
+          exit
+        }
+      }
+    }
+  ' <<<"$xr_output"
+}
+
+repair_output() {
+  local output="$1"
+  local current mode current_rate alt_mode alt_rate base_mode
+
+  current="$(current_mode_rate "$output")"
+  if [[ -z "$current" ]]; then
+    warn "$output has no active XRandR mode; skipping repair"
+    return 0
+  fi
+
+  read -r mode current_rate <<<"$current"
+  alt_mode="$mode"
+  alt_rate="$(rate_for_mode_except "$output" "$mode" "$current_rate")"
+
+  if [[ -z "$alt_rate" && "$mode" == *f ]]; then
+    base_mode="${mode%f}"
+    alt_rate="$(rate_for_mode_except "$output" "$base_mode" "$current_rate")"
+    [[ -n "$alt_rate" ]] && alt_mode="$base_mode"
+  fi
+
+  warn "$output scanout looks stale; forcing DPMS on and refreshing mode"
+  xset dpms force on >/dev/null 2>&1 || true
+
+  if [[ -n "$alt_rate" ]]; then
+    xrandr --output "$output" --mode "$alt_mode" --rate "$alt_rate" >/dev/null 2>&1 || true
+    sleep 2
+    xrandr --output "$output" --mode "$mode" --rate "$current_rate" >/dev/null 2>&1 || \
+      xrandr --output "$output" --auto >/dev/null 2>&1 || true
+  else
+    xrandr --output "$output" --auto >/dev/null 2>&1 || true
+  fi
+}
+
+check_output() {
+  local output="$1"
+  local current drm_path enabled dpms
+
+  current="$(current_mode_rate "$output")"
+  [[ -n "$current" ]] || return 0
+
+  drm_path="$(drm_path_for_output "$output")"
+  [[ -n "$drm_path" ]] || return 0
+
+  enabled="$(cat "$drm_path/enabled" 2>/dev/null || true)"
+  dpms="$(cat "$drm_path/dpms" 2>/dev/null || true)"
+
+  if [[ "$enabled" != "enabled" || "$dpms" != "On" ]]; then
+    warn "$output mismatch: $(basename "$drm_path") enabled=${enabled:-unknown} dpms=${dpms:-unknown}"
+    repair_output "$output"
+  fi
+}
+
+while read -r output; do
+  check_output "$output"
+done < <(awk '/ connected/{print $1}' <<<"$xr_output")

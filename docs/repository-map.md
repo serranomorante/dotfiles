@@ -231,6 +231,11 @@ Wacom tablet behavior is split between Xorg defaults and runtime reapply hooks:
 - Runtime-only `xsetwacom` actions and settings that depend on current display
   geometry belong in `peripherals/bin/wacom-config.sh`, which is called by both
   `wacom.service` and `setup-displays.sh`.
+- `utilities/bin/display-health-check` is a periodic X11 guard for the hybrid
+  display stack. It compares active XRandR outputs with their DRM connector
+  state and forces a small mode refresh when X is still rendering but the
+  kernel reports the panel connector disabled or DPMS-off. It is run by both a
+  low-frequency user timer and the monitor hotplug udev rule.
 
 ## Terminal And Kitty
 
