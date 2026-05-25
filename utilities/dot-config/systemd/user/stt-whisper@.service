@@ -1,0 +1,9 @@
+[Unit]
+Description=Local whisper.cpp STT HTTP server (%i)
+After=default.target
+
+[Service]
+Environment="STT_WHISPER_PROFILE=%i"
+ExecStart=%h/bin/stt-whisper-server
+Restart=on-failure
+RestartSec=5s

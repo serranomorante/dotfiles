@@ -181,6 +181,23 @@
   tags: ["20-170"]
 
 - block:
+    - name: Setup whisper.cpp STT backend
+      ansible.builtin.include_tasks:
+        file: "{{ task_file }}"
+        apply:
+          tags:
+            - never
+            - slow
+            - "20-170-whisper"
+      with_first_found:
+        - files: 171-setup-whisper-cpp.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: [never, slow, "20-170-whisper"]
+
+- block:
     - name: Setup android tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:

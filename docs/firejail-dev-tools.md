@@ -205,6 +205,12 @@ For Python STT and dictation tools:
   it behind an explicit environment override and document it in the voice
   workflow notes.
 
+For GPU-backed STT such as `whisper.cpp` with CUDA, keep runtime networking
+disabled and whitelist only the managed binary, selected model, and runtime
+audio file. If CUDA requires real `/dev/nvidia*` access, document the profile's
+device-boundary exception and disable unrelated desktop device classes instead
+of dropping the sandbox entirely.
+
 ## When To Add A New Profile
 
 Add a new Firejail profile only when an existing profile cannot express the

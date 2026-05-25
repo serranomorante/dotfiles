@@ -1,0 +1,106 @@
+---
+- name: "[archlinux] Setup whisper.cpp: install CUDA build packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - cmake
+      - cuda
+      - ninja
+
+- name: "[archlinux] Setup whisper.cpp: ensure directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  loop:
+    - "{{ whisper_cpp_setup.repo_path | dirname }}"
+    - "{{ whisper_cpp_setup.model_dir }}"
+
+- name: "[archlinux] Setup whisper.cpp: clone repo"
+  ansible.builtin.git:
+    repo: https://github.com/ggml-org/whisper.cpp.git
+    dest: "{{ whisper_cpp_setup.repo_path }}"
+    version: "{{ whisper_cpp_setup.version }}"
+    force: true
+  register: var_whisper_cpp_repo
+
+- name: "[archlinux] Setup whisper.cpp: download profile models"
+  ansible.builtin.get_url:
+    url: "{{ item.model_url }}"
+    dest: "{{ whisper_cpp_setup.model_dir }}/{{ item.model_file }}"
+    mode: "644"
+    timeout: 900
+  loop: "{{ whisper_cpp_setup.profiles }}"
+
+- name: "[archlinux] Setup whisper.cpp: check binary"
+  ansible.builtin.stat:
+    path: "{{ whisper_cpp_setup.binary_path }}"
+  register: var_whisper_cpp_binary
+
+- name: "[archlinux] Setup whisper.cpp: check server binary"
+  ansible.builtin.stat:
+    path: "{{ whisper_cpp_setup.server_binary_path }}"
+  register: var_whisper_cpp_server_binary
+
+- name: "[archlinux] Setup whisper.cpp: remove stale build"
+  ansible.builtin.file:
+    path: "{{ whisper_cpp_setup.repo_path }}/build"
+    state: absent
+  when:
+    - >-
+      var_whisper_cpp_repo.changed
+      or not var_whisper_cpp_binary.stat.exists
+      or not var_whisper_cpp_server_binary.stat.exists
+
+- name: "[archlinux] Setup whisper.cpp: configure CUDA build"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - offline
+      - "{{ whisper_cpp_setup.repo_path }}"
+      - --
+      - cmake
+      - -S
+      - "{{ whisper_cpp_setup.repo_path }}"
+      - -B
+      - "{{ whisper_cpp_setup.repo_path }}/build"
+      - -G
+      - Ninja
+      - "-DCMAKE_C_COMPILER={{ whisper_cpp_setup.cuda_c_compiler }}"
+      - "-DCMAKE_CXX_COMPILER={{ whisper_cpp_setup.cuda_cxx_compiler }}"
+      - -DGGML_CUDA=1
+      - -DCMAKE_CUDA_COMPILER=/opt/cuda/bin/nvcc
+      - "-DCMAKE_CUDA_HOST_COMPILER={{ whisper_cpp_setup.cuda_host_compiler }}"
+      - -DCMAKE_BUILD_TYPE=Release
+  environment:
+    PATH: "{{ ansible_facts.env.PATH }}:/opt/cuda/bin"
+  when:
+    - >-
+      var_whisper_cpp_repo.changed
+      or not var_whisper_cpp_binary.stat.exists
+      or not var_whisper_cpp_server_binary.stat.exists
+  changed_when: true
+
+- name: "[archlinux] Setup whisper.cpp: build CUDA binary"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - offline
+      - "{{ whisper_cpp_setup.repo_path }}"
+      - --
+      - cmake
+      - --build
+      - "{{ whisper_cpp_setup.repo_path }}/build"
+      - -j
+      - --config
+      - Release
+  environment:
+    PATH: "{{ ansible_facts.env.PATH }}:/opt/cuda/bin"
+  when:
+    - >-
+      var_whisper_cpp_repo.changed
+      or not var_whisper_cpp_binary.stat.exists
+      or not var_whisper_cpp_server_binary.stat.exists
+  changed_when: true
+  timeout: 0

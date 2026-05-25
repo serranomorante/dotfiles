@@ -27,6 +27,8 @@ Python wheels, downloaded voice models, or a user service.
 Use a local, Firejail-sandboxed dictation path:
 
 - `stt-dictate` owns the user-facing toggle/cancel workflow.
+- `whisper.cpp` provides the preferred high-accuracy local backend when its
+  CUDA build and managed model are installed.
 - `stt-vosk-transcribe` runs final transcription with `python-vosk`.
 - `nerd-dictation` remains available as an explicit single-language backend.
 - `pw-cat` records microphone audio through PipeWire, targeting the RNNoise
@@ -34,26 +36,58 @@ Use a local, Firejail-sandboxed dictation path:
 - `xclip` stores recognized text in the clipboard, and `xdotool` attempts a
   `Ctrl+Shift+V` paste into the focused app.
 
-`stt-dictate` records one raw microphone take, then runs Vosk transcription
-through `fj-py offline` by default. Keep Python STT engines inside the
-repository Firejail workflow unless a specific audio or input limitation
-requires a documented exception. The sandbox exposes only the STT project
-directory, the Vosk model directories, and the dictation runtime directory.
-Clipboard and keyboard injection stay outside the Python sandbox.
+`stt-dictate` uses `STT_DICTATE_BACKEND=auto` by default. Auto mode selects
+`whisper.cpp` when its binary, selected profile model, and Firejail profile
+exist; otherwise it keeps the Vosk path so the keymap does not break before the
+Whisper setup has been applied. The Whisper path records a 16 kHz mono WAV take
+and first tries the resident `whisper-server` user service for the selected
+profile. If the service is unavailable, it falls back to running `whisper-cli`
+through the dedicated `fj-whisper-cpp.profile` sandbox. The Vosk path records
+raw PCM and runs final transcription through `fj-py offline`. Clipboard and
+keyboard injection stay outside the recognizer sandbox.
+
+The resident Whisper service is `stt-whisper@<profile>.service`, launched by
+`stt-whisper-server`. It keeps one model loaded inside a named Firejail sandbox
+(`stt-whisper-fast`, `stt-whisper-balanced`, or `stt-whisper-accurate`) and
+listens on loopback inside that sandbox. `stt-dictate` joins the same sandbox to
+POST the recorded WAV to `/inference`, avoiding host-network exposure while
+also avoiding per-dictation model load time. The `fj-whisper-cpp.profile` keeps
+networking disabled at runtime and exposes only the runtime audio directory,
+the selected model, and the managed binary. CUDA requires access to
+`/dev/nvidia*`, so this profile does not use Firejail's `private-dev`; it
+disables unrelated desktop device classes instead.
 
 The default raw audio input is `STT_DICTATE_SOURCE=source_filter.rnnoise`, so
 the recognizer receives the noise-suppressed microphone signal. If that
 PipeWire node is not available, `stt-dictate` falls back to PipeWire's default
 source unless `STT_DICTATE_SOURCE_FALLBACK=0` is set.
 
-The baseline language mode is `STT_DICTATE_LANG=auto`, which tries both Spanish
-and English models against the same recording and selects the higher-scoring
+The baseline language mode is `STT_DICTATE_LANG=auto`. For Whisper, this uses
+Whisper's language detection so Spanish and English can be spoken without
+switching configuration. For the Vosk fallback, auto mode tries both Spanish and
+English models against the same recording and selects the higher-scoring
 transcription. The managed models are:
 
 ```text
+~/data/apps/dev-tools/ai-tools/whisper.cpp/models/ggml-base-q5_1.bin
+~/data/apps/dev-tools/ai-tools/whisper.cpp/models/ggml-large-v3-turbo-q5_0.bin
+~/data/apps/dev-tools/ai-tools/whisper.cpp/models/ggml-medium.bin
 ~/.local/share/vosk/vosk-model-small-es-0.42
 ~/.local/share/vosk/vosk-model-small-en-us-0.15
 ```
+
+Whisper dictation profiles trade latency against recognition quality:
+
+```text
+fast      ggml-base-q5_1.bin            threads=8 beam-size=1 best-of=1 no-fallback
+balanced  ggml-large-v3-turbo-q5_0.bin  threads=6 beam-size=2 best-of=2
+accurate  ggml-medium.bin               threads=4 beam-size=5 best-of=5
+```
+
+`fast` is the default because dictation is latency-sensitive and short
+utterances should return quickly. Use `balanced` when the base model is not
+reliable enough, and `accurate` when latency matters less than transcription
+quality.
 
 The keyd path is:
 
@@ -185,6 +219,11 @@ Useful overrides:
 
 ```sh
 STT_DICTATE_AUTO_PASTE=0 stt-dictate toggle
+STT_DICTATE_BACKEND=whisper.cpp stt-dictate toggle
+STT_DICTATE_BACKEND=raw-vosk stt-dictate toggle
+STT_DICTATE_PROFILE=fast stt-dictate toggle
+STT_DICTATE_PROFILE=balanced stt-dictate toggle
+STT_DICTATE_PROFILE=accurate stt-dictate toggle
 STT_DICTATE_SOURCE=source_filter.rnnoise stt-dictate toggle
 STT_DICTATE_SOURCE= stt-dictate toggle
 STT_DICTATE_SOURCE_FALLBACK=0 stt-dictate toggle
@@ -197,7 +236,22 @@ STT_DICTATE_BACKEND=nerd-dictation STT_DICTATE_LANG=es stt-dictate toggle
 ```
 
 `STT_DICTATE_FIREJAIL=0` is only for debugging sandbox or audio-device issues.
-Do not make unsandboxed Python execution the default.
+Do not make unsandboxed recognizer execution the default.
+
+Manage the resident Whisper servers with systemd user units. These units should
+be started on demand, not enabled by default:
+
+```sh
+systemctl --user start stt-whisper@fast.service
+systemctl --user start stt-whisper@balanced.service
+systemctl --user stop stt-whisper@accurate.service
+```
+
+`stt-dictate` starts the selected service when recording begins if
+`STT_DICTATE_WHISPER_SERVER_START=1`, which is the default. The first `tab+d`
+after boot begins warming the model while audio is being recorded; later
+requests reuse the resident server for the current boot/session unless it is
+stopped.
 
 ## Constraints
 
@@ -206,6 +260,7 @@ Do not make unsandboxed Python execution the default.
 - Prefer line-oriented agent output when available.
 - Keep the stack local: do not depend on cloud TTS/STT, a browser, or an AUR
   neural voice model for the fallback layer.
-- When adding Piper, Whisper, or another Python TTS/STT engine, install and run
-  it through the Firejail workflow documented in
-  [firejail-dev-tools.md](./firejail-dev-tools.md).
+- When adding Piper, Whisper, or another TTS/STT engine, install and run it
+  through the Firejail workflow documented in
+  [firejail-dev-tools.md](./firejail-dev-tools.md). Document any GPU device
+  exception at the profile boundary.

@@ -38,6 +38,7 @@
     - fj-py-interactive.profile
     - fj-py-ansible.profile
     - fj-py-piper-server.profile
+    - fj-whisper-cpp.profile
 
 - name: "[archlinux] Setup python: install firejail wrapper helper"
   ansible.builtin.copy:

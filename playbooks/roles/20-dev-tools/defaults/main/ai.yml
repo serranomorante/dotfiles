@@ -15,6 +15,29 @@ piper_tts_setup:
   voices:
     - en_US-lessac-medium
     - es_ES-sharvard-medium
+whisper_cpp_setup:
+  repo_path: "{{ ansible_facts.env.HOME }}/data/repos/whisper.cpp"
+  version: v1.8.1
+  model_dir: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/whisper.cpp/models"
+  model_name: medium
+  model_file: ggml-medium.bin
+  model_url: https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin
+  binary_path: "{{ ansible_facts.env.HOME }}/data/repos/whisper.cpp/build/bin/whisper-cli"
+  server_binary_path: "{{ ansible_facts.env.HOME }}/data/repos/whisper.cpp/build/bin/whisper-server"
+  firejail_profile: "{{ ansible_facts.env.HOME }}/.config/firejail/fj-whisper-cpp.profile"
+  cuda_c_compiler: /usr/bin/gcc-15
+  cuda_cxx_compiler: /usr/bin/g++-15
+  cuda_host_compiler: /usr/bin/g++-15
+  profiles:
+    - name: fast
+      model_file: ggml-base-q5_1.bin
+      model_url: https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin
+    - name: balanced
+      model_file: ggml-large-v3-turbo-q5_0.bin
+      model_url: https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin
+    - name: accurate
+      model_file: ggml-medium.bin
+      model_url: https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin
 node_ai_npm_packages:
   - name: mcp-hub
     version: 4.2.1

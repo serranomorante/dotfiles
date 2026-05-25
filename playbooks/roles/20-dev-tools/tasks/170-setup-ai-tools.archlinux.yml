@@ -6,6 +6,7 @@
     name:
       - curl
       - openai-codex
+      - git
 
 - name: "[archlinux] Setup ai tools: ensure piper tts directories"
   ansible.builtin.file:

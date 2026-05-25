@@ -1,0 +1,139 @@
+#!/usr/bin/env sh
+# Purpose: Run the managed whisper.cpp HTTP server for local STT dictation.
+# Notes: The server stays inside a named Firejail sandbox. Clients join that
+# sandbox to submit runtime WAV files over loopback without exposing a host port.
+
+set -eu
+
+usage() {
+    cat <<'EOF'
+Usage: stt-whisper-server
+
+Environment:
+  STT_WHISPER_PROFILE=balanced|fast|accurate
+  STT_WHISPER_BIN=$HOME/data/repos/whisper.cpp/build/bin/whisper-server
+  STT_WHISPER_MODEL_DIR=$HOME/data/apps/dev-tools/ai-tools/whisper.cpp/models
+  STT_WHISPER_MODEL=           # optional explicit model override
+  STT_WHISPER_PROFILE_FILE=$HOME/.config/firejail/fj-whisper-cpp.profile
+  STT_WHISPER_RUNTIME_DIR=$XDG_RUNTIME_DIR/stt-dictate
+  STT_WHISPER_PROJECT_DIR=$HOME/data/apps/audio-tools/stt-dictation
+  STT_WHISPER_HOST=127.0.0.1
+  STT_WHISPER_PORT=            # defaults to the selected profile port
+  STT_WHISPER_SANDBOX=         # defaults to stt-whisper-$STT_WHISPER_PROFILE
+  STT_WHISPER_BEAM_SIZE=       # profile default
+  STT_WHISPER_BEST_OF=         # profile default
+  STT_WHISPER_NO_FALLBACK=     # profile default
+  STT_WHISPER_THREADS=         # profile default
+EOF
+}
+
+die() {
+    printf '%s\n' "stt-whisper-server: $*" >&2
+    exit 1
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    usage
+    exit 0
+fi
+
+runtime_base=${XDG_RUNTIME_DIR:-/tmp}
+profile=${STT_WHISPER_PROFILE:-balanced}
+server_bin=${STT_WHISPER_BIN:-"$HOME/data/repos/whisper.cpp/build/bin/whisper-server"}
+model_dir=${STT_WHISPER_MODEL_DIR:-"$HOME/data/apps/dev-tools/ai-tools/whisper.cpp/models"}
+profile_file=${STT_WHISPER_PROFILE_FILE:-"$HOME/.config/firejail/fj-whisper-cpp.profile"}
+runtime_dir=${STT_WHISPER_RUNTIME_DIR:-"$runtime_base/stt-dictate"}
+project_dir=${STT_WHISPER_PROJECT_DIR:-"$HOME/data/apps/audio-tools/stt-dictation"}
+host=${STT_WHISPER_HOST:-127.0.0.1}
+
+case "$profile" in
+fast)
+    default_model=$model_dir/ggml-base-q5_1.bin
+    default_port=10301
+    default_beam_size=1
+    default_best_of=1
+    default_no_fallback=1
+    default_threads=8
+    ;;
+balanced)
+    default_model=$model_dir/ggml-large-v3-turbo-q5_0.bin
+    default_port=10302
+    default_beam_size=2
+    default_best_of=2
+    default_no_fallback=0
+    default_threads=6
+    ;;
+accurate)
+    default_model=$model_dir/ggml-medium.bin
+    default_port=10303
+    default_beam_size=5
+    default_best_of=5
+    default_no_fallback=0
+    default_threads=4
+    ;;
+*)
+    die "unsupported STT_WHISPER_PROFILE: $profile"
+    ;;
+esac
+
+model=${STT_WHISPER_MODEL:-"$default_model"}
+port=${STT_WHISPER_PORT:-"$default_port"}
+sandbox_name=${STT_WHISPER_SANDBOX:-"stt-whisper-$profile"}
+beam_size=${STT_WHISPER_BEAM_SIZE:-"$default_beam_size"}
+best_of=${STT_WHISPER_BEST_OF:-"$default_best_of"}
+no_fallback=${STT_WHISPER_NO_FALLBACK:-"$default_no_fallback"}
+threads=${STT_WHISPER_THREADS:-"$default_threads"}
+
+[ -x /usr/bin/firejail ] || die "firejail is not installed"
+[ -x "$server_bin" ] || die "missing whisper.cpp server: $server_bin"
+[ -r "$model" ] || die "missing whisper.cpp model: $model"
+[ -r "$profile_file" ] || die "missing Firejail profile: $profile_file"
+
+server_bin_real=$(readlink -f "$server_bin" 2>/dev/null || printf '%s\n' "$server_bin")
+model_real=$(readlink -f "$model" 2>/dev/null || printf '%s\n' "$model")
+server_bin_dir=$(dirname "$server_bin_real")
+build_dir=$(dirname "$server_bin_dir")
+lib_dir=$build_dir/src
+ggml_lib_dir=$build_dir/ggml/src
+cuda_lib_dir=$ggml_lib_dir/ggml-cuda
+
+mkdir -p "$runtime_dir" "$project_dir"
+
+set -- \
+    "$server_bin_real" \
+    --model "$model_real" \
+    --host "$host" \
+    --port "$port" \
+    --public "$runtime_dir" \
+    --language auto \
+    --no-timestamps \
+    --threads "$threads" \
+    --beam-size "$beam_size" \
+    --best-of "$best_of"
+
+if [ "$no_fallback" = 1 ]; then
+    set -- "$@" --no-fallback
+fi
+
+exec /usr/bin/firejail \
+    --name="$sandbox_name" \
+    --profile="$profile_file" \
+    --net=none \
+    --whitelist="$project_dir" \
+    --whitelist="$runtime_dir" \
+    --read-write="$runtime_dir" \
+    --whitelist="$server_bin_real" \
+    --read-only="$server_bin_real" \
+    --whitelist="$model_real" \
+    --read-only="$model_real" \
+    --whitelist="$lib_dir" \
+    --read-only="$lib_dir" \
+    --whitelist="$ggml_lib_dir" \
+    --read-only="$ggml_lib_dir" \
+    --whitelist="$cuda_lib_dir" \
+    --read-only="$cuda_lib_dir" \
+    /usr/bin/env -i \
+    HOME="$HOME" \
+    PATH="${PATH:-/usr/local/bin:/usr/bin:/bin}:/opt/cuda/bin" \
+    LD_LIBRARY_PATH="$lib_dir:$ggml_lib_dir:$cuda_lib_dir:${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}/opt/cuda/lib64" \
+    "$@"
