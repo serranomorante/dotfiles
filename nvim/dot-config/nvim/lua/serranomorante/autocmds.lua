@@ -90,6 +90,15 @@ vim.api.nvim_create_autocmd({ "BufWinEnter", "WinEnter" }, { -- TermOpen would o
   callback = vim.schedule_wrap(function() vim.cmd("nohlsearch") end),
 })
 
+vim.api.nvim_create_autocmd("CmdwinEnter", {
+  desc = "Clear ephemeral messages when entering command-line window",
+  group = general_settings_group,
+  callback = function()
+    utils.clear_ui2_ephemeral_messages()
+    vim.schedule(utils.clear_ui2_ephemeral_messages)
+  end,
+})
+
 vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter" }, {
   desc = "Perform buffer reload after file changes outside vim",
   group = general_settings_group,

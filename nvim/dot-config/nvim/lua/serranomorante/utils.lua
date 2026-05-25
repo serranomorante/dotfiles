@@ -25,6 +25,25 @@ end
 ---@return boolean available # Whether the plugin is available
 function M.is_available(plugin) return package.loaded[plugin] ~= nil end
 
+function M.clear_ui2_ephemeral_messages()
+  local ok_ui2, ui2 = pcall(require, "vim._core.ui2")
+  if not ok_ui2 then return end
+
+  if ui2.msg and ui2.msg.msg and type(ui2.msg.msg.clear) == "function" then
+    pcall(function() ui2.msg.msg:clear() end)
+  end
+
+  local msg_win = ui2.wins and ui2.wins.msg
+  if msg_win and vim.api.nvim_win_is_valid(msg_win) then
+    pcall(vim.api.nvim_win_set_config, msg_win, { hide = true })
+  end
+
+  local msg_buf = ui2.bufs and ui2.bufs.msg
+  if msg_buf and vim.api.nvim_buf_is_valid(msg_buf) then
+    pcall(vim.api.nvim_buf_set_lines, msg_buf, 0, -1, false, {})
+  end
+end
+
 ---Get the installation path of a plugin
 ---@param plugin string
 ---@return string Empty if path doesn't exists

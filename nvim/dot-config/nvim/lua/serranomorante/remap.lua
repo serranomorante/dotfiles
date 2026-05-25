@@ -305,7 +305,10 @@ vim.keymap.set("n", "t^", function()
 end, { desc = "Toggle between current and previous tab" })
 
 vim.keymap.set({ "i", "c" }, "<C-f>", function()
-  if vim.fn.getcmdpos() > #vim.fn.getcmdline() then return "<C-f>" end
+  if vim.fn.getcmdpos() > #vim.fn.getcmdline() then
+    if vim.fn.mode() == "c" then utils.clear_ui2_ephemeral_messages() end
+    return "<C-f>"
+  end
   return "<Right>"
 end, { desc = "Move cursor right", expr = true })
 vim.keymap.set({ "i", "c" }, "<C-b>", "<Left>", { desc = "Move cursor left" })
