@@ -217,6 +217,10 @@ can be inspected after the user runs the command:
 2>&1 | tee /tmp/ansible-<scope>.log
 ```
 
+`playbooks/ansible.cfg` sets `force_color = True`, so Ansible output keeps ANSI
+color while being piped through `tee`. The saved log can be read with
+`less -R /tmp/ansible-<scope>.log` when color escapes should be rendered.
+
 Choose a stable, readable `/tmp` filename based on the command scope. Prefer the
 primary tag when there is one, such as `/tmp/ansible-10-30.log`; for combined
 tags, join them with underscores, such as `/tmp/ansible-10-20_20-90.log`; for a
