@@ -118,6 +118,15 @@ for user-facing commands.
 
 Use the smallest validation that matches the change.
 
+Before validating behavior through the active `$HOME` configuration, check
+whether the change added new files under a Stow package. Existing symlinked
+files update in place, but new files do not exist under `$HOME` until the
+package is stowed. Run `~/bin/dotfiles-stow <package>` first, or explicitly say
+that the validation is using the repository path directly rather than the active
+configuration. This is especially easy to miss for new Neovim files under
+`ftdetect/`, `after/ftplugin/`, `plugin/`, or `lua/`, because edited existing
+files may be active while newly added companion files are not.
+
 Shell scripts:
 
 ```sh
