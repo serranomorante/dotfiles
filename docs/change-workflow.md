@@ -132,6 +132,12 @@ After completing and validating an implementation, create a commit unless the
 user explicitly asks to leave the change uncommitted or more work is still
 planned in the same turn.
 
+Commit subjects use `<type>(<scope>): <imperative summary>`, for example
+`fix(keyd): release mouseless before swapfocus`. Prefer `fix`, `feat`, `docs`,
+`refactor`, `chore`, or `test`; keep the scope concrete and local to the changed
+area. Add a body only when the reason or operational impact is not obvious from
+the diff.
+
 When committing:
 
 1. Re-check status:
@@ -152,11 +158,27 @@ When committing:
    git -C ~/dotfiles diff --cached --name-only
    ```
 
-1. Commit with a scoped message, for example:
+1. Commit with a scoped message:
 
    ```sh
    git -C ~/dotfiles commit -m "fix(keyd): release mouseless before swapfocus"
    ```
+
+Private submodule commits need two layers of history:
+
+- Commit the actual private change inside `~/dotfiles/for-my-eyes-only` first.
+- Then commit the updated `for-my-eyes-only` gitlink in `~/dotfiles` when the
+  public repository should pin that private submodule revision.
+- Keep detailed subjects, filenames, service names, feature names, bug details,
+  and command output in the private submodule history only. The public parent
+  commit should disclose only that the private submodule pointer changed.
+- Use neutral parent-repo messages such as
+  `chore(private): update private submodule pointer`,
+  `chore(private): advance private package`, or
+  `chore(submodule): update private package pointer`.
+- If public files changed for the same work, prefer a separate public commit
+  whose message describes only the public behavior. Do not copy the private
+  submodule commit subject into the parent repository commit message or body.
 
 ## Active System Application
 
