@@ -211,7 +211,8 @@ application commands, include `-K` so tasks that use `become` can prompt for the
 sudo password instead of failing mid-run.
 
 Append logging to suggested `ansible-playbook` commands so the resulting output
-can be inspected after the user runs the command:
+can be inspected after the user runs the command. The Neovim Overseer
+`run-ansible-playbook` task follows the same convention.
 
 ```sh
 2>&1 | tee /tmp/ansible-<scope>.log
@@ -224,10 +225,26 @@ color while being piped through `tee`. The saved log can be read with
 Choose a stable, readable `/tmp` filename based on the command scope. Prefer the
 primary tag when there is one, such as `/tmp/ansible-10-30.log`; for combined
 tags, join them with underscores, such as `/tmp/ansible-10-20_20-90.log`; for a
-full playbook run without tags, use `/tmp/ansible-tools.log`. When reading a
-large log afterward, inspect it selectively with `tail`, `rg`, and narrow
-`sed -n` excerpts around matching line numbers instead of loading the whole
-file.
+full playbook run without tags or the picker scope `all`, use
+`/tmp/ansible-tools.log`. Derive the scope from the requested Ansible tags, not
+from UI labels: strip picker descriptions such as `: Setup foo (...)` or
+`[Full editor setup]`, keep role tags as written, and join multiple tags in
+selection order with `_`.
+
+Logs launched from Neovim include a short machine-readable header before the
+Ansible output:
+
+```text
+ansible-log-version: 1
+cwd: /home/aaaa/dotfiles/playbooks
+command: ansible-playbook ...
+log_path: /tmp/ansible-<scope>.log
+started_at_utc: <timestamp>
+```
+
+When reading a large log afterward, inspect it selectively with `tail`, `rg`,
+and narrow `sed -n` excerpts around matching line numbers instead of loading the
+whole file.
 
 Before adding bootstrap, service-management, package-manager, or shared tooling
 setup to an Ansible task, search the existing playbooks for the same behavior
