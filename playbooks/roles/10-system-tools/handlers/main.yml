@@ -192,7 +192,8 @@
   timeout: 60
   changed_when: true
   register: var_kill_reaper_wineserver
-  ignore_errors: true
+  failed_when: false
+  no_log: true
 
 - name: handler_restart_remind_service
   ansible.builtin.systemd_service:
