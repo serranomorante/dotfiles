@@ -210,6 +210,21 @@ single `--tags` value instead of listing multiple commands. For active
 application commands, include `-K` so tasks that use `become` can prompt for the
 sudo password instead of failing mid-run.
 
+Append logging to suggested `ansible-playbook` commands so the resulting output
+can be inspected after the user runs the command:
+
+```sh
+2>&1 | tee /tmp/ansible-<scope>.log
+```
+
+Choose a stable, readable `/tmp` filename based on the command scope. Prefer the
+primary tag when there is one, such as `/tmp/ansible-10-30.log`; for combined
+tags, join them with underscores, such as `/tmp/ansible-10-20_20-90.log`; for a
+full playbook run without tags, use `/tmp/ansible-tools.log`. When reading a
+large log afterward, inspect it selectively with `tail`, `rg`, and narrow
+`sed -n` excerpts around matching line numbers instead of loading the whole
+file.
+
 Before adding bootstrap, service-management, package-manager, or shared tooling
 setup to an Ansible task, search the existing playbooks for the same behavior
 and reuse the existing owner when one exists. If the requested task depends on
