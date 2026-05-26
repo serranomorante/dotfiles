@@ -1,0 +1,12 @@
+[Unit]
+Description=Periodically update Foam system health report
+
+[Timer]
+OnStartupSec=3min
+OnUnitActiveSec=1h
+AccuracySec=5min
+Persistent=true
+Unit=dotfiles-health.service
+
+[Install]
+WantedBy=timers.target

@@ -753,6 +753,87 @@ function M.schedule_open_overseer_task_float(task)
   end)
 end
 
+local function shell_fence_under_cursor()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local cursor = vim.api.nvim_win_get_cursor(0)[1]
+  local start_line, lang
+
+  local function fence_lang(line)
+    local fence_start = line:find("```", 1, true)
+    if not fence_start then return nil end
+    return line:sub(fence_start + 3):match("^%s*([%w_-]+)")
+  end
+
+  local function has_fence(line) return line:find("```", 1, true) ~= nil end
+
+  for lnum = cursor, 1, -1 do
+    lang = fence_lang(lines[lnum])
+    if lang then
+      start_line = lnum
+      break
+    end
+  end
+
+  if not start_line then return nil end
+  lang = lang:lower()
+  if not vim.list_contains({ "sh", "bash", "shell" }, lang) then return nil end
+
+  local end_line
+  for lnum = start_line + 1, #lines do
+    if has_fence(lines[lnum]) then
+      end_line = lnum
+      break
+    end
+  end
+
+  if not end_line or cursor > end_line then return nil end
+  return vim.list_slice(lines, start_line + 1, end_line - 1), lang
+end
+
+function M.run_shell_fence()
+  local command_lines, lang = shell_fence_under_cursor()
+  if not command_lines or vim.iter(command_lines):all(function(line) return line:match("^%s*$") ~= nil end) then
+    vim.notify("No shell fence under cursor", vim.log.levels.WARN)
+    return
+  end
+
+  local ok, overseer = pcall(require, "overseer")
+  if not ok then
+    vim.notify("overseer.nvim is not available", vim.log.levels.ERROR)
+    return
+  end
+
+  local first_line = vim.iter(command_lines):find(function(line) return not line:match("^%s*$") end) or "shell fence"
+  first_line = vim.trim(first_line)
+  if #first_line > 60 then first_line = first_line:sub(1, 57) .. "..." end
+
+  local script_path = vim.fn.tempname()
+  local write_ok, write_result = pcall(vim.fn.writefile, command_lines, script_path)
+  if not write_ok or write_result ~= 0 then
+    vim.notify("Failed to write shell fence script", vim.log.levels.ERROR)
+    return
+  end
+
+  local task = overseer.new_task({
+    name = "shell fence: " .. first_line,
+    cmd = { lang == "bash" and "bash" or "sh", script_path },
+    cwd = vim.fn.expand("%:p:h"),
+    metadata = {
+      PREVENT_QUIT = true,
+    },
+    components = { "default" },
+  })
+  task:subscribe("on_complete", function() vim.fn.delete(script_path) end)
+  task:start()
+
+  vim.defer_fn(function()
+    if not task:get_bufnr() then return end
+    M.attach_keymaps(task)
+    M.schedule_open_overseer_task_float(task)
+  end, 100)
+end
+
 ---@param task overseer.Task
 function M.force_very_fullscreen_float(task)
   vim.api.nvim_create_autocmd("BufEnter", {

@@ -4,6 +4,21 @@ This repository configures a real workstation. Treat changes as production
 changes: keep them narrow, verify what you can locally, and avoid surprising
 system actions.
 
+## User-Facing Command Formatting
+
+This is a user-wide assistant convention, not only a dotfiles convention. In any
+repository, whenever an assistant suggests a shell command for the user to run,
+the command must be shown with escaped fenced shell delimiters so the literal
+opening and closing fence lines remain visible in terminal buffers:
+
+    \`\`\`sh
+    command ...
+    \`\`\`
+
+This rule applies to Ansible, Stow, systemctl, validation, follow-up commands,
+and every other suggested shell command. Do not use normal Markdown code fences
+for user-facing commands.
+
 ## Before Editing
 
 1. Check the working tree:
@@ -208,7 +223,8 @@ When changing Ansible playbooks, include exactly one suggested
 `ansible-playbook` command in the final response. Combine all relevant tags in a
 single `--tags` value instead of listing multiple commands. For active
 application commands, include `-K` so tasks that use `become` can prompt for the
-sudo password instead of failing mid-run.
+sudo password instead of failing mid-run. Format the command according to the
+user-facing command formatting rule above.
 
 Append logging to suggested `ansible-playbook` commands so the resulting output
 can be inspected after the user runs the command. The Neovim Overseer

@@ -162,6 +162,15 @@
   when: var_arch_plasma_clipboard_service.stat.exists
   notify: "10-system-tools : handler_restart_plasma_clipboard_service"
 
+- name: "[archlinux] Dotfiles: ensure system health timer"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: dotfiles-health.timer
+    enabled: true
+    masked: false
+    state: started
+    daemon_reload: true
+
 - name: "[archlinux] Dotfiles: stat keyd observer script"
   ansible.builtin.stat:
     path: ~/dotfiles/peripherals/bin/keyd-observer

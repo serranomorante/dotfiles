@@ -1,0 +1,47 @@
+#!/bin/sh
+# Purpose: Run a small allowlist of commands from Markdown-generated Remind RUNs.
+# Usage: remind-run <command> [args...]
+# Notes: Remind notes should reference allowlisted argv, never shell syntax.
+
+set -eu
+
+prog=${0##*/}
+
+usage() {
+    cat >&2 <<EOF
+Usage:
+  $prog <command> [args...]
+  $prog --list
+
+Allowed commands:
+  dotfiles-health update
+EOF
+    exit 2
+}
+
+[ "$#" -ge 1 ] || usage
+
+case $1 in
+--list)
+    printf '%s\n' 'dotfiles-health update'
+    ;;
+dotfiles-health)
+    shift
+    [ "$#" -eq 1 ] || usage
+    case $1 in
+    update)
+        "$HOME/bin/dotfiles-health" update >/dev/null
+        ;;
+    *)
+        logger -t remind-run "rejected dotfiles-health subcommand: $1"
+        printf '%s: rejected dotfiles-health subcommand: %s\n' "$prog" "$1" >&2
+        exit 2
+        ;;
+    esac
+    ;;
+*)
+    logger -t remind-run "rejected command: $1"
+    printf '%s: rejected command: %s\n' "$prog" "$1" >&2
+    exit 2
+    ;;
+esac

@@ -2,13 +2,89 @@ local utils = require("serranomorante.utils")
 
 local REMIND_DIR = vim.env.HOME .. "/.config/remind"
 local GENERATED_PATH = REMIND_DIR .. "/reminders.rem"
+local NOTES_DIR = vim.env.HOME .. "/data/notes/foam"
+
+local function shell_quote(value) return "'" .. value:gsub("'", [['"'"']]) .. "'" end
+
+local function run_argv(value)
+  local argv = {}
+
+  for token in value:gmatch("%S+") do
+    if not token:match("^[A-Za-z0-9_.:-]+$") then return nil end
+    table.insert(argv, token)
+  end
+
+  return #argv > 0 and argv or nil
+end
+
+local function add_substitution_filters(reminder)
+  reminder = reminder .. " %b"
+  if reminder:match(" AT ") then reminder = reminder .. " %1" end
+  return reminder
+end
+
+local function reminder_to_msg(reminder, title)
+  if reminder:match(" MSG ") or reminder:match(" RUN ") then return add_substitution_filters(reminder) end
+  return add_substitution_filters(reminder .. " MSG " .. title)
+end
+
+local function reminder_to_run(reminder, argv)
+  local command = { shell_quote(vim.env.HOME .. "/bin/remind-run") }
+  for _, arg in ipairs(argv) do
+    table.insert(command, shell_quote(arg))
+  end
+  return reminder .. " RUN " .. table.concat(command, " ")
+end
+
+local function markdown_files()
+  local output = vim.fn.systemlist({ "rg", "--files", "--glob", "*.md", NOTES_DIR })
+  if vim.v.shell_error ~= 0 then return {} end
+  return output
+end
+
+local function parse_remind_block(lines, start_lnum)
+  local block = {}
+  local lnum = start_lnum + 1
+
+  while lnum <= #lines do
+    local line = lines[lnum]
+    if line:match("^%s%s```%s*$") then return block, lnum end
+    table.insert(block, (line:gsub("^%s%s", "")))
+    lnum = lnum + 1
+  end
+
+  return block, lnum
+end
+
+local function reminder_items_for_block(title, block)
+  local items = {}
+  local run = nil
+
+  for _, line in ipairs(block) do
+    local candidate = line:match("^%s*@run%s+(.+)%s*$")
+    if candidate then
+      local argv = run_argv(candidate)
+      if argv then
+        run = argv
+      else
+        vim.notify("Invalid remind @run command: " .. candidate, vim.log.levels.ERROR)
+      end
+    elseif line:match("^%s*$") then
+      -- skip blank lines in remind fences
+    elseif line:match("^%s*REM%s") then
+      table.insert(items, reminder_to_msg(line, title))
+      if run then table.insert(items, reminder_to_run(line, run)) end
+    else
+      table.insert(items, line)
+    end
+  end
+
+  return items
+end
 
 local function has_remind_dir()
   if vim.fn.isdirectory(REMIND_DIR) == 0 then
-    vim.notify(
-      "Missing " .. REMIND_DIR .. "; run ~/bin/dotfiles-stow PKM",
-      vim.log.levels.ERROR
-    )
+    vim.notify("Missing " .. REMIND_DIR .. "; run ~/bin/dotfiles-stow PKM", vim.log.levels.ERROR)
     return false
   end
 
@@ -16,42 +92,39 @@ local function has_remind_dir()
 end
 
 local function remind_update()
-  local pattern =
-    "'^- \\[ \\]\\s([^\\n\\\\]+)(?:\\n|\\\\\n)(?:^\\n|^\\s{2}[^\\n]+\\n){1,10}\\s{2}```remind\\n(.*?)\\n\\s{2}```'"
-  local replace = "'$2 MSG $1'"
-  local flags = "--type md --multiline --multiline-dotall --no-filename --no-line-number --no-column -r " .. replace
-  local matches = vim.fn.split(utils.grep_with_rg(string.format("%s %s", pattern, flags)), ",")
   local items = {}
-  ---Assigns the same title to remind blocks with multiple lines
-  ---I do this because the last item will always be the one that has the MSG title from the TODO
-  for i, remind_match in ipairs(matches) do
-    if not remind_match:match(" MSG ") and not remind_match:match("PUSH%-OMIT%-CONTEXT") then
-      local count = i
-      while not matches[count]:match(" MSG ") do
-        count = count + 1
-      end
-      local start, finish
-      local current_match = matches[count]
-      if select(2, current_match:gsub("MSG", "")) > 1 then
-        start, finish = current_match:find("MSG.*", current_match:find("MSG") + 2) -- second current_match
-      else
-        start, finish = current_match:find("MSG.*")
+
+  for _, path in ipairs(markdown_files()) do
+    local lines = vim.fn.readfile(path)
+    local lnum = 1
+    local in_fence = false
+
+    while lnum <= #lines do
+      if lines[lnum]:match("^```") or lines[lnum]:match("^````") then
+        in_fence = not in_fence
+      elseif not in_fence then
+        local title = lines[lnum]:match("^%- %[ %]%s+(.+)$")
+        if title then
+          title = title:gsub("\\%s*$", "")
+          local search_lnum = lnum + 1
+
+          while search_lnum <= math.min(#lines, lnum + 12) do
+            if lines[search_lnum]:match("^%s%s```remind%s*$") then
+              local block, end_lnum = parse_remind_block(lines, search_lnum)
+              vim.list_extend(items, reminder_items_for_block(title, block))
+              lnum = end_lnum
+              break
+            end
+            if lines[search_lnum]:match("^%- %[.?%]") then break end
+            search_lnum = search_lnum + 1
+          end
+        end
       end
 
-      remind_match = string.format("%s %s", remind_match, matches[count]:sub(start, finish))
+      lnum = lnum + 1
     end
-    ---Removes msg on POP-OMIT-CONTEXT
-    if remind_match:match("POP%-OMIT%-CONTEXT MSG") then remind_match = remind_match:sub(1, #"  POP-OMIT-CONTEXT") end
-    ---Removes double MSG
-    if select(2, remind_match:gsub("MSG", "")) > 1 then
-      local start = remind_match:find("MSG", remind_match:find("MSG") + 2)
-      remind_match = remind_match:sub(1, start - 2) -- 2 due to the 2 space indent on each line
-    end
-    ---Add substitution filters when necessary
-    remind_match = remind_match .. " %b"
-    if remind_match:match(" AT ") then remind_match = remind_match .. " %1" end
-    table.insert(items, remind_match)
   end
+
   utils.write_file(GENERATED_PATH, vim.fn.join(items, "\n"))
 end
 

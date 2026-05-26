@@ -1,0 +1,1634 @@
+#!/bin/sh
+# Purpose: Write a compact workstation health report into the Foam notes tree.
+# Usage: dotfiles-health update|report|open|check
+# Notes: The report links to runnable journalctl/systemctl snippets instead of
+# storing raw logs in Markdown.
+
+set -eu
+
+prog=${0##*/}
+notes_root=${DOTFILES_HEALTH_NOTES_ROOT:-"$HOME/data/notes/foam"}
+health_dir=${DOTFILES_HEALTH_DIR:-"$notes_root/ops/system-health"}
+main_file="$health_dir/system-health.md"
+rules_file="$health_dir/rules.md"
+runbook_file="$health_dir/runbook.md"
+units_dir="$health_dir/units"
+sources_dir="$health_dir/sources"
+hardware_sources_dir="$sources_dir/hardware"
+app_sources_dir="$sources_dir/apps"
+discovery_sources_dir="$sources_dir/discovery"
+reports_dir="$health_dir/reports"
+manual_start='<!-- dotfiles-health:manual-reminders:start -->'
+manual_end='<!-- dotfiles-health:manual-reminders:end -->'
+
+usage() {
+    cat >&2 <<EOF
+Usage:
+  $prog update    Regenerate the Foam Markdown health report
+  $prog report    Print the current report path
+  $prog open      Print the current report path
+  $prog check     Print current user failed units
+EOF
+    exit 2
+}
+
+now_local() {
+    date '+%Y-%m-%d %H:%M:%S %Z'
+}
+
+today() {
+    date '+%Y-%m-%d'
+}
+
+year_month() {
+    date '+%Y-%m'
+}
+
+year_now() {
+    date '+%Y'
+}
+
+compact_blank_lines() {
+    awk '
+        NF == 0 {
+            blank++
+            if (blank <= 1) {
+                print
+            }
+            next
+        }
+        {
+            blank = 0
+            print
+        }
+    '
+}
+
+markdown_text() {
+    printf '%s\n' "$1" | sed 's/`/\\`/g'
+}
+
+ensure_dirs() {
+    mkdir -p \
+        "$health_dir" \
+        "$units_dir" \
+        "$sources_dir" \
+        "$hardware_sources_dir" \
+        "$app_sources_dir" \
+        "$discovery_sources_dir" \
+        "$reports_dir/$(year_now)"
+}
+
+run_or_empty() {
+    "$@" 2>/dev/null || true
+}
+
+count_lines() {
+    awk 'NF {count++} END {print count + 0}'
+}
+
+failed_units() {
+    output=$(systemctl --user --failed --plain --no-legend 2>/dev/null) || {
+        printf '%s\n' 'dotfiles-health-user-bus-unavailable.service'
+        return
+    }
+    printf '%s\n' "$output" |
+        awk '$1 != "" {print $1}'
+}
+
+failed_count() {
+    failed_units | count_lines
+}
+
+system_failed_units() {
+    output=$(systemctl --failed --plain --no-legend 2>/dev/null) || {
+        printf '%s\n' 'dotfiles-health-system-bus-unavailable.service'
+        return
+    }
+    printf '%s\n' "$output" |
+        awk '$1 != "" {print $1}'
+}
+
+system_failed_count() {
+    system_failed_units | count_lines
+}
+
+coredump_summary_since() {
+    since=$1
+    coredumpctl list --since "$since" --no-pager 2>/dev/null |
+        awk '
+            NR > 1 && NF >= 10 {
+                sig = $8
+                exe = $(NF - 1)
+                sub(".*/", "", exe)
+                if (sig != "" && exe != "") {
+                    key = exe " " sig
+                    count[key]++
+                }
+            }
+            END {
+                for (key in count) {
+                    print count[key] "\t" key
+                }
+            }
+        ' |
+        sort -rn |
+        head -10
+}
+
+coredump_count_since() {
+    since=$1
+    coredump_summary_since "$since" | awk -F '\t' '{sum += $1} END {print sum + 0}'
+}
+
+xorg_log_files() {
+    for file in /var/log/Xorg.0.log "$HOME/.local/share/xorg/Xorg.0.log"; do
+        [ -r "$file" ] && printf '%s\n' "$file"
+    done
+    true
+}
+
+xorg_offset() {
+    printf '%s\n' "$1" |
+        sed 's/^\[\([ 0-9.]*\)\].*/\1/; s/ //g'
+}
+
+xorg_signal_lines_for_file() {
+    file=$1
+    start_line=$(awk '/Log file: .* Time: / {print; exit}' "$file" 2>/dev/null || true)
+    start_time=$(printf '%s\n' "$start_line" | sed 's/.*Time: //')
+    start_offset=$(xorg_offset "$start_line")
+    start_epoch=
+
+    if [ -n "$start_time" ] && [ -n "$start_offset" ]; then
+        start_epoch=$(date -d "$start_time" '+%s' 2>/dev/null || true)
+    fi
+
+    awk '
+        /\((EE|WW)\)/ &&
+        $0 !~ /\(WW\) warning, \(EE\) error/ &&
+        $0 !~ /The directory .* does not exist/ {
+            print
+        }
+    ' "$file" 2>/dev/null | while IFS= read -r line; do
+        [ -n "$line" ] || continue
+        offset=$(xorg_offset "$line")
+        if [ -n "$start_epoch" ] && [ -n "$start_offset" ] && [ -n "$offset" ]; then
+            delta=$(awk -v offset="$offset" -v start="$start_offset" 'BEGIN {printf "%d", offset - start}')
+            stamp=$(date -d "@$((start_epoch + delta))" '+%Y-%m-%d %H:%M:%S %Z' 2>/dev/null || true)
+            rest=$(printf '%s\n' "$line" | sed 's/^\[[^]]*\] *//')
+            if [ -n "$stamp" ]; then
+                printf '%s (%s) %s\n' "$stamp" "xorg+$offset" "$rest"
+                continue
+            fi
+        fi
+        printf '%s\n' "$line"
+    done
+}
+
+xorg_signal_lines() {
+    files=$(xorg_log_files)
+    if [ -n "$files" ]; then
+        printf '%s\n' "$files" | while IFS= read -r file; do
+            [ -n "$file" ] || continue
+            xorg_signal_lines_for_file "$file"
+        done
+    fi
+    journalctl -k --since today --no-pager 2>/dev/null |
+        awk '
+            {
+                line = tolower($0)
+            }
+            line ~ /(nvidia-modeset.*warning|nvrm:.*(xid|failed|error)|drm.*(failed|error)|libinput.*(failed|error))/ {
+                print
+            }
+        '
+}
+
+xorg_signal_count() {
+    xorg_signal_lines | count_lines
+}
+
+pacman_signal_lines() {
+    [ -r /var/log/pacman.log ] || return 0
+    day=$(today)
+    awk -v day="$day" '
+        index($0, "[" day) == 1 &&
+        $0 ~ /(error:|failed|WARNING|Error!|exited [1-9]|aborted|Possibly missing firmware)/ {
+            print
+        }
+    ' /var/log/pacman.log
+}
+
+pacman_signal_count() {
+    pacman_signal_lines | count_lines
+}
+
+kernel_signal_lines() {
+    journalctl -k --since today --no-pager 2>/dev/null |
+        awk '
+            BEGIN {
+                pattern = "(oom-kill|Out of memory|I/O error|EXT4-fs error|BTRFS.*(error|corrupt)|NVRM:.*(Xid|failed|error|fallen off|RmInitAdapter)|amdgpu.*(MODE2 reset|GPU reset|timeout|failed|error|ring .* timeout)|thermal.*(critical|thrott)|Machine check|mce:|BUG:|WARNING: CPU|Call Trace)"
+            }
+            $0 ~ pattern {
+                print
+            }
+        '
+}
+
+kernel_signal_count() {
+    kernel_signal_lines | count_lines
+}
+
+audio_signal_lines() {
+    journalctl --user -u pipewire.service -u pipewire-pulse.service -u wireplumber.service --since today --no-pager 2>/dev/null |
+        awk '
+            /spa\.alsa: .*No such device/ ||
+            /spa\.alsa: .*resync/ ||
+            /spa\.alsa: .*Operation not permitted/ ||
+            /spa\.audioconvert: .*out of buffers/ ||
+            /pipewire.*(error|failed|No such device)/ ||
+            /wireplumber.*(error|failed|No such device)/ {
+                print
+            }
+        '
+}
+
+audio_signal_count() {
+    audio_signal_lines | count_lines
+}
+
+redact_log_lines() {
+    sed -E \
+        -e 's/((api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|token|password|passwd|secret)=)[^&[:space:]"'\'']+/\1[REDACTED]/Ig' \
+        -e 's/(Authorization: Bearer )[A-Za-z0-9._~+\/=-]+/\1[REDACTED]/Ig'
+}
+
+network_signal_lines() {
+    journalctl \
+        -u NetworkManager.service \
+        -u systemd-networkd.service \
+        -u systemd-resolved.service \
+        -u iwd.service \
+        -u wpa_supplicant.service \
+        -u tailscaled.service \
+        --since today --no-pager 2>/dev/null |
+        awk '
+            {
+                line = tolower($0)
+            }
+            line ~ /<info>/ && line !~ /(failed|failure|error|timed out|unreachable|deauth|link is down)/ {
+                next
+            }
+            line ~ /(<warn>|<error>|failed|failure|error|timed out|unreachable|deauth|link is down|dhcp.*(failed|timed out)|dns.*(failed|timed out)|vpn.*(failed|error)|wireguard.*(failed|error))/ {
+                print
+            }
+        ' |
+        redact_log_lines
+}
+
+network_signal_count() {
+    network_signal_lines | count_lines
+}
+
+bluetooth_signal_lines() {
+    {
+        journalctl -u bluetooth.service --since today --no-pager 2>/dev/null
+        journalctl -k --since today --no-pager 2>/dev/null |
+            awk '/Bluetooth|hci[0-9]/ {print}'
+    } |
+        awk '
+            {
+                line = tolower($0)
+            }
+            line ~ /(failed|failure|error|timeout|timed out|hci.*(down|reset|failed|error)|br-connection|sco packet)/ {
+                print
+            }
+        ' |
+        redact_log_lines
+}
+
+bluetooth_signal_count() {
+    bluetooth_signal_lines | count_lines
+}
+
+storage_signal_lines() {
+    journalctl -k --since today --no-pager 2>/dev/null |
+        awk '
+            {
+                line = tolower($0)
+            }
+            line ~ /(i\/o error|blk_update_request|buffer i\/o|nvme.*(error|reset|timeout|critical|smart|abort)|ata[0-9].*(error|failed|timeout|hard resetting)|ext4-fs.*(error|warning)|btrfs.*(error|warning|corrupt)|xfs.*(error|corrupt)|read-only file system|filesystem.*remount)/ {
+                print
+            }
+        ' |
+        redact_log_lines
+}
+
+storage_signal_count() {
+    storage_signal_lines | count_lines
+}
+
+container_signal_lines() {
+    {
+        journalctl \
+            -u docker.service \
+            -u containerd.service \
+            -u podman.service \
+            --since today --no-pager 2>/dev/null
+        timeout 3s docker ps -a --format 'container {{.Names}} {{.Status}}' 2>/dev/null || true
+    } |
+        awk '
+            {
+                line = tolower($0)
+            }
+            line ~ /(level=(warning|error)|failed|failure|panic|exited \([1-9][0-9]*\)|unhealthy|restarting)/ {
+                print
+            }
+        ' |
+        redact_log_lines
+}
+
+container_signal_count() {
+    container_signal_lines | count_lines
+}
+
+sync_signal_lines() {
+    journalctl --user -u syncthing.service --since today --no-pager 2>/dev/null |
+        awk '
+            {
+                line = tolower($0)
+            }
+            line ~ /(failed|failure|error|timeout|out of sync|folder marker|conflict|connection refused|no such host)/ {
+                print
+            }
+        ' |
+        redact_log_lines
+}
+
+sync_signal_count() {
+    sync_signal_lines | count_lines
+}
+
+editor_signal_lines() {
+    day=$(today)
+    for file in \
+        "$HOME/.local/state/nvim/logs/lsp.log" \
+        "$HOME/.local/state/nvim/log" \
+        "$HOME/.local/state/nvim/overseer.log"; do
+        [ -r "$file" ] || continue
+        tail -400 "$file" 2>/dev/null |
+            awk -v file="$file" -v day="$day" '
+                index($0, day) == 0 {
+                    next
+                }
+                {
+                    line = tolower($0)
+                }
+                line ~ /report upstream, this warning is harmless/ {
+                    next
+                }
+                line ~ /"stderr".*\[[0-9:]+ inf\]/ {
+                    next
+                }
+                line ~ /(error|warn|failed|failure|traceback|panic|exception)/ &&
+                line !~ /"stderr"[[:space:]]+"i\[/ {
+                    print file ": " $0
+                }
+            '
+    done |
+        redact_log_lines
+}
+
+editor_signal_count() {
+    editor_signal_lines | count_lines
+}
+
+music_signal_lines() {
+    {
+        journalctl --user --since today -n 1000 --no-pager 2>/dev/null |
+            awk '
+                {
+                    line = tolower($0)
+                }
+                line ~ /(reaper|yabridge|wineasio|wine).*(failed|failure|error|timeout|crash)/ {
+                    print
+                }
+            '
+        for file in \
+            "$HOME"/.local/share/yabridge/*.log \
+            "$HOME"/.config/yabridge/*.log \
+            "$HOME"/.config/REAPER/*.log; do
+            [ -r "$file" ] || continue
+            tail -400 "$file" 2>/dev/null |
+                awk -v file="$file" '
+                    {
+                        line = tolower($0)
+                    }
+                    line ~ /(failed|failure|error|timeout|crash|exception|segfault)/ {
+                        print file ": " $0
+                    }
+                '
+        done
+    } |
+        redact_log_lines
+}
+
+music_signal_count() {
+    music_signal_lines | count_lines
+}
+
+security_signal_lines() {
+    journalctl \
+        -u sshd.service \
+        -u ssh.service \
+        -u auditd.service \
+        -u polkit.service \
+        --since today --no-pager 2>/dev/null |
+        awk '
+            {
+                line = tolower($0)
+            }
+            line ~ /(authentication failure|failed password|pam_.*(failure|error)|polkit.*(error|failed|denied)|audit.*(denied|apparmor|selinux|avc)|permission denied)/ {
+                print
+            }
+        ' |
+        redact_log_lines
+}
+
+security_signal_count() {
+    security_signal_lines | count_lines
+}
+
+journal_warning_lines() {
+    {
+        journalctl --user -p warning..alert --since today -n 1000 --no-pager 2>/dev/null |
+            sed 's/^/[user] /'
+        journalctl -p warning..alert --since today -n 1000 --no-pager 2>/dev/null |
+            sed 's/^/[system] /'
+    } |
+        redact_log_lines
+}
+
+unclassified_warning_lines() {
+    journal_warning_lines |
+        awk '
+            {
+                line = tolower($0)
+            }
+            line ~ /(pipewire|wireplumber|spa\.alsa|spa\.audioconvert|alsa)/ {next}
+            line ~ /(networkmanager|systemd-resolved|systemd-networkd|wpa_supplicant|iwd|tailscaled|dhcp|dns|vpn|wireguard)/ {next}
+            line ~ /(bluetooth|hci[0-9])/ {next}
+            line ~ /(docker|containerd|podman|container .*exited|unhealthy|restarting)/ {next}
+            line ~ /(syncthing)/ {next}
+            line ~ /(nvim|marksman|lua_ls|overseer)/ {next}
+            line ~ /(reaper|yabridge|wineasio)/ {next}
+            line ~ /(sshd|auditd|polkit|authentication failure|failed password|pam_)/ {next}
+            line ~ /(oom-kill|out of memory|i\/o error|ext4-fs|btrfs|xfs|nvrm|nvidia-modeset|amdgpu|drm|libinput|thermal|machine check|mce:|bug:|warning: cpu|call trace|nvme|ata[0-9]|filesystem)/ {next}
+            line ~ /(coredump|systemd-coredump)/ {next}
+            line ~ /(borg-backup|borg backup|pkm-export|pkm .* export|promnesia-index|promnesia index|send-ifconfig|compositor|display-health-check)/ {next}
+            line ~ /(ufw block|kkeyserver|translation|desktop file.*exec|the directory .* does not exist|flameshot.*(qpainter|qlayout|painter)|xdg-desktop-portal.*icon validation|kded6.*d->name\.isempty|kscreenlocker_greet.*(hunspell|overrides a member)|org_kde_powerdevil.*dw_watch_display_connections)/ {next}
+            NF {
+                print
+            }
+        '
+}
+
+unclassified_warning_family_lines() {
+    unclassified_warning_lines |
+        awk '
+            {
+                original = $0
+                line = $0
+                sub(/^\[(user|system)\] /, "", line)
+                sub(/^[A-Z][a-z][a-z] [ 0-9][0-9] [0-9:]+ [^ ]+ /, "", line)
+                family = line
+                sub(/\[[0-9]+\]/, "", family)
+                gsub(/0x[0-9A-Fa-f]+/, "0xHEX", family)
+                gsub(/[0-9][0-9][0-9]+/, "N", family)
+                gsub(/[[:space:]]+/, " ", family)
+                if (length(family) > 140) {
+                    family = substr(family, 1, 140)
+                }
+                count[family]++
+                if (!(family in sample)) {
+                    sample[family] = original
+                }
+            }
+            END {
+                for (family in count) {
+                    print count[family] "\t" family "\t" sample[family]
+                }
+            }
+        '
+}
+
+unclassified_warning_families() {
+    unclassified_warning_family_lines |
+        sort -rn |
+        head -12
+}
+
+unclassified_warning_family_count() {
+    unclassified_warning_family_lines | count_lines
+}
+
+unclassified_warning_top_family_count() {
+    unclassified_warning_families | count_lines
+}
+
+group_for_unit() {
+    unit=$1
+    case "$unit" in
+    borg-backup@*) printf 'borg-backup\n' ;;
+    PKM-export@*) printf 'pkm-export\n' ;;
+    promnesia-index.service) printf 'promnesia-index\n' ;;
+    compositor.service) printf 'compositor\n' ;;
+    send-ifconfig.service) printf 'send-ifconfig\n' ;;
+    display-health-check.service) printf 'display-health-check\n' ;;
+    dotfiles-health-user-bus-unavailable.service) printf 'dotfiles-health-user-bus-unavailable\n' ;;
+    *) printf '%s\n' "$unit" | sed 's/@.*//; s/\.service$//; s/\.timer$//; s/[^A-Za-z0-9._-]/-/g' ;;
+    esac
+}
+
+title_for_group() {
+    group=$1
+    case "$group" in
+    borg-backup) printf 'Borg backup failures\n' ;;
+    pkm-export) printf 'PKM export failures\n' ;;
+    promnesia-index) printf 'Promnesia index failures\n' ;;
+    compositor) printf 'Compositor failures\n' ;;
+    send-ifconfig) printf 'send-ifconfig failures\n' ;;
+    display-health-check) printf 'Display health check failures\n' ;;
+    dotfiles-health-user-bus-unavailable) printf 'dotfiles-health cannot read user systemd\n' ;;
+    *) printf '%s\n' "$group" ;;
+    esac
+}
+
+severity_for_group() {
+    group=$1
+    case "$group" in
+    borg-backup | send-ifconfig | promnesia-index | pkm-export) printf 'warning\n' ;;
+    compositor | display-health-check) printf 'info\n' ;;
+    dotfiles-health-user-bus-unavailable) printf 'critical\n' ;;
+    *) printf 'warning\n' ;;
+    esac
+}
+
+manual_reminders() {
+    if [ -f "$main_file" ] && grep -q "$manual_start" "$main_file"; then
+        sed -n "/$manual_start/,/$manual_end/p" "$main_file"
+        return
+    fi
+
+    cat <<EOF
+$manual_start
+
+## Review Reminders
+
+- [ ] **Abrir System Health y revisar los errores ocultos de hoy**
+
+  Abre [[system-health]], revisa \`Active Issues\` y entra a
+  cada página enlazada que tenga señales activas: \`sources/\` para dominios
+  del sistema y \`units/\` para servicios de usuario.
+
+  \`\`\`remind
+  @run dotfiles-health update
+  REM AT 20:30
+  \`\`\`
+
+- [ ] **Abrir el digest de System Health y revisar patrones semanales**
+
+  Abre [[$(year_month)]], compara los
+  fallos repetidos de la semana y decide si van a fix, ignore o runbook.
+
+  \`\`\`remind
+  @run dotfiles-health update
+  REM Mon AT 09:30
+  \`\`\`
+
+- [ ] **Revisar reglas de System Health y ajustar ruido ignorado**
+
+  Abre [[rules]] y promueve cualquier ruido que ya parezca
+  síntoma real; deja ignorado sólo lo que entiendas y aceptes.
+
+  \`\`\`remind
+  REM Lastworkday AT 18:00
+  \`\`\`
+
+$manual_end
+EOF
+}
+
+write_rules() {
+    [ -f "$rules_file" ] && return
+
+    cat >"$rules_file" <<'EOF'
+# System Health Rules
+
+@tags #system-health #archlinux #ops
+
+This file documents how `dotfiles-health` classifies recurring workstation
+signals. It is human-facing policy; the script keeps only a small built-in
+classifier so the report remains dependency-free.
+
+## Critical
+
+These should interrupt normal maintenance when they appear.
+
+- Core input services failing repeatedly.
+- Backup units failing while the expected backup target is mounted.
+- Persistent display recovery failures.
+- Repeated application coredumps in the same day.
+- Kernel OOM, I/O, filesystem, GPU reset, or thermal-critical signals.
+
+## Warning
+
+These should be reviewed during the daily or weekly workflow.
+
+- `borg-backup@*.service` failures.
+- `send-ifconfig.service` failures.
+- `promnesia-index.service` failures.
+- `PKM-export@*.service` failures.
+- Repeated user unit failures after reboot.
+- `pacman` hook, DKMS, or `mkinitcpio` warnings after upgrades.
+- Xorg `(EE)` lines and repeated display/input `(WW)` lines.
+- PipeWire, WirePlumber, or ALSA `No such device`, `out of buffers`, or
+  repeated `resync` bursts.
+- NetworkManager, DNS, DHCP, VPN, or Tailscale failures.
+- Bluetooth controller, firmware, or HCI failures.
+- Storage, NVMe, ATA, or filesystem kernel warnings.
+- Docker, containerd, Podman, unhealthy containers, or non-zero container exits.
+- Syncthing sync, conflict, folder marker, or connection failures.
+- Neovim LSP or Overseer warnings from local state logs.
+- REAPER, yabridge, WineASIO, or audio-production session failures.
+- Authentication, sshd, auditd, or polkit warnings visible without sudo.
+- Unclassified journal warning families that repeat or correlate with symptoms.
+
+## Informational
+
+These are useful context but not always actionable.
+
+- `compositor.service` failing because another compositor is already active.
+- Toolkit warnings from KDE, Qt, Flameshot, PipeWire, or D-Bus.
+
+## Ignored Noise Candidates
+
+Do not delete these from the report blindly. Promote one to warning when it
+correlates with a user-visible problem.
+
+- Repeated `[UFW BLOCK]` multicast lines.
+- Missing translation warnings from GUI tools.
+- Single-shot `KKeyServer::xcbKeyPressEventToQt failed` bursts.
+- Missing Xorg font directories.
+- VPN/netlink warnings that only appear around suspend or network transitions.
+
+## Coverage Workflow
+
+Review `[[system-health-coverage]]` before assuming the report covers a domain.
+When `[[system-health-unclassified]]` shows a repeated or actionable family,
+promote it into a focused detector and add the classification here. If it is
+accepted noise, document the reason in this file instead of silently hiding it.
+EOF
+}
+
+write_runbook() {
+    cat >"$runbook_file" <<'EOF'
+# System Health Runbook
+
+@tags #system-health #archlinux #ops
+
+This runbook collects safe, bounded commands for manual follow-up when a
+System Health report points to hidden workstation issues.
+
+## Daily
+
+```sh
+dotfiles-health update
+```
+
+```sh
+systemctl --user --failed
+```
+
+```sh
+systemctl --failed
+```
+
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl --user -p warning..alert --since today -n 300 --pager-end
+```
+
+```sh
+coredumpctl list --since today --no-pager | sed -n '1,200p'
+```
+
+```sh
+rg -n '\(EE\)|\(WW\)' /var/log/Xorg.0.log ~/.local/share/xorg/Xorg.0.log | sed -n '1,300p'
+```
+
+```sh
+tail -300 /var/log/pacman.log
+```
+
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl -u NetworkManager.service -u systemd-resolved.service -u tailscaled.service --since today -n 300 --pager-end
+```
+
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl --user -u pipewire.service -u pipewire-pulse.service -u wireplumber.service --since today -n 300 --pager-end
+```
+
+## Weekly
+
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl --user -p warning..alert --since '7 days ago' -n 500 --pager-end
+```
+
+```sh
+systemctl --user list-timers --all
+```
+
+```sh
+dotfiles-health update
+```
+
+Then review `[[system-health-coverage]]` and `[[system-health-unclassified]]`.
+
+## Cleanup After Review
+
+Only reset failures after the cause is understood or deliberately ignored.
+
+```sh
+systemctl --user reset-failed
+```
+EOF
+}
+
+write_source_page() {
+    name=$1
+    title=$2
+    count=$3
+    command_block=$4
+    evidence=$5
+    case "$name" in
+    system-health-bluetooth | system-health-storage) file="$hardware_sources_dir/$name.md" ;;
+    system-health-containers | system-health-sync | system-health-editor | system-health-music) file="$app_sources_dir/$name.md" ;;
+    *) file="$sources_dir/$name.md" ;;
+    esac
+
+    {
+        printf '# %s\n\n' "$title"
+        printf '@tags #system-health #archlinux #ops\n\n'
+        printf 'This source page summarizes one class of hidden system signals and keeps only short evidence plus bounded commands for deeper inspection.\n\n'
+        printf 'Last updated: %s\n\n' "$(now_local)"
+        printf '## Current Status\n\n'
+        printf '%s\n\n' "- Signals: \`$count\`"
+        printf '## Evidence\n\n'
+        if [ -n "$evidence" ]; then
+            printf '```text\n'
+            printf '%s\n' "$evidence" | sed -n '1,20p'
+            printf '```\n\n'
+        else
+            printf '%s\n\n' '- No matching signals in the latest report.'
+        fi
+        printf '## Quick Commands\n\n'
+        printf '%s\n' "$command_block"
+    } >"$file"
+}
+
+write_system_units_page() {
+    units=$(system_failed_units)
+    count=$(printf '%s\n' "$units" | count_lines)
+    commands=$(
+        cat <<'EOF'
+```sh
+systemctl --failed
+```
+
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl -p warning..alert --since today -n 300 --pager-end
+```
+EOF
+        if [ -n "$units" ]; then
+            printf '\n## Unit Commands\n\n'
+            printf '%s\n' "$units" | while IFS= read -r unit; do
+                [ -n "$unit" ] || continue
+                printf '```sh\nSYSTEMD_PAGER='\''less -R +G'\'' journalctl -u %s --since today -n 120 --pager-end\n```\n\n' "$unit"
+            done
+        fi
+    )
+
+    evidence=$(printf '%s\n' "$units" | sed -n '1,20p')
+    write_source_page "system-health-system-units" "System Units" "$count" "$commands" "$evidence"
+}
+
+write_crashes_page() {
+    summary=$(coredump_summary_since "7 days ago")
+    count=$(printf '%s\n' "$summary" | awk -F '\t' '{sum += $1} END {print sum + 0}')
+    commands=$(cat <<'EOF'
+```sh
+coredumpctl list --since today --no-pager | sed -n '1,200p'
+```
+
+```sh
+coredumpctl list --since '7 days ago' --no-pager | sed -n '1,300p'
+```
+EOF
+)
+
+    write_source_page "system-health-crashes" "Application Crashes" "$count" "$commands" "$summary"
+}
+
+write_display_page() {
+    signals=$(xorg_signal_lines)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    commands=$(cat <<'EOF'
+```sh
+rg -n '\(EE\)|\(WW\)' /var/log/Xorg.0.log ~/.local/share/xorg/Xorg.0.log | sed -n '1,300p'
+```
+
+```sh
+journalctl -k --since today -n 1000 --no-pager | rg -i 'nvrm|amdgpu|drm|xorg|libinput' | sed -n '1,300p'
+```
+EOF
+)
+
+    write_source_page "system-health-display" "Display And Input Logs" "$count" "$commands" "$signals"
+}
+
+write_packages_page() {
+    signals=$(pacman_signal_lines)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    commands=$(cat <<'EOF'
+```sh
+tail -300 /var/log/pacman.log
+```
+
+```sh
+tail -2000 /var/log/pacman.log | rg -n 'error:|failed|WARNING|Error!|exited [1-9]|aborted|Possibly missing firmware' | sed -n '1,300p'
+```
+EOF
+)
+
+    write_source_page "system-health-packages" "Package And Hook Logs" "$count" "$commands" "$signals"
+}
+
+write_kernel_page() {
+    signals=$(kernel_signal_lines)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    commands=$(cat <<'EOF'
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl -k --since today -n 300 --pager-end
+```
+
+```sh
+journalctl -k --since '7 days ago' -n 2000 --no-pager | rg -i 'oom|i/o error|ext4|btrfs|nvrm|amdgpu|thermal|mce|bug|call trace' | sed -n '1,300p'
+```
+EOF
+)
+
+    write_source_page "system-health-kernel" "Kernel Signals" "$count" "$commands" "$signals"
+}
+
+write_audio_page() {
+    signals=$(audio_signal_lines)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    evidence=$(printf '%s\n' "$signals" | tail -20)
+    commands=$(cat <<'EOF'
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl --user -u pipewire.service -u pipewire-pulse.service -u wireplumber.service --since today -n 300 --pager-end
+```
+
+```sh
+journalctl --user -u pipewire.service -u pipewire-pulse.service -u wireplumber.service --since today -n 1000 --no-pager | rg -i 'spa\.alsa|spa\.audioconvert|no such device|out of buffers|resync|operation not permitted' | sed -n '1,300p'
+```
+EOF
+)
+
+    write_source_page "system-health-audio" "Audio Signals" "$count" "$commands" "$evidence"
+}
+
+write_network_page() {
+    signals=$(network_signal_lines)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    commands=$(cat <<'EOF'
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl -u NetworkManager.service -u systemd-networkd.service -u systemd-resolved.service -u iwd.service -u wpa_supplicant.service -u tailscaled.service --since today -n 300 --pager-end
+```
+
+```sh
+journalctl -u NetworkManager.service -u systemd-resolved.service -u tailscaled.service --since today -n 1000 --no-pager | rg -i 'failed|failure|error|timeout|unreachable|deauth|disconnect|dhcp|dns|vpn|wireguard' | sed -n '1,300p'
+```
+EOF
+)
+
+    write_source_page "system-health-network" "Network And DNS Signals" "$count" "$commands" "$signals"
+}
+
+write_bluetooth_page() {
+    signals=$(bluetooth_signal_lines)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    commands=$(cat <<'EOF'
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl -u bluetooth.service --since today -n 300 --pager-end
+```
+
+```sh
+journalctl -k --since today -n 1000 --no-pager | rg -i 'bluetooth|hci[0-9]' | sed -n '1,300p'
+```
+EOF
+)
+
+    write_source_page "system-health-bluetooth" "Bluetooth Signals" "$count" "$commands" "$signals"
+}
+
+write_storage_page() {
+    signals=$(storage_signal_lines)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    commands=$(cat <<'EOF'
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl -k --since today -n 300 --pager-end
+```
+
+```sh
+journalctl -k --since '7 days ago' -n 2000 --no-pager | rg -i 'i/o error|blk_update_request|buffer i/o|nvme|ata[0-9]|ext4-fs|btrfs|xfs|read-only file system|filesystem.*remount' | sed -n '1,300p'
+```
+EOF
+)
+
+    write_source_page "system-health-storage" "Storage And Filesystem Signals" "$count" "$commands" "$signals"
+}
+
+write_containers_page() {
+    signals=$(container_signal_lines)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    commands=$(cat <<'EOF'
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl -u docker.service -u containerd.service -u podman.service --since today -n 300 --pager-end
+```
+
+```sh
+timeout 3s docker ps -a --format 'container {{.Names}} {{.Status}}' | rg -i 'exited \([1-9][0-9]*\)|unhealthy|restarting' | sed -n '1,200p'
+```
+EOF
+)
+
+    write_source_page "system-health-containers" "Container Signals" "$count" "$commands" "$signals"
+}
+
+write_sync_page() {
+    signals=$(sync_signal_lines)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    commands=$(cat <<'EOF'
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl --user -u syncthing.service --since today -n 300 --pager-end
+```
+
+```sh
+journalctl --user -u syncthing.service --since today -n 1000 --no-pager | rg -i 'failed|failure|error|timeout|out of sync|folder marker|conflict|connection refused|no such host' | sed -n '1,300p'
+```
+EOF
+)
+
+    write_source_page "system-health-sync" "Sync Signals" "$count" "$commands" "$signals"
+}
+
+write_editor_page() {
+    signals=$(editor_signal_lines)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    commands=$(cat <<'EOF'
+```sh
+tail -400 ~/.local/state/nvim/logs/lsp.log ~/.local/state/nvim/log ~/.local/state/nvim/overseer.log 2>/dev/null | rg -i 'error|warn|failed|failure|traceback|panic|exception' | sed -n '1,300p'
+```
+
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl --user --since today -n 300 --pager-end
+```
+EOF
+)
+
+    write_source_page "system-health-editor" "Editor And LSP Signals" "$count" "$commands" "$signals"
+}
+
+write_music_page() {
+    signals=$(music_signal_lines)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    commands=$(cat <<'EOF'
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl --user --since today -n 500 --pager-end
+```
+
+```sh
+tail -400 ~/.local/share/yabridge/*.log ~/.config/yabridge/*.log ~/.config/REAPER/*.log 2>/dev/null | rg -i 'failed|failure|error|timeout|crash|exception|segfault' | sed -n '1,300p'
+```
+EOF
+)
+
+    write_source_page "system-health-music" "Music Production Signals" "$count" "$commands" "$signals"
+}
+
+write_security_page() {
+    signals=$(security_signal_lines)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    commands=$(cat <<'EOF'
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl -u sshd.service -u ssh.service -u auditd.service -u polkit.service --since today -n 300 --pager-end
+```
+
+```sh
+journalctl -u sshd.service -u ssh.service -u auditd.service -u polkit.service --since today -n 1000 --no-pager | rg -i 'authentication failure|failed password|pam_.*(failure|error)|polkit.*(error|failed|denied)|audit.*(denied|apparmor|selinux|avc)|permission denied' | sed -n '1,300p'
+```
+EOF
+)
+
+    write_source_page "system-health-security" "Auth And Security Signals" "$count" "$commands" "$signals"
+}
+
+write_unclassified_page() {
+    signals=$(unclassified_warning_lines)
+    families=$(unclassified_warning_families)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    family_count=$(unclassified_warning_family_count)
+    file="$discovery_sources_dir/system-health-unclassified.md"
+
+    {
+        printf '# Unclassified Journal Warnings\n\n'
+        printf '@tags #system-health #archlinux #ops\n\n'
+        printf 'This discovery page catches recent journal warnings that did not match an existing System Health classifier, so new failure families can be promoted into explicit rules.\n\n'
+        printf 'Last updated: %s\n\n' "$(now_local)"
+        printf '## Current Status\n\n'
+        printf '%s\n' "- Signals: \`$count\`"
+        printf '%s\n\n' "- Families: \`$family_count\`"
+        printf '## Families\n\n'
+        if [ -n "$families" ]; then
+            printf '%s\n' "$families" | while IFS='	' read -r family_count family sample; do
+                [ -n "$family" ] || continue
+                printf '%s\n' "- \`$family_count\` $(markdown_text "$family")"
+                if [ -n "$sample" ]; then
+                    printf '  sample: `%s`\n' "$(markdown_text "$sample")"
+                fi
+            done
+            printf '\n'
+        else
+            printf '%s\n\n' '- No unclassified warning families in the latest report.'
+        fi
+        printf '## Quick Commands\n\n'
+        cat <<'EOF'
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl --user -p warning..alert --since today -n 500 --pager-end
+```
+
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl -p warning..alert --since today -n 500 --pager-end
+```
+EOF
+    } >"$file"
+}
+
+write_coverage_page() {
+    file="$discovery_sources_dir/system-health-coverage.md"
+
+    {
+        printf '# System Health Coverage\n\n'
+        printf '@tags #system-health #archlinux #ops\n\n'
+        printf 'This page documents what the generated health report currently watches, which domains are only partially covered, and how to promote new warnings into durable checks.\n\n'
+        printf 'Last updated: %s\n\n' "$(now_local)"
+        printf '## Covered Domains\n\n'
+        printf '%s\n' "- [[system-health-system-units]]: systemd system unit failures."
+        printf '%s\n' "- [[system-health-crashes]]: recent application coredumps."
+        printf '%s\n' "- [[system-health-display]]: Xorg, display, GPU, and input signals."
+        printf '%s\n' "- [[system-health-packages]]: pacman, DKMS, mkinitcpio, and package hook signals."
+        printf '%s\n' "- [[system-health-kernel]]: kernel OOM, call traces, thermal, MCE, and GPU reset signals."
+        printf '%s\n' "- [[system-health-audio]]: PipeWire, WirePlumber, and ALSA signals."
+        printf '%s\n' "- [[system-health-network]]: NetworkManager, resolved, iwd, wpa_supplicant, Tailscale, DNS, DHCP, and VPN signals."
+        printf '%s\n' "- [[system-health-bluetooth]]: bluetoothd and kernel HCI signals."
+        printf '%s\n' "- [[system-health-storage]]: kernel storage and filesystem signals."
+        printf '%s\n' "- [[system-health-containers]]: Docker, containerd, Podman, and unhealthy/exited containers visible to the user."
+        printf '%s\n' "- [[system-health-sync]]: Syncthing user service signals."
+        printf '%s\n' "- [[system-health-editor]]: Neovim LSP and Overseer state logs."
+        printf '%s\n' "- [[system-health-music]]: REAPER, yabridge, WineASIO, and related user-session signals."
+        printf '%s\n' "- [[system-health-security]]: sshd, auditd, polkit, and authentication warnings visible without sudo."
+        printf '%s\n\n' "- [[system-health-unclassified]]: recent journal warnings that do not match a known classifier."
+        printf '## Partial Coverage\n\n'
+        printf '%s\n' '- SMART/NVMe device health is limited to kernel symptoms because direct device health checks may need elevated permissions.'
+        printf '%s\n' '- Security coverage is limited to journal-visible warnings; privileged audit details may require sudo.'
+        printf '%s\n' '- Application logs outside known paths are not crawled globally to avoid slow scans and noisy private data dumps.'
+        printf '%s\n\n' '- Unclassified warnings are discovery signals; repeated or actionable families should become explicit rules.'
+        printf '## Promotion Workflow\n\n'
+        printf '%s\n' '1. Review [[system-health-unclassified]] during the daily or weekly review.'
+        printf '%s\n' '2. If a family is actionable, add a focused detector to `dotfiles-health` and document it in [[rules]].'
+        printf '%s\n' '3. If a family is accepted noise, document why in [[rules]] under ignored noise candidates.'
+        printf '%s\n\n' '4. Keep generated evidence short and prefer executable snippets for deeper inspection.'
+        printf '## Quick Commands\n\n'
+        cat <<'EOF'
+```sh
+dotfiles-health update
+```
+
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl --user -p warning..alert --since today -n 500 --pager-end
+```
+
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl -p warning..alert --since today -n 500 --pager-end
+```
+EOF
+    } >"$file"
+}
+
+write_source_pages() {
+    write_system_units_page
+    write_crashes_page
+    write_display_page
+    write_packages_page
+    write_kernel_page
+    write_audio_page
+    write_network_page
+    write_bluetooth_page
+    write_storage_page
+    write_containers_page
+    write_sync_page
+    write_editor_page
+    write_music_page
+    write_security_page
+    write_unclassified_page
+    write_coverage_page
+}
+
+write_unit_page() {
+    group=$1
+    units=$2
+    file="$units_dir/$group.md"
+
+    {
+        printf '# %s\n\n' "$(title_for_group "$group")"
+        printf '@tags #system-health #archlinux #ops\n\n'
+        printf 'This unit page groups related failed user services and provides bounded journal commands for each current failure.\n\n'
+        printf 'Last updated: %s\n\n' "$(now_local)"
+        printf '## Current Classification\n\n'
+        printf '%s\n' "- Severity: \`$(severity_for_group "$group")\`"
+        printf '%s\n\n' "- Group: \`$group\`"
+        printf '## Matching Units\n\n'
+        if [ -n "$units" ]; then
+            printf '%s\n' "$units" | while IFS= read -r unit; do
+                [ -n "$unit" ] || continue
+                printf '%s\n' "- \`$unit\`"
+            done
+        else
+            printf '%s\n' '- No failed units in the latest report.'
+        fi
+        printf '\n## Quick Commands\n\n'
+        if [ -n "$units" ]; then
+            printf '%s\n' "$units" | while IFS= read -r unit; do
+                [ -n "$unit" ] || continue
+                printf '```sh\nSYSTEMD_PAGER='\''less -R +G'\'' journalctl --user -u %s --since today -n 120 --pager-end\n```\n\n' "$unit"
+            done
+        fi
+        case "$group" in
+        borg-backup)
+            cat <<'EOF'
+```sh
+systemctl --user list-units 'borg-backup@*.service' --all
+```
+
+```sh
+systemctl --user list-timers '*backup*' --all
+```
+EOF
+            ;;
+        esac
+    } >"$file"
+}
+
+write_unit_pages() {
+    tmp_groups=$(mktemp)
+    rm -f "$units_dir"/*.md
+
+    failed_units | while IFS= read -r unit; do
+        [ -n "$unit" ] || continue
+        group=$(group_for_unit "$unit")
+        printf '%s\t%s\n' "$group" "$unit"
+    done >"$tmp_groups"
+
+    if [ ! -s "$tmp_groups" ]; then
+        write_unit_page "no-current-failures" ""
+        rm -f "$tmp_groups"
+        return
+    fi
+
+    cut -f1 "$tmp_groups" | sort -u | while IFS= read -r group; do
+        units=$(awk -F '\t' -v group="$group" '$1 == group {print $2}' "$tmp_groups")
+        write_unit_page "$group" "$units"
+    done
+
+    rm -f "$tmp_groups"
+}
+
+write_main() {
+    count=$(failed_count)
+    system_count=$(system_failed_count)
+    crashes_count=$(coredump_count_since "7 days ago")
+    display_count=$(xorg_signal_count)
+    packages_count=$(pacman_signal_count)
+    kernel_count=$(kernel_signal_count)
+    audio_count=$(audio_signal_count)
+    network_count=$(network_signal_count)
+    bluetooth_count=$(bluetooth_signal_count)
+    storage_count=$(storage_signal_count)
+    containers_count=$(container_signal_count)
+    sync_count=$(sync_signal_count)
+    editor_count=$(editor_signal_count)
+    music_count=$(music_signal_count)
+    security_count=$(security_signal_count)
+    unclassified_count=$(unclassified_warning_top_family_count)
+    manual_block=$(manual_reminders)
+    groups=$(failed_units | while IFS= read -r unit; do
+        [ -n "$unit" ] || continue
+        group_for_unit "$unit"
+    done | sort -u)
+
+    {
+        printf '# System Health\n\n'
+        printf '@tags #system-health #archlinux #ops\n\n'
+        printf 'This is the main workstation health report: start here to see active hidden failures, then follow the linked source or unit pages for details.\n\n'
+        printf 'Last generated: %s\n\n' "$(now_local)"
+        printf '## Current Status\n\n'
+        printf '%s\n' "- Failed user units: \`$count\`"
+        printf '%s\n' "- Failed system units: \`$system_count\`"
+        printf '%s\n' "- Coredumps 7d: \`$crashes_count\`"
+        printf '%s\n' "- Display/Xorg signals: \`$display_count\`"
+        printf '%s\n' "- Package hook signals: \`$packages_count\`"
+        printf '%s\n' "- Kernel signals: \`$kernel_count\`"
+        printf '%s\n' "- Audio signals: \`$audio_count\`"
+        printf '%s\n' "- Network signals: \`$network_count\`"
+        printf '%s\n' "- Bluetooth signals: \`$bluetooth_count\`"
+        printf '%s\n' "- Storage signals: \`$storage_count\`"
+        printf '%s\n' "- Container signals: \`$containers_count\`"
+        printf '%s\n' "- Sync signals: \`$sync_count\`"
+        printf '%s\n' "- Editor/LSP signals: \`$editor_count\`"
+        printf '%s\n' "- Music production signals: \`$music_count\`"
+        printf '%s\n' "- Auth/security signals: \`$security_count\`"
+        printf '%s\n' "- Top unclassified warning families: \`$unclassified_count\`"
+        printf '%s\n' '- Rules: [[rules]]'
+        printf '%s\n' '- Runbook: [[runbook]]'
+        printf '%s\n' '- Coverage: [[system-health-coverage]]'
+        printf '%s\n\n' "- Monthly digest: [[$(year_month)]]"
+        printf '## Signal Sources\n\n'
+        printf '%s\n' "- [[system-health-system-units]]: \`$system_count failed units\`"
+        printf '%s\n' "- [[system-health-crashes]]: \`$crashes_count coredumps 7d\`"
+        printf '%s\n' "- [[system-health-display]]: \`$display_count display/input signals\`"
+        printf '%s\n' "- [[system-health-packages]]: \`$packages_count package signals\`"
+        printf '%s\n' "- [[system-health-kernel]]: \`$kernel_count kernel signals\`"
+        printf '%s\n' "- [[system-health-audio]]: \`$audio_count audio signals\`"
+        printf '%s\n' "- [[system-health-network]]: \`$network_count network signals\`"
+        printf '%s\n' "- [[system-health-bluetooth]]: \`$bluetooth_count bluetooth signals\`"
+        printf '%s\n' "- [[system-health-storage]]: \`$storage_count storage signals\`"
+        printf '%s\n' "- [[system-health-containers]]: \`$containers_count container signals\`"
+        printf '%s\n' "- [[system-health-sync]]: \`$sync_count sync signals\`"
+        printf '%s\n' "- [[system-health-editor]]: \`$editor_count editor signals\`"
+        printf '%s\n' "- [[system-health-music]]: \`$music_count music production signals\`"
+        printf '%s\n' "- [[system-health-security]]: \`$security_count auth/security signals\`"
+        printf '%s\n' "- [[system-health-unclassified]]: \`$unclassified_count unclassified families\`"
+        printf '%s\n\n' "- [[system-health-coverage]]: coverage map and promotion workflow"
+        printf '## Active Issues\n\n'
+        if [ "$system_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-system-units]]: \`$system_count units\`"
+        fi
+        if [ "$crashes_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-crashes]]: \`$crashes_count coredumps 7d\`"
+        fi
+        if [ "$display_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-display]]: \`$display_count display/input signals\`"
+        fi
+        if [ "$packages_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-packages]]: \`$packages_count package signals\`"
+        fi
+        if [ "$kernel_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-kernel]]: \`$kernel_count kernel signals\`"
+        fi
+        if [ "$audio_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-audio]]: \`$audio_count audio signals\`"
+        fi
+        if [ "$network_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-network]]: \`$network_count network signals\`"
+        fi
+        if [ "$bluetooth_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-bluetooth]]: \`$bluetooth_count bluetooth signals\`"
+        fi
+        if [ "$storage_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-storage]]: \`$storage_count storage signals\`"
+        fi
+        if [ "$containers_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-containers]]: \`$containers_count container signals\`"
+        fi
+        if [ "$sync_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-sync]]: \`$sync_count sync signals\`"
+        fi
+        if [ "$editor_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-editor]]: \`$editor_count editor/LSP signals\`"
+        fi
+        if [ "$music_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-music]]: \`$music_count music production signals\`"
+        fi
+        if [ "$security_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-security]]: \`$security_count auth/security signals\`"
+        fi
+        if [ "$unclassified_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-unclassified]]: \`$unclassified_count warning families need triage\`"
+        fi
+        if [ -n "$groups" ]; then
+            printf '%s\n' "$groups" | while IFS= read -r group; do
+                [ -n "$group" ] || continue
+                units=$(failed_units | while IFS= read -r unit; do
+                    if [ "$(group_for_unit "$unit")" = "$group" ]; then
+                        printf '%s\n' "$unit"
+                    fi
+                done)
+                unit_count=$(printf '%s\n' "$units" | awk 'NF {count++} END {print count + 0}')
+                if [ "$unit_count" = "1" ]; then
+                    printf '%s\n' "- [[$group]]: \`1 unit\`"
+                else
+                    printf '%s\n' "- [[$group]]: \`$unit_count units\`"
+                fi
+            done
+        fi
+        if [ -z "$groups" ] &&
+            [ "$system_count" -eq 0 ] &&
+            [ "$crashes_count" -eq 0 ] &&
+            [ "$display_count" -eq 0 ] &&
+            [ "$packages_count" -eq 0 ] &&
+            [ "$kernel_count" -eq 0 ] &&
+            [ "$audio_count" -eq 0 ] &&
+            [ "$network_count" -eq 0 ] &&
+            [ "$bluetooth_count" -eq 0 ] &&
+            [ "$storage_count" -eq 0 ] &&
+            [ "$containers_count" -eq 0 ] &&
+            [ "$sync_count" -eq 0 ] &&
+            [ "$editor_count" -eq 0 ] &&
+            [ "$music_count" -eq 0 ] &&
+            [ "$security_count" -eq 0 ] &&
+            [ "$unclassified_count" -eq 0 ]; then
+            printf '%s\n' '- No active issues in the latest check.'
+        fi
+        printf '\n## Quick Commands\n\n'
+        cat <<'EOF'
+```sh
+dotfiles-health update
+```
+
+```sh
+systemctl --user --failed
+```
+
+```sh
+systemctl --failed
+```
+
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl --user -p warning..alert --since today -n 300 --pager-end
+```
+
+```sh
+SYSTEMD_PAGER='less -R +G' journalctl -p warning..alert --since today -n 300 --pager-end
+```
+
+EOF
+        printf '%s\n' "$manual_block"
+    } >"$main_file"
+}
+
+update_monthly_digest() {
+    report="$reports_dir/$(year_now)/$(year_month).md"
+    day=$(today)
+    start="<!-- dotfiles-health:$day:start -->"
+    end="<!-- dotfiles-health:$day:end -->"
+    tmp=$(mktemp)
+    section=$(mktemp)
+
+    [ -f "$report" ] || {
+        {
+            printf '# System Health %s\n\n' "$(year_month)"
+            printf '@tags #system-health #archlinux #ops\n\n'
+            printf 'This monthly digest keeps compact daily snapshots from `dotfiles-health` so recurring patterns are visible without storing full logs.\n\n'
+            printf 'Each day section is replaced in place when the report is regenerated.\n\n'
+        } >"$report"
+    }
+
+    {
+        printf '%s\n' "$start"
+        printf '## %s\n\n' "$day"
+        printf '%s\n' "- Last generated: $(now_local)"
+        printf '%s\n' "- Failed user units: \`$(failed_count)\`"
+        printf '%s\n' "- Failed system units: \`$(system_failed_count)\`"
+        printf '%s\n' "- Coredumps 7d: \`$(coredump_count_since "7 days ago")\`"
+        printf '%s\n' "- Display/Xorg signals: \`$(xorg_signal_count)\`"
+        printf '%s\n' "- Package hook signals: \`$(pacman_signal_count)\`"
+        printf '%s\n' "- Kernel signals: \`$(kernel_signal_count)\`"
+        printf '%s\n' "- Audio signals: \`$(audio_signal_count)\`"
+        printf '%s\n' "- Network signals: \`$(network_signal_count)\`"
+        printf '%s\n' "- Bluetooth signals: \`$(bluetooth_signal_count)\`"
+        printf '%s\n' "- Storage signals: \`$(storage_signal_count)\`"
+        printf '%s\n' "- Container signals: \`$(container_signal_count)\`"
+        printf '%s\n' "- Sync signals: \`$(sync_signal_count)\`"
+        printf '%s\n' "- Editor/LSP signals: \`$(editor_signal_count)\`"
+        printf '%s\n' "- Music production signals: \`$(music_signal_count)\`"
+        printf '%s\n' "- Auth/security signals: \`$(security_signal_count)\`"
+        printf '%s\n\n' "- Top unclassified warning families: \`$(unclassified_warning_top_family_count)\`"
+        printf '### Signal Sources\n\n'
+        printf '%s\n' "- [[system-health-crashes]]"
+        printf '%s\n' "- [[system-health-display]]"
+        printf '%s\n' "- [[system-health-packages]]"
+        printf '%s\n' "- [[system-health-kernel]]"
+        printf '%s\n' "- [[system-health-audio]]"
+        printf '%s\n' "- [[system-health-network]]"
+        printf '%s\n' "- [[system-health-bluetooth]]"
+        printf '%s\n' "- [[system-health-storage]]"
+        printf '%s\n' "- [[system-health-containers]]"
+        printf '%s\n' "- [[system-health-sync]]"
+        printf '%s\n' "- [[system-health-editor]]"
+        printf '%s\n' "- [[system-health-music]]"
+        printf '%s\n' "- [[system-health-security]]"
+        printf '%s\n' "- [[system-health-unclassified]]"
+        printf '%s\n\n' "- [[system-health-coverage]]"
+        printf '### Coredumps 7d\n\n'
+        if coredump_summary_since "7 days ago" | grep -q .; then
+            coredump_summary_since "7 days ago" | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Display/Xorg Signals\n\n'
+        if xorg_signal_lines | grep -q .; then
+            xorg_signal_lines | sed -n '1,8p' | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Package Hook Signals\n\n'
+        if pacman_signal_lines | grep -q .; then
+            pacman_signal_lines | sed -n '1,8p' | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Kernel Signals\n\n'
+        if kernel_signal_lines | grep -q .; then
+            kernel_signal_lines | sed -n '1,8p' | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Audio Signals\n\n'
+        if audio_signal_lines | grep -q .; then
+            audio_signal_lines | tail -8 | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Network Signals\n\n'
+        if network_signal_lines | grep -q .; then
+            network_signal_lines | sed -n '1,5p' | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Bluetooth Signals\n\n'
+        if bluetooth_signal_lines | grep -q .; then
+            bluetooth_signal_lines | sed -n '1,5p' | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Storage Signals\n\n'
+        if storage_signal_lines | grep -q .; then
+            storage_signal_lines | sed -n '1,5p' | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Container Signals\n\n'
+        if container_signal_lines | grep -q .; then
+            container_signal_lines | sed -n '1,5p' | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Sync Signals\n\n'
+        if sync_signal_lines | grep -q .; then
+            sync_signal_lines | sed -n '1,5p' | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Editor And LSP Signals\n\n'
+        if editor_signal_lines | grep -q .; then
+            editor_signal_lines | sed -n '1,5p' | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Music Production Signals\n\n'
+        if music_signal_lines | grep -q .; then
+            music_signal_lines | sed -n '1,5p' | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Auth And Security Signals\n\n'
+        if security_signal_lines | grep -q .; then
+            security_signal_lines | sed -n '1,5p' | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Unclassified Warning Families\n\n'
+        if unclassified_warning_families | grep -q .; then
+            unclassified_warning_families | sed -n '1,8p' | while IFS='	' read -r family_count family sample; do
+                [ -n "$family" ] || continue
+                printf '%s\n' "- \`$family_count\` $(markdown_text "$family")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n'
+        printf '### Failed Units\n\n'
+        if failed_units | grep -q .; then
+            failed_units | while IFS= read -r unit; do
+                [ -n "$unit" ] || continue
+                printf '%s\n' "- \`$unit\`"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Failed System Units\n\n'
+        if system_failed_units | grep -q .; then
+            system_failed_units | while IFS= read -r unit; do
+                [ -n "$unit" ] || continue
+                printf '%s\n' "- \`$unit\`"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n%s\n' "$end"
+    } >"$section"
+
+    awk -v start="$start" -v end="$end" '
+        $0 == start {skip = 1; next}
+        $0 == end {skip = 0; next}
+        skip != 1 {print}
+    ' "$report" >"$tmp"
+
+    {
+        cat "$tmp"
+        printf '\n'
+        cat "$section"
+    } | compact_blank_lines >"$report"
+
+    rm -f "$tmp" "$section"
+}
+
+update() {
+    ensure_dirs
+    write_rules
+    write_runbook
+    write_unit_pages
+    write_source_pages
+    write_main
+    update_monthly_digest
+    printf '%s\n' "$main_file"
+}
+
+command=${1:-}
+case "$command" in
+update) update ;;
+report | open) printf '%s\n' "$main_file" ;;
+check) systemctl --user --failed --no-pager ;;
+*) usage ;;
+esac

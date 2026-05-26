@@ -114,6 +114,43 @@ wraps `valkey-cli` with the repository key namespace
 `dotfiles:cache:v1:<namespace>:<key>` and requires TTLs for stored values.
 Values should be cheap to rebuild and should not be committed.
 
+## System Health Notes
+
+`utilities/bin/dotfiles-health` generates a compact workstation health report
+under the private Foam notes tree at `ops/system-health/`. The user timer lives
+in `utilities/dot-config/systemd/user/dotfiles-health.timer` and is enabled by
+the Arch dotfiles task after Stow has linked the utility and unit files.
+
+Keep this workflow Markdown-first: write stable summaries, Foam links, Remind
+TODOs, and executable `journalctl`/`systemctl` snippets. Do not dump raw journal
+output into notes except for a few short evidence lines when a human-written
+issue note needs them.
+
+The health report should not treat journald as the only source of truth. Keep
+the default scans cheap and bounded, and summarize only high-signal evidence
+from non-journal sources such as system failed units, `coredumpctl`,
+`/var/log/Xorg.0.log`, `/var/log/pacman.log`, and targeted kernel patterns.
+Generated source pages should live under `ops/system-health/sources/`, use
+unique Foam file stems such as `system-health-kernel`, and include executable
+Markdown fences for deeper inspection instead of storing large raw logs.
+Coverage should be explicit: `system-health-coverage` documents watched
+domains and partial blind spots, and `system-health-unclassified` summarizes
+recent journal warning families that did not match a known classifier. Treat
+those unclassified families as a promotion queue: actionable repeated patterns
+become focused detectors plus `rules.md` entries, while accepted noise is
+documented as ignored noise instead of disappearing silently.
+Generated snippets must be bounded by default. Avoid unbounded
+`journalctl --since ... --no-pager` commands in notes; prefer `journalctl -n`
+with `SYSTEMD_PAGER='less -R +G'` and `--pager-end` so terminal runs open in a
+searchable pager while non-interactive runs still finish quickly. For piped
+file scans, limit the input with `tail` or the output with `sed -n` so readonly
+notes never force the user to wait on an accidental full-log dump.
+
+In Neovim Markdown buffers, executable shell fences can be run with
+`<leader>mr`. The keymap launches the current `sh`/`bash`/`shell` fence through
+Overseer and opens the task output in a float, so generated notes can keep
+commands as snippets instead of storing volatile log output.
+
 ## Dev Tool Sandboxing
 
 Python and Node package-manager installs and routine tool execution should use

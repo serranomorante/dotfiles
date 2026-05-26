@@ -1,0 +1,9 @@
+[Unit]
+Description=Update Foam system health report
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+Nice=15
+IOSchedulingClass=idle
+ExecStart=%h/bin/dotfiles-health update

@@ -65,3 +65,8 @@ vim.api.nvim_create_autocmd({ "BufEnter", "TextChanged", "TextChangedI" }, {
   callback = refresh_markdown_tags,
 })
 refresh_markdown_tags()
+
+if vim.bo[bufnr].filetype == "markdown.system_health" then
+  vim.bo[bufnr].readonly = true
+  vim.bo[bufnr].modifiable = false
+end
