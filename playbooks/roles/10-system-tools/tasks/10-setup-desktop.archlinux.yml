@@ -5,11 +5,19 @@
     name: reflector
     state: present
 
+- name: "[archlinux] Setup desktop: stat pacman mirrorlist"
+  ansible.builtin.stat:
+    path: /etc/pacman.d/mirrorlist
+  register: var_pacman_mirrorlist
+
 - name: "[archlinux] Setup desktop: setup reflector"
   become: true
   ansible.builtin.command: reflector --verbose --cache-timeout 604800 --sort rate -l 20 -c Netherlands -c France --save /etc/pacman.d/mirrorlist
   ignore_errors: true
   changed_when: true
+  when: >-
+    not var_pacman_mirrorlist.stat.exists or
+    ((ansible_date_time.epoch | int) - (var_pacman_mirrorlist.stat.mtime | int)) > 604800
 
 - name: "[archlinux] Setup desktop: ensure packages"
   # How to Dual Boot Arch Linux and Windows 11/10 [ 2022 ]
