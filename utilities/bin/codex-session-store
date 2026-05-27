@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import time
+from datetime import datetime, timezone
 
 VERSION = 1
 DEFAULT_ROOT = os.path.expanduser("~/.codex/sessions")
@@ -69,6 +70,18 @@ def user_message_title(payload):
     return None
 
 
+def file_mtime_timestamp(path):
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return None
+    return (
+        datetime.fromtimestamp(mtime, timezone.utc)
+        .isoformat(timespec="milliseconds")
+        .replace("+00:00", "Z")
+    )
+
+
 def parse_session(path, cwd=None):
     session = {"path": path}
     try:
@@ -114,6 +127,7 @@ def parse_session(path, cwd=None):
         return None
 
     session["title"] = session.get("title") or "Untitled session"
+    session["updated_at"] = file_mtime_timestamp(path) or session["timestamp"]
     return session
 
 
@@ -130,7 +144,10 @@ def sessions(root, cwd=None):
         session = parse_session(path, cwd)
         if session:
             items.append(session)
-    items.sort(key=lambda item: item.get("timestamp", ""), reverse=True)
+    items.sort(
+        key=lambda item: item.get("updated_at") or item.get("timestamp", ""),
+        reverse=True,
+    )
     return items
 
 

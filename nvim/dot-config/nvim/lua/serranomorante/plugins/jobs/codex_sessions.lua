@@ -7,7 +7,7 @@ local CODEX_SESSION_ID_METADATA = "codex_session_id"
 local CODEX_SESSIONS_DIR = vim.fn.expand("~/.codex/sessions")
 local SESSION_CACHE_VERSION = 1
 local SESSION_CACHE_NAMESPACE = "nvim"
-local SESSION_CACHE_KEY = "codex-sessions-v1"
+local SESSION_CACHE_KEY = "codex-sessions-v2"
 local SESSION_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
 local SESSION_LINK_POLL_INTERVAL_MS = 500
 local SESSION_LINK_TIMEOUT_MS = 60 * 1000
@@ -144,6 +144,9 @@ local function valid_sessions(sessions)
 
   local valid = {}
   for _, session in ipairs(sessions) do
+    local updated_at = type(session) == "table" and session.updated_at or nil
+    if type(updated_at) ~= "string" and type(session) == "table" then updated_at = session.timestamp end
+
     if
       type(session) == "table"
       and type(session.id) == "string"
@@ -153,11 +156,17 @@ local function valid_sessions(sessions)
       and type(session.path) == "string"
       and (session.originator == nil or type(session.originator) == "string")
     then
+      session.updated_at = updated_at
       table.insert(valid, session)
     end
   end
 
-  table.sort(valid, function(a, b) return a.timestamp > b.timestamp end)
+  table.sort(valid, function(a, b)
+    local a_updated_at = a.updated_at or a.timestamp
+    local b_updated_at = b.updated_at or b.timestamp
+    if a_updated_at == b_updated_at then return a.timestamp > b.timestamp end
+    return a_updated_at > b_updated_at
+  end)
   return valid
 end
 
@@ -631,7 +640,7 @@ end
 ---@param include_cwd? boolean
 ---@return string
 local function format_session(session, include_cwd)
-  local label = ("%s | %s"):format(format_timestamp(session.timestamp), session.title)
+  local label = ("%s | %s"):format(format_timestamp(session.updated_at or session.timestamp), session.title)
   if include_cwd then label = ("%s | %s"):format(label, vim.fn.fnamemodify(session.cwd, ":~")) end
   return label
 end
