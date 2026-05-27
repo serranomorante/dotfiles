@@ -1182,6 +1182,72 @@ function M.schedule_open_overseer_task_float(task)
   end)
 end
 
+---@param bufnr integer
+---@return integer?
+local function overseer_job_id_for_buf(bufnr)
+  local task_id = vim.b[bufnr].overseer_task
+  if task_id then
+    local ok, task_list = pcall(require, "overseer.task_list")
+    local task = ok and task_list.get(task_id) or nil
+    if task then return task.job_id or task.strategy and task.strategy.job_id end
+  end
+
+  local ok, overseer = pcall(require, "overseer")
+  if not ok then return nil end
+
+  local tasks = overseer.list_tasks({
+    include_ephemeral = true,
+    filter = function(task) return task:get_bufnr() == bufnr end,
+  })
+  local task = tasks[1]
+  if task then return task.job_id or task.strategy and task.strategy.job_id end
+end
+
+---@param bufnr? integer
+---@param job_id? integer
+function M.refresh_terminal_window(bufnr, job_id)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  job_id = job_id or vim.b[bufnr].terminal_job_id or overseer_job_id_for_buf(bufnr)
+
+  if not job_id or job_id == 0 then
+    local channel = vim.api.nvim_get_option_value("channel", { buf = bufnr })
+    job_id = channel ~= 0 and channel or nil
+  end
+  if not job_id or job_id == 0 then
+    for _, chan in ipairs(vim.api.nvim_list_chans()) do
+      if chan.mode == "terminal" and (chan.buffer == bufnr or chan.buf == bufnr) then
+        job_id = chan.id
+        break
+      end
+    end
+  end
+
+  if job_id and job_id ~= 0 then
+    local ok, err = pcall(vim.fn.jobresize, job_id, vim.fn.winwidth(0), vim.fn.winheight(0))
+    if not ok and not tostring(err):find("not a job", 1, true) then
+      vim.notify(("Could not resize terminal job: %s"):format(err), vim.log.levels.WARN)
+    end
+  end
+
+  vim.cmd.redraw({ bang = true })
+end
+
+---@param task overseer.Task
+function M.refresh_task_terminal_window(task)
+  setup_task_terminal(task, "Refresh task terminal window", function(bufnr)
+    if vim.api.nvim_get_current_buf() ~= bufnr then return end
+
+    local job_id = vim.b[bufnr].terminal_job_id or task.job_id
+    if not job_id or job_id == 0 then
+      ---@diagnostic disable-next-line: invisible
+      local strategy = task.strategy
+      job_id = strategy and strategy.job_id or nil
+    end
+
+    M.refresh_terminal_window(bufnr, job_id)
+  end)
+end
+
 local function shell_fence_under_cursor()
   local bufnr = vim.api.nvim_get_current_buf()
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)

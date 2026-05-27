@@ -1056,6 +1056,7 @@ local function open_task(task, prompt, opts)
   utils.force_very_fullscreen_float(task)
   utils.start_insert_mode(task)
   utils.schedule_open_overseer_task_float(task)
+  utils.refresh_task_terminal_window(task)
   paste_prompt(task, prompt)
 end
 
