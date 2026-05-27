@@ -11,6 +11,12 @@ local function init()
       vim.defer_fn(function() vim.cmd.startinsert() end, 200)
     end,
   })
+  vim.api.nvim_create_autocmd("FileType", {
+    desc = "Attach task output float navigation keymaps",
+    pattern = "OverseerOutput",
+    -- Covers Overseer tasks that were not created through our task helpers.
+    callback = function(args) utils.attach_overseer_task_float_navigation(args.buf) end,
+  })
 end
 
 local function keys()

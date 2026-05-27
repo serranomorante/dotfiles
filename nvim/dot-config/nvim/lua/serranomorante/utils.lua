@@ -841,6 +841,7 @@ end
 function M.attach_keymaps(task, opts)
   opts = vim.tbl_extend("force", { terminal_escape = "<C-g>" }, opts or {})
   setup_task_terminal(task, "Attach task terminal keymaps", function(bufnr)
+    M.attach_overseer_task_float_navigation(bufnr)
     if vim.api.nvim_get_current_buf() == bufnr then vim.cmd.startinsert() end
     if opts.terminal_escape then
       local terminal_escape = type(opts.terminal_escape) == "string" and opts.terminal_escape or "<C-g>"
@@ -858,6 +859,67 @@ function M.attach_keymaps(task, opts)
       { buffer = bufnr, desc = "Use q to close terminal window (from normal mode)" }
     )
   end)
+end
+
+---@param bufnr? integer
+---@return overseer.Task?
+local function overseer_task_for_buf(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  local task_id = vim.b[bufnr].overseer_task
+  if not task_id then return end
+  return require("overseer.task_list").get(task_id)
+end
+
+---@param step integer
+function M.open_adjacent_overseer_task_float(step)
+  local current_task = overseer_task_for_buf()
+  if not current_task then return vim.notify("Current buffer is not an Overseer task output", vim.log.levels.WARN) end
+
+  local sort = require("overseer.config").task_list.sort
+  local tasks = require("overseer").list_tasks({
+    include_ephemeral = true,
+    sort = sort,
+    filter = function(task) return task:get_bufnr() ~= nil end,
+  })
+  if #tasks <= 1 then return vim.notify("No other Overseer task output to show", vim.log.levels.INFO) end
+
+  local current_index
+  for index, task in ipairs(tasks) do
+    if task.id == current_task.id then
+      current_index = index
+      break
+    end
+  end
+  if not current_index then return vim.notify("Current Overseer task is not in the task list", vim.log.levels.WARN) end
+
+  local next_index = ((current_index - 1 + step) % #tasks) + 1
+  local next_task = tasks[next_index]
+  M.attach_overseer_task_float_navigation(next_task:get_bufnr())
+  require("overseer").run_action(next_task, "open float")
+end
+
+---@param bufnr? integer
+function M.attach_overseer_task_float_navigation(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  if not vim.api.nvim_buf_is_valid(bufnr) or vim.b[bufnr].overseer_float_navigation_attached then return end
+  vim.b[bufnr].overseer_float_navigation_attached = true
+
+  vim.keymap.set("n", "]o", function() M.open_adjacent_overseer_task_float(1) end, {
+    buffer = bufnr,
+    desc = "Overseer: next task output float",
+  })
+  vim.keymap.set("n", "[o", function() M.open_adjacent_overseer_task_float(-1) end, {
+    buffer = bufnr,
+    desc = "Overseer: previous task output float",
+  })
+  vim.keymap.set({ "n", "t" }, "<M-j>", function() M.open_adjacent_overseer_task_float(1) end, {
+    buffer = bufnr,
+    desc = "Overseer: next task output float",
+  })
+  vim.keymap.set({ "n", "t" }, "<M-k>", function() M.open_adjacent_overseer_task_float(-1) end, {
+    buffer = bufnr,
+    desc = "Overseer: previous task output float",
+  })
 end
 
 ---@param task overseer.Task
