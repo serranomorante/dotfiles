@@ -185,7 +185,7 @@ vim.keymap.set({ "n", "x" }, "<leader>rm", function()
   utils.feedkeys("gg")
 end, { desc = "Prepare sorted remind command" })
 
-vim.keymap.set("t", "<leader>lm", function()
+vim.keymap.set("t", "<C-q>", function()
   utils.feedkeys("<C-\\><C-n>", "t")
   return "<cmd>close<CR>"
 end, { desc = "Close terminal window", expr = true, nowait = true, silent = true })
