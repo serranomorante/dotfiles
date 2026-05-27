@@ -837,15 +837,20 @@ function M.dispose_on_window_close(task, data)
 end
 
 ---@param task overseer.Task
-function M.attach_keymaps(task)
+---@param opts? { terminal_escape?: boolean|string }
+function M.attach_keymaps(task, opts)
+  opts = vim.tbl_extend("force", { terminal_escape = "<C-g>" }, opts or {})
   setup_task_terminal(task, "Attach task terminal keymaps", function(bufnr)
     if vim.api.nvim_get_current_buf() == bufnr then vim.cmd.startinsert() end
-    vim.keymap.set(
-      "t",
-      "<ESC>",
-      "<C-\\><C-n>",
-      { buffer = bufnr, desc = "Use `Esc` to exit terminal mode (go into normal mode)" }
-    )
+    if opts.terminal_escape then
+      local terminal_escape = type(opts.terminal_escape) == "string" and opts.terminal_escape or "<C-g>"
+      vim.keymap.set(
+        "t",
+        terminal_escape,
+        "<C-\\><C-n>",
+        { buffer = bufnr, desc = ("Use `%s` to exit terminal mode (go into normal mode)"):format(terminal_escape) }
+      )
+    end
     vim.keymap.set(
       "n",
       "q",
