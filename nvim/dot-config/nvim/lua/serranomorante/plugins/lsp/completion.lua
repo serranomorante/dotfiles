@@ -36,11 +36,23 @@ local kinds = {
 }
 
 local initialized = false
+local native_completion_enable = vim.lsp.completion.enable
+
+local function enable_native_completion(enable, client_id, bufnr, opts)
+  if enable and not vim.lsp.get_client_by_id(client_id) then return end
+
+  local ok, err = pcall(native_completion_enable, enable, client_id, bufnr, opts)
+  if ok then return end
+  if enable and tostring(err):match("invalid client ID") then return end
+  error(err)
+end
+
 local function initialize_once()
   if initialized then return end
   for i, v in ipairs(vim.lsp.protocol.CompletionItemKind) do
     vim.lsp.protocol.CompletionItemKind[i] = kinds[v]
   end
+  vim.lsp.completion.enable = enable_native_completion
   initialized = true
 end
 
