@@ -6,11 +6,11 @@
 set -euo pipefail
 
 readonly DEFAULT_AUDIO_SOURCE='source_node.work_audio'
-readonly DEFAULT_DISPLAY=':0.0+0,0'
+readonly FALLBACK_DISPLAY=':0.0+0,0'
 readonly DEFAULT_FRAMERATE='30'
 readonly DEFAULT_OUTPUT='mp4'
 readonly DEFAULT_PATH='~/Videos'
-readonly DEFAULT_VIDEO_SIZE='1920x1080'
+readonly FALLBACK_VIDEO_SIZE='1920x1080'
 readonly RUNTIME_ROOT="${XDG_RUNTIME_DIR:-/tmp}/dotfiles-record-screen"
 
 COMMAND="${1:-}"
@@ -20,11 +20,11 @@ fi
 
 ID=''
 AUDIO_SOURCE="$DEFAULT_AUDIO_SOURCE"
-DISPLAY="$DEFAULT_DISPLAY"
+DISPLAY=''
 FRAMERATE="$DEFAULT_FRAMERATE"
 OUTPUT="$DEFAULT_OUTPUT"
 OUTPUT_DIR="$DEFAULT_PATH"
-VIDEO_SIZE="$DEFAULT_VIDEO_SIZE"
+VIDEO_SIZE=''
 
 usage() {
     cat <<'EOF'
@@ -35,7 +35,8 @@ Usage:
   record-screen-ffmpeg stop [--id <id>]
   record-screen-ffmpeg status [--id <id>]
 
-When --id is omitted for control commands, the latest started session is used.
+By default, start records the current X11 monitor. When --id is omitted for
+control commands, the latest started session is used.
 EOF
 }
 
@@ -183,6 +184,34 @@ connect_music_production_source() {
     fi
 }
 
+geometry_helper() {
+    if command -v x11-monitor-geometry >/dev/null 2>&1; then
+        command -v x11-monitor-geometry
+        return
+    fi
+
+    if [[ -x "$HOME/dotfiles/utilities/bin/x11-monitor-geometry" ]]; then
+        printf '%s\n' "$HOME/dotfiles/utilities/bin/x11-monitor-geometry"
+    fi
+}
+
+resolve_capture_geometry() {
+    local helper
+
+    helper="$(geometry_helper || true)"
+    if [[ -n "$helper" ]]; then
+        if [[ -z "$VIDEO_SIZE" ]]; then
+            VIDEO_SIZE="$("$helper" --monitor current --format size 2>/dev/null || true)"
+        fi
+        if [[ -z "$DISPLAY" ]]; then
+            DISPLAY="$("$helper" --monitor current --format x11grab-input 2>/dev/null || true)"
+        fi
+    fi
+
+    [[ -n "$VIDEO_SIZE" ]] || VIDEO_SIZE="$FALLBACK_VIDEO_SIZE"
+    [[ -n "$DISPLAY" ]] || DISPLAY="$FALLBACK_DISPLAY"
+}
+
 start_segment() {
     local segment input_fifo
     connect_music_production_source
@@ -324,6 +353,7 @@ handle_control() {
 start_recording() {
     local timestamp
     require_commands awk basename date ffmpeg mkdir mkfifo mv rm sleep tr
+    resolve_capture_geometry
 
     [[ "$OUTPUT" == 'mp4' || "$OUTPUT" == 'mov' || "$OUTPUT" == 'gif' ]] ||
         die "unsupported output type: $OUTPUT"

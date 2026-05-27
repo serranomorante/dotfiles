@@ -1,0 +1,163 @@
+#!/bin/sh
+# Purpose: Print X11 monitor geometry in formats used by local wrappers.
+# Usage: x11-monitor-geometry [--monitor current|primary|NAME] [--format size|offset|x11grab-input|geometry]
+# Notes: The current monitor is selected from the mouse pointer location.
+
+set -eu
+
+monitor=current
+format=size
+display=${DISPLAY:-:0.0}
+
+usage() {
+    cat <<'EOF'
+Usage:
+  x11-monitor-geometry [--monitor current|primary|NAME] [--format size|offset|x11grab-input|geometry]
+
+Formats:
+  size           WxH
+  offset         +X,Y
+  x11grab-input  DISPLAY+X,Y
+  geometry       WxH+X+Y
+EOF
+}
+
+die() {
+    printf 'x11-monitor-geometry: %s\n' "$*" >&2
+    exit 1
+}
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --monitor)
+        [ "$#" -ge 2 ] || die "--monitor requires a value"
+        monitor=$2
+        shift 2
+        ;;
+    --monitor=*)
+        monitor=${1#*=}
+        shift
+        ;;
+    --format)
+        [ "$#" -ge 2 ] || die "--format requires a value"
+        format=$2
+        shift 2
+        ;;
+    --format=*)
+        format=${1#*=}
+        shift
+        ;;
+    --help | -h)
+        usage
+        exit 0
+        ;;
+    *)
+        die "unknown option: $1"
+        ;;
+    esac
+done
+
+command -v xrandr >/dev/null 2>&1 || die "missing required command: xrandr"
+
+case "$display" in
+*+*)
+    display=${display%%+*}
+    ;;
+esac
+export DISPLAY=$display
+
+monitor_rows() {
+    xrandr --listmonitors | awk 'NR > 1 { print $2 " " $3 " " $4 }' |
+        while read -r flags spec name; do
+            parsed=$(printf '%s\n' "$spec" |
+                sed -E 's|^([0-9]+)/[0-9]+x([0-9]+)/[0-9]+([+-][0-9]+)([+-][0-9]+)$|\1 \2 \3 \4|')
+            [ "$parsed" != "$spec" ] || continue
+            set -- $parsed
+            primary=0
+            case "$flags" in
+            *\*)
+                primary=1
+                ;;
+            esac
+            printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$1" "$2" "$3" "$4" "$primary"
+        done
+}
+
+pointer_xy() {
+    command -v xdotool >/dev/null 2>&1 || return 1
+    xdotool getmouselocation --shell 2>/dev/null |
+        awk -F= '
+            $1 == "X" { x = $2 }
+            $1 == "Y" { y = $2 }
+            END {
+                if (x != "" && y != "")
+                    print x, y
+                else
+                    exit 1
+            }
+        '
+}
+
+rows=$(monitor_rows)
+[ -n "$rows" ] || die "no monitors reported by xrandr"
+
+case "$monitor" in
+current)
+    if xy=$(pointer_xy); then
+        set -- $xy
+        selected=$(printf '%s\n' "$rows" |
+            awk -F '\t' -v px="$1" -v py="$2" '
+                px >= $4 && px < $4 + $2 && py >= $5 && py < $5 + $3 {
+                    print
+                    found = 1
+                    exit
+                }
+                END { if (!found) exit 1 }
+            ') || selected=''
+    else
+        selected=''
+    fi
+    if [ -z "$selected" ]; then
+        selected=$(printf '%s\n' "$rows" | awk -F '\t' '$6 == 1 { print; exit }')
+    fi
+    [ -n "$selected" ] || selected=$(printf '%s\n' "$rows" | sed -n '1p')
+    ;;
+primary)
+    selected=$(printf '%s\n' "$rows" | awk -F '\t' '$6 == 1 { print; exit }')
+    [ -n "$selected" ] || selected=$(printf '%s\n' "$rows" | sed -n '1p')
+    ;;
+*)
+    selected=$(printf '%s\n' "$rows" |
+        awk -F '\t' -v monitor="$monitor" '$1 == monitor { print; exit }')
+    [ -n "$selected" ] || die "monitor not found: $monitor"
+    ;;
+esac
+
+IFS='	' read -r name width height x y primary <<EOF
+$selected
+EOF
+
+y_for_grab=$y
+case "$y_for_grab" in
++*)
+    y_for_grab=${y_for_grab#+}
+    ;;
+esac
+
+case "$format" in
+size)
+    printf '%sx%s\n' "$width" "$height"
+    ;;
+offset)
+    printf '%s,%s\n' "$x" "$y_for_grab"
+    ;;
+x11grab-input)
+    printf '%s%s,%s\n' "$display" "$x" "$y_for_grab"
+    ;;
+geometry)
+    printf '%sx%s%s%s\n' "$width" "$height" "$x" "$y"
+    ;;
+*)
+    die "unknown format: $format"
+    ;;
+esac

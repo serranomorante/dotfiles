@@ -182,15 +182,10 @@
 
 - name: "[archlinux] Wine tools: setup virtual desktop"
   ansible.builtin.command: >
-    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper {{ item }}
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper --desktop wineboot -u
   changed_when: true
-  when: "'1920x1080' not in var_reg_virtual_desktop.stdout"
+  when: var_reg_virtual_desktop is failed
   timeout: 60
-  loop:
-    - >-
-      wine reg add "HKEY_CURRENT_USER\Software\Wine\Explorer" /v Desktop /d Default /f
-    - >-
-      wine reg add "HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops" /v Default /d 1920x1080 /f
 
 - name: "[archlinux] Wine tools: show dot files"
   ansible.builtin.command: >

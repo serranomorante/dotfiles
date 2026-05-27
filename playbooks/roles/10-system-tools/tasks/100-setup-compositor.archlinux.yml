@@ -121,6 +121,7 @@
     - add-dwm-ewmh-atoms.patch
     # Skip some windows like quick-access-terminal from focus history
     - skipfocushistory.patch
+    - full-monitor.patch
     # My changes. Always leave this last.
     - make-dwm-debuggable.patch
     - custom.patch

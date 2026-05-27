@@ -36,7 +36,8 @@ prefix=""
 arch=""
 use_desktop=1
 desktop_name="Default"
-desktop_size="1920x1080"
+desktop_size=""
+fallback_desktop_size="1920x1080"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -132,11 +133,29 @@ fi
 
 configure_desktop() {
   if [[ "$use_desktop" == 1 ]]; then
+    if [[ -z "$desktop_size" ]]; then
+      desktop_size="$(default_desktop_size)"
+    fi
     "$WINELOADER" reg add 'HKEY_CURRENT_USER\Software\Wine\Explorer' /v Desktop /d "$desktop_name" /f >/dev/null
     "$WINELOADER" reg add 'HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops' /v "$desktop_name" /d "$desktop_size" /f >/dev/null
   else
     "$WINELOADER" reg delete 'HKEY_CURRENT_USER\Software\Wine\Explorer' /v Desktop /f >/dev/null 2>&1 || true
   fi
+}
+
+default_desktop_size() {
+  local helper
+
+  if command -v x11-monitor-geometry >/dev/null 2>&1; then
+    helper="$(command -v x11-monitor-geometry)"
+  elif [[ -x "$HOME/dotfiles/utilities/bin/x11-monitor-geometry" ]]; then
+    helper="$HOME/dotfiles/utilities/bin/x11-monitor-geometry"
+  else
+    printf '%s\n' "$fallback_desktop_size"
+    return
+  fi
+
+  "$helper" --monitor current --format size 2>/dev/null || printf '%s\n' "$fallback_desktop_size"
 }
 
 configure_desktop_for_wine_args() {

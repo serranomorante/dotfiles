@@ -1,0 +1,40 @@
+diff --git a/dwm.c b/dwm.c
+index 5a72a93..caa12f2 100644
+--- a/dwm.c
++++ b/dwm.c
+@@ -327,19 +327,31 @@ applyrules(Client *c)
+ 				c->hasfloatbw = 1;
+ 			}
+ 			if (r->isfloating) {
+-				if (r->floatx >= 0) {
++				if (r->floatx == FULLMON) {
++					c->x = c->mon->wx;
++					c->hasfloatx = 1;
++				} else if (r->floatx >= 0) {
+ 					c->x = c->mon->mx + r->floatx;
+ 					c->hasfloatx = 1;
+ 				}
+-				if (r->floaty >= 0) {
++				if (r->floaty == FULLMON) {
++					c->y = c->mon->wy;
++					c->hasfloaty = 1;
++				} else if (r->floaty >= 0) {
+ 					c->y = c->mon->my + r->floaty;
+ 					c->hasfloaty = 1;
+ 				}
+-				if (r->floatw >= 0) {
++				if (r->floatw == FULLMON) {
++					c->w = MAX(1, c->mon->ww - 2 * (r->floatborderpx >= 0 ? r->floatborderpx : borderpx));
++					c->hasfloatw = 1;
++				} else if (r->floatw >= 0) {
+ 					c->w = r->floatw;
+ 					c->hasfloatw = 1;
+ 				}
+-				if (r->floath >= 0) {
++				if (r->floath == FULLMON) {
++					c->h = MAX(1, c->mon->wh - 2 * (r->floatborderpx >= 0 ? r->floatborderpx : borderpx));
++					c->hasfloath = 1;
++				} else if (r->floath >= 0) {
+ 					c->h = r->floath;
+ 					c->hasfloath = 1;
+ 				}

@@ -221,7 +221,10 @@ tree and system Wine tree, and registered into the Reaper Wine prefix.
 Wine commands launched through `~/bin/wwine` use Wine's virtual desktop by
 default. Keep the default virtual desktop registry name as `Default`: installer
 wait loops poll `wmctrl -lx` for `explorer.exe`, and the DWM Wine rule relies on
-Wine's virtual desktop window identity staying stable.
+Wine's virtual desktop window identity staying stable. The default virtual
+desktop size is derived at runtime from the current X11 monitor through
+`utilities/bin/x11-monitor-geometry`; use `wwine --desktop=<WxH>` only for
+intentional fixed-size overrides.
 
 ## Keyboard And Mouse-Free Workflow
 
@@ -290,6 +293,10 @@ Wacom tablet behavior is split between Xorg defaults and runtime reapply hooks:
   state and forces a small mode refresh when X is still rendering but the
   kernel reports the panel connector disabled or DPMS-off. It is run by both a
   low-frequency user timer and the monitor hotplug udev rule.
+- `utilities/bin/x11-monitor-geometry` is the shared helper for monitor-relative
+  runtime geometry. Use it when wrappers need the current monitor's `WxH`,
+  XRandR-style geometry, or ffmpeg `x11grab` input rather than hard-coding a
+  laptop-panel resolution.
 
 ## Terminal And Kitty
 
@@ -322,7 +329,9 @@ Kitty quick-access-terminal uses Kitty's panel machinery internally. On X11,
 the default `edge top` panel geometry forces full monitor width after DWM
 applies float rules, so DWM-managed quick-access windows should use
 `edge none`. DWM float geometry rules for these windows rely on the local
-floatrules preservation patch in the DWM patch stack.
+floatrules preservation patch in the DWM patch stack. When a quick-access TUI
+should cover the active monitor regardless of display size, use the DWM
+`FULLMON` float rule sentinel instead of hard-coded pixel dimensions.
 
 Quick-access TUI wrappers should scope panels per Kitty OS window with
 `--instance-group`. Use an app-specific prefix, such as
@@ -398,6 +407,11 @@ The compositor/window-manager setup task is:
 ```text
 playbooks/roles/10-system-tools/tasks/100-setup-compositor.archlinux.yml
 ```
+
+DWM float rules support the local `FULLMON` sentinel for windows that should
+fill the selected monitor while remaining floating. Keep monitor-relative
+fullscreen behavior in the DWM patch stack rather than encoding a specific
+panel resolution such as `1920x1080`.
 
 ## Existing Documentation
 
