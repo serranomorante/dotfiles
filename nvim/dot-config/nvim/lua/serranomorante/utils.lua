@@ -578,6 +578,45 @@ end
 ---@field prompt? string
 ---@field sink? fun(entry: string)
 ---@field sinklist? fun(entry:string[])
+---@field refresh? fun(reload: fun(source: string[]): nil): (fun()|integer)?
+
+---@param value string
+---@return string
+local function shell_quote(value) return "'" .. value:gsub("'", "'\\''") .. "'" end
+
+---@param path string
+---@return boolean
+local function path_exists(path) return vim.uv.fs_stat(path) ~= nil end
+
+---@param fzf_sock string
+---@param source_file string
+local function fzf_reload(fzf_sock, source_file)
+  if vim.fn.executable("curl") ~= 1 or not path_exists(fzf_sock) then return end
+
+  vim.fn.jobstart({
+    "curl",
+    "-fsS",
+    "--unix-socket",
+    fzf_sock,
+    "http://fzf",
+    "-d",
+    "reload(cat " .. shell_quote(source_file) .. ")",
+  }, { detach = true })
+end
+
+---@param fzf_sock string
+---@param callback fun()
+---@param attempts? integer
+local function wait_for_fzf_socket(fzf_sock, callback, attempts)
+  attempts = attempts or 40
+  if path_exists(fzf_sock) then
+    callback()
+    return
+  end
+
+  if attempts <= 0 then return end
+  vim.defer_fn(function() wait_for_fzf_socket(fzf_sock, callback, attempts - 1) end, 50)
+end
 
 ---https://elanmed.dev/blog/native-fzf-in-neovim
 ---@param opts FzfOpts
@@ -585,6 +624,8 @@ function M.fzf(opts)
   opts.options = opts.options or {}
   local tempname = vim.fn.tempname()
   local source_temp = vim.fn.tempname()
+  local fzf_sock = opts.refresh and (source_temp .. ".fzf.sock") or nil
+  local closed = false
 
   local editor_height = vim.o.lines - 1
   local border_height = 2
@@ -627,14 +668,29 @@ function M.fzf(opts)
       return opts.source
     else
       vim.fn.writefile(opts.source, source_temp)
-      return ([[cat %s]]):format(source_temp)
+      return ([[cat %s]]):format(shell_quote(source_temp))
     end
   end)()
 
-  local cmd = ("%s | fzf %s > %s"):format(source, table.concat(opts.options, " "), tempname)
-  vim.fn.jobstart(cmd, {
+  local fzf_options = vim.deepcopy(opts.options)
+  if fzf_sock then
+    vim.fn.delete(fzf_sock)
+    table.insert(fzf_options, "--listen=" .. shell_quote(fzf_sock))
+    table.insert(fzf_options, "--bind=" .. shell_quote("ctrl-r:reload(cat " .. shell_quote(source_temp) .. ")"))
+  end
+
+  local cmd = ("FZF_API_KEY= %s | fzf %s > %s"):format(source, table.concat(fzf_options, " "), shell_quote(tempname))
+  local refresh_cancel
+  local job_id = vim.fn.jobstart(cmd, {
     term = true,
     on_exit = function()
+      closed = true
+      if type(refresh_cancel) == "function" then
+        pcall(refresh_cancel)
+      elseif type(refresh_cancel) == "number" and refresh_cancel > 0 then
+        pcall(vim.fn.jobstop, refresh_cancel)
+      end
+
       if vim.api.nvim_win_is_valid(term_winnr) then pcall(vim.api.nvim_win_close, term_winnr, true) end
       local temp_content = vim.fn.readfile(tempname)
       if #temp_content > 0 then
@@ -647,8 +703,19 @@ function M.fzf(opts)
 
       vim.fn.delete(tempname)
       vim.fn.delete(source_temp)
+      if fzf_sock then vim.fn.delete(fzf_sock) end
     end,
   })
+
+  if job_id <= 0 or not opts.refresh or not fzf_sock then return end
+
+  refresh_cancel = opts.refresh(function(next_source)
+    if closed then return end
+    vim.fn.writefile(next_source, source_temp)
+    wait_for_fzf_socket(fzf_sock, function()
+      if not closed then fzf_reload(fzf_sock, source_temp) end
+    end)
+  end)
 end
 
 ---Custom select to override builtin one
@@ -705,7 +772,55 @@ function M.close_window_on_exit_0(task, status)
   end
 end
 
-local function is_preview(buf) return vim.api.nvim_win_get_config(vim.fn.bufwinid(buf)).row == 1 end
+local function is_preview(buf)
+  local winid = vim.fn.bufwinid(buf)
+  return winid ~= -1 and vim.api.nvim_win_get_config(winid).row == 1
+end
+
+---@param bufnr integer?
+---@return boolean
+local function is_terminal_buffer(bufnr)
+  if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return false end
+  return vim.api.nvim_get_option_value("buftype", { buf = bufnr }) == "terminal"
+end
+
+---@param task overseer.Task
+---@return Promise
+local function wait_for_task_terminal(task)
+  return require("async")(function()
+    local timeout = false
+    M.set_timeout(function() timeout = true end, 3000)
+
+    while not timeout do
+      local bufnr = task:get_bufnr()
+      if is_terminal_buffer(bufnr) then return bufnr end
+      await(M.wait(100))
+    end
+
+    error("Timed out waiting for task terminal buffer")
+  end)
+end
+
+---@param task overseer.Task
+---@param desc string
+---@param apply fun(bufnr: integer)
+local function setup_task_terminal(task, desc, apply)
+  local function apply_if_terminal(bufnr)
+    if not is_terminal_buffer(bufnr) then return false end
+    if is_preview(bufnr) then return false end
+    apply(bufnr)
+    return true
+  end
+
+  wait_for_task_terminal(task):thenCall(function(bufnr)
+    apply_if_terminal(bufnr)
+    vim.api.nvim_create_autocmd("BufEnter", {
+      desc = desc,
+      buffer = bufnr,
+      callback = function(args) apply_if_terminal(args.buf) end,
+    })
+  end, function() end)
+end
 
 ---@param task overseer.Task
 ---@param data string[] Output of process. See :help channel-lines
@@ -723,26 +838,21 @@ end
 
 ---@param task overseer.Task
 function M.attach_keymaps(task)
-  vim.api.nvim_create_autocmd("BufEnter", {
-    buffer = task:get_bufnr(),
-    callback = function(args)
-      if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) ~= "terminal" then return end
-      if is_preview(args.buf) then return end
-      vim.cmd.startinsert()
-      vim.keymap.set(
-        "t",
-        "<ESC>",
-        "<C-\\><C-n>",
-        { buffer = args.buf, desc = "Use `Esc` to exit terminal mode (go into normal mode)" }
-      )
-      vim.keymap.set(
-        "n",
-        "q",
-        "<cmd>close<CR>",
-        { buffer = args.buf, desc = "Use q to close terminal window (from normal mode)" }
-      )
-    end,
-  })
+  setup_task_terminal(task, "Attach task terminal keymaps", function(bufnr)
+    if vim.api.nvim_get_current_buf() == bufnr then vim.cmd.startinsert() end
+    vim.keymap.set(
+      "t",
+      "<ESC>",
+      "<C-\\><C-n>",
+      { buffer = bufnr, desc = "Use `Esc` to exit terminal mode (go into normal mode)" }
+    )
+    vim.keymap.set(
+      "n",
+      "q",
+      "<cmd>close<CR>",
+      { buffer = bufnr, desc = "Use q to close terminal window (from normal mode)" }
+    )
+  end)
 end
 
 ---@param task overseer.Task
@@ -836,27 +946,18 @@ end
 
 ---@param task overseer.Task
 function M.force_very_fullscreen_float(task)
-  vim.api.nvim_create_autocmd("BufEnter", {
-    buffer = task:get_bufnr(),
-    callback = function(args)
-      if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) ~= "terminal" then return end
-      if is_preview(args.buf) then return end
-      pcall(vim.fn.jobresize, task.job_id, vim.o.columns, vim.o.lines - 3)
-      vim.cmd.wincmd({ "|" })
-    end,
-  })
+  setup_task_terminal(task, "Resize task terminal float", function(bufnr)
+    if vim.api.nvim_get_current_buf() ~= bufnr then return end
+    pcall(vim.fn.jobresize, task.job_id, vim.o.columns, vim.o.lines - 3)
+    vim.cmd.wincmd({ "|" })
+  end)
 end
 
 ---@param task overseer.Task
 function M.start_insert_mode(task)
-  vim.api.nvim_create_autocmd("BufEnter", {
-    buffer = task:get_bufnr(),
-    callback = function(args)
-      if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) ~= "terminal" then return end
-      if is_preview(args.buf) then return end
-      vim.cmd.startinsert()
-    end,
-  })
+  setup_task_terminal(task, "Start insert mode in task terminal", function(bufnr)
+    if vim.api.nvim_get_current_buf() == bufnr then vim.cmd.startinsert() end
+  end)
 end
 
 return M

@@ -51,6 +51,11 @@ for user-facing commands.
   or legacy files that are not being renamed in the current change.
 - Keep comments useful and short. Add comments when they explain non-obvious
   behavior or latency-sensitive tradeoffs.
+- Avoid fixed sleeps, arbitrary delays, and timing-based retries for readiness
+  unless there is no practical observable signal. Prefer events, process
+  output, sockets, files, exit states, API responses, or other explicit state.
+  When a timing fallback is truly unavoidable, keep it bounded and document why
+  no better signal is available.
 - Scripts should start with a brief header after the shebang, and after any
   generated-file marker. Use this structure by default:
   `Purpose:` one or two lines describing what the script does; `Usage:` only

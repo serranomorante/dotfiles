@@ -20,6 +20,7 @@ local function keys()
   vim.keymap.set("n", "<leader>oo", "<cmd>OverseerToggle<CR>", { desc = "Overseer: Toggle the overseer window" })
   vim.keymap.set("n", "<leader>or", "<cmd>OverseerRun<CR>", { desc = "Overseer: Run a task from a template" })
   vim.keymap.set("n", "<leader>oc", "<cmd>OverseerRunCmd<CR>", { desc = "Overseer: Run a raw shell command" })
+  require("serranomorante.plugins.jobs.codex_sessions").keys()
   vim.keymap.set(
     "n",
     "<leader>ol",

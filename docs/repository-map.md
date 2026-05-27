@@ -106,6 +106,13 @@ plugin directories have been removed and before Ansible restores them. Global
 keymaps and commands should also guard optional plugin calls so basic editor
 actions such as quitting remain available without the plugin pack.
 
+Runtime code on interactive Neovim paths must not block the main event loop with
+recursive scans, large file reads, JSON parsing over many files, shell waits, or
+polling loops. `vim.defer_fn()` delays synchronous work but still runs it on the
+main loop. Prefer `vim.uv` async APIs and the `promise-async` plugin
+(`require("promise")` / `require("async")`), using background jobs for expensive
+parsing or discovery. See [neovim-runtime-performance.md](./neovim-runtime-performance.md).
+
 ## Shared Runtime Cache
 
 Use Valkey for small cross-process runtime caches that need to be shared by
