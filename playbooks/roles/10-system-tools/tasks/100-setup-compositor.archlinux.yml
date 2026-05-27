@@ -62,11 +62,9 @@
     state: directory
     mode: "755"
 
-- name: "[archlinux] Compositor: get all dwm patches"
-  ansible.builtin.get_url:
-    url: "{{ item }}"
-    dest: ~/data/repos/dwm/patches/{{ item | basename }}
-    mode: "755"
+- name: "[archlinux] Compositor: inspect downloaded dwm patches"
+  ansible.builtin.stat:
+    path: ~/data/repos/dwm/patches/{{ item | basename }}
   loop:
     - https://dwm.suckless.org/patches/fakefullscreen/dwm-fakefullscreen-20210714-138b405.diff
     - https://dwm.suckless.org/patches/focusmaster/dwm-focusmaster-20210804-138b405.diff
@@ -77,7 +75,16 @@
     - https://raw.githubusercontent.com/bakkeby/patches/refs/heads/master/dwm/dwm-unmanaged-6.6.diff
     - https://dwm.suckless.org/patches/focusonnetactive/dwm-focusonnetactive-6.2.diff
     - https://dwm.suckless.org/patches/canfocusfloating/dwm-canfocusfloating-20210724-b914109.diff
+  register: var_dwm_patch_files
+
+- name: "[archlinux] Compositor: download missing dwm patches"
+  ansible.builtin.get_url:
+    url: "{{ item }}"
+    dest: ~/data/repos/dwm/patches/{{ item | basename }}
+    mode: "755"
+  loop: "{{ var_dwm_patch_files.results | rejectattr('stat.exists') | map(attribute='item') | list }}"
   loop_control:
+    label: "{{ item | basename }}"
     pause: 1
 
 - name: "[archlinux] Compositor: apply dwm patches"
