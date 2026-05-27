@@ -86,6 +86,9 @@ Commit subjects use `<type>(<scope>): <imperative summary>`, for example `fix(ke
 
 Commit bodies should explain the context behind the change, not merely restate the implementation that is already visible in the diff. Describe the problem or friction that led to the work, what outcome the change was meant to achieve, and the intent behind the chosen solution. Include operational impact when relevant. For very small self-explanatory changes, a subject-only commit is still fine.
 
+When a commit is generated from an assistant conversation, include `@agent <conversation id>` in the commit body. Resolve Codex ids with `utilities/bin/codex-session-store current-id --cwd "$PWD"` or the active `codex-session-store` on `PATH`; this is the same session parser used by Neovim's Codex Overseer integration. Placeholder values such as `unknown`, `unavailable`, `none`, or `n/a` are never acceptable. If the id cannot be resolved, stop before committing instead of inventing a value. Keep the identifier line provider-neutral; do not name the assistant product or vendor.
+
+The repository commit-message guard lives at `utilities/git-hooks/commit-msg`. Keep `core.hooksPath` pointed at `utilities/git-hooks` for this repository. The hook validates `@agent` only when the trailer is present, so manual commits without an assistant conversation id remain valid; when `@agent` is present, placeholder values are rejected before they enter history.
 
 When committing:
 

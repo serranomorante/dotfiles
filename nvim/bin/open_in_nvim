@@ -84,8 +84,12 @@ nvim_center_view='vim.cmd.normal({ "zz", bang = true })'
 nvim_close_term_win="pcall(vim.api.nvim_win_close, 0, false)"
 nvim_edit="vim.cmd.edit({ [[$1]], mods = { emsg_silent = true }})" # don't use `nvr --remote` because it doesn't respect shortmess
 
+ex_command_arg() {
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/|/\\|/g'
+}
+
 case $app in
-nnn_search | nnn_explorer | git_editor | lazygit_edit | lazygit_edit_at_line | lazygit_edit_at_line_and_wait | lazygit_open | lazygit_open_dir_in_editor | lazygit_compare_branch | lazygit_open_merge_tool | lazygit_open_difftool | lazygit_diff_against_parent | lazygit_diff_with_local_copy | kitty_edit | kitty_edit_at_line | kitty_simple_edit | kitty_simple_edit_at_line)
+nnn_search | nnn_explorer | git_editor | lazygit_edit | lazygit_edit_at_line | lazygit_edit_at_line_and_wait | lazygit_open | lazygit_open_dir_in_editor | lazygit_compare_branch | lazygit_open_merge_tool | lazygit_open_difftool | lazygit_diff_against_parent | lazygit_diff_with_local_copy | kitty_edit | kitty_edit_at_line | kitty_simple_edit | kitty_simple_edit_at_line | agent_conversation)
     require_servername
     ;;
 esac
@@ -145,6 +149,10 @@ kitty_simple_edit)
     ;;
 kitty_simple_edit_at_line)
     nvr --servername "$servername" --nostart -cc "lua $nvim_edit; $nvim_center_view" -c "$2"
+    ;;
+agent_conversation)
+    agent_id=$(ex_command_arg "$1")
+    nvr --servername "$servername" --nostart -c "CodexResumeById $agent_id"
     ;;
 *)
     if [ -n "$app" ]; then

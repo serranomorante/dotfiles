@@ -1,0 +1,39 @@
+#!/bin/sh
+# Purpose: Reject placeholder assistant conversation ids in commit messages.
+# Usage: Git runs this as commit-msg when core.hooksPath points here.
+
+set -eu
+
+msg_file=$1
+
+invalid_agent_line=$(
+    awk '
+        BEGIN { IGNORECASE = 1 }
+        /^[[:space:]]*@agent[[:space:]]*$/ {
+            print
+            exit 0
+        }
+        /^[[:space:]]*@agent[[:space:]]+/ {
+            value = $0
+            sub(/^[[:space:]]*@agent[[:space:]]+/, "", value)
+            sub(/[[:space:]]+$/, "", value)
+
+            if (value ~ /^(unknown|unavailable|none|null|n\/a|na|tbd|todo|\?)$/) {
+                print
+                exit 0
+            }
+
+            if (value ~ /^<.*>$/) {
+                print
+                exit 0
+            }
+        }
+    ' "$msg_file"
+)
+
+if [ -n "$invalid_agent_line" ]; then
+    printf '%s\n' "commit-msg: invalid assistant conversation id trailer:" >&2
+    printf '%s\n' "  $invalid_agent_line" >&2
+    printf '%s\n' "Resolve the real conversation id with codex-session-store and use: @agent <conversation id>" >&2
+    exit 1
+fi

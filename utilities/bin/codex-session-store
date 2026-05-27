@@ -1,0 +1,311 @@
+#!/usr/bin/env python3
+# Purpose: Query local Codex session files for Neovim and assistant tooling.
+# Usage: codex-session-store refresh|ids|watch-new|wait-new|current-id ...
+
+import argparse
+import json
+import os
+import sys
+import time
+
+VERSION = 1
+DEFAULT_ROOT = os.path.expanduser("~/.codex/sessions")
+DEFAULT_HISTORY = os.path.expanduser("~/.codex/history.jsonl")
+SESSION_READ_BYTES = 512 * 1024
+ENV_SESSION_KEYS = (
+    "CODEX_SESSION_ID",
+    "CODEX_CONVERSATION_ID",
+    "CODEX_CURRENT_SESSION_ID",
+)
+
+
+def compact_text(text):
+    if not text:
+        return None
+    text = " ".join(str(text).split())
+    return text or None
+
+
+def is_generated_context_message(text):
+    text = compact_text(text)
+    if not text:
+        return False
+    return (
+        text.startswith("# AGENTS.md instructions for ")
+        or text.startswith("<environment_context>")
+        or text.startswith("<permissions instructions>")
+        or text.startswith("<collaboration_mode>")
+        or text.startswith("<skills_instructions>")
+    )
+
+
+def normalize_title(text):
+    text = compact_text(text)
+    if not text or is_generated_context_message(text):
+        return None
+    return text
+
+
+def content_text(content):
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return None
+
+    parts = []
+    for item in content:
+        if isinstance(item, str):
+            parts.append(item)
+        elif isinstance(item, dict) and isinstance(item.get("text"), str):
+            parts.append(item["text"])
+    return " ".join(parts)
+
+
+def user_message_title(payload):
+    if payload.get("type") == "user_message":
+        return normalize_title(payload.get("message"))
+    if payload.get("type") == "message" and payload.get("role") == "user":
+        return normalize_title(content_text(payload.get("content")))
+    return None
+
+
+def parse_session(path, cwd=None):
+    session = {"path": path}
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            data = handle.read(SESSION_READ_BYTES)
+    except OSError:
+        return None
+
+    for line in data.splitlines():
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        payload = item.get("payload")
+        if not isinstance(payload, dict):
+            continue
+
+        if item.get("type") == "session_meta":
+            session["id"] = payload.get("id")
+            session["cwd"] = payload.get("cwd")
+            session["timestamp"] = payload.get("timestamp")
+            session["originator"] = payload.get("originator")
+
+        if not session.get("title"):
+            session["title"] = user_message_title(payload)
+
+        if (
+            session.get("id")
+            and session.get("cwd")
+            and session.get("timestamp")
+            and session.get("title")
+        ):
+            break
+
+    if (
+        (cwd and session.get("cwd") != cwd)
+        or not session.get("id")
+        or not session.get("timestamp")
+    ):
+        return None
+    if session.get("originator") != "codex-tui":
+        return None
+
+    session["title"] = session.get("title") or "Untitled session"
+    return session
+
+
+def session_files(root):
+    for dirpath, _dirnames, filenames in os.walk(root):
+        for filename in filenames:
+            if filename.endswith(".jsonl"):
+                yield os.path.join(dirpath, filename)
+
+
+def sessions(root, cwd=None):
+    items = []
+    for path in session_files(root):
+        session = parse_session(path, cwd)
+        if session:
+            items.append(session)
+    items.sort(key=lambda item: item.get("timestamp", ""), reverse=True)
+    return items
+
+
+def emit(payload):
+    print(json.dumps(payload, separators=(",", ":")), flush=True)
+
+
+def emit_refresh(args):
+    emit(
+        {
+            "version": VERSION,
+            "generated_at": int(time.time()),
+            "sessions": sessions(args.root),
+        }
+    )
+
+
+def emit_ids(args):
+    emit(
+        {
+            "version": VERSION,
+            "ids": [item["id"] for item in sessions(args.root, args.cwd)],
+        }
+    )
+
+
+def find_new_session(root, cwd, known_ids):
+    for session in sessions(root, cwd):
+        if session["id"] not in known_ids:
+            return session
+    return None
+
+
+def emit_wait_new(args):
+    known_ids = set(json.loads(args.known_ids_json))
+    deadline = time.monotonic() + args.timeout_seconds
+
+    while True:
+        session = find_new_session(args.root, args.cwd, known_ids)
+        if session:
+            emit({"version": VERSION, "session": session})
+            return
+
+        if time.monotonic() >= deadline:
+            emit({"version": VERSION, "session": None})
+            return
+
+        time.sleep(args.interval_seconds)
+
+
+def emit_watch_new(args):
+    known_ids = set(json.loads(args.known_ids_json))
+    deadline = time.monotonic() + args.timeout_seconds
+    new_session = None
+
+    while True:
+        new_session = find_new_session(args.root, args.cwd, known_ids)
+        if new_session:
+            emit({"version": VERSION, "event": "session", "session": new_session})
+            break
+
+        if time.monotonic() >= deadline:
+            emit({"version": VERSION, "event": "timeout"})
+            return
+
+        time.sleep(args.interval_seconds)
+
+    if new_session.get("title"):
+        emit({"version": VERSION, "event": "title", "session": new_session})
+        return
+
+    title_deadline = time.monotonic() + args.title_timeout_seconds
+    while True:
+        for session in sessions(args.root, args.cwd):
+            if session["id"] == new_session["id"] and session.get("title"):
+                emit({"version": VERSION, "event": "title", "session": session})
+                return
+
+        if time.monotonic() >= title_deadline:
+            return
+
+        time.sleep(args.interval_seconds)
+
+
+def latest_history_session_id(history_path):
+    try:
+        with open(history_path, "r", encoding="utf-8", errors="replace") as handle:
+            lines = handle.readlines()
+    except OSError:
+        return None
+
+    for line in reversed(lines):
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        session_id = item.get("session_id")
+        if isinstance(session_id, str) and session_id:
+            return session_id
+    return None
+
+
+def resolve_current_id(args):
+    for key in ENV_SESSION_KEYS:
+        session_id = os.environ.get(key)
+        if session_id:
+            return session_id
+
+    session_id = latest_history_session_id(args.history)
+    if session_id:
+        return session_id
+
+    scoped = sessions(args.root, args.cwd)
+    if scoped:
+        return scoped[0]["id"]
+
+    all_sessions = sessions(args.root)
+    if all_sessions:
+        return all_sessions[0]["id"]
+
+    return None
+
+
+def emit_current_id(args):
+    session_id = resolve_current_id(args)
+    if not session_id:
+        print(
+            "codex-session-store: could not resolve current session id", file=sys.stderr
+        )
+        raise SystemExit(1)
+    print(session_id)
+
+
+def parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--root", default=DEFAULT_ROOT)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    refresh = subparsers.add_parser("refresh")
+    refresh.set_defaults(func=emit_refresh)
+
+    ids = subparsers.add_parser("ids")
+    ids.add_argument("cwd")
+    ids.set_defaults(func=emit_ids)
+
+    wait_new = subparsers.add_parser("wait-new")
+    wait_new.add_argument("cwd")
+    wait_new.add_argument("known_ids_json")
+    wait_new.add_argument("timeout_seconds", type=float)
+    wait_new.add_argument("interval_seconds", type=float)
+    wait_new.set_defaults(func=emit_wait_new)
+
+    watch_new = subparsers.add_parser("watch-new")
+    watch_new.add_argument("cwd")
+    watch_new.add_argument("known_ids_json")
+    watch_new.add_argument("timeout_seconds", type=float)
+    watch_new.add_argument("interval_seconds", type=float)
+    watch_new.add_argument("title_timeout_seconds", type=float)
+    watch_new.set_defaults(func=emit_watch_new)
+
+    current_id = subparsers.add_parser("current-id")
+    current_id.add_argument("--cwd")
+    current_id.add_argument("--history", default=DEFAULT_HISTORY)
+    current_id.set_defaults(func=emit_current_id)
+
+    return parser
+
+
+def main():
+    args = parser().parse_args()
+    args.root = os.path.expanduser(args.root)
+    if hasattr(args, "history"):
+        args.history = os.path.expanduser(args.history)
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

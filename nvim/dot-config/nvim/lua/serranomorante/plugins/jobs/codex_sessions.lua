@@ -20,300 +20,22 @@ local session_cache = {
   waiters = {},
 }
 
-local CODEX_SESSION_REFRESH_SCRIPT = [=[
-import json
-import os
-import sys
-import time
+local function codex_session_store_bin()
+  local configured_bin = vim.env.CODEX_SESSION_STORE_BIN
+  if configured_bin and configured_bin ~= "" and vim.fn.executable(configured_bin) == 1 then return configured_bin end
 
-root = sys.argv[1]
+  local repo_bin = utils.join_paths(vim.env.HOME, "dotfiles", "utilities", "bin", "codex-session-store")
+  if vim.fn.executable(repo_bin) == 1 then return repo_bin end
+  if vim.fn.executable("codex-session-store") == 1 then return "codex-session-store" end
+end
 
+---@return string[]?
+local function codex_session_store_cmd(...)
+  local bin = codex_session_store_bin()
+  if not bin then return end
 
-def compact_text(text):
-    if not text:
-        return None
-    text = " ".join(str(text).split())
-    return text or None
-
-
-def is_generated_context_message(text):
-    text = compact_text(text)
-    if not text:
-        return False
-    return (
-        text.startswith("# AGENTS.md instructions for ")
-        or text.startswith("<environment_context>")
-        or text.startswith("<permissions instructions>")
-        or text.startswith("<collaboration_mode>")
-        or text.startswith("<skills_instructions>")
-    )
-
-
-def normalize_title(text):
-    text = compact_text(text)
-    if not text or is_generated_context_message(text):
-        return None
-    return text
-
-
-def content_text(content):
-    if isinstance(content, str):
-        return content
-    if not isinstance(content, list):
-        return None
-
-    parts = []
-    for item in content:
-        if isinstance(item, str):
-            parts.append(item)
-        elif isinstance(item, dict) and isinstance(item.get("text"), str):
-            parts.append(item["text"])
-    return " ".join(parts)
-
-
-def user_message_title(payload):
-    if payload.get("type") == "user_message":
-        return normalize_title(payload.get("message"))
-    if payload.get("type") == "message" and payload.get("role") == "user":
-        return normalize_title(content_text(payload.get("content")))
-    return None
-
-
-def parse_session(path):
-    session = {"path": path}
-    try:
-        with open(path, "r", encoding="utf-8", errors="replace") as handle:
-            data = handle.read(512 * 1024)
-    except OSError:
-        return None
-
-    for line in data.splitlines():
-        try:
-            item = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-
-        payload = item.get("payload")
-        if not isinstance(payload, dict):
-            continue
-
-        if item.get("type") == "session_meta":
-            session["id"] = payload.get("id")
-            session["cwd"] = payload.get("cwd")
-            session["timestamp"] = payload.get("timestamp")
-            session["originator"] = payload.get("originator")
-
-        if not session.get("title"):
-            session["title"] = user_message_title(payload)
-
-        if session.get("id") and session.get("cwd") and session.get("timestamp") and session.get("title"):
-            break
-
-    if not (
-        session.get("id")
-        and session.get("cwd")
-        and session.get("timestamp")
-        and session.get("originator") == "codex-tui"
-    ):
-        return None
-
-    session["title"] = session.get("title") or "Untitled session"
-    return session
-
-
-sessions = []
-for dirpath, _dirnames, filenames in os.walk(root):
-    for filename in filenames:
-        if not filename.endswith(".jsonl"):
-            continue
-        session = parse_session(os.path.join(dirpath, filename))
-        if session:
-            sessions.append(session)
-
-sessions.sort(key=lambda item: item.get("timestamp", ""), reverse=True)
-print(json.dumps({"version": 1, "generated_at": int(time.time()), "sessions": sessions}, separators=(",", ":")))
-]=]
-
-local CODEX_SESSION_WATCH_SCRIPT = [=[
-import json
-import os
-import sys
-import time
-
-root = sys.argv[1]
-mode = sys.argv[2]
-cwd = sys.argv[3]
-
-
-def compact_text(text):
-    if not text:
-        return None
-    text = " ".join(str(text).split())
-    return text or None
-
-
-def is_generated_context_message(text):
-    text = compact_text(text)
-    if not text:
-        return False
-    return (
-        text.startswith("# AGENTS.md instructions for ")
-        or text.startswith("<environment_context>")
-        or text.startswith("<permissions instructions>")
-        or text.startswith("<collaboration_mode>")
-        or text.startswith("<skills_instructions>")
-    )
-
-
-def normalize_title(text):
-    text = compact_text(text)
-    if not text or is_generated_context_message(text):
-        return None
-    return text
-
-
-def content_text(content):
-    if isinstance(content, str):
-        return content
-    if not isinstance(content, list):
-        return None
-
-    parts = []
-    for item in content:
-        if isinstance(item, str):
-            parts.append(item)
-        elif isinstance(item, dict) and isinstance(item.get("text"), str):
-            parts.append(item["text"])
-    return " ".join(parts)
-
-
-def user_message_title(payload):
-    if payload.get("type") == "user_message":
-        return normalize_title(payload.get("message"))
-    if payload.get("type") == "message" and payload.get("role") == "user":
-        return normalize_title(content_text(payload.get("content")))
-    return None
-
-
-def parse_session(path):
-    session = {"path": path}
-    try:
-        with open(path, "r", encoding="utf-8", errors="replace") as handle:
-            data = handle.read(512 * 1024)
-    except OSError:
-        return None
-
-    for line in data.splitlines():
-        try:
-            item = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-
-        payload = item.get("payload")
-        if not isinstance(payload, dict):
-            continue
-
-        if item.get("type") == "session_meta":
-            session["id"] = payload.get("id")
-            session["cwd"] = payload.get("cwd")
-            session["timestamp"] = payload.get("timestamp")
-            session["originator"] = payload.get("originator")
-
-        if not session.get("title"):
-            session["title"] = user_message_title(payload)
-
-        if session.get("id") and session.get("cwd") and session.get("timestamp") and session.get("title"):
-            break
-
-    if (
-        not session.get("id")
-        or session.get("cwd") != cwd
-        or session.get("originator") != "codex-tui"
-    ):
-        return None
-
-    return session
-
-
-def sessions_for_cwd():
-    sessions = []
-    for dirpath, _dirnames, filenames in os.walk(root):
-        for filename in filenames:
-            if not filename.endswith(".jsonl"):
-                continue
-            session = parse_session(os.path.join(dirpath, filename))
-            if session:
-                sessions.append(session)
-    sessions.sort(key=lambda item: item.get("timestamp", ""), reverse=True)
-    return sessions
-
-
-def emit(payload):
-    print(json.dumps(payload, separators=(",", ":")), flush=True)
-
-
-if mode == "ids":
-    emit({"version": 1, "ids": [item["id"] for item in sessions_for_cwd()]})
-elif mode == "wait-new":
-    known_ids = set(json.loads(sys.argv[4]))
-    timeout_seconds = float(sys.argv[5])
-    interval_seconds = float(sys.argv[6])
-    deadline = time.monotonic() + timeout_seconds
-
-    while True:
-        for session in sessions_for_cwd():
-            if session["id"] not in known_ids:
-                emit({"version": 1, "session": session})
-                sys.exit(0)
-
-        if time.monotonic() >= deadline:
-            emit({"version": 1, "session": None})
-            sys.exit(0)
-
-        time.sleep(interval_seconds)
-elif mode == "watch-new":
-    known_ids = set(json.loads(sys.argv[4]))
-    timeout_seconds = float(sys.argv[5])
-    interval_seconds = float(sys.argv[6])
-    title_timeout_seconds = float(sys.argv[7])
-    deadline = time.monotonic() + timeout_seconds
-    new_session = None
-
-    while True:
-        for session in sessions_for_cwd():
-            if session["id"] not in known_ids:
-                new_session = session
-                emit({"version": 1, "event": "session", "session": session})
-                break
-
-        if new_session:
-            break
-
-        if time.monotonic() >= deadline:
-            emit({"version": 1, "event": "timeout"})
-            sys.exit(0)
-
-        time.sleep(interval_seconds)
-
-    if new_session.get("title"):
-        emit({"version": 1, "event": "title", "session": new_session})
-        sys.exit(0)
-
-    title_deadline = time.monotonic() + title_timeout_seconds
-    while True:
-        for session in sessions_for_cwd():
-            if session["id"] == new_session["id"] and session.get("title"):
-                emit({"version": 1, "event": "title", "session": session})
-                sys.exit(0)
-
-        if time.monotonic() >= title_deadline:
-            sys.exit(0)
-
-        time.sleep(interval_seconds)
-else:
-    print("unknown mode: " + mode, file=sys.stderr)
-    sys.exit(2)
-]=]
+  return vim.list_extend({ bin, "--root", CODEX_SESSIONS_DIR }, { ... })
+end
 
 ---@param task overseer.Task
 ---@return integer?
@@ -478,153 +200,6 @@ local function write_session_cache(sessions)
   pcall(vim.fn.system, cmd, vim.json.encode(payload))
 end
 
----@param text string?
----@return string?
-local function compact_text(text)
-  if not text or text == "" then return nil end
-  text = text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
-  if text == "" then return nil end
-  return text
-end
-
----@param text string?
----@return boolean
-local function is_generated_context_message(text)
-  text = compact_text(text)
-  if not text then return false end
-
-  return text:find("^# AGENTS%.md instructions for ") ~= nil
-    or text:find("^<environment_context>") ~= nil
-    or text:find("^<permissions instructions>") ~= nil
-    or text:find("^<collaboration_mode>") ~= nil
-    or text:find("^<skills_instructions>") ~= nil
-end
-
----@param text string?
----@return string?
-local function normalize_title(text)
-  text = compact_text(text)
-  if not text or is_generated_context_message(text) then return nil end
-  return text
-end
-
----@param content any
----@return string?
-local function content_text(content)
-  if type(content) == "string" then return content end
-  if type(content) ~= "table" then return nil end
-
-  local parts = {}
-  for _, item in ipairs(content) do
-    if type(item) == "string" then
-      table.insert(parts, item)
-    elseif type(item) == "table" and type(item.text) == "string" then
-      table.insert(parts, item.text)
-    end
-  end
-
-  return table.concat(parts, " ")
-end
-
----@param payload table
----@return string?
-local function user_message_title(payload)
-  if payload.type == "user_message" then return normalize_title(payload.message) end
-  if payload.type == "message" and payload.role == "user" then return normalize_title(content_text(payload.content)) end
-  return nil
-end
-
----@param root string
----@return string[]
-local function session_files(root)
-  local files = {}
-
-  local function scan(dir)
-    local handle = vim.uv.fs_scandir(dir)
-    if not handle then return end
-
-    while true do
-      local name, kind = vim.uv.fs_scandir_next(handle)
-      if not name then break end
-
-      local path = utils.join_paths(dir, name)
-      if kind == "directory" then
-        scan(path)
-      elseif kind == "file" and name:match("%.jsonl$") then
-        table.insert(files, path)
-      end
-    end
-  end
-
-  scan(root)
-  return files
-end
-
----@class CodexStoredSession
----@field id string
----@field cwd string
----@field timestamp string
----@field title string
----@field path string
----@field originator string?
-
----@param path string
----@param cwd? string
----@return CodexStoredSession?
-local function parse_session(path, cwd)
-  local fd = vim.uv.fs_open(path, "r", 438)
-  if not fd then return nil end
-
-  local stat = vim.uv.fs_fstat(fd)
-  local data = stat and vim.uv.fs_read(fd, math.min(stat.size, 512 * 1024), 0) or nil
-  vim.uv.fs_close(fd)
-  if not data then return nil end
-
-  local session = { path = path }
-  for line in data:gmatch("([^\n]+)") do
-    local ok, item = pcall(vim.json.decode, line)
-    if ok and type(item) == "table" and type(item.payload) == "table" then
-      if item.type == "session_meta" then
-        session.id = item.payload.id
-        session.cwd = item.payload.cwd
-        session.timestamp = item.payload.timestamp
-        session.originator = item.payload.originator
-      end
-
-      session.title = session.title or user_message_title(item.payload)
-      if session.id and session.cwd and session.timestamp and session.title then break end
-    end
-  end
-
-  if (cwd and session.cwd ~= cwd) or not session.id or not session.timestamp or session.originator ~= "codex-tui" then
-    return nil
-  end
-  session.title = session.title or "Untitled session"
-  return session
-end
-
----@param cwd? string
----@param opts? { all?: boolean }
----@return CodexStoredSession[]
-local function stored_sessions(cwd, opts)
-  opts = opts or {}
-  if opts.all then
-    cwd = nil
-  else
-    cwd = cwd or vim.fn.getcwd()
-  end
-
-  local sessions = {}
-
-  for _, path in ipairs(session_files(CODEX_SESSIONS_DIR)) do
-    local session = parse_session(path, cwd)
-    if session then table.insert(sessions, session) end
-  end
-
-  table.sort(sessions, function(a, b) return a.timestamp > b.timestamp end)
-  return sessions
-end
-
 ---@param sessions CodexStoredSession[]?
 ---@param cwd? string
 ---@param opts? { all?: boolean }
@@ -659,20 +234,16 @@ local function refresh_session_cache(opts)
   if opts.callback then table.insert(session_cache.waiters, opts.callback) end
   if session_cache.refresh_job then return end
 
-  if vim.fn.executable("python3") ~= 1 then
-    vim.defer_fn(function()
-      local sessions = stored_sessions(nil, { all = true })
-      session_cache.loaded = true
-      session_cache.sessions = sessions
-      write_session_cache(sessions)
-      finish_session_cache_refresh(sessions, true)
-    end, 10)
+  local cmd = codex_session_store_cmd("refresh")
+  if not cmd then
+    if not opts.silent then vim.notify("codex-session-store executable not found", vim.log.levels.ERROR) end
+    finish_session_cache_refresh(session_cache.sessions, false)
     return
   end
 
   local stdout = {}
   local stderr = {}
-  local job = vim.fn.jobstart({ "python3", "-c", CODEX_SESSION_REFRESH_SCRIPT, CODEX_SESSIONS_DIR }, {
+  local job = vim.fn.jobstart(cmd, {
     stdout_buffered = true,
     stderr_buffered = true,
     on_stdout = function(_, result)
@@ -848,20 +419,19 @@ end
 ---@param cwd string
 ---@return Promise
 local function async_session_ids(cwd)
-  if vim.fn.executable("python3") ~= 1 then return require("promise").reject("python3 executable not found") end
+  local cmd = codex_session_store_cmd("ids", cwd)
+  if not cmd then return require("promise").reject("codex-session-store executable not found") end
 
-  return session_watch_job({ "python3", "-c", CODEX_SESSION_WATCH_SCRIPT, CODEX_SESSIONS_DIR, "ids", cwd }):thenCall(
-    function(decoded)
-      local ids = {}
-      if type(decoded.ids) ~= "table" then return ids end
+  return session_watch_job(cmd):thenCall(function(decoded)
+    local ids = {}
+    if type(decoded.ids) ~= "table" then return ids end
 
-      for _, id in ipairs(decoded.ids) do
-        if type(id) == "string" then ids[id] = true end
-      end
-
-      return ids
+    for _, id in ipairs(decoded.ids) do
+      if type(id) == "string" then ids[id] = true end
     end
-  )
+
+    return ids
+  end)
 end
 
 ---@param task overseer.Task
@@ -869,25 +439,22 @@ end
 ---@param known_session_ids table<string, true>
 ---@return Promise
 local function async_watch_new_session(task, cwd, known_session_ids)
-  if vim.fn.executable("python3") ~= 1 then return require("promise").reject("python3 executable not found") end
-
   local ids = {}
   for id in pairs(known_session_ids) do
     table.insert(ids, id)
   end
 
-  return watch_new_session_job(task, {
-    "python3",
-    "-c",
-    CODEX_SESSION_WATCH_SCRIPT,
-    CODEX_SESSIONS_DIR,
+  local cmd = codex_session_store_cmd(
     "watch-new",
     cwd,
     vim.json.encode(ids),
     tostring(SESSION_LINK_TIMEOUT_MS / 1000),
     tostring(SESSION_LINK_POLL_INTERVAL_MS / 1000),
-    tostring(SESSION_TITLE_TIMEOUT_MS / 1000),
-  })
+    tostring(SESSION_TITLE_TIMEOUT_MS / 1000)
+  )
+  if not cmd then return require("promise").reject("codex-session-store executable not found") end
+
+  return watch_new_session_job(task, cmd)
 end
 
 ---@param timestamp string
@@ -1102,6 +669,13 @@ local function sessions_by_id(sessions)
   return by_id
 end
 
+---@param text string?
+---@return string?
+local function agent_session_id(text)
+  if type(text) ~= "string" then return nil end
+  return text:match("^%s*@agent%s+(%S+)") or text:match("^%s*(%S+)")
+end
+
 ---@param session CodexStoredSession
 ---@param prompt? string
 ---@param start_win integer
@@ -1135,6 +709,20 @@ local function resume_session(session, prompt, start_win)
   ensure_overseer_terminal(task, start_win)
 end
 
+---@param session_id string?
+---@param active_sessions_by_id table<string, CodexStoredSession>
+---@param prompt? string
+---@param start_win integer
+---@return boolean
+local function resume_selected_session_id(session_id, active_sessions_by_id, prompt, start_win)
+  session_id = agent_session_id(session_id)
+  local session = session_id and active_sessions_by_id[session_id] or nil
+  if not session then return false end
+
+  vim.schedule(function() resume_session(session, prompt, start_win) end)
+  return true
+end
+
 ---@param opts? CodexSessionOpts
 function M.select(opts)
   opts = opts or {}
@@ -1166,9 +754,7 @@ function M.select(opts)
     end,
     sink = function(entry)
       local session_id = entry:match("^([^\t]+)\t")
-      local session = session_id and active_sessions_by_id[session_id] or nil
-      if not session then return end
-      vim.schedule(function() resume_session(session, prompt, start_win) end)
+      resume_selected_session_id(session_id, active_sessions_by_id, prompt, start_win)
     end,
   })
 end
@@ -1207,6 +793,31 @@ end
 
 function M.keys()
   local module = "serranomorante.plugins.jobs.codex_sessions"
+
+  vim.api.nvim_create_user_command("CodexResumeById", function(command_args)
+    local session_id = agent_session_id(command_args.args)
+    if not session_id then return vim.notify("Codex session id is required", vim.log.levels.ERROR) end
+
+    local start_win = vim.api.nvim_get_current_win()
+    local cached_sessions = read_session_cache()
+    if cached_sessions and resume_selected_session_id(session_id, sessions_by_id(cached_sessions), nil, start_win) then
+      return
+    end
+
+    refresh_session_cache({
+      silent = true,
+      callback = function(refreshed_sessions, ok)
+        if ok and resume_selected_session_id(session_id, sessions_by_id(refreshed_sessions or {}), nil, start_win) then
+          return
+        end
+        vim.notify("Codex session not found: " .. session_id, vim.log.levels.ERROR)
+      end,
+    })
+  end, {
+    force = true,
+    nargs = 1,
+    desc = "Resume a Codex session in Overseer by id",
+  })
 
   vim.keymap.set("n", "<leader>cl", function() require(module).select() end, { desc = "Codex: Resume project session" })
   vim.keymap.set(
