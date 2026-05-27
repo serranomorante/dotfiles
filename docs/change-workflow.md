@@ -159,8 +159,13 @@ planned in the same turn.
 Commit subjects use `<type>(<scope>): <imperative summary>`, for example
 `fix(keyd): release mouseless before swapfocus`. Prefer `fix`, `feat`, `docs`,
 `refactor`, `chore`, or `test`; keep the scope concrete and local to the changed
-area. Add a body only when the reason or operational impact is not obvious from
-the diff.
+area.
+
+Commit bodies should explain the context behind the change, not merely restate
+the implementation that is already visible in the diff. Describe the problem or
+friction that led to the work, what outcome the change was meant to achieve, and
+the intent behind the chosen solution. Include operational impact when relevant.
+For very small self-explanatory changes, a subject-only commit is still fine.
 
 When committing:
 

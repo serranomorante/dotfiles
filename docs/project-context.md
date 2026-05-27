@@ -48,6 +48,9 @@ verification expectations, read [change-workflow.md](./change-workflow.md).
   tree unless explicitly permitted. Agent-facing context for that tree belongs
   in `~/data/notes/foam/AGENTS.md`, with compatibility symlinks managed by the
   `40-PKM` role when the private source file exists.
+- In this repository, `foam` refers to that private PKM notes workspace. See
+  [foam-notes.md](./foam-notes.md) for the boundary between dotfiles-owned
+  tooling and private notes content.
 - Files named `dot-*` are intended to become dotfiles through Stow. For example,
   `dot-config/foo` maps to `~/.config/foo`.
 
