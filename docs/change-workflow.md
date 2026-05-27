@@ -86,7 +86,9 @@ Commit subjects use `<type>(<scope>): <imperative summary>`, for example `fix(ke
 
 Commit bodies should explain the context behind the change, not merely restate the implementation that is already visible in the diff. Describe the problem or friction that led to the work, what outcome the change was meant to achieve, and the intent behind the chosen solution. Include operational impact when relevant. For very small self-explanatory changes, a subject-only commit is still fine.
 
-When a commit is generated from an assistant conversation, include `@agent <conversation id>` in the commit body. Resolve Codex ids with `utilities/bin/codex-session-store current-id --cwd "$PWD"` or the active `codex-session-store` on `PATH`; this is the same session parser used by Neovim's Codex Overseer integration. Placeholder values such as `unknown`, `unavailable`, `none`, or `n/a` are never acceptable. If the id cannot be resolved, stop before committing instead of inventing a value. Keep the identifier line provider-neutral; do not name the assistant product or vendor.
+When a commit is generated from an assistant conversation, include `@agent <conversation id>` in the commit body on its own physical line. Resolve Codex ids with `utilities/bin/codex-session-store current-id --cwd "$PWD"` or the active `codex-session-store` on `PATH`; this is the same session parser used by Neovim's Codex Overseer integration. Placeholder values such as `unknown`, `unavailable`, `none`, or `n/a` are never acceptable. If the id cannot be resolved, stop before committing instead of inventing a value. Keep the identifier line provider-neutral; do not name the assistant product or vendor.
+
+When passing a multi-paragraph commit message non-interactively, use separate `git commit -m` arguments for the subject, body paragraphs, and `@agent` trailer. Do not embed escaped newline text such as `\n\n@agent ...` inside a quoted `-m` argument; Git records that literally instead of turning it into separate lines.
 
 The repository commit-message guard lives at `utilities/git-hooks/commit-msg`. Keep `core.hooksPath` pointed at `utilities/git-hooks` for this repository. The hook validates `@agent` only when the trailer is present, so manual commits without an assistant conversation id remain valid; when `@agent` is present, placeholder values are rejected before they enter history.
 
@@ -110,10 +112,10 @@ When committing:
    git -C ~/dotfiles diff --cached --name-only
    ```
 
-1. Commit with a scoped message:
+1. Commit with a scoped message, using a separate `-m` for the assistant trailer when present:
 
    ```sh
-   git -C ~/dotfiles commit -m "fix(keyd): release mouseless before swapfocus"
+   git -C ~/dotfiles commit -m "fix(keyd): release mouseless before swapfocus" -m "Explain why the change is needed and what behavior it preserves." -m "@agent <conversation id>"
    ```
 
 Private submodule commits need two layers of history:
