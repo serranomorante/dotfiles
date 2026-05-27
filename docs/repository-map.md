@@ -252,6 +252,8 @@ mouseless config
 cache paths under `~/.cache`. Do not bump helper filenames for code changes; the
 wrappers compare the generated C source with the cached source and rebuild when
 needed. The keyboard-tools Ansible task precompiles the stable helpers.
+The compositor template excludes `WM_CLASS=warpd` windows from picom fading so
+`tab+f` hint overlays appear and disappear without fade latency.
 
 When fixing keyboard conflicts, first identify who consumes the key:
 
