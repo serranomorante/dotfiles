@@ -1110,6 +1110,14 @@ local function overseer_task_for_buf(bufnr)
   return require("overseer.task_list").get(task_id)
 end
 
+---@param bufnr? integer
+function M.open_current_overseer_task_action(bufnr)
+  local task = overseer_task_for_buf(bufnr)
+  if not task then return vim.notify("Current buffer is not an Overseer task output", vim.log.levels.WARN) end
+
+  require("overseer").run_action(task)
+end
+
 ---@param step integer
 function M.open_adjacent_overseer_task_float(step)
   local current_task = overseer_task_for_buf()
@@ -1151,6 +1159,10 @@ function M.attach_overseer_task_float_navigation(bufnr)
   vim.keymap.set("n", "[o", function() M.open_adjacent_overseer_task_float(-1) end, {
     buffer = bufnr,
     desc = "Overseer: previous task output float",
+  })
+  vim.keymap.set("n", "<leader>od", function() M.open_current_overseer_task_action(bufnr) end, {
+    buffer = bufnr,
+    desc = "Overseer: task actions",
   })
   vim.keymap.set({ "n", "t" }, "<M-j>", function() M.open_adjacent_overseer_task_float(1) end, {
     buffer = bufnr,
