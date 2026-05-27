@@ -62,7 +62,6 @@ local function keys()
       detach = true,
       env = {
         KITTY_NNN_INSTANCE_ROLE = "nvim",
-        NVIM_KITTY_LISTEN_ADDRESS = vim.v.servername,
       },
     })
 

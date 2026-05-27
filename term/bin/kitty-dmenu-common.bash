@@ -1,10 +1,12 @@
 # Purpose: Shared cache and Kitty remote-control helpers for kitty-dmenu scripts.
 # Notes: Source from Bash. Cached values are short-lived and always rebuildable.
 
+. "$HOME/dotfiles/term/bin/kitty-window-utils.sh"
+
 KITTY_DMENU_CACHE_NAMESPACE=${KITTY_DMENU_CACHE_NAMESPACE:-kitty-dmenu}
-KITTY_DMENU_SOCKET_CACHE_KEY=${KITTY_DMENU_SOCKET_CACHE_KEY:-sockets-v1}
+KITTY_DMENU_SOCKET_CACHE_KEY=${KITTY_DMENU_SOCKET_CACHE_KEY:-sockets-v2}
 KITTY_DMENU_SOCKET_CACHE_TTL=${KITTY_DMENU_SOCKET_CACHE_TTL:-10}
-KITTY_DMENU_WINDOW_CACHE_KEY=${KITTY_DMENU_WINDOW_CACHE_KEY:-open-cwds-v2}
+KITTY_DMENU_WINDOW_CACHE_KEY=${KITTY_DMENU_WINDOW_CACHE_KEY:-open-cwds-v3}
 # Keep the last open-cwd list for fast startup; fzf's one-shot refresh owns freshness.
 KITTY_DMENU_WINDOW_CACHE_TTL=${KITTY_DMENU_WINDOW_CACHE_TTL:-604800}
 
@@ -47,30 +49,44 @@ kitty_dmenu_cache_del() {
     "$cachectl_bin" del "$KITTY_DMENU_CACHE_NAMESPACE" "$key" >/dev/null 2>&1
 }
 
-kitty_dmenu_discover_sockets() {
-    if command -v ss >/dev/null 2>&1; then
-        ss -xlH 2>/dev/null | awk '
-            {
-                line = $0
-                while (match(line, /@kitty(-[0-9]+)?/)) {
-                    print substr(line, RSTART, RLENGTH)
-                    line = substr(line, RSTART + RLENGTH)
-                }
-            }
-        '
-    fi
+kitty_dmenu_runtime_root() {
+    kitty_runtime_root
+}
 
-    if command -v lsof >/dev/null 2>&1; then
-        lsof -U 2>/dev/null | awk '
-            {
-                line = $0
-                while (match(line, /@kitty(-[0-9]+)?/)) {
-                    print substr(line, RSTART, RLENGTH)
-                    line = substr(line, RSTART + RLENGTH)
-                }
-            }
-        '
-    fi
+kitty_dmenu_cwd_key() {
+    kitty_cwd_key "$1"
+}
+
+kitty_dmenu_kitty_socket_for_cwd() {
+    kitty_socket_for_cwd "$1"
+}
+
+kitty_dmenu_kitty_listen_on_for_cwd() {
+    kitty_listen_on_for_cwd "$1"
+}
+
+kitty_dmenu_nvim_servername_for_kitty_socket() {
+    local socket=$1
+
+    case $socket in
+    unix:*) socket=${socket#unix:} ;;
+    esac
+
+    printf '%s\n' "${socket%.sock}.nvim.sock"
+}
+
+kitty_dmenu_nvim_servername_for_cwd() {
+    kitty_nvim_servername_from_cwd "$1"
+}
+
+kitty_dmenu_discover_sockets() {
+    local socket
+    shopt -s nullglob
+    for socket in "$(kitty_dmenu_runtime_root)"/kitty-cwd-*.sock; do
+        [[ $socket == *.nvim.sock ]] && continue
+        [[ -S $socket ]] && printf '%s\n' "$socket"
+    done
+    shopt -u nullglob
 }
 
 kitty_dmenu_socket_list() {
@@ -99,21 +115,6 @@ kitty_dmenu_regex_escape() {
 
 kitty_dmenu_shell_quote() {
     printf "'%s'" "${1//\'/\'\\\'\'}"
-}
-
-kitty_dmenu_nvim_servername_for_cwd() {
-    local cwd=${1%/}
-    local cwd_key
-
-    if [[ -z $cwd || $cwd == "/" ]]; then
-        cwd_key=root
-    else
-        cwd_key=${cwd#/}
-        cwd_key=${cwd_key//\//__}
-        cwd_key=$(printf '%s' "$cwd_key" | tr -c 'A-Za-z0-9._-' '_')
-    fi
-
-    printf '%s/nvim-kitty-cwd-%s.sock\n' "${XDG_RUNTIME_DIR:-"$HOME/.cache/nvim"}" "$cwd_key"
 }
 
 kitty_dmenu_quick_access_group() {

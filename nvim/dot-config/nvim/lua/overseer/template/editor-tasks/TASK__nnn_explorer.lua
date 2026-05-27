@@ -34,7 +34,6 @@ function M.builder(params)
     cmd = "nnn-with-defaults",
     args = args,
     env = {
-      NVIM_KITTY_LISTEN_ADDRESS = vim.v.servername,
       TERM = vim.env.TERM,
     },
     components = {

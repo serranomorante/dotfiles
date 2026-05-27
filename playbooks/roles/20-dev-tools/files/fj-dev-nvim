@@ -64,7 +64,7 @@ real_home=${HOME:-}
 path_value=${PATH:-/usr/local/bin:/usr/bin:/bin}
 profile_path=$(firejail_profile_path "$real_home" "fj-dev-nvim.profile")
 nvim_bin="${real_home}/bin/nvim"
-forward_env=$'FZF_DEFAULT_COMMAND\nFZF_DEFAULT_OPTS\nFZF_DEFAULT_OPTS_FILE\nKITTY_LISTEN_ON\nNVIM_KITTY_LISTEN_ADDRESS'
+forward_env=$'FZF_DEFAULT_COMMAND\nFZF_DEFAULT_OPTS\nFZF_DEFAULT_OPTS_FILE\nKITTY_LISTEN_ON'
 RW_PATHS=
 
 while [[ $# -gt 0 ]]; do

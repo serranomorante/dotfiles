@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-socket_target=${KITTY_LISTEN_ON:-unix:@kitty}
+socket_target=${KITTY_LISTEN_ON:-}
+[[ -n $socket_target ]] || exit 0
 
 get_active_ai_tab() {
     kitten @ --to "$socket_target" ls 2>/dev/null | jq -r '

@@ -1,41 +1,23 @@
 #!/bin/sh
 
-# Description: Interact with neovim server from other applications
+# Description: Interact with the Kitty-derived Neovim server from other applications
 #
 # Debugging tips:
 #   Use `exec >/tmp/open_in_nvim.out 2>&1` to log output into file. You can then run
 #   `watch -n 1 -d cat /tmp/open_in_nvim.out` to see the logs in realtime.
 
-servername=${NVIM_KITTY_LISTEN_ADDRESS:-}
+. "$HOME/dotfiles/term/bin/kitty-window-utils.sh"
 
-servername_from_cwd() {
-    cwd=$1
-
-    if [ -z "$cwd" ] || [ "$cwd" = "." ]; then
-        cwd=${PWD:-}
+require_servername() {
+    if [ -n "$servername" ]; then
+        return 0
     fi
 
-    case $cwd in
-    /*) ;;
-    *)
-        if resolved_cwd=$(cd "$cwd" 2>/dev/null && pwd); then
-            cwd=$resolved_cwd
-        elif [ -n "${PWD:-}" ]; then
-            cwd=${PWD%/}/$cwd
-        fi
-        ;;
-    esac
-
-    cwd=${cwd%/}
-    if [ -z "$cwd" ] || [ "$cwd" = "/" ]; then
-        cwd_key=root
-    else
-        cwd_key=${cwd#/}
-        cwd_key=$(printf '%s' "$cwd_key" | sed 's|/|__|g' | tr -c 'A-Za-z0-9._-' '_')
-    fi
-
-    printf '%s/nvim-kitty-cwd-%s.sock\n' "${XDG_RUNTIME_DIR:-"$HOME/.cache/nvim"}" "$cwd_key"
+    printf '%s\n' "open_in_nvim: no Kitty-derived Neovim server socket is available" >&2
+    exit 1
 }
+
+servername=$(kitty_nvim_servername_from_context || true)
 
 usage() {
     cat <<EOF
@@ -44,8 +26,8 @@ Usage: open_in_nvim [--servername SOCKET | --cwd CWD] SUBCOMMAND [ARG...]
 
 Options:
   --cwd CWD            Derive the Neovim server socket from a working directory.
-  --servername SOCKET  Neovim server socket to target. Defaults to
-                       NVIM_KITTY_LISTEN_ADDRESS.
+  --servername SOCKET  Neovim server socket to target explicitly. Defaults to
+                       KITTY_LISTEN_ON, KITTY_PID, or the caller cwd.
   -h, --help           Show this help.
 EOF
 }
@@ -69,11 +51,11 @@ while [ "$#" -gt 0 ]; do
             printf '%s\n' "open_in_nvim: --cwd requires a working directory" >&2
             exit 2
         fi
-        servername=$(servername_from_cwd "$2")
+        servername=$(kitty_nvim_servername_from_cwd "$2")
         shift 2
         ;;
     --cwd=*)
-        servername=$(servername_from_cwd "${1#--cwd=}")
+        servername=$(kitty_nvim_servername_from_cwd "${1#--cwd=}")
         shift
         ;;
     -h | --help)
@@ -101,6 +83,12 @@ fi
 nvim_center_view='vim.cmd.normal({ "zz", bang = true })'
 nvim_close_term_win="pcall(vim.api.nvim_win_close, 0, false)"
 nvim_edit="vim.cmd.edit({ [[$1]], mods = { emsg_silent = true }})" # don't use `nvr --remote` because it doesn't respect shortmess
+
+case $app in
+nnn_search | nnn_explorer | git_editor | lazygit_edit | lazygit_edit_at_line | lazygit_edit_at_line_and_wait | lazygit_open | lazygit_open_dir_in_editor | lazygit_compare_branch | lazygit_open_merge_tool | lazygit_open_difftool | lazygit_diff_against_parent | lazygit_diff_with_local_copy | kitty_edit | kitty_edit_at_line | kitty_simple_edit | kitty_simple_edit_at_line)
+    require_servername
+    ;;
+esac
 
 case $app in
 nnn_search)

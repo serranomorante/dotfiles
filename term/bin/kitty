@@ -1,22 +1,28 @@
 #!/usr/bin/env bash
+# Purpose: Start Kitty with cwd-derived instance and remote-control sockets.
 
-runtime_root=${XDG_RUNTIME_DIR:-"$HOME/.cache/nvim"}
+. "$HOME/dotfiles/term/bin/kitty-window-utils.sh"
+
 kitty_os_instance_id=$(uuidgen)
 cwd=${PWD:-}
+args=("$@")
 
-if [[ -z "$cwd" ]]; then
-    cwd=$(pwd)
-fi
+for ((i = 0; i < ${#args[@]}; i++)); do
+    case ${args[$i]} in
+    -d | --directory | --working-directory)
+        if ((i + 1 < ${#args[@]})); then
+            cwd=${args[$((i + 1))]}
+            i=$((i + 1))
+        fi
+        ;;
+    --directory=* | --working-directory=*)
+        cwd=${args[$i]#*=}
+        ;;
+    esac
+done
 
-cwd=${cwd%/}
-if [[ -z "$cwd" || "$cwd" == "/" ]]; then
-    cwd_key=root
-else
-    cwd_key=${cwd#/}
-    cwd_key=${cwd_key//\//__}
-    cwd_key=$(printf '%s' "$cwd_key" | tr -c 'A-Za-z0-9._-' '_')
-fi
+kitty_socket=$(kitty_listen_on_for_cwd "$cwd")
 
 KITTY_OS_INSTANCE_ID="$kitty_os_instance_id" \
-    NVIM_KITTY_LISTEN_ADDRESS="${NVIM_KITTY_LISTEN_ADDRESS:-${runtime_root}/nvim-kitty-cwd-${cwd_key}.sock}" \
-    ~/.local/kitty.app/bin/kitty "$@"
+    KITTY_LISTEN_ON="$kitty_socket" \
+    ~/.local/kitty.app/bin/kitty --listen-on "$kitty_socket" "$@"

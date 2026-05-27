@@ -1,21 +1,33 @@
 # Neovim And Kitty Integration
 
-The Neovim/Kitty integration gives each working directory a predictable
-Neovim server socket, and Neovim owns the Kitty focus handoff when a remote
-client opens or displays a buffer in that server.
+The Neovim/Kitty integration gives each working directory a predictable Kitty
+remote-control socket and a directly corresponding Neovim server socket. Neovim
+owns the Kitty focus handoff when a remote client opens or displays a buffer in
+that server.
 
-## CWD-Derived Neovim Server Socket
+## CWD-Derived Socket Pair
 
 `term/bin/kitty` starts each Kitty UI window with a fresh
-`KITTY_OS_INSTANCE_ID` for Kitty-specific grouping, and an
-`NVIM_KITTY_LISTEN_ADDRESS` derived from the current working directory unless
-the caller already provided `NVIM_KITTY_LISTEN_ADDRESS`. Launchers that open a
-specific directory, such as `term/bin/kitty-dmenu`, should provide that
-environment variable from the selected target cwd before invoking `kitty -d`.
-The socket path lives under `$XDG_RUNTIME_DIR` and uses this readable pattern:
+`KITTY_OS_INSTANCE_ID` for Kitty-specific grouping, and a cwd-derived
+`KITTY_LISTEN_ON` remote-control socket. Launchers that open a specific
+directory, such as `term/bin/kitty-dmenu`, should provide `KITTY_LISTEN_ON`
+from the selected target cwd before invoking `kitty -d`, because the wrapper's
+own process cwd may be different from the target directory.
+
+The Kitty socket path lives under `$XDG_RUNTIME_DIR` and uses this readable
+pattern:
 
 ```text
-$XDG_RUNTIME_DIR/nvim-kitty-cwd-<absolute-cwd-with-slashes-as-__>.sock
+unix:$XDG_RUNTIME_DIR/kitty-cwd-<absolute-cwd-with-slashes-as-__>.sock
+```
+
+Neovim does not listen on the same socket, because Kitty and Neovim speak
+different protocols and cannot both bind the same path. Instead, the Neovim
+server socket is derived from the Kitty socket by replacing `.sock` with
+`.nvim.sock`:
+
+```text
+$XDG_RUNTIME_DIR/kitty-cwd-<absolute-cwd-with-slashes-as-__>.nvim.sock
 ```
 
 The leading slash is omitted from the socket filename, and characters outside
@@ -24,14 +36,22 @@ The leading slash is omitted from the socket filename, and characters outside
 For example, a Kitty launched from `/home/aaaa/dotfiles/playbooks` targets:
 
 ```text
-$XDG_RUNTIME_DIR/nvim-kitty-cwd-home__aaaa__dotfiles__playbooks.sock
+KITTY_LISTEN_ON=unix:$XDG_RUNTIME_DIR/kitty-cwd-home__aaaa__dotfiles__playbooks.sock
+Neovim server=$XDG_RUNTIME_DIR/kitty-cwd-home__aaaa__dotfiles__playbooks.nvim.sock
 ```
 
-Multiple Kitty windows launched from the same directory target the same Neovim
-server socket. This keeps external tools able to call either
+The cwd-derived Kitty socket is also the discovery key for the UI window, so
+`term/bin/kitty-dmenu` can enumerate `$XDG_RUNTIME_DIR/kitty-cwd-*.sock`
+directly instead of discovering Kitty processes. The corresponding Neovim
+server socket keeps external tools able to call either
 `open_in_nvim --cwd <cwd>` or `open_in_nvim --servername <socket>`
 without discovering a random per-window UUID first. `--cwd .` resolves to the
 caller's current working directory before deriving the socket name.
+
+Neovim local persistence is gated by the cwd-derived server socket, but durable
+state filenames are keyed by the working directory. Keep ShaDa and similar local
+state resilient to socket naming changes: the server name decides whether local
+state is enabled, not which saved state file belongs to a cwd.
 
 The `nvim/bin/nvim` wrapper uses that socket to either reuse an existing
 Neovim server or start a new listening server in the same Kitty window. It
@@ -39,10 +59,9 @@ stays out of the way for explicit client-server invocations
 (`--server`, `--listen`, `--remote*`, `--headless`).
 
 Kitty mappings that need a standalone Neovim UI in the newly launched Kitty
-window, such as scrollback-pager overlays, should clear
-`NVIM_KITTY_LISTEN_ADDRESS` for that launch. Otherwise the wrapper may treat the
-pager process as a client of the cwd-derived server and redirect it into an
-existing Neovim window.
+window, such as scrollback-pager overlays, should clear `KITTY_LISTEN_ON` for
+that launch. Otherwise the wrapper may treat the pager process as a client of
+the cwd-derived server and redirect it into an existing Neovim window.
 
 ## Kitty Window Matching
 
@@ -68,8 +87,8 @@ and the Neovim-owned nnn panel are independent inside the same Kitty OS window.
 The default role is `session`, which is what `kitty_mod+r` uses. Neovim's
 `<leader>e` binding sets `KITTY_NNN_INSTANCE_ROLE=nvim`, invokes the same
 wrapper with the current buffer path only when the buffer is backed by a real
-file, and sets `NVIM_KITTY_LISTEN_ADDRESS` to the current server instead of
-embedding nnn in an Overseer terminal float. When a real file path is provided,
+file, and lets `open_in_nvim` recover the matching Neovim server from the
+existing Kitty process context instead of embedding nnn in an Overseer terminal float. When a real file path is provided,
 the wrapper compares the target directory with the existing nnn child process'
 current working directory. If they match, it keeps the existing quick-access nnn
 state and just toggles the panel. If they differ, it writes a target file under
@@ -109,6 +128,17 @@ not steal focus. Remote edits from `nvr`, native `nvim --server --remote`, and
 Shared, generic kitty window helpers live in
 `term/bin/kitty-window-utils.sh` (sourced library, POSIX sh):
 
+- `kitty_nvim_servername_from_context` — resolve the matching Neovim server
+  from a valid cwd-derived `KITTY_LISTEN_ON`, then `KITTY_PID`, then cwd.
+- `kitty_nvim_servername_from_listen_on ADDRESS` — convert a Kitty
+  `unix:/path/to/kitty-cwd-*.sock` address to the matching `.nvim.sock` path.
+  Other Kitty remote-control sockets are intentionally ignored because panels
+  such as nnn can expose their own local `KITTY_LISTEN_ON`.
+- `kitty_nvim_servername_from_pid PID` — read a Kitty process environment and
+  derive the matching Neovim server from its `KITTY_LISTEN_ON`.
+- `kitty_nvim_servername_from_cwd CWD` — derive the cwd-based Neovim socket.
+- `kitty_nvim_servername_from_kitty_context` — resolve from a valid
+  `KITTY_LISTEN_ON` or `KITTY_PID` without falling back to cwd.
 - `kitty_focus_match QUERY` — wraps `kitten @ focus-window --match`.
 - `kitty_focus_window_id ID` — focus by numeric Kitty window id.
 - `kitty_focused_os_windows_json` — emit the focused-OS-window subset of
@@ -131,11 +161,19 @@ Kitty window state is small, cheap to query, and easy to make stale.
 ## Consumers
 
 - `nvim/bin/open_in_nvim` sends remote edit requests to the configured
-  Neovim server. It defaults to `NVIM_KITTY_LISTEN_ADDRESS`, accepts
-  `--cwd <cwd>` to derive the predictable CWD socket, and accepts
-  `--servername <socket>` when a tool already knows the exact server socket.
-  The Neovim autocmd owns the focus handoff after those requests display a
-  buffer.
+  Neovim server. It defaults to the server derived from a valid cwd-based
+  `KITTY_LISTEN_ON`, accepts `--cwd <cwd>` to derive the predictable CWD socket,
+  and accepts `--servername <socket>` when a tool already knows the exact server
+  socket. If the caller's `KITTY_LISTEN_ON` is absent or points to a non-cwd
+  panel socket, it reads `KITTY_PID`'s environment to recover the original
+  `KITTY_LISTEN_ON`; this covers quick-access-terminal children such as lazygit
+  and nnn. As a final fallback it derives the same socket from the caller's
+  current working directory. The Neovim autocmd owns the focus handoff after
+  those requests display a buffer.
+- Scripts that talk directly to Neovim sockets instead of going through
+  `open_in_nvim`, such as `nvim/bin/nvim` and
+  `term/bin/kitty-check-tasks-running`, use the same shared resolver from
+  `term/bin/kitty-window-utils.sh`.
 - `term/bin/kitty-open-in-editor` derives candidate Neovim server sockets from
   the target file's parent directories and sends the edit request directly with
   `open_in_nvim --cwd`. It does not enumerate Kitty remote-control sockets.

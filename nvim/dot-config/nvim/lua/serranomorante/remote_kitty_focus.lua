@@ -6,11 +6,20 @@ local focus_window_ms = 1500
 
 local function now_ms() return (vim.uv or vim.loop).hrtime() / 1000000 end
 
+local function nvim_servername_from_kitty_listen_on()
+  local listen_on = vim.env.KITTY_LISTEN_ON or ""
+  local socket = listen_on:match("^unix:(/.+)$")
+  if socket == nil then return nil end
+
+  if socket:sub(-5) == ".sock" then return socket:sub(1, -6) .. ".nvim.sock" end
+  return socket .. ".nvim.sock"
+end
+
 local function enabled()
   return vim.env.KITTY_WINDOW_ID ~= nil
     and vim.env.KITTY_WINDOW_ID ~= ""
     and vim.v.servername ~= ""
-    and vim.env.NVIM_KITTY_LISTEN_ADDRESS == vim.v.servername
+    and nvim_servername_from_kitty_listen_on() == vim.v.servername
 end
 
 local function kitty_window_is_focused(kitty_state)

@@ -28,6 +28,14 @@ start here when deciding which file owns a behavior.
   live at `for-my-eyes-only/docs/agent-context.md`; the public Ansible role
   links shared agent entrypoints into this package when it exists.
 
+## Terminal Tooling
+
+Kitty remote-control socket naming is owned by
+`term/bin/kitty-window-utils.sh`. Scripts that need CWD-derived Kitty socket
+paths, `listen_on` values, or matching Neovim server names should source that
+file instead of reimplementing the naming rule. Long CWD keys are shortened
+with a stable hash so socket paths stay within UNIX socket path limits.
+
 ## Ansible Structure
 
 The main playbook is `playbooks/tools.yml`. It gathers facts, detects some host

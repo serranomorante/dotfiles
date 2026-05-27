@@ -32,11 +32,9 @@ vim.go.showmode = false
 vim.o.swapfile = false
 vim.go.backup = false
 
-local persistent_state_key = ("%d:%s\n%d:%s"):format(#constants.CWD, constants.CWD, #vim.v.servername, vim.v.servername)
-
 vim.go.shada = "'2000,<3000,%0,:3000,/3000,@1000,s2048,h"
 vim.go.shadafile = persist_local_state
-    and utils.join_paths(shadadir, vim.fn.sha256(persistent_state_key):sub(1, 8) .. ".nvim.shada")
+    and utils.join_paths(shadadir, vim.fn.sha256(constants.CWD):sub(1, 8) .. ".nvim.shada")
   or "NONE"
 if persist_local_state then vim.go.undodir = undodir end
 vim.o.undofile = persist_local_state

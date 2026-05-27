@@ -157,10 +157,13 @@ kitty_dmenu_main() {
         exit 0
     fi
 
+    if kitty_dmenu_focus_cwd_on_sockets "$selected_path" "$(kitty_dmenu_kitty_socket_for_cwd "$selected_path")"; then
+        exit 0
+    fi
+
     kitty_dmenu_refresh_window_entries_background
 
-    exec env NVIM_KITTY_LISTEN_ADDRESS="$(kitty_dmenu_nvim_servername_for_cwd "$selected_path")" \
-        kitty -d "$selected_path" --session ~/.config/kitty/default.kitty-session
+    exec kitty -d "$selected_path" --session ~/.config/kitty/default.kitty-session
 }
 
 if [[ ${BASH_SOURCE[0]} == "$0" ]]; then

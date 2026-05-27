@@ -7,7 +7,9 @@ preserve the existing workflow over generic portability.
 
 Use this document as the starting point when making changes. For a directory
 overview, read [repository-map.md](./repository-map.md). For edit and
-verification expectations, read [change-workflow.md](./change-workflow.md).
+verification expectations, read [change-workflow.md](./change-workflow.md). For
+debugging posture, read
+[agent-debugging-principles.md](./agent-debugging-principles.md).
 
 ## Context Entrypoint
 

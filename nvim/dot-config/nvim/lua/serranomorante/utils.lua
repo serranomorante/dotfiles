@@ -86,7 +86,7 @@ function M.is_kitty_cwd_servername(servername)
   if servername == "" then return false end
 
   local runtime_root = (vim.env.XDG_RUNTIME_DIR or M.join_paths(vim.env.HOME, ".cache", "nvim")):gsub("/+$", "")
-  return servername:match("^" .. lua_pattern_escape(runtime_root) .. "/nvim%-kitty%-cwd%-[A-Za-z0-9._-]+%.sock$") ~= nil
+  return servername:match("^" .. lua_pattern_escape(runtime_root) .. "/kitty%-cwd%-[A-Za-z0-9._-]+%.nvim%.sock$") ~= nil
 end
 
 ---@return boolean
