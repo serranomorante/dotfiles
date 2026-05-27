@@ -37,26 +37,19 @@ You need a user with sudo access. Don't try to run the playbook as root.
 1. `cd dotfiles/playbooks`
 1. `ansible-playbook -K tools.yml -l localhost --tags all`
 
-`--tags all` intentionally skips tasks tagged `never`, including very heavy
-optional setup such as the local `whisper.cpp` CUDA build and model downloads.
-To include that speech-to-text backend too, including the fast/balanced/accurate
-dictation model profiles, run:
+`--tags all` intentionally skips tasks tagged `never`, including very heavy optional setup such as the local `whisper.cpp` CUDA build and model downloads. To include that speech-to-text backend too, including the fast/balanced/accurate dictation model profiles, run:
 
 ```sh
 ansible-playbook -K tools.yml -l localhost --tags all,20-170-whisper
 ```
 
-For an existing checkout where only dotfile links and the Whisper backend need
-refreshing, run:
+For an existing checkout where only dotfile links and the Whisper backend need refreshing, run:
 
 ```sh
 ansible-playbook -K tools.yml -l localhost --tags 10-30,20-30,20-170-whisper
 ```
 
-The local dictation server is exposed as a user service template, but it is not
-enabled by default. The first `stt-dictate` recording for a profile starts the
-matching service and leaves it running for the current boot/session unless it
-is stopped. To warm the fast profile manually for the current session:
+The local dictation server is exposed as a user service template, but it is not enabled by default. The first `stt-dictate` recording for a profile starts the matching service and leaves it running for the current boot/session unless it is stopped. To warm the fast profile manually for the current session:
 
 ```sh
 systemctl --user start stt-whisper@fast.service

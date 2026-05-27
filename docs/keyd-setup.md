@@ -4,26 +4,17 @@ Guides related to my keyd setup.
 
 ## Repeat previous key
 
-Both Meta keys are overloaded in `keyd-default.conf`: holding either key keeps
-normal Meta behavior, while tapping either key runs keyd's `repeat()` action
-through `overloadt2` with a 120 ms tap window. This repeats the last emitted key
-or macro, so typing three backticks can be done as:
+Both Meta keys are overloaded in `keyd-default.conf`: holding either key keeps normal Meta behavior, while tapping either key runs keyd's `repeat()` action through `overloadt2` with a 120 ms tap window. This repeats the last emitted key or macro, so typing three backticks can be done as:
 
 ```text
 ` meta meta
 ```
 
-Use `overloadt2`, not plain `overload`, for this binding. `repeat()` holds the
-previous output until the repeat key is released; plain `overload` runs tap
-actions during the physical key release and can leave the repeated key held.
+Use `overloadt2`, not plain `overload`, for this binding. `repeat()` holds the previous output until the repeat key is released; plain `overload` runs tap actions during the physical key release and can leave the repeated key held.
 
 ## Modifier symmetry
 
-Any keyd mapping that uses a paired keyboard modifier should keep working with
-both the left and right physical modifier keys. In keyd layer headers, right Alt
-is represented as `altgr`, so every `...+alt` layer needs an equivalent
-`...+altgr` layer with the same mappings unless a task explicitly asks for an
-asymmetric binding.
+Any keyd mapping that uses a paired keyboard modifier should keep working with both the left and right physical modifier keys. In keyd layer headers, right Alt is represented as `altgr`, so every `...+alt` layer needs an equivalent `...+altgr` layer with the same mappings unless a task explicitly asks for an asymmetric binding.
 
 For example, `Ctrl+Alt+V` must include both Alt variants:
 
