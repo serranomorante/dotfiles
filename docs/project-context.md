@@ -43,6 +43,12 @@ Use this document as the starting point when making changes. For a directory ove
   playbooks/tools.yml
   ```
 
+- Testing dependency setup:
+
+  ```text
+  playbooks/testing.yml
+  ```
+
 - Main role order:
 
   ```text

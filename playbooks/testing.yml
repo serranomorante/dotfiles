@@ -1,0 +1,22 @@
+---
+- hosts: localhost,all
+  gather_facts: false
+
+  pre_tasks:
+    - name: "Testing tools: gather facts"
+      ansible.builtin.gather_facts:
+      when:
+        - inventory_hostname == 'localhost' or inventory_hostname == 'phone2' or 'arch_user' in group_names
+      tags: always
+
+    - name: "Testing tools: set user_os"
+      ansible.builtin.set_fact:
+        user_os: "{{ ansible_facts.distribution | lower | replace(' ', '') }}"
+      when: ansible_facts.distribution is defined
+      tags: always
+
+  tasks:
+    - name: Run 60-testing-tools role
+      ansible.builtin.import_role:
+        name: 60-testing-tools
+      tags: ["60-testing-tools"]

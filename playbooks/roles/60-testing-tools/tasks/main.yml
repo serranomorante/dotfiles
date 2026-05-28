@@ -1,0 +1,18 @@
+---
+- block:
+    - name: "[archlinux] Testing tools: ensure packages"
+      become: true
+      ansible.builtin.package:
+        state: present
+        name:
+          - bats
+          - firejail
+          - make
+          - python-pytest
+          - shellcheck
+          - shfmt
+          - stylua
+  when:
+    - user_os is defined
+    - user_os in ['archlinux']
+  tags: ["60-testing-tools"]

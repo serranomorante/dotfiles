@@ -16,6 +16,7 @@ This map describes where changes usually belong. It is intentionally practical: 
 - `home/`: generic home-directory dotfiles.
 - `PKM/`: personal knowledge management tooling.
 - `termux/`: Termux-only dotfiles, including add-on integrations such as Termux:Widget shortcuts.
+- `tests/`: persistent dotfiles test runner, unit-specific test files, and test helpers. See [dotfiles-testing.md](./dotfiles-testing.md).
 - `assets/`: static assets, patches, scripts, services, udev rules, and media.
 - `docs/`: human-readable operational notes and project context.
 - `for-my-eyes-only/`: optional private package and submodule. Do not touch unless explicitly requested. Package-specific private assistant context should live at `for-my-eyes-only/docs/agent-context.md`; the public Ansible role links shared agent entrypoints into this package when it exists.

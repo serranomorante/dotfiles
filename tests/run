@@ -1,0 +1,251 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Purpose: Discover and run dotfiles tests with per-test isolation.
+# Usage: tests/run [--unit nvim] [--file path] [--name test-name] [--tags a,b] [--list]
+
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
+repo_root=$(cd "${script_dir}/.." >/dev/null 2>&1 && pwd -P)
+
+source "${script_dir}/lib/firejail.bash"
+
+unit_filter=
+file_filter=
+name_filter=
+tags_filter=
+list_only=0
+
+usage() {
+    cat <<'USAGE'
+Usage: tests/run [options]
+
+Options:
+  --unit UNIT      Run tests from tests/UNIT.
+  --file PATH      Run one test file.
+  --name NAME      Run one declared test case.
+  --tags TAGS      Run tests whose file tags include every comma-separated tag.
+  --list           List matching tests without running them.
+  -h, --help       Show this help.
+
+Environment:
+  DOTFILES_TEST_CASE        Set by the runner to the current declared test case.
+  DOTFILES_TEST_ROOT        Set by the runner to the absolute dotfiles repo root.
+  DOTFILES_TEST_TMP         Set by the runner to the isolated writable temp root.
+  DOTFILES_TEST_NO_FIREJAIL=1  Run without Firejail, for harness debugging only.
+  DOTFILES_TEST_ALLOW_NESTED_FIREJAIL=1  Allow explicit nested Firejail experiments.
+
+Test file metadata:
+  # dotfiles-test-unit: UNIT
+  # dotfiles-test-tags: tag other-tag
+  # dotfiles-test-readonly: /absolute/path/exposed/read-only
+  # dotfiles-test-case: stable-case-name
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --unit)
+        [[ $# -ge 2 ]] || {
+            printf 'tests/run: --unit needs a value\n' >&2
+            exit 2
+        }
+        unit_filter=$2
+        shift 2
+        ;;
+    --file)
+        [[ $# -ge 2 ]] || {
+            printf 'tests/run: --file needs a value\n' >&2
+            exit 2
+        }
+        file_filter=$2
+        shift 2
+        ;;
+    --name)
+        [[ $# -ge 2 ]] || {
+            printf 'tests/run: --name needs a value\n' >&2
+            exit 2
+        }
+        name_filter=$2
+        shift 2
+        ;;
+    --tags)
+        [[ $# -ge 2 ]] || {
+            printf 'tests/run: --tags needs a value\n' >&2
+            exit 2
+        }
+        tags_filter=$2
+        shift 2
+        ;;
+    --list)
+        list_only=1
+        shift
+        ;;
+    -h | --help)
+        usage
+        exit 0
+        ;;
+    *)
+        printf 'tests/run: unknown option: %s\n' "$1" >&2
+        usage >&2
+        exit 2
+        ;;
+    esac
+done
+
+metadata_value() {
+    local key=$1
+    local file=$2
+    sed -n "s/^# dotfiles-test-${key}:[[:space:]]*//p" "$file" | sed -n '1p'
+}
+
+metadata_values() {
+    local key=$1
+    local file=$2
+    sed -n "s/^# dotfiles-test-${key}:[[:space:]]*//p" "$file"
+}
+
+file_unit() {
+    local file=$1
+    local unit
+    unit=$(metadata_value unit "$file")
+    if [[ -n "$unit" ]]; then
+        printf '%s\n' "$unit"
+        return
+    fi
+    file=${file#"${repo_root}/tests/"}
+    printf '%s\n' "${file%%/*}"
+}
+
+file_tags() {
+    local file=$1
+    metadata_value tags "$file"
+}
+
+tag_match() {
+    local wanted=$1
+    local available=$2
+    local tag
+    local normalized_available=" ${available//,/ } "
+
+    [[ -z "$wanted" ]] && return 0
+    IFS=',' read -ra tags <<<"$wanted"
+    for tag in "${tags[@]}"; do
+        tag=${tag//[[:space:]]/}
+        [[ -n "$tag" ]] || continue
+        [[ "$normalized_available" == *" ${tag} "* ]] || return 1
+    done
+    return 0
+}
+
+discover_files() {
+    if [[ -n "$file_filter" ]]; then
+        if [[ "$file_filter" = /* ]]; then
+            printf '%s\n' "$file_filter"
+        else
+            printf '%s\n' "${repo_root}/${file_filter#./}"
+        fi
+        return
+    fi
+
+    if [[ -n "$unit_filter" ]]; then
+        find "${repo_root}/tests/${unit_filter}" -maxdepth 1 -type f -name '*.sh' 2>/dev/null | sort
+        return
+    fi
+
+    find "${repo_root}/tests" -mindepth 2 -maxdepth 2 -type f -name '*.sh' | sort
+}
+
+cases_for_file() {
+    local file=$1
+    sed -n 's/^# dotfiles-test-case:[[:space:]]*//p' "$file"
+}
+
+matches_filters() {
+    local file=$1
+    local case_name=$2
+    local unit tags
+
+    [[ -f "$file" ]] || return 1
+    unit=$(file_unit "$file")
+    tags=$(file_tags "$file")
+
+    [[ -z "$unit_filter" || "$unit" == "$unit_filter" ]] || return 1
+    [[ -z "$name_filter" || "$case_name" == "$name_filter" ]] || return 1
+    tag_match "$tags_filter" "$tags" || return 1
+    return 0
+}
+
+run_case() {
+    local file=$1
+    local case_name=$2
+    local readonly_paths=$3
+    local tmp_dir
+    local rc
+    tmp_dir=$(mktemp -d /tmp/dotfiles-test.XXXXXX)
+
+    set +e
+    dotfiles_test_firejail_run "$repo_root" "$tmp_dir" "$file" "$case_name" "$readonly_paths"
+    rc=$?
+    set -e
+
+    if [[ "$rc" -eq 0 ]]; then
+        printf 'PASS %s\n' "$case_name"
+        rm -rf "$tmp_dir"
+        return 0
+    fi
+
+    if [[ "$rc" -eq 77 ]]; then
+        printf 'SKIP %s\n' "$case_name"
+        rm -rf "$tmp_dir"
+        return 77
+    fi
+
+    printf 'FAIL %s\n' "$case_name" >&2
+    printf 'kept tmp: %s\n' "$tmp_dir" >&2
+    return "$rc"
+}
+
+total=0
+passed=0
+skipped=0
+failed=0
+
+while IFS= read -r file; do
+    [[ -n "$file" ]] || continue
+    mapfile -t cases < <(cases_for_file "$file")
+    readonly_paths=$(metadata_values readonly "$file")
+    if [[ "${#cases[@]}" -eq 0 ]]; then
+        cases=("$(basename "$file" .sh)")
+    fi
+
+    for case_name in "${cases[@]}"; do
+        matches_filters "$file" "$case_name" || continue
+        if [[ "$list_only" -eq 1 ]]; then
+            printf '%s\t%s\t%s\n' "$(file_unit "$file")" "$case_name" "${file#"${repo_root}/"}"
+            continue
+        fi
+
+        total=$((total + 1))
+        if run_case "$file" "$case_name" "$readonly_paths"; then
+            passed=$((passed + 1))
+        else
+            rc=$?
+            if [[ "$rc" -eq 77 ]]; then
+                skipped=$((skipped + 1))
+            else
+                failed=$((failed + 1))
+            fi
+        fi
+    done
+done < <(discover_files)
+
+if [[ "$list_only" -eq 1 ]]; then
+    exit 0
+fi
+
+printf 'Summary: %s passed, %s skipped, %s failed, %s total\n' "$passed" "$skipped" "$failed" "$total"
+[[ "$total" -gt 0 ]] || {
+    printf 'No tests matched\n' >&2
+    exit 2
+}
+[[ "$failed" -eq 0 ]]
