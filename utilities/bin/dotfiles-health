@@ -621,6 +621,7 @@ $manual_start
 ## Review Reminders
 
 - [ ] **Abrir System Health y revisar los errores ocultos de hoy**
+  @id todo-check-hidden-errors-today
 
   Abre [[system-health]], revisa \`Active Issues\` y entra a
   cada página enlazada que tenga señales activas: \`sources/\` para dominios

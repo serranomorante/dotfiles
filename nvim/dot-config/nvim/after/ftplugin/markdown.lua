@@ -1,6 +1,7 @@
 local utils = require("serranomorante.utils")
 local lsp_utils = require("serranomorante.plugins.lsp.utils")
 local markdown_images = require("serranomorante.markdown_images")
+local markdown_block_ids = require("serranomorante.markdown_block_ids")
 
 local bufnr = vim.api.nvim_get_current_buf()
 local markdown_tags_ns = vim.api.nvim_create_namespace("serranomorante.markdown_tags")
@@ -38,6 +39,8 @@ local function refresh_markdown_tags()
       end
     end
   end
+
+  markdown_block_ids.highlight_ids(bufnr, markdown_tags_ns)
 end
 
 ---Fill title to markdown files that don't have it
@@ -59,10 +62,19 @@ markdown_images.attach(bufnr)
 local markdown_tags_group =
   vim.api.nvim_create_augroup(("serranomorante_markdown_tags_%d"):format(bufnr), { clear = true })
 vim.api.nvim_create_autocmd({ "BufEnter", "TextChanged", "TextChangedI" }, {
-  desc = "Highlight personal markdown tag lines",
+  desc = "Highlight personal markdown metadata lines",
   buffer = bufnr,
   group = markdown_tags_group,
   callback = refresh_markdown_tags,
+})
+vim.api.nvim_create_autocmd("BufWritePost", {
+  desc = "Warn about duplicate personal markdown block ids",
+  buffer = bufnr,
+  group = markdown_tags_group,
+  callback = function()
+    refresh_markdown_tags()
+    markdown_block_ids.warn_duplicate_ids(bufnr)
+  end,
 })
 refresh_markdown_tags()
 

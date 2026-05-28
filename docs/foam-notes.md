@@ -17,6 +17,8 @@ When working in the Foam tree:
 - Prefer unique file stems for notes that may be linked with wikilinks.
 - Keep durable workstation setup behavior in `~/dotfiles`; use Foam for private planning, notes, runbooks, TODOs, and reports.
 
+Neovim Markdown buffers add a local `@id` metadata convention for paragraph- or list-item-level anchors that should not become headings. An `@id` line must be directly attached to the preceding block, with no blank line between the block's contiguous metadata lines and the `@id`; detached IDs are ignored. `gd` delegates normal links to Marksman, but intercepts Markdown links and wikilinks whose fragment is a block target such as `[[note-stem#^decision-sync]]` or `[text](note.md#^decision-sync)` and jumps to a matching attached `@id decision-sync`. The Marksman diagnostics handler filters only the false-positive missing-heading diagnostics for those `#^id` fragments; normal broken-heading diagnostics remain visible. On save, Neovim warns about duplicate attached `@id` values within the current Markdown file.
+
 Related dotfiles-owned documentation and tooling:
 
 - `docs/foam-crypt-sync.md`

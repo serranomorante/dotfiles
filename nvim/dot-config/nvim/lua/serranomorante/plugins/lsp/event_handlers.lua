@@ -37,6 +37,15 @@ function M.attach(client, bufnr)
     client = client,
   }
 
+  local function goto_definition()
+    if vim.bo[bufnr].filetype:match("^markdown") then
+      local ok, markdown_block_ids = pcall(require, "serranomorante.markdown_block_ids")
+      if ok and markdown_block_ids.goto_block_id_under_cursor(bufnr) then return end
+    end
+
+    vim.lsp.buf.definition(lsp_default_opts)
+  end
+
   if client_buf_supports_method(ms.textDocument_hover) then
     vim.keymap.set("n", "K", function() vim.lsp.buf.hover({ border = "single" }) end, opts_with_desc("Hover"))
   end
@@ -51,12 +60,7 @@ function M.attach(client, bufnr)
   end
 
   if client_buf_supports_method(ms.textDocument_definition) then
-    vim.keymap.set(
-      "n",
-      "gd",
-      function() vim.lsp.buf.definition(lsp_default_opts) end,
-      opts_with_desc("Show definitions")
-    )
+    vim.keymap.set("n", "gd", goto_definition, opts_with_desc("Show definitions"))
   end
 
   if client_buf_supports_method(ms.textDocument_implementation) then
