@@ -62,7 +62,6 @@ M.by_filetype = {
   conf = { parsers = { "file:conf" } },
   gitconfig = { parsers = { "file:gitconfig" } },
   editorconfig = { parsers = { "editorconfig" } },
-  make = { parsers = { "file:make" } },
   dockerfile = { parsers = { "dockerfile" } },
   ---No specific filetype
   all = {
