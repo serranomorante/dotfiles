@@ -14,8 +14,8 @@ vim.api.nvim_create_autocmd("TextYankPost", {
   end,
 })
 
-vim.api.nvim_create_autocmd("BufWinEnter", {
-  desc = "Make q close help, man, dap floats, etc",
+vim.api.nvim_create_autocmd({ "BufWinEnter", "TermOpen" }, {
+  desc = "Make q close help, terminal, dap floats, etc",
   group = vim.api.nvim_create_augroup("q_close_windows", { clear = true }),
   callback = function(args)
     if not vim.g.q_close_windows then vim.g.q_close_windows = {} end
@@ -26,7 +26,7 @@ vim.api.nvim_create_autocmd("BufWinEnter", {
     local buftype = vim.api.nvim_get_option_value("buftype", { buf = args.buf })
     local filetype = vim.api.nvim_get_option_value("filetype", { buf = args.buf })
     if
-      vim.list_contains({ "help", "nofile", "quickfix", "prompt", "nowrite" }, buftype)
+      vim.list_contains({ "help", "nofile", "quickfix", "prompt", "nowrite", "terminal" }, buftype)
       or vim.list_contains({ "help", "qf" }, filetype)
     then
       vim.g.q_close_windows[args.buf] = true

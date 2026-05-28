@@ -190,6 +190,12 @@ vim.keymap.set("t", "<C-q>", function()
   return "<cmd>close<CR>"
 end, { desc = "Close terminal window", expr = true, nowait = true, silent = true })
 
+vim.keymap.set("t", "<C-g>", "<C-\\><C-n>", {
+  desc = "Exit terminal mode",
+  nowait = true,
+  silent = true,
+})
+
 vim.keymap.set("t", "<A-r>", function() utils.refresh_terminal_window() end, {
   desc = "Refresh terminal window",
   nowait = true,
