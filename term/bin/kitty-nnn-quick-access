@@ -2,13 +2,32 @@
 
 # Purpose: Toggle the nnn quick-access Kitty panel for the current Kitty OS
 # instance, optionally starting nnn at a target path.
-# Notes: quick-access-terminal scopes panels by --instance-group. Include a
-# role so the session-wide panel and Neovim-owned panel do not affect each
-# other's state.
+# Notes: quick-access-terminal scopes panels by --instance-group. Preserve that
+# group when this wrapper is relaunched from inside the panel.
 
-instance_role=${KITTY_NNN_INSTANCE_ROLE:-session}
-instance_group="nnn-${instance_role}-${KITTY_OS_INSTANCE_ID:-default}"
 state_dir="${XDG_RUNTIME_DIR:-/tmp}/nnn-quick-access"
+
+instance_group_from_target() {
+    target=${NNN_QUICK_ACCESS_TARGET:-}
+    [ -n "$target" ] || return 1
+    target=${target##*/}
+    case $target in
+    *.target) printf '%s\n' "${target%.target}" ;;
+    *) return 1 ;;
+    esac
+}
+
+if [ -n "${KITTY_NNN_INSTANCE_GROUP:-}" ]; then
+    instance_group=$KITTY_NNN_INSTANCE_GROUP
+elif [ -n "${KITTY_NNN_QUICK_ACCESS:-}" ]; then
+    instance_group=$(instance_group_from_target) || instance_group=
+fi
+
+if [ -z "${instance_group:-}" ]; then
+    instance_role=${KITTY_NNN_INSTANCE_ROLE:-session}
+    instance_group="nnn-${instance_role}-${KITTY_OS_INSTANCE_ID:-default}"
+fi
+
 target_file="$state_dir/$instance_group.target"
 socket_path="$state_dir/$instance_group.sock"
 
@@ -96,7 +115,7 @@ if [ "$#" -gt 0 ]; then
         --override app_id=kitty-nnn \
         --override kitty_override=allow_remote_control=socket-only \
         --override kitty_override="listen_on=unix:$socket_path" \
-        env KITTY_NNN_QUICK_ACCESS=1 NNN_QUICK_ACCESS_TARGET="$target_file" nnn-with-defaults --open-in-nvim "$1"
+        env KITTY_NNN_QUICK_ACCESS=1 KITTY_NNN_INSTANCE_GROUP="$instance_group" NNN_QUICK_ACCESS_TARGET="$target_file" nnn-with-defaults --open-in-nvim "$1"
     status=$?
     exit "$status"
 else
@@ -105,5 +124,5 @@ else
         --override app_id=kitty-nnn \
         --override kitty_override=allow_remote_control=socket-only \
         --override kitty_override="listen_on=unix:$socket_path" \
-        env KITTY_NNN_QUICK_ACCESS=1 NNN_QUICK_ACCESS_TARGET="$target_file" nnn-with-defaults --open-in-nvim
+        env KITTY_NNN_QUICK_ACCESS=1 KITTY_NNN_INSTANCE_GROUP="$instance_group" NNN_QUICK_ACCESS_TARGET="$target_file" nnn-with-defaults --open-in-nvim
 fi

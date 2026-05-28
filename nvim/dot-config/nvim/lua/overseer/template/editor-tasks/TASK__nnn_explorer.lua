@@ -20,7 +20,6 @@ M.params = {
 function M.builder(params)
   local args = {
     "--open-in-nvim",
-    "-c",
   }
   local startdir = params.startdir
   if utils.is_directory(params.startdir) then
