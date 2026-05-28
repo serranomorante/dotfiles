@@ -180,27 +180,39 @@ run_case() {
     local case_name=$2
     local readonly_paths=$3
     local tmp_dir
+    local output_log
     local rc
     tmp_dir=$(mktemp -d /tmp/dotfiles-test.XXXXXX)
+    output_log="${tmp_dir}/test-output.log"
 
     set +e
-    dotfiles_test_firejail_run "$repo_root" "$tmp_dir" "$file" "$case_name" "$readonly_paths"
+    dotfiles_test_firejail_run "$repo_root" "$tmp_dir" "$file" "$case_name" "$readonly_paths" >"$output_log" 2>&1
     rc=$?
     set -e
 
     if [[ "$rc" -eq 0 ]]; then
+        if [[ -s "$output_log" ]]; then
+            sed 's/^/  /' "$output_log"
+        fi
         printf 'PASS %s\n' "$case_name"
         rm -rf "$tmp_dir"
         return 0
     fi
 
     if [[ "$rc" -eq 77 ]]; then
+        if [[ -s "$output_log" ]]; then
+            sed 's/^/  /' "$output_log"
+        fi
         printf 'SKIP %s\n' "$case_name"
         rm -rf "$tmp_dir"
         return 77
     fi
 
     printf 'FAIL %s\n' "$case_name" >&2
+    if [[ -s "$output_log" ]]; then
+        printf '%s\n' "--- test output (${case_name}) ---" >&2
+        sed 's/^/  /' "$output_log" >&2
+    fi
     printf 'kept tmp: %s\n' "$tmp_dir" >&2
     return "$rc"
 }

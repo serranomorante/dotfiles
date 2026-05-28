@@ -18,13 +18,20 @@ The other stable runner contracts are:
 - `# dotfiles-test-readonly:` must be an absolute existing host path; each declaration becomes a read-only Firejail allowlist entry.
 - `DOTFILES_TEST_ROOT` is the absolute dotfiles repository root, exposed read-only in Firejail and used as cwd.
 - `DOTFILES_TEST_TMP` is the writable temp root for the current individual case; passing and skipped cases remove it, failing cases keep it and print the path.
+- `test-output.log` under `DOTFILES_TEST_TMP` captures stdout and stderr for each individual case. The runner prints this log on failure so `make` output includes the underlying assertion or tool error instead of only the final Make error.
 - `DOTFILES_TEST_NO_FIREJAIL=1` disables Firejail only for debugging the harness.
 - `DOTFILES_TEST_ALLOW_NESTED_FIREJAIL=1` bypasses the nested-Firejail guard only for explicit experiments; do not depend on it without first investigating nested Firejail behavior.
 - Exit code `0` means pass, exit code `77` means skip, and any other non-zero exit code means fail.
 - Discovery currently targets shell files named `*.sh` one directory below `tests/`; deeper or non-shell test frameworks should be wrapped by a shell file that exposes the same metadata contract.
 
+Neovim has two useful test layers. Isolated behavior tests should use `nvim --headless -u NONE` and add only the repo runtimepath they need. Integrated Neovim tests should load the active configuration through temporary XDG directories and read-only host allowlists: symlink `/home/aaaa/.config/nvim` into the temporary `XDG_CONFIG_HOME`, symlink plugin data such as `/home/aaaa/.local/share/nvim/site` into the temporary `XDG_DATA_HOME`, and keep state/cache writes inside `DOTFILES_TEST_TMP`. This catches plugin, parser, LSP, ftplugin, keymap, and runtimepath conflicts without writing to the host configuration.
+
 Tests should be hermetic by default and should prefer behavior checks over load-only checks for features where regressions matter. Load checks are still useful as cheap smoke tests, especially for Neovim modules, shell syntax, systemd unit verification, and formatter/linter checks.
 
+Temporary debugging output added while developing a test must be removed before the change is considered finished. Durable failure information should flow through assertions, stdout, or stderr so the runner captures it in `test-output.log`; do not leave ad hoc debug log files or diagnostic traces in test fixtures unless that log is part of the test contract and documented.
+
 Firejail is the default isolation boundary for test execution. The runner does not intentionally depend on nested Firejail; any design that requires `firejail` inside `firejail` needs a focused investigation first, including whether the nesting is supported and whether it preserves the desired guarantees.
+
+The runner invokes Firejail with deterministic shutdown and deterministic exit-code modes. This is important for integration tests that start child processes such as LSP servers: Firejail's default behavior is to keep the sandbox alive while processes remain and to use the final child's exit status, which can make test results nondeterministic. Deterministic shutdown makes the sandbox close when the test process exits, and deterministic exit-code makes Firejail report the test process status.
 
 Test dependencies are managed by `playbooks/testing.yml` and the dedicated `60-testing-tools` role. Do not add undocumented manual dependencies for persistent tests; declare the package or managed tool in that role, or make the test skip/fail clearly when an optional capability is unavailable.

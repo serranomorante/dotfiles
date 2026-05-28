@@ -4,7 +4,7 @@
 
 Each individual test must be isolated. A test that changes state must not affect the next test. Shared setup and cleanup for a group of related tests belong in explicit setup/teardown logic in the owning test file or framework, not in accidental runner state.
 
-By default tests run through Firejail with a temporary `HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, `XDG_DATA_HOME`, and `TMPDIR`. The repository is exposed read-only and the test temp directory is writable. `DOTFILES_TEST_NO_FIREJAIL=1` exists only for debugging the harness itself.
+By default tests run through Firejail with a temporary `HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, `XDG_DATA_HOME`, and `TMPDIR`. The repository is exposed read-only and the test temp directory is writable. The runner uses Firejail's deterministic shutdown and deterministic exit-code modes so the sandbox is shut down when the test process exits and the reported status comes from that test process rather than an arbitrary remaining child. `DOTFILES_TEST_NO_FIREJAIL=1` exists only for debugging the harness itself.
 
 The runner refuses to intentionally run nested Firejail unless `DOTFILES_TEST_ALLOW_NESTED_FIREJAIL=1` is set for an explicit experiment. Before depending on nested Firejail for real tests, investigate whether it is possible and whether it preserves the expected isolation guarantees.
 
@@ -43,11 +43,14 @@ These contracts are intentionally visible and stable:
 - `DOTFILES_TEST_CASE` is the selected case for the current invocation. It is set by the runner, not by normal users.
 - `DOTFILES_TEST_ROOT` is the absolute dotfiles repo root and is exposed read-only inside Firejail.
 - `DOTFILES_TEST_TMP` is the per-case writable temp root. Passing tests remove it; failing tests keep it and print the path.
+- `test-output.log` under `DOTFILES_TEST_TMP` captures stdout and stderr for the current case. The runner prints it when a test fails, and also prints non-empty output for passing tests before the `PASS` line.
 - `DOTFILES_TEST_NO_FIREJAIL=1` disables Firejail only for harness debugging.
 - `DOTFILES_TEST_ALLOW_NESTED_FIREJAIL=1` bypasses the nested-Firejail guard only for explicit experiments after investigation.
 - Exit code `0` means pass, `77` means skip, and any other non-zero code means fail.
 - The runner executes each test with cwd set to `DOTFILES_TEST_ROOT`.
 - Discovery currently scans shell files named `*.sh` one directory below `tests/`, such as `tests/nvim/example.sh`.
+
+Integration tests that intentionally load active user configuration should still avoid modifying the host. Use `# dotfiles-test-readonly:` for host config, plugin, parser, or tool paths, then create symlinks from the temporary XDG directories into those read-only paths. For example, a Neovim integration test can symlink `/home/aaaa/.config/nvim` into the temporary `XDG_CONFIG_HOME` and `/home/aaaa/.local/share/nvim/site` into the temporary `XDG_DATA_HOME` so Neovim loads the active config and plugins while writes still land in per-test temp/state/cache directories.
 
 Minimal shell test shape:
 

@@ -72,6 +72,8 @@ dotfiles_test_firejail_run() {
         firejail \
             --quiet \
             --noprofile \
+            --deterministic-exit-code \
+            --deterministic-shutdown \
             --net=none \
             "--whitelist=${repo_root}" \
             "--read-only=${repo_root}" \
