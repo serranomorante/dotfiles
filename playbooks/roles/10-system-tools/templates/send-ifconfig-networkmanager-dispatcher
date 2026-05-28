@@ -1,0 +1,33 @@
+#!/bin/sh
+# {{ ansible_managed }}
+# Purpose: Trigger the user's laptop LAN publisher when NetworkManager reports
+# a usable network change.
+
+set -eu
+
+target_user={{ ansible_facts.env.USER | quote }}
+action=${2:-}
+
+case $action in
+up | dhcp4-change | connectivity-change)
+    ;;
+*)
+    exit 0
+    ;;
+esac
+
+target_uid=$(/usr/bin/id -u "$target_user" 2>/dev/null || true)
+if [ -z "$target_uid" ]; then
+    exit 0
+fi
+
+runtime_dir=/run/user/$target_uid
+if [ ! -S "$runtime_dir/bus" ]; then
+    exit 0
+fi
+
+exec /usr/bin/runuser -u "$target_user" -- \
+    /usr/bin/env \
+    XDG_RUNTIME_DIR="$runtime_dir" \
+    DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime_dir/bus" \
+    /usr/bin/systemctl --user start send-ifconfig.service

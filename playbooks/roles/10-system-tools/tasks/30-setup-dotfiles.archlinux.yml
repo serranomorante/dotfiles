@@ -171,6 +171,15 @@
     state: started
     daemon_reload: true
 
+- name: "[archlinux] Dotfiles: install laptop LAN NetworkManager dispatcher"
+  become: true
+  ansible.builtin.template:
+    src: send-ifconfig-networkmanager-dispatcher
+    dest: /etc/NetworkManager/dispatcher.d/90-send-ifconfig
+    owner: root
+    group: root
+    mode: "755"
+
 - name: "[archlinux] Dotfiles: stat keyd observer script"
   ansible.builtin.stat:
     path: ~/dotfiles/peripherals/bin/keyd-observer

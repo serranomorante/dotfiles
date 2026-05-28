@@ -213,8 +213,9 @@
   ansible.builtin.systemd_service:
     scope: user
     name: send-ifconfig.service
-    enabled: true
+    enabled: false
     masked: false
+    daemon_reload: true
 
 - name: handler_ensure_mouseless_click_service
   ansible.builtin.systemd_service:

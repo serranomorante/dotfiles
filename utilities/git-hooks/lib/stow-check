@@ -71,8 +71,20 @@ dotfiles_stow_check_build_packages_file() {
     {
         dotfiles_stow_check_yaml_list_values dotfiles_public_stow_packages "$defaults_file"
         dotfiles_stow_check_yaml_list_values dotfiles_private_stow_packages "$defaults_file"
-        dotfiles_stow_check_yaml_list_values dotfiles_otherlinux_stow_packages "$defaults_file"
+        if dotfiles_stow_check_is_termux; then
+            dotfiles_stow_check_yaml_list_values dotfiles_otherlinux_stow_packages "$defaults_file"
+        fi
     } | sort -u >"$packages_file"
+}
+
+dotfiles_stow_check_is_termux() {
+    case ${PREFIX:-} in
+    /data/data/com.termux/files/usr)
+        return 0
+        ;;
+    esac
+
+    [ "$(uname -o 2>/dev/null || true)" = Android ]
 }
 
 dotfiles_stow_check_run_stow() {

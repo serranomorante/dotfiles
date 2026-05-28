@@ -1,0 +1,133 @@
+#!/bin/sh
+# Purpose: Publish this laptop's current LAN address to phone2 for Termux shortcuts.
+# Notes: The address is selected from the route used to reach phone2 when possible,
+# falling back to the default IPv4 route.
+
+set -eu
+
+usage() {
+    cat <<'EOF'
+Usage: send-ifconfig [--print] [REMOTE]
+
+Publish this laptop's current LAN IPv4 address to a Termux device.
+
+Options:
+  --print    Print the generated environment file and do not write or upload it.
+  -h, --help Show this help text.
+
+Environment:
+  LAPTOP_LAN_PROBE_HOST      Host or IP used to choose the local route.
+  LAPTOP_LAN_PROBE_IP        Fallback route probe IP. Defaults to 1.1.1.1.
+  LAPTOP_OVERSEERR_PORT      Overseerr port. Defaults to 5055.
+  LAPTOP_LAN_PHONE_ENV_DEST  Remote path for laptop-lan.env.
+EOF
+}
+
+upload=true
+case ${1:-} in
+-h | --help)
+    usage
+    exit 0
+    ;;
+--print)
+    upload=false
+    shift
+    ;;
+--)
+    shift
+    ;;
+-*)
+    printf 'send-ifconfig: unknown option: %s\n' "$1" >&2
+    usage >&2
+    exit 2
+    ;;
+esac
+
+remote=${1:-phone2}
+port=${LAPTOP_OVERSEERR_PORT:-5055}
+state_dir=${XDG_STATE_HOME:-"$HOME/.local/state"}/laptop-lan
+env_file=$state_dir/laptop-lan.env
+phone_env_dest=${LAPTOP_LAN_PHONE_ENV_DEST:-/data/data/com.termux/files/home/laptop-lan.env}
+
+die() {
+    printf 'send-ifconfig: %s\n' "$*" >&2
+    exit 1
+}
+
+need_command() {
+    command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+route_probe_for_remote() {
+    if [ -n "${LAPTOP_LAN_PROBE_HOST:-}" ]; then
+        printf '%s\n' "$LAPTOP_LAN_PROBE_HOST"
+        return 0
+    fi
+
+    ssh -G "$remote" 2>/dev/null | awk 'tolower($1) == "hostname" { print $2; exit }'
+}
+
+lan_ipv4_for_probe() {
+    probe=$1
+    ip -4 route get "$probe" 2>/dev/null | awk '
+        {
+            for (i = 1; i <= NF; i++) {
+                if ($i == "src" && (i + 1) <= NF) {
+                    print $(i + 1)
+                    exit
+                }
+            }
+        }
+    '
+}
+
+need_command awk
+need_command date
+need_command ip
+need_command mktemp
+need_command mv
+need_command scp
+need_command ssh
+
+probe=$(route_probe_for_remote || true)
+if [ -z "$probe" ]; then
+    probe=${LAPTOP_LAN_PROBE_IP:-1.1.1.1}
+fi
+
+lan_ipv4=$(lan_ipv4_for_probe "$probe" || true)
+if [ -z "$lan_ipv4" ] && [ "$probe" != "${LAPTOP_LAN_PROBE_IP:-1.1.1.1}" ]; then
+    lan_ipv4=$(lan_ipv4_for_probe "${LAPTOP_LAN_PROBE_IP:-1.1.1.1}" || true)
+fi
+
+case $lan_ipv4 in
+'' | *[!0-9.]*)
+    die "could not determine a LAN IPv4 address"
+    ;;
+esac
+
+case $port in
+'' | *[!0-9]*)
+    die "invalid LAPTOP_OVERSEERR_PORT: $port"
+    ;;
+esac
+
+umask 077
+mkdir -p "$state_dir"
+
+updated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+if [ "$upload" = false ]; then
+    printf 'LAPTOP_LAN_IPV4=%s\n' "$lan_ipv4"
+    printf 'LAPTOP_OVERSEERR_URL=http://%s:%s/\n' "$lan_ipv4" "$port"
+    printf 'LAPTOP_LAN_UPDATED_AT=%s\n' "$updated_at"
+    exit 0
+fi
+
+tmp_file=$(mktemp "$state_dir/laptop-lan.env.XXXXXX")
+{
+    printf 'LAPTOP_LAN_IPV4=%s\n' "$lan_ipv4"
+    printf 'LAPTOP_OVERSEERR_URL=http://%s:%s/\n' "$lan_ipv4" "$port"
+    printf 'LAPTOP_LAN_UPDATED_AT=%s\n' "$updated_at"
+} >"$tmp_file"
+mv "$tmp_file" "$env_file"
+
+scp -o BatchMode=yes -o ConnectTimeout=5 "$env_file" "$remote:$phone_env_dest"

@@ -1,11 +1,9 @@
 [Unit]
-Description=Send ifconfig file to phone2
-After=graphical-session.target
+Description=Publish laptop LAN address to phone2
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/scp %h/data/laptopifconfig phone2:/data/data/com.termux/files/home/laptopifconfig
-ExecStartPre=/usr/bin/bash -c "ifconfig -a | grep 'inet 192' > %h/data/laptopifconfig"
+ExecStart=%h/bin/send-ifconfig phone2
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=default.target
