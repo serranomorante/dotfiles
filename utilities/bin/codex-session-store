@@ -126,7 +126,6 @@ def parse_session(path, cwd=None):
     if session.get("originator") != "codex-tui":
         return None
 
-    session["title"] = session.get("title") or "Untitled session"
     session["updated_at"] = file_mtime_timestamp(path) or session["timestamp"]
     return session
 

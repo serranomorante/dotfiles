@@ -9,11 +9,13 @@ local CODEX_SESSION_UPDATED_AT_METADATA = "codex_session_updated_at"
 local CODEX_SESSIONS_DIR = vim.fn.expand("~/.codex/sessions")
 local SESSION_CACHE_VERSION = 1
 local SESSION_CACHE_NAMESPACE = "nvim"
-local SESSION_CACHE_KEY = "codex-sessions-v2"
+local SESSION_CACHE_KEY = "codex-sessions-v3"
 local SESSION_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
 local SESSION_LINK_POLL_INTERVAL_MS = 500
 local SESSION_LINK_TIMEOUT_MS = 60 * 1000
 local SESSION_TITLE_TIMEOUT_MS = 10 * 60 * 1000
+local SESSION_LINK_RETRY_INTERVAL_MS = 2 * 1000
+local SESSION_ORPHAN_MATCH_WINDOW_SECONDS = 5 * 60
 
 local session_cache = {
   loaded = false,
@@ -21,6 +23,7 @@ local session_cache = {
   refresh_job = nil,
   waiters = {},
 }
+local session_link_retry_tasks = setmetatable({}, { __mode = "k" })
 
 local function codex_session_store_bin()
   local configured_bin = vim.env.CODEX_SESSION_STORE_BIN
@@ -154,9 +157,9 @@ local function valid_sessions(sessions)
       and type(session.id) == "string"
       and type(session.cwd) == "string"
       and type(session.timestamp) == "string"
-      and type(session.title) == "string"
       and type(session.path) == "string"
       and (session.originator == nil or type(session.originator) == "string")
+      and (session.title == nil or type(session.title) == "string")
     then
       session.updated_at = updated_at
       table.insert(valid, session)
@@ -355,11 +358,27 @@ local function session_watch_job(command)
   end)
 end
 
+---@param cwd string
+---@return Promise
+local function async_sessions(cwd)
+  local cmd = codex_session_store_cmd("refresh")
+  if not cmd then return require("promise").reject("codex-session-store executable not found") end
+
+  return session_watch_job(cmd):thenCall(function(decoded) return scoped_sessions(decoded.sessions, cwd) end)
+end
+
 ---@param task overseer.Task
 ---@param session table
 local function update_task_title(task, session)
   if type(session.title) ~= "string" or session.title == "" then return end
   task.name = "codex: " .. session.title
+end
+
+---@param session CodexStoredSession
+---@return string
+local function session_display_title(session)
+  if type(session.title) == "string" and session.title ~= "" then return session.title end
+  return "Untitled session"
 end
 
 ---@param task overseer.Task
@@ -371,10 +390,10 @@ local function watch_new_session_job(task, command)
     local stderr = {}
     local resolved = false
 
-    local function resolve_once()
+    local function resolve_once(session)
       if resolved then return end
       resolved = true
-      resolve()
+      resolve(session)
     end
 
     local function handle_line(line)
@@ -387,7 +406,7 @@ local function watch_new_session_job(task, command)
         link_task_to_session(task, decoded.session)
       elseif decoded.event == "title" and type(decoded.session) == "table" then
         link_task_to_session(task, decoded.session)
-        resolve_once()
+        resolve_once(decoded.session)
       elseif decoded.event == "timeout" then
         resolve_once()
       end
@@ -466,6 +485,140 @@ local function async_watch_new_session(task, cwd, known_session_ids)
   if not cmd then return require("promise").reject("codex-session-store executable not found") end
 
   return watch_new_session_job(task, cmd)
+end
+
+---@param session CodexStoredSession
+---@return number?
+local function session_epoch_seconds(session)
+  local compact_id = type(session.id) == "string" and session.id:gsub("%-", "") or nil
+  local timestamp_hex = compact_id and compact_id:match("^([0-9a-fA-F]+)") or nil
+  if not timestamp_hex or #timestamp_hex < 12 then return nil end
+
+  return tonumber(timestamp_hex:sub(1, 12), 16) / 1000
+end
+
+---@param task overseer.Task
+---@return boolean
+local function is_unlinked_plain_codex_task(task)
+  if task.status ~= require("overseer.constants").STATUS.RUNNING then return false end
+  if task.metadata and task.metadata[CODEX_SESSION_ID_METADATA] then return false end
+  if task.cmd ~= "codex" then return false end
+  return type(task.args) ~= "table" or #task.args == 0
+end
+
+---@param task overseer.Task
+---@param session CodexStoredSession
+---@param known_session_ids? table<string, true>
+---@return number?
+local function unlinked_task_session_delta(task, session, known_session_ids)
+  if known_session_ids and known_session_ids[session.id] then return nil end
+  if not is_unlinked_plain_codex_task(task) then return nil end
+  if task.cwd ~= session.cwd then return nil end
+  if type(task.time_start) ~= "number" then return nil end
+
+  local session_start = session_epoch_seconds(session)
+  if not session_start then return nil end
+
+  local delta = math.abs(session_start - task.time_start)
+  if delta > SESSION_ORPHAN_MATCH_WINDOW_SECONDS then return nil end
+  return delta
+end
+
+---@param task overseer.Task
+---@param sessions CodexStoredSession[]
+---@param known_session_ids? table<string, true>
+---@return CodexStoredSession?
+local function matching_unlinked_task_session(task, sessions, known_session_ids)
+  local best_session
+  local best_delta
+
+  for _, session in ipairs(sessions) do
+    local delta = unlinked_task_session_delta(task, session, known_session_ids)
+    if delta and (not best_delta or delta < best_delta) then
+      best_session = session
+      best_delta = delta
+    end
+  end
+
+  return best_session
+end
+
+---@param session CodexStoredSession
+---@param tasks overseer.Task[]
+---@return overseer.Task?
+local function matching_unlinked_session_task(session, tasks)
+  local best_task
+  local best_delta
+
+  for _, task in ipairs(tasks) do
+    local delta = unlinked_task_session_delta(task, session)
+    if delta and (not best_delta or delta < best_delta) then
+      best_task = task
+      best_delta = delta
+    end
+  end
+
+  return best_task
+end
+
+---@param task overseer.Task
+---@param cwd string
+---@param known_session_ids table<string, true>
+---@return Promise
+local function async_link_task_to_recent_session(task, cwd, known_session_ids)
+  return async_sessions(cwd):thenCall(function(sessions)
+    local session = matching_unlinked_task_session(task, sessions, known_session_ids)
+    if session then link_task_to_session(task, session) end
+    return session
+  end)
+end
+
+---@param task overseer.Task
+---@return boolean
+local function task_has_session_id(task)
+  return type(task.metadata) == "table" and type(task.metadata[CODEX_SESSION_ID_METADATA]) == "string"
+end
+
+---@param task overseer.Task
+---@return boolean
+local function should_retry_session_link(task)
+  if task_has_session_id(task) then return false end
+  if type(task.is_disposed) ~= "function" then return true end
+
+  local ok, disposed = pcall(task.is_disposed, task)
+  return not ok or not disposed
+end
+
+---@param task overseer.Task
+---@param cwd string
+---@param known_session_ids table<string, true>
+local function retry_link_task_until_session_id(task, cwd, known_session_ids)
+  if not should_retry_session_link(task) then
+    session_link_retry_tasks[task] = nil
+    return
+  end
+
+  if session_link_retry_tasks[task] then return end
+  session_link_retry_tasks[task] = true
+
+  local function retry()
+    if not should_retry_session_link(task) then
+      session_link_retry_tasks[task] = nil
+      return
+    end
+
+    async_link_task_to_recent_session(task, cwd, known_session_ids)
+      :thenCall(function()
+        session_link_retry_tasks[task] = nil
+        if should_retry_session_link(task) then retry_link_task_until_session_id(task, cwd, known_session_ids) end
+      end)
+      :catch(function()
+        session_link_retry_tasks[task] = nil
+        if should_retry_session_link(task) then retry_link_task_until_session_id(task, cwd, known_session_ids) end
+      end)
+  end
+
+  vim.defer_fn(retry, SESSION_LINK_RETRY_INTERVAL_MS)
 end
 
 ---@param timestamp string
@@ -547,7 +700,8 @@ end
 ---@return overseer.Task?
 local function running_task_for_session(session)
   local STATUS = require("overseer.constants").STATUS
-  for _, task in ipairs(require("overseer").list_tasks({ status = STATUS.RUNNING })) do
+  local tasks = require("overseer").list_tasks({ status = STATUS.RUNNING })
+  for _, task in ipairs(tasks) do
     if task.metadata and task.metadata[CODEX_SESSION_ID_METADATA] == session.id then
       link_task_to_session(task, session)
       return task
@@ -556,6 +710,12 @@ local function running_task_for_session(session)
       link_task_to_session(task, session)
       return task
     end
+  end
+
+  local task = matching_unlinked_session_task(session, tasks)
+  if task then
+    link_task_to_session(task, session)
+    return task
   end
 end
 
@@ -631,9 +791,15 @@ end
 ---@param cwd string
 ---@param known_session_ids table<string, true>
 local function link_new_task_to_session_id(task, cwd, known_session_ids)
-  async_watch_new_session(task, cwd, known_session_ids):catch(
-    function(err) vim.notify(tostring(err), vim.log.levels.ERROR) end
-  )
+  async_watch_new_session(task, cwd, known_session_ids)
+    :thenCall(function()
+      if task_has_session_id(task) then return end
+      retry_link_task_until_session_id(task, cwd, known_session_ids)
+    end)
+    :catch(function(err)
+      vim.notify(tostring(err), vim.log.levels.ERROR)
+      retry_link_task_until_session_id(task, cwd, known_session_ids)
+    end)
 end
 
 ---@param task overseer.Task
@@ -655,7 +821,10 @@ end
 ---@param include_cwd? boolean
 ---@return string
 local function format_session(session, include_cwd)
-  local label = ("%s | %s"):format(format_timestamp(session.updated_at or session.timestamp), session.title)
+  local label = ("%s | %s"):format(
+    format_timestamp(session.updated_at or session.timestamp),
+    session_display_title(session)
+  )
   if include_cwd then label = ("%s | %s"):format(label, vim.fn.fnamemodify(session.cwd, ":~")) end
   return label
 end
@@ -714,7 +883,7 @@ local function resume_session(session, prompt, start_win)
   end
 
   local task = require("overseer").new_task({
-    name = "codex resume: " .. session.title,
+    name = "codex resume: " .. session_display_title(session),
     cmd = "codex",
     args = { "resume", "--no-alt-screen", "-C", session.cwd, session.id },
     cwd = session.cwd,
