@@ -199,7 +199,8 @@ xorg_signal_lines() {
             {
                 line = tolower($0)
             }
-            line ~ /(nvidia-modeset.*warning|nvrm:.*(xid|failed|error)|drm.*(failed|error)|libinput.*(failed|error))/ {
+            (line ~ /nvidia-modeset/ && line ~ /warning/) ||
+            (line ~ /(nvrm:|drm|libinput)/ && line ~ /(xid|failed|error)/) {
                 print
             }
         '
@@ -227,10 +228,15 @@ pacman_signal_count() {
 kernel_signal_lines() {
     journalctl -k --since today --no-pager 2>/dev/null |
         awk '
-            BEGIN {
-                pattern = "(oom-kill|Out of memory|I/O error|EXT4-fs error|BTRFS.*(error|corrupt)|NVRM:.*(Xid|failed|error|fallen off|RmInitAdapter)|amdgpu.*(MODE2 reset|GPU reset|timeout|failed|error|ring .* timeout)|thermal.*(critical|thrott)|Machine check|mce:|BUG:|WARNING: CPU|Call Trace)"
+            {
+                line = tolower($0)
             }
-            $0 ~ pattern {
+            line ~ /(oom-kill|out of memory|i\/o error|ext4-fs error|bug:|warning: cpu|call trace|machine check)/ ||
+            line ~ /mce:.*(hardware error|error|cpu|bank|status)/ ||
+            (line ~ /btrfs/ && line ~ /(error|corrupt)/) ||
+            (line ~ /nvrm:/ && line ~ /(xid|failed|error|fallen off|rminitadapter)/) ||
+            (line ~ /amdgpu/ && line ~ /(mode2 reset|gpu reset|timeout|failed|error|ring .* timeout)/) ||
+            (line ~ /thermal/ && line ~ /(critical|thrott)/) {
                 print
             }
         '
@@ -243,12 +249,12 @@ kernel_signal_count() {
 audio_signal_lines() {
     journalctl --user -u pipewire.service -u pipewire-pulse.service -u wireplumber.service --since today --no-pager 2>/dev/null |
         awk '
-            /spa\.alsa: .*No such device/ ||
-            /spa\.alsa: .*resync/ ||
-            /spa\.alsa: .*Operation not permitted/ ||
-            /spa\.audioconvert: .*out of buffers/ ||
-            /pipewire.*(error|failed|No such device)/ ||
-            /wireplumber.*(error|failed|No such device)/ {
+            {
+                line = tolower($0)
+            }
+            (line ~ /spa\.alsa/ && line ~ /(no such device|resync|operation not permitted)/) ||
+            (line ~ /spa\.audioconvert/ && line ~ /out of buffers/) ||
+            (line ~ /(pipewire|wireplumber)/ && line ~ /(error|failed|no such device)/) {
                 print
             }
         '
@@ -318,7 +324,13 @@ storage_signal_lines() {
             {
                 line = tolower($0)
             }
-            line ~ /(i\/o error|blk_update_request|buffer i\/o|nvme.*(error|reset|timeout|critical|smart|abort)|ata[0-9].*(error|failed|timeout|hard resetting)|ext4-fs.*(error|warning)|btrfs.*(error|warning|corrupt)|xfs.*(error|corrupt)|read-only file system|filesystem.*remount)/ {
+            line ~ /(i\/o error|blk_update_request|buffer i\/o|read-only file system)/ ||
+            (line ~ /nvme/ && line ~ /(error|reset|timeout|critical|smart|abort)/) ||
+            (line ~ /ata[0-9]/ && line ~ /(error|failed|timeout|hard resetting)/) ||
+            (line ~ /ext4-fs/ && line ~ /(error|warning)/) ||
+            (line ~ /btrfs/ && line ~ /(error|warning|corrupt)/) ||
+            (line ~ /xfs/ && line ~ /(error|corrupt)/) ||
+            (line ~ /filesystem/ && line ~ /remount/) {
                 print
             }
         ' |
@@ -411,7 +423,10 @@ music_signal_lines() {
                 {
                     line = tolower($0)
                 }
-                line ~ /(reaper|yabridge|wineasio|wine).*(failed|failure|error|timeout|crash)/ {
+                line ~ /promnesia\[[0-9]+\]: \[debug[[:space:]]+[0-9-]+ [0-9:]+ promnesia .* indexing via _markdown:/ {
+                    next
+                }
+                line ~ /(reaper|yabridge|wineasio|wine)/ && line ~ /(failed|failure|error|timeout|crash)/ {
                     print
                 }
             '
@@ -473,19 +488,37 @@ journal_warning_lines() {
 unclassified_warning_lines() {
     journal_warning_lines |
         awk '
+            $0 !~ /^\[(user|system)\] [A-Z][a-z][a-z] [ 0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] / {
+                next
+            }
             {
                 line = tolower($0)
             }
-            line ~ /(pipewire|wireplumber|spa\.alsa|spa\.audioconvert|alsa)/ {next}
-            line ~ /(networkmanager|systemd-resolved|systemd-networkd|wpa_supplicant|iwd|tailscaled|dhcp|dns|vpn|wireguard)/ {next}
-            line ~ /(bluetooth|hci[0-9])/ {next}
-            line ~ /(docker|containerd|podman|container .*exited|unhealthy|restarting)/ {next}
-            line ~ /(syncthing)/ {next}
-            line ~ /(nvim|marksman|lua_ls|overseer)/ {next}
-            line ~ /(reaper|yabridge|wineasio)/ {next}
-            line ~ /(sshd|auditd|polkit|authentication failure|failed password|pam_)/ {next}
-            line ~ /(oom-kill|out of memory|i\/o error|ext4-fs|btrfs|xfs|nvrm|nvidia-modeset|amdgpu|drm|libinput|thermal|machine check|mce:|bug:|warning: cpu|call trace|nvme|ata[0-9]|filesystem)/ {next}
-            line ~ /(coredump|systemd-coredump)/ {next}
+            (line ~ /spa\.alsa/ && line ~ /(no such device|resync|operation not permitted)/) {next}
+            (line ~ /spa\.audioconvert/ && line ~ /out of buffers/) {next}
+            (line ~ /(pipewire|wireplumber)/ && line ~ /(error|failed|no such device)/) {next}
+            (line ~ /(networkmanager|systemd-resolved|systemd-networkd|wpa_supplicant|iwd|tailscaled)/ && line ~ /(<warn>|<error>|failed|failure|error|timed out|unreachable|deauth|link is down|dhcp|dns|vpn|wireguard)/) {next}
+            (line ~ /(bluetooth|hci[0-9])/ && line ~ /(failed|failure|error|timeout|timed out|down|reset|br-connection|sco packet)/) {next}
+            (line ~ /(docker|containerd|podman)/ && line ~ /(level=(warning|error)|failed|failure|panic|exited \([1-9][0-9]*\)|unhealthy|restarting)/) {next}
+            line ~ /(container .*exited \([1-9][0-9]*\)|unhealthy|restarting)/ {next}
+            (line ~ /syncthing/ && line ~ /(failed|failure|error|timeout|out of sync|folder marker|conflict|connection refused|no such host)/) {next}
+            (line ~ /(nvim|marksman|lua_ls|overseer)/ && line ~ /(error|warn|failed|failure|traceback|panic|exception)/) {next}
+            (line ~ /(reaper|yabridge|wineasio|wine)/ && line ~ /(failed|failure|error|timeout|crash)/) {next}
+            line ~ /(authentication failure|failed password|pam_.*(failure|error)|polkit.*(error|failed|denied)|audit.*(denied|apparmor|selinux|avc)|permission denied)/ {next}
+            (line ~ /nvidia-modeset/ && line ~ /warning/) {next}
+            (line ~ /(nvrm:|drm|libinput)/ && line ~ /(xid|failed|error)/) {next}
+            line ~ /(oom-kill|out of memory|i\/o error|ext4-fs error|bug:|warning: cpu|call trace|machine check)/ {next}
+            line ~ /mce:.*(hardware error|error|cpu|bank|status)/ {next}
+            (line ~ /btrfs/ && line ~ /(error|corrupt)/) {next}
+            (line ~ /amdgpu/ && line ~ /(mode2 reset|gpu reset|timeout|failed|error|ring .* timeout)/) {next}
+            (line ~ /thermal/ && line ~ /(critical|thrott)/) {next}
+            (line ~ /nvme/ && line ~ /(error|reset|timeout|critical|smart|abort)/) {next}
+            (line ~ /ata[0-9]/ && line ~ /(error|failed|timeout|hard resetting)/) {next}
+            (line ~ /ext4-fs/ && line ~ /(error|warning)/) {next}
+            (line ~ /btrfs/ && line ~ /(warning|corrupt)/) {next}
+            (line ~ /xfs/ && line ~ /(error|corrupt)/) {next}
+            (line ~ /filesystem/ && line ~ /remount/) {next}
+            line ~ /(coredump|systemd-coredump|core-dump|code=dumped|status=[0-9]+\/(segv|abrt|ill|bus|fpe))/ {next}
             line ~ /(borg-backup|borg backup|pkm-export|pkm .* export|promnesia-index|promnesia index|send-ifconfig|compositor|display-health-check)/ {next}
             line ~ /(ufw block|kkeyserver|translation|desktop file.*exec|the directory .* does not exist|flameshot.*(qpainter|qlayout|painter)|xdg-desktop-portal.*icon validation|kded6.*d->name\.isempty|kscreenlocker_greet.*(hunspell|overrides a member)|org_kde_powerdevil.*dw_watch_display_connections)/ {next}
             NF {
@@ -504,6 +537,7 @@ unclassified_warning_family_lines() {
                 sub(/^[A-Z][a-z][a-z] [ 0-9][0-9] [0-9:]+ [^ ]+ /, "", line)
                 family = line
                 sub(/\[[0-9]+\]/, "", family)
+                gsub(/event[0-9]+/, "eventN", family)
                 gsub(/0x[0-9A-Fa-f]+/, "0xHEX", family)
                 gsub(/[0-9][0-9][0-9]+/, "N", family)
                 gsub(/[[:space:]]+/, " ", family)
@@ -678,6 +712,7 @@ Do not delete these from the report blindly. Promote one to warning when it
 correlates with a user-visible problem.
 
 - Repeated `[UFW BLOCK]` multicast lines.
+- Promnesia debug Markdown-indexing lines that only mention REAPER or Wine in a note path.
 - Missing translation warnings from GUI tools.
 - Single-shot `KKeyServer::xcbKeyPressEventToQt failed` bursts.
 - Missing Xorg font directories.
@@ -826,7 +861,8 @@ EOF
 write_crashes_page() {
     summary=$(coredump_summary_since "7 days ago")
     count=$(printf '%s\n' "$summary" | awk -F '\t' '{sum += $1} END {print sum + 0}')
-    commands=$(cat <<'EOF'
+    commands=$(
+        cat <<'EOF'
 ```sh
 coredumpctl list --since today --no-pager | sed -n '1,200p'
 ```
@@ -835,7 +871,7 @@ coredumpctl list --since today --no-pager | sed -n '1,200p'
 coredumpctl list --since '7 days ago' --no-pager | sed -n '1,300p'
 ```
 EOF
-)
+    )
 
     write_source_page "system-health-crashes" "Application Crashes" "$count" "$commands" "$summary"
 }
@@ -843,7 +879,8 @@ EOF
 write_display_page() {
     signals=$(xorg_signal_lines)
     count=$(printf '%s\n' "$signals" | count_lines)
-    commands=$(cat <<'EOF'
+    commands=$(
+        cat <<'EOF'
 ```sh
 rg -n '\(EE\)|\(WW\)' /var/log/Xorg.0.log ~/.local/share/xorg/Xorg.0.log | sed -n '1,300p'
 ```
@@ -852,7 +889,7 @@ rg -n '\(EE\)|\(WW\)' /var/log/Xorg.0.log ~/.local/share/xorg/Xorg.0.log | sed -
 journalctl -k --since today -n 1000 --no-pager | rg -i 'nvrm|amdgpu|drm|xorg|libinput' | sed -n '1,300p'
 ```
 EOF
-)
+    )
 
     write_source_page "system-health-display" "Display And Input Logs" "$count" "$commands" "$signals"
 }
@@ -860,7 +897,8 @@ EOF
 write_packages_page() {
     signals=$(pacman_signal_lines)
     count=$(printf '%s\n' "$signals" | count_lines)
-    commands=$(cat <<'EOF'
+    commands=$(
+        cat <<'EOF'
 ```sh
 tail -300 /var/log/pacman.log
 ```
@@ -869,7 +907,7 @@ tail -300 /var/log/pacman.log
 tail -2000 /var/log/pacman.log | rg -n 'error:|failed|WARNING|Error!|exited [1-9]|aborted|Possibly missing firmware' | sed -n '1,300p'
 ```
 EOF
-)
+    )
 
     write_source_page "system-health-packages" "Package And Hook Logs" "$count" "$commands" "$signals"
 }
@@ -877,7 +915,8 @@ EOF
 write_kernel_page() {
     signals=$(kernel_signal_lines)
     count=$(printf '%s\n' "$signals" | count_lines)
-    commands=$(cat <<'EOF'
+    commands=$(
+        cat <<'EOF'
 ```sh
 SYSTEMD_PAGER='less -R +G' journalctl -k --since today -n 300 --pager-end
 ```
@@ -886,7 +925,7 @@ SYSTEMD_PAGER='less -R +G' journalctl -k --since today -n 300 --pager-end
 journalctl -k --since '7 days ago' -n 2000 --no-pager | rg -i 'oom|i/o error|ext4|btrfs|nvrm|amdgpu|thermal|mce|bug|call trace' | sed -n '1,300p'
 ```
 EOF
-)
+    )
 
     write_source_page "system-health-kernel" "Kernel Signals" "$count" "$commands" "$signals"
 }
@@ -895,7 +934,8 @@ write_audio_page() {
     signals=$(audio_signal_lines)
     count=$(printf '%s\n' "$signals" | count_lines)
     evidence=$(printf '%s\n' "$signals" | tail -20)
-    commands=$(cat <<'EOF'
+    commands=$(
+        cat <<'EOF'
 ```sh
 SYSTEMD_PAGER='less -R +G' journalctl --user -u pipewire.service -u pipewire-pulse.service -u wireplumber.service --since today -n 300 --pager-end
 ```
@@ -904,7 +944,7 @@ SYSTEMD_PAGER='less -R +G' journalctl --user -u pipewire.service -u pipewire-pul
 journalctl --user -u pipewire.service -u pipewire-pulse.service -u wireplumber.service --since today -n 1000 --no-pager | rg -i 'spa\.alsa|spa\.audioconvert|no such device|out of buffers|resync|operation not permitted' | sed -n '1,300p'
 ```
 EOF
-)
+    )
 
     write_source_page "system-health-audio" "Audio Signals" "$count" "$commands" "$evidence"
 }
@@ -912,7 +952,8 @@ EOF
 write_network_page() {
     signals=$(network_signal_lines)
     count=$(printf '%s\n' "$signals" | count_lines)
-    commands=$(cat <<'EOF'
+    commands=$(
+        cat <<'EOF'
 ```sh
 SYSTEMD_PAGER='less -R +G' journalctl -u NetworkManager.service -u systemd-networkd.service -u systemd-resolved.service -u iwd.service -u wpa_supplicant.service -u tailscaled.service --since today -n 300 --pager-end
 ```
@@ -921,7 +962,7 @@ SYSTEMD_PAGER='less -R +G' journalctl -u NetworkManager.service -u systemd-netwo
 journalctl -u NetworkManager.service -u systemd-resolved.service -u tailscaled.service --since today -n 1000 --no-pager | rg -i 'failed|failure|error|timeout|unreachable|deauth|disconnect|dhcp|dns|vpn|wireguard' | sed -n '1,300p'
 ```
 EOF
-)
+    )
 
     write_source_page "system-health-network" "Network And DNS Signals" "$count" "$commands" "$signals"
 }
@@ -929,7 +970,8 @@ EOF
 write_bluetooth_page() {
     signals=$(bluetooth_signal_lines)
     count=$(printf '%s\n' "$signals" | count_lines)
-    commands=$(cat <<'EOF'
+    commands=$(
+        cat <<'EOF'
 ```sh
 SYSTEMD_PAGER='less -R +G' journalctl -u bluetooth.service --since today -n 300 --pager-end
 ```
@@ -938,7 +980,7 @@ SYSTEMD_PAGER='less -R +G' journalctl -u bluetooth.service --since today -n 300 
 journalctl -k --since today -n 1000 --no-pager | rg -i 'bluetooth|hci[0-9]' | sed -n '1,300p'
 ```
 EOF
-)
+    )
 
     write_source_page "system-health-bluetooth" "Bluetooth Signals" "$count" "$commands" "$signals"
 }
@@ -946,7 +988,8 @@ EOF
 write_storage_page() {
     signals=$(storage_signal_lines)
     count=$(printf '%s\n' "$signals" | count_lines)
-    commands=$(cat <<'EOF'
+    commands=$(
+        cat <<'EOF'
 ```sh
 SYSTEMD_PAGER='less -R +G' journalctl -k --since today -n 300 --pager-end
 ```
@@ -955,7 +998,7 @@ SYSTEMD_PAGER='less -R +G' journalctl -k --since today -n 300 --pager-end
 journalctl -k --since '7 days ago' -n 2000 --no-pager | rg -i 'i/o error|blk_update_request|buffer i/o|nvme|ata[0-9]|ext4-fs|btrfs|xfs|read-only file system|filesystem.*remount' | sed -n '1,300p'
 ```
 EOF
-)
+    )
 
     write_source_page "system-health-storage" "Storage And Filesystem Signals" "$count" "$commands" "$signals"
 }
@@ -963,7 +1006,8 @@ EOF
 write_containers_page() {
     signals=$(container_signal_lines)
     count=$(printf '%s\n' "$signals" | count_lines)
-    commands=$(cat <<'EOF'
+    commands=$(
+        cat <<'EOF'
 ```sh
 SYSTEMD_PAGER='less -R +G' journalctl -u docker.service -u containerd.service -u podman.service --since today -n 300 --pager-end
 ```
@@ -972,7 +1016,7 @@ SYSTEMD_PAGER='less -R +G' journalctl -u docker.service -u containerd.service -u
 timeout 3s docker ps -a --format 'container {{.Names}} {{.Status}}' | rg -i 'exited \([1-9][0-9]*\)|unhealthy|restarting' | sed -n '1,200p'
 ```
 EOF
-)
+    )
 
     write_source_page "system-health-containers" "Container Signals" "$count" "$commands" "$signals"
 }
@@ -980,7 +1024,8 @@ EOF
 write_sync_page() {
     signals=$(sync_signal_lines)
     count=$(printf '%s\n' "$signals" | count_lines)
-    commands=$(cat <<'EOF'
+    commands=$(
+        cat <<'EOF'
 ```sh
 SYSTEMD_PAGER='less -R +G' journalctl --user -u syncthing.service --since today -n 300 --pager-end
 ```
@@ -989,7 +1034,7 @@ SYSTEMD_PAGER='less -R +G' journalctl --user -u syncthing.service --since today 
 journalctl --user -u syncthing.service --since today -n 1000 --no-pager | rg -i 'failed|failure|error|timeout|out of sync|folder marker|conflict|connection refused|no such host' | sed -n '1,300p'
 ```
 EOF
-)
+    )
 
     write_source_page "system-health-sync" "Sync Signals" "$count" "$commands" "$signals"
 }
@@ -997,7 +1042,8 @@ EOF
 write_editor_page() {
     signals=$(editor_signal_lines)
     count=$(printf '%s\n' "$signals" | count_lines)
-    commands=$(cat <<'EOF'
+    commands=$(
+        cat <<'EOF'
 ```sh
 tail -400 ~/.local/state/nvim/logs/lsp.log ~/.local/state/nvim/log ~/.local/state/nvim/overseer.log 2>/dev/null | rg -i 'error|warn|failed|failure|traceback|panic|exception' | sed -n '1,300p'
 ```
@@ -1006,7 +1052,7 @@ tail -400 ~/.local/state/nvim/logs/lsp.log ~/.local/state/nvim/log ~/.local/stat
 SYSTEMD_PAGER='less -R +G' journalctl --user --since today -n 300 --pager-end
 ```
 EOF
-)
+    )
 
     write_source_page "system-health-editor" "Editor And LSP Signals" "$count" "$commands" "$signals"
 }
@@ -1014,7 +1060,8 @@ EOF
 write_music_page() {
     signals=$(music_signal_lines)
     count=$(printf '%s\n' "$signals" | count_lines)
-    commands=$(cat <<'EOF'
+    commands=$(
+        cat <<'EOF'
 ```sh
 SYSTEMD_PAGER='less -R +G' journalctl --user --since today -n 500 --pager-end
 ```
@@ -1023,7 +1070,7 @@ SYSTEMD_PAGER='less -R +G' journalctl --user --since today -n 500 --pager-end
 tail -400 ~/.local/share/yabridge/*.log ~/.config/yabridge/*.log ~/.config/REAPER/*.log 2>/dev/null | rg -i 'failed|failure|error|timeout|crash|exception|segfault' | sed -n '1,300p'
 ```
 EOF
-)
+    )
 
     write_source_page "system-health-music" "Music Production Signals" "$count" "$commands" "$signals"
 }
@@ -1031,7 +1078,8 @@ EOF
 write_security_page() {
     signals=$(security_signal_lines)
     count=$(printf '%s\n' "$signals" | count_lines)
-    commands=$(cat <<'EOF'
+    commands=$(
+        cat <<'EOF'
 ```sh
 SYSTEMD_PAGER='less -R +G' journalctl -u sshd.service -u ssh.service -u auditd.service -u polkit.service --since today -n 300 --pager-end
 ```
@@ -1040,7 +1088,7 @@ SYSTEMD_PAGER='less -R +G' journalctl -u sshd.service -u ssh.service -u auditd.s
 journalctl -u sshd.service -u ssh.service -u auditd.service -u polkit.service --since today -n 1000 --no-pager | rg -i 'authentication failure|failed password|pam_.*(failure|error)|polkit.*(error|failed|denied)|audit.*(denied|apparmor|selinux|avc)|permission denied' | sed -n '1,300p'
 ```
 EOF
-)
+    )
 
     write_source_page "system-health-security" "Auth And Security Signals" "$count" "$commands" "$signals"
 }
