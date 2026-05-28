@@ -1,9 +1,26 @@
 ---
-- name: "[otherlinux] Dotfiles: ensure stow installed"
-  ansible.builtin.command: >
-    pkg install -y
-    stow
+- name: "[otherlinux] Dotfiles: check missing stow packages"
+  ansible.builtin.command:
+    argv:
+      - sh
+      - -c
+      - |
+        for package do
+          status=$(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true)
+          if [ "$status" != "install ok installed" ]; then
+            printf '%s\n' "$package"
+          fi
+        done
+      - sh
+      - stow
+  register: var_otherlinux_dotfiles_missing_packages
   changed_when: false
+
+- name: "[otherlinux] Dotfiles: install missing stow packages"
+  ansible.builtin.command:
+    argv: "{{ ['pkg', 'install', '-y'] + var_otherlinux_dotfiles_missing_packages.stdout_lines }}"
+  changed_when: true
+  when: var_otherlinux_dotfiles_missing_packages.stdout_lines | length > 0
 
 - name: "[otherlinux] Dotfiles: sync stow packages from controller"
   ansible.builtin.copy:

@@ -26,21 +26,40 @@
   loop:
     - { script: ~/.bashrc }
 
-- name: "[otherlinux] Setup desktop: setup packages"
-  # termux-api == termux-notification
-  ansible.builtin.command: >
-    pkg install -y
-    git
-    which
-    gnupg
-    cronie
-    pinentry
-    termux-services
-    termux-api
-    remind
-    ossp-uuid
-    ncdu
-  changed_when: false
+- name: "[otherlinux] Setup desktop: ensure packages"
+  vars:
+    otherlinux_desktop_packages:
+      # termux-api == termux-notification
+      - git
+      - which
+      - gnupg
+      - cronie
+      - pinentry
+      - termux-services
+      - termux-api
+      - remind
+      - ossp-uuid
+      - ncdu
+  block:
+    - name: "[otherlinux] Setup desktop: check missing packages"
+      ansible.builtin.command:
+        argv: "{{ ['sh', '-c', otherlinux_check_missing_packages_script, 'sh'] + otherlinux_desktop_packages }}"
+      vars:
+        otherlinux_check_missing_packages_script: |
+          for package do
+            status=$(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true)
+            if [ "$status" != "install ok installed" ]; then
+              printf '%s\n' "$package"
+            fi
+          done
+      register: var_otherlinux_desktop_missing_packages
+      changed_when: false
+
+    - name: "[otherlinux] Setup desktop: install missing packages"
+      ansible.builtin.command:
+        argv: "{{ ['pkg', 'install', '-y'] + var_otherlinux_desktop_missing_packages.stdout_lines }}"
+      changed_when: true
+      when: var_otherlinux_desktop_missing_packages.stdout_lines | length > 0
 
 - name: "[otherlinux] Setup desktop: ensure folders"
   ansible.builtin.file:

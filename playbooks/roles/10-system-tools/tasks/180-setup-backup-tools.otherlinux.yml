@@ -1,7 +1,26 @@
 ---
-- name: "[otherlinux] Setup backup tools: ensure packages"
-  ansible.builtin.command: pkg install -y borgbackup
+- name: "[otherlinux] Setup backup tools: check missing packages"
+  ansible.builtin.command:
+    argv:
+      - sh
+      - -c
+      - |
+        for package do
+          status=$(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true)
+          if [ "$status" != "install ok installed" ]; then
+            printf '%s\n' "$package"
+          fi
+        done
+      - sh
+      - borgbackup
+  register: var_otherlinux_backup_missing_packages
   changed_when: false
+
+- name: "[otherlinux] Setup backup tools: install missing packages"
+  ansible.builtin.command:
+    argv: "{{ ['pkg', 'install', '-y'] + var_otherlinux_backup_missing_packages.stdout_lines }}"
+  changed_when: true
+  when: var_otherlinux_backup_missing_packages.stdout_lines | length > 0
 
 - block:
     - name: "[otherlinux] Setup backup tools: init borg repos"
