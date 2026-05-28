@@ -63,7 +63,7 @@ for i in $(seq 10); do
 done
 
 if [ -z "${stylus}" ]; then
-    warn "no se encontro ${stylus_name}"
+    warn "did not find ${stylus_name}"
     exit 0
 fi
 
@@ -76,5 +76,5 @@ deceleration=$(display_deceleration)
 if xinput list-props "${stylus}" | grep -q "Device Accel Constant Deceleration"; then
     xinput set-prop "${stylus}" "Device Accel Constant Deceleration" "$deceleration" >/dev/null 2>&1 || true
 else
-    warn "no se encontro propiedad 'Constant Deceleration' para ${stylus_name}"
+    warn "did not find the 'Constant Deceleration' property for ${stylus_name}"
 fi

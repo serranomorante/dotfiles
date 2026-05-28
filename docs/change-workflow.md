@@ -31,6 +31,7 @@ This rule applies to Ansible, Stow, systemctl, validation, follow-up commands, a
 ## Editing Rules
 
 - Match the existing style of the file.
+- Use English for repository-authored prose, comments, user-facing strings, generated Markdown, scripts, configuration labels, and documentation. Keep non-English text only when it is the literal technical subject being configured or documented, such as locale names, keyboard layout names, language model names, examples of characters that must be typed, upstream output, or user-owned private content outside the public repository.
 - When writing or editing Markdown prose, keep each paragraph or list item on a single physical line. Do not insert manual hard wraps inside the same paragraph just to keep lines under a column limit. Use line breaks only when Markdown syntax requires them or when the content is intentionally multi-line, such as fenced code blocks, tables, quoted excerpts, nested lists, or other structured blocks.
 - Keep shell scripts POSIX `sh` unless the file already requires Bash.
 - Executable scripts intended to be run from `~/bin` or another `PATH` directory should not include a language extension such as `.sh` in the command name. Keep extensions only for sourced libraries, generated snippets, or legacy files that are not being renamed in the current change.

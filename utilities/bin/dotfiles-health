@@ -620,32 +620,28 @@ $manual_start
 
 ## Review Reminders
 
-- [ ] **Abrir System Health y revisar los errores ocultos de hoy**
+- [ ] **Open System Health and review today's hidden errors**
   @id todo-check-hidden-errors-today
 
-  Abre [[system-health]], revisa \`Active Issues\` y entra a
-  cada página enlazada que tenga señales activas: \`sources/\` para dominios
-  del sistema y \`units/\` para servicios de usuario.
+  Open [[system-health]], review \`Active Issues\`, and inspect each linked page with active signals: \`sources/\` for system domains and \`units/\` for user services.
 
   \`\`\`remind
   @run dotfiles-health update
   REM AT 20:30
   \`\`\`
 
-- [ ] **Abrir el digest de System Health y revisar patrones semanales**
+- [ ] **Open the System Health digest and review weekly patterns**
 
-  Abre [[$(year_month)]], compara los
-  fallos repetidos de la semana y decide si van a fix, ignore o runbook.
+  Open [[$(year_month)]], compare the week's repeated failures, and decide whether they should become fixes, ignored noise, or runbooks.
 
   \`\`\`remind
   @run dotfiles-health update
   REM Mon AT 09:30
   \`\`\`
 
-- [ ] **Revisar reglas de System Health y ajustar ruido ignorado**
+- [ ] **Review System Health rules and adjust ignored noise**
 
-  Abre [[rules]] y promueve cualquier ruido que ya parezca
-  síntoma real; deja ignorado sólo lo que entiendas y aceptes.
+  Open [[rules]] and promote any noise that now looks like a real symptom; leave ignored only what you understand and accept.
 
   \`\`\`remind
   REM Lastworkday AT 18:00

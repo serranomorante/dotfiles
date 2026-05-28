@@ -7,12 +7,12 @@ warn() {
 }
 
 if ! command -v xrandr >/dev/null 2>&1; then
-  warn "xrandr no esta instalado"
+  warn "xrandr is not installed"
   exit 1
 fi
 
 if ! xrandr --query >/dev/null 2>&1; then
-  warn "no hay servidor X disponible (DISPLAY=${DISPLAY:-unset}); se omite configuracion"
+  warn "no X server is available (DISPLAY=${DISPLAY:-unset}); skipping display configuration"
   exit 0
 fi
 
@@ -50,7 +50,7 @@ if [[ -z "$external" ]]; then
 fi
 
 if [[ -z "$internal" ]]; then
-  warn "no se detecto ningun monitor conectado"
+  warn "no connected monitor was detected"
   exit 0
 fi
 
@@ -88,5 +88,5 @@ fi
 if command -v wacom-config.sh >/dev/null 2>&1; then
   wacom-config.sh
 else
-  warn "wacom-config.sh no esta disponible; se omite"
+  warn "wacom-config.sh is not available; skipping"
 fi
