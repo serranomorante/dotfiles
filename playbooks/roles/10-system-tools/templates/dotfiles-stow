@@ -8,6 +8,37 @@ set -eu
 
 dotfiles_stow_dir={{ (ansible_facts.env.HOME + '/dotfiles') | quote }}
 
+{% set agent_context_ignore_patterns = ([dotfiles_agent_context_source_name] + dotfiles_agent_context_symlink_names + dotfiles_private_agent_context_doc_paths) | map('regex_escape') | list %}
+{% set stow_ignore_patterns = dotfiles_stow_ignore_patterns + agent_context_ignore_patterns %}
+
+usage() {
+    cat <<'USAGE'
+Usage:
+  dotfiles-stow [STOW_OPTION ...] PACKAGE ...
+  dotfiles-stow --check-stowed FILE...
+  dotfiles-stow --check-stowed-from FILE
+  dotfiles-stow --print-stow-dir
+  dotfiles-stow --help
+
+Wrapper behavior:
+  Runs GNU Stow from the managed dotfiles repository, not from the caller's current directory.
+  Applies the repository default Stow options and ignore patterns before any user-provided package arguments.
+  Uses $HOME as Stow's target directory.
+
+Wrapper options:
+  --check-stowed FILE...       Check whether Stow would still create links for the given source files.
+  --check-stowed-from FILE     Read source paths from FILE and run the same check.
+  --print-stow-dir             Print the managed dotfiles repository path used by this wrapper.
+  -h, --help                   Show this wrapper usage and the underlying GNU Stow help.
+
+Stow defaults applied by this wrapper:
+{% for option in dotfiles_stow_options %}  {{ option }}
+{% endfor %}{% for pattern in stow_ignore_patterns %}  --ignore={{ pattern }}
+{% endfor %}USAGE
+    printf '%s\n' ""
+    "$stow_bin" --help
+}
+
 if command -v stow >/dev/null 2>&1; then
     stow_bin=$(command -v stow)
 elif [ -x "$HOME/.local/bin/stow" ]; then
@@ -19,8 +50,45 @@ fi
 
 cd "$dotfiles_stow_dir"
 
-{% set agent_context_ignore_patterns = ([dotfiles_agent_context_source_name] + dotfiles_agent_context_symlink_names + dotfiles_private_agent_context_doc_paths) | map('regex_escape') | list %}
-{% set stow_ignore_patterns = dotfiles_stow_ignore_patterns + agent_context_ignore_patterns %}
+case ${1:-} in
+-h | --help)
+    usage
+    exit 0
+    ;;
+--print-stow-dir)
+    printf '%s\n' "$dotfiles_stow_dir"
+    exit 0
+    ;;
+--check-stowed | --check-stowed-from)
+    stow_check_lib=$dotfiles_stow_dir/utilities/git-hooks/lib/stow-check
+    if [ ! -r "$stow_check_lib" ]; then
+        echo "dotfiles-stow: missing stow check helper: $stow_check_lib" >&2
+        exit 1
+    fi
+
+    stow_check_args_file=$(mktemp "${TMPDIR:-/tmp}/dotfiles-stow-args.XXXXXX")
+    trap 'rm -f "$stow_check_args_file"' EXIT HUP INT TERM
+    cat >"$stow_check_args_file" <<'STOW_ARGS'
+{% for option in dotfiles_stow_options %}{{ option }}
+{% endfor %}{% for pattern in stow_ignore_patterns %}--ignore={{ pattern }}
+{% endfor %}STOW_ARGS
+
+    DOTFILES_STOW_CHECK_DIR=$dotfiles_stow_dir
+    DOTFILES_STOW_CHECK_STOW_BIN=$stow_bin
+    DOTFILES_STOW_CHECK_TARGET=$HOME
+    DOTFILES_STOW_CHECK_ARGS_FILE=$stow_check_args_file
+    export DOTFILES_STOW_CHECK_DIR DOTFILES_STOW_CHECK_STOW_BIN DOTFILES_STOW_CHECK_TARGET DOTFILES_STOW_CHECK_ARGS_FILE
+
+    . "$stow_check_lib"
+    set +e
+    dotfiles_stow_check_main "$@"
+    stow_check_rc=$?
+    set -e
+    rm -f "$stow_check_args_file"
+    exit "$stow_check_rc"
+    ;;
+esac
+
 set -- {% for option in dotfiles_stow_options %}{{ option | quote }} {% endfor %}{% for pattern in stow_ignore_patterns %}--ignore={{ pattern | quote }} {% endfor %}"$@"
 
 exec "$stow_bin" "$@"

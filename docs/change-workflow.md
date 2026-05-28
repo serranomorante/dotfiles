@@ -91,7 +91,7 @@ When a commit is generated from an assistant conversation, include `@agent <conv
 
 When passing a multi-paragraph commit message non-interactively, use separate `git commit -m` arguments for the subject, body paragraphs, and `@agent` trailer. Do not embed escaped newline text such as `\n\n@agent ...` inside a quoted `-m` argument; Git records that literally instead of turning it into separate lines.
 
-The repository commit-message guard lives at `utilities/git-hooks/commit-msg`. Keep `core.hooksPath` pointed at `utilities/git-hooks` for this repository. The hook applies only to Codex-generated commits, detected first through inherited `CODEX_*` environment variables and then by walking parent processes for a process named `codex`. In that context, `@agent <conversation id>` is required and placeholder values are rejected before they enter history. Manual commits outside that Codex context are not blocked by this guard.
+The repository Git hooks live under `utilities/git-hooks`. Keep `core.hooksPath` pointed at `utilities/git-hooks` for this repository. The `pre-commit` hook checks newly added files under configured Stow packages with `dotfiles-stow --check-stowed-from`; if Stow would still create a link for one of those files, run `dotfiles-stow <package>` before committing. The `commit-msg` hook applies only to Codex-generated commits, detected first through inherited `CODEX_*` environment variables and then by walking parent processes for a process named `codex`. In that context, `@agent <conversation id>` is required and placeholder values are rejected before they enter history. Manual commits outside that Codex context are not blocked by this guard.
 
 When committing:
 

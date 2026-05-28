@@ -1,0 +1,264 @@
+#!/bin/sh
+# Purpose: Shared Stow simulation checks for dotfiles Git hooks and wrapper.
+
+dotfiles_stow_check_usage() {
+    cat <<'USAGE'
+Usage:
+  dotfiles-stow --check-stowed FILE...
+  dotfiles-stow --check-stowed-from FILE
+
+Checks whether Stow would still create links for the given source files. Files outside configured Stow packages are ignored.
+USAGE
+}
+
+dotfiles_stow_check_yaml_list_values() {
+    key=$1
+    file=$2
+    awk -v key="$key" '
+        $0 ~ "^[[:space:]]*" key ":" {
+            in_list = 1
+            next
+        }
+
+        in_list && /^[[:space:]]*-[[:space:]]*/ {
+            value = $0
+            sub(/^[[:space:]]*-[[:space:]]*/, "", value)
+            sub(/[[:space:]]+#.*$/, "", value)
+            sub(/^["'\'']/, "", value)
+            sub(/["'\'']$/, "", value)
+            print value
+            next
+        }
+
+        in_list && /^[^[:space:]]/ {
+            exit
+        }
+    ' "$file"
+}
+
+dotfiles_stow_check_yaml_scalar_value() {
+    key=$1
+    file=$2
+    awk -v key="$key" '
+        $0 ~ "^[[:space:]]*" key ":" {
+            value = $0
+            sub("^[[:space:]]*" key ":[[:space:]]*", "", value)
+            sub(/[[:space:]]+#.*$/, "", value)
+            sub(/^["'\'']/, "", value)
+            sub(/["'\'']$/, "", value)
+            print value
+            exit
+        }
+    ' "$file"
+}
+
+dotfiles_stow_check_build_args_file() {
+    defaults_file=$1
+    args_file=$2
+
+    : >"$args_file"
+    dotfiles_stow_check_yaml_list_values dotfiles_stow_options "$defaults_file" >>"$args_file"
+    dotfiles_stow_check_yaml_list_values dotfiles_stow_ignore_patterns "$defaults_file" | sed 's/^/--ignore=/' >>"$args_file"
+    dotfiles_stow_check_yaml_scalar_value dotfiles_agent_context_source_name "$defaults_file" | sed '/^$/d; s/^/--ignore=/' >>"$args_file"
+    dotfiles_stow_check_yaml_list_values dotfiles_agent_context_symlink_names "$defaults_file" | sed 's/^/--ignore=/' >>"$args_file"
+    dotfiles_stow_check_yaml_list_values dotfiles_private_agent_context_doc_paths "$defaults_file" | sed 's/^/--ignore=/' >>"$args_file"
+}
+
+dotfiles_stow_check_build_packages_file() {
+    defaults_file=$1
+    packages_file=$2
+
+    {
+        dotfiles_stow_check_yaml_list_values dotfiles_public_stow_packages "$defaults_file"
+        dotfiles_stow_check_yaml_list_values dotfiles_private_stow_packages "$defaults_file"
+        dotfiles_stow_check_yaml_list_values dotfiles_otherlinux_stow_packages "$defaults_file"
+    } | sort -u >"$packages_file"
+}
+
+dotfiles_stow_check_run_stow() {
+    package=$1
+    output_file=$2
+    args_file=$3
+
+    set -- "$DOTFILES_STOW_CHECK_STOW_BIN"
+    while IFS= read -r arg; do
+        [ -n "$arg" ] || continue
+        set -- "$@" "$arg"
+    done <"$args_file"
+
+    set -- "$@" --simulate --verbose=1 --target="$DOTFILES_STOW_CHECK_TARGET" "$package"
+
+    (
+        cd "$DOTFILES_STOW_CHECK_DIR"
+        "$@"
+    ) >"$output_file" 2>&1
+}
+
+dotfiles_stow_check_link_is_pending() {
+    source_path=$1
+    output_file=$2
+
+    awk -v source="$source_path" -v suffix="/$source_path" '
+        /^LINK: / {
+            link_source = $0
+            sub(/^.* => /, "", link_source)
+            if (link_source == source) {
+                found = 1
+            } else if (length(link_source) >= length(suffix) && substr(link_source, length(link_source) - length(suffix) + 1) == suffix) {
+                found = 1
+            }
+        }
+
+        END {
+            exit found ? 0 : 1
+        }
+    ' "$output_file"
+}
+
+dotfiles_stow_check_collect_args() {
+    paths_file=$1
+    shift
+
+    : >"$paths_file"
+    for path; do
+        printf '%s\n' "$path" >>"$paths_file"
+    done
+}
+
+dotfiles_stow_check_collect_from_file() {
+    source_file=$1
+    paths_file=$2
+
+    [ -f "$source_file" ] || {
+        printf 'dotfiles-stow: path list does not exist: %s\n' "$source_file" >&2
+        return 2
+    }
+
+    sed '/^$/d' "$source_file" >"$paths_file"
+}
+
+dotfiles_stow_check_prepare_paths() {
+    paths_file=$1
+    prepared_file=$2
+    packages_file=$3
+
+    : >"$prepared_file"
+
+    while IFS= read -r path; do
+        [ -n "$path" ] || continue
+
+        case $path in
+        "$DOTFILES_STOW_CHECK_DIR"/*)
+            path=${path#"$DOTFILES_STOW_CHECK_DIR"/}
+            ;;
+        ./*)
+            path=${path#./}
+            ;;
+        /*)
+            continue
+            ;;
+        esac
+
+        package=${path%%/*}
+        [ "$package" != "$path" ] || continue
+        grep -Fxq -- "$package" "$packages_file" || continue
+        [ -e "$DOTFILES_STOW_CHECK_DIR/$path" ] || [ -L "$DOTFILES_STOW_CHECK_DIR/$path" ] || continue
+
+        printf '%s\t%s\n' "$package" "$path" >>"$prepared_file"
+    done <"$paths_file"
+}
+
+dotfiles_stow_check_main() {
+    DOTFILES_STOW_CHECK_DIR=${DOTFILES_STOW_CHECK_DIR:?}
+    DOTFILES_STOW_CHECK_STOW_BIN=${DOTFILES_STOW_CHECK_STOW_BIN:?}
+    DOTFILES_STOW_CHECK_TARGET=${DOTFILES_STOW_CHECK_TARGET:?}
+    DOTFILES_STOW_CHECK_DEFAULTS=${DOTFILES_STOW_CHECK_DEFAULTS:-$DOTFILES_STOW_CHECK_DIR/playbooks/roles/10-system-tools/defaults/main/main.vars.yml}
+
+    mode=${1:-}
+    case $mode in
+    --check-stowed)
+        shift
+        ;;
+    --check-stowed-from)
+        shift
+        [ $# -eq 1 ] || {
+            printf 'dotfiles-stow: --check-stowed-from expects one path-list file\n' >&2
+            return 2
+        }
+        ;;
+    -h | --help)
+        dotfiles_stow_check_usage
+        return 0
+        ;;
+    *)
+        dotfiles_stow_check_usage >&2
+        return 2
+        ;;
+    esac
+
+    tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-stow-check.XXXXXX")
+    trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
+
+    args_file=${DOTFILES_STOW_CHECK_ARGS_FILE:-$tmp_dir/stow-args}
+    packages_file=$tmp_dir/packages
+    paths_file=$tmp_dir/paths
+    prepared_file=$tmp_dir/prepared
+    failed_file=$tmp_dir/failed
+    failed_packages_file=$tmp_dir/failed-packages
+
+    if [ -z "${DOTFILES_STOW_CHECK_ARGS_FILE:-}" ]; then
+        dotfiles_stow_check_build_args_file "$DOTFILES_STOW_CHECK_DEFAULTS" "$args_file"
+    fi
+    dotfiles_stow_check_build_packages_file "$DOTFILES_STOW_CHECK_DEFAULTS" "$packages_file"
+
+    case $mode in
+    --check-stowed)
+        dotfiles_stow_check_collect_args "$paths_file" "$@"
+        ;;
+    --check-stowed-from)
+        dotfiles_stow_check_collect_from_file "$1" "$paths_file"
+        ;;
+    esac
+
+    dotfiles_stow_check_prepare_paths "$paths_file" "$prepared_file" "$packages_file"
+
+    [ -s "$prepared_file" ] || return 0
+
+    : >"$failed_file"
+    : >"$failed_packages_file"
+
+    cut -f1 "$prepared_file" | sort -u | while IFS= read -r package; do
+        output_file=$tmp_dir/stow-output-$package
+
+        if ! dotfiles_stow_check_run_stow "$package" "$output_file" "$args_file"; then
+            printf '%s\n' "dotfiles-stow: cannot verify package '$package' because Stow reported conflicts:" >&2
+            sed 's/^/  /' "$output_file" >&2
+            awk -F '\t' -v package="$package" '$1 == package { print }' "$prepared_file" | while IFS='	' read -r _package path; do
+                printf '%s\t%s\n' "$package" "$path" >>"$failed_file"
+                printf '%s\n' "$package" >>"$failed_packages_file"
+            done
+            continue
+        fi
+
+        awk -F '\t' -v package="$package" '$1 == package { print }' "$prepared_file" | while IFS='	' read -r _package path; do
+            if dotfiles_stow_check_link_is_pending "$path" "$output_file"; then
+                printf '%s\t%s\n' "$package" "$path" >>"$failed_file"
+                printf '%s\n' "$package" >>"$failed_packages_file"
+            fi
+        done
+    done
+
+    [ -s "$failed_file" ] || return 0
+
+    printf '%s\n' "dotfiles-stow: these new Stow-managed files are not linked in \$HOME:" >&2
+    while IFS='	' read -r package path; do
+        printf '  %s (package: %s)\n' "$path" "$package" >&2
+    done <"$failed_file"
+    printf '%s\n' "" >&2
+    printf '%s\n' "Run dotfiles-stow for each affected package before committing:" >&2
+    sort -u "$failed_packages_file" | while IFS= read -r package; do
+        printf '  dotfiles-stow %s\n' "$package" >&2
+    done
+
+    return 1
+}

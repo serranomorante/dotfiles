@@ -1,0 +1,50 @@
+#!/bin/sh
+# Purpose: Block commits that add unstowed files under managed Stow packages.
+# Usage: Git runs this as pre-commit when core.hooksPath points here.
+
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+tmp_file=$(mktemp "${TMPDIR:-/tmp}/dotfiles-pre-commit-added.XXXXXX")
+trap 'rm -f "$tmp_file"' EXIT HUP INT TERM
+
+git diff --cached --name-only --diff-filter=A -- >"$tmp_file"
+
+[ -s "$tmp_file" ] || exit 0
+
+if command -v dotfiles-stow >/dev/null 2>&1 &&
+    [ "$(dotfiles-stow --print-stow-dir 2>/dev/null || true)" = "$repo_root" ] &&
+    dotfiles-stow --help 2>/dev/null | grep -q -- '--check-stowed-from'; then
+    dotfiles-stow --check-stowed-from "$tmp_file"
+    exit $?
+fi
+
+stow_check_lib=$repo_root/utilities/git-hooks/lib/stow-check
+[ -r "$stow_check_lib" ] || {
+    printf 'pre-commit: missing Stow check helper: %s\n' "$stow_check_lib" >&2
+    exit 1
+}
+
+if command -v stow >/dev/null 2>&1; then
+    stow_bin=$(command -v stow)
+elif [ -x "$HOME/.local/bin/stow" ]; then
+    stow_bin=$HOME/.local/bin/stow
+else
+    printf '%s\n' "pre-commit: stow not found; cannot verify new Stow-managed files" >&2
+    exit 127
+fi
+
+# shellcheck source=/dev/null
+. "$stow_check_lib"
+
+DOTFILES_STOW_CHECK_DIR=$repo_root
+DOTFILES_STOW_CHECK_STOW_BIN=$stow_bin
+DOTFILES_STOW_CHECK_TARGET=$HOME
+export DOTFILES_STOW_CHECK_DIR DOTFILES_STOW_CHECK_STOW_BIN DOTFILES_STOW_CHECK_TARGET
+
+set +e
+dotfiles_stow_check_main --check-stowed-from "$tmp_file"
+stow_check_rc=$?
+set -e
+rm -f "$tmp_file"
+exit "$stow_check_rc"
