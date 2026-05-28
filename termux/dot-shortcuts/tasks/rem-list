@@ -1,0 +1,319 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Purpose: Open the sorted Remind list from Termux:Widget.
+# Notes: Open the shared-storage file through Files by Google's content URI;
+# Chrome rejects Termux's private file provider for this widget handoff.
+
+set -eu
+
+termux_home=/data/data/com.termux/files/home
+termux_usr=/data/data/com.termux/files/usr
+state_dir=$termux_home/.local/state/remind-widget
+html_dir=/storage/emulated/0/Download
+open_uri='content://com.google.android.apps.nbu.files.provider/1/file%3A%2F%2F%2Fstorage%2Femulated%2F0%2FDownload%2Freminders.html'
+http_host=127.0.0.1
+http_port=8765
+http_ttl=60
+http_url="http://$http_host:$http_port/reminders.html"
+raw_file=$state_dir/reminders.raw
+list_file=$state_dir/reminders.txt
+err_file=$state_dir/reminders.err
+server_pid_file=$state_dir/http.pid
+rem_cmd=$termux_home/bin/rem
+
+toast() {
+    if command -v termux-toast >/dev/null 2>&1; then
+        termux-toast "$*"
+    else
+        printf '%s\n' "$*" >&2
+    fi
+}
+
+if [ ! -x "$rem_cmd" ]; then
+    rem_cmd=$termux_usr/bin/rem
+fi
+
+if [ ! -x "$rem_cmd" ]; then
+    toast "Missing Remind wrapper"
+    exit 1
+fi
+
+if [ ! -d "$html_dir" ] || [ ! -w "$html_dir" ]; then
+    toast "Termux shared storage is not writable"
+    exit 1
+fi
+
+html_file=$html_dir/reminders.html
+
+mkdir -p "$state_dir"
+
+if ! "$rem_cmd" -n >"$raw_file" 2>"$err_file"; then
+    toast "Could not list reminders"
+    exit 1
+fi
+
+sort "$raw_file" >"$list_file"
+reminder_count=$(awk 'NF { count++ } END { print count + 0 }' "$list_file")
+item_label=items
+if [ "$reminder_count" = 1 ]; then
+    item_label=item
+fi
+generated_at=$(date '+%Y-%m-%d %H:%M')
+
+{
+    cat <<EOF
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reminders</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f8;
+  --panel: #ffffff;
+  --text: #172026;
+  --muted: #5e6a70;
+  --line: #d9e0e4;
+  --accent: #1f7a8c;
+  --accent-soft: #d9eef2;
+  --shadow: 0 1px 2px rgba(23, 32, 38, 0.08);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121619;
+    --panel: #1b2226;
+    --text: #edf3f5;
+    --muted: #a7b2b8;
+    --line: #334047;
+    --accent: #7bc6d4;
+    --accent-soft: #17353c;
+    --shadow: none;
+  }
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+}
+main {
+  box-sizing: border-box;
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+header {
+  border-bottom: 1px solid var(--line);
+  margin: 0 0 1rem;
+  padding: 0.25rem 0 0.9rem;
+}
+h1 {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+.meta {
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  gap: 0.55rem;
+  margin-top: 0.25rem;
+}
+.search {
+  box-sizing: border-box;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  color: var(--text);
+  display: block;
+  font: inherit;
+  margin: 0 0 0.85rem;
+  padding: 0.75rem 0.85rem;
+  width: 100%;
+}
+.list {
+  display: grid;
+  gap: 0.65rem;
+}
+.reminder {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 0.8rem 0.85rem;
+}
+.date {
+  background: var(--accent-soft);
+  border-radius: 999px;
+  color: var(--accent);
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.45rem;
+  padding: 0.18rem 0.5rem;
+}
+.text {
+  font: 0.98rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.empty {
+  color: var(--muted);
+  margin: 1.5rem 0 0;
+}
+[hidden] {
+  display: none;
+}
+</style>
+</head>
+<body>
+<main>
+<h1>Reminders</h1>
+<header>
+<div class="meta"><span>${reminder_count} ${item_label}</span><span>Updated ${generated_at}</span></div>
+</header>
+EOF
+    if [ -s "$list_file" ]; then
+        cat <<EOF
+<input class="search" id="search" type="search" placeholder="Search reminders" autocomplete="off">
+<section class="list" id="list">
+EOF
+        awk '
+          function escape(value) {
+            gsub(/&/, "\\&amp;", value)
+            gsub(/</, "\\&lt;", value)
+            gsub(/>/, "\\&gt;", value)
+            return value
+          }
+          function attr_escape(value) {
+            value = escape(value)
+            gsub(/"/, "\\&quot;", value)
+            return value
+          }
+          NF {
+            original = $0
+            date = ""
+            text = $0
+            split($0, parts, /[[:space:]]+/)
+            if (parts[1] ~ /^[0-9][0-9][0-9][0-9][\/-][0-9][0-9][\/-][0-9][0-9]$/) {
+              date = parts[1]
+              sub(/^[^[:space:]]+[[:space:]]*/, "", text)
+              sub(/^[*[:space:]]+/, "", text)
+            }
+            print "<article class=\"reminder\" data-text=\"" attr_escape(tolower(original)) "\">"
+            if (date != "") {
+              print "<div class=\"date\">" escape(date) "</div>"
+            }
+            print "<div class=\"text\">" escape(text) "</div>"
+            print "</article>"
+          }
+        ' "$list_file"
+        cat <<EOF
+</section>
+<p class="empty" id="no-matches" hidden>No matches.</p>
+<script>
+const search = document.getElementById('search');
+const items = Array.from(document.querySelectorAll('.reminder'));
+const noMatches = document.getElementById('no-matches');
+search.addEventListener('input', () => {
+  const query = search.value.trim().toLowerCase();
+  let visible = 0;
+  for (const item of items) {
+    const matched = query === '' || item.dataset.text.includes(query);
+    item.hidden = !matched;
+    if (matched) visible++;
+  }
+  noMatches.hidden = visible !== 0;
+});
+</script>
+EOF
+    else
+        printf '<p class="empty">No reminders.</p>\n'
+    fi
+    cat <<EOF
+</main>
+</body>
+</html>
+EOF
+} >"$html_file"
+chmod 644 "$html_file"
+
+python_cmd=
+if [ -x "$termux_usr/bin/python3" ]; then
+    python_cmd=$termux_usr/bin/python3
+elif command -v python3 >/dev/null 2>&1; then
+    python_cmd=$(command -v python3)
+fi
+
+if [ -n "$python_cmd" ]; then
+    server_pid=
+    if [ -s "$server_pid_file" ]; then
+        server_pid=$(cat "$server_pid_file")
+    fi
+    case "$server_pid" in '' | *[!0-9]*) server_pid= ;; esac
+    if [ -n "$server_pid" ] && kill -0 "$server_pid" 2>/dev/null; then
+        kill "$server_pid" 2>/dev/null || true
+        sleep 1
+    fi
+    (
+        cd "$html_dir"
+        nohup "$python_cmd" -c '
+import http.server
+import socketserver
+import sys
+import time
+
+host = sys.argv[1]
+port = int(sys.argv[2])
+ttl = int(sys.argv[3])
+directory = sys.argv[4]
+
+
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=directory, **kwargs)
+
+    def log_message(self, format, *args):
+        pass
+
+
+class Server(socketserver.TCPServer):
+    allow_reuse_address = True
+
+
+deadline = time.monotonic() + ttl
+with Server((host, port), Handler) as server:
+    server.timeout = 1
+    while time.monotonic() < deadline:
+        server.handle_request()
+' "$http_host" "$http_port" "$http_ttl" "$html_dir" >/dev/null 2>&1 &
+        printf '%s\n' "$!" >"$server_pid_file"
+    )
+    sleep 1
+
+    if command -v termux-open-url >/dev/null 2>&1; then
+        termux-open-url "$http_url" && exit 0
+    fi
+
+    if command -v am >/dev/null 2>&1; then
+        case "${TERMUX__USER_ID:-}" in '' | *[!0-9]* | 0[0-9]*) TERMUX__USER_ID=0 ;; esac
+        am start --user "$TERMUX__USER_ID" -a android.intent.action.VIEW -d "$http_url" >/dev/null && exit 0
+    fi
+fi
+
+if command -v am >/dev/null 2>&1; then
+    case "${TERMUX__USER_ID:-}" in '' | *[!0-9]* | 0[0-9]*) TERMUX__USER_ID=0 ;; esac
+    am start --user "$TERMUX__USER_ID" -a android.intent.action.VIEW -d "$open_uri" -t text/html >/dev/null && exit 0
+fi
+
+if command -v termux-open-url >/dev/null 2>&1; then
+    termux-open-url "$open_uri" && exit 0
+fi
+
+toast "Reminders written to $html_file"
