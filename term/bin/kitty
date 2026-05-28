@@ -3,6 +3,14 @@
 
 . "$HOME/dotfiles/term/bin/kitty-window-utils.sh"
 
+real_kitty="$HOME/.local/kitty.app/bin/kitty"
+
+case ${1:-} in
+@ | +*)
+    exec "$real_kitty" "$@"
+    ;;
+esac
+
 kitty_os_instance_id=$(uuidgen)
 cwd=${PWD:-}
 args=("$@")
@@ -25,4 +33,4 @@ kitty_socket=$(kitty_listen_on_for_cwd "$cwd")
 
 KITTY_OS_INSTANCE_ID="$kitty_os_instance_id" \
     KITTY_LISTEN_ON="$kitty_socket" \
-    ~/.local/kitty.app/bin/kitty --listen-on "$kitty_socket" "$@"
+    "$real_kitty" --listen-on "$kitty_socket" "$@"
