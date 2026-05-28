@@ -4,6 +4,8 @@ local M = {}
 
 local CODEX_TASK_METADATA = "codex_session"
 local CODEX_SESSION_ID_METADATA = "codex_session_id"
+local CODEX_SESSION_PATH_METADATA = "codex_session_path"
+local CODEX_SESSION_UPDATED_AT_METADATA = "codex_session_updated_at"
 local CODEX_SESSIONS_DIR = vim.fn.expand("~/.codex/sessions")
 local SESSION_CACHE_VERSION = 1
 local SESSION_CACHE_NAMESPACE = "nvim"
@@ -524,8 +526,21 @@ end
 ---@param session CodexStoredSession
 function link_task_to_session(task, session)
   task.metadata = task.metadata or {}
+  task.metadata[CODEX_TASK_METADATA] = true
   task.metadata[CODEX_SESSION_ID_METADATA] = session.id
+  task.metadata[CODEX_SESSION_PATH_METADATA] = session.path
+  task.metadata[CODEX_SESSION_UPDATED_AT_METADATA] = session.updated_at
   update_task_title(task, session)
+end
+
+---@param task overseer.Task
+---@return integer?
+function M.task_session_mtime(task)
+  local path = task.metadata and task.metadata[CODEX_SESSION_PATH_METADATA] or nil
+  if type(path) ~= "string" then return nil end
+
+  local stat = vim.uv.fs_stat(path)
+  return stat and stat.mtime and stat.mtime.sec or nil
 end
 
 ---@param session CodexStoredSession
@@ -706,6 +721,8 @@ local function resume_session(session, prompt, start_win)
     metadata = {
       [CODEX_TASK_METADATA] = true,
       [CODEX_SESSION_ID_METADATA] = session.id,
+      [CODEX_SESSION_PATH_METADATA] = session.path,
+      [CODEX_SESSION_UPDATED_AT_METADATA] = session.updated_at,
     },
     components = {
       { "open_output", direction = "float", on_start = "always", focus = true },

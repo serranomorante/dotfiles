@@ -42,8 +42,8 @@ local function keys()
   vim.keymap.set(
     "n",
     "<leader>od",
-    "<cmd>OverseerTaskAction<CR>",
-    { desc = "Overseer: Run an action on the most recent task" }
+    function() require("serranomorante.plugins.jobs.overseer_task_actions").run_recent_task_action() end,
+    { desc = "Overseer: task actions sorted by recent activity" }
   )
 
   vim.keymap.set("n", "<leader>lm", function()
