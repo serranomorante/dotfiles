@@ -37,6 +37,15 @@ function M.actions()
       end,
       run = function(task) control(task, "pause") end,
     },
+    ["Pause and listen to ffmpeg recording"] = {
+      desc = "Pause the recording, transcribe recent audio, and open the review in mpv.",
+      condition = function(task)
+        return M.is_record_screen_task(task)
+          and task.status == STATUS.RUNNING
+          and vim.tbl_contains({ "recording", "paused" }, state(task))
+      end,
+      run = function(task) control(task, "pause-listen") end,
+    },
     ["Resume ffmpeg recording"] = {
       desc = "Resume a paused ffmpeg recording as a new segment.",
       condition = function(task)

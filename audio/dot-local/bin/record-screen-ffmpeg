@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Purpose: Record the X11 screen and a PipeWire/Pulse source with ffmpeg.
-# Usage: record-screen-ffmpeg start|pause|resume|stop|status [options]
+# Usage: record-screen-ffmpeg start|pause|pause-listen|resume|stop|status [options]
 # Notes: Pause closes the current segment cleanly; resume starts a new segment.
 #        Stop saves the recording by concatenating all completed segments.
 set -euo pipefail
@@ -10,6 +10,7 @@ readonly FALLBACK_DISPLAY=':0.0+0,0'
 readonly DEFAULT_FRAMERATE='30'
 readonly DEFAULT_OUTPUT='mp4'
 readonly DEFAULT_PATH='~/Videos'
+readonly DEFAULT_REVIEW_SECONDS='30'
 readonly FALLBACK_VIDEO_SIZE='1920x1080'
 readonly RUNTIME_ROOT="${XDG_RUNTIME_DIR:-/tmp}/dotfiles-record-screen"
 
@@ -24,6 +25,7 @@ DISPLAY=''
 FRAMERATE="$DEFAULT_FRAMERATE"
 OUTPUT="$DEFAULT_OUTPUT"
 OUTPUT_DIR="$DEFAULT_PATH"
+REVIEW_SECONDS="${RECORD_SCREEN_REVIEW_SECONDS:-$DEFAULT_REVIEW_SECONDS}"
 VIDEO_SIZE=''
 
 usage() {
@@ -31,12 +33,15 @@ usage() {
 Usage:
   record-screen-ffmpeg start [--id <id>] [--audio-source <source>] [--output <mp4|mov|gif>] [--path <dir>] [--display <x11-display>] [--framerate <fps>] [--video-size <WxH>]
   record-screen-ffmpeg pause [--id <id>]
+  record-screen-ffmpeg pause-listen [--id <id>] [--review-seconds <seconds>]
   record-screen-ffmpeg resume [--id <id>]
   record-screen-ffmpeg stop [--id <id>]
   record-screen-ffmpeg status [--id <id>]
 
 By default, start records the current X11 monitor. When --id is omitted for
-control commands, the latest started session is used.
+control commands, the latest started session is used. pause-listen pauses the
+recording, extracts the last 30 seconds by default, transcribes that audio, and
+opens the extracted WAV in mpv with a temporary SRT containing the full text.
 EOF
 }
 
@@ -104,6 +109,11 @@ parse_args() {
             OUTPUT_DIR=$2
             shift 2
             ;;
+        --review-seconds | --listen-seconds)
+            [[ $# -ge 2 ]] || die "$1 requires a value"
+            REVIEW_SECONDS=$2
+            shift 2
+            ;;
         --video-size)
             [[ $# -ge 2 ]] || die "--video-size requires a value"
             VIDEO_SIZE=$2
@@ -154,6 +164,11 @@ send_control() {
     local command=$1
     ensure_session_alive
     printf '%s\n' "$command" >"$CONTROL_FIFO"
+}
+
+validate_seconds() {
+    [[ "$1" =~ ^[0-9]+([.][0-9]+)?$ ]] || die "seconds must be a positive number: $1"
+    awk -v seconds="$1" 'BEGIN { exit seconds > 0 ? 0 : 1 }' || die "seconds must be greater than zero: $1"
 }
 
 write_status() {
@@ -293,6 +308,124 @@ save_recording() {
     fi
 }
 
+media_duration() {
+    local path=$1
+    ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$path" 2>/dev/null |
+        awk 'NF { printf "%.3f\n", $1; exit }'
+}
+
+format_srt_time() {
+    awk -v seconds="$1" '
+        BEGIN {
+            ms = int((seconds * 1000) + 0.5)
+            h = int(ms / 3600000)
+            ms %= 3600000
+            m = int(ms / 60000)
+            ms %= 60000
+            s = int(ms / 1000)
+            ms %= 1000
+            printf "%02d:%02d:%02d,%03d\n", h, m, s, ms
+        }
+    '
+}
+
+write_review_srt() {
+    local duration=$1
+    local text_file=$2
+    local srt_file=$3
+    local end_time
+
+    end_time="$(format_srt_time "$duration")"
+    {
+        printf '1\n'
+        printf '00:00:00,000 --> %s\n' "$end_time"
+        tr '\r' '\n' <"$text_file" | sed '/^[[:space:]]*$/d'
+        printf '\n'
+    } >"$srt_file"
+}
+
+stt_dictate_command() {
+    if command -v stt-dictate >/dev/null 2>&1; then
+        command -v stt-dictate
+        return
+    fi
+
+    if [[ -x "$HOME/dotfiles/utilities/bin/stt-dictate" ]]; then
+        printf '%s\n' "$HOME/dotfiles/utilities/bin/stt-dictate"
+        return
+    fi
+
+    return 1
+}
+
+mpv_display_env() {
+    local capture_display=${DISPLAY%%+*}
+    [[ -n "$capture_display" ]] || capture_display=':0'
+    printf '%s\n' "$capture_display"
+}
+
+open_review_mpv() {
+    local review_wav=$1
+    local review_srt=$2
+    local mpv_display xauthority
+
+    mpv_display="$(mpv_display_env)"
+    xauthority="${XAUTHORITY:-$HOME/.Xauthority}"
+
+    if [[ -r "$xauthority" ]]; then
+        DISPLAY="$mpv_display" XAUTHORITY="$xauthority" mpv \
+            --force-window=yes \
+            --vo=gpu-next,gpu,x11 \
+            --gpu-context=x11egl \
+            --sub-file="$review_srt" \
+            "$review_wav"
+        return
+    fi
+
+    DISPLAY="$mpv_display" mpv \
+        --force-window=yes \
+        --vo=gpu-next,gpu,x11 \
+        --gpu-context=x11egl \
+        --sub-file="$review_srt" \
+        "$review_wav"
+}
+
+review_last_audio() {
+    local seconds=$1
+    local review_dir review_video review_wav review_text review_srt duration start stt_cmd audio_duration
+
+    validate_seconds "$seconds"
+    require_commands awk date ffmpeg ffprobe mkdir mpv sed tr
+    stt_cmd="$(stt_dictate_command)" || die "missing required command: stt-dictate"
+
+    review_dir="$SESSION_DIR/review_$(date '+%Y-%m-%d_%H-%M-%S')_$RANDOM"
+    review_video="$review_dir/source.mp4"
+    review_wav="$review_dir/last-${seconds}s.wav"
+    review_text="$review_dir/transcript.txt"
+    review_srt="$review_dir/transcript.srt"
+    mkdir -p "$review_dir"
+
+    write_concat_file
+    (
+        cd "$SESSION_DIR"
+        ffmpeg -hide_banner -loglevel error -y -f concat -safe 0 -i "$SEGMENTS_FILE" -c copy "$review_video"
+    )
+
+    duration="$(media_duration "$review_video")"
+    [[ -n "$duration" ]] || die "could not determine review recording duration"
+    start="$(awk -v duration="$duration" -v seconds="$seconds" 'BEGIN { start = duration - seconds; if (start < 0) start = 0; printf "%.3f\n", start }')"
+
+    ffmpeg -hide_banner -loglevel error -y -ss "$start" -i "$review_video" -vn -ac 1 -ar 16000 -c:a pcm_s16le "$review_wav"
+    STT_DICTATE_SAMPLE_RATE="${STT_DICTATE_SAMPLE_RATE:-16000}" "$stt_cmd" transcribe-file --audio-file "$review_wav" --output "$review_text"
+
+    audio_duration="$(media_duration "$review_wav")"
+    [[ -n "$audio_duration" ]] || audio_duration="$seconds"
+    write_review_srt "$audio_duration" "$review_text" "$review_srt"
+
+    printf 'Opening review audio: %s\n' "$review_wav"
+    open_review_mpv "$review_wav" "$review_srt"
+}
+
 finish_recording() {
     if [[ "${FINALIZING:-0}" -eq 1 ]]; then
         exit 0
@@ -330,10 +463,32 @@ resume_recording() {
     printf 'Recording resumed\n'
 }
 
+pause_and_listen_recording() {
+    local seconds=$1
+    if [[ "$STATE" == 'recording' ]]; then
+        pause_recording
+    elif [[ "$STATE" != 'paused' ]]; then
+        printf 'Recording is not available for review; current state is %s\n' "$STATE"
+        return
+    fi
+
+    review_last_audio "$seconds" &
+    printf 'Reviewing last %s seconds\n' "$seconds"
+}
+
 handle_control() {
-    case "$1" in
+    local control_command control_arg
+    control_command=${1%% *}
+    control_arg=${1#"$control_command"}
+    control_arg=${control_arg# }
+
+    case "$control_command" in
     pause)
         pause_recording
+        ;;
+    pause-listen)
+        [[ -n "$control_arg" ]] || control_arg="$REVIEW_SECONDS"
+        pause_and_listen_recording "$control_arg"
         ;;
     resume)
         resume_recording
@@ -345,7 +500,7 @@ handle_control() {
         write_status
         ;;
     *)
-        printf 'Ignoring unknown control command: %s\n' "$1" >&2
+        printf 'Ignoring unknown control command: %s\n' "$control_command" >&2
         ;;
     esac
 }
@@ -412,6 +567,13 @@ pause | resume | stop)
     mkdir -p "$RUNTIME_ROOT"
     session_paths
     send_control "$COMMAND"
+    ;;
+pause-listen)
+    require_commands awk mkdir tr
+    validate_seconds "$REVIEW_SECONDS"
+    mkdir -p "$RUNTIME_ROOT"
+    session_paths
+    send_control "$COMMAND $REVIEW_SECONDS"
     ;;
 status)
     require_commands awk cat mkdir tr

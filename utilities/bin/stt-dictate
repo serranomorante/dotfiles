@@ -8,7 +8,9 @@ set -u
 
 usage() {
     cat <<'EOF'
-Usage: stt-dictate [toggle|begin|end|cancel|status]
+Usage:
+  stt-dictate [toggle|begin|end|cancel|status]
+  stt-dictate transcribe-file --audio-file <wav> [--output <text-file>]
 
 Environment:
   STT_DICTATE_LANG=auto|es|en
@@ -740,6 +742,134 @@ cancel_dictation() {
     notify "STT dictation" "Canceled"
 }
 
+reset_runtime_files() {
+    cookie_file=$runtime_dir/nerd-dictation.cookie
+    pid_file=$runtime_dir/pid
+    mode_file=$runtime_dir/mode
+    phase_file=$runtime_dir/phase
+    audio_file=$runtime_dir/audio.s16le
+    audio_wav_file=$runtime_dir/audio.wav
+    whisper_output_prefix=$runtime_dir/whisper
+    whisper_text_file=$whisper_output_prefix.txt
+    whisper_stdout_file=$runtime_dir/whisper.stdout
+    whisper_server_output_file=$runtime_dir/whisper.server.txt
+    output_file=$runtime_dir/output
+    error_file=$runtime_dir/error
+}
+
+transcribe_file_usage() {
+    cat <<'EOF'
+Usage: stt-dictate transcribe-file --audio-file <wav> [--output <text-file>]
+EOF
+}
+
+transcribe_file() {
+    transcribe_input=
+    transcribe_output=
+
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+        --audio-file)
+            [ "$#" -ge 2 ] || die "--audio-file requires a value" 2
+            transcribe_input=$2
+            shift 2
+            ;;
+        --output)
+            [ "$#" -ge 2 ] || die "--output requires a value" 2
+            transcribe_output=$2
+            shift 2
+            ;;
+        -h | --help | help)
+            transcribe_file_usage
+            return 0
+            ;;
+        *)
+            die "unknown transcribe-file option: $1" 2
+            ;;
+        esac
+    done
+
+    [ -n "$transcribe_input" ] || die "transcribe-file needs --audio-file" 2
+    [ -r "$transcribe_input" ] || die "missing audio file: $transcribe_input" 2
+
+    runtime_dir=$runtime_dir/file-$$
+    mkdir -p "$runtime_dir" "$project_dir" || die "cannot create STT file transcription runtime"
+    reset_runtime_files
+    : >"$output_file"
+    : >"$error_file"
+
+    resolve_backend
+    case "$resolved_backend" in
+    whisper.cpp)
+        [ -x "$whisper_bin" ] || die "missing whisper.cpp binary: $whisper_bin"
+        [ -r "$whisper_model" ] || die "missing whisper.cpp model: $whisper_model"
+        [ "$firejail_enabled" != 1 ] || [ -r "$whisper_profile" ] || die "missing Firejail Whisper profile: $whisper_profile"
+        cp "$transcribe_input" "$audio_wav_file" || die "cannot stage audio file for Whisper transcription"
+        case "$stt_lang" in
+        auto | es | en)
+            whisper_language=$stt_lang
+            ;;
+        *)
+            die "unsupported STT_DICTATE_LANG: $stt_lang"
+            ;;
+        esac
+        if ! try_whisper_server "$whisper_language"; then
+            if ! run_whisper_transcriber "$whisper_language" >"$whisper_stdout_file" 2>>"$error_file"; then
+                err=$(sed -n '1,6p' "$error_file")
+                [ -n "$err" ] && printf '%s\n' "$err" >&2
+                rm -rf "$runtime_dir"
+                notify "STT dictation" "No text recognized"
+                return 1
+            fi
+            if [ -s "$whisper_text_file" ]; then
+                cat "$whisper_text_file" >"$output_file"
+            else
+                cat "$whisper_stdout_file" >"$output_file"
+            fi
+        fi
+        ;;
+    raw-vosk)
+        command -v ffmpeg >/dev/null 2>&1 || die "ffmpeg is not installed"
+        [ -x "$transcriber" ] || die "missing Vosk transcriber: $transcriber"
+        set -- $(language_models_args)
+        if ! ffmpeg -hide_banner -loglevel error -y -i "$transcribe_input" -ac 1 -ar "$sample_rate" -f s16le "$audio_file" 2>>"$error_file"; then
+            err=$(sed -n '1,4p' "$error_file")
+            [ -n "$err" ] && printf '%s\n' "$err" >&2
+            rm -rf "$runtime_dir"
+            return 1
+        fi
+        if ! run_vosk_transcriber "$stt_lang" "$@" >"$output_file" 2>>"$error_file"; then
+            err=$(sed -n '1,4p' "$error_file")
+            [ -n "$err" ] && printf '%s\n' "$err" >&2
+            rm -rf "$runtime_dir"
+            notify "STT dictation" "No text recognized"
+            return 1
+        fi
+        ;;
+    *)
+        rm -rf "$runtime_dir"
+        die "transcribe-file does not support backend: $resolved_backend" 2
+        ;;
+    esac
+
+    text=$(clean_text)
+    if [ -z "$text" ]; then
+        err=$(sed -n '1,2p' "$error_file")
+        [ -n "$err" ] && printf '%s\n' "$err" >&2
+        rm -rf "$runtime_dir"
+        notify "STT dictation" "No text recognized"
+        return 1
+    fi
+
+    if [ -n "$transcribe_output" ]; then
+        printf '%s\n' "$text" >"$transcribe_output"
+    else
+        printf '%s\n' "$text"
+    fi
+
+    rm -rf "$runtime_dir"
+}
+
 case "${1:-toggle}" in
 toggle)
     if is_running; then
@@ -767,6 +897,10 @@ status)
     else
         printf '%s\n' "idle"
     fi
+    ;;
+transcribe-file)
+    shift
+    transcribe_file "$@"
     ;;
 -h | --help | help)
     usage
