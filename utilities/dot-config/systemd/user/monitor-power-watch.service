@@ -1,0 +1,13 @@
+[Unit]
+Description=Watch external monitor power state
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/bin/monitor-power-watch
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=%h/.Xauthority"
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=graphical-session.target

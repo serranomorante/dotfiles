@@ -8,6 +8,7 @@
       - usbutils
       - gimp
       - flameshot
+      - ddcutil
 
 - name: "[archlinux] Graphic tablet peripheral: ensure tools (using aur)"
   become: true
@@ -38,6 +39,16 @@
     - { source: ~/dotfiles/assets/udev-rules/60-weylus.rules, dest: /etc/udev/rules.d/60-weylus.rules }
     - { source: ~/dotfiles/assets/udev-rules/95-monitor-hotplug.rules, dest: /etc/udev/rules.d/95-monitor-hotplug.rules }
   notify: "10-system-tools : handler_reload_udev_rules"
+
+- name: "[archlinux] Graphic tablet peripheral: load i2c-dev for DDC monitor state"
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/i2c-dev.conf
+    content: |
+      i2c-dev
+    owner: root
+    group: root
+    mode: "644"
 
 - name: "[archlinux] Graphic tablet peripheral: ensure Xorg config dir"
   become: true
@@ -105,8 +116,17 @@
   ansible.builtin.systemd_service:
     scope: user
     name: setup-displays.service
+    enabled: false
+    masked: false
+
+- name: "[archlinux] Graphic tablet: ensure monitor power watcher"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: monitor-power-watch.service
     enabled: true
     masked: false
+    state: started
+    daemon_reload: true
 
 - name: "[archlinux] Graphic tablet: ensure display health timer"
   ansible.builtin.systemd_service:

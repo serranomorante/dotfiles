@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+# Purpose: Watch external monitor DDC/CI power state and apply the local display policy on changes.
+# Notes: The first sample establishes the baseline so session startup does not force a display layout.
+
+set -u
+
+interval="${MONITOR_POWER_WATCH_INTERVAL:-5}"
+setup_displays="${MONITOR_POWER_WATCH_SETUP:-$HOME/bin/setup-displays.sh}"
+max_iterations="${MONITOR_POWER_WATCH_MAX_ITERATIONS:-0}"
+
+warn() {
+  printf 'monitor-power-watch: %s\n' "$1" >&2
+}
+
+external_buses() {
+  ddcutil detect --brief 2>/dev/null | awk '
+    function flush() {
+      if (bus != "") {
+        if (connector != "") {
+          if (connector !~ /-eDP-/) {
+            print bus
+          }
+        } else if (monitor != "" && monitor !~ /AUO/) {
+          print bus
+        }
+      }
+      bus = ""
+      connector = ""
+      monitor = ""
+    }
+    /^(Display|Invalid display)/ {
+      flush()
+    }
+    /I2C bus:/ {
+      bus = $NF
+      sub("^.*/i2c-", "", bus)
+    }
+    /DRM connector:/ {
+      connector = $NF
+    }
+    /Monitor:/ {
+      monitor = $0
+    }
+    END {
+      flush()
+    }'
+}
+
+bus_power_state() {
+  local bus="$1"
+  local power
+
+  power="$(ddcutil --bus "$bus" getvcp D6 2>/dev/null || true)"
+  case "$power" in
+    *"DPM: On"* | *"sl=0x01"*) printf '%s\n' on ;;
+    *"DPM: Off"* | *"sl=0x04"* | *"sl=0x05"* | *"turn off display"*) printf '%s\n' off ;;
+    *) printf '%s\n' unknown ;;
+  esac
+}
+
+external_power_state() {
+  local bus state saw_external=0 saw_off=0
+
+  while read -r bus; do
+    [[ -n "$bus" ]] || continue
+    saw_external=1
+    state="$(bus_power_state "$bus")"
+    case "$state" in
+      on)
+        printf '%s\n' on
+        return 0
+        ;;
+      off)
+        saw_off=1
+        ;;
+    esac
+  done < <(external_buses)
+
+  if [[ "$saw_external" -eq 0 ]]; then
+    printf '%s\n' no-external
+  elif [[ "$saw_off" -eq 1 ]]; then
+    printf '%s\n' off
+  else
+    printf '%s\n' unknown
+  fi
+}
+
+apply_display_policy() {
+  if [[ -x "$setup_displays" ]]; then
+    "$setup_displays"
+  else
+    warn "setup-displays command is not executable: $setup_displays"
+  fi
+}
+
+previous=
+iterations=0
+
+while :; do
+  current="$(external_power_state)"
+
+  if [[ "$current" != "unknown" ]]; then
+    if [[ -n "$previous" && "$current" != "$previous" ]]; then
+      warn "external monitor power changed: $previous -> $current"
+      apply_display_policy
+    fi
+    previous="$current"
+  fi
+
+  iterations=$((iterations + 1))
+  if [[ "$max_iterations" -gt 0 && "$iterations" -ge "$max_iterations" ]]; then
+    exit 0
+  fi
+
+  sleep "$interval"
+done

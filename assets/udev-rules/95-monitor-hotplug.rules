@@ -1,8 +1,5 @@
-#Rule for executing commands when an external screen is plugged in.
-#Credits go to: http://unix.stackexchange.com/questions/4489/a-tool-for-automatically-applying-randr-configuration-when-external-display-is-p
-#TODO: optimize later
-#Get envs with `udevadm monitor --environment --udev`
+# Trigger display health checks for DRM connector changes. External monitor
+# power-state policy is handled by monitor-power-watch.service via DDC/CI,
+# because HDMI can remain connected while the monitor is powered off.
 
-KERNEL=="card0", ACTION=="add|remove|unbind", SUBSYSTEM=="drm", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="setup-displays.service"
 KERNEL=="card*-*", ACTION=="add|remove|change|bind|unbind", SUBSYSTEM=="drm", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="display-health-check.service"
-ACTION=="add|remove|unbind", SUBSYSTEM=="usb", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="setup-displays.service"

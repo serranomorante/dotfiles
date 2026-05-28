@@ -5,7 +5,11 @@
 
 {% if arch_has_nvidia_gpu | default(false) | bool %}
 if command -v xrandr >/dev/null 2>&1; then
-    xrandr --setprovideroutputsource modesetting NVIDIA-0 || true
+    nvidia_provider="$(xrandr --listproviders | awk -F'name:' '/name:NVIDIA/ { print $2; exit }')"
+    if [ -n "$nvidia_provider" ]; then
+        xrandr --setprovideroutputsource "$nvidia_provider" modesetting || \
+            xrandr --setprovideroutputsource modesetting "$nvidia_provider" || true
+    fi
     xrandr --auto || true
 fi
 

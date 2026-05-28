@@ -108,28 +108,22 @@ When using `optimus-manager` you must not relay on the `sddm` script called `Xse
 #!/bin/sh
 # Xsetup - run as root before the login dialog appears
 
-snixembed --fork
-
-internal=$(xrandr | grep "DP.* connected" | cut -d " " -f 1)
-external=$(xrandr | grep "HDMI.* connected" | cut -d " " -f 1)
-
-if [[ $external != "" ]]; then
-    # Turn off internal screen
-    xrandr --output $internal --off
-
-    # Set external monitor as primary
-    xrandr --output $external --primary --mode 3440x1440 --rate 59.97
-
-    # Set a max limit on the graphics gpu
-    nvidia-smi -lgc 139,300
-
-    # Under-clock the graphics memory
-    nvidia-settings -a "GPUMemoryTransferRateOffset[0x3]=-2000" -c :0
-else
-    xrandr --output $internal --primary --mode 1920x1080 --rate 120.21
+if command -v xrandr >/dev/null 2>&1; then
+    nvidia_provider="$(xrandr --listproviders | awk -F'name:' '/name:NVIDIA/ { print $2; exit }')"
+    if [ -n "$nvidia_provider" ]; then
+        xrandr --setprovideroutputsource "$nvidia_provider" modesetting || \
+            xrandr --setprovideroutputsource modesetting "$nvidia_provider" || true
+    fi
+    xrandr --auto || true
 fi
 
-# snixembed --fork
+if command -v nvidia-smi >/dev/null 2>&1; then
+    nvidia-smi -lgc 139,300 || true
+fi
+
+if command -v nvidia-settings >/dev/null 2>&1; then
+    nvidia-settings -a "GPUMemoryTransferRateOffset[0x3]=-2000" -c :0 || true
+fi
 ```
 
 ### Installed some packages
@@ -167,6 +161,13 @@ GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet nvidia_drm.modeset=1 nvidia.NVreg_D
 > `/etc/X11/xorg.conf.d/80-igpu-primary-egpu-offload.conf`
 
 ```bash
+Section "ServerLayout"
+    Identifier "layout"
+    Screen 0   "Screen0"
+    Inactive   "Device1"
+    Option     "AllowNVIDIAGPUScreens"
+EndSection
+
 Section "Device"
     Identifier   "Device0"
     Driver       "modesetting"
@@ -200,7 +201,15 @@ Section "Screen"
     # Option       "AllowIndirectGLXProtocol"     "off"
     # Option       "TripleBuffer"                 "on"
 EndSection
+
+Section "Screen"
+    Identifier     "Screen1"
+    Device         "Device1"
+    Option         "AllowEmptyInitialConfiguration"
+EndSection
 ```
+
+For this laptop's HDMI path, Xorg must expose the NVIDIA GPU screen so `xrandr --listproviders` includes `NVIDIA-G0`; otherwise DDC/CI can still see the monitor power state while XRandR has no HDMI output to enable. The SDDM `Xsetup` command resolves the actual NVIDIA provider name dynamically because the Reverse PRIME provider is commonly `NVIDIA-G0`, not `NVIDIA-0`.
 
 ### Handle connect/disconnect of external monitor
 
@@ -384,4 +393,3 @@ cat /var/log/Xorg.0.log
 
 sudo grub-mkconfig -o /boot/grub/grub.cfg^C
 ```
-
