@@ -63,6 +63,7 @@
       - btop
       - bluez
       - firejail
+      - feh
       # - kde-applications
   timeout: 0
   notify:
@@ -74,6 +75,39 @@
   ansible.builtin.file:
     path: /etc/modules-load.d/docker.conf
     state: absent
+
+- name: "[archlinux] Setup desktop: ensure wallpaper directory"
+  ansible.builtin.file:
+    path: ~/.wallpapers
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Setup desktop: download NASA space wallpapers"
+  ansible.builtin.get_url:
+    url: "{{ item.url }}"
+    dest: "~/.wallpapers/{{ item.dest }}"
+    checksum: "sha256:{{ item.sha256 }}"
+    mode: "644"
+  loop:
+    # NASA Images and NASA Science assets are used here for clear provenance and stable checksums.
+    - dest: nasa-webb-carina-cosmic-cliffs.jpg
+      url: https://images-assets.nasa.gov/image/carina_nebula/carina_nebula~large.jpg
+      sha256: e84c3f04074f32bada99d54c7d5b8632bba687ed287850674bcd26a692be34bd
+    - dest: nasa-webb-stephans-quintet.png
+      url: "https://assets.science.nasa.gov/dynamicimage/assets/science/missions/webb/science/2022/07/STScI-01G8H49RQ0E48YDM8WKW9PP5XS.png?crop=faces%2Cfocalpoint&fit=clip&h=1917&w=2000"
+      sha256: 664867f9d1d07a82772d0571d41d05f883ce0562863b54b77bd5a090c73f9cc9
+    - dest: nasa-webb-southern-ring-nebula.jpg
+      url: https://images-assets.nasa.gov/image/southern_ring_nebula/southern_ring_nebula~large.jpg
+      sha256: 98532e5a6a25d675c1f6ecf611294f711958baf22b21a8bfe9754a4226082067
+    - dest: nasa-webb-first-deep-field.jpg
+      url: https://images-assets.nasa.gov/image/webb_first_deep_field/webb_first_deep_field~large.jpg
+      sha256: 2dae75b6ece8011a019b95955e6933a35064569d31aeb1bb8a54d739dc549ee4
+    - dest: nasa-wise-eagle-nebula.jpg
+      url: https://images-assets.nasa.gov/image/PIA25433/PIA25433~large.jpg
+      sha256: 8c30587e60a2623740cc3ced81333c132bcea52e8491db9f58a13d02ed8b2423
+    - dest: nasa-spitzer-helix-nebula.jpg
+      url: https://images-assets.nasa.gov/image/PIA09178/PIA09178~large.jpg
+      sha256: 3be822ab5cd4cc5d67c60f067a4b6ca068592a88dede9c08e6edd6b294d175d7
 
 - name: flush_handlers
   ansible.builtin.meta: flush_handlers

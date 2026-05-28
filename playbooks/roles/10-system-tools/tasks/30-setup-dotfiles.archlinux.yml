@@ -119,6 +119,15 @@
       | length
     ) > 0
 
+- name: "[archlinux] Dotfiles: ensure feh wallpaper service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: feh.service
+    enabled: true
+    masked: false
+    state: started
+    daemon_reload: true
+
 - name: "[archlinux] Dotfiles: stat KDE global shortcuts"
   ansible.builtin.stat:
     path: ~/dotfiles/utilities/dot-config/kglobalshortcutsrc

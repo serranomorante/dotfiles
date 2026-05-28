@@ -1,0 +1,46 @@
+#!/bin/sh
+# Purpose: Apply a random desktop wallpaper safely in an X11 session.
+# Usage: apply-wallpaper [wallpaper-directory]
+# Notes: Missing X11, feh, or image files are treated as no-op conditions so display setup can continue.
+
+set -u
+
+warn() {
+  printf 'apply-wallpaper: %s\n' "$1" >&2
+}
+
+wallpaper_dir=${1:-${WALLPAPER_DIR:-"$HOME/.wallpapers"}}
+feh_bin=${FEH_BIN:-feh}
+
+if ! command -v "$feh_bin" >/dev/null 2>&1; then
+  warn "feh is not installed; skipping"
+  exit 0
+fi
+
+if [ -z "${DISPLAY:-}" ]; then
+  warn "DISPLAY is unset; skipping"
+  exit 0
+fi
+
+if command -v xrandr >/dev/null 2>&1 && ! xrandr --query >/dev/null 2>&1; then
+  warn "no X server is available (DISPLAY=$DISPLAY); skipping"
+  exit 0
+fi
+
+if [ ! -d "$wallpaper_dir" ]; then
+  warn "wallpaper directory does not exist: $wallpaper_dir"
+  exit 0
+fi
+
+wallpaper=$(
+  find -L "$wallpaper_dir" -type f \
+    \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o -iname '*.bmp' \) \
+    -print 2>/dev/null | shuf -n 1
+)
+
+if [ -z "$wallpaper" ]; then
+  warn "no supported wallpaper images found in $wallpaper_dir"
+  exit 0
+fi
+
+"$feh_bin" --bg-fill "$wallpaper"

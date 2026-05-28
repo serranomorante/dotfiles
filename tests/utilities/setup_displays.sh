@@ -23,7 +23,9 @@ make_fake_path() {
     ln -s /usr/bin/awk "${bin}/awk"
     ln -s /usr/bin/grep "${bin}/grep"
     printf '#!/usr/bin/env bash\nexit 0\n' >"${bin}/sleep"
+    printf '#!/usr/bin/env bash\nprintf "apply-wallpaper\\n" >>"${DOTFILES_TEST_TMP}/apply-wallpaper.log"\n' >"${bin}/apply-wallpaper"
     chmod +x "${bin}/sleep"
+    chmod +x "${bin}/apply-wallpaper"
 }
 
 write_fake_xrandr() {

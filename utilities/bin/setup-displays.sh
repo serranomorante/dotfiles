@@ -205,9 +205,11 @@ else
   fi
 fi
 
-# Reset wallpaper only when feh is available.
-if command -v feh >/dev/null 2>&1; then
-  /usr/bin/feh --bg-scale --recursive --verbose --randomize ~/.wallpapers/
+# Reset the root pixmap after XRandR changes so it matches the current screen geometry.
+if command -v apply-wallpaper >/dev/null 2>&1; then
+  apply-wallpaper
+else
+  warn "apply-wallpaper is not available; skipping wallpaper reset"
 fi
 
 # Re-apply wacom config only when helper exists.
