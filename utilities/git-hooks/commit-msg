@@ -1,39 +1,122 @@
 #!/bin/sh
-# Purpose: Reject placeholder assistant conversation ids in commit messages.
+# Purpose: Require valid assistant conversation ids for Codex-generated commits.
 # Usage: Git runs this as commit-msg when core.hooksPath points here.
 
 set -eu
 
 msg_file=$1
 
-invalid_agent_line=$(
+has_codex_env() {
+    env | grep -q '^CODEX_'
+}
+
+pid_parent() {
+    awk '/^PPid:/ { print $2; exit }' "/proc/$1/status" 2>/dev/null || true
+}
+
+pid_is_codex() {
+    pid=$1
+    comm=
+    cmdline=
+    argv0=
+
+    if [ -r "/proc/$pid/comm" ]; then
+        IFS= read -r comm <"/proc/$pid/comm" || comm=
+        [ "$comm" = codex ] && return 0
+    fi
+
+    if [ -r "/proc/$pid/cmdline" ]; then
+        cmdline=$(tr '\0' '\n' <"/proc/$pid/cmdline" 2>/dev/null | sed -n '1p')
+        argv0=${cmdline##*/}
+        [ "$argv0" = codex ] && return 0
+    fi
+
+    return 1
+}
+
+has_codex_parent() {
+    pid=${PPID:-}
+
+    case $pid in
+    '' | *[!0-9]*) return 1 ;;
+    esac
+
+    while [ -n "$pid" ] && [ "$pid" != 1 ]; do
+        if pid_is_codex "$pid"; then
+            return 0
+        fi
+
+        pid=$(pid_parent "$pid")
+        case $pid in
+        '' | *[!0-9]*) return 1 ;;
+        esac
+    done
+
+    return 1
+}
+
+if ! has_codex_env && ! has_codex_parent; then
+    exit 0
+fi
+
+agent_status=$(
     awk '
-        BEGIN { IGNORECASE = 1 }
-        /^[[:space:]]*@agent[[:space:]]*$/ {
-            print
-            exit 0
+        BEGIN {
+            IGNORECASE = 1
+            found = 0
+            invalid = ""
         }
+
+        /^[[:space:]]*@agent[[:space:]]*$/ {
+            found = 1
+            invalid = $0
+        }
+
         /^[[:space:]]*@agent[[:space:]]+/ {
+            found = 1
             value = $0
             sub(/^[[:space:]]*@agent[[:space:]]+/, "", value)
             sub(/[[:space:]]+$/, "", value)
 
-            if (value ~ /^(unknown|unavailable|none|null|n\/a|na|tbd|todo|\?)$/) {
-                print
-                exit 0
+            if (value ~ /[[:space:]]/) {
+                invalid = $0
+            } else if (value ~ /^(unknown|unavailable|none|null|n\/a|na|tbd|todo|\?)$/) {
+                invalid = $0
+            } else if (value ~ /^<.*>$/) {
+                invalid = $0
             }
+        }
 
-            if (value ~ /^<.*>$/) {
-                print
-                exit 0
+        END {
+            if (!found) {
+                print "missing"
+            } else if (invalid != "") {
+                print "invalid:" invalid
+            } else {
+                print "ok"
             }
         }
     ' "$msg_file"
 )
 
-if [ -n "$invalid_agent_line" ]; then
+case $agent_status in
+ok)
+    exit 0
+    ;;
+missing)
+    printf '%s\n' "commit-msg: Codex-generated commits require an @agent trailer." >&2
+    printf '%s\n' "Resolve the real conversation id with codex-session-store and add: @agent <conversation id>" >&2
+    exit 1
+    ;;
+invalid:*)
+    invalid_agent_line=${agent_status#invalid:}
     printf '%s\n' "commit-msg: invalid assistant conversation id trailer:" >&2
     printf '%s\n' "  $invalid_agent_line" >&2
     printf '%s\n' "Resolve the real conversation id with codex-session-store and use: @agent <conversation id>" >&2
     exit 1
-fi
+    ;;
+*)
+    printf '%s\n' "commit-msg: internal error while validating @agent trailer" >&2
+    exit 1
+    ;;
+esac
