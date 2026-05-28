@@ -50,8 +50,7 @@
       - docker-compose
       - kronometer
       - kcolorchooser
-      - vlc
-      - vlc-plugins-all
+      - mpv
       - arch-wiki-docs
       - noise-suppression-for-voice
       - libebur128
@@ -98,7 +97,32 @@
   become: true
   ansible.builtin.package:
     state: absent
-    name: wacomtablet
+    name:
+      - vlc
+      - vlc-plugins-all
+      - wacomtablet
+
+- name: "[archlinux] Setup desktop: register mpv MIME handlers"
+  ansible.builtin.shell: |
+    update-desktop-database ~/.local/share/applications
+    xdg-mime default mpv.desktop audio/aac
+    xdg-mime default mpv.desktop audio/flac
+    xdg-mime default mpv.desktop audio/mpeg
+    xdg-mime default mpv.desktop audio/mp4
+    xdg-mime default mpv.desktop audio/ogg
+    xdg-mime default mpv.desktop audio/wav
+    xdg-mime default mpv.desktop audio/x-wav
+    xdg-mime default mpv.desktop video/mp4
+    xdg-mime default mpv.desktop video/mpeg
+    xdg-mime default mpv.desktop video/ogg
+    xdg-mime default mpv.desktop video/quicktime
+    xdg-mime default mpv.desktop video/webm
+    xdg-mime default mpv.desktop video/x-matroska
+    xdg-mime default mpv.desktop video/x-msvideo
+    xdg-mime default mpv.desktop application/ogg
+    xdg-mime default mpv.desktop application/x-subrip
+  changed_when: true
+  notify: "10-system-tools : handler_update_desktop_database"
 
 - name: "[archlinux] Setup desktop: ensure sddm config folder"
   become: true
