@@ -22,6 +22,18 @@ EOF
 
 [ "$#" -ge 1 ] || usage
 
+run_async() {
+    label=$1
+    shift
+    unit_id=$(printf '%s' "$label" | tr -c 'A-Za-z0-9_.-' '-')
+    unit="remind-run-${unit_id}-$(date +%s)"
+    if command -v systemd-run >/dev/null 2>&1; then
+        systemd-run --user --collect --unit="$unit" "$@" >/dev/null
+    else
+        "$@" >/dev/null 2>&1 &
+    fi
+}
+
 case $1 in
 --list)
     printf '%s\n' 'agent <todo-id>'
@@ -37,14 +49,14 @@ agent)
         exit 2
         ;;
     esac
-    "$HOME/bin/foam-remind-agent-run" "$1" >/dev/null
+    run_async "agent-$1" "$HOME/bin/foam-remind-agent-run" "$1"
     ;;
 dotfiles-health)
     shift
     [ "$#" -eq 1 ] || usage
     case $1 in
     update)
-        "$HOME/bin/dotfiles-health" update >/dev/null
+        run_async "dotfiles-health-update" "$HOME/bin/dotfiles-health" update
         ;;
     *)
         logger -t remind-run "rejected dotfiles-health subcommand: $1" || true

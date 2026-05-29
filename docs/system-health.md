@@ -6,7 +6,7 @@ The report is intentionally an index and runbook, not a raw log archive. It stor
 
 The main report preserves the section between `dotfiles-health:manual-reminders:start` and `dotfiles-health:manual-reminders:end`. Put Markdown TODOs with indented `remind` fences there when the review cadence should create Remind notifications. Add indented `@id` metadata to reminders that should be linkable from other Foam notes with `[[system-health#^todo-id]]`.
 
-Those `remind` blocks may use `@run dotfiles-health update` so the same reminder both notifies the user and refreshes the Markdown report. Remind does not execute arbitrary note text directly: generated `RUN` lines call `~/bin/remind-run`, whose shell `case` statement is the allowlist for commands that notes are permitted to trigger.
+Those `remind` blocks may use `@run dotfiles-health update` so the same reminder both notifies the user and queues a Markdown report refresh. Remind does not execute arbitrary note text directly: generated `RUN` lines call `~/bin/remind-run`, whose shell `case` statement is the allowlist for commands that notes are permitted to trigger. Valid allowlisted commands are queued as transient user systemd units so the normal reminder notification is not delayed by the helper.
 
 Runtime files are grouped as:
 
