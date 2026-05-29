@@ -4,7 +4,7 @@ The Neovim/Kitty integration gives each working directory a predictable Kitty re
 
 ## CWD-Derived Socket Pair
 
-`term/bin/kitty` starts each Kitty UI window with a fresh `KITTY_OS_INSTANCE_ID` for Kitty-specific grouping, and a cwd-derived `KITTY_LISTEN_ON` remote-control socket. Launchers that open a specific directory, such as `term/bin/kitty-dmenu`, should provide `KITTY_LISTEN_ON` from the selected target cwd before invoking `kitty -d`, because the wrapper's own process cwd may be different from the target directory.
+`term/bin/kitty` starts each Kitty UI window with a fresh `KITTY_OS_INSTANCE_ID` for Kitty-specific grouping. It only adds a cwd-derived `KITTY_LISTEN_ON` remote-control socket when the launch explicitly includes `-d`, `--directory`, or `--working-directory`; plain `kitty` launches, such as dwm's terminal shortcut, must not bind a cwd socket because repeated launches from the same inherited cwd would collide. Launchers that need cwd-scoped integration, such as `term/bin/kitty-dmenu`, should invoke `kitty -d <target-cwd>` so the wrapper derives the socket from the selected target directory instead of from its own process cwd.
 
 The Kitty socket path lives under `$XDG_RUNTIME_DIR` and uses this readable pattern:
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Purpose: Start Kitty with cwd-derived instance and remote-control sockets.
+# Purpose: Start Kitty with per-window identity and optional cwd-derived sockets.
 
 . "$HOME/dotfiles/term/bin/kitty-window-utils.sh"
 
@@ -13,6 +13,7 @@ esac
 
 kitty_os_instance_id=$(uuidgen)
 cwd=${PWD:-}
+explicit_cwd=0
 args=("$@")
 
 for ((i = 0; i < ${#args[@]}; i++)); do
@@ -20,17 +21,25 @@ for ((i = 0; i < ${#args[@]}; i++)); do
     -d | --directory | --working-directory)
         if ((i + 1 < ${#args[@]})); then
             cwd=${args[$((i + 1))]}
+            explicit_cwd=1
             i=$((i + 1))
         fi
         ;;
     --directory=* | --working-directory=*)
         cwd=${args[$i]#*=}
+        explicit_cwd=1
         ;;
     esac
 done
 
-kitty_socket=$(kitty_listen_on_for_cwd "$cwd")
+if ((explicit_cwd)); then
+    kitty_socket=$(kitty_listen_on_for_cwd "$cwd")
 
-KITTY_OS_INSTANCE_ID="$kitty_os_instance_id" \
-    KITTY_LISTEN_ON="$kitty_socket" \
-    "$real_kitty" --listen-on "$kitty_socket" "$@"
+    KITTY_OS_INSTANCE_ID="$kitty_os_instance_id" \
+        KITTY_LISTEN_ON="$kitty_socket" \
+        "$real_kitty" --listen-on "$kitty_socket" "$@"
+else
+    KITTY_OS_INSTANCE_ID="$kitty_os_instance_id" \
+        KITTY_LISTEN_ON= \
+        "$real_kitty" "$@"
+fi

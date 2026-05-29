@@ -23,7 +23,7 @@ This map describes where changes usually belong. It is intentionally practical: 
 
 ## Terminal Tooling
 
-Kitty remote-control socket naming is owned by `term/bin/kitty-window-utils.sh`. Scripts that need CWD-derived Kitty socket paths, `listen_on` values, or matching Neovim server names should source that file instead of reimplementing the naming rule. Long CWD keys are shortened with a stable hash so socket paths stay within UNIX socket path limits.
+Kitty remote-control socket naming is owned by `term/bin/kitty-window-utils.sh`. Scripts that need CWD-derived Kitty socket paths, `listen_on` values, or matching Neovim server names should source that file instead of reimplementing the naming rule. `term/bin/kitty` only binds those cwd sockets for explicit directory launches (`-d`, `--directory`, or `--working-directory`), so plain dwm-style terminal launches do not collide on an inherited cwd. Long CWD keys are shortened with a stable hash so socket paths stay within UNIX socket path limits.
 
 ## Ansible Structure
 
