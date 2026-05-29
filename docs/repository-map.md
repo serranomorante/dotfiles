@@ -72,6 +72,10 @@ Runtime code on interactive Neovim paths must not block the main event loop with
 
 Use Valkey for small cross-process runtime caches that need to be shared by Neovim, Kitty helpers, shell scripts, or Python scripts. `utilities/bin/cachectl` wraps `valkey-cli` with the repository key namespace `dotfiles:cache:v1:<namespace>:<key>` and requires TTLs for stored values. Values should be cheap to rebuild and should not be committed.
 
+## Notification Actions
+
+Clickable notification behavior is routed through `utilities/bin/notification-action`. Producers should send a versioned JSON payload with `schema: dotfiles.notification-action.v1`, `action`, and action-specific metadata such as `cwd` and `foam-section-id`; the helper encodes that payload into a Dunst notification action name and dispatches the selected action after the click. Keep action implementations allowlisted in that helper and delegate editor work through `nvim/bin/open_in_nvim` so CWD-derived Kitty and Neovim socket naming remains centralized in `term/bin/kitty-window-utils.sh`.
+
 ## System Health Notes
 
 `utilities/bin/dotfiles-health` generates a compact workstation health report under the private Foam notes tree at `ops/system-health/`. The user timer lives in `utilities/dot-config/systemd/user/dotfiles-health.timer` and is enabled by the Arch dotfiles task after Stow has linked the utility and unit files.

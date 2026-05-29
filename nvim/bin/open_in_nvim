@@ -89,7 +89,7 @@ ex_command_arg() {
 }
 
 case $app in
-nnn_search | nnn_explorer | git_editor | lazygit_edit | lazygit_edit_at_line | lazygit_edit_at_line_and_wait | lazygit_open | lazygit_open_dir_in_editor | lazygit_compare_branch | lazygit_open_merge_tool | lazygit_open_difftool | lazygit_diff_against_parent | lazygit_diff_with_local_copy | kitty_edit | kitty_edit_at_line | kitty_simple_edit | kitty_simple_edit_at_line | agent_conversation)
+nnn_search | nnn_explorer | git_editor | lazygit_edit | lazygit_edit_at_line | lazygit_edit_at_line_and_wait | lazygit_open | lazygit_open_dir_in_editor | lazygit_compare_branch | lazygit_open_merge_tool | lazygit_open_difftool | lazygit_diff_against_parent | lazygit_diff_with_local_copy | kitty_edit | kitty_edit_at_line | kitty_simple_edit | kitty_simple_edit_at_line | agent_conversation | goto_foam_block_by_id)
     require_servername
     ;;
 esac
@@ -153,6 +153,10 @@ kitty_simple_edit_at_line)
 agent_conversation)
     agent_id=$(ex_command_arg "$1")
     nvr --servername "$servername" --nostart -c "CodexResumeById $agent_id"
+    ;;
+goto_foam_block_by_id)
+    block_id=$(ex_command_arg "$1")
+    nvr --servername "$servername" --nostart -c "lua $nvim_close_term_win" -c "GoToFoamBlockById $block_id"
     ;;
 *)
     if [ -n "$app" ]; then

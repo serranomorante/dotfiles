@@ -25,17 +25,17 @@ run_remind_update() {
 make_foam_note() {
     local lines=("$@")
 
-    mkdir -p "${HOME}/data/notes/foam/misc/finance" "${HOME}/.config/remind"
-    printf '%s\n' "${lines[@]}" >"${HOME}/data/notes/foam/misc/finance/todos.finance.md"
+    mkdir -p "${HOME}/data/notes/foam/misc/tasks" "${HOME}/.config/remind"
+    printf '%s\n' "${lines[@]}" >"${HOME}/data/notes/foam/misc/tasks/todos.sample.md"
 }
 
 case "${DOTFILES_TEST_CASE:-}" in
 reminders-agent-run-uses-attached-id)
     make_foam_note \
-        "# Finance | TODOS" \
+        "# Sample | TODOS" \
         "" \
-        "- [ ] **review the audio software deal**" \
-        "  @id todo-audio-software-deal" \
+        "- [ ] **Review sample task**" \
+        "  @id todo-sample-agent-task" \
         "" \
         "  \`\`\`remind" \
         "  @run agent" \
@@ -44,14 +44,14 @@ reminders-agent-run-uses-attached-id)
 
     run_remind_update
 
-    rg -q "MSG \\*\\*review the audio software deal\\*\\*" "${HOME}/.config/remind/reminders.rem"
-    rg -q "RUN '${HOME}/bin/remind-run' 'agent' 'todo-audio-software-deal'" "${HOME}/.config/remind/reminders.rem"
+    rg -q "MSG \\*\\*Review sample task\\*\\*" "${HOME}/.config/remind/reminders.rem"
+    rg -q "RUN '${HOME}/bin/remind-run' 'agent' 'todo-sample-agent-task'" "${HOME}/.config/remind/reminders.rem"
     ;;
 reminders-agent-run-without-id-does-not-emit-run)
     make_foam_note \
-        "# Finance | TODOS" \
+        "# Sample | TODOS" \
         "" \
-        "- [ ] **review the audio software deal**" \
+        "- [ ] **Review sample task**" \
         "" \
         "  \`\`\`remind" \
         "  @run agent" \
@@ -60,7 +60,7 @@ reminders-agent-run-without-id-does-not-emit-run)
 
     run_remind_update >"${DOTFILES_TEST_TMP}/nvim.out" 2>&1
 
-    rg -q "MSG \\*\\*review the audio software deal\\*\\*" "${HOME}/.config/remind/reminders.rem"
+    rg -q "MSG \\*\\*Review sample task\\*\\*" "${HOME}/.config/remind/reminders.rem"
     ! rg -q "RUN .*remind-run.*agent" "${HOME}/.config/remind/reminders.rem"
     ;;
 *)

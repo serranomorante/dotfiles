@@ -53,10 +53,10 @@ remind-run-lists-agent-command)
 remind-run-agent-queues-helper)
     home=$(make_fake_home)
     bin=$(write_fake_systemd_run)
-    PATH="${bin}:/usr/bin:/bin" HOME="$home" "$script_under_test" agent todo-audio-software-deal
+    PATH="${bin}:/usr/bin:/bin" HOME="$home" "$script_under_test" agent todo-sample-agent-task
     args=$(cat "${DOTFILES_TEST_TMP}/systemd-run.args")
-    [[ "$args" == --user\ --collect\ --unit=remind-run-agent-todo-audio-software-deal-* ]]
-    [[ "$args" == *" ${home}/bin/foam-remind-agent-run todo-audio-software-deal" ]]
+    [[ "$args" == --user\ --collect\ --unit=remind-run-agent-todo-sample-agent-task-* ]]
+    [[ "$args" == *" ${home}/bin/foam-remind-agent-run todo-sample-agent-task" ]]
     [[ ! -e "${DOTFILES_TEST_TMP}/agent-helper.args" ]]
     ;;
 remind-run-dotfiles-health-queues-helper)

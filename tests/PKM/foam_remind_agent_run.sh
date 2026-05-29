@@ -13,14 +13,14 @@ script_under_test="${DOTFILES_TEST_ROOT}/PKM/bin/foam-remind-agent-run"
 
 make_foam() {
     local notes="${DOTFILES_TEST_TMP}/notes"
-    mkdir -p "${notes}/misc/finance"
-    cat >"${notes}/misc/finance/todos.finance.md" <<'MARKDOWN'
-# Finance | TODOS
+    mkdir -p "${notes}/misc/tasks"
+    cat >"${notes}/misc/tasks/todos.sample.md" <<'MARKDOWN'
+# Sample | TODOS
 
-- [ ] **review the audio software deal**
-  Check whether there is an official deal.
-  @id todo-audio-software-deal
-  @tags #software
+- [ ] **Review sample task**
+  Summarize the sample input.
+  @id todo-sample-agent-task
+  @tags #sample
   @model gpt-test
 
   ```remind
@@ -40,22 +40,59 @@ set -euo pipefail
 
 printf '%s\n' "$*" >"${DOTFILES_TEST_TMP}/wrapper.args"
 cat >"${DOTFILES_TEST_TMP}/wrapper.payload"
-printf 'official answer\n'
+printf 'sample answer\n'
 BASH
     chmod +x "$wrapper"
     printf '%s\n' "$wrapper"
 }
 
 write_fake_notify() {
-    local bin="${DOTFILES_TEST_TMP}/bin"
-    mkdir -p "$bin"
-    cat >"${bin}/notify-send" <<'BASH'
+    local home="${DOTFILES_TEST_TMP}/home"
+    mkdir -p "${home}/bin"
+    cat >"${home}/bin/notification-action" <<'BASH'
 #!/usr/bin/env bash
 set -euo pipefail
 
-printf '%s\n' "$*" >"${DOTFILES_TEST_TMP}/notify.args"
+printf '%s\n' "$@" >"${DOTFILES_TEST_TMP}/notification-action.args"
 BASH
-    chmod +x "${bin}/notify-send"
+    chmod +x "${home}/bin/notification-action"
+    printf '%s\n' "$home"
+}
+
+write_fake_systemd_run() {
+    local bin="${DOTFILES_TEST_TMP}/bin"
+    mkdir -p "$bin"
+    cat >"${bin}/systemd-run" <<'BASH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf '%s\n' "$@" >"${DOTFILES_TEST_TMP}/systemd-run.args"
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --user | --collect)
+        shift
+        ;;
+    --unit=*)
+        shift
+        ;;
+    --unit)
+        shift 2
+        ;;
+    --)
+        shift
+        break
+        ;;
+    -*)
+        shift
+        ;;
+    *)
+        break
+        ;;
+    esac
+done
+"$@"
+BASH
+    chmod +x "${bin}/systemd-run"
     printf '%s\n' "$bin"
 }
 
@@ -66,13 +103,15 @@ foam-remind-agent-run-syntax)
 foam-remind-agent-run-writes-result-and-payload)
     notes=$(make_foam)
     wrapper=$(write_fake_wrapper)
-    bin=$(write_fake_notify)
+    home=$(write_fake_notify)
+    bin=$(write_fake_systemd_run)
 
-    PATH="${bin}:/usr/bin:/bin" \
+    HOME="$home" \
+        PATH="${bin}:/usr/bin:/bin" \
         FOAM_REMIND_NOTES_ROOT="$notes" \
         FOAM_REMIND_AGENT_OUTPUT_ROOT="${notes}/misc/agent-runs" \
         FOAM_REMIND_AGENT_WRAPPER="$wrapper" \
-        "$script_under_test" todo-audio-software-deal >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+        "$script_under_test" todo-sample-agent-task >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
 
     rg -q -- '--agent codex --input-json -' "${DOTFILES_TEST_TMP}/wrapper.args"
     python - "${DOTFILES_TEST_TMP}/wrapper.payload" "$notes" <<'PY'
@@ -82,33 +121,55 @@ import sys
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
 notes = sys.argv[2]
 assert payload["schema"] == "foam-ai-autotrigger.v1"
-assert payload["todo"]["id"] == "todo-audio-software-deal"
-assert payload["todo"]["title"] == "review the audio software deal"
-assert payload["todo"]["body"] == "Check whether there is an official deal."
-assert payload["todo"]["tags"] == ["#software"]
+assert payload["todo"]["id"] == "todo-sample-agent-task"
+assert payload["todo"]["title"] == "Review sample task"
+assert payload["todo"]["body"] == "Summarize the sample input."
+assert payload["todo"]["tags"] == ["#sample"]
 assert payload["execution"]["agent"] == "codex"
 assert payload["execution"]["model"] == "gpt-test"
 assert payload["execution"]["cwd"] == notes
-assert payload["source"]["relative_file"] == "misc/finance/todos.finance.md"
+assert payload["source"]["relative_file"] == "misc/tasks/todos.sample.md"
 PY
-    result=$(find "${notes}/misc/agent-runs" -type f -name 'todo-audio-software-deal-*.md' -print -quit)
+    result=$(find "${notes}/misc/agent-runs" -type f -name 'todo-sample-agent-task-*.md' -print -quit)
     [[ -n "$result" ]]
-    rg -q "source: \\[\\[todos.finance#\\^todo-audio-software-deal\\]\\]" "$result"
+    rg -q "source: \\[\\[todos.sample#\\^todo-sample-agent-task\\]\\]" "$result"
     rg -q "status: completed" "$result"
-    rg -q "official answer" "$result"
-    [[ "$(cat "${DOTFILES_TEST_TMP}/notify.args")" == "Agent TODO completed todo-audio-software-deal" ]]
+    rg -q "sample answer" "$result"
+    rg -q -- '^--user$' "${DOTFILES_TEST_TMP}/systemd-run.args"
+    rg -q -- '^--collect$' "${DOTFILES_TEST_TMP}/systemd-run.args"
+    rg -q -- '^--unit=notification-action-todo-sample-agent-task-' "${DOTFILES_TEST_TMP}/systemd-run.args"
+    for _ in {1..20}; do
+        [[ -e "${DOTFILES_TEST_TMP}/notification-action.args" ]] && break
+        sleep 0.05
+    done
+    rg -q -- '^send$' "${DOTFILES_TEST_TMP}/notification-action.args"
+    rg -q -- '^--summary$' "${DOTFILES_TEST_TMP}/notification-action.args"
+    rg -q -- '^Agent TODO completed$' "${DOTFILES_TEST_TMP}/notification-action.args"
+    python - "${DOTFILES_TEST_TMP}/notification-action.args" "$notes" <<'PY'
+import json
+import sys
+
+lines = open(sys.argv[1], encoding="utf-8").read().splitlines()
+payload = json.loads(lines[-1])
+assert payload == {
+    "schema": "dotfiles.notification-action.v1",
+    "action": "open-foam-block-section",
+    "cwd": sys.argv[2],
+    "foam-section-id": "todo-sample-agent-task",
+}
+PY
     ;;
 foam-remind-agent-run-fails-on-duplicate-id)
     notes=$(make_foam)
-    cat >>"${notes}/misc/finance/todos.finance.md" <<'MARKDOWN'
+    cat >>"${notes}/misc/tasks/todos.sample.md" <<'MARKDOWN'
 
 - [ ] **duplicate**
-  @id todo-audio-software-deal
+  @id todo-sample-agent-task
 MARKDOWN
     wrapper=$(write_fake_wrapper)
-    bin=$(write_fake_notify)
+    home=$(write_fake_notify)
 
-    if PATH="${bin}:/usr/bin:/bin" FOAM_REMIND_NOTES_ROOT="$notes" FOAM_REMIND_AGENT_WRAPPER="$wrapper" "$script_under_test" todo-audio-software-deal >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"; then
+    if HOME="$home" PATH="/usr/bin:/bin" FOAM_REMIND_NOTES_ROOT="$notes" FOAM_REMIND_AGENT_WRAPPER="$wrapper" "$script_under_test" todo-sample-agent-task >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"; then
         printf 'helper unexpectedly accepted duplicate id\n' >&2
         exit 1
     fi
@@ -120,4 +181,3 @@ MARKDOWN
     exit 2
     ;;
 esac
-

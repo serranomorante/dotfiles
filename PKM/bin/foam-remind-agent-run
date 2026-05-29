@@ -7,6 +7,7 @@ import datetime as dt
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -31,11 +32,50 @@ def log(message):
         pass
 
 
+def systemd_unit_name(prefix, value):
+    slug = re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-") or "notification"
+    return f"{prefix}-{slug}-{os.getpid()}"
+
+
 def utc_now():
     return dt.datetime.now(dt.timezone.utc)
 
 
-def notify(summary, body):
+def notify(summary, body, action_payload=None):
+    if action_payload:
+        notifier = os.path.abspath(os.path.expanduser("~/bin/notification-action"))
+        command = [
+            notifier,
+            "send",
+            "--summary",
+            summary,
+            "--body",
+            body,
+            "--label",
+            "Open TODO",
+            json.dumps(action_payload, ensure_ascii=False),
+        ]
+        systemd_run = shutil.which("systemd-run")
+        if systemd_run:
+            unit = systemd_unit_name("notification-action", action_payload.get("foam-section-id") or action_payload["action"])
+            result = subprocess.run(
+                [systemd_run, "--user", "--collect", f"--unit={unit}", *command],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0:
+                return
+            detail = (result.stderr or "").strip().replace("\n", " | ")
+            log(f"failed to queue notification action unit: {detail or result.returncode}")
+
+        try:
+            subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+            return
+        except FileNotFoundError:
+            pass
+
     try:
         subprocess.run(["notify-send", summary, body], check=False)
     except FileNotFoundError:
@@ -267,10 +307,16 @@ def run(todo_id):
     write_result(path, todo, payload, started_at, finished_at, status, result.returncode, result.stdout, result.stderr)
 
     log(f"{status} {todo_id}; result: {path}")
+    action_payload = {
+        "schema": "dotfiles.notification-action.v1",
+        "action": "open-foam-block-section",
+        "cwd": notes_root,
+        "foam-section-id": todo_id,
+    }
     if result.returncode == 0:
-        notify("Agent TODO completed", todo_id)
+        notify("Agent TODO completed", todo_id, action_payload)
         return 0
-    notify("Agent TODO failed", todo_id)
+    notify("Agent TODO failed", todo_id, action_payload)
     return result.returncode or 1
 
 

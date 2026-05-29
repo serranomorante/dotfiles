@@ -143,7 +143,7 @@ local function block_target_under_cursor(bufnr)
 end
 
 local function open_at(path, lnum)
-  vim.cmd.edit(vim.fn.fnameescape(path))
+  if get_buf_path(0) ~= path then vim.cmd.edit({ args = { path }, mods = { hide = true } }) end
   vim.api.nvim_win_set_cursor(0, { lnum, 0 })
   vim.cmd.normal({ args = { "zz" }, bang = true })
 end
@@ -156,7 +156,8 @@ local function id_locations(lines, id)
   return locations
 end
 
-local function go_to_id(path, id)
+local function go_to_id(path, id, opts)
+  opts = opts or {}
   local target_bufnr = vim.fn.bufnr(path)
   local lines
   if target_bufnr ~= -1 and vim.api.nvim_buf_is_loaded(target_bufnr) then
@@ -166,20 +167,41 @@ local function go_to_id(path, id)
   end
 
   if not lines then
-    warn(("Could not read %s"):format(path))
-    return
+    if not opts.quiet then warn(("Could not read %s"):format(path)) end
+    return false
   end
 
   local locations = id_locations(lines, id)
   if #locations == 0 then
-    warn(("No attached @id %s found in %s"):format(id, vim.fn.fnamemodify(path, ":~:.")))
-    return
+    if not opts.quiet then
+      warn(("No attached @id %s found in %s"):format(id, vim.fn.fnamemodify(path, ":~:.")))
+    end
+    return false
   end
   if #locations > 1 then
     warn(("Duplicate @id %s in %s; opening the first match"):format(id, vim.fn.fnamemodify(path, ":~:.")))
   end
 
   open_at(path, locations[1])
+  return true
+end
+
+local function rg_match_paths(stdout)
+  local paths = {}
+  local seen = {}
+
+  for line in stdout:gmatch("[^\r\n]+") do
+    local ok, item = pcall(vim.json.decode, line)
+    if ok and item and item.type == "match" and item.data and item.data.path and item.data.path.text then
+      local path = normalize(item.data.path.text)
+      if path and not seen[path] then
+        seen[path] = true
+        table.insert(paths, path)
+      end
+    end
+  end
+
+  return paths
 end
 
 local function resolve_markdown_path(file_part, bufnr)
@@ -254,6 +276,48 @@ function M.goto_block_id_under_cursor(bufnr)
       return
     end
     go_to_id(path, target.id)
+  end)
+
+  return true
+end
+
+function M.goto_block_id(id, root)
+  if not id or not id:match("^" .. ID_PATTERN .. "$") then
+    warn("Invalid block id " .. vim.inspect(id))
+    return false
+  end
+
+  root = normalize(root or get_root(vim.api.nvim_get_current_buf()))
+  if not root then
+    warn("Could not resolve a Markdown workspace root")
+    return false
+  end
+
+  if vim.fn.executable("rg") ~= 1 then
+    warn("rg is required to resolve block ids")
+    return false
+  end
+
+  vim.system({ "rg", "--json", "--fixed-strings", "--glob", "*.md", "@id " .. id, root }, { text = true }, function(result)
+    vim.schedule(function()
+      if result.code > 1 then
+        warn(("Could not search %s: %s"):format(root, vim.trim(result.stderr or "")))
+        return
+      end
+
+      local paths = rg_match_paths(result.stdout or "")
+      table.sort(paths)
+      if #paths == 0 then
+        warn(("No attached @id %s found under %s"):format(id, vim.fn.fnamemodify(root, ":~")))
+        return
+      end
+      if #paths > 1 then warn(("Multiple files mention @id %s; opening the first attached match"):format(id)) end
+
+      for _, path in ipairs(paths) do
+        if go_to_id(path, id, { quiet = true }) then return end
+      end
+      warn(("No attached @id %s found under %s"):format(id, vim.fn.fnamemodify(root, ":~")))
+    end)
   end)
 
   return true

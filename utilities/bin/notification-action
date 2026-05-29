@@ -1,0 +1,228 @@
+#!/usr/bin/env python3
+# Purpose: Send and dispatch versioned notification actions for Dunst clicks.
+# Usage: notification-action send [options] JSON; notification-action dispatch ACTION_KEY_OR_JSON
+# Notes: Action payloads are encoded into the notification action name so the click carries the metadata.
+
+import argparse
+import base64
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+
+
+SCHEMA = "dotfiles.notification-action.v1"
+ACTION_KEY_PREFIX = "dotfiles-action-v1:"
+SUPPORTED_ACTIONS = {"open-foam-block-section"}
+BLOCK_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]{0,127}$")
+
+
+def die(message, code=2):
+    print(f"notification-action: {message}", file=sys.stderr)
+    raise SystemExit(code)
+
+
+def log(message):
+    try:
+        subprocess.run(["logger", "-t", "notification-action", message], check=False)
+    except FileNotFoundError:
+        pass
+
+
+def encode_payload(payload):
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return ACTION_KEY_PREFIX + base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def decode_action_key(value):
+    if not value.startswith(ACTION_KEY_PREFIX):
+        return None
+    encoded = value[len(ACTION_KEY_PREFIX) :]
+    padding = "=" * (-len(encoded) % 4)
+    try:
+        raw = base64.urlsafe_b64decode((encoded + padding).encode("ascii")).decode("utf-8")
+        return json.loads(raw)
+    except (ValueError, json.JSONDecodeError) as exc:
+        die(f"invalid encoded action payload: {exc}")
+
+
+def load_payload(value):
+    payload = decode_action_key(value)
+    if payload is not None:
+        return payload
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError as exc:
+        die(f"invalid JSON payload: {exc}")
+
+
+def validated_payload(value):
+    payload = load_payload(value)
+    if not isinstance(payload, dict):
+        die("payload must be a JSON object")
+    if payload.get("schema") != SCHEMA:
+        die(f"unsupported payload schema: {payload.get('schema')!r}")
+    if payload.get("action") not in SUPPORTED_ACTIONS:
+        die(f"unsupported action: {payload.get('action')!r}")
+    return payload
+
+
+def field(payload, name):
+    return payload.get(name) or payload.get(name.replace("-", "_"))
+
+
+def dispatch_open_foam_block_section(payload):
+    block_id = field(payload, "foam-section-id")
+    if not block_id or not BLOCK_ID_RE.match(block_id):
+        die(f"invalid foam-section-id: {block_id!r}")
+
+    cwd = os.path.abspath(os.path.expanduser(field(payload, "cwd") or "~/data/notes/foam"))
+    if not os.path.isdir(cwd):
+        die(f"cwd does not exist: {cwd}")
+
+    open_in_nvim = os.path.abspath(os.path.expanduser(field(payload, "open-in-nvim") or "~/bin/open_in_nvim"))
+    try:
+        result = subprocess.run(
+            [open_in_nvim, "--cwd", cwd, "goto_foam_block_by_id", block_id],
+            check=False,
+        )
+    except FileNotFoundError:
+        die(f"open_in_nvim not found: {open_in_nvim}", code=127)
+    return result.returncode
+
+
+def dispatch(value):
+    payload = validated_payload(value)
+    if payload["action"] == "open-foam-block-section":
+        return dispatch_open_foam_block_section(payload)
+    die(f"unsupported action: {payload['action']!r}")
+
+
+def selected_action(stdout):
+    for line in stdout.splitlines():
+        line = line.strip()
+        if line:
+            return line
+    return ""
+
+
+def command_output_for_log(result):
+    detail = (result.stderr or result.stdout or "").strip()
+    if detail:
+        return detail.replace("\n", " | ")
+    return f"exit status {result.returncode}"
+
+
+def plain_notify(summary, body):
+    notifier = shutil.which("notify-send")
+    if not notifier:
+        log("notify-send not found; plain fallback skipped")
+        return 0
+
+    result = subprocess.run([notifier, summary, body], text=True, capture_output=True, check=False)
+    if result.returncode != 0:
+        log(f"plain notify-send failed: {command_output_for_log(result)}")
+    return result.returncode
+
+
+def notify_with_action(args, action_key):
+    dunstify = shutil.which("dunstify")
+    if dunstify:
+        label = args.label.replace(",", " ")
+        return subprocess.run(
+            [
+                dunstify,
+                "-w",
+                "-a",
+                args.app_name,
+                "-c",
+                args.category,
+                "-t",
+                str(args.timeout_ms),
+                "-A",
+                f"{action_key},{label}",
+                args.summary,
+                args.body,
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    notify_send = shutil.which("notify-send")
+    if not notify_send:
+        log("neither dunstify nor notify-send was found; notification skipped")
+        return None
+
+    return subprocess.run(
+        [
+            notify_send,
+            "-a",
+            args.app_name,
+            "-c",
+            args.category,
+            "-t",
+            str(args.timeout_ms),
+            "-A",
+            f"{action_key}={args.label}",
+            args.summary,
+            args.body,
+        ],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+def send(args):
+    payload = validated_payload(args.payload)
+    action_key = encode_payload(payload)
+
+    result = notify_with_action(args, action_key)
+    if result is None:
+        return 0
+    if result.returncode != 0:
+        log(f"action notification failed: {command_output_for_log(result)}")
+        plain_notify(args.summary, args.body)
+        return 0
+
+    action = selected_action(result.stdout)
+    if action == action_key:
+        return dispatch(action)
+    return 0
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    encode_parser = subparsers.add_parser("encode")
+    encode_parser.add_argument("payload")
+
+    dispatch_parser = subparsers.add_parser("dispatch")
+    dispatch_parser.add_argument("payload")
+
+    send_parser = subparsers.add_parser("send")
+    send_parser.add_argument("--summary", required=True)
+    send_parser.add_argument("--body", default="")
+    send_parser.add_argument("--label", default="Open")
+    send_parser.add_argument("--timeout-ms", type=int, default=600000)
+    send_parser.add_argument("--app-name", default="dotfiles-notification-action")
+    send_parser.add_argument("--category", default="dotfiles.action")
+    send_parser.add_argument("payload")
+
+    args = parser.parse_args()
+
+    if args.command == "encode":
+        print(encode_payload(validated_payload(args.payload)))
+        return
+    if args.command == "dispatch":
+        raise SystemExit(dispatch(args.payload))
+    if args.command == "send":
+        raise SystemExit(send(args))
+
+
+if __name__ == "__main__":
+    main()
