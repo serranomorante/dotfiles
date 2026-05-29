@@ -81,7 +81,7 @@ if [ "$#" -gt 0 ]; then
 fi
 
 nvim_center_view='vim.cmd.normal({ "zz", bang = true })'
-nvim_close_term_win="pcall(vim.api.nvim_win_close, 0, false)"
+nvim_close_term_win="if vim.bo.buftype == 'terminal' then pcall(vim.api.nvim_win_close, 0, false) end"
 nvim_edit="vim.cmd.edit({ [[$1]], mods = { emsg_silent = true }})" # don't use `nvr --remote` because it doesn't respect shortmess
 
 ex_command_arg() {
