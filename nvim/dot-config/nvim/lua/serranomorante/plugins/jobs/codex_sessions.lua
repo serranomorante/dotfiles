@@ -759,6 +759,52 @@ local function prompt_from_visual_selection(opts)
     selection_label(start_pos, end_pos)
 end
 
+---@return overseer.Task?
+local function current_overseer_task()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local task_id = vim.b[bufnr].overseer_task
+  if task_id then
+    local ok, task_list = pcall(require, "overseer.task_list")
+    local task = ok and task_list.get(task_id) or nil
+    if task then return task end
+  end
+
+  if vim.bo[bufnr].filetype ~= "OverseerList" then return nil end
+
+  local ok, sidebar = pcall(require, "overseer.task_list.sidebar")
+  if not ok or type(sidebar.get_or_create) ~= "function" then return nil end
+
+  local sidebar_ok, sb = pcall(sidebar.get_or_create)
+  if not sidebar_ok or type(sb) ~= "table" or type(sb.get_task_from_line) ~= "function" then return nil end
+
+  local task_ok, task = pcall(sb.get_task_from_line, sb)
+  return task_ok and task or nil
+end
+
+---@return string?
+local function prompt_from_codex_task_under_cursor()
+  local task = current_overseer_task()
+  local session_id = task and task.metadata and task.metadata[CODEX_SESSION_ID_METADATA] or nil
+  if type(session_id) ~= "string" or session_id == "" then return nil end
+
+  return ("continuando con esta conversación de codex con id: %s\n\n"):format(session_id)
+end
+
+---@param opts? CodexSessionOpts
+---@return string? prompt
+---@return string? label
+local function prompt_from_context(opts)
+  local prompt_parts = {}
+  local continuation_prompt = prompt_from_codex_task_under_cursor()
+  if continuation_prompt then table.insert(prompt_parts, continuation_prompt) end
+
+  local visual_prompt, label = prompt_from_visual_selection(opts)
+  if visual_prompt then table.insert(prompt_parts, visual_prompt) end
+
+  if #prompt_parts == 0 then return nil, label end
+  return table.concat(prompt_parts), label
+end
+
 ---@param task overseer.Task
 ---@param prompt? string
 local function paste_prompt(task, prompt)
@@ -921,7 +967,7 @@ end
 ---@param opts? CodexSessionOpts
 function M.select(opts)
   opts = opts or {}
-  local prompt = prompt_from_visual_selection(opts)
+  local prompt = prompt_from_context(opts)
   local cached_sessions = read_session_cache()
   local sessions = scoped_sessions(cached_sessions, nil, { all = opts.all == true })
   local has_cache = cached_sessions ~= nil
@@ -961,7 +1007,7 @@ function M.open_new(opts)
     return
   end
 
-  local prompt, label = prompt_from_visual_selection(opts)
+  local prompt, label = prompt_from_context(opts)
   local cwd = vim.fn.getcwd()
   local label_or_source = label or current_source_label()
 
