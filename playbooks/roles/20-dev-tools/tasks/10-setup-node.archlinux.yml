@@ -63,6 +63,8 @@
       - -lc
       - "set -o pipefail && curl https://get.volta.sh | bash -s -- --skip-setup"
   changed_when: true
+  args:
+    creates: "{{ node_volta_home }}/bin/volta"
 
 - name: "[archlinux] Setup node: install generic firejail node wrapper"
   ansible.builtin.copy:
@@ -116,8 +118,16 @@
   environment:
     FJ_NODE_WRITABLE_PATHS: |
       {{ ansible_facts.env.HOME }}/.volta
+  args:
+    creates: "{{ node_volta_home }}/tools/image/node/{{ item }}/bin/node"
   loop: "{{ node_managed_versions | unique }}"
   changed_when: true
+
+- name: "[archlinux] Setup node: stat package manager markers"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools/.ansible-volta-package-{{ item.name }}-{{ item.version }}"
+  register: var_node_package_manager_markers
+  loop: "{{ node_package_manager_packages }}"
 
 - name: "[archlinux] Setup node: ensure package managers"
   ansible.builtin.command:
@@ -134,6 +144,18 @@
       {{ ansible_facts.env.HOME }}/.volta
   loop: "{{ node_package_manager_packages }}"
   changed_when: true
+  when: not var_node_package_manager_markers.results[ansible_loop.index0].stat.exists
+  loop_control:
+    extended: true
+  register: var_node_package_manager_install
+
+- name: "[archlinux] Setup node: record package manager markers"
+  ansible.builtin.copy:
+    content: "{{ item.item.name }}@{{ item.item.version }}\n"
+    dest: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools/.ansible-volta-package-{{ item.item.name }}-{{ item.item.version }}"
+    mode: "644"
+  loop: "{{ var_node_package_manager_install.results }}"
+  when: item.changed | default(false)
 
 - name: "[archlinux] Setup node: symlink package manager binaries"
   ansible.builtin.file:

@@ -16,12 +16,6 @@
         - inventory_hostname == 'localhost' or inventory_hostname == 'phone2' or 'arch_user' in group_names
       tags: always
 
-    - name: "Setup playbook: populate service facts"
-      ansible.builtin.service_facts:
-      when:
-        - inventory_hostname == 'localhost' or inventory_hostname == 'phone2' or 'arch_user' in group_names
-      tags: always
-
     - name: "Setup playbook: set user_os"
       ansible.builtin.set_fact:
         user_os: "{{ ansible_facts.distribution | lower | replace(' ', '') }}"

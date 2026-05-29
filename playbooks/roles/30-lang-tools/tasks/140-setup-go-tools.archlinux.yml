@@ -14,6 +14,12 @@
     depth: 1
     single_branch: true
     version: release-v{{ vscode_go_version }}
+  register: var_clone_vscode_go
+
+- name: "[archlinux] Go language: stat vscode-go build marker"
+  ansible.builtin.stat:
+    path: ~/data/repos/vscode-go/extension/.ansible-vscode-go-build
+  register: var_vscode_go_build_marker
 
 - name: "[archlinux] Go language: install vscode-go npm packages"
   community.general.npm:
@@ -23,6 +29,7 @@
   environment:
     ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
   changed_when: false
+  when: var_clone_vscode_go.changed or not var_vscode_go_build_marker.stat.exists
 
 - name: "[archlinux] Go language: build vscode-go"
   ansible.builtin.command:
@@ -40,3 +47,11 @@
   args:
     chdir: ~/data/repos/vscode-go/extension
   changed_when: false
+  when: var_clone_vscode_go.changed or not var_vscode_go_build_marker.stat.exists
+
+- name: "[archlinux] Go language: record vscode-go build marker"
+  ansible.builtin.copy:
+    content: "release-v{{ vscode_go_version }}\n"
+    dest: ~/data/repos/vscode-go/extension/.ansible-vscode-go-build
+    mode: "644"
+  when: var_clone_vscode_go.changed or not var_vscode_go_build_marker.stat.exists

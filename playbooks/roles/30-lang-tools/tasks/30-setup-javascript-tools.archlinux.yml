@@ -5,6 +5,12 @@
     state: directory
     mode: "755"
 
+- name: "[archlinux] Javascript language: stat npm package markers"
+  ansible.builtin.stat:
+    path: "{{ node_javascript_npm_prefix }}/.ansible-package-{{ item.name | regex_replace('[^A-Za-z0-9_.-]', '_') }}-{{ item.version }}"
+  register: node_javascript_npm_package_markers
+  loop: "{{ node_javascript_npm_packages }}"
+
 - name: "[archlinux] Javascript language: ensure npm packages"
   community.general.npm:
     name: "{{ item.name }}"
@@ -16,6 +22,18 @@
     ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
     ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_javascript_npm_prefix }}"
   loop: "{{ node_javascript_npm_packages }}"
+  loop_control:
+    extended: true
+  when: not node_javascript_npm_package_markers.results[ansible_loop.index0].stat.exists
+  register: node_javascript_npm_package_installs
+
+- name: "[archlinux] Javascript language: record npm package markers"
+  ansible.builtin.copy:
+    content: "{{ item.item.name }}@{{ item.item.version }}\n"
+    dest: "{{ node_javascript_npm_prefix }}/.ansible-package-{{ item.item.name | regex_replace('[^A-Za-z0-9_.-]', '_') }}-{{ item.item.version }}"
+    mode: "644"
+  loop: "{{ node_javascript_npm_package_installs.results }}"
+  when: item.changed | default(false)
 
 - name: "[archlinux] Javascript language: symlink npm binaries"
   ansible.builtin.file:
@@ -23,6 +41,11 @@
     dest: "{{ node_user_bin_dir }}/{{ item.1 }}"
     state: link
   loop: "{{ node_javascript_npm_packages | subelements('bins') }}"
+
+- name: "[archlinux] Javascript language: stat prettierd marker"
+  ansible.builtin.stat:
+    path: "{{ node_javascript_npm_prefix }}/.ansible-package-_fsouza_prettierd-present"
+  register: node_javascript_prettierd_marker
 
 - name: "[archlinux] Javascript language: ensure prettierd"
   community.general.npm:
@@ -33,12 +56,41 @@
   environment:
     ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
     ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_javascript_npm_prefix }}"
+  when: not node_javascript_prettierd_marker.stat.exists
+  register: node_javascript_prettierd_install
+
+- name: "[archlinux] Javascript language: record prettierd marker"
+  ansible.builtin.copy:
+    content: "@fsouza/prettierd\n"
+    dest: "{{ node_javascript_npm_prefix }}/.ansible-package-_fsouza_prettierd-present"
+    mode: "644"
+  when: node_javascript_prettierd_install.changed | default(false)
 
 - name: "[archlinux] Javascript language: symlink prettierd"
   ansible.builtin.file:
     src: "{{ node_javascript_npm_prefix }}/bin/prettierd"
     dest: "{{ node_user_bin_dir }}/prettierd"
     state: link
+
+- name: "[archlinux] Javascript language: stat vscode-js-debug marker"
+  ansible.builtin.stat:
+    path: ~/data/repos/vscode-js-debug/.ansible-vscode-js-debug-build
+  register: var_stat_vscode_js_debug_marker
+
+- name: "[archlinux] Javascript language: read vscode-js-debug marker"
+  ansible.builtin.slurp:
+    src: ~/data/repos/vscode-js-debug/.ansible-vscode-js-debug-build
+  register: var_slurp_vscode_js_debug_marker
+  when: var_stat_vscode_js_debug_marker.stat.exists
+
+- name: "[archlinux] Javascript language: set vscode-js-debug marker facts"
+  ansible.builtin.set_fact:
+    var_vscode_js_debug_marker: "v{{ vscode_js_debug_version }}:stderr-patch-v1"
+    var_vscode_js_debug_needs_refresh: >-
+      {{
+        not var_stat_vscode_js_debug_marker.stat.exists
+        or ((var_slurp_vscode_js_debug_marker.content | default('') | b64decode | trim) != ('v' ~ vscode_js_debug_version ~ ':stderr-patch-v1'))
+      }}
 
 - name: "[archlinux] Javascript language: clone vscode-js-debug"
   ansible.builtin.git:
@@ -49,12 +101,14 @@
     single_branch: true
     version: v{{ vscode_js_debug_version }}
   register: var_clone_vscode_js_debug
+  when: var_vscode_js_debug_needs_refresh
 
 - name: "[archlinux] Javascript language: apply custom patch"
   ansible.builtin.command: git apply ~/dotfiles/assets/patches/vscode_js_debug_stderr.patch
   args:
     chdir: ~/data/repos/vscode-js-debug
   changed_when: false
+  when: var_vscode_js_debug_needs_refresh
 
 - name: "[archlinux] Javascript language: stat vscode-js-debug build"
   ansible.builtin.stat:
@@ -68,7 +122,7 @@
     executable: "{{ ansible_firejail_npm_executable }}"
   environment:
     ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
-  when: var_clone_vscode_js_debug.changed or not var_stat_vscode_js_debug.stat.exists
+  when: var_vscode_js_debug_needs_refresh or not var_stat_vscode_js_debug.stat.exists
 
 - name: "[archlinux] Javascript language: build vscode-js-debug"
   ansible.builtin.command:
@@ -86,4 +140,11 @@
     NPM_CONFIG_IGNORE_SCRIPTS: "false"
   args:
     chdir: ~/data/repos/vscode-js-debug
-  when: var_clone_vscode_js_debug.changed or not var_stat_vscode_js_debug.stat.exists
+  when: var_vscode_js_debug_needs_refresh or not var_stat_vscode_js_debug.stat.exists
+
+- name: "[archlinux] Javascript language: record vscode-js-debug marker"
+  ansible.builtin.copy:
+    content: "{{ var_vscode_js_debug_marker }}\n"
+    dest: ~/data/repos/vscode-js-debug/.ansible-vscode-js-debug-build
+    mode: "644"
+  when: var_vscode_js_debug_needs_refresh

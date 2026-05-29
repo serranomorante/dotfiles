@@ -16,7 +16,8 @@
     k3s_system_kubeconfig_path: /etc/rancher/k3s/k3s.yaml
     k3s_user_kubeconfig_dir: "{{ ansible_facts.env.HOME }}/.kube"
     k3s_user_kubeconfig_path: "{{ k3s_user_kubeconfig_dir }}/config"
-    k3s_service_env_path: /etc/systemd/system/k3s.service.env
+    k3s_install_marker_path: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/k3s-install"
+    k3s_install_marker: "{{ k3s_install_version }}:{{ k3s_install_exec }}"
   block:
     - name: "[archlinux] Setup infra tools: inspect k3s version"
       become: true
@@ -28,18 +29,16 @@
       changed_when: false
       failed_when: false
 
-    - name: "[archlinux] Setup infra tools: stat k3s service env"
-      become: true
+    - name: "[archlinux] Setup infra tools: stat k3s install marker"
       ansible.builtin.stat:
-        path: "{{ k3s_service_env_path }}"
-      register: var_k3s_service_env
+        path: "{{ k3s_install_marker_path }}"
+      register: var_k3s_install_marker
 
-    - name: "[archlinux] Setup infra tools: read k3s service env"
-      become: true
+    - name: "[archlinux] Setup infra tools: read k3s install marker"
       ansible.builtin.slurp:
-        src: "{{ k3s_service_env_path }}"
-      register: var_k3s_service_env_slurp
-      when: var_k3s_service_env.stat.exists
+        src: "{{ k3s_install_marker_path }}"
+      register: var_k3s_install_marker_slurp
+      when: var_k3s_install_marker.stat.exists
 
     - name: "[archlinux] Setup infra tools: determine whether k3s reinstall is required"
       ansible.builtin.set_fact:
@@ -47,7 +46,10 @@
           {{
             var_k3s_version.rc != 0
             or k3s_install_version not in (var_k3s_version.stdout | default(''))
-            or k3s_install_exec not in ((var_k3s_service_env_slurp.content | default('')) | b64decode)
+            or (
+              var_k3s_install_marker.stat.exists
+              and ((var_k3s_install_marker_slurp.content | default('') | b64decode | trim) != k3s_install_marker)
+            )
           }}
 
     - name: "[archlinux] Setup infra tools: download k3s install script"
@@ -69,6 +71,20 @@
         K3S_KUBECONFIG_MODE: "644"
       changed_when: true
       when: k3s_reinstall_required
+
+    - name: "[archlinux] Setup infra tools: ensure k3s marker directory"
+      ansible.builtin.file:
+        path: "{{ k3s_install_marker_path | dirname }}"
+        state: directory
+        mode: "755"
+
+    - name: "[archlinux] Setup infra tools: record k3s install marker"
+      ansible.builtin.copy:
+        content: "{{ k3s_install_marker }}\n"
+        dest: "{{ k3s_install_marker_path }}"
+        mode: "644"
+      when:
+        - k3s_reinstall_required or not var_k3s_install_marker.stat.exists
 
     # Runtime tasks below depend on k3s actually running. On a freshly
     # provisioned host these can fail until the machine has been rebooted
@@ -110,6 +126,30 @@
             remote_src: true
             mode: "0644"
 
+        - name: "[archlinux] Setup infra tools: inspect k3s service state"
+          ansible.builtin.command:
+            argv:
+              - systemctl
+              - is-active
+              - k3s
+          register: var_k3s_service_active
+          changed_when: false
+          failed_when: false
+
+        - name: "[archlinux] Setup infra tools: probe kubectl node access"
+          ansible.builtin.command:
+            argv:
+              - kubectl
+              - get
+              - nodes
+              - -o
+              - name
+          environment:
+            KUBECONFIG: "{{ k3s_user_kubeconfig_path }}"
+          register: var_k3s_nodes_probe
+          changed_when: false
+          failed_when: false
+
         - name: "[archlinux] Setup infra tools: wait for kubectl node access"
           ansible.builtin.command:
             argv:
@@ -122,8 +162,11 @@
             KUBECONFIG: "{{ k3s_user_kubeconfig_path }}"
           register: var_k3s_nodes
           changed_when: false
-          retries: 20
-          delay: 6
+          retries: 5
+          delay: 3
+          when:
+            - var_k3s_nodes_probe.rc != 0 or var_k3s_nodes_probe.stdout_lines | length == 0
+            - k3s_reinstall_required
           until:
             - var_k3s_nodes.rc == 0
             - var_k3s_nodes.stdout_lines | length > 0

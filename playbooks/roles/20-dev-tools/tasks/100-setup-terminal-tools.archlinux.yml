@@ -70,6 +70,8 @@
     set -o pipefail &&
     curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin \
       installer=nightly launch=n
+  args:
+    creates: ~/.local/kitty.app/bin/kitty
   changed_when: false
 
 - name: "[archlinux] Setup terminal tools: symlink kitty nightly"

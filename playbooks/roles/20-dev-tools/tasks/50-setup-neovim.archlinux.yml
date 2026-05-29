@@ -102,22 +102,16 @@
         or ((var_neovim_installed_revision.content | b64decode | trim) != (var_neovim_repo.after | trim))
       }}
 
-- name: "[archlinux] Neovim: remove stale build and installed runtime"
+- name: "[archlinux] Neovim: remove stale installed runtime"
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ ansible_facts.env.HOME }}/.local/share/nvim/runtime"
     state: absent
-  loop:
-    - "{{ ansible_facts.env.HOME }}/data/repos/neovim/.deps"
-    - "{{ ansible_facts.env.HOME }}/data/repos/neovim/build"
-    - "{{ ansible_facts.env.HOME }}/.local/share/nvim/runtime"
   when: var_neovim_needs_install
 
 - name: "[archlinux] Neovim: ensure neovim - build"
   ansible.builtin.shell: >
     make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_INSTALL_PREFIX={{ ansible_facts.env.HOME }}/.local &&
     make install
-  environment:
-    CCACHE_DISABLE: true
   args:
     chdir: ~/data/repos/neovim
   when: var_neovim_needs_install

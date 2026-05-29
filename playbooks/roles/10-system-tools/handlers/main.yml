@@ -39,9 +39,17 @@
 
 - name: handler_restart_keyd
   become: true
-  ansible.builtin.command: keyd reload
-  changed_when: true
-  when: "(ansible_facts.services['keyd.service'] | default({})).state | default('') == 'running'"
+  ansible.builtin.shell: |
+    if systemctl is-active --quiet keyd.service; then
+      keyd reload
+    else
+      exit 2
+    fi
+  args:
+    executable: /bin/sh
+  register: handler_restart_keyd_result
+  changed_when: handler_restart_keyd_result.rc == 0
+  failed_when: handler_restart_keyd_result.rc not in [0, 2]
 
 - name: handler_reload_udev_rules
   become: true

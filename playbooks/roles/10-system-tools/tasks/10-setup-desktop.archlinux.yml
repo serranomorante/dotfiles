@@ -138,24 +138,36 @@
 
 - name: "[archlinux] Setup desktop: register mpv MIME handlers"
   ansible.builtin.shell: |
-    update-desktop-database ~/.local/share/applications
-    xdg-mime default mpv.desktop audio/aac
-    xdg-mime default mpv.desktop audio/flac
-    xdg-mime default mpv.desktop audio/mpeg
-    xdg-mime default mpv.desktop audio/mp4
-    xdg-mime default mpv.desktop audio/ogg
-    xdg-mime default mpv.desktop audio/wav
-    xdg-mime default mpv.desktop audio/x-wav
-    xdg-mime default mpv.desktop video/mp4
-    xdg-mime default mpv.desktop video/mpeg
-    xdg-mime default mpv.desktop video/ogg
-    xdg-mime default mpv.desktop video/quicktime
-    xdg-mime default mpv.desktop video/webm
-    xdg-mime default mpv.desktop video/x-matroska
-    xdg-mime default mpv.desktop video/x-msvideo
-    xdg-mime default mpv.desktop application/ogg
-    xdg-mime default mpv.desktop application/x-subrip
-  changed_when: true
+    changed=0
+    for mime in \
+      audio/aac \
+      audio/flac \
+      audio/mpeg \
+      audio/mp4 \
+      audio/ogg \
+      audio/wav \
+      audio/x-wav \
+      video/mp4 \
+      video/mpeg \
+      video/ogg \
+      video/quicktime \
+      video/webm \
+      video/x-matroska \
+      video/x-msvideo \
+      application/ogg \
+      application/x-subrip
+    do
+      current="$(xdg-mime query default "$mime" 2>/dev/null || true)"
+      if [ "$current" != "mpv.desktop" ]; then
+        xdg-mime default mpv.desktop "$mime"
+        changed=1
+      fi
+    done
+    if [ "$changed" -eq 1 ]; then
+      printf '%s\n' changed
+    fi
+  changed_when: var_register_mpv_mime_handlers.stdout == "changed"
+  register: var_register_mpv_mime_handlers
   notify: "10-system-tools : handler_update_desktop_database"
 
 - name: "[archlinux] Setup desktop: ensure sddm config folder"

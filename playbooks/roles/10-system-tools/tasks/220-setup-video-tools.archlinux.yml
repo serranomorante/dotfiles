@@ -52,6 +52,7 @@
 - name: "[archlinux] Setup video tools: stat davinci-resolve zip package before download"
   ansible.builtin.stat:
     path: ~/data/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+    get_checksum: false
   register: var_stat_davinci_zip_before_download
 
 - name: "[archlinux] Setup video tools: stat claude executable"
@@ -169,6 +170,7 @@
 - name: "[archlinux] Setup video tools: stat downloaded davinci resolve file"
   ansible.builtin.stat:
     path: ~/Downloads/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+    get_checksum: false
   register: var_stat_downloaded_davinci_resolve_file
 
 - name: "[archlinux] Setup video tools: move davinci resolve zip to expected location"
@@ -185,6 +187,7 @@
 - name: "[archlinux] Setup video tools: stat davinci-resolve zip package"
   ansible.builtin.stat:
     path: ~/data/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
+    get_checksum: false
   register: var_stat_davinci_zip
 
 - name: "[archlinux] Setup video tools: download aur package"

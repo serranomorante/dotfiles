@@ -10,7 +10,6 @@
     repo: https://github.com/{{ item.repo }}
     dest: ~/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}
     single_branch: true
-    force: true
     depth: 100
     version: "{{ item.version | default('HEAD') }}"
   async: 1000
@@ -84,11 +83,21 @@
     repo: "{{ item.repo }}"
     dest: ~/data/repos/{{ item.repo | basename }}
     version: "{{ item.version | default('HEAD') }}"
-    force: true
     recursive: false
     single_branch: true
+  async: 1000
+  poll: 0
+  register: var_async_clone_treesitter_parsers
+  loop: "{{ treesitter_parsers | unique(attribute='repo') | list }}"
+
+- name: "[archlinux] Editor tools: wait for async clone treesitter parsers"
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
   register: treesitter_clone_results
-  loop: "{{ treesitter_parsers }}"
+  until: treesitter_clone_results is finished
+  retries: 100
+  delay: 10
+  loop: "{{ var_async_clone_treesitter_parsers.results }}"
 
 - name: "[archlinux] Editor tools: clone treesitter queries source"
   ansible.builtin.git:
@@ -99,20 +108,20 @@
     recursive: false
     single_branch: true
 
-- name: "[archlinux] Editor tools: build lookup of treesitter clone results by filetype (init)"
+- name: "[archlinux] Editor tools: build lookup of treesitter clone results by repo (init)"
   ansible.builtin.set_fact:
-    treesitter_clone_result_by_filetype: {}
+    treesitter_clone_result_by_repo: {}
 
-- name: "[archlinux] Editor tools: build lookup of treesitter clone results by filetype"
+- name: "[archlinux] Editor tools: build lookup of treesitter clone results by repo"
   ansible.builtin.set_fact:
-    treesitter_clone_result_by_filetype: "{{ treesitter_clone_result_by_filetype | combine({item.item.filetype: item}) }}"
+    treesitter_clone_result_by_repo: "{{ treesitter_clone_result_by_repo | combine({item.item.item.repo: item}) }}"
   loop: "{{ treesitter_clone_results.results }}"
 
 - name: "[archlinux] Editor tools: remove stale built treesitter parsers after repo updates"
   ansible.builtin.file:
     path: ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
     state: absent
-  when: "(treesitter_clone_result_by_filetype[item.filetype] | default({})).changed | default(false)"
+  when: "(treesitter_clone_result_by_repo[item.repo] | default({})).changed | default(false)"
   loop: "{{ treesitter_parsers }}"
 
 - name: "[archlinux] Editor tools: build treesitter parsers"
@@ -131,11 +140,30 @@
     - parser
     - queries
 
+- name: "[archlinux] Editor tools: list installed treesitter parsers"
+  ansible.builtin.command:
+    argv:
+      - find
+      - "{{ ansible_facts.env.HOME }}/.config/nvim/parser"
+      - -maxdepth
+      - "1"
+      - -type
+      - f
+      - -name
+      - "*.so"
+      - -printf
+      - "%f\n"
+  register: treesitter_installed_parser_files
+  changed_when: false
+
 - name: "[archlinux] Editor tools: copy treesitter parsers to nvim"
   ansible.builtin.copy:
     src: ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
     dest: ~/.config/nvim/parser/{{ item.filetype }}.so
     mode: "755"
+  when:
+    - (treesitter_clone_result_by_repo[item.repo] | default({})).changed | default(false)
+      or (item.filetype ~ '.so') not in (treesitter_installed_parser_files.stdout_lines | default([]))
   loop: "{{ treesitter_parsers }}"
 
 - name: "[archlinux] Editor tools: copy nvim-treesitter runtime queries to nvim"

@@ -33,13 +33,31 @@
     mode: "775"
   loop: "{{ arch_fonts }}"
 
+- name: "[archlinux] Other tools: stat font markers"
+  ansible.builtin.stat:
+    path: ~/.local/share/fonts/{{ item | basename | splitext | first }}/.ansible-font-installed
+  register: var_arch_font_markers
+  loop: "{{ arch_fonts }}"
+
 - name: "[archlinux] Other tools: install font"
   ansible.builtin.unarchive:
     src: "{{ item }}"
     dest: ~/.local/share/fonts/{{ item | basename | splitext | first }}
     remote_src: true
   loop: "{{ arch_fonts }}"
+  loop_control:
+    extended: true
+  when: not var_arch_font_markers.results[ansible_loop.index0].stat.exists
+  register: var_arch_font_installs
   notify: handler_ensure_fc_cache
+
+- name: "[archlinux] Other tools: record font markers"
+  ansible.builtin.copy:
+    content: "{{ item.item }}\n"
+    dest: ~/.local/share/fonts/{{ item.item | basename | splitext | first }}/.ansible-font-installed
+    mode: "644"
+  loop: "{{ var_arch_font_installs.results }}"
+  when: item.changed | default(false)
 
 - name: "[archlinux] Other tools: ensure security tools folder"
   ansible.builtin.file:

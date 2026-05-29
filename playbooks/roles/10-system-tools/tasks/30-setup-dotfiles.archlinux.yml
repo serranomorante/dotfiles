@@ -54,40 +54,46 @@
     - inventory_hostname != 'localhost'
     - var_arch_local_private_dotfiles.stat.exists
 
-- name: "[archlinux] Dotfiles: stat problematic files"
-  ansible.builtin.stat:
-    path: "{{ item }}"
-    follow: false
+- name: "[archlinux] Dotfiles: list problematic regular files"
+  ansible.builtin.command:
+    argv:
+      - bash
+      - -c
+      - |
+        for path in "$@"; do
+          expanded="${path/#\~/$HOME}"
+          if [ -e "$expanded" ] && [ ! -L "$expanded" ]; then
+            printf '%s\n' "$expanded"
+          fi
+        done
+      - bash
+      - ~/.config/gromit-mpx.ini
+      - ~/.config/mimeapps.list
+      - ~/.config/ksplashrc
+      - ~/.config/kscreenlockerrc
+      - ~/.config/ktrashrc
+      - ~/.config/kiorc
+      - ~/.config/kded5rc
+      - ~/.config/kwalletrc
+      - ~/.config/baloofilerc
+      - ~/.config/kdedefaults/kdeglobals
+      - ~/.config/kdedefaults/ksplashrc
+      - ~/.config/kglobalshortcutsrc
+      - ~/.config/plasma-org.kde.plasma.desktop-appletsrc
+      - ~/.config/mouseless/config.yaml
+      - ~/.config/qBittorrent/categories.json
+      - ~/.bash_profile
+      - ~/.bashrc
+      - ~/.blerc
+      - ~/.local/share/applications/wine-protocol-dreamtonics-svstudio2.desktop
   register: var_arch_problematic_files
-  loop:
-    - ~/.config/gromit-mpx.ini
-    - ~/.config/mimeapps.list
-    - ~/.config/ksplashrc
-    - ~/.config/kscreenlockerrc
-    - ~/.config/ktrashrc
-    - ~/.config/kiorc
-    - ~/.config/kded5rc
-    - ~/.config/kwalletrc
-    - ~/.config/baloofilerc
-    - ~/.config/kdedefaults/kdeglobals
-    - ~/.config/kdedefaults/ksplashrc
-    - ~/.config/kglobalshortcutsrc
-    - ~/.config/plasma-org.kde.plasma.desktop-appletsrc
-    - ~/.config/mouseless/config.yaml
-    - ~/.config/qBittorrent/categories.json
-    - ~/.bash_profile
-    - ~/.bashrc
-    - ~/.blerc
-    - ~/.local/share/applications/wine-protocol-dreamtonics-svstudio2.desktop
+  changed_when: false
 
 - name: "[archlinux] Dotfiles: remove problematic files"
   ansible.builtin.file:
     state: absent
-    path: "{{ item.item }}"
-  loop: "{{ var_arch_problematic_files.results }}"
-  when:
-    - item.stat.exists
-    - not item.stat.islnk
+    path: "{{ item }}"
+  loop: "{{ var_arch_problematic_files.stdout_lines }}"
 
 - name: "[archlinux] Setup browser tools: setup ktrashrc"
   ansible.builtin.template:

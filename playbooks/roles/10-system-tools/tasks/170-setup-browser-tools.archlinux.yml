@@ -60,7 +60,24 @@
 - name: "[archlinux] Setup browser tools: version to extensionator path"
   ansible.builtin.shell: set -o pipefail && fd 'extensionator' ~/.local/share/gem/ruby -t x -1 | grep -oP "\/\K\d[^/]+" -m 1
   register: var_ruby_version
-  changed_when: true
+  changed_when: false
+
+- name: "[archlinux] Setup browser tools: stat chrome extension checkout markers"
+  ansible.builtin.stat:
+    path: ~/data/repos/{{ item.name | default(item.repo) | basename }}/.ansible-browser-extension-{{ item.marker | regex_replace('[^A-Za-z0-9_.-]', '_') }}
+  register: var_chrome_extension_markers
+  loop:
+    - repo: https://github.com/jimschubert/NewTab-Redirect
+      marker: HEAD:newtab-patch-v1
+    - repo: https://github.com/philc/vimium
+      marker: HEAD:vimium-patch-v1
+    - repo: https://github.com/kg8m/chrome-show-tab-numbers
+      marker: HEAD:plain-v1
+    - repo: https://github.com/facebook/react
+      version: v{{ facebook_react_extension_version }}
+      marker: v{{ facebook_react_extension_version }}:plain-v1
+    - repo: https://github.com/karlicoss/promnesia
+      marker: HEAD:plain-v1
 
 - name: "[archlinux] Setup browser tools: clone chrome extensions"
   ansible.builtin.git:
@@ -71,17 +88,25 @@
     depth: 1
     single_branch: true
   register: var_clone_chrome_extensions
+  loop_control:
+    extended: true
+  when: not var_chrome_extension_markers.results[ansible_loop.index0].stat.exists
   loop:
     - repo: https://github.com/jimschubert/NewTab-Redirect
+      marker: HEAD:newtab-patch-v1
     - repo: https://github.com/philc/vimium
+      marker: HEAD:vimium-patch-v1
     - repo: https://github.com/kg8m/chrome-show-tab-numbers
+      marker: HEAD:plain-v1
     - repo: https://github.com/facebook/react
       version: v{{ facebook_react_extension_version }}
+      marker: v{{ facebook_react_extension_version }}:plain-v1
     - repo: https://github.com/karlicoss/promnesia
+      marker: HEAD:plain-v1
 
 - name: "[archlinux] Setup browser tools: set fact fact_changed_extensions"
   ansible.builtin.set_fact:
-    fact_changed_extensions: "{{ fact_changed_extensions | default({}) | combine({extension_name: item.changed}) }}"
+    fact_changed_extensions: "{{ fact_changed_extensions | default({}) | combine({extension_name: item.changed | default(false)}) }}"
   vars:
     extension_name: "{{ item.item.repo | basename }}"
   loop: "{{ var_clone_chrome_extensions.results }}"
@@ -91,6 +116,7 @@
     src: extension_new_tab_redirect_tab.patch
     basedir: ~/data/repos/NewTab-Redirect
     strip: 1
+  when: not var_chrome_extension_markers.results[0].stat.exists
 
 - name: "[archlinux] Setup browser tools: patch vimium extension"
   ansible.posix.patch:
@@ -98,6 +124,15 @@
     basedir: ~/data/repos/vimium
     strip: 1
   ignore_errors: true
+  when: not var_chrome_extension_markers.results[1].stat.exists
+
+- name: "[archlinux] Setup browser tools: record chrome extension checkout markers"
+  ansible.builtin.copy:
+    content: "{{ item.item.marker }}\n"
+    dest: ~/data/repos/{{ item.item.name | default(item.item.repo) | basename }}/.ansible-browser-extension-{{ item.item.marker | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
+    mode: "644"
+  loop: "{{ var_clone_chrome_extensions.results }}"
+  when: not item.skipped | default(false)
 
 - name: "[archlinux] Setup browser tools: generate key file"
   ansible.builtin.shell: |
@@ -232,24 +267,29 @@
 
 - name: "[archlinux] Setup browser tools: create extension files"
   become: true
-  ansible.builtin.copy:
-    dest: "{{ item.policy_path }}/{{ item.extension_id }}.json"
-    content: |
-      { "external_update_url": "https://clients2.google.com/service/update2/crx" }
-    mode: "644"
-  loop:
-    - extension_id: "{{ extension_floccus }}"
-      policy_path: /usr/share/microsoft-edge/extensions
-    - extension_id: "{{ extension_chrome_regex_search }}"
-      policy_path: /usr/share/microsoft-edge/extensions
-    - extension_id: "{{ extension_monolith }}"
-      policy_path: /usr/share/microsoft-edge/extensions
-    - extension_id: "{{ extension_floccus }}"
-      policy_path: /usr/share/chromium/extensions
-    - extension_id: "{{ extension_chrome_regex_search }}"
-      policy_path: /usr/share/chromium/extensions
-    - extension_id: "{{ extension_monolith }}"
-      policy_path: /usr/share/chromium/extensions
+  ansible.builtin.command:
+    argv:
+      - /bin/sh
+      - -c
+      - |
+        for policy_path in /usr/share/microsoft-edge/extensions /usr/share/chromium/extensions; do
+          for extension_id in "$@"; do
+            dest="$policy_path/$extension_id.json"
+            tmp="$dest.tmp"
+            printf '{ "external_update_url": "https://clients2.google.com/service/update2/crx" }\n' > "$tmp"
+            chmod 644 "$tmp"
+            if [ ! -e "$dest" ] || ! cmp -s "$tmp" "$dest"; then
+              mv "$tmp" "$dest"
+            else
+              rm "$tmp"
+            fi
+          done
+        done
+      - sh
+      - "{{ extension_floccus }}"
+      - "{{ extension_chrome_regex_search }}"
+      - "{{ extension_monolith }}"
+  changed_when: false
 
 - name: "[archlinux] Setup browser tools: copy brave desktop file to user directory"
   become: true

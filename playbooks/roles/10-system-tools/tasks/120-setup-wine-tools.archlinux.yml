@@ -141,6 +141,11 @@
   loop: "{{ arch_wine_prefixes }}"
   timeout: 60
 
+- name: "[archlinux] Wine tools: stat reaper LogPixels marker"
+  ansible.builtin.stat:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/.ansible-logpixels-{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
+  register: var_reaper_log_pixels_marker
+
 - name: "[archlinux] Wine tools: test reg query LogPixels"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
@@ -148,6 +153,7 @@
   changed_when: false
   ignore_errors: true
   register: var_reg_log_pixels
+  when: not var_reaper_log_pixels_marker.stat.exists
 
 - name: "[archlinux] Wine tools: setup prefixes DPI"
   # https://forum.winehq.org/viewtopic.php?t=34980
@@ -155,8 +161,23 @@
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
     wine reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v LogPixels /t REG_DWORD /d {{ arch_reaper_wine_setup.dpi | default(0x60) }} /f
   changed_when: true
-  when: var_reg_log_pixels is failed
+  when: not var_reaper_log_pixels_marker.stat.exists and var_reg_log_pixels is failed
   timeout: 60
+  register: var_setup_reaper_prefix_dpi
+
+- name: "[archlinux] Wine tools: record reaper LogPixels marker"
+  ansible.builtin.copy:
+    content: "{{ arch_reaper_wine_setup.dpi | default(0x60) }}\n"
+    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/.ansible-logpixels-{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
+    mode: "644"
+  when:
+    - not var_reaper_log_pixels_marker.stat.exists
+    - var_reg_log_pixels is succeeded or ((var_setup_reaper_prefix_dpi | default({})).changed | default(false))
+
+- name: "[archlinux] Wine tools: stat synthv LogPixels marker"
+  ansible.builtin.stat:
+    path: "{{ arch_synthv_wine_prefix }}/.ansible-logpixels-{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
+  register: var_synthv_log_pixels_marker
 
 - name: "[archlinux] Wine tools: test synthv reg query LogPixels"
   ansible.builtin.command: >
@@ -165,6 +186,7 @@
   changed_when: false
   ignore_errors: true
   register: var_reg_log_pixels_synthv
+  when: not var_synthv_log_pixels_marker.stat.exists
 
 - name: "[archlinux] Wine tools: setup synthv prefix DPI"
   # https://forum.winehq.org/viewtopic.php?t=34980
@@ -172,8 +194,18 @@
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix synthv
     wine reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v LogPixels /t REG_DWORD /d {{ arch_reaper_wine_setup.dpi | default(0x60) }} /f
   changed_when: true
-  when: var_reg_log_pixels_synthv is failed
+  when: not var_synthv_log_pixels_marker.stat.exists and var_reg_log_pixels_synthv is failed
   timeout: 60
+  register: var_setup_synthv_prefix_dpi
+
+- name: "[archlinux] Wine tools: record synthv LogPixels marker"
+  ansible.builtin.copy:
+    content: "{{ arch_reaper_wine_setup.dpi | default(0x60) }}\n"
+    dest: "{{ arch_synthv_wine_prefix }}/.ansible-logpixels-{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
+    mode: "644"
+  when:
+    - not var_synthv_log_pixels_marker.stat.exists
+    - var_reg_log_pixels_synthv is succeeded or ((var_setup_synthv_prefix_dpi | default({})).changed | default(false))
 
 - name: "[archlinux] Wine tools: test reg query virtual desktop"
   ansible.builtin.command: >

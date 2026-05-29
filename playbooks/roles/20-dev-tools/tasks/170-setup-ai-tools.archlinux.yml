@@ -67,6 +67,12 @@
     state: directory
     mode: "755"
 
+- name: "[archlinux] Setup ai tools: stat npm package markers"
+  ansible.builtin.stat:
+    path: "{{ node_ai_npm_prefix }}/.ansible-package-{{ item.name | regex_replace('[^A-Za-z0-9_.-]', '_') }}-{{ item.version }}"
+  register: node_ai_npm_package_markers
+  loop: "{{ node_ai_npm_packages }}"
+
 - name: "[archlinux] Setup ai tools: ensure npm packages"
   community.general.npm:
     name: "{{ item.name }}"
@@ -78,6 +84,18 @@
     ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
     ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_ai_npm_prefix }}"
   loop: "{{ node_ai_npm_packages }}"
+  loop_control:
+    extended: true
+  when: not node_ai_npm_package_markers.results[ansible_loop.index0].stat.exists
+  register: node_ai_npm_package_installs
+
+- name: "[archlinux] Setup ai tools: record npm package markers"
+  ansible.builtin.copy:
+    content: "{{ item.item.name }}@{{ item.item.version }}\n"
+    dest: "{{ node_ai_npm_prefix }}/.ansible-package-{{ item.item.name | regex_replace('[^A-Za-z0-9_.-]', '_') }}-{{ item.item.version }}"
+    mode: "644"
+  loop: "{{ node_ai_npm_package_installs.results }}"
+  when: item.changed | default(false)
 
 - name: "[archlinux] Setup ai tools: symlink npm package binaries"
   ansible.builtin.file:

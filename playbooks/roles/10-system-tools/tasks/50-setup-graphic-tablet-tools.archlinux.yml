@@ -76,7 +76,6 @@
   ansible.builtin.git:
     repo: https://github.com/H-M-H/Weylus.git
     dest: ~/data/repos/Weylus
-    force: true
     depth: 1
     version: "{{ arch_weylus_version }}"
 

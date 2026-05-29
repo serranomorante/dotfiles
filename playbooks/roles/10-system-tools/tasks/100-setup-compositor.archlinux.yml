@@ -47,6 +47,7 @@
     repo: git://git.suckless.org/dwm
     dest: ~/data/repos/dwm
     version: "{{ arch_dwm_version }}"
+  register: var_dwm_clone
   ignore_errors: true
 
 - name: "[archlinux] Compositor: perform sudo make to generate config.h"
@@ -86,6 +87,11 @@
   loop_control:
     label: "{{ item | basename }}"
     pause: 1
+
+- name: "[archlinux] Compositor: stat dwm patch marker"
+  ansible.builtin.stat:
+    path: ~/data/repos/dwm/.ansible-dwm-patches-{{ arch_dwm_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}-patch-stack-v1
+  register: var_dwm_patch_marker
 
 - name: "[archlinux] Compositor: apply dwm patches"
   ansible.posix.patch:
@@ -132,6 +138,19 @@
     # My changes. Always leave this last.
     - make-dwm-debuggable.patch
     - custom.patch
+  when: var_dwm_clone.changed or not var_dwm_patch_marker.stat.exists
+
+- name: "[archlinux] Compositor: record dwm patch marker"
+  ansible.builtin.copy:
+    content: "{{ arch_dwm_version }}:patch-stack-v1\n"
+    dest: ~/data/repos/dwm/.ansible-dwm-patches-{{ arch_dwm_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}-patch-stack-v1
+    mode: "644"
+  when: var_dwm_clone.changed or not var_dwm_patch_marker.stat.exists
+
+- name: "[archlinux] Compositor: stat installed dwm"
+  ansible.builtin.stat:
+    path: /usr/local/bin/dwm
+  register: var_installed_dwm
 
 - name: "[archlinux] Compositor: install dwm"
   become: true
@@ -140,6 +159,7 @@
     chdir: "{{ ansible_facts.env.HOME }}/data/repos/dwm"
   register: var_dwm_result
   changed_when: var_dwm_result.rc == 0
+  when: var_dwm_clone.changed or not var_dwm_patch_marker.stat.exists or not var_installed_dwm.stat.exists
 
 - name: "[archlinux] Compositor: ensure dwm service"
   ansible.builtin.systemd_service:

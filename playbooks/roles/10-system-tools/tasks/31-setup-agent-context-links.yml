@@ -8,12 +8,17 @@
   loop: "{{ dotfiles_agent_context_symlink_names }}"
 
 - name: "Dotfiles: setup public package agent context symlinks"
-  ansible.builtin.file:
-    src: "../{{ dotfiles_agent_context_source_name }}"
-    dest: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item.0 }}/{{ item.1 }}"
-    state: link
-    force: true
-  loop: "{{ dotfiles_public_stow_packages | product([dotfiles_agent_context_source_name] + dotfiles_agent_context_symlink_names) | list }}"
+  ansible.builtin.shell: |
+    set -eu
+    cd "{{ ansible_facts.env.HOME }}/dotfiles"
+    for package in {{ dotfiles_public_stow_packages | map('quote') | join(' ') }}; do
+      for link_name in {{ ([dotfiles_agent_context_source_name] + dotfiles_agent_context_symlink_names) | map('quote') | join(' ') }}; do
+        ln -sfn "../{{ dotfiles_agent_context_source_name }}" "$package/$link_name"
+      done
+    done
+  args:
+    executable: /bin/sh
+  changed_when: false
 
 - name: "Dotfiles: stat private agent context packages"
   ansible.builtin.stat:
