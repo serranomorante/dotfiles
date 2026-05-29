@@ -175,15 +175,11 @@ end
 vim.keymap.set({ "n", "x" }, "<leader>re", redir_cmd, { desc = "Prepare redir command", expr = true })
 
 vim.keymap.set({ "n", "x" }, "<leader>rm", function()
-  utils.new_scratch_buffer({ filetype = "log" })
-  local keys = redir_cmd()
-    .. "sil Remind -n | let @a=system('sort', @a)" -- run Remind -n and sort the result
-    .. "<END>" -- position cursor at the end
-    .. "<C-w><C-w><C-w><C-w><C-w>" -- delete echom from redir_cmd
-    .. "put =@a" -- and replace it with this command
-  utils.feedkeys(keys .. "<CR>")
-  utils.feedkeys("gg")
-end, { desc = "Prepare sorted remind command" })
+  utils.new_scratch_buffer({ filetype = "markdown" })
+  local output = utils.cmd({ "remind-agenda", "--next-all", "--markdown" })
+  if not output then return end
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(output:gsub("\n$", ""), "\n", { plain = true }))
+end, { desc = "Show next reminders" })
 
 vim.keymap.set("t", "<C-q>", function()
   utils.feedkeys("<C-\\><C-n>", "t")

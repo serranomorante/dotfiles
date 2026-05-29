@@ -1,0 +1,119 @@
+#!/bin/sh
+# Purpose: Print a bounded Remind agenda for agents or a human-readable next-reminder list.
+# Usage: remind-agenda [--days N] [--json|--markdown] [--next-all] [--timed-only]
+# Notes: RUN directives and shell() are disabled so the command is safe for read-only agenda inspection.
+
+set -eu
+
+prog=${0##*/}
+remind_dir=${REMIND_AGENDA_DIR:-"$HOME/.config/remind"}
+once_file=${REMIND_ONCE_FILE:-"$HOME/.local/state/remind/oncefile"}
+days=3
+format=json
+mode=days
+timed_only=0
+
+usage_text() {
+    cat <<EOF
+Usage:
+  $prog [--days N] [--json|--markdown] [--timed-only]
+  $prog --next-all [--json|--markdown] [--timed-only]
+
+Options:
+  --days N       Show reminders triggered over the next N days. Default: 3.
+  --next-all     Show the next occurrence of each reminder.
+  --timed-only   Show only reminders with an explicit time.
+  --json         Emit JSON. Default.
+  --markdown     Emit a Markdown bullet list.
+  -h, --help     Show this help.
+
+Environment:
+  REMIND_AGENDA_DIR  Remind input directory. Default: \$HOME/.config/remind.
+  REMIND_ONCE_FILE   ONCE state file. Default: \$HOME/.local/state/remind/oncefile.
+EOF
+}
+
+usage() {
+    status=${1:-2}
+    if [ "$status" -eq 0 ]; then usage_text; else usage_text >&2; fi
+    exit "$status"
+}
+
+die() {
+    printf '%s: %s\n' "$prog" "$1" >&2
+    exit 2
+}
+
+while [ "$#" -gt 0 ]; do
+    case $1 in
+    --days)
+        shift
+        [ "$#" -gt 0 ] || die "--days requires a value"
+        days=$1
+        mode=days
+        ;;
+    --days=*)
+        days=${1#--days=}
+        mode=days
+        ;;
+    --next-all)
+        mode=next_all
+        ;;
+    --timed-only)
+        timed_only=1
+        ;;
+    --json)
+        format=json
+        ;;
+    --markdown)
+        format=markdown
+        ;;
+    -h | --help)
+        usage 0
+        ;;
+    *)
+        die "unknown option: $1"
+        ;;
+    esac
+    shift
+done
+
+case $days in
+"" | *[!0-9]*)
+    die "--days must be a positive integer"
+    ;;
+0)
+    die "--days must be greater than zero"
+    ;;
+esac
+
+[ -d "$remind_dir" ] || die "missing remind directory: $remind_dir"
+command -v remind >/dev/null 2>&1 || die "remind not found in PATH"
+
+if [ "$format" = json ]; then
+    command -v jq >/dev/null 2>&1 || die "jq not found in PATH"
+    if [ "$mode" = next_all ]; then
+        remind "-i\$OnceFile=\"$once_file\"" -q -r -n --json "$remind_dir" \
+            | jq --argjson timed_only "$timed_only" '[.[] | select(has("date")) | select($timed_only == 0 or has("time"))] | sort_by(.date, (.time // 1440), .body)'
+    else
+        remind "-i\$OnceFile=\"$once_file\"" -q -r --json "$remind_dir" "*$days" \
+            | jq -s --argjson timed_only "$timed_only" '[.[][] | select(has("date")) | select($timed_only == 0 or has("time"))] | sort_by(.date, (.time // 1440), .body)'
+    fi
+else
+    if [ "$mode" = next_all ]; then
+        if [ "$timed_only" -eq 1 ]; then
+            command -v jq >/dev/null 2>&1 || die "jq not found in PATH"
+            remind "-i\$OnceFile=\"$once_file\"" -q -r -n --json "$remind_dir" \
+                | jq -r '[.[] | select(has("date")) | select(has("time"))] | sort_by(.date, .time, .body)[] | "- " + .body'
+        else
+            remind "-i\$OnceFile=\"$once_file\"" -q -r -n "$remind_dir" \
+                | sort \
+                | sed 's/^/- /'
+        fi
+    else
+        command -v jq >/dev/null 2>&1 || die "jq not found in PATH"
+        remind "-i\$OnceFile=\"$once_file\"" -q -r --json "$remind_dir" "*$days" \
+            | jq -rs --argjson timed_only "$timed_only" '.[][] | select(has("date")) | select($timed_only == 0 or has("time")) | "- " + .date + (if has("eventstart") then " " + (.eventstart | split("T")[1]) else "" end) + " " + .body' \
+            | sort
+    fi
+fi

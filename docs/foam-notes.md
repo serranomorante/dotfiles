@@ -21,6 +21,8 @@ Neovim Markdown buffers add a local `@id` metadata convention for paragraph- or 
 
 Remind-backed TODOs may use `@run agent` inside an indented `remind` fence to run the attached `@id` through the local Codex agent at the scheduled reminder time. The generated Remind `RUN` command goes through the `remind-run` allowlist, queues the agent as a transient user systemd unit so the normal reminder notification is not delayed, resolves the TODO by id, writes the full result under `misc/agent-runs/YYYY-MM/`, logs through the `foam-remind-agent` journal tag, and sends a short completion notification.
 
+Agents that need upcoming reminders should call `remind-agenda` instead of reading the private Foam tree or driving Neovim keymaps. The default output is JSON for reminders triggered over the next 3 days with Remind `RUN` directives disabled; add `--timed-only` to include only reminders with an explicit `AT` time. Humans can use `remind-agenda --next-all --markdown` for the next occurrence of every reminder.
+
 Related dotfiles-owned documentation and tooling:
 
 - `docs/foam-crypt-sync.md`
