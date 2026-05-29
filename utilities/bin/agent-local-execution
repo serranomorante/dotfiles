@@ -1,0 +1,223 @@
+#!/usr/bin/env python3
+# Purpose: Run a local AI agent from a stable JSON TODO execution payload.
+# Usage: agent-local-execution --agent codex --input-json -; agent-local-execution --agent codex --text '<payload>'
+# Notes: Intended for non-interactive service execution; it never asks the user for approval.
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+
+
+SCHEMA = "foam-ai-autotrigger.v1"
+SUPPORTED_AGENTS = {"codex", "claude"}
+
+
+def die(message, code=2):
+    print(f"agent-local-execution: {message}", file=sys.stderr)
+    raise SystemExit(code)
+
+
+def load_payload(args):
+    if args.input_json and args.text:
+        die("--input-json and --text are mutually exclusive")
+
+    if args.input_json:
+        if args.input_json == "-":
+            raw = sys.stdin.read()
+        else:
+            with open(args.input_json, "r", encoding="utf-8") as handle:
+                raw = handle.read()
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            die(f"invalid JSON payload: {exc}")
+    elif args.text:
+        try:
+            payload = json.loads(args.text)
+        except json.JSONDecodeError:
+            payload = {
+                "schema": SCHEMA,
+                "todo": {
+                    "title": "Manual agent task",
+                    "id": "manual",
+                    "tags": [],
+                    "body": args.text,
+                },
+                "execution": {},
+            }
+    else:
+        die("one of --input-json or --text is required")
+
+    if not isinstance(payload, dict):
+        die("payload must be a JSON object")
+    if payload.get("schema") != SCHEMA:
+        die(f"unsupported payload schema: {payload.get('schema')!r}")
+    return payload
+
+
+def execution_options(payload, args):
+    execution = payload.setdefault("execution", {})
+    todo = payload.setdefault("todo", {})
+
+    agent = args.agent or execution.get("agent") or "codex"
+    if agent not in SUPPORTED_AGENTS:
+        die(f"unsupported agent: {agent}")
+
+    cwd = args.cwd or execution.get("cwd") or os.getcwd()
+    cwd = os.path.expanduser(cwd)
+    if not os.path.isdir(cwd):
+        die(f"cwd does not exist: {cwd}")
+
+    model = args.model or execution.get("model") or None
+    sandbox = args.sandbox or execution.get("sandbox") or "workspace-write"
+    timeout = (
+        args.timeout
+        or execution.get("timeout_seconds")
+        or execution.get("timeout")
+        or None
+    )
+    if timeout is not None:
+        try:
+            timeout = int(timeout)
+        except (TypeError, ValueError):
+            die(f"timeout must be an integer number of seconds: {timeout!r}")
+        if timeout <= 0:
+            die("timeout must be positive")
+
+    todo.setdefault("tags", [])
+    return {
+        "agent": agent,
+        "cwd": cwd,
+        "model": model,
+        "sandbox": sandbox,
+        "timeout": timeout,
+    }
+
+
+def build_prompt(payload):
+    source = payload.get("source") or {}
+    todo = payload.get("todo") or {}
+    execution = payload.get("execution") or {}
+
+    tags = todo.get("tags") or []
+    if isinstance(tags, list):
+        tags_text = " ".join(str(tag) for tag in tags)
+    else:
+        tags_text = str(tags)
+
+    source_path = source.get("relative_file") or source.get("file") or ""
+    source_stem = os.path.splitext(os.path.basename(source_path))[0]
+    todo_id = todo.get("id", "")
+    origin_link = f"[[{source_stem}#^{todo_id}]]" if source_stem and todo_id else ""
+
+    return "\n".join(
+        [
+            "Execute this automated Foam TODO and return only the final result.",
+            "Do not ask for confirmation; either complete the task or fail with a clear error.",
+            "If this task creates a Markdown file, edits a Markdown file with a new block, or creates a Markdown TODO, include a backlink to the origin TODO in the new Markdown content.",
+            "Use the exact origin_link below for that backlink.",
+            "",
+            f"schema: {payload.get('schema')}",
+            f"title: {todo.get('title', '')}",
+            f"id: {todo_id}",
+            f"tags: {tags_text}",
+            f"agent: {execution.get('agent') or ''}",
+            f"model: {execution.get('model') or ''}",
+            f"source_file: {source.get('file', '')}",
+            f"source_line: {source.get('line', '')}",
+            f"origin_link: {origin_link}",
+            "",
+            "body:",
+            str(todo.get("body") or "").rstrip(),
+            "",
+        ]
+    )
+
+
+def run_agent(payload, opts):
+    prompt = build_prompt(payload)
+
+    if opts["agent"] == "codex":
+        cmd = [
+            "codex",
+            "-a",
+            "never",
+            "-s",
+            opts["sandbox"],
+        ]
+        if opts["model"]:
+            cmd.extend(["-m", opts["model"]])
+        cmd.extend(
+            [
+                "exec",
+                "--skip-git-repo-check",
+                "--color",
+                "never",
+                "-C",
+                opts["cwd"],
+                "-",
+            ]
+        )
+    else:
+        cmd = [
+            "claude",
+            "-p",
+            "--permission-mode",
+            "dontAsk",
+            "--output-format",
+            "text",
+        ]
+        if opts["model"]:
+            cmd.extend(["--model", opts["model"]])
+
+    try:
+        result = subprocess.run(
+            cmd,
+            input=prompt,
+            text=True,
+            cwd=opts["cwd"],
+            capture_output=True,
+            timeout=opts["timeout"],
+            check=False,
+        )
+    except FileNotFoundError as exc:
+        die(f"agent executable not found: {exc.filename}", code=127)
+    except subprocess.TimeoutExpired as exc:
+        if exc.stdout:
+            print(exc.stdout, end="")
+        if exc.stderr:
+            print(exc.stderr, end="", file=sys.stderr)
+        die(f"{opts['agent']} timed out after {opts['timeout']} seconds", code=124)
+
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+    return result.returncode
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--agent", choices=sorted(SUPPORTED_AGENTS))
+    parser.add_argument("--input-json", metavar="PATH|-")
+    parser.add_argument("--text")
+    parser.add_argument("--cwd")
+    parser.add_argument("--model")
+    parser.add_argument("--sandbox", default=None)
+    parser.add_argument("--timeout", type=int)
+    args = parser.parse_args()
+
+    payload = load_payload(args)
+    opts = execution_options(payload, args)
+    payload.setdefault("execution", {})["agent"] = opts["agent"]
+    if opts["model"]:
+        payload.setdefault("execution", {})["model"] = opts["model"]
+    payload.setdefault("execution", {})["cwd"] = opts["cwd"]
+    payload.setdefault("execution", {})["sandbox"] = opts["sandbox"]
+    raise SystemExit(run_agent(payload, opts))
+
+
+if __name__ == "__main__":
+    main()

@@ -82,3 +82,9 @@ if vim.bo[bufnr].filetype == "markdown.system_health" then
   vim.bo[bufnr].readonly = true
   vim.bo[bufnr].modifiable = false
 end
+
+local ai_autotrigger_todo = vim.fs.normalize(vim.env.HOME .. "/data/notes/foam/misc/todos/ai-autotrigger.todos.md")
+if vim.fs.normalize(vim.api.nvim_buf_get_name(bufnr)) == ai_autotrigger_todo then
+  vim.bo[bufnr].readonly = true
+  vim.bo[bufnr].modifiable = false
+end

@@ -1,0 +1,368 @@
+#!/usr/bin/env python3
+# Purpose: Parse the dedicated Foam AI TODO file and run new autotrigger tasks.
+# Usage: foam-ai-autotrigger run [--reason syncthing]
+# Notes: Intended to run only after phone-side encrypted Foam sync has been reconciled.
+
+import argparse
+import datetime as dt
+import fcntl
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+
+
+SCHEMA = "foam-ai-autotrigger.v1"
+DEFAULT_TODO_REL = "misc/todos/ai-autotrigger.todos.md"
+DEFAULT_AGENT = "codex"
+VALID_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+TODO_RE = re.compile(r"^(\s*)[-*+]\s+\[([ xX])\]\s+(.*)$")
+META_RE = re.compile(r"^\s*@([A-Za-z][A-Za-z0-9_-]*)\s*(.*?)\s*$")
+TAG_RE = re.compile(r"^#[a-z][a-z0-9-]*$")
+
+
+def log(message):
+    print(f"foam-ai-autotrigger: {message}", file=sys.stderr)
+
+
+def utc_now():
+    return (
+        dt.datetime.now(dt.timezone.utc)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
+    )
+
+
+def atomic_write(path, text):
+    directory = os.path.dirname(path)
+    fd, tmp = tempfile.mkstemp(prefix=".tmp.", dir=directory, text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
+            handle.write(text)
+        os.replace(tmp, path)
+    finally:
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
+
+
+def load_state(path):
+    if not os.path.exists(path):
+        return {"version": 1, "todos": {}}
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            state = json.load(handle)
+    except (OSError, json.JSONDecodeError) as exc:
+        log(f"ignoring unreadable state file {path}: {exc}")
+        return {"version": 1, "todos": {}}
+    if not isinstance(state, dict):
+        return {"version": 1, "todos": {}}
+    state.setdefault("version", 1)
+    state.setdefault("todos", {})
+    return state
+
+
+def save_state(path, state):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    atomic_write(path, json.dumps(state, indent=2, sort_keys=True) + "\n")
+
+
+def split_todo_items(lines):
+    items = []
+    current = None
+    for index, line in enumerate(lines):
+        match = TODO_RE.match(line)
+        if match:
+            if current:
+                items.append(current)
+            current = {
+                "start": index,
+                "indent": match.group(1),
+                "checked": match.group(2).lower() == "x",
+                "title_source": match.group(3),
+                "lines": [line],
+            }
+        elif current:
+            current["lines"].append(line)
+    if current:
+        items.append(current)
+    return items
+
+
+def clean_title(title_source):
+    source = title_source.strip()
+    if source.endswith("\\"):
+        source = source[:-1].rstrip()
+    bold = re.match(r"\*\*(.*?)\*\*", source)
+    if bold:
+        return bold.group(1).strip()
+    return re.sub(r"[*_`]+", "", source).strip()
+
+
+def metadata_for(lines):
+    meta = {}
+    tags = []
+    body_lines = []
+
+    for line in lines[1:]:
+        match = META_RE.match(line)
+        if match:
+            key = match.group(1).lower()
+            value = match.group(2).strip()
+            if key == "tags":
+                tags.extend(token for token in value.split() if TAG_RE.match(token))
+            else:
+                meta[key] = value
+            continue
+        body_lines.append(line)
+
+    return meta, tags, deindent(body_lines).strip()
+
+
+def deindent(lines):
+    while lines and lines[0].strip() == "":
+        lines.pop(0)
+    while lines and lines[-1].strip() == "":
+        lines.pop()
+    indents = []
+    for line in lines:
+        if line.strip():
+            indents.append(len(line) - len(line.lstrip(" ")))
+    trim = min(indents) if indents else 0
+    if trim:
+        lines = [line[trim:] if len(line) >= trim else "" for line in lines]
+    return "\n".join(lines)
+
+
+def parse_todos(path, notes_root):
+    with open(path, "r", encoding="utf-8") as handle:
+        text = handle.read()
+    lines = text.splitlines()
+    newline = "\n" if text.endswith("\n") else ""
+    todos = []
+
+    for item in split_todo_items(lines):
+        meta, tags, body = metadata_for(list(item["lines"]))
+        todo_id = meta.get("id", "")
+        title = clean_title(item["title_source"])
+        todo = {
+            "id": todo_id,
+            "title": title,
+            "tags": tags,
+            "body": body,
+            "checked": item["checked"],
+            "start": item["start"],
+            "line": item["start"] + 1,
+            "raw": "\n".join(item["lines"]),
+            "meta": meta,
+            "source_file": path,
+            "relative_file": os.path.relpath(path, notes_root),
+        }
+        todos.append(todo)
+
+    return text, lines, newline, todos
+
+
+def todo_digest(todo):
+    data = {
+        "id": todo["id"],
+        "title": todo["title"],
+        "tags": todo["tags"],
+        "body": todo["body"],
+        "meta": {
+            key: todo["meta"].get(key)
+            for key in ("agent", "model", "cwd", "sandbox", "timeout")
+        },
+    }
+    encoded = json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def build_payload(todo, notes_root):
+    meta = todo["meta"]
+    cwd = os.path.expanduser(meta.get("cwd") or notes_root)
+    timeout = meta.get("timeout")
+    execution = {
+        "agent": meta.get("agent") or DEFAULT_AGENT,
+        "model": meta.get("model") or None,
+        "cwd": cwd,
+        "sandbox": meta.get("sandbox") or "workspace-write",
+    }
+    if timeout:
+        execution["timeout_seconds"] = timeout
+
+    return {
+        "schema": SCHEMA,
+        "source": {
+            "file": todo["source_file"],
+            "relative_file": todo["relative_file"],
+            "line": todo["line"],
+        },
+        "todo": {
+            "title": todo["title"],
+            "id": todo["id"],
+            "tags": todo["tags"],
+            "body": todo["body"],
+            "checked": todo["checked"],
+        },
+        "execution": execution,
+    }
+
+
+def validate_candidate(todo, id_counts):
+    if todo["checked"]:
+        return None
+    if "#autotrigger" not in todo["tags"]:
+        return None
+    if not todo["id"]:
+        log(
+            f"ignoring autotrigger TODO without @id at {todo['relative_file']}:{todo['line']}"
+        )
+        return None
+    if not VALID_ID.match(todo["id"]):
+        log(
+            f"ignoring autotrigger TODO with invalid @id {todo['id']!r} at {todo['relative_file']}:{todo['line']}"
+        )
+        return None
+    if id_counts.get(todo["id"], 0) > 1:
+        log(
+            f"ignoring duplicate autotrigger @id {todo['id']!r} at {todo['relative_file']}:{todo['line']}"
+        )
+        return None
+    return todo
+
+
+def run_todo(todo, payload, wrapper):
+    agent = payload["execution"]["agent"]
+    command = [wrapper, "--agent", agent, "--input-json", "-"]
+    log(
+        f"running {agent} for TODO {todo['id']} from {todo['relative_file']}:{todo['line']}"
+    )
+    try:
+        result = subprocess.run(
+            command,
+            input=json.dumps(payload, ensure_ascii=False),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        log(f"wrapper is not executable or not found: {wrapper}")
+        return 127, "", f"wrapper not found: {wrapper}"
+
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+    return result.returncode, result.stdout, result.stderr
+
+
+def mark_completed(lines, todo):
+    lines[todo["start"]] = re.sub(
+        r"^(\s*[-*+]\s+\[) \]", r"\1x]", lines[todo["start"]], count=1
+    )
+
+
+def run(args):
+    if args.reason != "syncthing" and not args.force:
+        log(f"skipping reason {args.reason!r}; autotrigger only runs after syncthing")
+        return 0
+
+    notes_root = os.path.abspath(os.path.expanduser(args.notes_root))
+    todo_path = os.path.abspath(
+        os.path.expanduser(args.todo_file or os.path.join(notes_root, DEFAULT_TODO_REL))
+    )
+    if not os.path.exists(todo_path):
+        return 0
+
+    state_dir = os.path.abspath(os.path.expanduser(args.state_dir))
+    os.makedirs(state_dir, exist_ok=True)
+    lock_path = os.path.join(state_dir, "run.lock")
+    state_path = os.path.join(state_dir, "state.json")
+
+    with open(lock_path, "w", encoding="utf-8") as lock_handle:
+        fcntl.flock(lock_handle, fcntl.LOCK_EX)
+        _text, lines, newline, todos = parse_todos(todo_path, notes_root)
+        state = load_state(state_path)
+        id_counts = {}
+        for todo in todos:
+            if todo["id"]:
+                id_counts[todo["id"]] = id_counts.get(todo["id"], 0) + 1
+
+        changed = False
+        failed = False
+        for todo in todos:
+            candidate = validate_candidate(todo, id_counts)
+            if not candidate:
+                continue
+            digest = todo_digest(candidate)
+            previous = state["todos"].get(candidate["id"])
+            if previous and previous.get("digest") == digest and previous.get("status") == "completed":
+                continue
+
+            payload = build_payload(candidate, notes_root)
+            code, stdout, stderr = run_todo(candidate, payload, args.wrapper)
+            record = {
+                "digest": digest,
+                "source_file": candidate["relative_file"],
+                "line": candidate["line"],
+                "agent": payload["execution"]["agent"],
+                "updated_at": utc_now(),
+            }
+            if code == 0:
+                mark_completed(lines, candidate)
+                changed = True
+                record["status"] = "completed"
+                state["todos"][candidate["id"]] = record
+                log(f"completed TODO {candidate['id']}")
+            else:
+                failed = True
+                record["status"] = "failed"
+                record["exit_code"] = code
+                record["stderr_tail"] = stderr[-4000:]
+                record["stdout_tail"] = stdout[-4000:]
+                state["todos"][candidate["id"]] = record
+                log(f"failed TODO {candidate['id']} with exit code {code}")
+
+        if changed:
+            atomic_write(todo_path, "\n".join(lines) + newline)
+        save_state(state_path, state)
+
+    return 1 if failed else 0
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    run_parser = subparsers.add_parser("run")
+    run_parser.add_argument("--reason", default="manual")
+    run_parser.add_argument("--force", action="store_true")
+    run_parser.add_argument(
+        "--notes-root",
+        default=os.environ.get("FOAM_AI_NOTES_ROOT", "~/data/notes/foam"),
+    )
+    run_parser.add_argument("--todo-file", default=os.environ.get("FOAM_AI_TODO_FILE"))
+    run_parser.add_argument(
+        "--state-dir",
+        default=os.environ.get(
+            "FOAM_AI_STATE_DIR", "~/.local/state/foam-ai-autotrigger"
+        ),
+    )
+    run_parser.add_argument(
+        "--wrapper",
+        default=os.environ.get("FOAM_AI_WRAPPER", "~/bin/agent-local-execution"),
+    )
+
+    args = parser.parse_args()
+    args.wrapper = os.path.abspath(os.path.expanduser(args.wrapper))
+    if args.command == "run":
+        raise SystemExit(run(args))
+    raise SystemExit(2)
+
+
+if __name__ == "__main__":
+    main()

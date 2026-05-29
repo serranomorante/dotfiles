@@ -10,6 +10,7 @@ folder_id=${FOAM_CRYPT_SYNCTHING_FOLDER:-foam-rclone-crypt}
 plain_dir=${FOAM_CRYPT_PLAIN_DIR:-"$HOME/data/notes/foam"}
 encrypted_dir=${FOAM_CRYPT_ENCRYPTED_DIR:-"$HOME/data/sync/foam-rclone-crypt"}
 foam_crypt_cmd=${FOAM_CRYPT_CMD:-"$HOME/bin/foam-crypt"}
+foam_ai_autotrigger_cmd=${FOAM_AI_AUTOTRIGGER_CMD:-"$HOME/bin/foam-ai-autotrigger"}
 state_dir=${FOAM_CRYPT_STATE_DIR:-"$HOME/.local/state/foam-crypt"}
 debounce=${FOAM_CRYPT_DEBOUNCE:-8}
 stable_attempts=${FOAM_CRYPT_STABLE_ATTEMPTS:-20}
@@ -37,6 +38,7 @@ Environment:
   FOAM_CRYPT_STABLE_ATTEMPTS=$stable_attempts
   FOAM_CRYPT_STABLE_SLEEP=$stable_sleep
   FOAM_CRYPT_SYNCTHING_FOLDER=$folder_id
+  FOAM_AI_AUTOTRIGGER_CMD=$foam_ai_autotrigger_cmd
 EOF
     exit 2
 }
@@ -206,6 +208,15 @@ run_once() {
     printf '%s: running bisync after %s trigger\n' "$prog" "$reason" >&2
     "$foam_crypt_cmd" bisync
     remember_fingerprints
+
+    if [ "$reason" = syncthing ]; then
+        if [ ! -x "$foam_ai_autotrigger_cmd" ]; then
+            printf '%s: AI autotrigger command not executable; skipping: %s\n' "$prog" "$foam_ai_autotrigger_cmd" >&2
+            return 0
+        fi
+        printf '%s: running AI autotrigger after syncthing trigger\n' "$prog" >&2
+        "$foam_ai_autotrigger_cmd" run --reason syncthing
+    fi
 }
 
 run_locked() {
