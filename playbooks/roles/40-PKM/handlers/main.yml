@@ -6,6 +6,7 @@
     enabled: true
     state: restarted
     masked: false
+    daemon_reload: true
 
 - name: handler_ensure_hypothesis_bouncer_self_hosted_service
   ansible.builtin.systemd_service:
@@ -14,6 +15,7 @@
     enabled: true
     state: restarted
     masked: false
+    daemon_reload: true
 
 - name: handler_ensure_backup_hypothesis_sql_service
   ansible.builtin.systemd_service:

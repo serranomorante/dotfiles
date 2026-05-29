@@ -1,8 +1,8 @@
 # {{ ansible_managed }}
 quiet
 # Generic Python profile: the wrapper injects the project root and any extra
-# user-specified paths. This profile exposes the stable host runtimes plus the
-# normal cache/state locations used by Python, pip, and uv.
+# user-specified paths. Keep persistent tool state scoped so untrusted package
+# code cannot read unrelated XDG cache/state/data content.
 include dev-tools-common.inc
 dbus-user none
 
@@ -13,6 +13,7 @@ whitelist-ro ${HOME}/.local/bin
 whitelist-ro ${HOME}/bin
 
 # Writable host cache and state used by python tooling.
-whitelist ${HOME}/.cache
-whitelist ${HOME}/.local/state
-whitelist ${HOME}/.local/share
+whitelist ${HOME}/.cache/firejail-wrapper/python
+whitelist ${HOME}/.local/state/firejail-wrapper/python
+whitelist ${HOME}/.local/share/firejail-wrapper/python
+whitelist ${HOME}/.local/share/uv

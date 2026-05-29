@@ -27,10 +27,16 @@
 - name: "[archlinux] Go language: build vscode-go"
   ansible.builtin.command:
     argv:
+      - "{{ node_firejail_executable }}"
+      - offline
+      - "{{ ansible_facts.env.HOME }}/data/repos/vscode-go/extension"
+      - --
       - "{{ node_system_default_node_path }}"
       - "{{ node_system_default_npm_path }}"
       - run
       - compile
+  environment:
+    NPM_CONFIG_IGNORE_SCRIPTS: "false"
   args:
     chdir: ~/data/repos/vscode-go/extension
   changed_when: false

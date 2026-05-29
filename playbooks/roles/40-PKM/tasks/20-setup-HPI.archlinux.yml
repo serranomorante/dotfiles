@@ -337,15 +337,22 @@
     state: absent
 
 - name: "[archlinux] Setup HPI - ensure h services"
-  ansible.builtin.shell: >
-    source ~/.bashrc &&
-    sg docker -c 'source ~/.bashrc && export DOCKER_CONFIG={{ ansible_facts.env.HOME }}/.config/ansible-docker && export PATH={{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH && PYENV_VERSION={{ var_h_python_version.stdout }} VIRTUALENV_PIP=24.0 make services'
+  ansible.builtin.command:
+    argv:
+      - sg
+      - docker
+      - -c
+      - >-
+        FJ_PY_FORWARD_ENV=VIRTUALENV_PIP
+        PYENV_VERSION={{ var_h_python_version.stdout }}
+        VIRTUALENV_PIP=24.0
+        {{ python_firejail_executable }} online {{ ansible_facts.env.HOME }}/data/repos/h --
+        bash -lc 'export DOCKER_CONFIG={{ ansible_facts.env.HOME }}/.config/ansible-docker && export PATH={{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH && make services'
   register: ensure_h_services_result
-  args:
-    chdir: ~/data/repos/h
   environment:
     PYENV_VERSION: "{{ var_h_python_version.stdout }}"
     VIRTUALENV_PIP: "24.0"
+    FJ_PY_FORWARD_ENV: VIRTUALENV_PIP
   changed_when: "'commands succeeded' in ensure_h_services_result.stdout"
   failed_when: ensure_h_services_result.rc not in [0, 2]
   timeout: 0
@@ -354,15 +361,22 @@
   when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - ensure h db"
-  ansible.builtin.shell: >
-    source ~/.bashrc &&
-    sg docker -c 'source ~/.bashrc && export DOCKER_CONFIG={{ ansible_facts.env.HOME }}/.config/ansible-docker && export PATH={{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH && PYENV_VERSION={{ var_h_python_version.stdout }} VIRTUALENV_PIP=24.0 make db'
+  ansible.builtin.command:
+    argv:
+      - sg
+      - docker
+      - -c
+      - >-
+        FJ_PY_FORWARD_ENV=VIRTUALENV_PIP
+        PYENV_VERSION={{ var_h_python_version.stdout }}
+        VIRTUALENV_PIP=24.0
+        {{ python_firejail_executable }} online {{ ansible_facts.env.HOME }}/data/repos/h --
+        bash -lc 'export DOCKER_CONFIG={{ ansible_facts.env.HOME }}/.config/ansible-docker && export PATH={{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH && make db'
   register: ensure_h_db_result
-  args:
-    chdir: ~/data/repos/h
   environment:
     PYENV_VERSION: "{{ var_h_python_version.stdout }}"
     VIRTUALENV_PIP: "24.0"
+    FJ_PY_FORWARD_ENV: VIRTUALENV_PIP
   changed_when: "'commands succeeded' in ensure_h_db_result.stdout"
   timeout: 0
   notify:
@@ -379,16 +393,35 @@
 
 - name: "[archlinux] Setup HPI - ensure hypothesis user"
   # These credentials will not be used on production environments
-  ansible.builtin.command: >
-    pyenv exec tox -qe dev -- sh bin/hypothesis --dev user add
-      --username hypothesis
-      --email hypothesis@hypothes.is
-      --password hypothesis
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/repos/h"
+      - --
+      - pyenv
+      - exec
+      - tox
+      - -qe
+      - dev
+      - --
+      - sh
+      - bin/hypothesis
+      - --dev
+      - user
+      - add
+      - --username
+      - hypothesis
+      - --email
+      - hypothesis@hypothes.is
+      - --password
+      - hypothesis
   args:
     chdir: ~/data/repos/h
   environment:
     PYENV_VERSION: "{{ var_h_python_version.stdout }}"
     VIRTUALENV_PIP: "24.0"
+    FJ_PY_FORWARD_ENV: VIRTUALENV_PIP
   register: ensure_hypothesis_user_result
   changed_when: "'commands succeeded' in ensure_hypothesis_user_result.stdout"
   failed_when:
@@ -398,8 +431,24 @@
   when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - ensure admin user"
-  ansible.builtin.command: >
-    pyenv exec tox -qe dev -- sh bin/hypothesis --dev user admin hypothesis
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/repos/h"
+      - --
+      - pyenv
+      - exec
+      - tox
+      - -qe
+      - dev
+      - --
+      - sh
+      - bin/hypothesis
+      - --dev
+      - user
+      - admin
+      - hypothesis
   register: ensure_admin_user_result
   changed_when: "'commands succeeded' in ensure_admin_user_result.stdout"
   args:
@@ -407,37 +456,78 @@
   environment:
     PYENV_VERSION: "{{ var_h_python_version.stdout }}"
     VIRTUALENV_PIP: "24.0"
+    FJ_PY_FORWARD_ENV: VIRTUALENV_PIP
   when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - register authclient exists"
-  ansible.builtin.command: >
-    pyenv exec tox -qe dev -- sh bin/hypothesis --dev authclient find
-      --name "Chrome Extension"
-      --authority "localhost"
-      --redirect-uri "chrome-extension://{{ local_hypothesis_extension }}"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/repos/h"
+      - --
+      - pyenv
+      - exec
+      - tox
+      - -qe
+      - dev
+      - --
+      - sh
+      - bin/hypothesis
+      - --dev
+      - authclient
+      - find
+      - --name
+      - Chrome Extension
+      - --authority
+      - localhost
+      - --redirect-uri
+      - "chrome-extension://{{ local_hypothesis_extension }}"
   register: register_auth_client_exists_result
   args:
     chdir: ~/data/repos/h
   environment:
     PYENV_VERSION: "{{ var_h_python_version.stdout }}"
     VIRTUALENV_PIP: "24.0"
+    FJ_PY_FORWARD_ENV: VIRTUALENV_PIP
   changed_when: false
   when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - create new OAuth client"
-  ansible.builtin.command: >
-    pyenv exec tox -qe dev -- sh bin/hypothesis --dev authclient add
-      --name "Chrome Extension"
-      --authority "localhost"
-      --type "public"
-      --redirect-uri "chrome-extension://{{ local_hypothesis_extension }}"
-      --grant-type "authorization_code"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/repos/h"
+      - --
+      - pyenv
+      - exec
+      - tox
+      - -qe
+      - dev
+      - --
+      - sh
+      - bin/hypothesis
+      - --dev
+      - authclient
+      - add
+      - --name
+      - Chrome Extension
+      - --authority
+      - localhost
+      - --type
+      - public
+      - --redirect-uri
+      - "chrome-extension://{{ local_hypothesis_extension }}"
+      - --grant-type
+      - authorization_code
   register: create_new_oauth_client_result
   args:
     chdir: ~/data/repos/h
   environment:
     PYENV_VERSION: "{{ var_h_python_version.stdout }}"
     VIRTUALENV_PIP: "24.0"
+    FJ_PY_FORWARD_ENV: VIRTUALENV_PIP
   when:
     - hpi_self_hosted_available
     - "'Auth client not found' in register_auth_client_exists_result.stdout"
@@ -473,12 +563,20 @@
   register: hypothesis_client_dependency_install_result
 
 - name: "[archlinux] Setup HPI: install hypothesis client dependencies"
-  ansible.builtin.shell: >
-    source ~/.bashrc &&
-    ./.yarn/releases/yarn-3.6.0.cjs install --mode=skip-build
+  ansible.builtin.command:
+    argv:
+      - "{{ node_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/repos/client"
+      - --
+      - ./.yarn/releases/yarn-3.6.0.cjs
+      - install
+      - --mode=skip-build
   register: install_hypothesis_client_dependencies_result
   args:
     chdir: ~/data/repos/client
+  environment:
+    NPM_CONFIG_IGNORE_SCRIPTS: "false"
   when:
     - hypothesis_client_clone_result.changed
       or hypothesis_client_patch_result.changed
@@ -491,12 +589,19 @@
   register: hypothesis_client_build_result
 
 - name: "[archlinux] Setup HPI: build hypothesis client"
-  ansible.builtin.shell: >
-    source ~/.bashrc &&
-    ./.yarn/releases/yarn-3.6.0.cjs build
+  ansible.builtin.command:
+    argv:
+      - "{{ node_firejail_executable }}"
+      - offline
+      - "{{ ansible_facts.env.HOME }}/data/repos/client"
+      - --
+      - ./.yarn/releases/yarn-3.6.0.cjs
+      - build
   register: build_hypothesis_client_result
   args:
     chdir: ~/data/repos/client
+  environment:
+    NPM_CONFIG_IGNORE_SCRIPTS: "false"
   when:
     - hypothesis_client_clone_result.changed
       or hypothesis_client_patch_result.changed
@@ -516,12 +621,21 @@
   register: hypothesis_client_tarball_result
 
 - name: "[archlinux] Setup HPI: pack hypothesis client tarball"
-  ansible.builtin.shell: >
-    source ~/.bashrc &&
-    ./.yarn/releases/yarn-3.6.0.cjs pack --out dist/hypothesis-{{ hypothesis_client_version }}-local.tgz
+  ansible.builtin.command:
+    argv:
+      - "{{ node_firejail_executable }}"
+      - offline
+      - "{{ ansible_facts.env.HOME }}/data/repos/client"
+      - --
+      - ./.yarn/releases/yarn-3.6.0.cjs
+      - pack
+      - --out
+      - "dist/hypothesis-{{ hypothesis_client_version }}-local.tgz"
   register: pack_hypothesis_client_result
   args:
     chdir: ~/data/repos/client
+  environment:
+    NPM_CONFIG_IGNORE_SCRIPTS: "false"
   when:
     - hypothesis_client_clone_result.changed
       or hypothesis_client_patch_result.changed
@@ -578,12 +692,21 @@
   register: hypothesis_extension_dependency_manifest_result
 
 - name: "[archlinux] Setup HPI: install hypothesis extension dependencies"
-  ansible.builtin.shell: >
-    source ~/.bashrc &&
-    ./.yarn/releases/yarn-3.6.1.cjs install --mode=skip-build
+  ansible.builtin.command:
+    argv:
+      - "{{ node_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/repos/hypothesis-extension"
+      - --
+      - ./.yarn/releases/yarn-3.6.1.cjs
+      - install
+      - --mode=skip-build
   register: install_hypothesis_extension_dependencies_result
   args:
     chdir: ~/data/repos/hypothesis-extension
+  environment:
+    NPM_CONFIG_IGNORE_SCRIPTS: "false"
+    FJ_NODE_EXTRA_PATHS: "{{ ansible_facts.env.HOME }}/data/repos/client/dist"
   when:
     - hypothesis_extension_clone_result.changed
       or hypothesis_extension_remove_patch_resolution_result.changed
@@ -593,12 +716,20 @@
   changed_when: true
 
 - name: "[archlinux] Setup HPI: prepare hypothesis extension"
-  ansible.builtin.shell: >
-    source ~/.bashrc &&
-    make build SETTINGS_FILE=settings/custom-dev.json
+  ansible.builtin.command:
+    argv:
+      - "{{ node_firejail_executable }}"
+      - offline
+      - "{{ ansible_facts.env.HOME }}/data/repos/hypothesis-extension"
+      - --
+      - make
+      - build
+      - SETTINGS_FILE=settings/custom-dev.json
   register: prepare_hypothesis_extension_result
   args:
     chdir: ~/data/repos/hypothesis-extension
+  environment:
+    NPM_CONFIG_IGNORE_SCRIPTS: "false"
   changed_when:
     - "'Nothing to be done' not in prepare_hypothesis_extension_result.stdout"
     - "'Nothing to be done' not in prepare_hypothesis_extension_result.stderr"

@@ -4,7 +4,9 @@ After=graphical-session.target
 
 [Service]
 WorkingDirectory=%h/data/repos/h
-ExecStart=make dev --debug
+Environment="FJ_NODE_PROFILE=fj-node-hypothesis.profile"
+Environment="NPM_CONFIG_IGNORE_SCRIPTS=false"
+ExecStart=%h/bin/fj-node online %h/data/repos/h -- make dev --debug
 Restart=always
 MemoryAccounting=yes
 MemoryHigh=1G

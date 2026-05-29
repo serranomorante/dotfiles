@@ -151,14 +151,27 @@
   environment:
     ANSIBLE_FIREJAIL_PNPM_NODE_VERSION: "{{ node_system_default_version }}"
 
+- name: "[archlinux] Setup ai tools: ensure playwright browser cache"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/.cache/ms-playwright"
+    state: directory
+    mode: "755"
+
 - name: "[archlinux] Setup ai tools: execute playwright install"
   ansible.builtin.command:
     argv:
+      - "{{ node_firejail_executable }}"
+      - online
+      - "{{ node_ai_npm_prefix }}"
+      - --
       - "{{ node_system_default_node_path }}"
       - "{{ node_ai_npm_prefix }}/bin/playwright"
       - install
   environment:
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+    FJ_NODE_FORWARD_ENV: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD
+    FJ_NODE_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/.cache/ms-playwright
   args:
     creates: ~/.cache/ms-playwright/chromium-*/INSTALLATION_COMPLETE
 

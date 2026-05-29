@@ -11,4 +11,5 @@ Nice=15
 IOSchedulingClass=idle
 IOWeight=50
 CPUQuota=50%
-ExecStart=%h/bin/promnesia index
+Environment="FJ_PY_PROFILE=fj-py-promnesia.profile"
+ExecStart=%h/bin/fj-py online %h/data/apps/PKM -- %h/bin/promnesia index

@@ -1,10 +1,4 @@
 ---
-- name: "[archlinux] Setup node: install volta"
-  ansible.builtin.shell: >
-    set -o pipefail &&
-    curl https://get.volta.sh | bash -s -- --skip-setup
-  changed_when: true
-
 - name: "[archlinux] Setup node: ensure user bin directory"
   ansible.builtin.file:
     path: "{{ node_user_bin_dir }}"
@@ -27,12 +21,48 @@
     - dev-editor-shell-common.inc
     - fj-node.profile
     - fj-node-ansible.profile
+    - fj-node-volta-bootstrap.profile
+    - fj-node-mcp.profile
+    - fj-node-hypothesis.profile
 
 - name: "[archlinux] Setup node: install firejail wrapper helper"
   ansible.builtin.copy:
     src: firejail-wrapper-common.bash
     dest: "{{ node_user_bin_dir }}/firejail-wrapper-common.bash"
     mode: "755"
+
+- name: "[archlinux] Setup node: ensure volta home exists"
+  ansible.builtin.file:
+    path: "{{ node_volta_home }}"
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Setup node: ensure scoped node wrapper state dirs"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  loop:
+    - "{{ ansible_facts.env.HOME }}/.cache/firejail-wrapper/node"
+    - "{{ ansible_facts.env.HOME }}/.local/state/firejail-wrapper/node"
+    - "{{ ansible_facts.env.HOME }}/.local/share/firejail-wrapper/node"
+
+- name: "[archlinux] Setup node: install volta"
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/firejail
+      - "--profile={{ ansible_facts.env.HOME }}/.config/firejail/fj-node-volta-bootstrap.profile"
+      - --protocol=unix,inet,inet6,netlink
+      - /usr/bin/env
+      - -i
+      - "HOME={{ ansible_facts.env.HOME }}"
+      - "PATH={{ ansible_facts.env.PATH }}"
+      - "XDG_CACHE_HOME={{ ansible_facts.env.HOME }}/.cache/firejail-wrapper/node"
+      - "XDG_STATE_HOME={{ ansible_facts.env.HOME }}/.local/state/firejail-wrapper/node"
+      - bash
+      - -lc
+      - "set -o pipefail && curl https://get.volta.sh | bash -s -- --skip-setup"
+  changed_when: true
 
 - name: "[archlinux] Setup node: install generic firejail node wrapper"
   ansible.builtin.copy:
@@ -67,16 +97,27 @@
   loop:
     - { script: ~/dotfiles/home/dot-bashrc }
 
-- name: "[archlinux] Setup node: install node versions"
-  ansible.builtin.command: "{{ ansible_facts.env.HOME }}/.volta/bin/volta install node@{{ item }}"
-  loop: "{{ node_managed_versions | unique }}"
-  changed_when: true
-
 - name: "[archlinux] Setup node: ensure volta tool project dir"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools"
     state: directory
     mode: "755"
+
+- name: "[archlinux] Setup node: install node versions"
+  ansible.builtin.command:
+    argv:
+      - "{{ node_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools"
+      - --
+      - "{{ ansible_facts.env.HOME }}/.volta/bin/volta"
+      - install
+      - "node@{{ item }}"
+  environment:
+    FJ_NODE_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/.volta
+  loop: "{{ node_managed_versions | unique }}"
+  changed_when: true
 
 - name: "[archlinux] Setup node: ensure package managers"
   ansible.builtin.command:

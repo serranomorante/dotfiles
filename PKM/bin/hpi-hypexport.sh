@@ -29,7 +29,7 @@ if [[ -n $username && -n $token ]]; then
   TEMP_FILE="$(mktemp)" # Create a temporary file
 
   # Redirect output to the temporary file
-  if ~/data/apps/PKM/.venv/bin/python -m hypexport.export --username "$username" --token "$token" >"$TEMP_FILE"; then
+  if FJ_PY_PROFILE=fj-py-promnesia.profile ~/bin/fj-py online ~/data/apps/PKM -- ~/data/apps/PKM/.venv/bin/python -m hypexport.export --username "$username" --token "$token" >"$TEMP_FILE"; then
     mv "$TEMP_FILE" "$EXPORT_FILE"
     echo "Export completed successfully and written to $EXPORT_FILE"
   else

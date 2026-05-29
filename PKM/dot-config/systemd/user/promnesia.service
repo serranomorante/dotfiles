@@ -6,7 +6,8 @@ After=graphical-session.target
 WantedBy=graphical-session.target
 
 [Service]
-ExecStart=%h/data/apps/PKM/.venv/bin/python3 -m promnesia serve --db %h/.local/share/promnesia/promnesia.sqlite --timezone Europe/Madrid --host 0.0.0.0 --port 13131
+Environment="FJ_PY_PROFILE=fj-py-promnesia.profile"
+ExecStart=%h/bin/fj-py online %h/data/apps/PKM -- %h/data/apps/PKM/.venv/bin/python3 -m promnesia serve --db %h/.local/share/promnesia/promnesia.sqlite --timezone Europe/Madrid --host 0.0.0.0 --port 13131
 Type=simple
 Restart=always
 MemoryAccounting=yes

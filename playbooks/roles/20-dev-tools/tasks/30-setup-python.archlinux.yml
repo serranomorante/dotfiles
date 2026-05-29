@@ -38,6 +38,8 @@
     - fj-py-interactive.profile
     - fj-py-ansible.profile
     - fj-py-piper-server.profile
+    - fj-py-promnesia.profile
+    - fj-py-mcp-reaper.profile
     - fj-whisper-cpp.profile
 
 - name: "[archlinux] Setup python: install firejail wrapper helper"
@@ -73,26 +75,75 @@
   loop:
     - { script: ~/dotfiles/home/dot-bashrc }
 
-- name: "[archlinux] Setup python: ensure python versions"
-  ansible.builtin.command: pyenv install --skip-existing {{ item }}
-  loop: "{{ python_versions }}"
-  changed_when: true
-  timeout: 0
-
-- name: "[archlinux] Setup python: ensure python system default"
-  ansible.builtin.command: pyenv global system
-  changed_when: true
-
-- name: "[archlinux] Setup python: rehash shims"
-  ansible.builtin.command: pyenv rehash
-  changed_when: false
-
 - name: "[archlinux] Setup python: ensure package install project dirs"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/python-package-installs/pyenv-{{ item }}"
     state: directory
     mode: "755"
   loop: "{{ python_versions }}"
+
+- name: "[archlinux] Setup python: ensure pyenv writable dirs"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  loop:
+    - "{{ ansible_facts.env.HOME }}/.pyenv"
+    - "{{ ansible_facts.env.HOME }}/.pyenv/versions"
+    - "{{ ansible_facts.env.HOME }}/.pyenv/shims"
+
+- name: "[archlinux] Setup python: ensure python versions"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/python-package-installs/pyenv-{{ item }}"
+      - --
+      - pyenv
+      - install
+      - --skip-existing
+      - "{{ item }}"
+  environment:
+    FJ_PY_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/.pyenv
+      {{ ansible_facts.env.HOME }}/.pyenv/versions
+      {{ ansible_facts.env.HOME }}/.pyenv/shims
+  loop: "{{ python_versions }}"
+  changed_when: true
+  timeout: 0
+
+- name: "[archlinux] Setup python: ensure python system default"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - offline
+      - "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/python-package-installs/pyenv-{{ python_versions | first }}"
+      - --
+      - pyenv
+      - global
+      - system
+  environment:
+    FJ_PY_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/.pyenv
+      {{ ansible_facts.env.HOME }}/.pyenv/versions
+      {{ ansible_facts.env.HOME }}/.pyenv/shims
+  changed_when: true
+
+- name: "[archlinux] Setup python: rehash shims"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - offline
+      - "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/python-package-installs/pyenv-{{ python_versions | first }}"
+      - --
+      - pyenv
+      - rehash
+  environment:
+    FJ_PY_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/.pyenv
+      {{ ansible_facts.env.HOME }}/.pyenv/versions
+      {{ ansible_facts.env.HOME }}/.pyenv/shims
+  changed_when: false
 
 - name: "[archlinux] Setup python: upgrade pip for managed versions"
   ansible.builtin.command:

@@ -1,3 +1,31 @@
 #!/usr/bin/env sh
 # {{ ansible_managed }}
-exec "{{ node_volta_home }}/tools/image/node/{{ node_ansible_language_server_version }}/bin/node" "{{ node_ansible_language_server_npm_prefix }}/bin/ansible-language-server" "$@"
+
+node_bin="{{ node_volta_home }}/tools/image/node/{{ node_ansible_language_server_version }}/bin/node"
+server_bin="{{ node_ansible_language_server_npm_prefix }}/bin/ansible-language-server"
+
+is_fj_dev_nvim_sandbox() {
+    [ "${DOTFILES_FIREJAIL_WRAPPER:-}" = "fj-dev-nvim" ] || return 1
+    [ "${DOTFILES_FIREJAIL_MARKER:-}" = "/tmp/dotfiles-fj-dev-nvim-sandbox" ] || return 1
+    [ -r "$DOTFILES_FIREJAIL_MARKER" ] || return 1
+    [ -f "$DOTFILES_FIREJAIL_MARKER" ] || return 1
+    [ "$(cat "$DOTFILES_FIREJAIL_MARKER")" = "fj-dev-nvim" ] || return 1
+}
+
+if is_fj_dev_nvim_sandbox; then
+    exec "$node_bin" "$server_bin" "$@"
+fi
+
+project_root=$(pwd -P)
+extra_paths="{{ node_ansible_language_server_npm_prefix }}
+{{ ansible_facts.env.HOME }}/.config/nvim
+{{ ansible_facts.env.HOME }}/dotfiles/nvim/dot-config/nvim
+{{ ansible_facts.env.HOME }}/.local/share/uv/tools
+{{ ansible_facts.env.HOME }}/.local/share/uv/python"
+
+if [ -n "${FJ_NODE_EXTRA_PATHS:-}" ]; then
+    extra_paths="${FJ_NODE_EXTRA_PATHS}
+${extra_paths}"
+fi
+
+FJ_NODE_EXTRA_PATHS=$extra_paths exec "{{ node_firejail_executable }}" offline "$project_root" -- "$node_bin" "$server_bin" "$@"

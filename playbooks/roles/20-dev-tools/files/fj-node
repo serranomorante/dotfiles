@@ -22,21 +22,24 @@ setup_node_env() {
     local path_value=$2
     local userconfig_path=$3
     local ignore_scripts=$4
+    local cache_root=$5
+    local state_root=$6
+    local data_root=$7
 
     init_clean_env
     append_common_terminal_env
     append_env_literal HOME "$real_home"
     append_env_literal PATH "$path_value"
+    append_env_literal XDG_CACHE_HOME "${XDG_CACHE_HOME:-$cache_root}"
+    append_env_literal XDG_STATE_HOME "${XDG_STATE_HOME:-$state_root}"
+    append_env_literal XDG_DATA_HOME "${XDG_DATA_HOME:-$data_root}"
     append_env_literal NPM_CONFIG_UPDATE_NOTIFIER "${NPM_CONFIG_UPDATE_NOTIFIER:-false}"
     append_env_literal NPM_CONFIG_FUND "${NPM_CONFIG_FUND:-false}"
     append_env_literal NPM_CONFIG_USERCONFIG "$userconfig_path"
     append_env_literal NPM_CONFIG_IGNORE_SCRIPTS "$ignore_scripts"
+    append_env_literal NPM_CONFIG_CACHE "${NPM_CONFIG_CACHE:-${cache_root}/npm}"
+    append_env_literal npm_config_store_dir "${npm_config_store_dir:-${data_root}/pnpm/store}"
     append_env_if_set NPM_CONFIG_PREFIX
-    append_env_if_set XDG_CACHE_HOME
-    append_env_if_set XDG_STATE_HOME
-    append_env_if_set XDG_DATA_HOME
-    append_env_if_set NPM_CONFIG_CACHE
-    append_env_if_set npm_config_store_dir
     append_env_names_if_set "${FJ_NODE_FORWARD_ENV:-}"
 }
 
@@ -65,7 +68,12 @@ run_generic_mode() {
     local path_value=${PATH:-/usr/local/bin:/usr/bin:/bin}
     local profile_path
     local userconfig_path=${FJ_NODE_NPMRC_PATH:-/dev/null}
+    local cache_root=${real_home}/.cache/firejail-wrapper/node
+    local state_root=${real_home}/.local/state/firejail-wrapper/node
+    local data_root=${real_home}/.local/share/firejail-wrapper/node
     profile_path=$(resolve_profile_path "$real_home")
+
+    mkdir -p "$cache_root/npm" "$data_root/pnpm/store" "$state_root"
 
     init_firejail_args "$profile_path" "$network_mode"
     FIREJAIL_ARGS+=("--whitelist=${project_root}")
@@ -79,7 +87,7 @@ run_generic_mode() {
 
     # The profile controls which host paths are visible and writable. Keep the
     # runtime env minimal here and assume any external writable paths already exist.
-    setup_node_env "$real_home" "$path_value" "$userconfig_path" "${NPM_CONFIG_IGNORE_SCRIPTS:-true}"
+    setup_node_env "$real_home" "$path_value" "$userconfig_path" "${NPM_CONFIG_IGNORE_SCRIPTS:-true}" "$cache_root" "$state_root" "$data_root"
     if [[ "${FJ_NODE_NO_CHDIR:-0}" != "1" ]]; then
         cd "$project_root"
     fi

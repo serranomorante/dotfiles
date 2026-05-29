@@ -7,11 +7,9 @@ vim.go.guicursor = "n:block-Cursor/lCursor,a:blinkwait700-blinkoff400-blinkon250
 
 ---@type string
 local cache_path = vim.fn.stdpath("cache")
-local undodir = utils.join_paths(cache_path, "undodir")
-local shadadir = utils.join_paths(cache_path, "shadadir")
-local persist_local_state = utils.should_persist_local_state()
-if persist_local_state and not utils.is_directory(undodir) then vim.fn.mkdir(undodir, "p") end
-if persist_local_state and not utils.is_directory(shadadir) then vim.fn.mkdir(shadadir, "p") end
+local local_state = utils.local_state_config(constants.CWD, vim.v.servername, cache_path)
+if local_state.persist and not utils.is_directory(local_state.undodir) then vim.fn.mkdir(local_state.undodir, "p") end
+if local_state.persist and not utils.is_directory(local_state.shadadir) then vim.fn.mkdir(local_state.shadadir, "p") end
 
 vim.opt.exrc = true
 vim.opt.secure = true
@@ -33,11 +31,21 @@ vim.o.swapfile = false
 vim.go.backup = false
 
 vim.go.shada = "'2000,<3000,%0,:3000,/3000,@1000,s2048,h"
-vim.go.shadafile = persist_local_state
-    and utils.join_paths(shadadir, vim.fn.sha256(constants.CWD):sub(1, 8) .. ".nvim.shada")
-  or "NONE"
-if persist_local_state then vim.go.undodir = undodir end
-vim.o.undofile = persist_local_state
+vim.go.shadafile = local_state.shadafile
+if local_state.persist then vim.go.undodir = local_state.undodir end
+vim.o.undofile = local_state.persist
+if local_state.persist then
+  local secret_undo_group = vim.api.nvim_create_augroup("serranomorante_secret_persistent_undo", { clear = true })
+  local function disable_secret_persistent_undo(args)
+    local name = vim.api.nvim_buf_get_name(args.buf)
+    if name ~= "" and utils.is_secret_persistent_undo_path(name) then vim.bo[args.buf].undofile = false end
+  end
+  vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile", "BufFilePost" }, {
+    group = secret_undo_group,
+    callback = disable_secret_persistent_undo,
+  })
+  disable_secret_persistent_undo({ buf = vim.api.nvim_get_current_buf() })
+end
 vim.go.jumpoptions = "stack,view"
 
 vim.wo.signcolumn = "auto:2-4"

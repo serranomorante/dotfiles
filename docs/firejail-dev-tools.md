@@ -32,6 +32,12 @@ The `20-dev-tools` role owns the shared wrappers and profiles:
 
 The wrappers use a clean environment and expose only the project root plus explicitly requested paths. Prefer expanding the existing wrappers before creating a new one.
 
+Generic `fj-node` and `fj-py` runs preserve the caller's absolute project path as the sandbox-visible work tree, but their default XDG state does not inherit broad host roots. Unless explicitly overridden, Node writes cache/state/data under `~/.cache/firejail-wrapper/node`, `~/.local/state/firejail-wrapper/node`, and `~/.local/share/firejail-wrapper/node`; Python uses the matching `python` roots. Keep package-manager caches inside those wrapper-scoped roots unless a specific adapter has a narrower project-specific cache path.
+
+Firejail-wrapped language servers launched by Neovim should use Neovim's launch cwd as the sandbox project root, then pass the managed server install prefix, config paths, and helper runtime paths through `FJ_NODE_EXTRA_PATHS` or `FJ_PY_EXTRA_PATHS`. Child wrappers may reuse the interactive Neovim sandbox only when they can verify the `fj-dev-nvim` private marker created inside that sandbox; a generic `container=firejail` environment is not sufficient because it could come from a less restrictive sandbox. Neovim LSP configs for servers built on `vscode-languageserver` should set `params.processId = vim.NIL` in `before_init` when the server runs under Firejail, because the server's client watchdog may not be able to see Neovim's host PID from inside the sandbox and can otherwise exit after initialization. The Neovim sandbox profile must expose interpreter targets reached through tool shims, such as uv-managed Python runtimes used by `ansible-lint`, not only the shim directory. Prefer absolute paths for helper executables configured inside language servers because those servers may invoke helpers from an internal shell whose `PATH` differs from Neovim's launch environment.
+
+`fj-dev-nvim` exposes Neovim runtime files read-only and appends only the current cwd's local state paths as writable. For broad roots such as `$HOME`, `$HOME/data`, `$HOME/data/repos`, and `$HOME/data/secrets`, the wrapper does not expose cwd-scoped Neovim cache/state paths, matching the editor config's rule that persistent ShaDa, undo, Fundo, and future buffer-content state stay disabled for broad or secret roots.
+
 ## Network Modes
 
 Generic wrappers use this shape:

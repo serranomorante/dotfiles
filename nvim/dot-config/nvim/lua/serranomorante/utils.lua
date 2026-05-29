@@ -89,8 +89,82 @@ function M.is_kitty_cwd_servername(servername)
   return servername:match("^" .. lua_pattern_escape(runtime_root) .. "/kitty%-cwd%-[A-Za-z0-9._-]+%.nvim%.sock$") ~= nil
 end
 
+---@param path string
+---@return string
+function M.normalized_path(path)
+  if path == "" then return "" end
+  local expanded = vim.fn.expand(path)
+  local real = (vim.uv or vim.loop).fs_realpath(expanded)
+  local normalized = real or vim.fn.fnamemodify(expanded, ":p")
+  normalized = normalized:gsub("/+$", "")
+  return normalized == "" and "/" or normalized
+end
+
+---@param cwd? string
+---@return string
+function M.local_state_cwd_key(cwd) return vim.fn.sha256(cwd or constants.CWD):sub(1, 8) end
+
+---@param cwd? string
 ---@return boolean
-function M.should_persist_local_state() return M.is_kitty_cwd_servername(vim.v.servername) end
+function M.is_broad_local_state_cwd(cwd)
+  local home = vim.env.HOME
+  if not home or home == "" then return false end
+
+  local normalized_cwd = M.normalized_path(cwd or constants.CWD)
+  local broad_roots = {
+    home,
+    M.join_paths(home, "data"),
+    M.join_paths(home, "data", "repos"),
+    M.join_paths(home, "data", "secrets"),
+  }
+
+  for _, root in ipairs(broad_roots) do
+    if normalized_cwd == M.normalized_path(root) then return true end
+  end
+  return false
+end
+
+---@param cwd? string
+---@param servername? string
+---@param cache_path? string
+---@return { persist: boolean, cwd_key: string, undodir: string, shadadir: string, shadafile: string }
+function M.local_state_config(cwd, servername, cache_path)
+  cwd = cwd or constants.CWD
+  cache_path = cache_path or vim.fn.stdpath("cache")
+
+  local cwd_key = M.local_state_cwd_key(cwd)
+  local undodir = M.join_paths(cache_path, "fundo-by-cwd", cwd_key)
+  local shadadir = M.join_paths(cache_path, "shadadir")
+  local persist = M.is_kitty_cwd_servername(servername or vim.v.servername) and not M.is_broad_local_state_cwd(cwd)
+
+  return {
+    persist = persist,
+    cwd_key = cwd_key,
+    undodir = undodir,
+    shadadir = shadadir,
+    shadafile = persist and M.join_paths(shadadir, cwd_key .. ".nvim.shada") or "NONE",
+  }
+end
+
+---@return boolean
+function M.should_persist_local_state() return M.local_state_config().persist end
+
+---@param path string
+---@return boolean
+function M.is_secret_persistent_undo_path(path)
+  local basename = vim.fn.fnamemodify(path, ":t"):lower()
+  if basename == ".env" or basename:match("^%.env%.") then return true end
+  if basename == "oauth-storage.json" or basename == "setup-kwallet" then return true end
+  if basename:match("%.pem$") or basename:match("%.key$") then return true end
+  if basename:find("token", 1, true) then return true end
+  if basename:find("secret", 1, true) then return true end
+  if basename:find("password", 1, true) then return true end
+  if basename:find("credential", 1, true) then return true end
+  if basename:find("apikey", 1, true) or basename:find("api_key", 1, true) or basename:find("api-key", 1, true) then
+    return true
+  end
+  return false
+end
 
 --- Run a shell command and capture the output and if the command succeeded or failed
 ---

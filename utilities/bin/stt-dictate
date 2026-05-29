@@ -199,12 +199,14 @@ $en_model_dir"
         esac
 
         transcriber_real=$(readlink -f "$transcriber" 2>/dev/null || printf '%s\n' "$transcriber")
+        transcriber_impl=${STT_VOSK_TRANSCRIBE_IMPL:-"$HOME/.local/share/dotfiles/stt-vosk-transcribe.py"}
         stt_firejail_extra_paths="${stt_firejail_extra_paths}
-$transcriber_real"
+$transcriber_real
+$transcriber_impl"
 
         FJ_PY_EXTRA_PATHS=$stt_firejail_extra_paths \
             FJ_PY_WRITABLE_PATHS=$runtime_dir \
-            "$fj_py" offline "$project_dir" -- "$transcriber_real" \
+            "$fj_py" offline "$project_dir" -- /usr/bin/env STT_VOSK_TRANSCRIBE_IN_FIREJAIL=1 STT_VOSK_TRANSCRIBE_IMPL="$transcriber_impl" "$transcriber_real" \
             --audio-file "$audio_file" \
             --sample-rate "$sample_rate" \
             --language "$language" \

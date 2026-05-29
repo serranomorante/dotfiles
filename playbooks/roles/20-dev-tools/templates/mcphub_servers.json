@@ -12,8 +12,12 @@
       "type": "http"
     },
     "reaper": {
-      "command": "{{ reaper_mcp_server_setup.repo_path }}/.venv/bin/uv",
+      "command": "{{ python_firejail_executable }}",
       "args": [
+        "offline",
+        "{{ reaper_mcp_server_setup.repo_path }}",
+        "--",
+        "{{ reaper_mcp_server_setup.repo_path }}/.venv/bin/uv",
         "--directory",
         "{{ reaper_mcp_server_setup.repo_path }}",
         "run",
@@ -21,56 +25,106 @@
         "reaper_mcp_server.server",
         "--reaper-projects-dir",
         "{{ reaper_mcp_server_setup.projects_dir }}"
-      ]
+      ],
+      "env": {
+        "FJ_PY_PROFILE": "fj-py-mcp-reaper.profile",
+        "FJ_PY_EXTRA_PATHS": "{{ reaper_mcp_server_setup.projects_dir }}"
+      }
     },
     "Figma": {
-      "command": "{{ node_system_default_node_path }}",
+      "command": "{{ node_firejail_executable }}",
       "args": [
+        "online",
+        "{{ node_ai_npm_prefix }}",
+        "--",
+        "{{ node_system_default_node_path }}",
         "{{ figma_mcp_server_setup.exe_path }}"{% if figma_api_key | length > 0 %},
         "--figma-api-key={{ figma_api_key }}"{% endif %},
         "--stdio"
-      ]
+      ],
+      "env": {
+        "FJ_NODE_PROFILE": "fj-node-mcp.profile"
+      }
     },
     "figma-comments": {
-      "command": "{{ node_system_default_node_path }}",
+      "command": "{{ node_firejail_executable }}",
       "args": [
+        "online",
+        "{{ node_ai_npm_prefix }}",
+        "--",
+        "/usr/bin/env"{% if figma_api_key | length > 0 %},
+        "FIGMA_ACCESS_TOKEN={{ figma_api_key }}"{% endif %},
+        "{{ node_system_default_node_path }}",
         "{{ figma_mcp_commentary_server_setup.exe_path }}"
-      ]{% if figma_api_key | length > 0 %},
+      ],
       "env": {
-        "FIGMA_ACCESS_TOKEN": "{{ figma_api_key }}"
-      }{% endif %}
+        "FJ_NODE_PROFILE": "fj-node-mcp.profile"
+      }
     },
     "postman-mcp": {
-      "command": "{{ node_system_default_node_path }}",
+      "command": "{{ node_firejail_executable }}",
       "args": [
+        "online",
+        "{{ postman_mcp_commentary_server_setup.project_path }}",
+        "--",
+        "/usr/bin/env"{% if postman_api_key | length > 0 %},
+        "POSTMAN_API_KEY={{ postman_api_key }}"{% endif %},
+        "{{ node_system_default_node_path }}",
         "{{ postman_mcp_commentary_server_setup.exe_path }}"
-      ]{% if postman_api_key | length > 0 %},
+      ],
       "env": {
-        "POSTMAN_API_KEY": "{{ postman_api_key }}"
-      }{% endif %}
+        "FJ_NODE_PROFILE": "fj-node-mcp.profile"
+      }
     },
     "cf-projects": {
-      "command": "{{ node_system_default_node_path }}",
+      "command": "{{ node_firejail_executable }}",
       "args": [
+        "online",
+        "{{ node_ai_npm_prefix }}",
+        "--",
+        "{{ node_system_default_node_path }}",
         "{{ cf_projects_mcp_server_setup.exe_path }}"
-      ]
+      ],
+      "env": {
+        "FJ_NODE_PROFILE": "fj-node-mcp.profile"
+      }
     },
     "chrome-devtools": {
-      "command": "{{ node_system_default_node_path }}",
+      "command": "{{ node_firejail_executable }}",
       "args": [
+        "online",
+        "{{ node_ai_npm_prefix }}",
+        "--",
+        "{{ node_system_default_node_path }}",
         "{{ chrome_devtools_mcp_server_setup.exe_path }}",
         "--browser-url=http://127.0.0.1:9222"
-      ]
+      ],
+      "env": {
+        "FJ_NODE_PROFILE": "fj-node-mcp.profile"
+      }
     },
     "Context7": {
-      "command": "{{ node_system_default_node_path }}",
+      "command": "{{ node_firejail_executable }}",
       "args": [
+        "online",
+        "{{ node_ai_npm_prefix }}",
+        "--",
+        "{{ node_system_default_node_path }}",
         "{{ context7_mcp_server_setup.exe_path }}"
-      ]
+      ],
+      "env": {
+        "FJ_NODE_PROFILE": "fj-node-mcp.profile"
+      }
     },
     "playwright": {
-      "command": "{{ node_system_default_node_path }}",
+      "command": "{{ node_firejail_executable }}",
       "args": [
+        "online",
+        "{{ node_ai_npm_prefix }}",
+        "--",
+        "/usr/bin/env"{% if playwright_mcp_browser_key | length > 0 %},
+        "PLAYWRIGHT_MCP_EXTENSION_TOKEN={{ playwright_mcp_browser_key }}"{% endif %},
+        "{{ node_system_default_node_path }}",
         "{{ playwright_mcp_server_setup.exe_path }}",
         "--extension",
         "--shared-browser-context",
@@ -78,10 +132,10 @@
         "/usr/bin/chromium",
         "--browser",
         "chromium"
-      ]{% if playwright_mcp_browser_key | length > 0 %},
+      ],
       "env": {
-        "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "{{ playwright_mcp_browser_key }}"
-      }{% endif %}
+        "FJ_NODE_PROFILE": "fj-node-mcp.profile"
+      }
     }
   }
 }

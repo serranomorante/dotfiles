@@ -58,14 +58,22 @@ setup_python_env() {
     local path_value=$2
     local pip_config_file=$3
     local pycache_root=$4
+    local cache_root=$5
+    local state_root=$6
+    local data_root=$7
 
     init_clean_env
     append_common_terminal_env
     append_env_literal HOME "$real_home"
     append_env_literal PATH "$path_value"
+    append_env_literal XDG_CACHE_HOME "${XDG_CACHE_HOME:-$cache_root}"
+    append_env_literal XDG_STATE_HOME "${XDG_STATE_HOME:-$state_root}"
+    append_env_literal XDG_DATA_HOME "${XDG_DATA_HOME:-$data_root}"
     append_env_literal PIP_DISABLE_PIP_VERSION_CHECK "${PIP_DISABLE_PIP_VERSION_CHECK:-1}"
     append_env_literal PIP_CONFIG_FILE "$pip_config_file"
     append_env_literal PYTHONPYCACHEPREFIX "$pycache_root"
+    append_env_literal PIP_CACHE_DIR "${PIP_CACHE_DIR:-${cache_root}/pip}"
+    append_env_literal UV_CACHE_DIR "${UV_CACHE_DIR:-${cache_root}/uv}"
     append_env_if_set PYENV_VERSION
     append_env_if_set UV_TOOL_DIR
     append_env_if_set UV_TOOL_BIN_DIR
@@ -116,11 +124,15 @@ main() {
     local path_value=${PATH:-/usr/local/bin:/usr/bin:/bin}
     local profile_path
     local pip_config_file=${FJ_PY_PIP_CONFIG_FILE:-/dev/null}
+    local cache_root=${real_home}/.cache/firejail-wrapper/python
+    local state_root=${real_home}/.local/state/firejail-wrapper/python
+    local data_root=${real_home}/.local/share/firejail-wrapper/python
     local pycache_root
-    pycache_root="${FJ_PY_PYCACHEPREFIX:-${real_home}/.cache/python/pycacheprefix}"
+    pycache_root="${FJ_PY_PYCACHEPREFIX:-${cache_root}/pycacheprefix}"
     profile_path=$(resolve_profile_path "$real_home")
 
     [[ "$pycache_root" == /* ]] || die "FJ_PY_PYCACHEPREFIX must be an absolute path"
+    mkdir -p "$cache_root/pip" "$cache_root/uv" "$state_root" "$data_root" "$pycache_root"
 
     init_firejail_args "$profile_path" "$network_mode"
     FIREJAIL_ARGS+=("--whitelist=${project_root}")
@@ -134,7 +146,7 @@ main() {
 
     # The profile controls which host paths are visible and writable. Keep the
     # runtime env minimal here and assume any external writable paths already exist.
-    setup_python_env "$real_home" "$path_value" "$pip_config_file" "$pycache_root"
+    setup_python_env "$real_home" "$path_value" "$pip_config_file" "$pycache_root" "$cache_root" "$state_root" "$data_root"
     if [[ "${FJ_PY_NO_CHDIR:-0}" != "1" ]]; then
         cd "$project_root"
     fi

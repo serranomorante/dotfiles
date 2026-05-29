@@ -7,7 +7,9 @@ After=graphical-session.target
 WorkingDirectory=%h/data/repos/bouncer
 Environment="CHROME_EXTENSION_ID={{ local_hypothesis_extension }}"
 Environment="HYPOTHESIS_URL=http://localhost:5000"
-ExecStart=make dev
+Environment="FJ_NODE_PROFILE=fj-node-hypothesis.profile"
+Environment="NPM_CONFIG_IGNORE_SCRIPTS=false"
+ExecStart=%h/bin/fj-node online %h/data/repos/bouncer -- /usr/bin/env CHROME_EXTENSION_ID={{ local_hypothesis_extension }} HYPOTHESIS_URL=http://localhost:5000 make dev
 Restart=always
 MemoryAccounting=yes
 MemoryHigh=1G

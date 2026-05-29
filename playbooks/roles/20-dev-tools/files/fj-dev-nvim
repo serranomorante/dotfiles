@@ -57,6 +57,40 @@ add_rw_path() {
     RW_PATHS+="${candidate}"$'\n'
 }
 
+is_broad_work_root() {
+    case "$work_root" in
+    "$real_home" | "$real_home/data" | "$real_home/data/repos" | "$real_home/data/secrets")
+        return 0
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
+append_nvim_local_state_paths() {
+    local hash
+    local key
+    local cache_root=${real_home}/.cache/nvim
+    local undo_root
+    local shada_file
+
+    is_broad_work_root && return 0
+
+    hash=$(printf '%s' "$work_root" | sha256sum)
+    hash=${hash%% *}
+    key=${hash:0:8}
+    undo_root="${cache_root}/fundo-by-cwd/${key}"
+    shada_file="${cache_root}/shadadir/${key}.nvim.shada"
+
+    mkdir -p "$undo_root" "$(dirname "$shada_file")" "${cache_root}/luac"
+    touch "$shada_file"
+
+    RW_PATHS+="${undo_root}"$'\n'
+    RW_PATHS+="${shada_file}"$'\n'
+    RW_PATHS+="${cache_root}/luac"$'\n'
+}
+
 network_mode=local
 work_root=$(pwd -P)
 nvim_args=()
@@ -65,6 +99,7 @@ path_value=${PATH:-/usr/local/bin:/usr/bin:/bin}
 profile_path=$(firejail_profile_path "$real_home" "fj-dev-nvim.profile")
 nvim_bin="${real_home}/bin/nvim"
 forward_env=$'FZF_DEFAULT_COMMAND\nFZF_DEFAULT_OPTS\nFZF_DEFAULT_OPTS_FILE\nKITTY_LISTEN_ON'
+sandbox_marker=/tmp/dotfiles-fj-dev-nvim-sandbox
 RW_PATHS=
 
 while [[ $# -gt 0 ]]; do
@@ -99,6 +134,7 @@ for arg in "${nvim_args[@]}"; do
     [[ "$arg" == -* ]] && continue
     add_rw_path "$arg"
 done
+append_nvim_local_state_paths
 
 init_firejail_args "$profile_path" "$network_mode"
 append_paths rw "$RW_PATHS"
@@ -107,7 +143,14 @@ init_clean_env
 append_common_terminal_env
 append_env_literal HOME "$real_home"
 append_env_literal PATH "$path_value"
+append_env_literal DOTFILES_FIREJAIL_WRAPPER "fj-dev-nvim"
+append_env_literal DOTFILES_FIREJAIL_MARKER "$sandbox_marker"
 append_env_names_if_set "$forward_env"
 
 cd "$work_root"
-exec "${FIREJAIL_ARGS[@]}" "${ENV_ARGS[@]}" "$nvim_bin" "${nvim_args[@]}"
+exec "${FIREJAIL_ARGS[@]}" "${ENV_ARGS[@]}" /bin/sh -c '
+marker=${DOTFILES_FIREJAIL_MARKER:?}
+umask 077
+printf "%s\n" "fj-dev-nvim" > "$marker"
+exec "$@"
+' sh "$nvim_bin" "${nvim_args[@]}"
