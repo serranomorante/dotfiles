@@ -12,11 +12,12 @@ The runner's core per-test contract is environment-based. For every `# dotfiles-
 
 The other stable runner contracts are:
 
-- Metadata is read from leading-style comments named `# dotfiles-test-unit:`, `# dotfiles-test-tags:`, `# dotfiles-test-readonly:`, and `# dotfiles-test-case:`.
+- Metadata is read from leading-style comments named `# dotfiles-test-unit:`, `# dotfiles-test-tags:`, `# dotfiles-test-firejail:`, `# dotfiles-test-readonly:`, and `# dotfiles-test-case:`.
 - `# dotfiles-test-unit:` controls unit filtering; if it is omitted, the unit is inferred from the first path segment under `tests/`.
 - `# dotfiles-test-tags:` controls `--tags` filtering; requested tags are comma-separated and all requested tags must be present.
+- `# dotfiles-test-firejail: disabled` runs the file outside Firejail while still using the runner's temporary `HOME`, XDG directories, and `TMPDIR`; reserve it for integration tests that are blocked by Firejail itself, such as GUI Wine processes that trip the sandbox's syscall restrictions.
 - `# dotfiles-test-readonly:` must be an absolute existing host path; each declaration becomes a read-only Firejail allowlist entry.
-- `DOTFILES_TEST_ROOT` is the absolute dotfiles repository root, exposed read-only in Firejail and used as cwd.
+- `DOTFILES_TEST_ROOT` is the absolute dotfiles repository root, exposed read-only when Firejail is enabled and used as cwd.
 - `DOTFILES_TEST_TMP` is the writable temp root for the current individual case; passing and skipped cases remove it, failing cases keep it and print the path.
 - `test-output.log` under `DOTFILES_TEST_TMP` captures stdout and stderr for each individual case. The runner prints this log on failure so `make` output includes the underlying assertion or tool error instead of only the final Make error.
 - `DOTFILES_TEST_NO_FIREJAIL=1` disables Firejail only for debugging the harness.
@@ -27,6 +28,8 @@ The other stable runner contracts are:
 Neovim has two useful test layers. Isolated behavior tests should use `nvim --headless -u NONE` and add only the repo runtimepath they need. Integrated Neovim tests should load the active configuration through temporary XDG directories and read-only host allowlists: symlink `/home/aaaa/.config/nvim` into the temporary `XDG_CONFIG_HOME`, symlink plugin data such as `/home/aaaa/.local/share/nvim/site` into the temporary `XDG_DATA_HOME`, and keep state/cache writes inside `DOTFILES_TEST_TMP`. This catches plugin, parser, LSP, ftplugin, keymap, and runtimepath conflicts without writing to the host configuration.
 
 Tests should be hermetic by default and should prefer behavior checks over load-only checks for features where regressions matter. Load checks are still useful as cheap smoke tests, especially for Neovim modules, shell syntax, systemd unit verification, and formatter/linter checks.
+
+Wine GUI wrapper tests should use a temporary `WINEPREFIX` under `DOTFILES_TEST_TMP` and `xvfb-run` for headless windows. Prefer lightweight built-in Wine programs such as `notepad` plus explicit registry or window-tree assertions instead of launching workstation applications such as REAPER or external Wine audio host. Wine may need `# dotfiles-test-firejail: disabled` because it can abort under the runner's Firejail sandbox before the wrapper behavior is exercised.
 
 Temporary debugging output added while developing a test must be removed before the change is considered finished. Durable failure information should flow through assertions, stdout, or stderr so the runner captures it in `test-output.log`; do not leave ad hoc debug log files or diagnostic traces in test fixtures unless that log is part of the test contract and documented.
 

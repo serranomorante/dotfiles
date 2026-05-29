@@ -7,6 +7,7 @@ set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
 repo_root=$(cd "${script_dir}/.." >/dev/null 2>&1 && pwd -P)
 
+# shellcheck source=tests/lib/firejail.bash
 source "${script_dir}/lib/firejail.bash"
 
 unit_filter=
@@ -37,6 +38,7 @@ Environment:
 Test file metadata:
   # dotfiles-test-unit: UNIT
   # dotfiles-test-tags: tag other-tag
+  # dotfiles-test-firejail: disabled
   # dotfiles-test-readonly: /absolute/path/exposed/read-only
   # dotfiles-test-case: stable-case-name
 USAGE
@@ -179,6 +181,7 @@ run_case() {
     local file=$1
     local case_name=$2
     local readonly_paths=$3
+    local firejail_mode=$4
     local tmp_dir
     local output_log
     local rc
@@ -186,7 +189,7 @@ run_case() {
     output_log="${tmp_dir}/test-output.log"
 
     set +e
-    dotfiles_test_firejail_run "$repo_root" "$tmp_dir" "$file" "$case_name" "$readonly_paths" >"$output_log" 2>&1
+    dotfiles_test_firejail_run "$repo_root" "$tmp_dir" "$file" "$case_name" "$readonly_paths" "$firejail_mode" >"$output_log" 2>&1
     rc=$?
     set -e
 
@@ -226,6 +229,15 @@ while IFS= read -r file; do
     [[ -n "$file" ]] || continue
     mapfile -t cases < <(cases_for_file "$file")
     readonly_paths=$(metadata_values readonly "$file")
+    firejail_mode=$(metadata_value firejail "$file")
+    case "$firejail_mode" in
+    "" | default | disabled) ;;
+    *)
+        printf 'invalid dotfiles-test-firejail value in %s: %s\n' "$file" "$firejail_mode" >&2
+        failed=$((failed + 1))
+        continue
+        ;;
+    esac
     if [[ "${#cases[@]}" -eq 0 ]]; then
         cases=("$(basename "$file" .sh)")
     fi
@@ -238,7 +250,7 @@ while IFS= read -r file; do
         fi
 
         total=$((total + 1))
-        if run_case "$file" "$case_name" "$readonly_paths"; then
+        if run_case "$file" "$case_name" "$readonly_paths" "$firejail_mode"; then
             passed=$((passed + 1))
         else
             rc=$?

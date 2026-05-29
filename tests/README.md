@@ -23,6 +23,7 @@ Test files can declare metadata with comments near the top:
 ```sh
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim headless firejail
+# dotfiles-test-firejail: disabled
 # dotfiles-test-readonly: /absolute/path/needed/inside/firejail
 # dotfiles-test-case: feature-loads
 # dotfiles-test-case: feature-behavior
@@ -38,10 +39,11 @@ These contracts are intentionally visible and stable:
 
 - `# dotfiles-test-unit:` declares the logical unit. When omitted, the first directory under `tests/` is used as the unit.
 - `# dotfiles-test-tags:` declares space-separated or comma-separated tags used by `--tags`; every requested tag must be present.
+- `# dotfiles-test-firejail: disabled` runs a test file outside Firejail while keeping temporary HOME/XDG/TMPDIR isolation; use it only when Firejail blocks the behavior under test.
 - `# dotfiles-test-readonly:` declares one absolute host path to expose read-only inside Firejail. Repeat it for multiple paths. Paths must exist.
 - `# dotfiles-test-case:` declares one stable individual test name. Repeat it for multiple cases in one file.
 - `DOTFILES_TEST_CASE` is the selected case for the current invocation. It is set by the runner, not by normal users.
-- `DOTFILES_TEST_ROOT` is the absolute dotfiles repo root and is exposed read-only inside Firejail.
+- `DOTFILES_TEST_ROOT` is the absolute dotfiles repo root and is exposed read-only when Firejail is enabled.
 - `DOTFILES_TEST_TMP` is the per-case writable temp root. Passing tests remove it; failing tests keep it and print the path.
 - `test-output.log` under `DOTFILES_TEST_TMP` captures stdout and stderr for the current case. The runner prints it when a test fails, and also prints non-empty output for passing tests before the `PASS` line.
 - `DOTFILES_TEST_NO_FIREJAIL=1` disables Firejail only for harness debugging.

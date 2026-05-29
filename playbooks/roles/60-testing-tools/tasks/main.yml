@@ -12,6 +12,8 @@
           - shellcheck
           - shfmt
           - stylua
+          - xorg-server-xvfb
+          - xorg-xwininfo
   when:
     - user_os is defined
     - user_os in ['archlinux']

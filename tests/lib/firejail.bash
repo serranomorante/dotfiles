@@ -12,6 +12,7 @@ dotfiles_test_firejail_run() {
     local test_file=$3
     local test_case=$4
     local readonly_paths=${5:-}
+    local firejail_mode=${6:-default}
     local home_dir="${tmp_root}/home"
     local xdg_config="${tmp_root}/xdg-config"
     local xdg_cache="${tmp_root}/xdg-cache"
@@ -22,9 +23,9 @@ dotfiles_test_firejail_run() {
 
     mkdir -p "$home_dir" "$xdg_config" "$xdg_cache" "$xdg_data"
 
-    if [[ "${DOTFILES_TEST_NO_FIREJAIL:-0}" == "1" ]]; then
+    if [[ "${DOTFILES_TEST_NO_FIREJAIL:-0}" == "1" || "$firejail_mode" == "disabled" ]]; then
         (
-            cd "$repo_root"
+            cd "$repo_root" || return
             env -i \
                 HOME="$home_dir" \
                 XDG_CONFIG_HOME="$xdg_config" \
@@ -68,7 +69,7 @@ dotfiles_test_firejail_run() {
     done <<<"$readonly_paths"
 
     (
-        cd "$repo_root"
+        cd "$repo_root" || return
         firejail \
             --quiet \
             --noprofile \
