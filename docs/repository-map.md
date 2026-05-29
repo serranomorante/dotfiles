@@ -126,7 +126,7 @@ mouseless config
   owns keyboard-driven mouse movement and mouse buttons
 ```
 
-`warpd-marker` and `warpd-trail` compile their embedded X11 helpers into stable cache paths under `~/.cache`. Do not bump helper filenames for code changes; the wrappers compare the generated C source with the cached source and rebuild when needed. The keyboard-tools Ansible task precompiles the stable helpers. The compositor template excludes `WM_CLASS=warpd` windows from picom fading so `tab+f` hint overlays appear and disappear without fade latency.
+`warpd-marker` and `warpd-trail` compile their embedded X11 helpers into stable cache paths under `~/.cache`. Do not bump helper filenames for code changes; the wrappers compare the generated C source with the cached source and rebuild when needed. The keyboard-tools Ansible task precompiles the stable helpers. The compositor template excludes `WM_CLASS=warpd` windows from picom fading so `tab+f` hint overlays appear and disappear without fade latency. Keep `warpd-last-location run-hint` latency-sensitive: launch `warpd` before auxiliary cursor-state work such as `xdotool getmouselocation`, then reconcile `previous`, `last`, and trail state after the hint selection returns.
 
 When fixing keyboard conflicts, first identify who consumes the key:
 
