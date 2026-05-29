@@ -5,7 +5,4 @@ launch --title base-title
 new_tab claude
 launch
 
-new_tab codex
-launch
-
 focus_tab 0
