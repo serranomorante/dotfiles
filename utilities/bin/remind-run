@@ -14,6 +14,7 @@ Usage:
   $prog --list
 
 Allowed commands:
+  agent <todo-id>
   dotfiles-health update
 EOF
     exit 2
@@ -23,7 +24,20 @@ EOF
 
 case $1 in
 --list)
+    printf '%s\n' 'agent <todo-id>'
     printf '%s\n' 'dotfiles-health update'
+    ;;
+agent)
+    shift
+    [ "$#" -eq 1 ] || usage
+    case $1 in
+    *[!A-Za-z0-9._:-]* | "")
+        logger -t remind-run "rejected agent TODO id: $1" || true
+        printf '%s: rejected agent TODO id: %s\n' "$prog" "$1" >&2
+        exit 2
+        ;;
+    esac
+    "$HOME/bin/foam-remind-agent-run" "$1" >/dev/null
     ;;
 dotfiles-health)
     shift
@@ -33,14 +47,14 @@ dotfiles-health)
         "$HOME/bin/dotfiles-health" update >/dev/null
         ;;
     *)
-        logger -t remind-run "rejected dotfiles-health subcommand: $1"
+        logger -t remind-run "rejected dotfiles-health subcommand: $1" || true
         printf '%s: rejected dotfiles-health subcommand: %s\n' "$prog" "$1" >&2
         exit 2
         ;;
     esac
     ;;
 *)
-    logger -t remind-run "rejected command: $1"
+    logger -t remind-run "rejected command: $1" || true
     printf '%s: rejected command: %s\n' "$prog" "$1" >&2
     exit 2
     ;;

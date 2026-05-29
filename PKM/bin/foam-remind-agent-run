@@ -1,0 +1,289 @@
+#!/usr/bin/env python3
+# Purpose: Run a Foam TODO through the local agent wrapper from Remind RUN hooks.
+# Usage: foam-remind-agent-run <todo-id>
+# Notes: Writes the full agent output to Foam and sends a short completion notification.
+
+import datetime as dt
+import json
+import os
+import re
+import subprocess
+import sys
+
+
+SCHEMA = "foam-ai-autotrigger.v1"
+TODO_RE = re.compile(r"^(\s*)[-*+]\s+\[([ xX])\]\s+(.*)$")
+META_RE = re.compile(r"^\s*@([A-Za-z][A-Za-z0-9_-]*)\s*(.*?)\s*$")
+TAG_RE = re.compile(r"^#[a-z][a-z0-9-]*$")
+VALID_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+
+
+def die(message, code=2):
+    log(message)
+    raise SystemExit(code)
+
+
+def log(message):
+    print(f"foam-remind-agent-run: {message}", file=sys.stderr)
+    try:
+        subprocess.run(["logger", "-t", "foam-remind-agent", message], check=False)
+    except FileNotFoundError:
+        pass
+
+
+def utc_now():
+    return dt.datetime.now(dt.timezone.utc)
+
+
+def notify(summary, body):
+    try:
+        subprocess.run(["notify-send", summary, body], check=False)
+    except FileNotFoundError:
+        pass
+
+
+def clean_title(title_source):
+    source = title_source.strip()
+    if source.endswith("\\"):
+        source = source[:-1].rstrip()
+    bold = re.match(r"\*\*(.*?)\*\*", source)
+    if bold:
+        return bold.group(1).strip()
+    return re.sub(r"[*_`]+", "", source).strip()
+
+
+def split_todos(lines):
+    todos = []
+    current = None
+    for index, line in enumerate(lines):
+        match = TODO_RE.match(line)
+        if match:
+            if current:
+                todos.append(current)
+            current = {
+                "start": index,
+                "checked": match.group(2).lower() == "x",
+                "title_source": match.group(3),
+                "lines": [line],
+            }
+        elif current:
+            current["lines"].append(line)
+    if current:
+        todos.append(current)
+    return todos
+
+
+def deindent(lines):
+    while lines and lines[0].strip() == "":
+        lines.pop(0)
+    while lines and lines[-1].strip() == "":
+        lines.pop()
+    indents = [len(line) - len(line.lstrip(" ")) for line in lines if line.strip()]
+    trim = min(indents) if indents else 0
+    if trim:
+        lines = [line[trim:] if len(line) >= trim else "" for line in lines]
+    return "\n".join(lines)
+
+
+def metadata_and_body(lines):
+    meta = {}
+    tags = []
+    body_lines = []
+    in_remind = False
+
+    for line in lines[1:]:
+        if re.match(r"^\s*```remind\s*$", line):
+            in_remind = True
+            continue
+        if in_remind:
+            if re.match(r"^\s*```\s*$", line):
+                in_remind = False
+            continue
+
+        match = META_RE.match(line)
+        if match:
+            key = match.group(1).lower()
+            value = match.group(2).strip()
+            if key == "tags":
+                tags.extend(token for token in value.split() if TAG_RE.match(token))
+            else:
+                meta[key] = value
+            continue
+        body_lines.append(line)
+
+    return meta, tags, deindent(body_lines).strip()
+
+
+def markdown_files(notes_root):
+    for root, dirs, files in os.walk(notes_root):
+        dirs[:] = [name for name in dirs if name not in {".git", ".stfolder", ".stversions"}]
+        for name in files:
+            if name.endswith(".md"):
+                yield os.path.join(root, name)
+
+
+def find_todo(notes_root, todo_id):
+    matches = []
+    for path in markdown_files(notes_root):
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                lines = handle.read().splitlines()
+        except UnicodeDecodeError:
+            continue
+
+        for item in split_todos(lines):
+            meta, tags, body = metadata_and_body(list(item["lines"]))
+            if meta.get("id") == todo_id:
+                matches.append(
+                    {
+                        "id": todo_id,
+                        "title": clean_title(item["title_source"]),
+                        "tags": tags,
+                        "body": body,
+                        "meta": meta,
+                        "checked": item["checked"],
+                        "source_file": path,
+                        "relative_file": os.path.relpath(path, notes_root),
+                        "line": item["start"] + 1,
+                    }
+                )
+
+    if len(matches) > 1:
+        die(f"duplicate @id {todo_id!r}; refusing to run")
+    if not matches:
+        die(f"no Foam TODO found for @id {todo_id!r}", code=1)
+    return matches[0]
+
+
+def payload_for(todo, notes_root):
+    meta = todo["meta"]
+    execution = {
+        "agent": "codex",
+        "model": meta.get("model") or None,
+        "cwd": os.path.expanduser(meta.get("cwd") or notes_root),
+        "sandbox": meta.get("sandbox") or "workspace-write",
+    }
+    if meta.get("timeout"):
+        execution["timeout_seconds"] = meta["timeout"]
+
+    return {
+        "schema": SCHEMA,
+        "source": {
+            "file": todo["source_file"],
+            "relative_file": todo["relative_file"],
+            "line": todo["line"],
+        },
+        "todo": {
+            "title": todo["title"],
+            "id": todo["id"],
+            "tags": todo["tags"],
+            "body": todo["body"],
+            "checked": todo["checked"],
+        },
+        "execution": execution,
+    }
+
+
+def origin_link(todo):
+    stem = os.path.splitext(os.path.basename(todo["relative_file"]))[0]
+    return f"[[{stem}#^{todo['id']}]]"
+
+
+def result_path(output_root, todo_id, started_at):
+    month_dir = os.path.join(output_root, started_at.strftime("%Y-%m"))
+    os.makedirs(month_dir, exist_ok=True)
+    safe_id = re.sub(r"[^A-Za-z0-9._:-]+", "-", todo_id).strip("-") or "todo"
+    return os.path.join(month_dir, f"{safe_id}-{started_at.strftime('%Y%m%dT%H%M%SZ')}.md")
+
+
+def write_result(path, todo, payload, started_at, finished_at, status, returncode, stdout, stderr):
+    text = "\n".join(
+        [
+            f"# Agent run | {todo['id']}",
+            "",
+            f"source: {origin_link(todo)}",
+            f"status: {status}",
+            f"agent: codex",
+            f"model: {payload['execution'].get('model') or ''}",
+            f"started_at_utc: {started_at.isoformat(timespec='seconds').replace('+00:00', 'Z')}",
+            f"finished_at_utc: {finished_at.isoformat(timespec='seconds').replace('+00:00', 'Z')}",
+            f"exit_code: {returncode}",
+            "",
+            "## Task",
+            "",
+            f"title: {todo['title']}",
+            f"id: {todo['id']}",
+            "",
+            "```text",
+            todo["body"],
+            "```",
+            "",
+            "## Stdout",
+            "",
+            "```text",
+            stdout.rstrip(),
+            "```",
+            "",
+            "## Stderr",
+            "",
+            "```text",
+            stderr.rstrip(),
+            "```",
+            "",
+        ]
+    )
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(text)
+
+
+def run(todo_id):
+    if not VALID_ID.match(todo_id):
+        die(f"invalid TODO id: {todo_id!r}")
+
+    notes_root = os.path.abspath(os.path.expanduser(os.environ.get("FOAM_REMIND_NOTES_ROOT", "~/data/notes/foam")))
+    output_root = os.path.abspath(
+        os.path.expanduser(os.environ.get("FOAM_REMIND_AGENT_OUTPUT_ROOT", os.path.join(notes_root, "misc/agent-runs")))
+    )
+    wrapper = os.path.abspath(os.path.expanduser(os.environ.get("FOAM_REMIND_AGENT_WRAPPER", "~/bin/agent-local-execution")))
+
+    todo = find_todo(notes_root, todo_id)
+    payload = payload_for(todo, notes_root)
+    started_at = utc_now()
+
+    try:
+        result = subprocess.run(
+            [wrapper, "--agent", "codex", "--input-json", "-"],
+            input=json.dumps(payload, ensure_ascii=False),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        die(f"agent wrapper not found: {wrapper}", code=127)
+
+    finished_at = utc_now()
+    status = "completed" if result.returncode == 0 else "failed"
+    path = result_path(output_root, todo_id, started_at)
+    write_result(path, todo, payload, started_at, finished_at, status, result.returncode, result.stdout, result.stderr)
+
+    log(f"{status} {todo_id}; result: {path}")
+    if result.returncode == 0:
+        notify("Agent TODO completed", todo_id)
+        return 0
+    notify("Agent TODO failed", todo_id)
+    return result.returncode or 1
+
+
+def usage():
+    print("Usage: foam-remind-agent-run <todo-id>", file=sys.stderr)
+    raise SystemExit(2)
+
+
+def main():
+    if len(sys.argv) != 2:
+        usage()
+    raise SystemExit(run(sys.argv[1]))
+
+
+if __name__ == "__main__":
+    main()

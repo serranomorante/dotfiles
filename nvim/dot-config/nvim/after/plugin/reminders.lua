@@ -6,7 +6,13 @@ local NOTES_DIR = vim.env.HOME .. "/data/notes/foam"
 
 local function shell_quote(value) return "'" .. value:gsub("'", [['"'"']]) .. "'" end
 
-local function run_argv(value)
+local function run_argv(value, metadata)
+  if value == "agent" then
+    if metadata.id then return { "agent", metadata.id } end
+    vim.notify("Invalid remind @run agent: TODO is missing @id", vim.log.levels.ERROR)
+    return nil
+  end
+
   local argv = {}
 
   for token in value:gmatch("%S+") do
@@ -56,14 +62,14 @@ local function parse_remind_block(lines, start_lnum)
   return block, lnum
 end
 
-local function reminder_items_for_block(title, block)
+local function reminder_items_for_block(title, block, metadata)
   local items = {}
   local run = nil
 
   for _, line in ipairs(block) do
     local candidate = line:match("^%s*@run%s+(.+)%s*$")
     if candidate then
-      local argv = run_argv(candidate)
+      local argv = run_argv(candidate, metadata)
       if argv then
         run = argv
       else
@@ -80,6 +86,17 @@ local function reminder_items_for_block(title, block)
   end
 
   return items
+end
+
+local function todo_metadata(lines, start_lnum, end_lnum)
+  local metadata = {}
+
+  for lnum = start_lnum + 1, end_lnum - 1 do
+    local key, value = lines[lnum]:match("^%s*@([A-Za-z][A-Za-z0-9_-]*)%s+(.+)%s*$")
+    if key then metadata[key:lower()] = value:gsub("%s+$", "") end
+  end
+
+  return metadata
 end
 
 local function has_remind_dir()
@@ -111,7 +128,7 @@ local function remind_update()
           while search_lnum <= math.min(#lines, lnum + 12) do
             if lines[search_lnum]:match("^%s%s```remind%s*$") then
               local block, end_lnum = parse_remind_block(lines, search_lnum)
-              vim.list_extend(items, reminder_items_for_block(title, block))
+              vim.list_extend(items, reminder_items_for_block(title, block, todo_metadata(lines, lnum, search_lnum)))
               lnum = end_lnum
               break
             end
