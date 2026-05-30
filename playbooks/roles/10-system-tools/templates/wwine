@@ -3,17 +3,18 @@
 # Wrapper installed as ~/bin/wwine for running Wine tools against managed
 # prefixes with a pinned Wine build.
 #
-# The Ansible role renders the Wine executable/library environment and a small
-# alias map into this template, so callers can use stable names such as
-# `--prefix reaper` instead of repeating full WINEPREFIX paths and Wine build
-# variables. The wrapper also applies the prefix's default WINEARCH when one is
-# configured.
+# The Ansible role renders the Wine executable/library environment, prefix
+# aliases, and optional sandbox profiles into this template. Callers can use
+# stable names such as `--prefix reaper` instead of repeating full WINEPREFIX
+# paths and Wine build variables. The same template is also installed as
+# `wwine-wine-loader`, a WINELOADER-compatible entrypoint for tools such as
+# yabridge that can only execute a single Wine loader path without arguments.
 #
 # By default, `wine` and `winecfg` are launched with Wine's virtual desktop
 # enabled. That keeps Windows application windows contained and predictable for
 # the music-production prefixes. Use `--no-desktop` when a command must run
-# without that registry setting, such as selected maintenance or registry
-# operations. Keep the default desktop name as `Default`: Ansible wait loops
+# without that registry setting, such as selected maintenance or yabridge host
+# launches. Keep the default desktop name as `Default`: Ansible wait loops
 # match Wine virtual desktop windows through `wmctrl -lx` and `explorer.exe`,
 # while the DWM Wine rule also expects Wine's virtual desktop window title.
 
@@ -21,9 +22,9 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: wwine --prefix <alias-or-path> [--arch <arch>] [--no-desktop] <tool> [tool-args...]
+usage: wwine --prefix <alias-or-path> [--arch <arch>] [--desktop|--no-desktop] [--use-sandbox] [--sandbox-profile <path>] [--sandbox-check-profile <path>] [--sandbox-name <name>] <tool> [tool-args...]
 
-tools: wine, winecfg, wineserver, winetricks, wineboot
+tools: wine, winecfg, wineserver, winetricks, wineboot, prepare-env
 EOF
 }
 
@@ -32,84 +33,230 @@ die() {
   exit 1
 }
 
+shell_export() {
+  local name="$1"
+  local value="$2"
+
+  printf 'export %s=%q\n' "$name" "$value"
+}
+
+bool_arg() {
+  case "$1" in
+    1|true|yes|on)
+      printf '1\n'
+      ;;
+    *)
+      printf '0\n'
+      ;;
+  esac
+}
+
+is_inside_firejail() {
+  [[ -d /run/firejail/profile ]] && ! ls /run/firejail/profile >/dev/null 2>&1
+}
+
+sandbox_is_registered() {
+  [[ -n "$sandbox_name" ]] || return 1
+
+  firejail --list 2>/dev/null | awk -F: -v name="$sandbox_name" '$3 == name { found = 1 } END { exit found ? 0 : 1 }'
+}
+
+exec_named_firejail() {
+  local -a firejail_command=("$@")
+  local lock_dir="${XDG_RUNTIME_DIR:-/tmp}/wwine"
+  local lock_key="${sandbox_name//[^A-Za-z0-9_.-]/_}"
+  local sandbox_lock_fd
+  local firejail_pid
+  local status
+
+  command -v flock >/dev/null 2>&1 || die "cannot serialize Firejail sandbox startup because flock is missing"
+
+  mkdir -p "$lock_dir"
+  exec {sandbox_lock_fd}>"$lock_dir/${lock_key}.lock"
+  flock "$sandbox_lock_fd"
+
+  "${firejail_command[@]}" &
+  firejail_pid=$!
+
+  while kill -0 "$firejail_pid" 2>/dev/null; do
+    if sandbox_is_registered; then
+      break
+    fi
+    sleep 0.05
+  done
+
+  flock -u "$sandbox_lock_fd" || true
+  exec {sandbox_lock_fd}>&-
+
+  set +e
+  wait "$firejail_pid"
+  status=$?
+  set -e
+  exit "$status"
+}
+
+script_name="${0##*/}"
+loader_mode=0
+if [[ "$script_name" == "wwine-wine-loader" ]]; then
+  loader_mode=1
+fi
+
 prefix=""
 arch=""
 use_desktop=1
+use_sandbox=0
+sandbox_profile=""
+sandbox_check_profile=""
+sandbox_name=""
+sandbox_attempted="$(bool_arg "${WWINE_SANDBOX_ATTEMPTED:-0}")"
 desktop_name="Default"
 desktop_size=""
 fallback_desktop_size="1920x1080"
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --prefix)
-      shift
-      [[ $# -gt 0 ]] || die "missing value for --prefix"
-      prefix="$1"
-      ;;
-    --prefix=*)
-      prefix="${1#*=}"
-      ;;
-    --arch)
-      shift
-      [[ $# -gt 0 ]] || die "missing value for --arch"
-      arch="$1"
-      ;;
-    --arch=*)
-      arch="${1#*=}"
-      ;;
-    --desktop)
-      use_desktop=1
-      ;;
-    --desktop=*)
-      use_desktop=1
-      desktop_size="${1#*=}"
-      ;;
-    --desktop-name)
-      shift
-      [[ $# -gt 0 ]] || die "missing value for --desktop-name"
-      desktop_name="$1"
-      ;;
-    --desktop-name=*)
-      desktop_name="${1#*=}"
-      ;;
-    --no-desktop)
-      use_desktop=0
-      ;;
-    --help|-h)
-      usage
-      exit 0
-      ;;
-    --)
-      shift
-      break
-      ;;
-    -*)
-      die "unknown option: $1"
-      ;;
-    *)
-      break
-      ;;
-  esac
+if [[ "$loader_mode" == 1 ]]; then
+  prefix="${WWINE_PREFIX_ALIAS:-}"
+  arch="${WINEARCH:-}"
+  use_desktop="$(bool_arg "${WWINE_USE_DESKTOP:-0}")"
+  use_sandbox="$(bool_arg "${WWINE_USE_SANDBOX:-0}")"
+  sandbox_profile="${WWINE_SANDBOX_PROFILE:-}"
+  sandbox_check_profile="${WWINE_SANDBOX_CHECK_PROFILE:-}"
+  sandbox_name="${WWINE_SANDBOX_NAME:-}"
+  tool="wine"
+else
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --prefix)
+        shift
+        [[ $# -gt 0 ]] || die "missing value for --prefix"
+        prefix="$1"
+        ;;
+      --prefix=*)
+        prefix="${1#*=}"
+        ;;
+      --arch)
+        shift
+        [[ $# -gt 0 ]] || die "missing value for --arch"
+        arch="$1"
+        ;;
+      --arch=*)
+        arch="${1#*=}"
+        ;;
+      --desktop)
+        use_desktop=1
+        ;;
+      --desktop=*)
+        use_desktop=1
+        desktop_size="${1#*=}"
+        ;;
+      --desktop-name)
+        shift
+        [[ $# -gt 0 ]] || die "missing value for --desktop-name"
+        desktop_name="$1"
+        ;;
+      --desktop-name=*)
+        desktop_name="${1#*=}"
+        ;;
+      --no-desktop)
+        use_desktop=0
+        ;;
+      --use-sandbox)
+        use_sandbox=1
+        ;;
+      --no-sandbox)
+        use_sandbox=0
+        sandbox_profile=""
+        ;;
+      --sandbox-profile)
+        shift
+        [[ $# -gt 0 ]] || die "missing value for --sandbox-profile"
+        sandbox_profile="$1"
+        use_sandbox=1
+        ;;
+      --sandbox-profile=*)
+        sandbox_profile="${1#*=}"
+        use_sandbox=1
+        ;;
+      --sandbox-check-profile)
+        shift
+        [[ $# -gt 0 ]] || die "missing value for --sandbox-check-profile"
+        sandbox_check_profile="$1"
+        ;;
+      --sandbox-check-profile=*)
+        sandbox_check_profile="${1#*=}"
+        ;;
+      --sandbox-name)
+        shift
+        [[ $# -gt 0 ]] || die "missing value for --sandbox-name"
+        sandbox_name="$1"
+        ;;
+      --sandbox-name=*)
+        sandbox_name="${1#*=}"
+        ;;
+      --help|-h)
+        usage
+        exit 0
+        ;;
+      --)
+        shift
+        break
+        ;;
+      -*)
+        die "unknown option: $1"
+        ;;
+      *)
+        break
+        ;;
+    esac
+    shift
+  done
+
+  [[ $# -gt 0 ]] || {
+    usage
+    die "missing tool"
+  }
+
+  tool="$1"
   shift
-done
+fi
+
+if [[ -z "$prefix" && -n "${WINEPREFIX:-}" ]]; then
+  case "$WINEPREFIX" in
+{% for name, config in wwine_prefix_aliases.items() %}
+    "{{ config.path }}")
+      prefix="{{ name }}"
+      ;;
+{% endfor %}
+  esac
+fi
+
+if [[ -z "$prefix" && -n "${WINEPREFIX:-}" ]]; then
+  prefix="$WINEPREFIX"
+fi
 
 [[ -n "$prefix" ]] || {
   usage
   die "--prefix is required"
 }
-[[ $# -gt 0 ]] || {
-  usage
-  die "missing tool"
-}
 
 resolved_prefix=""
+prefix_alias=""
 
 case "$prefix" in
 {% for name, config in wwine_prefix_aliases.items() %}
   {{ name }})
+    prefix_alias="{{ name }}"
     resolved_prefix="{{ config.path }}"
     {% if config.architecture is defined %}
     [[ -n "$arch" ]] || arch="{{ config.architecture }}"
+    {% endif %}
+    {% if config.sandbox_profile is defined %}
+    [[ -n "$sandbox_profile" ]] || sandbox_profile="{{ config.sandbox_profile }}"
+    {% endif %}
+    {% if config.sandbox_check_profile is defined %}
+    [[ -n "$sandbox_check_profile" ]] || sandbox_check_profile="{{ config.sandbox_check_profile }}"
+    {% endif %}
+    {% if config.sandbox_name is defined %}
+    [[ -n "$sandbox_name" ]] || sandbox_name="{{ config.sandbox_name }}"
     {% endif %}
     ;;
 {% endfor %}
@@ -118,8 +265,12 @@ case "$prefix" in
     ;;
 esac
 
+real_wine_loader="{{ wine_env_vars.WINELOADER }}"
+wwine_loader="{{ ansible_facts.env.HOME }}/bin/wwine-wine-loader"
+profile_checker="{{ ansible_facts.env.HOME }}/bin/fj-profile-checker"
+
 export WINEVERPATH="{{ wine_env_vars.WINEVERPATH }}"
-export WINELOADER="{{ wine_env_vars.WINELOADER }}"
+export WINELOADER="$real_wine_loader"
 export WINESERVER="{{ wine_env_vars.WINESERVER }}"
 export WINEDLLPATH="{{ wine_env_vars.WINEDLLPATH }}"
 export LD_LIBRARY_PATH="{{ wine_env_vars.LD_LIBRARY_PATH }}"
@@ -131,15 +282,96 @@ if [[ -n "$arch" ]]; then
   export WINEARCH="$arch"
 fi
 
+if [[ "$use_sandbox" == 1 && -z "$sandbox_profile" ]]; then
+  die "--use-sandbox needs a sandbox_profile for this prefix or --sandbox-profile"
+fi
+
+if [[ -z "$sandbox_check_profile" ]]; then
+  sandbox_check_profile="$sandbox_profile"
+fi
+
+verify_inherited_sandbox() {
+  if [[ ! -x "$profile_checker" ]]; then
+    die "cannot verify inherited Firejail sandbox because fj-profile-checker is missing: $profile_checker"
+  fi
+
+  "$profile_checker" "$sandbox_check_profile" -- true
+}
+
+if [[ "$use_sandbox" == 1 && "$tool" != "prepare-env" ]]; then
+  if is_inside_firejail; then
+    verify_inherited_sandbox
+  else
+    if [[ "$sandbox_attempted" == 1 ]]; then
+      die "Firejail re-executed wwine without entering the expected sandbox"
+    fi
+
+    if [[ ! -x "$profile_checker" ]]; then
+      die "cannot start a verifiable Firejail sandbox because fj-profile-checker is missing: $profile_checker"
+    fi
+
+    export WWINE_SANDBOX_ATTEMPTED=1
+
+    if [[ "$loader_mode" == 1 ]]; then
+      if [[ -n "$sandbox_name" ]]; then
+        exec_named_firejail firejail --profile="$sandbox_profile" --join-or-start="$sandbox_name" "$0" "$@"
+      fi
+
+      exec firejail --profile="$sandbox_profile" "$0" "$@"
+    fi
+
+    reexec_args=(--prefix "$prefix" --use-sandbox)
+    if [[ -n "$sandbox_check_profile" ]]; then
+      reexec_args+=(--sandbox-check-profile "$sandbox_check_profile")
+    fi
+    if [[ -n "$arch" ]]; then
+      reexec_args+=(--arch "$arch")
+    fi
+    if [[ "$use_desktop" == 1 ]]; then
+      if [[ -n "$desktop_size" ]]; then
+        reexec_args+=(--desktop="$desktop_size")
+      else
+        reexec_args+=(--desktop)
+      fi
+    else
+      reexec_args+=(--no-desktop)
+    fi
+    if [[ "$desktop_name" != "Default" ]]; then
+      reexec_args+=(--desktop-name "$desktop_name")
+    fi
+    if [[ -n "$sandbox_name" ]]; then
+      reexec_args+=(--sandbox-name "$sandbox_name")
+    fi
+
+    if [[ -n "$sandbox_name" ]]; then
+      exec_named_firejail firejail --profile="$sandbox_profile" --join-or-start="$sandbox_name" "$0" "${reexec_args[@]}" "$tool" "$@"
+    fi
+
+    exec firejail --profile="$sandbox_profile" "$0" "${reexec_args[@]}" "$tool" "$@"
+  fi
+fi
+
+run_wine_loader() {
+  "$WINELOADER" "$@"
+}
+
+exec_wine_loader() {
+  exec "$WINELOADER" "$@"
+}
+
+exec_program() {
+  exec "$@"
+}
+
 configure_desktop() {
   if [[ "$use_desktop" == 1 ]]; then
     if [[ -z "$desktop_size" ]]; then
       desktop_size="$(default_desktop_size)"
     fi
-    "$WINELOADER" reg add 'HKEY_CURRENT_USER\Software\Wine\Explorer' /v Desktop /d "$desktop_name" /f >/dev/null
-    "$WINELOADER" reg add 'HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops' /v "$desktop_name" /d "$desktop_size" /f >/dev/null
+    run_wine_loader reg add 'HKEY_CURRENT_USER\Software\Wine\Explorer' /v Desktop /d "$desktop_name" /f >/dev/null
+    run_wine_loader reg add 'HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops' /v "$desktop_name" /d "$desktop_size" /f >/dev/null
   else
-    "$WINELOADER" reg delete 'HKEY_CURRENT_USER\Software\Wine\Explorer' /v Desktop /f >/dev/null 2>&1 || true
+    run_wine_loader reg delete 'HKEY_CURRENT_USER\Software\Wine\Explorer' /v Desktop /f >/dev/null 2>&1 || true
   fi
 }
 
@@ -171,26 +403,56 @@ configure_desktop_for_wine_args() {
   esac
 }
 
-tool="$1"
-shift
+print_environment() {
+  local exported_wine_loader="$real_wine_loader"
+
+  if [[ "$use_sandbox" == 1 ]]; then
+    exported_wine_loader="$wwine_loader"
+  fi
+
+  shell_export WINEVERPATH "$WINEVERPATH"
+  shell_export WINELOADER "$exported_wine_loader"
+  shell_export WINESERVER "$WINESERVER"
+  shell_export WINEDLLPATH "$WINEDLLPATH"
+  shell_export LD_LIBRARY_PATH "$LD_LIBRARY_PATH"
+  shell_export PATH "$PATH"
+  shell_export WINEFSYNC "$WINEFSYNC"
+  shell_export WINEPREFIX "$WINEPREFIX"
+  shell_export WWINE_PREFIX_ALIAS "$prefix_alias"
+  shell_export WWINE_USE_DESKTOP "$use_desktop"
+  shell_export WWINE_USE_SANDBOX "$use_sandbox"
+  shell_export WWINE_SANDBOX_PROFILE "$sandbox_profile"
+  shell_export WWINE_SANDBOX_CHECK_PROFILE "$sandbox_check_profile"
+  shell_export WWINE_SANDBOX_NAME "$sandbox_name"
+
+  if [[ -n "${WINEARCH:-}" ]]; then
+    shell_export WINEARCH "$WINEARCH"
+  fi
+}
 
 case "$tool" in
   wine)
     configure_desktop_for_wine_args "$@"
-    exec "$WINELOADER" "$@"
+    exec_wine_loader "$@"
     ;;
   winecfg)
     configure_desktop
-    exec "$WINEVERPATH/bin/winecfg" "$@"
+    exec_program "$WINEVERPATH/bin/winecfg" "$@"
     ;;
   wineserver)
-    exec "$WINESERVER" "$@"
+    exec_program "$WINESERVER" "$@"
     ;;
   wineboot)
-    exec "$WINEVERPATH/bin/wineboot" "$@"
+    exec_program "$WINEVERPATH/bin/wineboot" "$@"
     ;;
   winetricks)
-    exec winetricks "$@"
+    exec_program winetricks "$@"
+    ;;
+  prepare-env)
+    if [[ "$loader_mode" == 1 ]]; then
+      die "prepare-env cannot be used from wwine-wine-loader"
+    fi
+    print_environment
     ;;
   *)
     usage

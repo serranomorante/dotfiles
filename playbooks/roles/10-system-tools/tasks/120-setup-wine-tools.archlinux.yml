@@ -114,11 +114,14 @@
     - ~/data/Downloads
     - ~/data/Downloads/music-production
 
-- name: "[archlinux] Wine tools: install wwine wrapper"
+- name: "[archlinux] Wine tools: install wwine wrappers"
   ansible.builtin.template:
     src: wwine
-    dest: ~/bin/wwine
+    dest: "~/bin/{{ item }}"
     mode: "755"
+  loop:
+    - wwine
+    - wwine-wine-loader
 
 - name: force handler
   ansible.builtin.command: echo

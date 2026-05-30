@@ -37,15 +37,15 @@ if [ "${1:-}" = "--" ]; then
 fi
 
 "{{ ansible_facts.env.HOME }}/.local/bin/connect-reaper-to-music-production" &
-"{{ ansible_facts.env.HOME }}/bin/wwine" --prefix reaper --no-desktop wine reg query 'HKEY_CURRENT_USER\Software\Wine' >/dev/null 2>&1 || true
+if [ "$use_firejail" -eq 1 ]; then
+  eval "$("{{ ansible_facts.env.HOME }}/bin/wwine" --prefix reaper --no-desktop prepare-env)"
+else
+  eval "$("{{ ansible_facts.env.HOME }}/bin/wwine" --prefix reaper --no-desktop --use-sandbox prepare-env)"
+fi
 
 kitty_args=(
   --hold
-  -o "env=WINEPREFIX={{ arch_reaper_wine_setup.wine_prefix }}"
   -o "env=WINEDEBUG=-all,+err"
-{% for env in wine_env_vars.items() %}
-  -o "env={{ env | join('=') }}"
-{% endfor %}
 {% for env in pipewire_latency_vars.items() %}
   -o "env={{ env | join('=') }}"
 {% endfor %}
@@ -54,7 +54,7 @@ kitty_args=(
 
 reaper_cmd=(/usr/bin/reaper "$@")
 if [ "$use_firejail" -eq 1 ]; then
-  reaper_cmd=(firejail --profile="{{ ansible_facts.env.HOME }}/.config/firejail/wine.local" "${reaper_cmd[@]}")
+  reaper_cmd=(firejail --profile="{{ ansible_facts.env.HOME }}/.config/firejail/wine-reaper.local" --join-or-start=wwine-reaper "${reaper_cmd[@]}")
 fi
 
 exec kitty "${kitty_args[@]}" "${reaper_cmd[@]}"
