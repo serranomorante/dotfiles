@@ -1,0 +1,151 @@
+#!/usr/bin/env sh
+set -eu
+
+# Purpose: verify that the current sandbox satisfies the filesystem rules in an
+# expected Firejail profile before reusing it for a child command.
+# Usage: fj-profile-checker <profile|profile-path> -- command [args...]
+
+SCRIPT_NAME=fj-profile-checker
+
+die() {
+    printf '%s: %s\n' "$SCRIPT_NAME" "$*" >&2
+    exit 1
+}
+
+expand_home_path() {
+    path=$1
+    case "$path" in
+    '${HOME}'/*)
+        printf '%s/%s\n' "$HOME" "${path#'${HOME}/'}"
+        ;;
+    '~'/*)
+        printf '%s/%s\n' "$HOME" "${path#'~/'}"
+        ;;
+    *)
+        printf '%s\n' "$path"
+        ;;
+    esac
+}
+
+strip_trailing_comment() {
+    printf '%s\n' "${1%%#*}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+}
+
+assert_hidden() {
+    path=$1
+    [ ! -r "$path" ] && [ ! -w "$path" ] && [ ! -x "$path" ] || die "sandbox exposes blocked path: $path"
+}
+
+assert_visible() {
+    path=$1
+    [ -e "$path" ] || die "sandbox does not expose required path: $path"
+}
+
+assert_readonly() {
+    path=$1
+    [ ! -w "$path" ] || die "sandbox exposes read-only path as writable: $path"
+}
+
+canonicalize_file() {
+    file=$1
+    [ -r "$file" ] || die "cannot read Firejail profile: $file"
+    dir=$(dirname "$file")
+    base=$(basename "$file")
+    dir=$(cd "$dir" >/dev/null 2>&1 && pwd -P) || die "cannot resolve profile directory: $dir"
+    printf '%s/%s\n' "$dir" "$base"
+}
+
+resolve_profile_path() {
+    profile=$1
+    profile=$(expand_home_path "$profile")
+
+    case "$profile" in
+    /*)
+        printf '%s\n' "$profile"
+        ;;
+    */*)
+        printf '%s/%s\n' "$(pwd -P)" "$profile"
+        ;;
+    *)
+        printf '%s/%s\n' "$profile_dir" "$profile"
+        ;;
+    esac
+}
+
+resolve_include_path() {
+    include=$1
+    current_dir=$2
+    include=$(expand_home_path "$include")
+
+    case "$include" in
+    /*)
+        printf '%s\n' "$include"
+        return
+        ;;
+    */*)
+        printf '%s/%s\n' "$current_dir" "$include"
+        return
+        ;;
+    esac
+
+    if [ -r "$current_dir/$include" ]; then
+        printf '%s/%s\n' "$current_dir" "$include"
+    elif [ -r "$profile_dir/$include" ]; then
+        printf '%s/%s\n' "$profile_dir" "$include"
+    elif [ -r "/etc/firejail/$include" ]; then
+        printf '%s/%s\n' "/etc/firejail" "$include"
+    else
+        die "cannot resolve included Firejail profile: $include"
+    fi
+}
+
+checked_files='|'
+
+check_profile_file() {
+    file=$(canonicalize_file "$1")
+    case "$checked_files" in
+    *"|$file|"*)
+        return
+        ;;
+    esac
+    checked_files="${checked_files}${file}|"
+    current_dir=$(dirname "$file")
+
+    while IFS= read -r raw_line || [ -n "$raw_line" ]; do
+        line=$(strip_trailing_comment "$raw_line")
+        case "$line" in
+        include\ *)
+            include_path=$(resolve_include_path "${line#include }" "$current_dir")
+            check_profile_file "$include_path"
+            ;;
+        whitelist\ *)
+            path=${line#* }
+            path=$(expand_home_path "$path")
+            assert_visible "$path"
+            ;;
+        whitelist-ro\ *)
+            path=${line#* }
+            path=$(expand_home_path "$path")
+            assert_visible "$path"
+            assert_readonly "$path"
+            ;;
+        blacklist\ *)
+            path=${line#blacklist }
+            path=$(expand_home_path "$path")
+            assert_hidden "$path"
+            ;;
+        esac
+    done <"$file"
+}
+
+profile_dir="${HOME}/.config/firejail"
+
+[ $# -ge 3 ] || die "expected: profile -- command [args...]"
+profile_path=$(resolve_profile_path "$1")
+shift
+[ "$1" = "--" ] || die "expected command separator --"
+shift
+
+check_profile_file "$profile_path"
+
+exec "$@"

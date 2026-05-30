@@ -99,7 +99,6 @@ path_value=${PATH:-/usr/local/bin:/usr/bin:/bin}
 profile_path=$(firejail_profile_path "$real_home" "fj-dev-nvim.profile")
 nvim_bin="${real_home}/bin/nvim"
 forward_env=$'FZF_DEFAULT_COMMAND\nFZF_DEFAULT_OPTS\nFZF_DEFAULT_OPTS_FILE\nKITTY_LISTEN_ON'
-sandbox_marker=/tmp/dotfiles-fj-dev-nvim-sandbox
 RW_PATHS=
 
 while [[ $# -gt 0 ]]; do
@@ -143,14 +142,7 @@ init_clean_env
 append_common_terminal_env
 append_env_literal HOME "$real_home"
 append_env_literal PATH "$path_value"
-append_env_literal DOTFILES_FIREJAIL_WRAPPER "fj-dev-nvim"
-append_env_literal DOTFILES_FIREJAIL_MARKER "$sandbox_marker"
 append_env_names_if_set "$forward_env"
 
 cd "$work_root"
-exec "${FIREJAIL_ARGS[@]}" "${ENV_ARGS[@]}" /bin/sh -c '
-marker=${DOTFILES_FIREJAIL_MARKER:?}
-umask 077
-printf "%s\n" "fj-dev-nvim" > "$marker"
-exec "$@"
-' sh "$nvim_bin" "${nvim_args[@]}"
+exec "${FIREJAIL_ARGS[@]}" "${ENV_ARGS[@]}" "$nvim_bin" "${nvim_args[@]}"

@@ -29,6 +29,12 @@
     dest: "{{ nvim_firejail_executable }}"
     mode: "755"
 
+- name: "[archlinux] Neovim: install firejail profile checker"
+  ansible.builtin.copy:
+    src: fj-profile-checker
+    dest: "{{ node_user_bin_dir }}/fj-profile-checker"
+    mode: "755"
+
 - name: "[archlinux] Neovim: remove old firejail dev wrappers"
   ansible.builtin.file:
     path: "{{ item }}"
@@ -38,6 +44,7 @@
     - "{{ ansible_facts.env.HOME }}/.config/firejail/fj-dev-python.profile"
     - "{{ node_user_bin_dir }}/fj-dev-node"
     - "{{ node_user_bin_dir }}/fj-dev-python"
+    - "{{ node_user_bin_dir }}/fj-dev-nvim-checker"
 
 - name: "[archlinux] Neovim: ensure Neovim - clone"
   ansible.builtin.git:

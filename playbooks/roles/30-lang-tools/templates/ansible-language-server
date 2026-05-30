@@ -3,17 +3,15 @@
 
 node_bin="{{ node_volta_home }}/tools/image/node/{{ node_ansible_language_server_version }}/bin/node"
 server_bin="{{ node_ansible_language_server_npm_prefix }}/bin/ansible-language-server"
+checker_bin="{{ node_user_bin_dir }}/fj-profile-checker"
+inherited_profile="${HOME}/.config/firejail/fj-dev-nvim.profile"
 
-is_fj_dev_nvim_sandbox() {
-    [ "${DOTFILES_FIREJAIL_WRAPPER:-}" = "fj-dev-nvim" ] || return 1
-    [ "${DOTFILES_FIREJAIL_MARKER:-}" = "/tmp/dotfiles-fj-dev-nvim-sandbox" ] || return 1
-    [ -r "$DOTFILES_FIREJAIL_MARKER" ] || return 1
-    [ -f "$DOTFILES_FIREJAIL_MARKER" ] || return 1
-    [ "$(cat "$DOTFILES_FIREJAIL_MARKER")" = "fj-dev-nvim" ] || return 1
+is_inside_firejail() {
+    [ -d /run/firejail/profile ] && ! ls /run/firejail/profile >/dev/null 2>&1
 }
 
-if is_fj_dev_nvim_sandbox; then
-    exec "$node_bin" "$server_bin" "$@"
+if is_inside_firejail; then
+    exec "$checker_bin" "$inherited_profile" -- "$node_bin" "$server_bin" "$@"
 fi
 
 project_root=$(pwd -P)
