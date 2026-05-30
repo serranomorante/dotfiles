@@ -26,7 +26,7 @@ After the playbook succeeds, reboot and select the `linux-rt-lts` UKI from syste
 
 ## Expected Side Effects
 
-The audio stack is already mostly prepared for RT use: `realtime-privileges`, `rtirq`, `cpupower`, PipeWire/JACK, the `realtime` group membership, and `threadirqs` are managed by the audio role. The audio role prioritizes generic USB IRQ handlers before HDA audio because this workstation's USB interface is attached through an `xhci_hcd` IRQ that `rtirq` does not reliably discover through its `snd-usb` helper path. Full `PREEMPT_RT` still cannot make the NVIDIA driver realtime-safe, so xruns can still happen under display or GPU load.
+The audio stack is already mostly prepared for RT use: `realtime-privileges`, `rtirq`, `cpupower`, PipeWire/JACK, the `realtime` group membership, and `threadirqs` are managed by the audio role. The audio role prioritizes generic USB IRQ handlers before HDA audio because this workstation's USB interface is attached through an `xhci_hcd` IRQ that `rtirq` does not reliably discover through its `snd-usb` helper path. Keep low PipeWire/JACK latency launcher-scoped through `pipewire_latency_vars`; do not set `node.force-quantum` or `node.latency` in global JACK config unless every JACK client should inherit it. Full `PREEMPT_RT` still cannot make the NVIDIA driver realtime-safe, so xruns can still happen under display or GPU load.
 
 The NVIDIA display workflow should remain functionally the same because the userspace packages, Xorg offload config, SDDM `Xsetup`, `nvidia-prime-rtd3pm`, and `/etc/cmdline.d/video.conf` are unchanged. The higher-risk part is DKMS build success for the open module against the RT headers.
 

@@ -109,6 +109,7 @@ The voice fallback layer should stay local and reproducible. Keep package owners
 ## REAPER
 
 REAPER scripts that should be managed by Ansible live in `assets/scripts/reaper/`. Native Linux REAPER startup hooks are installed from `assets/scripts/reaper/__startup.lua` by the `10-120` wine-tools task into `~/.config/REAPER/Scripts/__startup.lua`; keep per-feature startup logic in separate files under `Scripts/custom/` and load them from that entrypoint. WineASIO for Windows REAPER is built by the same `10-120` wine-tools task from `wine-tools/wineasio.task.yml`, installed into both the managed portable Wine tree and system Wine tree, and registered into the Reaper Wine prefix. Wine commands launched through `~/bin/wwine` use Wine's virtual desktop by default. Keep the default virtual desktop registry name as `Default`: installer wait loops poll `wmctrl -lx` for `explorer.exe`, and the DWM Wine rule relies on Wine's virtual desktop window identity staying stable. The default virtual desktop size is derived at runtime from the current X11 monitor through `utilities/bin/x11-monitor-geometry`; use `wwine --desktop=<WxH>` only for intentional fixed-size overrides.
+Launcher-scoped PipeWire latency for REAPER and AudioGridder lives in `pipewire_latency_vars` under `playbooks/roles/10-system-tools/defaults/main/music-production.vars.yml`; keep `arch_wineasio_setup.reaper_block_size` aligned with that quantum when changing the test buffer for Windows REAPER.
 
 ## Keyboard And Mouse-Free Workflow
 
