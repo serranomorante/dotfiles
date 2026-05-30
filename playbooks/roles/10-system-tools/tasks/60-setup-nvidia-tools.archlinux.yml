@@ -5,11 +5,22 @@
       - arch_has_nvidia_gpu is defined
     fail_msg: "arch_has_nvidia_gpu must be set by the playbook pre_tasks before running nvidia tools."
 
-- name: "[archlinux] Nvidia tools: ensure nvidia packages"
+- name: "[archlinux] Nvidia tools: remove LTS-only kernel module packages"
   become: true
   ansible.builtin.package:
     name:
       - nvidia-open-lts
+      - nvidia-lts
+    state: absent
+  when:
+    - arch_has_nvidia_gpu
+    - is_x_display_session
+
+- name: "[archlinux] Nvidia tools: ensure nvidia packages"
+  become: true
+  ansible.builtin.package:
+    name:
+      - nvidia-open-dkms
       - nvidia-prime
       - nvidia-settings
       - nvidia-utils

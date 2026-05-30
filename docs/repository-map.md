@@ -203,6 +203,7 @@ DWM float rules support the local `FULLMON` sentinel for windows that should fil
 Specific operational notes live in `docs/`, including keyd setup, NVIDIA setup, Neovim debugging, Python development setup, and hardware-specific notes. Prefer adding focused docs there instead of expanding the root README with long implementation details.
 
 - Browser launcher resource limits are documented in [browser-resource-limits.md](./browser-resource-limits.md).
+- Realtime kernel migration notes for the Secure Boot, TPM, NVIDIA DKMS, and VirtualBox DKMS switch are documented in [realtime-kernel-migration.md](./realtime-kernel-migration.md).
 
 ## KDE Runtime Configuration
 

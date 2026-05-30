@@ -15,10 +15,17 @@
     state: present
     name:
       - virtualbox
-      - virtualbox-host-modules-lts
+      - virtualbox-host-dkms
       - virtualbox-guest-iso # https://wiki.archlinux.org/title/VirtualBox#Guest_additions
       - virtualbox-guest-utils
   timeout: 600
+
+- name: "[archlinux] Setup virtualbox: remove LTS-only host modules"
+  become: true
+  ansible.builtin.package:
+    state: absent
+    name:
+      - virtualbox-host-modules-lts
 
 # https://wiki.archlinux.org/title/VirtualBox#Accessing_host_USB_devices_in_guest
 - name: "[archlinux] Setup virtualbox: ensure vboxusers group"

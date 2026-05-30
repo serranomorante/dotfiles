@@ -1,0 +1,192 @@
+---
+- hosts: localhost
+  gather_facts: true
+  vars:
+    realtime_kernel_packages:
+      - linux-lts
+      - linux-lts-headers
+      - linux-rt-lts
+      - linux-rt-lts-headers
+    realtime_nvidia_lts_module_packages:
+      - nvidia-open-lts
+      - nvidia-lts
+    realtime_dkms_packages:
+      - nvidia-open-dkms
+      - virtualbox-host-dkms
+    realtime_dkms_module_names:
+      - nvidia
+      - vboxhost
+    realtime_dkms_module_pattern: "^({{ realtime_dkms_module_names | join('|') }})/"
+    realtime_virtualbox_lts_module_packages:
+      - virtualbox-host-modules-lts
+    realtime_virtualbox_modules_load_mask: /etc/modules-load.d/virtualbox-host-dkms.conf
+    realtime_uki_presets:
+      - path: /etc/mkinitcpio.d/linux-lts.preset
+        pkgbase: linux-lts
+      - path: /etc/mkinitcpio.d/linux-rt-lts.preset
+        pkgbase: linux-rt-lts
+    realtime_saved_uki_files:
+      - /boot/EFI/Linux/arch-linux-lts.efi
+      - /boot/EFI/Linux/arch-linux-rt-lts.efi
+
+  tasks:
+    - name: "[archlinux] Realtime migration: assert Arch Linux"
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.distribution == "Archlinux"
+        fail_msg: "This migration playbook is only for the Arch Linux workstation."
+
+    - name: "[archlinux] Realtime migration: check Secure Boot status"
+      become: true
+      ansible.builtin.command: sbctl status
+      register: var_realtime_sbctl_status
+      changed_when: false
+
+    - name: "[archlinux] Realtime migration: fail when Secure Boot keys are not already enrolled"
+      ansible.builtin.assert:
+        that:
+          - "'Installed:' in var_realtime_sbctl_status.stdout"
+          - "'Setup Mode:' in var_realtime_sbctl_status.stdout"
+          - "'Disabled' in (var_realtime_sbctl_status.stdout_lines | select('search', '^Setup Mode:') | first | default(''))"
+        fail_msg: "sbctl does not report an enrolled Secure Boot setup. Do not run this migration until the existing Secure Boot keys are healthy."
+
+    - name: "[archlinux] Realtime migration: install realtime kernel and fallback headers"
+      become: true
+      ansible.builtin.package:
+        name: "{{ realtime_kernel_packages }}"
+        state: present
+
+    - name: "[archlinux] Realtime migration: point mkinitcpio UKIs at /boot"
+      become: true
+      ansible.builtin.lineinfile:
+        path: "{{ item.path }}"
+        regexp: '^#?\s*default_uki='
+        line: 'default_uki="/boot/EFI/Linux/arch-{{ item.pkgbase }}.efi"'
+      loop: "{{ realtime_uki_presets }}"
+
+    - name: "[archlinux] Realtime migration: remove LTS-only NVIDIA modules"
+      become: true
+      ansible.builtin.package:
+        name: "{{ realtime_nvidia_lts_module_packages }}"
+        state: absent
+
+    - name: "[archlinux] Realtime migration: install DKMS module packages"
+      become: true
+      ansible.builtin.package:
+        name: "{{ realtime_dkms_packages }}"
+        state: present
+
+    - name: "[archlinux] Realtime migration: remove LTS-only VirtualBox host modules"
+      become: true
+      ansible.builtin.package:
+        name: "{{ realtime_virtualbox_lts_module_packages }}"
+        state: absent
+
+    - name: "[archlinux] Realtime migration: stop VirtualBox host modules from autoloading"
+      become: true
+      ansible.builtin.file:
+        src: /dev/null
+        dest: "{{ realtime_virtualbox_modules_load_mask }}"
+        state: link
+        force: true
+
+    - name: "[archlinux] Realtime migration: regenerate initramfs and UKIs"
+      become: true
+      ansible.builtin.command: mkinitcpio --allpresets
+      changed_when: true
+
+    - name: "[archlinux] Realtime migration: check expected UKIs"
+      become: true
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: var_realtime_uki_files
+      loop: "{{ realtime_saved_uki_files }}"
+
+    - name: "[archlinux] Realtime migration: save UKIs in sbctl database"
+      become: true
+      ansible.builtin.command: sbctl sign -s {{ item.stat.path }}
+      changed_when: true
+      when: item.stat.exists
+      loop: "{{ var_realtime_uki_files.results }}"
+
+    - name: "[archlinux] Realtime migration: verify Secure Boot signatures"
+      become: true
+      ansible.builtin.command: sbctl verify
+      register: var_realtime_sbctl_verify
+      changed_when: false
+      failed_when: false
+
+    - name: "[archlinux] Realtime migration: collect unsigned boot files"
+      ansible.builtin.set_fact:
+        realtime_unsigned_boot_files: "{{ (realtime_unsigned_boot_files | default([])) + [item | regex_replace('^[^/]*(/boot/.*) is not signed$', '\\1')] }}"
+      when:
+        - "'/boot/' in item"
+        - "' is not signed' in item"
+      loop: "{{ var_realtime_sbctl_verify.stdout_lines }}"
+
+    - name: "[archlinux] Realtime migration: save unsigned boot files in sbctl database"
+      become: true
+      ansible.builtin.command: sbctl sign -s {{ item }}
+      changed_when: true
+      loop: "{{ realtime_unsigned_boot_files | default([]) }}"
+
+    - name: "[archlinux] Realtime migration: regenerate signed UKIs"
+      become: true
+      ansible.builtin.command: mkinitcpio --allpresets
+      changed_when: true
+
+    - name: "[archlinux] Realtime migration: verify final Secure Boot signatures"
+      become: true
+      ansible.builtin.command: sbctl verify
+      register: var_realtime_final_sbctl_verify
+      changed_when: false
+      failed_when: false
+
+    - name: "[archlinux] Realtime migration: fail when boot files remain unsigned"
+      ansible.builtin.assert:
+        that:
+          - >-
+            (var_realtime_final_sbctl_verify.stdout_lines
+              | select('search', '/boot/')
+              | select('search', ' is not signed')
+              | list
+              | length) == 0
+        fail_msg: "{{ var_realtime_final_sbctl_verify.stdout_lines | select('search', '/boot/') | select('search', ' is not signed') | list }}"
+
+    - name: "[archlinux] Realtime migration: check DKMS module state"
+      become: true
+      ansible.builtin.command: dkms status
+      register: var_realtime_dkms_status
+      changed_when: false
+
+    - name: "[archlinux] Realtime migration: install built-only DKMS modules"
+      become: true
+      ansible.builtin.command:
+        argv:
+          - dkms
+          - install
+          - "{{ item | regex_replace('^([^/]+)/([^,]+),.*$', '\\1/\\2') }}"
+          - -k
+          - "{{ item | regex_replace('^[^,]+, ([^,]+),.*$', '\\1') }}"
+      changed_when: true
+      loop: "{{ var_realtime_dkms_status.stdout_lines | select('search', realtime_dkms_module_pattern) | select('search', ': built$') | list }}"
+
+    - name: "[archlinux] Realtime migration: check final DKMS module state"
+      become: true
+      ansible.builtin.command: dkms status
+      register: var_realtime_final_dkms_status
+      changed_when: false
+
+    - name: "[archlinux] Realtime migration: fail when DKMS modules remain built-only"
+      ansible.builtin.assert:
+        that:
+          - "(var_realtime_final_dkms_status.stdout_lines | select('search', realtime_dkms_module_pattern) | select('search', ': built$') | list | length) == 0"
+        fail_msg: "{{ var_realtime_final_dkms_status.stdout_lines | select('search', realtime_dkms_module_pattern) | select('search', ': built$') | list }}"
+
+    - name: "[archlinux] Realtime migration: show post-migration checks"
+      ansible.builtin.debug:
+        msg:
+          - "Reboot and select the linux-rt-lts UKI from systemd-boot."
+          - "Keep linux-lts installed and boot it if NVIDIA, display, or audio tests fail."
+          - "VirtualBox host modules are installed for fallback use, but their boot autoload is masked because vboxdrv is not clean on PREEMPT_RT."
+          - "{{ var_realtime_final_dkms_status.stdout_lines }}"

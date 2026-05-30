@@ -89,6 +89,14 @@
       - reaper
   notify: handler_ensure_rtirq_service
 
+- name: "[archlinux] Setup audio tools: prioritize USB IRQ handlers"
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/rtirq.conf
+    regexp: "^RTIRQ_NAME_LIST="
+    line: 'RTIRQ_NAME_LIST="usb snd i8042"'
+  notify: handler_restart_rtirq_service
+
 - name: "[archlinux] Setup audio tools: ensure STT Vosk model directories"
   ansible.builtin.file:
     path: "{{ item }}"
