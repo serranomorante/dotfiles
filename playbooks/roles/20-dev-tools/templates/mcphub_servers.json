@@ -1,6 +1,5 @@
 {% set figma_api_key = (mcp_server_figma_key.stdout | default('') | trim) if (mcp_server_figma_key.rc | default(1)) == 0 else '' %}
 {% set postman_api_key = (mcp_server_postman_key.stdout | default('') | trim) if (mcp_server_postman_key.rc | default(1)) == 0 else '' %}
-{% set playwright_mcp_browser_key = (var_playwright_mcp_browser_key.stdout | default('') | trim) if (var_playwright_mcp_browser_key.rc | default(1)) == 0 else '' %}
 {
   "mcpServers": {
     "figma_http": {
@@ -122,16 +121,11 @@
         "online",
         "{{ node_ai_npm_prefix }}",
         "--",
-        "/usr/bin/env"{% if playwright_mcp_browser_key | length > 0 %},
-        "PLAYWRIGHT_MCP_EXTENSION_TOKEN={{ playwright_mcp_browser_key }}"{% endif %},
         "{{ node_system_default_node_path }}",
         "{{ playwright_mcp_server_setup.exe_path }}",
-        "--extension",
-        "--shared-browser-context",
-        "--executable-path",
-        "/usr/bin/chromium",
-        "--browser",
-        "chromium"
+        "--cdp-endpoint",
+        "http://127.0.0.1:9222",
+        "--shared-browser-context"
       ],
       "env": {
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"

@@ -197,7 +197,6 @@
     - "{{ figma_mcp_server_setup }}"
     - "{{ figma_mcp_commentary_server_setup }}"
     - "{{ postman_mcp_commentary_server_setup }}"
-    - "{{ playwright_mcp_server_setup }}"
     - "{{ intelephense_setup }}"
 
 - name: "[archlinux] Setup security tools: set video tools keyrings facts"

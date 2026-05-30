@@ -235,17 +235,6 @@
     passkey: "{{ postman_mcp_commentary_server_setup.keyrings.passkey }}"
     wallet: "{{ postman_mcp_commentary_server_setup.keyrings.wallet }}"
 
-- name: "[archlinux] Setup ai tools: register playwright_mcp_browser_key"
-  ansible.builtin.command: kwallet-query --folder {{ folder }} --read-password {{ passkey }} {{ wallet }}
-  changed_when: false
-  register: var_playwright_mcp_browser_key
-  failed_when: false
-  no_log: true
-  vars:
-    folder: "{{ playwright_mcp_server_setup.keyrings.folder }}"
-    passkey: "{{ playwright_mcp_server_setup.keyrings.passkey }}"
-    wallet: "{{ playwright_mcp_server_setup.keyrings.wallet }}"
-
 - name: "[archlinux] Setup ai tools: create dest folder"
   ansible.builtin.file:
     path: ~/.config/mcphub

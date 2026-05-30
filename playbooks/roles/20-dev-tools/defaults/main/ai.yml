@@ -122,10 +122,6 @@ chrome_devtools_mcp_server_setup:
 
 playwright_mcp_server_setup:
   exe_path: "{{ node_user_bin_dir }}/playwright-mcp"
-  keyrings:
-    folder: dev-tools
-    passkey: playwright_mcp_browser_key
-    wallet: kdewallet
 
 context7_mcp_server_setup:
   exe_path: "{{ node_user_bin_dir }}/context7-mcp"
