@@ -1,5 +1,5 @@
 ---
-- name: "[otherlinux] Dotfiles: check missing stow packages"
+- name: "[otherlinux] Dotfiles: check missing dotfile support packages"
   ansible.builtin.command:
     argv:
       - sh
@@ -13,10 +13,11 @@
         done
       - sh
       - stow
+      - jq
   register: var_otherlinux_dotfiles_missing_packages
   changed_when: false
 
-- name: "[otherlinux] Dotfiles: install missing stow packages"
+- name: "[otherlinux] Dotfiles: install missing dotfile support packages"
   ansible.builtin.command:
     argv: "{{ ['pkg', 'install', '-y'] + var_otherlinux_dotfiles_missing_packages.stdout_lines }}"
   changed_when: true
@@ -28,6 +29,18 @@
     dest: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item }}/"
     mode: preserve
   loop: "{{ dotfiles_otherlinux_stow_packages }}"
+
+- name: "[otherlinux] Dotfiles: ensure PKM helper directory"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/dotfiles/PKM/bin"
+    state: directory
+    mode: "700"
+
+- name: "[otherlinux] Dotfiles: install Remind agenda helper"
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../PKM/bin/remind-agenda"
+    dest: "{{ ansible_facts.env.HOME }}/dotfiles/PKM/bin/remind-agenda"
+    mode: "700"
 
 - name: "[otherlinux] Dotfiles: ensure Termux widget task directory"
   ansible.builtin.file:

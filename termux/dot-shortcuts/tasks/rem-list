@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/sh
 # Purpose: Open the sorted Remind list from Termux:Widget.
-# Notes: Open the shared-storage file through Files by Google's content URI;
-# Chrome rejects Termux's private file provider for this widget handoff.
+# Notes: Delegate Remind querying to remind-agenda; serve the generated HTML
+# briefly over loopback because Android content URI handoff is unreliable.
 
 set -eu
 
@@ -14,11 +14,15 @@ http_host=127.0.0.1
 http_port=8765
 http_ttl=60
 http_url="http://$http_host:$http_port/reminders.html"
-raw_file=$state_dir/reminders.raw
-list_file=$state_dir/reminders.txt
+json_file=$state_dir/reminders.json
 err_file=$state_dir/reminders.err
 server_pid_file=$state_dir/http.pid
-rem_cmd=$termux_home/bin/rem
+agenda_cmd=$termux_home/dotfiles/PKM/bin/remind-agenda
+agenda_shell=$termux_usr/bin/sh
+jq_cmd=$termux_usr/bin/jq
+
+PATH=$termux_home/bin:$termux_usr/bin:${PATH:-}
+export PATH
 
 toast() {
     if command -v termux-toast >/dev/null 2>&1; then
@@ -28,12 +32,26 @@ toast() {
     fi
 }
 
-if [ ! -x "$rem_cmd" ]; then
-    rem_cmd=$termux_usr/bin/rem
+if [ ! -f "$agenda_cmd" ] && [ -f "$termux_home/bin/remind-agenda" ]; then
+    agenda_cmd=$termux_home/bin/remind-agenda
 fi
 
-if [ ! -x "$rem_cmd" ]; then
-    toast "Missing Remind wrapper"
+if [ ! -f "$agenda_cmd" ]; then
+    toast "Missing remind-agenda helper"
+    exit 1
+fi
+
+if [ ! -x "$agenda_shell" ]; then
+    toast "Missing Termux shell"
+    exit 1
+fi
+
+if [ ! -x "$jq_cmd" ]; then
+    jq_cmd=$(command -v jq 2>/dev/null || true)
+fi
+
+if [ -z "$jq_cmd" ]; then
+    toast "Missing jq"
     exit 1
 fi
 
@@ -46,13 +64,17 @@ html_file=$html_dir/reminders.html
 
 mkdir -p "$state_dir"
 
-if ! "$rem_cmd" -n >"$raw_file" 2>"$err_file"; then
+if ! REMIND_AGENDA_DIR=$termux_home/.config/remind \
+    REMIND_ONCE_FILE=$termux_home/.local/state/remind/oncefile \
+    "$agenda_shell" "$agenda_cmd" --next-all --json >"$json_file" 2>"$err_file"; then
     toast "Could not list reminders"
     exit 1
 fi
 
-sort "$raw_file" >"$list_file"
-reminder_count=$(awk 'NF { count++ } END { print count + 0 }' "$list_file")
+if ! reminder_count=$("$jq_cmd" 'length' "$json_file" 2>>"$err_file"); then
+    toast "Could not parse reminders"
+    exit 1
+fi
 item_label=items
 if [ "$reminder_count" = 1 ]; then
     item_label=item
@@ -179,41 +201,26 @@ h1 {
 <div class="meta"><span>${reminder_count} ${item_label}</span><span>Updated ${generated_at}</span></div>
 </header>
 EOF
-    if [ -s "$list_file" ]; then
+    if [ "$reminder_count" -gt 0 ]; then
         cat <<EOF
 <input class="search" id="search" type="search" placeholder="Search reminders" autocomplete="off">
 <section class="list" id="list">
 EOF
-        awk '
-          function escape(value) {
-            gsub(/&/, "\\&amp;", value)
-            gsub(/</, "\\&lt;", value)
-            gsub(/>/, "\\&gt;", value)
-            return value
-          }
-          function attr_escape(value) {
-            value = escape(value)
-            gsub(/"/, "\\&quot;", value)
-            return value
-          }
-          NF {
-            original = $0
-            date = ""
-            text = $0
-            split($0, parts, /[[:space:]]+/)
-            if (parts[1] ~ /^[0-9][0-9][0-9][0-9][\/-][0-9][0-9][\/-][0-9][0-9]$/) {
-              date = parts[1]
-              sub(/^[^[:space:]]+[[:space:]]*/, "", text)
-              sub(/^[*[:space:]]+/, "", text)
-            }
-            print "<article class=\"reminder\" data-text=\"" attr_escape(tolower(original)) "\">"
-            if (date != "") {
-              print "<div class=\"date\">" escape(date) "</div>"
-            }
-            print "<div class=\"text\">" escape(text) "</div>"
-            print "</article>"
-          }
-        ' "$list_file"
+        "$jq_cmd" -r '
+          def html: tostring | @html;
+          .[] |
+          (.date // "") as $date |
+          (.eventstart // "") as $eventstart |
+          (if $eventstart != "" then ($eventstart | split("T")[1] // "") else "" end) as $event_time |
+          (if ((.time? // null) | type) == "number" then ((.time / 60 | floor | tostring) + ":" + (if (.time % 60) < 10 then "0" else "" end) + ((.time % 60) | tostring)) else "" end) as $minute_time |
+          (if $event_time != "" then $event_time elif $minute_time != "" then $minute_time else "" end) as $time |
+          (.body // "") as $body |
+          ([ $date, $time, $body ] | map(select(. != "")) | join(" ")) as $search_text |
+          "<article class=\"reminder\" data-text=\"\(($search_text | ascii_downcase) | html)\">",
+          (if $date != "" then "<div class=\"date\">\(([ $date, $time ] | map(select(. != "")) | join(" ")) | html)</div>" else empty end),
+          "<div class=\"text\">\($body | html)</div>",
+          "</article>"
+        ' "$json_file"
         cat <<EOF
 </section>
 <p class="empty" id="no-matches" hidden>No matches.</p>
