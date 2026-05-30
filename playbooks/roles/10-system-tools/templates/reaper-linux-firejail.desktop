@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+[Desktop Entry]
+Name=(debug) REAPER [LINUX] (Firejail)
+Exec={{ ansible_facts.env.HOME }}/.local/bin/launch-reaper-linux --firejail
+Type=Application
+StartupNotify=true
+Icon=3716_reaper.0
+StartupWMClass=reaper.exe

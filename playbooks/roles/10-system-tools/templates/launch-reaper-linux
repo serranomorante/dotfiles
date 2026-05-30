@@ -1,7 +1,60 @@
 #!/usr/bin/env bash
 # {{ ansible_managed }}
+# Purpose: Launch native Linux REAPER with the same audio-production environment as the Wine setup.
+# Usage: launch-reaper-linux [--firejail|--no-firejail] [-- REAPER_ARGS...]
 set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: launch-reaper-linux [--firejail|--no-firejail] [-- REAPER_ARGS...]
+
+Launch native Linux REAPER without Firejail by default.
+
+Options:
+  --firejail     Run REAPER through the configured Wine Firejail profile.
+  --no-firejail  Run REAPER directly. This is the default.
+  -h, --help     Show this help.
+EOF
+}
+
+use_firejail=0
+case "${1:-}" in
+  --firejail)
+    use_firejail=1
+    shift
+    ;;
+  --no-firejail)
+    shift
+    ;;
+  -h|--help)
+    usage
+    exit 0
+    ;;
+esac
+
+if [ "${1:-}" = "--" ]; then
+  shift
+fi
 
 "{{ ansible_facts.env.HOME }}/.local/bin/connect-reaper-to-music-production" &
 "{{ ansible_facts.env.HOME }}/bin/wwine" --prefix reaper --no-desktop wine reg query 'HKEY_CURRENT_USER\Software\Wine' >/dev/null 2>&1 || true
-exec kitty --hold -o env=WINEPREFIX='{{ arch_reaper_wine_setup.wine_prefix }}' -o env=WINEDEBUG=-all,+err {% for env in wine_env_vars.items() %}-o env={{ env | join('=') }} {% endfor %} {% for env in pipewire_latency_vars.items() %}-o env={{ env | join('=') }} {% endfor %} --directory='~/data/audio-pjs' firejail --profile={{ ansible_facts.env.HOME }}/.config/firejail/wine.local /usr/bin/reaper
+
+kitty_args=(
+  --hold
+  -o "env=WINEPREFIX={{ arch_reaper_wine_setup.wine_prefix }}"
+  -o "env=WINEDEBUG=-all,+err"
+{% for env in wine_env_vars.items() %}
+  -o "env={{ env | join('=') }}"
+{% endfor %}
+{% for env in pipewire_latency_vars.items() %}
+  -o "env={{ env | join('=') }}"
+{% endfor %}
+  --directory="{{ ansible_facts.env.HOME }}/data/audio-pjs"
+)
+
+reaper_cmd=(/usr/bin/reaper "$@")
+if [ "$use_firejail" -eq 1 ]; then
+  reaper_cmd=(firejail --profile="{{ ansible_facts.env.HOME }}/.config/firejail/wine.local" "${reaper_cmd[@]}")
+fi
+
+exec kitty "${kitty_args[@]}" "${reaper_cmd[@]}"

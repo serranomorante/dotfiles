@@ -129,9 +129,12 @@
 
 - name: "[archlinux] Setup audio tools: setup reaper-linux.desktop file"
   ansible.builtin.template:
-    src: reaper-linux.desktop
+    src: "{{ item }}"
     dest: ~/.local/share/applications/
     mode: "644"
+  loop:
+    - reaper-linux.desktop
+    - reaper-linux-firejail.desktop
   notify: handler_update_desktop_database
 
 - name: "[archlinux] Setup audio tools: setup launch-reaper-linux file"
