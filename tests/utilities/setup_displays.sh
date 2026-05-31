@@ -7,6 +7,7 @@ set -euo pipefail
 # dotfiles-test-case: setup-displays-external-replaces-internal
 # dotfiles-test-case: setup-displays-ddc-on-enables-external
 # dotfiles-test-case: setup-displays-ddc-on-without-drm-enables-external
+# dotfiles-test-case: setup-displays-ddc-on-then-off-keeps-internal
 # dotfiles-test-case: setup-displays-ddc-off-keeps-internal
 # dotfiles-test-case: setup-displays-no-external-restores-internal
 # dotfiles-test-case: setup-displays-external-failure-keeps-internal
@@ -21,6 +22,7 @@ make_fake_path() {
     mkdir -p "$bin"
     ln -s /usr/bin/bash "${bin}/bash"
     ln -s /usr/bin/awk "${bin}/awk"
+    ln -s /usr/bin/cat "${bin}/cat"
     ln -s /usr/bin/grep "${bin}/grep"
     printf '#!/usr/bin/env bash\nexit 0\n' >"${bin}/sleep"
     printf '#!/usr/bin/env bash\nprintf "apply-wallpaper\\n" >>"${DOTFILES_TEST_TMP}/apply-wallpaper.log"\n' >"${bin}/apply-wallpaper"
@@ -57,7 +59,7 @@ external)
         ;;
     esac
     ;;
-external-inactive | external-inactive-no-drm)
+external-inactive | external-inactive-no-drm | external-turns-off-during-apply)
     case "$*" in
     --query)
         printf '%s\n' \
@@ -177,6 +179,16 @@ detect\ --brief)
     external-off)
         printf '%s\n' 'VCP code 0xd6 (Power mode                    ): Write only value to turn off display (sl=0x05)'
         ;;
+    external-turns-off-during-apply)
+        index_file="${DOTFILES_TEST_TMP}/ddc-index"
+        index=$(cat "$index_file" 2>/dev/null || printf '0')
+        printf '%s\n' "$((index + 1))" >"$index_file"
+        if [[ "$index" -eq 0 ]]; then
+            printf '%s\n' 'VCP code 0xd6 (Power mode                    ): DPM: On,  DPMS: Off (sl=0x01)'
+        else
+            printf '%s\n' 'VCP code 0xd6 (Power mode                    ): Write only value to turn off display (sl=0x05)'
+        fi
+        ;;
     *)
         printf '%s\n' 'VCP code 0xd6 (Power mode                    ): DPM: On,  DPMS: Off (sl=0x01)'
         ;;
@@ -231,10 +243,18 @@ setup-displays-ddc-on-without-drm-enables-external)
     assert_log_equals "--output HDMI-1-0 --primary --mode 3440x1440 --rate 59.97 --right-of eDP-1
 --output eDP-1 --off --output HDMI-1-0 --primary --mode 3440x1440 --rate 59.97 --pos 0x0"
     ;;
-setup-displays-ddc-off-keeps-internal)
-    run_setup_displays external-off
+setup-displays-ddc-on-then-off-keeps-internal)
+    run_setup_displays external-turns-off-during-apply
     assert_log_equals "--output HDMI-1-0 --primary --mode 3440x1440 --rate 59.97 --right-of eDP-1
 --newmode 1920x1080f 285.00 1920 2028 2076 2076 1080 1090 1100 1142 -hsync -vsync
+--addmode eDP-1 1920x1080f
+--output eDP-1 --primary --mode 1920x1080f --rate 120.21
+--output HDMI-1-0 --off"
+    grep -q "external monitor HDMI-1-0 is not powered on; keeping eDP-1 active" "${DOTFILES_TEST_TMP}/stderr"
+    ;;
+setup-displays-ddc-off-keeps-internal)
+    run_setup_displays external-off
+    assert_log_equals "--newmode 1920x1080f 285.00 1920 2028 2076 2076 1080 1090 1100 1142 -hsync -vsync
 --addmode eDP-1 1920x1080f
 --output eDP-1 --primary --mode 1920x1080f --rate 120.21
 --output HDMI-1-0 --off"

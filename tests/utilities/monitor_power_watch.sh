@@ -7,6 +7,7 @@ set -euo pipefail
 # dotfiles-test-case: monitor-power-watch-initial-on-does-not-apply
 # dotfiles-test-case: monitor-power-watch-off-to-on-applies-once
 # dotfiles-test-case: monitor-power-watch-on-to-off-applies-once
+# dotfiles-test-case: monitor-power-watch-transient-on-does-not-apply
 # dotfiles-test-case: monitor-power-watch-on-without-drm-connector-applies
 # dotfiles-test-case: monitor-power-watch-udev-does-not-trigger-setup-displays
 
@@ -142,6 +143,10 @@ monitor-power-watch-on-to-off-applies-once)
     run_watch on,off,off 3
     assert_setup_count 1
     grep -q "external monitor power changed: on -> off" "${DOTFILES_TEST_TMP}/stderr"
+    ;;
+monitor-power-watch-transient-on-does-not-apply)
+    run_watch off,on,off 3
+    assert_setup_count 0
     ;;
 monitor-power-watch-on-without-drm-connector-applies)
     run_watch off,on,on 3 1
