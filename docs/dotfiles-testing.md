@@ -37,6 +37,8 @@ Temporary debugging output added while developing a test must be removed before 
 
 Firejail is the default isolation boundary for test execution. The runner does not intentionally depend on nested Firejail; any design that requires `firejail` inside `firejail` needs a focused investigation first, including whether the nesting is supported and whether it preserves the desired guarantees.
 
+Tests whose subject is Firejail orchestration itself, such as wrapper behavior around `firejail --join-or-start`, inherited sandbox validation, or named sandbox sharing, should use `# dotfiles-test-firejail: disabled` and invoke the real `firejail` binary inside the test fixture. Keep those fixtures fast by using fake payload executables instead of launching workstation applications, and assert the real Firejail boundary through observable state such as `firejail --list`, `/run/firejail/profile`, and wrapper logs.
+
 The runner invokes Firejail with deterministic shutdown and deterministic exit-code modes. This is important for integration tests that start child processes such as LSP servers: Firejail's default behavior is to keep the sandbox alive while processes remain and to use the final child's exit status, which can make test results nondeterministic. Deterministic shutdown makes the sandbox close when the test process exits, and deterministic exit-code makes Firejail report the test process status.
 
 Test dependencies are managed by `playbooks/testing.yml` and the dedicated `60-testing-tools` role. Do not add undocumented manual dependencies for persistent tests; declare the package or managed tool in that role, or make the test skip/fail clearly when an optional capability is unavailable.

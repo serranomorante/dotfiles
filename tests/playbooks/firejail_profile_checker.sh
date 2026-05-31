@@ -10,14 +10,18 @@ set -euo pipefail
 # dotfiles-test-case: fj-profile-checker-resolves-relative-profile-from-cwd
 # dotfiles-test-case: fj-profile-checker-recurses-relative-includes
 # dotfiles-test-case: fj-profile-checker-resolves-includes-from-home-config
+# dotfiles-test-case: fj-profile-checker-resolves-absolute-includes
 # dotfiles-test-case: fj-profile-checker-handles-include-cycles
 # dotfiles-test-case: fj-profile-checker-expands-home-path-forms
 # dotfiles-test-case: fj-profile-checker-strips-comments-and-whitespace
+# dotfiles-test-case: fj-profile-checker-reads-profile-from-readonly-home-config
 # dotfiles-test-case: fj-profile-checker-preserves-command-arguments
 # dotfiles-test-case: fj-profile-checker-accepts-real-blacklist-placeholder
+# dotfiles-test-case: fj-profile-checker-ignores-noblacklist-lines
 # dotfiles-test-case: fj-profile-checker-fails-on-missing-whitelist
 # dotfiles-test-case: fj-profile-checker-fails-on-writable-whitelist-ro
 # dotfiles-test-case: fj-profile-checker-fails-on-visible-blacklist
+# dotfiles-test-case: fj-profile-checker-fails-on-unreadable-profile
 # dotfiles-test-case: fj-profile-checker-fails-on-unresolved-include
 # dotfiles-test-case: fj-profile-checker-rejects-missing-separator
 
@@ -194,6 +198,21 @@ PROFILE
     run_checker "$sandbox_profile" "${fixture}/main.profile" -- "$command_file" home-include "$command_marker"
     assert_marker "ran:home-include"
     ;;
+fj-profile-checker-resolves-absolute-includes)
+    make_fixture
+    write_command
+    cat >"${fixture}/main.profile" <<PROFILE
+include ${fixture}/absolute.inc
+whitelist ${visible}
+PROFILE
+    cat >"${fixture}/absolute.inc" <<PROFILE
+whitelist-ro ${readonly}
+blacklist ${hidden}
+PROFILE
+
+    run_checker "$sandbox_profile" "${fixture}/main.profile" -- "$command_file" absolute-include "$command_marker"
+    assert_marker "ran:absolute-include"
+    ;;
 fj-profile-checker-handles-include-cycles)
     make_fixture
     write_command
@@ -237,6 +256,18 @@ PROFILE
     run_checker "${fixture}/main.profile" "${fixture}/main.profile" -- "$command_file" comments "$command_marker"
     assert_marker "ran:comments"
     ;;
+fj-profile-checker-reads-profile-from-readonly-home-config)
+    make_fixture
+    write_command
+    cat >"${profile_dir}/readonly-home.profile" <<PROFILE
+whitelist ${fixture}
+whitelist-ro ${readonly}
+blacklist ${hidden}
+PROFILE
+
+    run_checker "$sandbox_profile" readonly-home.profile -- "$command_file" readonly-home "$command_marker"
+    assert_marker "ran:readonly-home"
+    ;;
 fj-profile-checker-preserves-command-arguments)
     make_fixture
     command_file="${fixture}/write-args.sh"
@@ -261,6 +292,20 @@ fj-profile-checker-accepts-real-blacklist-placeholder)
 
     run_checker "${fixture}/main.profile" "${fixture}/main.profile" -- "$command_file" blacklisted "$command_marker"
     assert_marker "ran:blacklisted"
+    ;;
+fj-profile-checker-ignores-noblacklist-lines)
+    make_fixture
+    write_command
+    mkdir -p "$visible"
+    cat >"${fixture}/main.profile" <<PROFILE
+noblacklist ${visible}
+whitelist ${fixture}
+whitelist-ro ${readonly}
+blacklist ${hidden}
+PROFILE
+
+    run_checker "${fixture}/main.profile" "${fixture}/main.profile" -- "$command_file" noblacklist "$command_marker"
+    assert_marker "ran:noblacklist"
     ;;
 fj-profile-checker-fails-on-missing-whitelist)
     make_fixture
@@ -294,6 +339,17 @@ blacklist ${hidden}
 PROFILE
 
     assert_fails_without_exec "sandbox exposes blocked path" "$sandbox_profile" "${fixture}/main.profile" -- "$command_file" fail "$command_marker"
+    ;;
+fj-profile-checker-fails-on-unreadable-profile)
+    make_fixture
+    write_command
+    unreadable_profile="${fixture}/unreadable.profile"
+    cat >"$unreadable_profile" <<PROFILE
+whitelist ${fixture}
+PROFILE
+    chmod 000 "$unreadable_profile"
+
+    assert_fails_without_exec "cannot read Firejail profile" "$sandbox_profile" "$unreadable_profile" -- "$command_file" fail "$command_marker"
     ;;
 fj-profile-checker-fails-on-unresolved-include)
     make_fixture
