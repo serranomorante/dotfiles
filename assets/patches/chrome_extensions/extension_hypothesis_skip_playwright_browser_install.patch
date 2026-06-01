@@ -1,0 +1,13 @@
+diff --git a/Makefile b/Makefile
+index 8e8938e..70ffbc7 100644
+--- a/Makefile
++++ b/Makefile
+@@ -111,5 +111,7 @@ sure: checkformatting lint test
+ 
+ node_modules/.uptodate: package.json yarn.lock
+ 	yarn install
+-	yarn playwright install chromium
++	if [ "$${HYPOTHESIS_SKIP_PLAYWRIGHT_INSTALL:-0}" != "1" ]; then \
++		yarn playwright install chromium; \
++	fi
+ 	@touch $@

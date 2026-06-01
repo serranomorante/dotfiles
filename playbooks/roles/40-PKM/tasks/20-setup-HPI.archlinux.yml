@@ -661,6 +661,7 @@
   loop:
     - extension_hypothesis_delete_welcome.patch
     - extension_hypothesis_active_by_default.patch
+    - extension_hypothesis_skip_playwright_browser_install.patch
 
 - name: "[archlinux] Setup HPI: generate hypothesis extension custom-dev.json"
   ansible.builtin.copy:
@@ -730,6 +731,8 @@
     chdir: ~/data/repos/hypothesis-extension
   environment:
     NPM_CONFIG_IGNORE_SCRIPTS: "false"
+    HYPOTHESIS_SKIP_PLAYWRIGHT_INSTALL: "1"
+    FJ_NODE_FORWARD_ENV: HYPOTHESIS_SKIP_PLAYWRIGHT_INSTALL
   changed_when:
     - "'Nothing to be done' not in prepare_hypothesis_extension_result.stdout"
     - "'Nothing to be done' not in prepare_hypothesis_extension_result.stderr"
