@@ -5,6 +5,7 @@ set -euo pipefail
 # dotfiles-test-tags: pkm remind agent python
 # dotfiles-test-case: foam-remind-agent-run-syntax
 # dotfiles-test-case: foam-remind-agent-run-writes-result-and-payload
+# dotfiles-test-case: foam-remind-agent-run-ignores-example-source-duplicates
 # dotfiles-test-case: foam-remind-agent-run-fails-on-duplicate-id
 
 # Purpose: Verify the Remind-to-agent helper without invoking a real agent.
@@ -157,6 +158,41 @@ assert payload == {
     "cwd": sys.argv[2],
     "foam-section-id": "todo-sample-agent-task",
 }
+PY
+    ;;
+foam-remind-agent-run-ignores-example-source-duplicates)
+    notes=$(make_foam)
+    mkdir -p "${notes}/docs/agents" "${notes}/misc/agent-runs/2026-05"
+    cat >"${notes}/docs/agents/remind-usage.md" <<'MARKDOWN'
+# Remind usage
+
+- [ ] **Example documentation task**
+  @id todo-sample-agent-task
+MARKDOWN
+    cat >"${notes}/misc/agent-runs/2026-05/result.md" <<'MARKDOWN'
+# Agent output
+
+- [ ] **Generated output task**
+  @id todo-sample-agent-task
+MARKDOWN
+    wrapper=$(write_fake_wrapper)
+    home=$(write_fake_notify)
+    bin=$(write_fake_systemd_run)
+
+    HOME="$home" \
+        PATH="${bin}:/usr/bin:/bin" \
+        FOAM_REMIND_NOTES_ROOT="$notes" \
+        FOAM_REMIND_AGENT_OUTPUT_ROOT="${notes}/misc/agent-runs" \
+        FOAM_REMIND_AGENT_WRAPPER="$wrapper" \
+        "$script_under_test" todo-sample-agent-task >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+
+    python - "${DOTFILES_TEST_TMP}/wrapper.payload" <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+assert payload["source"]["relative_file"] == "misc/tasks/todos.sample.md"
+assert payload["todo"]["title"] == "Review sample task"
 PY
     ;;
 foam-remind-agent-run-fails-on-duplicate-id)

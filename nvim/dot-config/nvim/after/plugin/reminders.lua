@@ -45,7 +45,7 @@ end
 local function markdown_files()
   local output = vim.fn.systemlist({ "rg", "--files", "--glob", "*.md", NOTES_DIR })
   if vim.v.shell_error ~= 0 then return {} end
-  return output
+  return vim.tbl_filter(function(path) return utils.foam_should_include_todo_source(path, NOTES_DIR) end, output)
 end
 
 local function parse_remind_block(lines, start_lnum)

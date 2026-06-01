@@ -17,6 +17,12 @@ TODO_RE = re.compile(r"^(\s*)[-*+]\s+\[([ xX])\]\s+(.*)$")
 META_RE = re.compile(r"^\s*@([A-Za-z][A-Za-z0-9_-]*)\s*(.*?)\s*$")
 TAG_RE = re.compile(r"^#[a-z][a-z0-9-]*$")
 VALID_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+EXCLUDED_MARKDOWN_PATHS = {
+    "docs/agents/remind-usage.md",
+}
+EXCLUDED_MARKDOWN_PREFIXES = (
+    "misc/agent-runs/",
+)
 
 
 def die(message, code=2):
@@ -154,12 +160,34 @@ def metadata_and_body(lines):
     return meta, tags, deindent(body_lines).strip()
 
 
+def relative_note_path(path, notes_root):
+    return os.path.relpath(path, notes_root).replace(os.sep, "/")
+
+
+def should_parse_markdown(path, notes_root):
+    relative_path = relative_note_path(path, notes_root)
+    if relative_path in EXCLUDED_MARKDOWN_PATHS:
+        return False
+    return not any(relative_path.startswith(prefix) for prefix in EXCLUDED_MARKDOWN_PREFIXES)
+
+
+def should_descend_dir(path, notes_root):
+    relative_path = relative_note_path(path, notes_root).rstrip("/") + "/"
+    return not any(relative_path == prefix or relative_path.startswith(prefix) for prefix in EXCLUDED_MARKDOWN_PREFIXES)
+
+
 def markdown_files(notes_root):
     for root, dirs, files in os.walk(notes_root):
-        dirs[:] = [name for name in dirs if name not in {".git", ".stfolder", ".stversions"}]
+        dirs[:] = [
+            name
+            for name in dirs
+            if name not in {".git", ".stfolder", ".stversions"}
+            and should_descend_dir(os.path.join(root, name), notes_root)
+        ]
         for name in files:
-            if name.endswith(".md"):
-                yield os.path.join(root, name)
+            path = os.path.join(root, name)
+            if name.endswith(".md") and should_parse_markdown(path, notes_root):
+                yield path
 
 
 def find_todo(notes_root, todo_id):

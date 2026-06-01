@@ -11,6 +11,7 @@ set -euo pipefail
 # dotfiles-test-case: markdown-block-ids-markdown-link
 # dotfiles-test-case: markdown-block-ids-local-wikilink
 # dotfiles-test-case: markdown-block-ids-go-to-id
+# dotfiles-test-case: markdown-block-ids-go-to-id-ignores-example-sources
 # dotfiles-test-case: markdown-block-ids-command-go-to-id-with-modified-buffer
 # dotfiles-test-case: markdown-block-ids-command-go-to-id
 # dotfiles-test-case: markdown-block-ids-heading-passthrough
@@ -40,6 +41,9 @@ markdown-block-ids-local-wikilink)
     ;;
 markdown-block-ids-go-to-id)
     run_nvim_lua 'local p=vim.env.DOTFILES_TEST_TMP.."/mdid-by-id"; vim.fn.mkdir(p,"p"); vim.fn.writefile({"[[b#^foo]]"}, p.."/a.md"); vim.fn.writefile({"Target paragraph","@tags #hello","@id foo"}, p.."/b.md"); vim.cmd.edit(p.."/a.md"); local ok=require("serranomorante.markdown_block_ids").goto_block_id("foo", p); assert(ok); vim.defer_fn(function() assert(vim.fn.expand("%:t") == "b.md"); assert(vim.api.nvim_win_get_cursor(0)[1] == 3); vim.cmd.qa({bang=true}) end, 300)'
+    ;;
+markdown-block-ids-go-to-id-ignores-example-sources)
+    run_nvim_lua 'local p=vim.env.DOTFILES_TEST_TMP.."/mdid-by-id-exclusions"; vim.fn.mkdir(p.."/misc/tasks","p"); vim.fn.mkdir(p.."/docs/agents","p"); vim.fn.mkdir(p.."/misc/agent-runs/2026-05","p"); vim.fn.writefile({"Real paragraph","@id foo"}, p.."/misc/tasks/real.md"); vim.fn.writefile({"Example paragraph","@id foo"}, p.."/docs/agents/remind-usage.md"); vim.fn.writefile({"Generated paragraph","@id foo"}, p.."/misc/agent-runs/2026-05/result.md"); local ok=require("serranomorante.markdown_block_ids").goto_block_id("foo", p); assert(ok); vim.defer_fn(function() assert(vim.fn.expand("%:t") == "real.md"); assert(vim.api.nvim_win_get_cursor(0)[1] == 2); vim.cmd.qa({bang=true}) end, 300)'
     ;;
 markdown-block-ids-command-go-to-id-with-modified-buffer)
     run_nvim_lua 'local p=vim.env.DOTFILES_TEST_TMP.."/mdid-command-modified"; vim.fn.mkdir(p,"p"); vim.fn.writefile({"Target paragraph","@id foo"}, p.."/b.md"); vim.cmd.cd({ args = { p } }); vim.cmd.enew(); vim.api.nvim_buf_set_lines(0,0,-1,false,{"unsaved scratch text"}); local scratch=vim.api.nvim_get_current_buf(); assert(vim.bo.modified); vim.cmd.runtime("after/plugin/markdown_block_ids.lua"); vim.cmd("GoToFoamBlockById foo"); vim.defer_fn(function() assert(vim.fn.expand("%:t") == "b.md"); assert(vim.api.nvim_win_get_cursor(0)[1] == 2); assert(vim.api.nvim_buf_is_loaded(scratch)); assert(vim.api.nvim_get_option_value("modified", { buf = scratch })); vim.cmd.qa({bang=true}) end, 300)'

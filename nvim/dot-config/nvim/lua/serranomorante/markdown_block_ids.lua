@@ -1,4 +1,5 @@
 local M = {}
+local utils = require("serranomorante.utils")
 
 local ID_PATTERN = "[A-Za-z][A-Za-z0-9-]*"
 local ID_LINE_PATTERN = "^%s*@id%s+(" .. ID_PATTERN .. ")%s*$"
@@ -173,9 +174,7 @@ local function go_to_id(path, id, opts)
 
   local locations = id_locations(lines, id)
   if #locations == 0 then
-    if not opts.quiet then
-      warn(("No attached @id %s found in %s"):format(id, vim.fn.fnamemodify(path, ":~:.")))
-    end
+    if not opts.quiet then warn(("No attached @id %s found in %s"):format(id, vim.fn.fnamemodify(path, ":~:."))) end
     return false
   end
   if #locations > 1 then
@@ -298,7 +297,11 @@ function M.goto_block_id(id, root)
     return false
   end
 
-  vim.system({ "rg", "--json", "--fixed-strings", "--glob", "*.md", "@id " .. id, root }, { text = true }, function(result)
+  local rg_args = { "rg", "--json", "--fixed-strings", "--glob", "*.md" }
+  vim.list_extend(rg_args, utils.foam_todo_rg_exclude_args())
+  vim.list_extend(rg_args, { "@id " .. id, root })
+
+  vim.system(rg_args, { text = true }, function(result)
     vim.schedule(function()
       if result.code > 1 then
         warn(("Could not search %s: %s"):format(root, vim.trim(result.stderr or "")))

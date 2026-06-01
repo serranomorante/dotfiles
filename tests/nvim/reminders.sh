@@ -8,6 +8,8 @@ set -euo pipefail
 # dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: reminders-agent-run-uses-attached-id
 # dotfiles-test-case: reminders-agent-run-without-id-does-not-emit-run
+# dotfiles-test-case: reminders-ignore-remind-usage-doc
+# dotfiles-test-case: reminders-ignore-agent-run-output
 
 # Purpose: Verify generated Remind RUN entries for @run agent TODOs.
 
@@ -23,10 +25,16 @@ run_remind_update() {
 }
 
 make_foam_note() {
+    make_foam_note_at "misc/tasks/todos.sample.md" "$@"
+}
+
+make_foam_note_at() {
+    local path=$1
+    shift
     local lines=("$@")
 
-    mkdir -p "${HOME}/data/notes/foam/misc/tasks" "${HOME}/.config/remind"
-    printf '%s\n' "${lines[@]}" >"${HOME}/data/notes/foam/misc/tasks/todos.sample.md"
+    mkdir -p "$(dirname "${HOME}/data/notes/foam/${path}")" "${HOME}/.config/remind"
+    printf '%s\n' "${lines[@]}" >"${HOME}/data/notes/foam/${path}"
 }
 
 case "${DOTFILES_TEST_CASE:-}" in
@@ -62,6 +70,34 @@ reminders-agent-run-without-id-does-not-emit-run)
 
     rg -q "MSG \\*\\*Review sample task\\*\\*" "${HOME}/.config/remind/reminders.rem"
     ! rg -q "RUN .*remind-run.*agent" "${HOME}/.config/remind/reminders.rem"
+    ;;
+reminders-ignore-remind-usage-doc)
+    make_foam_note_at "docs/agents/remind-usage.md" \
+        "# Remind usage | Misc | Docs" \
+        "" \
+        "- [ ] **Example documentation task**" \
+        "" \
+        "  \`\`\`remind" \
+        "  REM jun 1 2026 AT 10:00" \
+        "  \`\`\`"
+
+    run_remind_update
+
+    ! rg -q "Example documentation task" "${HOME}/.config/remind/reminders.rem"
+    ;;
+reminders-ignore-agent-run-output)
+    make_foam_note_at "misc/agent-runs/2026-05/sample.md" \
+        "# Agent run sample" \
+        "" \
+        "- [ ] **Example agent output task**" \
+        "" \
+        "  \`\`\`remind" \
+        "  REM jun 1 2026 AT 10:00" \
+        "  \`\`\`"
+
+    run_remind_update
+
+    ! rg -q "Example agent output task" "${HOME}/.config/remind/reminders.rem"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

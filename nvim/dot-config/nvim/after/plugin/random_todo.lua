@@ -2,7 +2,7 @@ local utils = require("serranomorante.utils")
 
 local cache = {}
 local function random_todo()
-  local flags = " --type md --iglob !*.vaticinios.md --iglob !*.events.md"
+  local flags = " --type md --iglob !*.vaticinios.md --iglob !*.events.md " .. utils.foam_todo_rg_exclude_flags()
   local items, count = utils.rg_json_to_qfitems(utils.grep_with_rg("'^- \\[ \\]'" .. flags, { json = true }))
   if count == 0 then return vim.api.nvim_echo({ { "No pending TODOs" } }, false, { err = true }) end
   local random_count = math.random(count)

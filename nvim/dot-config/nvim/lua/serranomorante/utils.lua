@@ -79,6 +79,21 @@ end
 
 local function lua_pattern_escape(value) return (value:gsub("([^%w])", "%%%1")) end
 
+local FOAM_TODO_EXCLUDED_PATHS = {
+  ["docs/agents/remind-usage.md"] = true,
+}
+local FOAM_TODO_EXCLUDED_PREFIXES = {
+  "misc/agent-runs/",
+}
+local FOAM_TODO_EXCLUDED_GLOBS = {
+  "!**/docs/agents/remind-usage.md",
+  "!**/misc/agent-runs/**",
+}
+
+local function shell_quote(value) return "'" .. value:gsub("'", [['"'"']]) .. "'" end
+
+local function normalize_relative_path(path) return (path:gsub("\\", "/"):gsub("^%./", "")) end
+
 ---@param servername? string
 ---@return boolean
 function M.is_kitty_cwd_servername(servername)
@@ -98,6 +113,49 @@ function M.normalized_path(path)
   local normalized = real or vim.fn.fnamemodify(expanded, ":p")
   normalized = normalized:gsub("/+$", "")
   return normalized == "" and "/" or normalized
+end
+
+---@param path string
+---@param root string
+---@return string
+function M.path_relative_to_root(path, root)
+  local normalized_root = M.normalized_path(root)
+  local normalized_path = M.normalized_path(path)
+  local prefix = normalized_root .. "/"
+  if normalized_path:sub(1, #prefix) == prefix then return normalize_relative_path(normalized_path:sub(#prefix + 1)) end
+  return normalize_relative_path(path)
+end
+
+---@param path string
+---@param root string
+---@return boolean
+function M.foam_should_include_todo_source(path, root)
+  local relative_path = M.path_relative_to_root(path, root)
+  if FOAM_TODO_EXCLUDED_PATHS[relative_path] then return false end
+
+  for _, prefix in ipairs(FOAM_TODO_EXCLUDED_PREFIXES) do
+    if relative_path:sub(1, #prefix) == prefix then return false end
+  end
+
+  return true
+end
+
+---@return string[]
+function M.foam_todo_rg_exclude_args()
+  local args = {}
+  for _, glob in ipairs(FOAM_TODO_EXCLUDED_GLOBS) do
+    vim.list_extend(args, { "--glob", glob })
+  end
+  return args
+end
+
+---@return string
+function M.foam_todo_rg_exclude_flags()
+  local flags = {}
+  for _, glob in ipairs(FOAM_TODO_EXCLUDED_GLOBS) do
+    table.insert(flags, "--glob " .. shell_quote(glob))
+  end
+  return table.concat(flags, " ")
 end
 
 ---@param cwd? string
