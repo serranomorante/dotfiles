@@ -20,6 +20,8 @@
         "--directory",
         "{{ reaper_mcp_server_setup.repo_path }}",
         "run",
+        "--offline",
+        "--no-sync",
         "-m",
         "reaper_mcp_server.server",
         "--reaper-projects-dir",
@@ -27,7 +29,8 @@
       ],
       "env": {
         "FJ_PY_PROFILE": "fj-py-mcp-reaper.profile",
-        "FJ_PY_EXTRA_PATHS": "{{ reaper_mcp_server_setup.projects_dir }}"
+        "FJ_PY_EXTRA_PATHS": "{{ reaper_mcp_server_setup.projects_dir }}",
+        "FJ_PY_WRITABLE_PATHS": "{{ ansible_facts.env.HOME }}/.cache/uv"
       }
     },
     "Figma": {

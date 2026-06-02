@@ -145,6 +145,8 @@ Use `online` only when the command must fetch remote resources:
 
 For interactive shell workflows, set `FJ_PY_PROFILE=fj-py-interactive.profile`.
 
+For stdio MCP servers and other long-running offline Python tools that intentionally launch through `uv run`, keep the runtime path Firejailed and make startup non-resolving: pass `uv run --offline --no-sync ...` and expose only the needed uv cache path through wrapper env, such as `FJ_PY_WRITABLE_PATHS=$HOME/.cache/uv`. Do not let an offline runtime server depend on `uv run` doing a build, sync, or package fetch before stdio startup.
+
 ## Piper TTS Guidance
 
 For Piper:
