@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run PHP and Composer tooling inside Firejail.
+# This wrapper only handles the generic project-oriented workflow: sandbox one
+# project and execute a command inside it. Composer state is scoped by default
+# so dependency code cannot read the user's normal Composer config or tokens.
+#
+# Examples:
+#   fj-php online /path/to/project -- composer install
+#   fj-php offline /path/to/project -- php artisan test
+
+SCRIPT_NAME=fj-php
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
+source "${script_dir}/firejail-wrapper-common.bash"
+
+print_help() {
+    cat <<'EOF'
+Usage:
+  fj-php <online|local|offline> <project> -- <command ...>
+  fj-php -h|--help
+
+Run PHP and Composer tooling inside Firejail with <project> as the sandboxed
+work root. The wrapper starts from a clean environment, then forwards only the
+variables it explicitly knows about plus names listed in FJ_PHP_FORWARD_ENV.
+
+Network modes:
+  online   Allow normal network access.
+  local    Allow Unix sockets only.
+  offline  Disable networking.
+
+Path controls:
+  FJ_PHP_EXTRA_PATHS     Newline-delimited absolute paths exposed read-only.
+  FJ_PHP_WRITABLE_PATHS  Newline-delimited absolute paths exposed read-write.
+  FJ_PHP_FORWARD_ENV     Newline-delimited environment variable names to forward.
+  FJ_PHP_PROFILE         Firejail profile name or absolute profile path.
+
+Composer controls:
+  COMPOSER_HOME          Defaults to ~/.local/share/firejail-wrapper/php/composer.
+  COMPOSER_CACHE_DIR     Defaults to ~/.cache/firejail-wrapper/php/composer.
+  COMPOSER_AUTH          Not forwarded unless listed in FJ_PHP_FORWARD_ENV.
+  XDEBUG_MODE            Defaults to off; set explicitly when debugging.
+
+Examples:
+  fj-php online /path/to/project -- composer install
+  fj-php offline /path/to/project -- php artisan test
+
+  COMPOSER_AUTH='{"github-oauth":{"github.com":"...token..."}}' \
+  FJ_PHP_FORWARD_ENV=COMPOSER_AUTH \
+  fj-php online /path/to/private-project -- composer install
+EOF
+}
+
+setup_php_env() {
+    local real_home=$1
+    local path_value=$2
+    local cache_root=$3
+    local state_root=$4
+    local data_root=$5
+    local composer_home=$6
+    local composer_cache_dir=$7
+
+    init_clean_env
+    append_common_terminal_env
+    append_env_literal HOME "$real_home"
+    append_env_literal PATH "$path_value"
+    append_env_literal XDG_CACHE_HOME "${XDG_CACHE_HOME:-$cache_root}"
+    append_env_literal XDG_STATE_HOME "${XDG_STATE_HOME:-$state_root}"
+    append_env_literal XDG_DATA_HOME "${XDG_DATA_HOME:-$data_root}"
+    append_env_literal COMPOSER_HOME "$composer_home"
+    append_env_literal COMPOSER_CACHE_DIR "$composer_cache_dir"
+    append_env_literal COMPOSER_NO_INTERACTION "${COMPOSER_NO_INTERACTION:-1}"
+    append_env_literal COMPOSER_HTACCESS_PROTECT "${COMPOSER_HTACCESS_PROTECT:-1}"
+    append_env_literal XDEBUG_MODE "${XDEBUG_MODE:-off}"
+    append_env_if_set PHP_IDE_CONFIG
+    append_env_names_if_set "${FJ_PHP_FORWARD_ENV:-}"
+}
+
+resolve_profile_path() {
+    local real_home=$1
+    local profile_name=${FJ_PHP_PROFILE:-fj-php.profile}
+
+    if [[ "$profile_name" == /* ]]; then
+        printf '%s\n' "$profile_name"
+    else
+        firejail_profile_path "$real_home" "$profile_name"
+    fi
+}
+
+# <network-mode> <project> -- <command ...>
+main() {
+    case "${1:-}" in
+    -h | --help)
+        print_help
+        return 0
+        ;;
+    esac
+
+    require_command_separator "$@"
+    command -v /usr/bin/firejail >/dev/null 2>&1 || die "firejail is required"
+
+    local network_mode=$1
+    local project_root
+    project_root=$(canonicalize_existing_dir "$2") || die "unable to resolve project path: $2"
+    shift 3
+
+    local real_home=${HOME:-}
+    local path_value=${PATH:-/usr/local/bin:/usr/bin:/bin}
+    local profile_path
+    local cache_root=${real_home}/.cache/firejail-wrapper/php
+    local state_root=${real_home}/.local/state/firejail-wrapper/php
+    local data_root=${real_home}/.local/share/firejail-wrapper/php
+    local composer_home=${COMPOSER_HOME:-${data_root}/composer}
+    local composer_cache_dir=${COMPOSER_CACHE_DIR:-${cache_root}/composer}
+    profile_path=$(resolve_profile_path "$real_home")
+
+    [[ "$composer_home" == /* ]] || die "COMPOSER_HOME must be an absolute path"
+    [[ "$composer_cache_dir" == /* ]] || die "COMPOSER_CACHE_DIR must be an absolute path"
+    mkdir -p "$cache_root" "$state_root" "$data_root" "$composer_home" "$composer_cache_dir"
+
+    init_firejail_args "$profile_path" "$network_mode"
+    FIREJAIL_ARGS+=("--whitelist=${project_root}")
+    append_paths ro "${FJ_PHP_EXTRA_PATHS:-}"
+    append_paths rw "${FJ_PHP_WRITABLE_PATHS:-}"
+
+    if [[ "$composer_home" != "${data_root}/composer" ]]; then
+        append_paths rw "$composer_home"
+    fi
+    if [[ "$composer_cache_dir" != "${cache_root}/composer" ]]; then
+        append_paths rw "$composer_cache_dir"
+    fi
+
+    setup_php_env "$real_home" "$path_value" "$cache_root" "$state_root" "$data_root" "$composer_home" "$composer_cache_dir"
+    if [[ "${FJ_PHP_NO_CHDIR:-0}" != "1" ]]; then
+        cd "$project_root"
+    fi
+    exec "${FIREJAIL_ARGS[@]}" "${ENV_ARGS[@]}" "$@"
+}
+
+main "$@"

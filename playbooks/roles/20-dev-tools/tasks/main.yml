@@ -33,6 +33,17 @@
   tags: ["20-30"]
 
 - block:
+    - name: Setup PHP sandbox wrappers
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 35-setup-php-sandbox.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["20-35"]
+
+- block:
     - name: Setup python tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:

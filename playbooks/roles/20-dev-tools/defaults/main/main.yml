@@ -13,9 +13,11 @@ node_system_default_npm_path: "{{ node_system_default_bin_dir }}/npm"
 node_system_default_npx_path: "{{ node_system_default_bin_dir }}/npx"
 python_firejail_executable: "{{ node_user_bin_dir }}/fj-py"
 node_firejail_executable: "{{ node_user_bin_dir }}/fj-node"
+php_firejail_executable: "{{ node_user_bin_dir }}/fj-php"
 nvim_firejail_executable: "{{ node_user_bin_dir }}/fj-dev-nvim"
 ansible_firejail_npm_executable: "{{ node_user_bin_dir }}/ansible-firejail-npm"
 ansible_firejail_pnpm_executable: "{{ node_user_bin_dir }}/ansible-firejail-pnpm"
+ansible_firejail_composer_executable: "{{ node_user_bin_dir }}/ansible-firejail-composer"
 node_package_manager_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/node-package-managers/.npm"
 node_package_manager_packages:
   - name: yarn

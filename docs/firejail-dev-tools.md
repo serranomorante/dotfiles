@@ -22,17 +22,19 @@ The `20-dev-tools` role owns the shared wrappers and profiles:
 
 - `fj-py`: generic Python command wrapper.
 - `fj-node`: generic Node command wrapper.
+- `fj-php`: generic PHP and Composer command wrapper.
 - `ansible-firejail-pip`: `pip`-shaped adapter for `ansible.builtin.pip`.
 - `ansible-firejail-npm`: `npm`-shaped adapter for `community.general.npm`.
 - `ansible-firejail-pnpm`: `pnpm`-shaped adapter for `community.general.pnpm`.
+- `ansible-firejail-composer`: `composer`-shaped adapter for `community.general.composer`.
 - `firejail-wrapper-common.bash`: shared path, env, and profile helpers.
-- `fj-py.profile`, `fj-node.profile`: generic non-interactive profiles.
-- `fj-py-ansible.profile`, `fj-node-ansible.profile`: package-install profiles used by the Ansible adapters.
+- `fj-py.profile`, `fj-node.profile`, `fj-php.profile`: generic non-interactive profiles.
+- `fj-py-ansible.profile`, `fj-node-ansible.profile`, `fj-php-ansible.profile`: package-install profiles used by the Ansible adapters.
 - `fj-py-interactive.profile`: Python profile variant for interactive shells that need real `/dev/pts` behavior.
 
 The wrappers use a clean environment and expose only the project root plus explicitly requested paths. Prefer expanding the existing wrappers before creating a new one.
 
-Generic `fj-node` and `fj-py` runs preserve the caller's absolute project path as the sandbox-visible work tree, but their default XDG state does not inherit broad host roots. Unless explicitly overridden, Node writes cache/state/data under `~/.cache/firejail-wrapper/node`, `~/.local/state/firejail-wrapper/node`, and `~/.local/share/firejail-wrapper/node`; Python uses the matching `python` roots. Keep package-manager caches inside those wrapper-scoped roots unless a specific adapter has a narrower project-specific cache path.
+Generic `fj-node`, `fj-py`, and `fj-php` runs preserve the caller's absolute project path as the sandbox-visible work tree, but their default XDG state does not inherit broad host roots. Unless explicitly overridden, Node writes cache/state/data under `~/.cache/firejail-wrapper/node`, `~/.local/state/firejail-wrapper/node`, and `~/.local/share/firejail-wrapper/node`; Python uses the matching `python` roots; PHP and Composer use the matching `php` roots, with `COMPOSER_HOME` defaulting to `~/.local/share/firejail-wrapper/php/composer` and `COMPOSER_CACHE_DIR` defaulting to `~/.cache/firejail-wrapper/php/composer`. Keep package-manager caches inside those wrapper-scoped roots unless a specific adapter has a narrower project-specific cache path.
 
 When a wrapper owns the executable name that other tools call, and that executable may be launched either directly or from inside another Firejail sandbox, the wrapper itself should make the containment decision. If it is not already inside Firejail, it should start its normal sandbox. If it is already inside Firejail and intends to reuse the inherited sandbox, it must first run `fj-profile-checker` against the expected profile and fail closed if the current filesystem view does not satisfy that profile. Do this in the wrapper rather than in the parent process, so every caller of the executable gets the same safety check.
 
@@ -47,6 +49,7 @@ Generic wrappers use this shape:
 ```sh
 fj-py <online|local|offline> <project> -- <command ...>
 fj-node <online|local|offline> <project> -- <command ...>
+fj-php <online|local|offline> <project> -- <command ...>
 ```
 
 - `online`: normal network access. Use for downloading packages, models, browser artifacts, or remote resources.
@@ -57,7 +60,7 @@ Do not assume `local` is sufficient for HTTP. The repository's `local` mode allo
 
 ## Ansible Package Installs
 
-Use the adapter executable rather than raw `pip`, `npm`, or `pnpm`. If a package manager is not covered by an existing adapter, first look for an existing generic wrapper such as `fj-py` or `fj-node`; add a new adapter only when the workflow repeats enough to justify it.
+Use the adapter executable rather than raw `pip`, `npm`, `pnpm`, or `composer`. If a package manager is not covered by an existing adapter, first look for an existing generic wrapper such as `fj-py`, `fj-node`, or `fj-php`; add a new adapter only when the workflow repeats enough to justify it.
 
 Python:
 
@@ -102,6 +105,22 @@ PNPM:
     ANSIBLE_FIREJAIL_PNPM_NODE_VERSION: "{{ node_system_default_version }}"
 ```
 
+Composer:
+
+```yaml
+- name: "Ensure Composer project dependencies"
+  community.general.composer:
+    command: install
+    working_dir: "{{ project_path }}"
+    composer_executable: "{{ ansible_firejail_composer_executable }}"
+  environment:
+    XDEBUG_MODE: "off"
+    ANSIBLE_FIREJAIL_COMPOSER_EXTRA_PATHS: |
+      {{ optional_readonly_helper_path }}
+```
+
+Composer auth and tokens are not exposed by default. For private registries, pass `COMPOSER_AUTH` through `FJ_PHP_FORWARD_ENV` for one command or expose a narrow project-specific Composer home through `COMPOSER_HOME` plus `FJ_PHP_WRITABLE_PATHS`; do not whitelist `~/.composer` or `~/.config/composer` broadly.
+
 When an install needs extra writable state, create the target directories first and pass newline-delimited absolute paths through the adapter-specific writable path variable:
 
 ```yaml
@@ -110,6 +129,25 @@ environment:
   ANSIBLE_FIREJAIL_PIP_WRITABLE_PATHS: |
     {{ project_path }}/cache
 ```
+
+## Running PHP Tools
+
+For local execution after Composer install, prefer `fj-php` directly and choose the narrowest viable network mode:
+
+```yaml
+- name: "Run PHP tests offline"
+  ansible.builtin.command:
+    argv:
+      - "{{ php_firejail_executable }}"
+      - offline
+      - "{{ project_path }}"
+      - --
+      - php
+      - artisan
+      - test
+```
+
+Use `online` for Composer dependency resolution or package download, then use `offline` for framework commands, test runs, autoload checks, and application scripts that do not need the internet. The Arch-owned PHP and Composer packages remain installed by the PHP language tooling task; `fj-php` only constrains package-manager execution and runtime commands. `fj-php` sets `XDEBUG_MODE=off` by default to keep ordinary sandboxed CLI runs quiet; set `XDEBUG_MODE` explicitly when debugging. The PHP profiles expose `~/dotfiles/utilities/bin` read-only because user commands such as `~/bin/composer-legacy` can be Stow symlinks whose targets live there.
 
 ## Running Python Tools
 

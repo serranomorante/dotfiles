@@ -16,6 +16,8 @@ firejail-dev-tool-profiles-avoid-broad-xdg)
         "$root/playbooks/roles/20-dev-tools/templates/fj-node.profile" \
         "$root/playbooks/roles/20-dev-tools/templates/fj-node-ansible.profile" \
         "$root/playbooks/roles/20-dev-tools/templates/fj-node-volta-bootstrap.profile" \
+        "$root/playbooks/roles/20-dev-tools/templates/fj-php.profile" \
+        "$root/playbooks/roles/20-dev-tools/templates/fj-php-ansible.profile" \
         "$root/playbooks/roles/20-dev-tools/templates/fj-py.profile"; do
         if grep -Eq '^[[:space:]]*whitelist[[:space:]]+\$\{HOME\}/\.cache([[:space:]]|$)' "$profile"; then
             printf 'broad cache whitelist in %s\n' "$profile" >&2

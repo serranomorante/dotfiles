@@ -1,0 +1,140 @@
+#!/usr/bin/env php
+<?php
+// Purpose: Composer-shaped adapter for community.general.composer.
+// Notes: Ansible invokes composer as `<php> <composer_executable> ...`; keep
+// this file PHP-native and delegate containment to the generic fj-php wrapper.
+
+function fail_with(string $message): void
+{
+    fwrite(STDERR, "ansible-firejail-composer: {$message}\n");
+    exit(1);
+}
+
+function canonicalize_existing_dir(string $path, string $label): string
+{
+    if (!is_dir($path)) {
+        fail_with("unable to resolve {$label}: {$path}");
+    }
+    $real = realpath($path);
+    if ($real === false) {
+        fail_with("unable to canonicalize {$label}: {$path}");
+    }
+    return $real;
+}
+
+function parse_working_dir(array $args): ?string
+{
+    $count = count($args);
+    for ($i = 0; $i < $count; $i++) {
+        $arg = $args[$i];
+        if ($arg === '--working-dir' || $arg === '-d') {
+            return $args[$i + 1] ?? null;
+        }
+        if (str_starts_with($arg, '--working-dir=')) {
+            return substr($arg, strlen('--working-dir='));
+        }
+    }
+    return null;
+}
+
+function append_existing_path(string $paths, string $path): string
+{
+    if ($path === '') {
+        return $paths;
+    }
+    $real = canonicalize_existing_dir($path, $path);
+    return $paths === '' ? $real : "{$paths}\n{$real}";
+}
+
+$scriptPath = realpath($_SERVER['argv'][0] ?? __FILE__);
+if ($scriptPath === false) {
+    fail_with('unable to resolve adapter path');
+}
+$scriptDir = dirname($scriptPath);
+$args = array_slice($_SERVER['argv'], 1);
+
+$composerExecutable = getenv('ANSIBLE_FIREJAIL_COMPOSER_EXECUTABLE');
+if ($composerExecutable === false || $composerExecutable === '') {
+    $composerExecutable = '/usr/bin/composer';
+}
+if (!str_starts_with($composerExecutable, '/')) {
+    fail_with('ANSIBLE_FIREJAIL_COMPOSER_EXECUTABLE must be an absolute path');
+}
+if (!is_file($composerExecutable)) {
+    fail_with("unable to resolve composer executable: {$composerExecutable}");
+}
+
+$phpExecutable = getenv('ANSIBLE_FIREJAIL_COMPOSER_PHP');
+if ($phpExecutable === false || $phpExecutable === '') {
+    $phpExecutable = PHP_BINARY ?: '/usr/bin/php';
+}
+if (!str_starts_with($phpExecutable, '/')) {
+    fail_with('ANSIBLE_FIREJAIL_COMPOSER_PHP must be an absolute path');
+}
+
+$workingDir = parse_working_dir($args);
+$workRoot = $workingDir === null ? canonicalize_existing_dir(getcwd() ?: '.', 'composer work root') : canonicalize_existing_dir($workingDir, 'composer working dir');
+
+$cacheRoot = getenv('ANSIBLE_FIREJAIL_COMPOSER_CACHE_DIR') ?: '';
+$stateRoot = getenv('ANSIBLE_FIREJAIL_COMPOSER_STATE_DIR') ?: '';
+$dataRoot = getenv('ANSIBLE_FIREJAIL_COMPOSER_DATA_DIR') ?: '';
+$writablePaths = getenv('ANSIBLE_FIREJAIL_COMPOSER_WRITABLE_PATHS') ?: '';
+
+if ($cacheRoot !== '') {
+    $writablePaths = append_existing_path($writablePaths, $cacheRoot);
+}
+if ($stateRoot !== '') {
+    $writablePaths = append_existing_path($writablePaths, $stateRoot);
+}
+if ($dataRoot !== '') {
+    $writablePaths = append_existing_path($writablePaths, $dataRoot);
+}
+
+$path = getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin';
+$envPrefix = [
+    '/usr/bin/env',
+    "PATH={$path}",
+    'FJ_PHP_PROFILE=fj-php-ansible.profile',
+    'FJ_PHP_NO_CHDIR=1',
+    'FJ_PHP_EXTRA_PATHS=' . (getenv('ANSIBLE_FIREJAIL_COMPOSER_EXTRA_PATHS') ?: ''),
+    "FJ_PHP_WRITABLE_PATHS={$writablePaths}",
+];
+
+if ($cacheRoot !== '') {
+    $cacheRoot = canonicalize_existing_dir($cacheRoot, 'composer cache dir');
+    $envPrefix[] = "XDG_CACHE_HOME={$cacheRoot}";
+    $envPrefix[] = 'COMPOSER_CACHE_DIR=' . (getenv('COMPOSER_CACHE_DIR') ?: "{$cacheRoot}/composer");
+}
+if ($stateRoot !== '') {
+    $stateRoot = canonicalize_existing_dir($stateRoot, 'composer state dir');
+    $envPrefix[] = "XDG_STATE_HOME={$stateRoot}";
+}
+if ($dataRoot !== '') {
+    $dataRoot = canonicalize_existing_dir($dataRoot, 'composer data dir');
+    $envPrefix[] = "XDG_DATA_HOME={$dataRoot}";
+    $envPrefix[] = 'COMPOSER_HOME=' . (getenv('COMPOSER_HOME') ?: "{$dataRoot}/composer");
+}
+
+$forwardEnv = getenv('ANSIBLE_FIREJAIL_COMPOSER_FORWARD_ENV') ?: '';
+if ($forwardEnv !== '') {
+    $envPrefix[] = "FJ_PHP_FORWARD_ENV={$forwardEnv}";
+}
+
+$command = array_merge(
+    $envPrefix,
+    ["{$scriptDir}/fj-php", 'online', $workRoot, '--', $phpExecutable, $composerExecutable],
+    $args
+);
+
+$descriptors = [
+    0 => ['file', 'php://stdin', 'r'],
+    1 => ['file', 'php://stdout', 'w'],
+    2 => ['file', 'php://stderr', 'w'],
+];
+
+$process = proc_open($command, $descriptors, $pipes);
+if (!is_resource($process)) {
+    fail_with('unable to start fj-php');
+}
+$status = proc_close($process);
+exit(is_int($status) ? $status : 1);
