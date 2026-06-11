@@ -1,0 +1,22 @@
+diff --git a/legion-laptop.c b/legion-laptop.c
+--- a/legion-laptop.c
++++ b/legion-laptop.c
+@@ -858,7 +858,17 @@ static const struct model_config model_eucn = {
+        .access_method_fanfullspeed = ACCESS_METHOD_WMI,
+        .acpi_check_dev = true,
+        .ramio_physical_start = 0xFE00D400,
+-       .ramio_size = 0x600
++       .ramio_size = 0x600,
++#if LINUX_VERSION_CODE < KERNEL_VERSION(7, 0, 0)
++       /*
++        * DOTFILES_EUCN_ACPI_PATH_COMPAT:
++        * PR #423 changed the default CFG probe path from VPC0._CFG to _CFG.
++        * EUCN Legion 5 15ARH05 firmware still exposes CFG under VPC0 on 6.x.
++        */
++       .acpi_paths = {
++               [ACPI_PATH_CFG] = "VPC0._CFG"
++       }
++#endif
+ };
+
+ static const struct model_config model_fccn = {

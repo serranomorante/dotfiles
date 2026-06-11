@@ -1,0 +1,286 @@
+---
+- name: "[archlinux] Lenovo Legion tools: ensure package dependencies"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - dkms
+      - dmidecode
+      - i2c-tools
+      - lm_sensors
+      - mokutil
+      - openssl
+      - power-profiles-daemon
+
+- name: "[archlinux] Lenovo Legion tools: ensure local AUR packages"
+  ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages:
+      - lenovolegionlinux-git
+      - lenovolegionlinux-dkms-git
+
+- name: "[archlinux] Lenovo Legion tools: check DKMS source paths"
+  ansible.builtin.stat:
+    path: "{{ item }}/legion-laptop.c"
+  register: var_legion_dkms_source_paths
+  loop:
+    - /usr/src/lenovolegionlinux-1.0.0
+    - /var/lib/dkms/lenovolegionlinux/1.0.0/build
+
+- name: "[archlinux] Lenovo Legion tools: patch DKMS source for linux-rt-lts 6.12"
+  become: true
+  ansible.builtin.shell: |
+    set -eu
+    if grep -q 'DOTFILES_PLATFORM_PROFILE_COMPAT' legion-laptop.c; then
+      exit 0
+    fi
+    patch --forward --batch -p1 -i "{{ role_path }}/files/legion/lenovolegionlinux-6.12-platform-profile.patch"
+  args:
+    chdir: "{{ item.item }}"
+  register: var_legion_dkms_source_patch
+  changed_when: "'patching file' in var_legion_dkms_source_patch.stdout"
+  loop: "{{ var_legion_dkms_source_paths.results }}"
+  when: item.stat.exists
+
+- name: "[archlinux] Lenovo Legion tools: patch EUCN ACPI CFG path for 6.x kernels"
+  become: true
+  ansible.builtin.shell: |
+    set -eu
+    if grep -q 'DOTFILES_EUCN_ACPI_PATH_COMPAT' legion-laptop.c; then
+      exit 0
+    fi
+    patch --forward --batch -l -p1 -i "{{ role_path }}/files/legion/lenovolegionlinux-eucn-6x-acpi-path.patch"
+  args:
+    chdir: "{{ item.item }}"
+  register: var_legion_dkms_eucn_acpi_patch
+  changed_when: "'patching file' in var_legion_dkms_eucn_acpi_patch.stdout"
+  loop: "{{ var_legion_dkms_source_paths.results }}"
+  when: item.stat.exists
+
+- name: "[archlinux] Lenovo Legion tools: find installed kernels"
+  ansible.builtin.find:
+    paths: /usr/lib/modules
+    file_type: directory
+    recurse: false
+  register: var_legion_kernel_module_dirs
+
+- name: "[archlinux] Lenovo Legion tools: check installed kernel header paths"
+  ansible.builtin.stat:
+    path: "{{ item.path }}/build"
+  register: var_legion_kernel_build_paths
+  loop: "{{ var_legion_kernel_module_dirs.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+
+- name: "[archlinux] Lenovo Legion tools: collect DKMS target kernels"
+  ansible.builtin.set_fact:
+    var_legion_target_kernels: >-
+      {{
+        var_legion_kernel_build_paths.results
+        | selectattr('stat.exists')
+        | map(attribute='item.path')
+        | map('regex_replace', '^.*/', '')
+        | sort
+        | list
+      }}
+    var_legion_dkms_source_changed: >-
+      {{
+        var_legion_dkms_source_patch is changed
+        or var_legion_dkms_eucn_acpi_patch is changed
+      }}
+
+- name: "[archlinux] Lenovo Legion tools: fail when no DKMS target kernels are available"
+  ansible.builtin.assert:
+    that:
+      - var_legion_target_kernels | length > 0
+    fail_msg: "No installed kernels with /usr/lib/modules/<kernel>/build were found for LenovoLegionLinux DKMS."
+
+- name: "[archlinux] Lenovo Legion tools: check DKMS module state"
+  become: true
+  ansible.builtin.command: dkms status
+  register: var_legion_dkms_status
+  changed_when: false
+
+- name: "[archlinux] Lenovo Legion tools: check DKMS refresh markers"
+  become: true
+  ansible.builtin.stat:
+    path: "/var/lib/dkms/lenovolegionlinux/1.0.0/.dotfiles-eucn-acpi-v1-{{ item | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
+  register: var_legion_dkms_refresh_markers
+  loop: "{{ var_legion_target_kernels }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: "[archlinux] Lenovo Legion tools: collect stale DKMS target kernels"
+  ansible.builtin.set_fact:
+    var_legion_dkms_stale_kernels: >-
+      {{
+        var_legion_dkms_refresh_markers.results
+        | rejectattr('stat.exists')
+        | map(attribute='item')
+        | list
+      }}
+
+- name: "[archlinux] Lenovo Legion tools: build DKMS module for target kernels"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - build
+      - --force
+      - lenovolegionlinux/1.0.0
+      - -k
+      - "{{ item }}"
+  changed_when: true
+  when: >-
+    (var_legion_dkms_status.stdout_lines
+      | select('search', '^lenovolegionlinux/[^,]+, ' ~ (item | regex_escape) ~ ', [^:]+: installed$')
+      | list
+      | length) == 0
+    or (var_legion_dkms_source_changed | bool)
+    or item in var_legion_dkms_stale_kernels
+  loop: "{{ var_legion_target_kernels }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: "[archlinux] Lenovo Legion tools: install DKMS module for target kernels"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - install
+      - --force
+      - lenovolegionlinux/1.0.0
+      - -k
+      - "{{ item }}"
+  changed_when: true
+  when: >-
+    (var_legion_dkms_status.stdout_lines
+      | select('search', '^lenovolegionlinux/[^,]+, ' ~ (item | regex_escape) ~ ', [^:]+: installed$')
+      | list
+      | length) == 0
+    or (var_legion_dkms_source_changed | bool)
+    or item in var_legion_dkms_stale_kernels
+  loop: "{{ var_legion_target_kernels }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: "[archlinux] Lenovo Legion tools: record DKMS refresh markers"
+  become: true
+  ansible.builtin.file:
+    path: "/var/lib/dkms/lenovolegionlinux/1.0.0/.dotfiles-eucn-acpi-v1-{{ item | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
+    state: touch
+    mode: "0644"
+  when: >-
+    (var_legion_dkms_status.stdout_lines
+      | select('search', '^lenovolegionlinux/[^,]+, ' ~ (item | regex_escape) ~ ', [^:]+: installed$')
+      | list
+      | length) == 0
+    or (var_legion_dkms_source_changed | bool)
+    or item in var_legion_dkms_stale_kernels
+  loop: "{{ var_legion_target_kernels }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: "[archlinux] Lenovo Legion tools: check final DKMS module state"
+  become: true
+  ansible.builtin.command: dkms status
+  register: var_legion_final_dkms_status
+  changed_when: false
+
+- name: "[archlinux] Lenovo Legion tools: fail when target kernel modules are missing"
+  ansible.builtin.assert:
+    that:
+      - >-
+        (var_legion_final_dkms_status.stdout_lines
+          | select('search', '^lenovolegionlinux/[^,]+, ' ~ (item | regex_escape) ~ ', [^:]+: installed$')
+          | list
+          | length) == 1
+    fail_msg: "{{ var_legion_final_dkms_status.stdout_lines | select('search', '^lenovolegionlinux/') | list }}"
+  loop: "{{ var_legion_target_kernels }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: "[archlinux] Lenovo Legion tools: fail when DKMS module remains built-only"
+  ansible.builtin.assert:
+    that:
+      - "(var_legion_final_dkms_status.stdout_lines | select('search', '^lenovolegionlinux/') | select('search', ': built$') | list | length) == 0"
+    fail_msg: "{{ var_legion_final_dkms_status.stdout_lines | select('search', '^lenovolegionlinux/') | select('search', ': built$') | list }}"
+
+- name: "[archlinux] Lenovo Legion tools: check module signer for target kernels"
+  ansible.builtin.command:
+    argv:
+      - modinfo
+      - -k
+      - "{{ item }}"
+      - -F
+      - signer
+      - legion-laptop
+  register: var_legion_module_signer
+  changed_when: false
+  loop: "{{ var_legion_target_kernels }}"
+  loop_control:
+    label: "{{ item }}"
+
+- name: "[archlinux] Lenovo Legion tools: fail when target kernel modules are unsigned"
+  ansible.builtin.assert:
+    that:
+      - (item.stdout | trim) | length > 0
+    fail_msg: "legion-laptop is not signed for kernel {{ item.item }}. Do not reboot with Secure Boot assumptions until DKMS module signing is fixed."
+  loop: "{{ var_legion_module_signer.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: "[archlinux] Lenovo Legion tools: verify Secure Boot signatures"
+  become: true
+  ansible.builtin.command: sbctl verify
+  register: var_legion_sbctl_verify
+  changed_when: false
+  failed_when: false
+
+- name: "[archlinux] Lenovo Legion tools: fail when boot files are unsigned"
+  ansible.builtin.assert:
+    that:
+      - >-
+        (var_legion_sbctl_verify.stdout_lines
+          | select('search', '/boot/')
+          | select('search', ' is not signed')
+          | list
+          | length) == 0
+    fail_msg: "{{ var_legion_sbctl_verify.stdout_lines | select('search', '/boot/') | select('search', ' is not signed') | list }}"
+
+- name: "[archlinux] Lenovo Legion tools: seed upstream config"
+  become: true
+  ansible.builtin.copy:
+    src: /usr/share/legion_linux/
+    dest: /etc/legion_linux/
+    remote_src: true
+    force: false
+    owner: root
+    group: root
+    mode: preserve
+
+- name: "[archlinux] Lenovo Legion tools: load i2c-dev at boot"
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/i2c-dev.conf
+    content: |
+      i2c-dev
+    owner: root
+    group: root
+    mode: "644"
+
+- name: "[archlinux] Lenovo Legion tools: remove forced ACPI probe"
+  become: true
+  ansible.builtin.file:
+    dest: /etc/modprobe.d/legion-laptop.conf
+    state: absent
+
+- name: "[archlinux] Lenovo Legion tools: load legion-laptop at boot"
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/legion-laptop.conf
+    content: |
+      legion-laptop
+    owner: root
+    group: root
+    mode: "644"

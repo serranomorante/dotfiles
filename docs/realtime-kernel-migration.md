@@ -14,6 +14,8 @@ The pre-hibernation setup used on the current machine has hibernation disabled a
 
 `nvidia-open-lts` is built for Arch's `linux-lts` package. The realtime kernel needs `nvidia-open-dkms` so the open NVIDIA kernel module is built for every installed kernel that has headers available.
 
+LenovoLegionLinux uses a separate DKMS module named `lenovolegionlinux` that builds the `legion-laptop` kernel module. It does not replace or share files with NVIDIA DKMS; it only appears alongside `nvidia` in `dkms status`. The migration playbook includes it in the built-only DKMS check so an already installed Legion module is installed for both `linux-lts` and `linux-rt-lts` when headers are present.
+
 VirtualBox host modules need the same package treatment, but the supported workstation workflow is `linux-lts` only. Use `virtualbox-host-dkms`, not `virtualbox-host-modules-lts`, keep `/etc/modules-load.d/virtualbox-host-dkms.conf -> /dev/null` masked because `vboxdrv` can trigger scheduler BUG warnings on `PREEMPT_RT`, and load the host modules manually from the fallback `linux-lts` boot with `~/bin/virtualbox-lts-load` before starting VMs.
 
 `linux-rt-lts` itself provides `VIRTUALBOX-GUEST-MODULES`, which satisfies the guest-utils dependency path. Host support still needs the DKMS host module package when running VirtualBox guests on the workstation.

@@ -1,0 +1,21 @@
+# Lenovo Legion Linux
+
+This workstation is a Lenovo Legion 5 15ARH05 (`LENOVO 82B5`) with an EUCN BIOS family. The stock `ideapad_laptop` kernel driver exposes basic Lenovo controls such as `fan_mode`, `conservation_mode`, `fn_lock`, and keyboard backlight through `/sys/bus/platform/devices/VPC2004:00`, but it does not expose a standalone power-button LED control.
+
+The LenovoLegionLinux project is managed by the `10-system-tools` role tag `10-55`. The task installs the reviewed local AUR packages `lenovolegionlinux-git` and `lenovolegionlinux-dkms-git` from `[aur-local]`; review and publish them with `aur-review` before running the task. It seeds `/etc/legion_linux` from the upstream `/usr/share/legion_linux` defaults when the local config does not already exist, writes module-load entries for `i2c-dev` and `legion-laptop`, and removes any old `/etc/modprobe.d/legion-laptop.conf` that forced the `legion_laptop` ACPI probe.
+
+Its DKMS package registers the module package name `lenovolegionlinux` and builds the kernel module `legion-laptop`. This is independent of NVIDIA DKMS: NVIDIA remains the `nvidia` DKMS module, while Legion support appears as a separate `lenovolegionlinux/<version>` entry in `dkms status`.
+
+Secure Boot has two separate checks here. UKI and EFI binaries are handled by the existing pacman hooks: DKMS package transactions trigger mkinitcpio when needed, and `/usr/share/libalpm/hooks/zz-sbctl.hook` runs `sbctl sign-all -g` afterward. Kernel modules are separate from the UKI signature: DKMS signs out-of-tree modules with the DKMS module signing key, as seen on the NVIDIA module signer. The current upstream module also needs the dotfiles patch `lenovolegionlinux-6.12-platform-profile.patch` for `linux-rt-lts` 6.12 because that kernel does not have newer platform-profile constants used by LenovoLegionLinux git. The `10-55` task also applies `lenovolegionlinux-eucn-6x-acpi-path.patch` so EUCN kernels below 7.0 keep probing `VPC0._CFG`; LenovoLegionLinux PR #423 changed the default to `_CFG` for kernel 7.0 support, but this EUCN 15ARH05 firmware still exposes the 6.x path under `VPC0`. The `10-55` task discovers installed kernels with `/usr/lib/modules/<kernel>/build`, installs `lenovolegionlinux/1.0.0` for each target kernel, forces a DKMS rebuild/reinstall for all target kernels when a local source patch changes or the per-kernel dotfiles refresh marker is missing, checks that no target kernel is missing an installed module, checks that DKMS does not leave built-only LenovoLegionLinux entries, checks that `modinfo -k <kernel> -F signer legion-laptop` is non-empty for every target kernel, and checks that `sbctl verify` does not report unsigned `/boot` files.
+
+This EUCN machine is on the upstream allowlist, but the normal boot probe failed on `ACPI _CFG` with `Could not init ACPI access: -5` under `linux-rt-lts`. A manual reload with `force=1 ec_readonly=1` skipped the failing ACPI `_STA/_CFG` check and reached `legion_laptop loaded for this device`, exposing `fan_mode`, `conservation_mode`, `rapidcharge`, `/sys/firmware/acpi/platform_profile`, and `legion_hwmon`. The permanent dotfiles setting no longer forces that probe; test `linux-lts` without `force=1` before deciding whether LenovoLegionLinux should autoload there.
+
+The `legiond` system service is installed by the AUR package but is not enabled by the dotfiles task. It can actively apply fan-curve and power-profile behavior from `/etc/legion_linux`, so verify the module, GUI, and CLI manually before enabling it. The lower-risk first checks are `modprobe legion-laptop`, `dkms status`, `powerprofilesctl list`, and inspecting `/sys/firmware/acpi/platform_profile` after the module is loaded.
+
+After boot, low-risk validation commands are `lsmod | rg '^(legion_laptop|i2c_dev)'`, `journalctl -b -k --no-pager | rg -i 'legion|acpi|cfg|loaded|failed'`, `cat /sys/firmware/acpi/platform_profile`, `cat /sys/devices/pci0000:00/0000:00:14.3/PNP0C09:00/VPC2004:00/fan_mode`, and `cat /sys/devices/pci0000:00/0000:00:14.3/PNP0C09:00/hwmon/hwmon*/name`.
+
+Relevant upstream references:
+
+- LenovoLegionLinux repository: https://github.com/johnfanv2/LenovoLegionLinux
+- AUR user-space package: https://aur.archlinux.org/packages/lenovolegionlinux-git
+- AUR DKMS package: https://aur.archlinux.org/packages/lenovolegionlinux-dkms-git

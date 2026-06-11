@@ -79,6 +79,17 @@
   tags: ["10-50"]
 
 - block:
+    - name: Setup Lenovo Legion tools are configured
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 55-setup-legion-tools.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["10-55"]
+
+- block:
     - name: Setup nvidia tools are configured
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:

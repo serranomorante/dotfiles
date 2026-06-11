@@ -244,6 +244,7 @@ The `10-200` file-manager task (`playbooks/roles/10-system-tools/tasks/200-setup
 Specific operational notes live in `docs/`, including keyd setup, NVIDIA setup, Neovim debugging, Python development setup, and hardware-specific notes. Prefer adding focused docs there instead of expanding the root README with long implementation details.
 
 - Browser launcher resource limits are documented in [browser-resource-limits.md](./browser-resource-limits.md).
+- Lenovo Legion firmware tooling and LenovoLegionLinux DKMS ownership are documented in [legion-linux.md](./legion-linux.md).
 - Wine app launcher logging and user-level logrotate ownership are documented in [wine-app-logging.md](./wine-app-logging.md).
 - Realtime kernel migration notes for the Secure Boot, TPM, NVIDIA DKMS, and VirtualBox DKMS switch are documented in [realtime-kernel-migration.md](./realtime-kernel-migration.md).
 
