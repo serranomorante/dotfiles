@@ -87,6 +87,15 @@ run_display_health_check() {
 }
 
 run_toggle_display_layout() {
+    output="$("$present_window" clear 2>&1)"
+    rc="$?"
+
+    if [ "$rc" -ne 0 ]; then
+        logger -t keyd-observer "present-window clear before display toggle failed with rc=$rc: $output"
+    elif [ -n "$output" ]; then
+        logger -t keyd-observer "present-window clear before display toggle: $output"
+    fi
+
     output="$("$setup_displays" --toggle 2>&1)"
     rc="$?"
 
