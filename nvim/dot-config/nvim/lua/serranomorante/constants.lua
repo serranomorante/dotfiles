@@ -108,6 +108,7 @@ M.GLOBAL_MARKS_BY_CWD = {
     ["'F"] = "todos:finance",
     ["'G"] = "todos:events",
     ["'H"] = "todos:ai-autotrigger",
+    ["'I"] = "system:features",
   },
 }
 
