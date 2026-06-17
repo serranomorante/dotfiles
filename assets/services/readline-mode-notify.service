@@ -1,12 +1,15 @@
 [Unit]
 Description=Notify readline mode
-After=graphical.target
+Wants=keyd.service
+After=graphical.target keyd.service
 
 [Service]
 ExecStart=/usr/local/bin/readline-mode-watcher.sh
 Environment="DISPLAY=:0"
 Environment="XAUTHORITY={{ ansible_facts.env.HOME }}/.Xauthority"
 Environment="HOME={{ ansible_facts.env.HOME }}"
+Restart=always
+RestartSec=1
 User=root
 Group=root
 

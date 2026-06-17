@@ -1,0 +1,710 @@
+#!/usr/bin/env sh
+
+# Purpose: Show persistent keyboard/mouse mode state as an input-transparent X11
+# overlay instead of routing the state through desktop notifications.
+#
+# Usage: mode-osd [--compile-cache]|run|show MODE|hide MODE
+#
+# Notes: The shell wrapper compiles a small X11 helper into the user's cache on
+# first use. The helper uses an override-redirect ARGB window with an empty
+# input shape, so dwm does not manage it and clicks pass through it.
+
+set -eu
+
+usage() {
+    printf 'usage: %s [--compile-cache]|run|show MODE|hide MODE\n' "$0" >&2
+    printf 'modes: mouse readline midi\n' >&2
+    exit 2
+}
+
+valid_mode() {
+    case "${1:-}" in
+    mouse | readline | midi)
+        return 0
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
+runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+[ -d "$runtime_dir" ] || runtime_dir="/tmp"
+state_dir="${DOTFILES_MODE_OSD_STATE_DIR:-$runtime_dir/dotfiles-mode-osd}"
+pid_file="$state_dir/pid"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/mode-osd"
+helper="$cache_dir/mode-osd-x11"
+src="$cache_dir/mode-osd-x11.c"
+
+compile_helper() {
+    emit_status="${1:-0}"
+
+    command -v cc >/dev/null 2>&1 || {
+        printf 'mode-osd: cc is required to build the cached X11 helper\n' >&2
+        return 1
+    }
+
+    mkdir -p "$cache_dir"
+    tmp_src="$src.$$.tmp.c"
+    tmp_helper="$helper.$$"
+
+    cat >"$tmp_src" <<'EOF'
+#include <X11/Xatom.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/extensions/Xfixes.h>
+#include <X11/extensions/shape.h>
+
+#include <errno.h>
+#include <limits.h>
+#include <signal.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+
+static volatile sig_atomic_t running = 1;
+static Visual *pixel_visual = NULL;
+
+static void stop_running(int signo) {
+    (void)signo;
+    running = 0;
+}
+
+static int parse_int(const char *s, int *out) {
+    char *end = NULL;
+    long value;
+
+    errno = 0;
+    value = strtol(s, &end, 10);
+    if (errno != 0 || end == s || *end != '\0') {
+        return 0;
+    }
+
+    *out = (int)value;
+    return 1;
+}
+
+static int env_int(const char *name, int fallback, int min, int max) {
+    const char *value = getenv(name);
+    int parsed;
+
+    if (value == NULL || !parse_int(value, &parsed)) {
+        return fallback;
+    }
+
+    if (parsed < min) {
+        return min;
+    }
+    if (parsed > max) {
+        return max;
+    }
+
+    return parsed;
+}
+
+static void sleep_ms(int ms) {
+    struct timespec req;
+
+    if (ms <= 0) {
+        return;
+    }
+
+    req.tv_sec = ms / 1000;
+    req.tv_nsec = (long)(ms % 1000) * 1000000L;
+    while (nanosleep(&req, &req) == -1 && errno == EINTR && running) {
+    }
+}
+
+static unsigned char clamp_u8(int value) {
+    if (value < 0) {
+        return 0;
+    }
+    if (value > 255) {
+        return 255;
+    }
+    return (unsigned char)value;
+}
+
+static int mask_shift(unsigned long mask) {
+    int shift = 0;
+
+    if (mask == 0) {
+        return 0;
+    }
+
+    while ((mask & 1UL) == 0) {
+        mask >>= 1;
+        shift++;
+    }
+
+    return shift;
+}
+
+static int mask_bits(unsigned long mask) {
+    int bits = 0;
+
+    while (mask != 0) {
+        if ((mask & 1UL) != 0) {
+            bits++;
+        }
+        mask >>= 1;
+    }
+
+    return bits;
+}
+
+static unsigned long channel_to_mask(int channel, unsigned long mask) {
+    int shift;
+    int bits;
+    unsigned long max_value;
+
+    if (mask == 0) {
+        return 0;
+    }
+
+    shift = mask_shift(mask);
+    bits = mask_bits(mask);
+    max_value = (1UL << bits) - 1UL;
+
+    return (((unsigned long)clamp_u8(channel) * max_value + 127UL) / 255UL)
+           << shift;
+}
+
+static uint32_t visual_pixel(int red, int green, int blue) {
+    if (pixel_visual == NULL) {
+        return 0;
+    }
+
+    return (uint32_t)(channel_to_mask(red, pixel_visual->red_mask) |
+                      channel_to_mask(green, pixel_visual->green_mask) |
+                      channel_to_mask(blue, pixel_visual->blue_mask));
+}
+
+static void set_window_atom(Display *display, Window win, const char *property,
+                            const char *value) {
+    Atom prop_atom = XInternAtom(display, property, False);
+    Atom value_atom = XInternAtom(display, value, False);
+    Atom atom_type = XInternAtom(display, "ATOM", False);
+
+    XChangeProperty(display, win, prop_atom, atom_type, 32, PropModeReplace,
+                    (unsigned char *)&value_atom, 1);
+}
+
+static void set_window_opacity(Display *display, Window win, int opacity) {
+    Atom prop_atom = XInternAtom(display, "_NET_WM_WINDOW_OPACITY", False);
+    Atom cardinal_atom = XInternAtom(display, "CARDINAL", False);
+    unsigned long value;
+
+    if (opacity < 1) {
+        opacity = 1;
+    }
+    if (opacity > 100) {
+        opacity = 100;
+    }
+
+    value = (unsigned long)(((double)opacity / 100.0) * 4294967295.0);
+    XChangeProperty(display, win, prop_atom, cardinal_atom, 32,
+                    PropModeReplace, (unsigned char *)&value, 1);
+}
+
+static int path_active(const char *state_dir, const char *name) {
+    char path[PATH_MAX];
+
+    if (snprintf(path, sizeof(path), "%s/%s", state_dir, name) >=
+        (int)sizeof(path)) {
+        return 0;
+    }
+
+    return access(path, F_OK) == 0;
+}
+
+static int active_mask(const char *state_dir) {
+    int mask = 0;
+
+    if (path_active(state_dir, "mouse")) {
+        mask |= 1;
+    }
+    if (path_active(state_dir, "readline")) {
+        mask |= 2;
+    }
+    if (path_active(state_dir, "midi")) {
+        mask |= 4;
+    }
+
+    return mask;
+}
+
+static void blend_pixel(uint32_t *pixels, int width, int height, int x, int y,
+                        int r, int g, int b, int a) {
+    if (x < 0 || y < 0 || x >= width || y >= height || a <= 0) {
+        return;
+    }
+
+    pixels[y * width + x] = visual_pixel(r, g, b);
+}
+
+static void draw_rect(uint32_t *pixels, int width, int height, int x, int y,
+                      int w, int h, int r, int g, int b, int a) {
+    int px, py;
+
+    for (py = y; py < y + h; py++) {
+        for (px = x; px < x + w; px++) {
+            blend_pixel(pixels, width, height, px, py, r, g, b, a);
+        }
+    }
+}
+
+static void draw_round_rect(uint32_t *pixels, int width, int height, int x,
+                            int y, int w, int h, int radius, int r, int g,
+                            int b, int a) {
+    int px, py;
+
+    for (py = y; py < y + h; py++) {
+        for (px = x; px < x + w; px++) {
+            int dx = 0;
+            int dy = 0;
+
+            if (px < x + radius) {
+                dx = x + radius - px;
+            } else if (px >= x + w - radius) {
+                dx = px - (x + w - radius - 1);
+            }
+            if (py < y + radius) {
+                dy = y + radius - py;
+            } else if (py >= y + h - radius) {
+                dy = py - (y + h - radius - 1);
+            }
+
+            if (dx * dx + dy * dy <= radius * radius || dx == 0 || dy == 0) {
+                blend_pixel(pixels, width, height, px, py, r, g, b, a);
+            }
+        }
+    }
+}
+
+static void draw_circle(uint32_t *pixels, int width, int height, int cx, int cy,
+                        int radius, int r, int g, int b, int a) {
+    int x, y;
+
+    for (y = cy - radius; y <= cy + radius; y++) {
+        for (x = cx - radius; x <= cx + radius; x++) {
+            int dx = x - cx;
+            int dy = y - cy;
+            if (dx * dx + dy * dy <= radius * radius) {
+                blend_pixel(pixels, width, height, x, y, r, g, b, a);
+            }
+        }
+    }
+}
+
+static void draw_line(uint32_t *pixels, int width, int height, int x1, int y1,
+                      int x2, int y2, int radius, int r, int g, int b, int a) {
+    int dx = abs(x2 - x1);
+    int dy = abs(y2 - y1);
+    int steps = dx > dy ? dx : dy;
+    int i;
+
+    if (steps < 1) {
+        draw_circle(pixels, width, height, x1, y1, radius, r, g, b, a);
+        return;
+    }
+
+    for (i = 0; i <= steps; i++) {
+        int x = x1 + (x2 - x1) * i / steps;
+        int y = y1 + (y2 - y1) * i / steps;
+        draw_circle(pixels, width, height, x, y, radius, r, g, b, a);
+    }
+}
+
+static void draw_mouse_icon(uint32_t *pixels, int width, int height, int x,
+                            int y, int size) {
+    int cx = x + size / 2;
+    int top = y + size / 6;
+    int body_w = size * 9 / 16;
+    int body_h = size * 11 / 16;
+    int left = cx - body_w / 2;
+
+    draw_round_rect(pixels, width, height, left, top, body_w, body_h,
+                    size / 5, 235, 252, 255, 220);
+    draw_round_rect(pixels, width, height, left + 3, top + 3, body_w - 6,
+                    body_h - 6, size / 6, 23, 32, 38, 170);
+    draw_line(pixels, width, height, cx, top + 4, cx, top + body_h / 3, 1,
+              235, 252, 255, 230);
+    draw_line(pixels, width, height, cx, y + 2, cx, top, 1, 235, 252, 255,
+              180);
+}
+
+static void draw_keyboard_icon(uint32_t *pixels, int width, int height, int x,
+                               int y, int size) {
+    int left = x + size / 10;
+    int top = y + size / 4;
+    int key_w = size / 8;
+    int key_h = size / 10;
+    int gap = size / 18;
+    int row, col;
+
+    draw_round_rect(pixels, width, height, left, top, size * 4 / 5,
+                    size / 2, size / 10, 244, 250, 222, 220);
+    draw_round_rect(pixels, width, height, left + 3, top + 3,
+                    size * 4 / 5 - 6, size / 2 - 6, size / 12, 24, 28, 30,
+                    170);
+
+    for (row = 0; row < 3; row++) {
+        for (col = 0; col < 5; col++) {
+            draw_round_rect(pixels, width, height,
+                            left + gap + col * (key_w + gap),
+                            top + gap + row * (key_h + gap), key_w, key_h, 2,
+                            244, 250, 222, row == 2 ? 120 : 165);
+        }
+    }
+}
+
+static void draw_midi_icon(uint32_t *pixels, int width, int height, int x,
+                           int y, int size) {
+    int left = x + size / 6;
+    int top = y + size / 7;
+    int w = size * 2 / 3;
+    int h = size * 5 / 7;
+
+    draw_round_rect(pixels, width, height, left, top, w, h, size / 10, 210,
+                    235, 255, 220);
+    draw_round_rect(pixels, width, height, left + 3, top + 3, w - 6, h - 6,
+                    size / 12, 25, 31, 39, 175);
+
+    draw_circle(pixels, width, height, left + w / 3, top + h / 3, size / 10,
+                210, 235, 255, 210);
+    draw_circle(pixels, width, height, left + w * 2 / 3, top + h / 3,
+                size / 10, 210, 235, 255, 210);
+    draw_line(pixels, width, height, left + w / 3, top + h * 3 / 5,
+              left + w / 3, top + h * 5 / 6, 1, 210, 235, 255, 190);
+    draw_line(pixels, width, height, left + w / 2, top + h * 3 / 5,
+              left + w / 2, top + h * 5 / 6, 1, 210, 235, 255, 190);
+    draw_line(pixels, width, height, left + w * 2 / 3, top + h * 3 / 5,
+              left + w * 2 / 3, top + h * 5 / 6, 1, 210, 235, 255, 190);
+}
+
+static void draw_icon(uint32_t *pixels, int width, int height, int mode, int x,
+                      int y, int size) {
+    int bg_r = 120;
+    int bg_g = 230;
+    int bg_b = 255;
+
+    if (mode == 2) {
+        bg_r = 245;
+        bg_g = 232;
+        bg_b = 118;
+    } else if (mode == 4) {
+        bg_r = 255;
+        bg_g = 112;
+        bg_b = 180;
+    }
+
+    draw_round_rect(pixels, width, height, x, y, size, size, size / 6, 0, 0, 0,
+                    150);
+    draw_round_rect(pixels, width, height, x + 2, y + 2, size - 4, size - 4,
+                    size / 7, bg_r, bg_g, bg_b, 210);
+
+    if (mode == 1) {
+        draw_mouse_icon(pixels, width, height, x, y, size);
+    } else if (mode == 2) {
+        draw_keyboard_icon(pixels, width, height, x, y, size);
+    } else if (mode == 4) {
+        draw_midi_icon(pixels, width, height, x, y, size);
+    }
+}
+
+static void draw_overlay(uint32_t *pixels, int width, int height, int mask,
+                         int icon_size, int gap, int padding) {
+    int modes[] = {1, 2, 4};
+    int count = 0;
+    int start_x;
+    int i;
+
+    memset(pixels, 0, (size_t)width * (size_t)height * sizeof(uint32_t));
+
+    for (i = 0; i < 3; i++) {
+        if ((mask & modes[i]) != 0) {
+            count++;
+        }
+    }
+
+    if (count == 0) {
+        return;
+    }
+
+    start_x = width - padding - count * icon_size - (count - 1) * gap;
+    count = 0;
+    for (i = 0; i < 3; i++) {
+        if ((mask & modes[i]) == 0) {
+            continue;
+        }
+        draw_icon(pixels, width, height, modes[i],
+                  start_x + count * (icon_size + gap), padding, icon_size);
+        count++;
+    }
+}
+
+static int mask_count(int mask) {
+    int count = 0;
+
+    if ((mask & 1) != 0) {
+        count++;
+    }
+    if ((mask & 2) != 0) {
+        count++;
+    }
+    if ((mask & 4) != 0) {
+        count++;
+    }
+
+    return count;
+}
+
+static void fill_x11_rect(Display *display, Window win, GC gc, int x, int y,
+                          int w, int h, int r, int g, int b) {
+    XSetForeground(display, gc, visual_pixel(r, g, b));
+    XFillRectangle(display, win, gc, x, y, (unsigned int)w, (unsigned int)h);
+}
+
+static void draw_overlay_x11(Display *display, Window win, GC gc, int width,
+                             int height, int mask, int icon_size, int gap,
+                             int padding) {
+    int modes[] = {1, 2, 4};
+    const char *labels[] = {"MS", "RL", "MI"};
+    int count = 0;
+    int i;
+
+    for (i = 0; i < 3; i++) {
+        int x;
+        int bg_r = 120;
+        int bg_g = 230;
+        int bg_b = 255;
+
+        if ((mask & modes[i]) == 0) {
+            continue;
+        }
+
+        if (modes[i] == 2) {
+            bg_r = 245;
+            bg_g = 232;
+            bg_b = 118;
+        } else if (modes[i] == 4) {
+            bg_r = 255;
+            bg_g = 112;
+            bg_b = 180;
+        }
+
+        x = padding + count * (icon_size + gap);
+        fill_x11_rect(display, win, gc, x, padding, icon_size, icon_size, bg_r,
+                      bg_g, bg_b);
+
+        XSetForeground(display, gc, visual_pixel(0, 0, 0));
+        XDrawString(display, win, gc, x + icon_size / 2 - 8,
+                    padding + icon_size / 2 + 5, labels[i],
+                    (int)strlen(labels[i]));
+
+        count++;
+    }
+}
+
+int main(int argc, char **argv) {
+    const char *state_dir;
+    int poll_ms = env_int("DOTFILES_MODE_OSD_POLL_MS", 120, 40, 2000);
+    int icon_size = env_int("DOTFILES_MODE_OSD_ICON_SIZE", 32, 24, 128);
+    int gap = env_int("DOTFILES_MODE_OSD_GAP", 0, 0, 64);
+    int padding = env_int("DOTFILES_MODE_OSD_PADDING", 0, 0, 64);
+    int offset_x = env_int("DOTFILES_MODE_OSD_OFFSET_X", 10, 0, 4096);
+    int offset_y = env_int("DOTFILES_MODE_OSD_OFFSET_Y", 50, 0, 4096);
+    int width = padding * 2 + icon_size * 3 + gap * 2;
+    int height = padding * 2 + icon_size;
+    int opacity = env_int("DOTFILES_MODE_OSD_OPACITY", 86, 20, 100);
+    int screen, depth;
+    int mapped = 0;
+    int last_mask = -1;
+    int raise_ticks = 0;
+    Display *display;
+    Window root, win;
+    Visual *visual;
+    XSetWindowAttributes attrs;
+    GC gc;
+    XserverRegion empty_region;
+
+    if (argc != 2) {
+        fprintf(stderr, "usage: %s <state-dir>\n", argv[0]);
+        return 2;
+    }
+    state_dir = argv[1];
+
+    signal(SIGINT, stop_running);
+    signal(SIGTERM, stop_running);
+    signal(SIGHUP, SIG_IGN);
+
+    display = XOpenDisplay(NULL);
+    if (display == NULL) {
+        fprintf(stderr, "mode-osd: could not open X display\n");
+        return 1;
+    }
+
+    screen = DefaultScreen(display);
+    root = RootWindow(display, screen);
+    visual = DefaultVisual(display, screen);
+    depth = DefaultDepth(display, screen);
+    pixel_visual = visual;
+
+    memset(&attrs, 0, sizeof(attrs));
+    attrs.override_redirect = True;
+    attrs.background_pixel = 0;
+    attrs.border_pixel = 0;
+    win = XCreateWindow(display, root, -width, -height, (unsigned int)width,
+                        (unsigned int)height, 0, depth, InputOutput, visual,
+                        CWOverrideRedirect | CWBackPixel | CWBorderPixel,
+                        &attrs);
+
+    empty_region = XFixesCreateRegion(display, NULL, 0);
+    XFixesSetWindowShapeRegion(display, win, ShapeInput, 0, 0, empty_region);
+    XFixesDestroyRegion(display, empty_region);
+
+    XStoreName(display, win, "dotfiles-mode-osd");
+    set_window_atom(display, win, "_NET_WM_WINDOW_TYPE",
+                    "_NET_WM_WINDOW_TYPE_UTILITY");
+    set_window_atom(display, win, "_NET_WM_STATE", "_NET_WM_STATE_ABOVE");
+    set_window_opacity(display, win, opacity);
+
+    gc = XCreateGC(display, win, 0, NULL);
+
+    while (running) {
+        int mask = active_mask(state_dir);
+        int count = mask_count(mask);
+        int current_width = padding * 2 + count * icon_size;
+        int root_width = DisplayWidth(display, screen);
+        int left;
+
+        if (count > 1) {
+            current_width += (count - 1) * gap;
+        }
+        if (current_width < 1) {
+            current_width = 1;
+        }
+
+        left = root_width - current_width - offset_x;
+
+        if (left < 0) {
+            left = 0;
+        }
+
+        if (mask == 0) {
+            if (mapped) {
+                XUnmapWindow(display, win);
+                XFlush(display);
+                mapped = 0;
+                last_mask = -1;
+            }
+        } else if (!mapped || mask != last_mask) {
+            XMoveResizeWindow(display, win, left, offset_y,
+                              (unsigned int)current_width,
+                              (unsigned int)height);
+            XMapRaised(display, win);
+            draw_overlay_x11(display, win, gc, current_width, height, mask,
+                             icon_size, gap, padding);
+            XFlush(display);
+            mapped = 1;
+            last_mask = mask;
+            raise_ticks = 0;
+        } else {
+            raise_ticks += poll_ms;
+            if (raise_ticks >= 1000) {
+                XRaiseWindow(display, win);
+                XFlush(display);
+                raise_ticks = 0;
+            }
+        }
+
+        sleep_ms(poll_ms);
+    }
+
+    if (mapped) {
+        XUnmapWindow(display, win);
+    }
+    XFreeGC(display, gc);
+    XDestroyWindow(display, win);
+    XCloseDisplay(display);
+
+    return 0;
+}
+EOF
+
+    if [ -x "$helper" ] && [ -r "$src" ] && cmp -s "$tmp_src" "$src"; then
+        rm -f "$tmp_src"
+        [ "$emit_status" -eq 1 ] && printf 'unchanged\n'
+        return 0
+    fi
+
+    if ! cc "$tmp_src" -O2 -o "$tmp_helper" -lX11 -lXext -lXfixes; then
+        rm -f "$tmp_src" "$tmp_helper"
+        return 1
+    fi
+
+    mv -f "$tmp_src" "$src"
+    mv -f "$tmp_helper" "$helper"
+    [ "$emit_status" -eq 1 ] && printf 'compiled\n'
+}
+
+needs_compile() {
+    [ ! -x "$helper" ] || [ ! -r "$src" ] || [ "$0" -nt "$helper" ] ||
+        [ "$0" -nt "$src" ]
+}
+
+daemon_running() {
+    [ -r "$pid_file" ] || return 1
+    pid="$(sed -n '1p' "$pid_file" 2>/dev/null || true)"
+    [ -n "$pid" ] || return 1
+    kill -0 "$pid" 2>/dev/null
+}
+
+start_daemon() {
+    mkdir -p "$state_dir"
+
+    daemon_running && return 0
+
+    if needs_compile; then
+        compile_helper
+    fi
+
+    daemon_running && return 0
+
+    nohup "$helper" "$state_dir" >"$state_dir/helper.log" 2>&1 &
+    printf '%s\n' "$!" >"$pid_file"
+}
+
+case "${1:-}" in
+--compile-cache)
+    [ "$#" -eq 1 ] || usage
+    compile_helper 1
+    exit
+    ;;
+show)
+    [ "$#" -eq 2 ] && valid_mode "$2" || usage
+    mkdir -p "$state_dir"
+    tmp="$state_dir/$2.$$"
+    printf 'active\n' >"$tmp"
+    mv -f "$tmp" "$state_dir/$2"
+    start_daemon
+    ;;
+hide)
+    [ "$#" -eq 2 ] && valid_mode "$2" || usage
+    rm -f "$state_dir/$2"
+    ;;
+run)
+    [ "$#" -eq 1 ] || usage
+    mkdir -p "$state_dir"
+    needs_compile && compile_helper
+    printf '%s\n' "$$" >"$pid_file"
+    exec "$helper" "$state_dir"
+    ;;
+*)
+    usage
+    ;;
+esac

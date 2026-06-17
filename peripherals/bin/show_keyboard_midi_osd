@@ -1,0 +1,5 @@
+#!/bin/sh
+# Purpose: Show the persistent overlay used while keyboard MIDI mode is active.
+
+mode_osd=$(command -v mode-osd || printf '%s\n' "$HOME/dotfiles/peripherals/bin/mode-osd")
+exec "$mode_osd" show midi

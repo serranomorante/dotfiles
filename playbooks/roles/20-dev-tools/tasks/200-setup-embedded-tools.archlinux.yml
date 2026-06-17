@@ -1,0 +1,284 @@
+---
+- name: "[archlinux] Setup embedded tools: ensure Arduino packages"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - arduino-cli
+      - avrdude
+
+- name: "[archlinux] Setup embedded tools: allow user serial device access"
+  become: true
+  ansible.builtin.user:
+    append: true
+    groups: uucp
+    name: "{{ ansible_facts.env.USER }}"
+
+- name: "[archlinux] Setup embedded tools: install Arduino Micro udev rule"
+  become: true
+  ansible.builtin.copy:
+    src: ~/dotfiles/assets/udev-rules/60-arduino-micro.rules
+    dest: /etc/udev/rules.d/60-arduino-micro.rules
+    mode: "644"
+  register: var_arduino_micro_udev_rule
+
+- name: "[archlinux] Setup embedded tools: reload udev rules"
+  become: true
+  ansible.builtin.command: udevadm control --reload-rules
+  changed_when: false
+  when: var_arduino_micro_udev_rule.changed
+
+- name: "[archlinux] Setup embedded tools: refresh current tty devices"
+  become: true
+  ansible.builtin.command: udevadm trigger --subsystem-match=tty --action=change
+  changed_when: false
+  when: var_arduino_micro_udev_rule.changed
+
+- name: "[archlinux] Setup embedded tools: check Arduino AVR core"
+  ansible.builtin.command: arduino-cli core list --format json
+  register: var_arduino_core_list
+  changed_when: false
+  failed_when: false
+
+- name: "[archlinux] Setup embedded tools: set Arduino ESP32 package index URL"
+  ansible.builtin.set_fact:
+    var_arduino_esp32_package_index_url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+
+- name: "[archlinux] Setup embedded tools: update Arduino package index"
+  ansible.builtin.command: arduino-cli core update-index
+  changed_when: false
+  when: "'arduino:avr' not in var_arduino_core_list.stdout"
+
+- name: "[archlinux] Setup embedded tools: install Arduino AVR core"
+  ansible.builtin.command: arduino-cli core install arduino:avr
+  when: "'arduino:avr' not in var_arduino_core_list.stdout"
+
+- name: "[archlinux] Setup embedded tools: update Arduino ESP32 package index"
+  ansible.builtin.command:
+    argv:
+      - arduino-cli
+      - core
+      - update-index
+      - --additional-urls
+      - "{{ var_arduino_esp32_package_index_url }}"
+  changed_when: false
+  when: "'esp32:esp32' not in var_arduino_core_list.stdout"
+
+- name: "[archlinux] Setup embedded tools: install Arduino ESP32 core"
+  ansible.builtin.command:
+    argv:
+      - arduino-cli
+      - core
+      - install
+      - esp32:esp32
+      - --additional-urls
+      - "{{ var_arduino_esp32_package_index_url }}"
+  when: "'esp32:esp32' not in var_arduino_core_list.stdout"
+
+- name: "[archlinux] Setup embedded tools: check Arduino libraries"
+  ansible.builtin.command: arduino-cli lib list
+  register: var_arduino_library_list
+  changed_when: false
+
+- name: "[archlinux] Setup embedded tools: update Arduino library index"
+  ansible.builtin.command: arduino-cli lib update-index
+  changed_when: false
+  when: >-
+    'Adafruit NeoPixel' not in var_arduino_library_list.stdout or
+    'MIDIUSB' not in var_arduino_library_list.stdout or
+    'Adafruit BusIO' not in var_arduino_library_list.stdout or
+    'Adafruit GFX Library' not in var_arduino_library_list.stdout or
+    'Adafruit ILI9341' not in var_arduino_library_list.stdout
+
+- name: "[archlinux] Setup embedded tools: install Adafruit NeoPixel library"
+  ansible.builtin.command: arduino-cli lib install "Adafruit NeoPixel"
+  when: "'Adafruit NeoPixel' not in var_arduino_library_list.stdout"
+
+- name: "[archlinux] Setup embedded tools: install MIDIUSB library"
+  ansible.builtin.command: arduino-cli lib install MIDIUSB
+  when: "'MIDIUSB' not in var_arduino_library_list.stdout"
+
+- name: "[archlinux] Setup embedded tools: install Adafruit BusIO library"
+  ansible.builtin.command: arduino-cli lib install "Adafruit BusIO"
+  when: "'Adafruit BusIO' not in var_arduino_library_list.stdout"
+
+- name: "[archlinux] Setup embedded tools: install Adafruit GFX library"
+  ansible.builtin.command: arduino-cli lib install "Adafruit GFX Library"
+  when: "'Adafruit GFX Library' not in var_arduino_library_list.stdout"
+
+- name: "[archlinux] Setup embedded tools: install Adafruit ILI9341 library"
+  ansible.builtin.command: arduino-cli lib install "Adafruit ILI9341"
+  when: "'Adafruit ILI9341' not in var_arduino_library_list.stdout"
+
+- name: "[archlinux] Setup embedded tools: stat keyboard MIDI LED matrix firmware"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/dotfiles/assets/firmware/keyboard-midi-led-matrix/keyboard-midi-led-matrix.ino"
+    checksum_algorithm: sha256
+  register: var_keyboard_midi_led_matrix_firmware
+
+- name: "[archlinux] Setup embedded tools: stat keyboard MIDI TFT display firmware"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/dotfiles/assets/firmware/keyboard-midi-tft-display/keyboard-midi-tft-display.ino"
+    checksum_algorithm: sha256
+  register: var_keyboard_midi_tft_display_firmware
+
+- name: "[archlinux] Setup embedded tools: ensure dotfiles state directory"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles"
+    state: directory
+    mode: "700"
+
+- name: "[archlinux] Setup embedded tools: read keyboard MIDI LED matrix firmware marker"
+  ansible.builtin.slurp:
+    src: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyboard-midi-led-matrix.sha256"
+  register: var_keyboard_midi_led_matrix_firmware_marker
+  changed_when: false
+  failed_when: false
+
+- name: "[archlinux] Setup embedded tools: read keyboard MIDI TFT display firmware marker"
+  ansible.builtin.slurp:
+    src: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyboard-midi-tft-display.sha256"
+  register: var_keyboard_midi_tft_display_firmware_marker
+  changed_when: false
+  failed_when: false
+
+- name: "[archlinux] Setup embedded tools: detect Arduino Micro port"
+  ansible.builtin.shell: |
+    set -eu
+    arduino-cli board list | awk '$0 ~ /arduino:avr:micro/ { print $1; exit }'
+  args:
+    executable: /bin/sh
+  register: var_arduino_micro_port
+  changed_when: false
+  failed_when: false
+
+- name: "[archlinux] Setup embedded tools: detect ESP32-S3 port"
+  ansible.builtin.shell: |
+    set -eu
+    arduino-cli board list | awk '
+      $0 ~ /esp32:esp32:esp32s3/ { print $1; found = 1; exit }
+      $1 ~ /^\/dev\// && $0 ~ /Unknown/ { unknown[++unknown_count] = $1 }
+      END {
+        if (!found && unknown_count == 1) {
+          print unknown[1]
+        }
+      }
+    '
+  args:
+    executable: /bin/sh
+  register: var_esp32_s3_port
+  changed_when: false
+  failed_when: false
+
+- name: "[archlinux] Setup embedded tools: compile keyboard MIDI LED matrix firmware"
+  ansible.builtin.command:
+    argv:
+      - arduino-cli
+      - compile
+      - --fqbn
+      - arduino:avr:micro
+      - "{{ ansible_facts.env.HOME }}/dotfiles/assets/firmware/keyboard-midi-led-matrix"
+  changed_when: false
+  when: var_keyboard_midi_led_matrix_firmware.stat.exists
+
+- name: "[archlinux] Setup embedded tools: compile keyboard MIDI TFT display firmware"
+  ansible.builtin.command:
+    argv:
+      - arduino-cli
+      - compile
+      - --fqbn
+      - esp32:esp32:esp32s3
+      - "{{ ansible_facts.env.HOME }}/dotfiles/assets/firmware/keyboard-midi-tft-display"
+  changed_when: false
+  when: var_keyboard_midi_tft_display_firmware.stat.exists
+
+- name: "[archlinux] Setup embedded tools: upload keyboard MIDI LED matrix firmware"
+  ansible.builtin.command:
+    argv:
+      - arduino-cli
+      - upload
+      - -p
+      - "{{ var_arduino_micro_port.stdout | trim }}"
+      - --fqbn
+      - arduino:avr:micro
+      - "{{ ansible_facts.env.HOME }}/dotfiles/assets/firmware/keyboard-midi-led-matrix"
+  register: var_keyboard_midi_led_matrix_firmware_upload
+  when: >-
+    var_keyboard_midi_led_matrix_firmware.stat.exists and
+    var_arduino_micro_port.stdout | trim | length > 0 and
+    (
+      var_keyboard_midi_led_matrix_firmware_marker.content is not defined or
+      (var_keyboard_midi_led_matrix_firmware_marker.content | b64decode | trim) != var_keyboard_midi_led_matrix_firmware.stat.checksum
+    )
+
+- name: "[archlinux] Setup embedded tools: inspect keyboard MIDI controller before TFT upload"
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - --user
+      - is-active
+      - keyboard-midi-controller.service
+  register: var_keyboard_midi_controller_service_before_tft_upload
+  changed_when: false
+  failed_when: false
+  when: >-
+    var_keyboard_midi_tft_display_firmware.stat.exists and
+    var_esp32_s3_port.stdout | trim | length > 0 and
+    (
+      var_keyboard_midi_tft_display_firmware_marker.content is not defined or
+      (var_keyboard_midi_tft_display_firmware_marker.content | b64decode | trim) != var_keyboard_midi_tft_display_firmware.stat.checksum
+    )
+
+- name: "[archlinux] Setup embedded tools: stop keyboard MIDI controller before TFT upload"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: keyboard-midi-controller.service
+    state: stopped
+  when: >-
+    var_keyboard_midi_controller_service_before_tft_upload is defined and
+    var_keyboard_midi_controller_service_before_tft_upload.stdout | default('') == 'active'
+
+- name: "[archlinux] Setup embedded tools: upload keyboard MIDI TFT display firmware"
+  ansible.builtin.command:
+    argv:
+      - arduino-cli
+      - upload
+      - -p
+      - "{{ var_esp32_s3_port.stdout | trim }}"
+      - --fqbn
+      - esp32:esp32:esp32s3
+      - "{{ ansible_facts.env.HOME }}/dotfiles/assets/firmware/keyboard-midi-tft-display"
+  register: var_keyboard_midi_tft_display_firmware_upload
+  when: >-
+    var_keyboard_midi_tft_display_firmware.stat.exists and
+    var_esp32_s3_port.stdout | trim | length > 0 and
+    (
+      var_keyboard_midi_tft_display_firmware_marker.content is not defined or
+      (var_keyboard_midi_tft_display_firmware_marker.content | b64decode | trim) != var_keyboard_midi_tft_display_firmware.stat.checksum
+    )
+
+- name: "[archlinux] Setup embedded tools: record keyboard MIDI LED matrix firmware marker"
+  ansible.builtin.copy:
+    content: "{{ var_keyboard_midi_led_matrix_firmware.stat.checksum }}\n"
+    dest: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyboard-midi-led-matrix.sha256"
+    mode: "600"
+  when: var_keyboard_midi_led_matrix_firmware_upload.changed | default(false)
+
+- name: "[archlinux] Setup embedded tools: record keyboard MIDI TFT display firmware marker"
+  ansible.builtin.copy:
+    content: "{{ var_keyboard_midi_tft_display_firmware.stat.checksum }}\n"
+    dest: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyboard-midi-tft-display.sha256"
+    mode: "600"
+  when: var_keyboard_midi_tft_display_firmware_upload.changed | default(false)
+
+- name: "[archlinux] Setup embedded tools: restart keyboard MIDI controller after TFT upload"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: keyboard-midi-controller.service
+    state: started
+    enabled: true
+    masked: false
+  when: >-
+    var_keyboard_midi_tft_display_firmware_upload.changed | default(false) and
+    var_keyboard_midi_controller_service_before_tft_upload is defined and
+    var_keyboard_midi_controller_service_before_tft_upload.stdout | default('') == 'active'

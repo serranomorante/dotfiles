@@ -1,0 +1,11 @@
+[Unit]
+Description=Keyboard MIDI controller daemon
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/bin/keyboard-midi-controller run
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=graphical-session.target

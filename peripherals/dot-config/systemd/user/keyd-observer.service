@@ -3,7 +3,11 @@ Description=Keyd observer
 After=plasma-workspace.target
 
 [Service]
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=%h/.Xauthority"
 ExecStart=%h/bin/keyd-observer
+Restart=always
+RestartSec=1
 
 [Install]
 WantedBy=plasma-workspace.target

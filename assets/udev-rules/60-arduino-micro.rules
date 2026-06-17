@@ -1,0 +1,3 @@
+# Allow local Arduino Micro uploads without per-device chmod after bootloader resets.
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="8037", GROUP="uucp", MODE="0660", TAG+="uaccess"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0037", GROUP="uucp", MODE="0660", TAG+="uaccess"

@@ -1,0 +1,86 @@
+#!/bin/sh
+# Purpose: Compile/cache and run the HHKB MIDI controller daemon.
+# Usage: keyboard-midi-controller [--compile-cache]|[run|toggle|enter|exit|status|panic|feedback-note CH NOTE VEL|feedback-cc CH CC VALUE]
+
+set -eu
+
+prog=${0##*/}
+source_dir=${DOTFILES_KEYBOARD_MIDI_CONTROLLER_SOURCE_DIR:-"$HOME/.local/share/dotfiles/keyboard-midi-controller"}
+cache_dir=${XDG_CACHE_HOME:-"$HOME/.cache"}
+build_dir="$cache_dir/dotfiles/keyboard-midi-controller"
+binary="$build_dir/keyboard-midi-controller"
+hash_file="$build_dir/source.sha256"
+
+usage() {
+    printf 'usage: %s [--compile-cache]|[run|toggle|enter|exit|status|panic|feedback-note CH NOTE VEL|feedback-cc CH CC VALUE]\n' "$prog" >&2
+    exit 2
+}
+
+source_hash() {
+    [ -d "$source_dir" ] || {
+        printf '%s: missing Go source dir: %s\n' "$prog" "$source_dir" >&2
+        exit 1
+    }
+    find -L "$source_dir" -type f \( \( -name '*.go' ! -name '*_test.go' \) -o -name 'go.mod' -o -name 'go.sum' \) -print |
+        sort |
+        xargs sha256sum |
+        sha256sum |
+        awk '{print $1}'
+}
+
+needs_compile() {
+    [ -x "$binary" ] || return 0
+    current=$(source_hash)
+    previous=$(cat "$hash_file" 2>/dev/null || true)
+    [ "$current" != "$previous" ]
+}
+
+compile_cache() {
+    emit_status=$1
+    current=$(source_hash)
+    mkdir -p "$build_dir"
+    tmp="$binary.tmp.$$"
+    trap 'rm -f "$tmp"' EXIT HUP INT TERM
+    command -v go >/dev/null 2>&1 || {
+        printf '%s: go is required to build %s\n' "$prog" "$source_dir" >&2
+        exit 1
+    }
+    (
+        cd "$source_dir"
+        GOWORK=off go build -buildvcs=false -trimpath -ldflags="-s -w" -o "$tmp" .
+    )
+    mv "$tmp" "$binary"
+    chmod 755 "$binary"
+    printf '%s\n' "$current" >"$hash_file"
+    trap - EXIT HUP INT TERM
+    if [ "$emit_status" -eq 1 ]; then
+        printf 'compiled\n'
+    fi
+}
+
+case "${1:-}" in
+--compile-cache)
+    [ "$#" -eq 1 ] || usage
+    needs_compile && compile_cache 1
+    exit 0
+    ;;
+run | toggle | enter | exit | status | panic | -h | --help)
+    [ "$#" -eq 1 ] || usage
+    ;;
+feedback-note | feedback-cc)
+    [ "$#" -eq 4 ] || usage
+    ;;
+"")
+    usage
+    ;;
+*)
+    usage
+    ;;
+esac
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    usage
+fi
+
+needs_compile && compile_cache 0
+exec "$binary" "$@"

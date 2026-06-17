@@ -13,6 +13,9 @@
     name:
       # Mouseless.click dependencies
       - webkit2gtk-4.1
+      # keyboard-midi-controller dependencies
+      - alsa-lib
+      - pipewire-jack
       # warpd dependencies
       - libxi
       - libxinerama
@@ -24,13 +27,17 @@
       - libxkbcommon
 
 - name: "[archlinux] Keyboard peripheral: clone keyd"
-  ansible.builtin.git:
-    repo: https://github.com/rvaiya/keyd
-    dest: ~/data/repos/keyd
-    version: master
-    force: true
-    single_branch: true
-    depth: 100
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: keyboard-tools
+    update_diff_git_repo: https://github.com/rvaiya/keyd
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/keyd"
+    update_diff_git_version: master
+    update_diff_git_force: true
+    update_diff_git_single_branch: true
+    update_diff_git_depth: 100
 
 - name: "[archlinux] Keyboard peripheral: patch keyd"
   ansible.posix.patch:
@@ -39,13 +46,20 @@
     strip: 1
   loop:
     - dwm-support-keyd-application-mapper.patch
+    - increase-max-layers-for-midi.patch
 
 - name: "[archlinux] Keyboard peripheral: install keyd"
   become: true
-  ansible.builtin.shell: make && make install
+  ansible.builtin.shell: >
+    set -o pipefail &&
+    make &&
+    make install &&
+    install -d -o {{ ansible_facts.env.USER }} -g {{ ansible_facts.env.USER }} {{ ansible_facts.env.HOME }}/.local/state/dotfiles &&
+    touch {{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyd-build-midi-layers-v1 &&
+    chown {{ ansible_facts.env.USER }}:{{ ansible_facts.env.USER }} {{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyd-build-midi-layers-v1
   args:
     chdir: "{{ ansible_facts.env.HOME }}/data/repos/keyd"
-    creates: /usr/local/bin/keyd
+    creates: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyd-build-midi-layers-v1"
   notify: "10-system-tools : handler_ensure_keyd_service"
 
 - name: "[archlinux] Keyboard peripheral: setup run as user script"
@@ -80,7 +94,29 @@
   loop:
     - kbdrate.service
     - keyd-observer.service
+    - keyboard-midi-controller.service
     - warpd-marker.service
+    - mode-osd.service
+
+- name: "[archlinux] Keyboard peripheral: ensure runtime state dir"
+  ansible.builtin.file:
+    path: ~/.local/state/dotfiles
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Keyboard peripheral: stat keyd observer script"
+  ansible.builtin.stat:
+    path: ~/dotfiles/peripherals/bin/keyd-observer
+    checksum_algorithm: sha256
+  register: var_arch_keyd_observer_script
+
+- name: "[archlinux] Keyboard peripheral: record applied keyd observer checksum"
+  ansible.builtin.copy:
+    content: "{{ var_arch_keyd_observer_script.stat.checksum }}\n"
+    dest: ~/.local/state/dotfiles/keyd-observer.sha256
+    mode: "644"
+  when: var_arch_keyd_observer_script.stat.exists
+  notify: "10-system-tools : handler_restart_keyd_observer_service"
 
 - name: "[archlinux] Keyboard peripheral: ensure X11 helper cache dirs"
   ansible.builtin.file:
@@ -90,6 +126,7 @@
   loop:
     - warpd-marker
     - warpd-trail
+    - mode-osd
 
 - name: "[archlinux] Keyboard peripheral: compile warpd marker X11 helper"
   ansible.builtin.command:
@@ -107,6 +144,54 @@
       - --compile-cache
   register: var_warpd_trail_compile_cache
   changed_when: "'compiled' in var_warpd_trail_compile_cache.stdout_lines"
+
+- name: "[archlinux] Keyboard peripheral: compile mode OSD X11 helper"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/mode-osd"
+      - --compile-cache
+  register: var_mode_osd_compile_cache
+  changed_when: "'compiled' in var_mode_osd_compile_cache.stdout_lines"
+  notify: "10-system-tools : handler_restart_mode_osd_service"
+
+- name: "[archlinux] Keyboard peripheral: compile keyboard MIDI controller"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/keyboard-midi-controller"
+      - --compile-cache
+  register: var_keyboard_midi_controller_compile_cache
+  changed_when: "'compiled' in var_keyboard_midi_controller_compile_cache.stdout_lines"
+
+- name: "[archlinux] Keyboard peripheral: check running keyboard MIDI controller cache"
+  ansible.builtin.shell: >
+    set -eu &&
+    binary="{{ ansible_facts.env.HOME }}/.cache/dotfiles/keyboard-midi-controller/keyboard-midi-controller" &&
+    pid="$(systemctl --user show keyboard-midi-controller.service --property=MainPID --value 2>/dev/null || true)" &&
+    if [ -z "$pid" ] || [ "$pid" = 0 ] || [ ! -e "/proc/$pid/exe" ] || [ ! -x "$binary" ]; then
+      printf 'restart\n';
+      exit 0;
+    fi &&
+    running_inode="$(stat -Lc '%d:%i' "/proc/$pid/exe" 2>/dev/null || true)" &&
+    cached_inode="$(stat -Lc '%d:%i' "$binary" 2>/dev/null || true)" &&
+    if [ "$running_inode" != "$cached_inode" ]; then
+      printf 'restart\n';
+    else
+      printf 'ok\n';
+    fi
+  args:
+    executable: /bin/bash
+  register: var_keyboard_midi_controller_running_cache
+  changed_when: "'restart' in var_keyboard_midi_controller_running_cache.stdout_lines"
+
+- name: "[archlinux] Keyboard peripheral: restart keyboard MIDI controller after cache refresh"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: keyboard-midi-controller.service
+    state: restarted
+    enabled: true
+    masked: false
+    daemon_reload: true
+  when: var_keyboard_midi_controller_compile_cache.changed or var_keyboard_midi_controller_running_cache.changed
 
 - name: "[archlinux] Keyboard peripheral: ensure xinput dir"
   become: true
@@ -150,6 +235,9 @@
     src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/scripts/keyd/readline-mode-watcher.sh"
     dest: /usr/local/bin/readline-mode-watcher.sh
     mode: "755"
+  notify:
+    - "10-system-tools : handler_reset_failed_readline_mode_notify_service"
+    - "10-system-tools : handler_ensure_readline_mode_notify_service"
 
 - name: "[archlinux] Keyboard peripheral: setup services"
   become: true
@@ -160,15 +248,28 @@
     mode: "644"
   loop:
     - readline-mode-notify.service
-  notify: "10-system-tools : handler_ensure_readline_mode_notify_service"
+  notify:
+    - "10-system-tools : handler_reset_failed_readline_mode_notify_service"
+    - "10-system-tools : handler_ensure_readline_mode_notify_service"
 
 - name: "[archlinux] Keyboard peripheral: clone mouseless"
-  ansible.builtin.git:
-    repo: https://github.com/jbensmann/mouseless
-    dest: ~/data/repos/mouseless
-    version: main
-    single_branch: true
-    depth: 1
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: keyboard-tools
+    update_diff_git_repo: https://github.com/jbensmann/mouseless
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/mouseless"
+    update_diff_git_version: main
+    update_diff_git_single_branch: true
+    update_diff_git_depth: 1
+  register: var_mouseless_clone
+
+- name: "[archlinux] Keyboard peripheral: queue mouseless handlers"
+  ansible.builtin.debug:
+    msg: mouseless checkout changed
+  changed_when: true
+  when: var_mouseless_clone.changed | default(false)
   notify:
     - "10-system-tools : handler_build_mouseless"
     - "10-system-tools : handler_ensure_mouseless_udev_rules"
@@ -178,13 +279,17 @@
   ansible.builtin.meta: flush_handlers
 
 - name: "[archlinux] Keyboard peripheral: clone warpd"
-  ansible.builtin.git:
-    repo: https://github.com/rvaiya/warpd
-    dest: ~/data/repos/warpd
-    version: master
-    force: true
-    single_branch: true
-    depth: 1
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: keyboard-tools
+    update_diff_git_repo: https://github.com/rvaiya/warpd
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/warpd"
+    update_diff_git_version: master
+    update_diff_git_force: true
+    update_diff_git_single_branch: true
+    update_diff_git_depth: 1
 
 - name: "[archlinux] Keyboard peripheral: patch warpd"
   ansible.posix.patch:
@@ -204,26 +309,30 @@
     chdir: "{{ ansible_facts.env.HOME }}/data/repos/warpd"
     creates: /usr/local/bin/warpd
 
-- name: "[archlinux] Keyboard peripheral: clone cursor indicator"
-  ansible.builtin.git:
-    repo: https://gitlab.com/qurn/cursor_indicator
-    dest: ~/data/repos/cursor_indicator
-    force: true
-    version: master
+- name: "[archlinux] Keyboard peripheral: stop retired cursor indicator services"
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - --user
+      - stop
+      - "{{ item }}"
+  loop:
+    - cursor_indicator@red.service
+    - cursor_indicator@blue.service
+    - cursor_indicator@green.service
+  register: var_stop_retired_cursor_indicator_services
+  changed_when: var_stop_retired_cursor_indicator_services.rc == 0
+  failed_when: false
 
-- name: "[archlinux] Keyboard peripheral: make cursor indicator"
-  ansible.builtin.command: >
-    cc cursor_indicator.c -o cursor_indicator  -lX11 -lXext -lXfixes -I/usr/include/freetype2
-  args:
-    chdir: ~/data/repos/cursor_indicator
-    creates: ~/data/repos/cursor_indicator/cursor_indicator
-
-- name: "[archlinux] Keyboard peripheral: symlink cursor indicator"
+- name: "[archlinux] Keyboard peripheral: remove retired cursor indicator files"
   ansible.builtin.file:
-    src: ~/data/repos/cursor_indicator/cursor_indicator
-    dest: ~/bin/cursor_indicator
-    state: link
-    mode: "755"
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - ~/.config/systemd/user/cursor_indicator@.service
+    - ~/bin/cursor_indicator
+    - ~/data/repos/cursor_indicator
+  notify: "10-system-tools : handler_reload_user_systemd"
 
 - name: "[archlinux] Keyboard peripheral: add user to keyd group"
   become: true

@@ -1,0 +1,13 @@
+[Unit]
+Description=Persistent mode OSD overlay
+After=graphical-session.target
+
+[Service]
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=%h/.Xauthority"
+ExecStart=%h/bin/mode-osd run
+Restart=on-failure
+RestartSec=1s
+
+[Install]
+WantedBy=graphical-session.target

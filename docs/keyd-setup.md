@@ -26,6 +26,14 @@ v = layer(signal_show_clipboard_history)
 v = layer(signal_show_clipboard_history)
 ```
 
+## MIDI mode and keyd limits
+
+MIDI controller mode should be modeled as keyd layers observed through `keyd listen`, not as a second evdev consumer. A daemon that opens `keyd virtual keyboard` through evdev and then calls `EVIOCGRAB` fights the existing keyd device owner, can fail with `resource busy`, can miss key-up/state transitions when another remapper is in the path, and can leak raw keyboard shortcuts into REAPER while MIDI learn is waiting. Keep keyd as the only physical keyboard consumer: `Tab+m` toggles the persistent `[midi]` layer, keyd emits `+midi_*` and `-midi_*` layer events, and `keyboard-midi-controller` translates those layer events to MIDI.
+
+The stock keyd parser is also too small for a BeatStep-style layer set. This repository patches both `MAX_LAYERS` and `MAX_SECTIONS` from `32` to `128` with `assets/patches/keyd/increase-max-layers-for-midi.patch`; both constants matter because each declared layer is also an INI section. If either constant stays at `32`, `keyd check` or the running keyd service can abort while parsing the rendered `/etc/keyd/default.conf`.
+
+When the keyd binary itself has just been rebuilt or patched, restart `keyd.service`; do not rely on `keyd reload`. Reload asks the already-running daemon to parse the new config, so an old daemon that still has `MAX_SECTIONS=32` can crash on the expanded MIDI config while the `keyd reload` client spins at high CPU waiting for a reply.
+
 ## Latin chars with keyd
 
 > This guide is specific to xorg only

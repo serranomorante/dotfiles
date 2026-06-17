@@ -1,11 +1,5 @@
 #!/bin/sh
+# Purpose: Hide the persistent readline-mode overlay.
 
-id=$(redis-cli get readline_mode_notification_id)
-
-gdbus call --session \
-  --dest org.freedesktop.Notifications \
-  --object-path /org/freedesktop/Notifications \
-  --method org.freedesktop.Notifications.CloseNotification \
-  "$id"
-
-systemctl --user stop cursor_indicator@blue.service
+mode_osd=$(command -v mode-osd || printf '%s\n' "$HOME/dotfiles/peripherals/bin/mode-osd")
+exec "$mode_osd" hide readline

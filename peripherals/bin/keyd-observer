@@ -6,8 +6,10 @@
 # This observer keeps one `keyd listen` process open and reacts to those signals:
 # opening/reopening the warpd hint overlay, toggling between the current cursor
 # position and the last warpd-selected point, temporarily leaving/re-entering
-# mouseless mode, toggling speech-to-text dictation, typing clipboard snippets,
-# showing clipboard history, and launching terminal helpers.
+# mouseless mode, toggling speech-to-text dictation, toggling the active display
+# layout, repairing the display scanout on demand, typing clipboard snippets,
+# showing clipboard history, toggling keyboard MIDI mode, and launching terminal
+# picker helpers.
 #
 # The warpd path is latency-sensitive. Repeated tab+f should cancel the current
 # overlay and open a fresh one without entering mouseless, so this script keeps
@@ -19,6 +21,9 @@ enter_mouseless_mode=leftcontrol+rightcontrol
 leave_mouseless_mode=leftalt+rightalt
 warpd_last_location="$HOME/bin/warpd-last-location"
 stt_dictate="$HOME/bin/stt-dictate"
+keyboard_midi_controller="$HOME/bin/keyboard-midi-controller"
+display_health_check="$HOME/bin/display-health-check"
+setup_displays="$HOME/bin/setup-displays.sh"
 
 # Reopening warpd must be fast: keep the exact worker PID and kill it directly
 # on the next tab+f instead of scanning processes. The generation file prevents
@@ -63,6 +68,45 @@ run_warpd_last_location() {
 
     if [ "$rc" -ne 0 ]; then
         logger -t keyd-observer "warpd-last-location $action failed with rc=$rc: $output"
+    fi
+
+    return "$rc"
+}
+
+run_display_health_check() {
+    output="$("$display_health_check" 2>&1)"
+    rc="$?"
+
+    if [ "$rc" -ne 0 ]; then
+        logger -t keyd-observer "display-health-check failed with rc=$rc: $output"
+    elif [ -n "$output" ]; then
+        logger -t keyd-observer "display-health-check: $output"
+    fi
+
+    return "$rc"
+}
+
+run_toggle_display_layout() {
+    output="$("$setup_displays" --toggle 2>&1)"
+    rc="$?"
+
+    if [ "$rc" -ne 0 ]; then
+        logger -t keyd-observer "setup-displays --toggle failed with rc=$rc: $output"
+    elif [ -n "$output" ]; then
+        logger -t keyd-observer "setup-displays --toggle: $output"
+    fi
+
+    return "$rc"
+}
+
+run_keyboard_midi_controller_toggle() {
+    output="$("$keyboard_midi_controller" toggle 2>&1)"
+    rc="$?"
+
+    if [ "$rc" -ne 0 ]; then
+        logger -t keyd-observer "keyboard-midi-controller toggle failed with rc=$rc: $output"
+    elif [ -n "$output" ]; then
+        logger -t keyd-observer "keyboard-midi-controller toggle: $output"
     fi
 
     return "$rc"
@@ -155,13 +199,23 @@ keyd listen | while read x; do
         "$stt_dictate" toggle &
         ;;
 
+    +signal_toggle_keyboard_midi_controller)
+        run_keyboard_midi_controller_toggle >/dev/null 2>&1 &
+        ;;
+
     +signal_cancel_stt_dictation)
         keyd do $leave_mouseless_mode &
         "$stt_dictate" cancel &
         ;;
 
-    +signal_open_kitty)
-        systemd-run --user ~/bin/kitty
+    +signal_repair_display)
+        keyd do $leave_mouseless_mode &
+        run_display_health_check >/dev/null 2>&1 &
+        ;;
+
+    +signal_toggle_display_layout)
+        keyd do $leave_mouseless_mode &
+        run_toggle_display_layout >/dev/null 2>&1 &
         ;;
 
     +signal_open_kitty_dmenu)
