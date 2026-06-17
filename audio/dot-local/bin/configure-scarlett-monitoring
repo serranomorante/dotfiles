@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly CARD="${SCARLETT_ALSA_CARD:-Gen}"
+readonly WAIT_SECONDS="${SCARLETT_MONITORING_WAIT_SECONDS:-20}"
+readonly UNITY_VOLUME=160
+
+log() {
+  printf 'configure-scarlett-monitoring: %s\n' "$*" >&2
+}
+
+card_ready() {
+  amixer -c "$CARD" cget numid=113 >/dev/null 2>&1
+}
+
+wait_for_card() {
+  local elapsed=0
+
+  while ! card_ready; do
+    if ((elapsed >= WAIT_SECONDS)); then
+      log "Scarlett card '$CARD' is not available; skipping"
+      exit 0
+    fi
+
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+}
+
+cset() {
+  local numid=$1
+  local value=$2
+
+  amixer -q -c "$CARD" cset "numid=${numid}" "$value"
+}
+
+configure_output_routes() {
+  # Keep the normal output layout: monitors and headphones follow Mix A/B.
+  cset 27 5  # Analogue Output 01 -> Mix A
+  cset 28 6  # Analogue Output 02 -> Mix B
+  cset 29 7  # Analogue Output 03 -> Mix C
+  cset 30 8  # Analogue Output 04 -> Mix D
+  cset 31 5  # Analogue Output 05 -> Mix A
+  cset 32 6  # Analogue Output 06 -> Mix B
+}
+
+configure_monitoring_mixes() {
+  # Input 3 is monitored directly. Feed it equally to L/R for mono monitoring.
+  cset 53 "$UNITY_VOLUME"  # Mix A Input 03 -> Analogue input 3
+  cset 63 "$UNITY_VOLUME"  # Mix B Input 03 -> Analogue input 3
+
+  # Input 4 is the piano. Feed it equally to L/R for mono monitoring.
+  cset 54 "$UNITY_VOLUME"  # Mix A Input 04 -> Analogue input 4
+  cset 64 "$UNITY_VOLUME"  # Mix B Input 04 -> Analogue input 4
+
+  # Preserve normal computer playback in the same monitor/headphone mix.
+  cset 55 "$UNITY_VOLUME"  # Mix A Input 05 -> PCM 1
+  cset 66 "$UNITY_VOLUME"  # Mix B Input 06 -> PCM 2
+}
+
+main() {
+  command -v amixer >/dev/null 2>&1 || {
+    log 'missing required command: amixer'
+    exit 1
+  }
+
+  wait_for_card
+  configure_output_routes
+  configure_monitoring_mixes
+  log 'configured Scarlett direct monitoring for inputs 3 and 4'
+}
+
+main "$@"

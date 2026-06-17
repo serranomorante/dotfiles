@@ -21,8 +21,6 @@ local LOGICAL_SINKS = {
 }
 
 local APP_TARGETS = {
-  ---BTAdapter intentionally follows WirePlumber's default sink policy.
-  ---Do not pin it here unless it must ignore the selected output device.
   ["Brave"] = { logical_sink = "multimedia" },
   ["Firefox"] = { logical_sink = "multimedia" },
   ["ALSA plug-in [plexamp]"] = { logical_sink = "multimedia" },

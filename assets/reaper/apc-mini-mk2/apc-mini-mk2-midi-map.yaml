@@ -1,0 +1,108 @@
+# APC Mini mk2 MIDI map for REAPER/ReaLearn integration.
+# Source: Akai Professional APC mini mk2 Communication Protocol v1.0.
+device:
+  name: Akai APC Mini mk2
+  usb_id: "09e8:004f"
+  usb_name: AKAI Professional M.I. Corp. APC mini mk2
+  protocol_url: "https://cdn.inmusicbrands.com/akai/attachments/APC%20mini%20mk2%20-%20Communication%20Protocol%20-%20v1.0.pdf"
+  introduction_message: "f0 47 7f 4f 60 00 04 00 01 00 00 f7"
+
+ports:
+  primary:
+    number: 0
+    purpose: Session view buttons, faders, and LED feedback.
+  note_mode:
+    number: 1
+    purpose: Note mode input according to the Akai protocol.
+
+pads:
+  matrix:
+    count: 64
+    note_range:
+      first: 0x00
+      last: 0x3f
+    mode_channels:
+      session_view: "0x00-0x0f on port 0"
+      drum_mode: "0x09 on port 0"
+      note_mode: "0x00 on port 1"
+    led:
+      message: "9X <pad-note> <color-velocity>"
+      sysex_rgb_message: "f0 47 7f 4f 24 <total-msb> <total-lsb> <start-pad> <end-pad> <red-msb> <red-lsb> <green-msb> <green-lsb> <blue-msb> <blue-lsb> ... f7"
+      sysex_single_pad_example_red: "f0 47 7f 4f 24 00 08 00 00 01 7f 00 00 00 00 f7"
+      behavior_channels:
+        0: "0x90 on 10% brightness"
+        1: "0x91 on 25% brightness"
+        2: "0x92 on 50% brightness"
+        3: "0x93 on 65% brightness"
+        4: "0x94 on 75% brightness"
+        5: "0x95 on 90% brightness"
+        6: "0x96 on 100% brightness"
+        7: "0x97 pulsing 1/16"
+        8: "0x98 pulsing 1/8"
+        9: "0x99 pulsing 1/4"
+        10: "0x9a pulsing 1/2"
+        11: "0x9b blinking 1/24"
+        12: "0x9c blinking 1/16"
+        13: "0x9d blinking 1/8"
+        14: "0x9e blinking 1/4"
+        15: "0x9f blinking 1/2"
+      useful_color_velocities:
+        off: 0
+        dim_gray: 1
+        gray: 2
+        white: 3
+        red: 5
+        orange: 9
+        yellow: 13
+        green: 21
+        cyan: 37
+        blue: 45
+        magenta: 53
+
+buttons:
+  track:
+    led_color: red
+    channel: 0
+    notes:
+      1: 0x64
+      2: 0x65
+      3: 0x66
+      4: 0x67
+      5: 0x68
+      6: 0x69
+      7: 0x6a
+      8: 0x6b
+  scene:
+    led_color: green
+    channel: 0
+    notes:
+      1: 0x70
+      2: 0x71
+      3: 0x72
+      4: 0x73
+      5: 0x74
+      6: 0x75
+      7: 0x76
+      8: 0x77
+  shift:
+    led_color: none
+    channel: 0
+    note: 0x7a
+  single_led_velocity:
+    off: 0
+    on: 1
+    blink: 2
+
+faders:
+  channel: 0
+  type: absolute_cc
+  controls:
+    1: 0x30
+    2: 0x31
+    3: 0x32
+    4: 0x33
+    5: 0x34
+    6: 0x35
+    7: 0x36
+    8: 0x37
+    9: 0x38

@@ -11,6 +11,7 @@
 - name: "[archlinux] Wine tools: clone wineasio"
   ansible.builtin.git:
     repo: "{{ arch_wineasio_setup.repo }}"
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
     dest: "{{ arch_wineasio_setup.repo_path }}"
     depth: 1
     version: "{{ arch_wineasio_setup.version }}"

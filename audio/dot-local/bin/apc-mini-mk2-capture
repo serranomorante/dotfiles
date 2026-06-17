@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# Purpose: Capture Akai APC Mini mk2 MIDI input while building REAPER/ReaLearn mappings.
+# Usage: apc-mini-mk2-capture [--list] [--port ALSA_PORT] [--raw-port RAW_PORT] [--output PATH] [--no-guide]
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: apc-mini-mk2-capture [OPTIONS]
+
+Capture incoming Akai APC Mini mk2 MIDI events with aseqdump.
+
+Options:
+  --list          List visible ALSA sequencer and raw MIDI ports.
+  --port PORT     Use a specific ALSA sequencer port, for example 28:0.
+  --raw-port PORT Use a specific raw MIDI port with amidi, for example hw:3,0,0.
+  --output PATH   Also write the capture stream to PATH.
+  --no-guide      Do not print the suggested discovery sequence.
+  -h, --help      Show this help.
+
+Environment:
+  APC_MINI_MK2_ALSA_PORT  Default ALSA sequencer port when --port is omitted.
+  APC_MINI_MK2_RAW_PORT   Default raw MIDI port when --raw-port is omitted.
+EOF
+}
+
+log() {
+  printf 'apc-mini-mk2-capture: %s\n' "$*" >&2
+}
+
+die() {
+  log "$*"
+  exit 1
+}
+
+require_cmd() {
+  command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+list_ports() {
+  require_cmd aseqdump
+  require_cmd amidi
+
+  printf 'ALSA sequencer ports:\n'
+  aseqdump -l || true
+  printf '\nRaw MIDI ports:\n'
+  amidi -l || true
+}
+
+detect_alsa_port() {
+  aseqdump -l 2>/dev/null | awk '
+    $1 ~ /^[0-9]+:[0-9]+$/ {
+      line = tolower($0)
+      if (line ~ /apc/ && line ~ /mini/ && line ~ /mk2/) {
+        print $1
+        exit
+      }
+    }
+  '
+}
+
+print_guide() {
+  cat >&2 <<'EOF'
+Suggested capture sequence:
+  1. Press the four pad corners, then a few middle pads.
+  2. Press track buttons 1-8 and scene buttons 1-8.
+  3. Press and release Shift by itself, then Shift with several buttons.
+  4. Move faders 1-9 from bottom to top and back.
+  5. Test the hardware Note/Drum modes if you might use them for note entry.
+
+Stop capture with Ctrl-C.
+EOF
+}
+
+port=${APC_MINI_MK2_ALSA_PORT:-}
+raw_port=${APC_MINI_MK2_RAW_PORT:-}
+output=
+show_guide=1
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --list)
+      list_ports
+      exit 0
+      ;;
+    --port)
+      [ "$#" -ge 2 ] || die '--port requires a value'
+      port=$2
+      shift 2
+      ;;
+    --raw-port)
+      [ "$#" -ge 2 ] || die '--raw-port requires a value'
+      raw_port=$2
+      shift 2
+      ;;
+    --output)
+      [ "$#" -ge 2 ] || die '--output requires a value'
+      output=$2
+      shift 2
+      ;;
+    --no-guide)
+      show_guide=0
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "unknown argument: $1"
+      ;;
+  esac
+done
+
+require_cmd aseqdump
+require_cmd amidi
+
+if [ -z "$raw_port" ] && [ -z "$port" ]; then
+  port=$(detect_alsa_port)
+fi
+
+[ -n "$raw_port" ] || [ -n "$port" ] || {
+  list_ports >&2
+  die 'could not auto-detect APC Mini mk2 ALSA sequencer port; pass --port PORT'
+}
+
+if [ -n "$output" ]; then
+  mkdir -p "$(dirname "$output")"
+  exec > >(tee -a "$output")
+fi
+
+if [ -n "$raw_port" ]; then
+  log "capturing raw MIDI port $raw_port"
+else
+  log "capturing ALSA sequencer port $port"
+fi
+[ "$show_guide" -eq 0 ] || print_guide
+
+if [ -n "$raw_port" ]; then
+  printf '# apc-mini-mk2-capture started_at=%s raw_port=%s\n' "$(date -Is)" "$raw_port"
+  amidi -p "$raw_port" -d
+else
+  printf '# apc-mini-mk2-capture started_at=%s port=%s\n' "$(date -Is)" "$port"
+  aseqdump -p "$port"
+fi

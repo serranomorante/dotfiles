@@ -41,14 +41,11 @@
   when: var_plexamp_desktop_file.stat.exists
   notify: handler_update_desktop_database
 
-- name: "[archlinux] Setup audio tools: ensure aur packages"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name:
-      - patchance
+- name: "[archlinux] Setup audio tools: ensure local AUR packages"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages:
+      - patchance-git
       - nerd-dictation-git
 
 - name: "[archlinux] Setup audio tools: remove conflicting packages"
@@ -84,6 +81,7 @@
       - cpupower
       - helvum
       - alsa-utils
+      - alsa-scarlett-gui
       - python-qtpy
       - rtirq
       - reaper
@@ -154,6 +152,19 @@
     - { name: pipewire-pulse.socket, enabled: true, masked: false }
     - { name: wireplumber.service, enabled: true, masked: false }
 
+- name: "[archlinux] Setup audio tools: remove legacy Scarlett monitoring stow enablement"
+  ansible.builtin.file:
+    path: ~/.config/systemd/user/default.target.wants/configure-scarlett-monitoring.service
+    state: absent
+
+- name: "[archlinux] Setup audio tools: ensure Scarlett monitoring service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: configure-scarlett-monitoring.service
+    enabled: true
+    masked: false
+    state: started
+    daemon_reload: true
 
 - name: "[archlinux] Setup audio tools: create pipewire group"
   become: true

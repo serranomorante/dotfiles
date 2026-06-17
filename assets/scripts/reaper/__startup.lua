@@ -1,6 +1,9 @@
 local resource_path = reaper.GetResourcePath()
 local startup_scripts = {
     resource_path .. "/Scripts/custom/yabridge_focus_repair.lua",
+    resource_path .. "/Scripts/custom/project_transport_state_feedback.lua",
+    resource_path .. "/Scripts/custom/midi_editor_state_feedback.lua",
+    resource_path .. "/Scripts/custom/item_state_feedback.lua",
 }
 
 for _, script in ipairs(startup_scripts) do

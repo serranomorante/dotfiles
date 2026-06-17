@@ -5,7 +5,11 @@
 #        Stop saves the recording by concatenating all completed segments.
 set -euo pipefail
 
-readonly DEFAULT_AUDIO_SOURCE='source_node.work_audio'
+readonly WORK_AUDIO_SOURCE='capture.sink_node.work.monitor'
+readonly WORK_AUDIO_WITH_MIC_ALIAS='source_node.work_audio_with_mic'
+readonly MUSIC_PRODUCTION_AUDIO_SOURCE='capture.sink_node.music-production.monitor'
+readonly RNNOISE_AUDIO_SOURCE='source_filter.rnnoise'
+readonly DEFAULT_AUDIO_SOURCE="$WORK_AUDIO_SOURCE"
 readonly FALLBACK_DISPLAY=':0.0+0,0'
 readonly DEFAULT_FRAMERATE='30'
 readonly DEFAULT_OUTPUT='mp4'
@@ -42,6 +46,11 @@ By default, start records the current X11 monitor. When --id is omitted for
 control commands, the latest started session is used. pause-listen pauses the
 recording, extracts the last 30 seconds by default, transcribes that audio, and
 opens the extracted WAV in mpv with a temporary SRT containing the full text.
+The default audio source records work audio only from
+capture.sink_node.work.monitor. Use source_node.work_audio_with_mic when the
+recording should include work audio mixed with the noise-suppressed microphone.
+Legacy source_node.work_audio and source_node.music-production-audio names are
+accepted as aliases for their sink monitors.
 EOF
 }
 
@@ -188,7 +197,7 @@ write_status() {
 }
 
 connect_music_production_source() {
-    if [[ "$AUDIO_SOURCE" != 'source_node.music-production-audio' ]]; then
+    if [[ "$AUDIO_SOURCE" != 'source_node.music-production-audio' && "$AUDIO_SOURCE" != "$MUSIC_PRODUCTION_AUDIO_SOURCE" ]]; then
         return
     fi
 
@@ -197,6 +206,20 @@ connect_music_production_source() {
     elif [[ -x "$HOME/dotfiles/audio/dot-local/bin/connect-reaper-to-music-production" ]]; then
         "$HOME/dotfiles/audio/dot-local/bin/connect-reaper-to-music-production" || true
     fi
+}
+
+resolve_single_audio_source() {
+    case "$1" in
+    source_node.work_audio)
+        printf '%s\n' "$WORK_AUDIO_SOURCE"
+        ;;
+    source_node.music-production-audio)
+        printf '%s\n' "$MUSIC_PRODUCTION_AUDIO_SOURCE"
+        ;;
+    *)
+        printf '%s\n' "$1"
+        ;;
+    esac
 }
 
 geometry_helper() {
@@ -228,8 +251,13 @@ resolve_capture_geometry() {
 }
 
 start_segment() {
-    local segment input_fifo
+    local segment input_fifo audio_source audio_mode
     connect_music_production_source
+    audio_mode='single'
+    audio_source="$(resolve_single_audio_source "$AUDIO_SOURCE")"
+    if [[ "$AUDIO_SOURCE" == "$WORK_AUDIO_WITH_MIC_ALIAS" ]]; then
+        audio_mode='work-with-mic'
+    fi
 
     SEGMENT_INDEX=$((SEGMENT_INDEX + 1))
     segment="$SESSION_DIR/segment_$(printf '%06d' "$SEGMENT_INDEX").mp4"
@@ -238,13 +266,25 @@ start_segment() {
     exec {FFMPEG_STDIN_FD}<>"$input_fifo"
 
     printf 'Starting segment %s\n' "$SEGMENT_INDEX"
-    ffmpeg -hide_banner -loglevel repeat+level+info \
-        -thread_queue_size 1024 -f x11grab -framerate "$FRAMERATE" -video_size "$VIDEO_SIZE" -i "$DISPLAY" \
-        -thread_queue_size 4096 -f pulse -sample_rate 48000 -channels 2 -fragment_size 192000 -i "$AUDIO_SOURCE" \
-        -map 0:v:0 -map 1:a:0 \
-        -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p \
-        -c:a aac -b:a 192k \
-        "$segment" <"$input_fifo" &
+    if [[ "$audio_mode" == 'work-with-mic' ]]; then
+        ffmpeg -hide_banner -loglevel repeat+level+info \
+            -thread_queue_size 1024 -f x11grab -framerate "$FRAMERATE" -video_size "$VIDEO_SIZE" -i "$DISPLAY" \
+            -thread_queue_size 4096 -f pulse -sample_rate 48000 -channels 2 -fragment_size 192000 -i "$WORK_AUDIO_SOURCE" \
+            -thread_queue_size 4096 -f pulse -sample_rate 48000 -channels 2 -fragment_size 192000 -i "$RNNOISE_AUDIO_SOURCE" \
+            -filter_complex '[1:a][2:a]amix=inputs=2:duration=longest:normalize=0[aout]' \
+            -map 0:v:0 -map '[aout]' \
+            -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p \
+            -c:a aac -b:a 192k \
+            "$segment" <"$input_fifo" &
+    else
+        ffmpeg -hide_banner -loglevel repeat+level+info \
+            -thread_queue_size 1024 -f x11grab -framerate "$FRAMERATE" -video_size "$VIDEO_SIZE" -i "$DISPLAY" \
+            -thread_queue_size 4096 -f pulse -sample_rate 48000 -channels 2 -fragment_size 192000 -i "$audio_source" \
+            -map 0:v:0 -map 1:a:0 \
+            -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p \
+            -c:a aac -b:a 192k \
+            "$segment" <"$input_fifo" &
+    fi
     FFMPEG_PID=$!
     sleep 0.2
     if ! kill -0 "$FFMPEG_PID" 2>/dev/null; then

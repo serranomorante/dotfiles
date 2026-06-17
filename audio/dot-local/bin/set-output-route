@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly UMC22_SINK_PATTERN='^alsa_output\.usb-Burr-Brown_from_TI_USB_Audio_CODEC.*analog-stereo-output$'
+readonly FOCUSRITE_4I4_SINK_PATTERN='^alsa_output\.usb-Focusrite_Scarlett_4i4_4th_Gen_.*\.pro-output-0$'
 readonly LOGICAL_SINKS=(multimedia work music-production)
 
 usage() {
@@ -12,12 +12,12 @@ usage() {
 Usage:
   set-output-route list
   set-output-route status
-  set-output-route <${logical_list}|all> <headphones|monitors|umc22|motherboard|node:<node.name>>
+  set-output-route <${logical_list}|all> <studio-monitors|focusrite|laptop-speakers|internal-speakers|speakers|motherboard|node:<node.name>>
 
 Examples:
-  set-output-route multimedia monitors
-  set-output-route work monitors
-  set-output-route music-production headphones
+  set-output-route multimedia studio-monitors
+  set-output-route work laptop-speakers
+  set-output-route music-production studio-monitors
   set-output-route all node:alsa_output.pci-0000_00_1f.3.analog-stereo
 EOF
 }
@@ -37,13 +37,15 @@ require_commands() {
 refresh_ports() {
   INPUT_PORTS="$(pw-link -i 2>/dev/null || true)"
   [[ -n "$INPUT_PORTS" ]] || die "could not query PipeWire input ports"
+  OUTPUT_PORTS="$(pw-link -o 2>/dev/null || true)"
+  [[ -n "$OUTPUT_PORTS" ]] || die "could not query PipeWire output ports"
   LINKS="$(pw-link -l 2>/dev/null || true)"
 }
 
 list_physical_sink_nodes() {
   printf '%s\n' "$INPUT_PORTS" \
-    | grep -E '^[^[:space:]]+:playback_(FL|FR)$' \
-    | sed -E 's/:playback_(FL|FR)$//' \
+    | grep -E '^[^[:space:]]+:playback_(FL|FR|AUX0|AUX1)$' \
+    | sed -E 's/:playback_(FL|FR|AUX0|AUX1)$//' \
     | sort \
     | uniq \
     | while IFS= read -r node; do
@@ -52,30 +54,32 @@ list_physical_sink_nodes() {
             continue
             ;;
         esac
-        if printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${node}:playback_FL" \
-          && printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${node}:playback_FR"; then
+        if { printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${node}:playback_FL" \
+          && printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${node}:playback_FR"; } \
+          || { printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${node}:playback_AUX0" \
+            && printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${node}:playback_AUX1"; }; then
           printf '%s\n' "$node"
         fi
       done
 }
 
-resolve_umc22_sink() {
-  printf '%s\n' "$PHYSICAL_SINKS" | grep -Em1 "$UMC22_SINK_PATTERN" || true
+resolve_focusrite_4i4_sink() {
+  printf '%s\n' "$PHYSICAL_SINKS" | grep -Em1 "$FOCUSRITE_4I4_SINK_PATTERN" || true
 }
 
 resolve_motherboard_sink() {
   printf '%s\n' "$PHYSICAL_SINKS" \
-    | grep -Ev "$UMC22_SINK_PATTERN" \
+    | grep -Ev "$FOCUSRITE_4I4_SINK_PATTERN" \
     | grep -m1 '^alsa_output\.' || true
 }
 
 resolve_target_node() {
   local target=$1
   case "$target" in
-    headphones|umc22)
-      resolve_umc22_sink
+    studio-monitors|focusrite)
+      resolve_focusrite_4i4_sink
       ;;
-    monitors|motherboard)
+    laptop-speakers|internal-speakers|speakers|motherboard)
       resolve_motherboard_sink
       ;;
     node:*)
@@ -108,6 +112,42 @@ logical_output_node() {
   die "unknown logical sink: $logical"
 }
 
+source_ports_for_logical() {
+  local logical=$1
+  local output_node
+  output_node="$(logical_output_node "$logical")"
+
+  printf '%s\n' "$OUTPUT_PORTS" | awk -v prefix="${output_node}:output_" 'index($0, prefix) == 1'
+}
+
+target_left_port() {
+  local target_node=$1
+
+  if printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${target_node}:playback_FL"; then
+    printf '%s\n' "${target_node}:playback_FL"
+    return
+  fi
+
+  if printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${target_node}:playback_AUX0"; then
+    printf '%s\n' "${target_node}:playback_AUX0"
+    return
+  fi
+}
+
+target_right_port() {
+  local target_node=$1
+
+  if printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${target_node}:playback_FR"; then
+    printf '%s\n' "${target_node}:playback_FR"
+    return
+  fi
+
+  if printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${target_node}:playback_AUX1"; then
+    printf '%s\n' "${target_node}:playback_AUX1"
+    return
+  fi
+}
+
 linked_targets_for_source_port() {
   local source_port=$1
   printf '%s\n' "$LINKS" | awk -v src="$source_port" '
@@ -119,15 +159,13 @@ linked_targets_for_source_port() {
 
 physical_target_nodes_for_logical() {
   local logical=$1
-  local output_node
-  output_node="$(logical_output_node "$logical")"
 
-  {
-    linked_targets_for_source_port "${output_node}:output_FL"
-    linked_targets_for_source_port "${output_node}:output_FR"
-  } \
-    | grep -E ':playback_(FL|FR)$' \
-    | sed -E 's/:playback_(FL|FR)$//' \
+  while IFS= read -r source_port; do
+    [[ -n "$source_port" ]] || continue
+    linked_targets_for_source_port "$source_port"
+  done < <(source_ports_for_logical "$logical") \
+    | { grep -E ':playback_' || true; } \
+    | sed -E 's/:playback_[^:]+$//' \
     | sort \
     | uniq
 }
@@ -147,46 +185,49 @@ status_line_for_logical() {
 
 disconnect_physical_links() {
   local logical=$1
-  local output_node source_port target_port channel
-  output_node="$(logical_output_node "$logical")"
+  local source_port target_port
 
-  for channel in FL FR; do
-    source_port="${output_node}:output_${channel}"
+  while IFS= read -r source_port; do
+    [[ -n "$source_port" ]] || continue
     while IFS= read -r target_port; do
       [[ -n "$target_port" ]] || continue
       case "$target_port" in
-        *":playback_${channel}")
+        *:playback_*)
           pw-link -d "$source_port" "$target_port" 2>/dev/null || true
           ;;
       esac
     done < <(linked_targets_for_source_port "$source_port")
-  done
+  done < <(source_ports_for_logical "$logical")
 }
 
 connect_logical_to_target() {
   local logical=$1
   local target_node=$2
-  local output_node
+  local output_node target_left target_right
   output_node="$(logical_output_node "$logical")"
+  target_left="$(target_left_port "$target_node")"
+  target_right="$(target_right_port "$target_node")"
 
-  printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${target_node}:playback_FL" \
-    || die "target sink is missing FL playback port: $target_node"
-  printf '%s\n' "$INPUT_PORTS" | grep -Fxq "${target_node}:playback_FR" \
-    || die "target sink is missing FR playback port: $target_node"
+  [[ -n "$target_left" ]] || die "target sink is missing left playback port: $target_node"
+  [[ -n "$target_right" ]] || die "target sink is missing right playback port: $target_node"
+  printf '%s\n' "$OUTPUT_PORTS" | grep -Fxq "${output_node}:output_FL" \
+    || die "logical sink is missing FL output port: $output_node"
+  printf '%s\n' "$OUTPUT_PORTS" | grep -Fxq "${output_node}:output_FR" \
+    || die "logical sink is missing FR output port: $output_node"
 
   disconnect_physical_links "$logical"
-  pw-link "${output_node}:output_FL" "${target_node}:playback_FL"
-  pw-link "${output_node}:output_FR" "${target_node}:playback_FR"
+  pw-link "${output_node}:output_FL" "$target_left"
+  pw-link "${output_node}:output_FR" "$target_right"
 }
 
 print_status() {
-  local logical umc22 motherboard
-  umc22="$(resolve_umc22_sink)"
+  local logical focusrite_4i4 motherboard
+  focusrite_4i4="$(resolve_focusrite_4i4_sink)"
   motherboard="$(resolve_motherboard_sink)"
 
   printf 'presets:\n'
-  printf '  headphones -> %s\n' "${umc22:-unavailable}"
-  printf '  monitors   -> %s\n' "${motherboard:-unavailable}"
+  printf '  studio-monitors -> %s\n' "${focusrite_4i4:-unavailable}"
+  printf '  laptop-speakers -> %s\n' "${motherboard:-unavailable}"
   printf 'logical sinks:\n'
   for logical in "${LOGICAL_SINKS[@]}"; do
     status_line_for_logical "$logical"
@@ -200,14 +241,6 @@ route_one() {
 
   resolved_target="$(resolve_target_node "$target")"
   [[ -n "$resolved_target" ]] || die "could not resolve target: $target"
-
-  if [[ "$target" == "monitors" || "$target" == "motherboard" ]]; then
-    local umc22
-    umc22="$(resolve_umc22_sink)"
-    [[ -n "$umc22" ]] || die "UMC22 sink is not available"
-    [[ "$resolved_target" != "$umc22" ]] \
-      || die "independent monitor routing is unavailable: no second physical sink was found"
-  fi
 
   connect_logical_to_target "$logical" "$resolved_target"
   printf '%s -> %s\n' "$logical" "$resolved_target"

@@ -1,7 +1,7 @@
 ---
 pipewire_latency_vars:
-  PIPEWIRE_LATENCY: "256/48000"
-  PIPEWIRE_QUANTUM: "256/48000"
+  PIPEWIRE_LATENCY: "512/48000"
+  PIPEWIRE_QUANTUM: "512/48000"
   PIPEWIRE_RATE: "1/48000"
 
 arch_wineasio_setup:
@@ -9,12 +9,20 @@ arch_wineasio_setup:
   repo_path: "{{ ansible_facts.env.HOME }}/data/repos/wineasio"
   version: master
   reaper_audio_mode: 2
-  reaper_block_size: 256
+  reaper_block_size: 512
   reaper_sample_rate: 48000
 
 arch_reaper_sws_extension_setup:
   version: 2.14.0.7
   backup_path: ~/data/Downloads/music-production
+
+arch_helgobox_setup:
+  version: 2.18.2
+  backup_path: ~/data/Downloads/music-production
+  linux_vst_name: helgobox-linux-x86_64.so
+  linux_vst_checksum: sha256:b23e9a8b6471551a073327bac2f045d6ad296bb593b7157cc944fc4b4e8a5a6e
+  linux_reaper_extension_name: reaper_helgobox-linux-x86_64.so
+  linux_reaper_extension_checksum: sha256:bd2e44616f3ffd64a3c0f349b4276e17abf214012486a5f49277c632d40f068f
 
 arch_linvst_setup:
   version: "4.9"

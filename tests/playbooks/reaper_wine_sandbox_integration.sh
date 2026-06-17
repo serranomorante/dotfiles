@@ -7,6 +7,8 @@ set -euo pipefail
 # dotfiles-test-case: launch-reaper-linux-no-firejail-prepares-sandboxed-yabridge-env
 # dotfiles-test-case: launch-reaper-linux-firejail-uses-wwine-reaper-sandbox
 # dotfiles-test-case: launch-reaper-linux-firejail-sandbox-is-joinable-by-wwine
+# dotfiles-test-case: launch-reaper-linux-firejail-joins-existing-wwine-reaper-sandbox
+# dotfiles-test-case: launch-reaper-linux-desktop-entries-are-terminal-free
 
 # Purpose: Integration tests for launch-reaper-linux, wwine, fj-profile-checker, and real Firejail.
 
@@ -47,7 +49,8 @@ make_fixture() {
     readonly="${fixture}/readonly"
     hidden="${fixture}/hidden"
     wine_prefix="${fixture}/wine-prefix"
-    sandbox_name="wwine-reaper"
+    tmp_id="${DOTFILES_TEST_TMP##*/}"
+    sandbox_name="${tmp_id//[^A-Za-z0-9_.-]/_}-wwine-reaper"
     sandbox_profile="${home}/.config/firejail/wine-reaper.local"
     sandbox_check_profile="${home}/.local/share/wwine/firejail-profiles/wine-reaper.local"
     fake_wine_log="${fixture}/fake-wine.log"
@@ -103,6 +106,12 @@ fi
   printf '<%s>' "\$@"
   printf '\n'
 } >> "$fake_wine_log"
+if [ "\${1:-}" = "hold-sandbox" ]; then
+  touch "${fixture}/fake-wine-ready"
+  while [ ! -e "${fixture}/stop-fake-wine" ]; do
+    sleep 0.05
+  done
+fi
 SH
     chmod +x "${fixture}/fake-wine"
 
@@ -124,6 +133,7 @@ fi
   printf 'INSIDE_FIREJAIL=%s\n' "\$inside"
   printf 'WINEPREFIX=%s\n' "\${WINEPREFIX:-}"
   printf 'WINELOADER=%s\n' "\${WINELOADER:-}"
+  printf 'WWINE_SANDBOX_NAME=%s\n' "\${WWINE_SANDBOX_NAME:-}"
   printf 'WWINE_USE_SANDBOX=%s\n' "\${WWINE_USE_SANDBOX:-}"
   printf 'PIPEWIRE_LATENCY=%s\n' "\${PIPEWIRE_LATENCY:-}"
   printf 'PIPEWIRE_QUANTUM=%s\n' "\${PIPEWIRE_QUANTUM:-}"
@@ -243,7 +253,7 @@ wwine_rendered = wwine_template.render(
             "architecture": "win64",
             "sandbox_profile": str(home / ".config/firejail/wine-reaper.local"),
             "sandbox_check_profile": str(home / ".local/share/wwine/firejail-profiles/wine-reaper.local"),
-            "sandbox_name": "wwine-reaper",
+            "sandbox_name": os.environ["REAPER_TEST_SANDBOX_NAME"],
         },
     },
 )
@@ -258,6 +268,7 @@ launch_rendered = launch_template.render(
         "PIPEWIRE_RATE": "1/48000",
     },
 )
+launch_rendered = launch_rendered.replace("/usr/bin/reaper", str(fixture / "fake-reaper"))
 
 wwine_path = home / "bin/wwine"
 loader_path = home / "bin/wwine-wine-loader"
@@ -269,12 +280,13 @@ for path in (wwine_path, loader_path, launch_path):
     path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 PY
 
-    REAPER_TEST_FIXTURE="$fixture" python3 "$renderer"
+    REAPER_TEST_FIXTURE="$fixture" REAPER_TEST_SANDBOX_NAME="$sandbox_name" python3 "$renderer"
 }
 
 run_launch() {
     HOME="$home" \
     XDG_RUNTIME_DIR="$runtime" \
+    DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME="$sandbox_name" \
     PATH="${fixture}/bin:${fixture}:/usr/bin:/bin" \
     "$launch" "$@"
 }
@@ -288,20 +300,36 @@ run_wwine() {
 
 shutdown_reaper_sandbox() {
     touch "${fixture}/stop-reaper" 2>/dev/null || true
-    firejail --shutdown=wwine-reaper >/dev/null 2>&1 || true
+    firejail --shutdown="$sandbox_name" >/dev/null 2>&1 || true
 }
 
 wait_for_sandbox() {
     local i
 
     for ((i = 0; i < 80; i++)); do
-        if firejail --list 2>/dev/null | awk -F: '$3 == "wwine-reaper" { found = 1 } END { exit found ? 0 : 1 }'; then
+        if firejail --list 2>/dev/null | awk -F: -v name="$sandbox_name" '$3 == name { found = 1 } END { exit found ? 0 : 1 }'; then
             return 0
         fi
         sleep 0.05
     done
 
     firejail --list >&2 || true
+    return 1
+}
+
+wait_for_file() {
+    local path=$1
+    local description=$2
+    local i
+
+    for ((i = 0; i < 80; i++)); do
+        if [[ -e "$path" ]]; then
+            return 0
+        fi
+        sleep 0.05
+    done
+
+    printf 'Timed out waiting for %s: %s\n' "$description" "$path" >&2
     return 1
 }
 
@@ -313,11 +341,12 @@ launch-reaper-linux-no-firejail-prepares-sandboxed-yabridge-env)
     grep -Fxq "INSIDE_FIREJAIL=0" "$fake_reaper_log"
     grep -Fxq "WINEPREFIX=$wine_prefix" "$fake_reaper_log"
     grep -Fxq "WINELOADER=$wwine_loader" "$fake_reaper_log"
+    grep -Fxq "WWINE_SANDBOX_NAME=$sandbox_name" "$fake_reaper_log"
     grep -Fxq "WWINE_USE_SANDBOX=1" "$fake_reaper_log"
     grep -Fxq "PIPEWIRE_LATENCY=512/48000" "$fake_reaper_log"
     grep -Fxq "PIPEWIRE_QUANTUM=512/48000" "$fake_reaper_log"
     grep -Fxq "ARGS=<--empty-project>" "$fake_reaper_log"
-    grep -Fq 'KITTY_EXEC=</tmp/' "$kitty_log"
+    ! grep -Fq 'KITTY_EXEC=' "$kitty_log"
     ;;
 launch-reaper-linux-firejail-uses-wwine-reaper-sandbox)
     make_fixture
@@ -326,10 +355,11 @@ launch-reaper-linux-firejail-uses-wwine-reaper-sandbox)
     run_launch --firejail -- --new-project
     grep -Fxq "INSIDE_FIREJAIL=1" "$fake_reaper_log"
     grep -Fxq "WINEPREFIX=$wine_prefix" "$fake_reaper_log"
-    grep -Fxq "WINELOADER=${fixture}/fake-wine" "$fake_reaper_log"
-    grep -Fxq "WWINE_USE_SANDBOX=0" "$fake_reaper_log"
+    grep -Fxq "WINELOADER=$wwine_loader" "$fake_reaper_log"
+    grep -Fxq "WWINE_SANDBOX_NAME=$sandbox_name" "$fake_reaper_log"
+    grep -Fxq "WWINE_USE_SANDBOX=1" "$fake_reaper_log"
     grep -Fxq "ARGS=<--new-project>" "$fake_reaper_log"
-    grep -Fq "KITTY_EXEC=<firejail><--profile=$sandbox_profile><--join-or-start=wwine-reaper><${fixture}/fake-reaper><--new-project>" "$kitty_log"
+    ! grep -Fq 'KITTY_EXEC=' "$kitty_log"
     ;;
 launch-reaper-linux-firejail-sandbox-is-joinable-by-wwine)
     make_fixture
@@ -344,10 +374,39 @@ launch-reaper-linux-firejail-sandbox-is-joinable-by-wwine)
     grep -Fxq "INSIDE_FIREJAIL=1" "$fake_wine_log"
     grep -Fxq "ARGS=<joined-from-external-host>" "$fake_wine_log"
     grep -Fq "$sandbox_check_profile" "$checker_log"
-    [ "$(firejail --list 2>/dev/null | awk -F: '$3 == "wwine-reaper" { count++ } END { print count + 0 }')" -eq 1 ]
+    [ "$(firejail --list 2>/dev/null | awk -F: -v name="$sandbox_name" '$3 == name { count++ } END { print count + 0 }')" -eq 1 ]
 
     touch "${fixture}/stop-reaper"
     wait "$launch_pid"
+    ;;
+launch-reaper-linux-firejail-joins-existing-wwine-reaper-sandbox)
+    make_fixture
+    trap 'touch "${fixture}/stop-fake-wine" 2>/dev/null || true; shutdown_reaper_sandbox; [ -n "${vienna_pid:-}" ] && wait "$vienna_pid" 2>/dev/null || true' EXIT
+
+    run_wwine --prefix reaper --no-desktop --use-sandbox wine hold-sandbox >"$output" 2>&1 &
+    vienna_pid=$!
+    wait_for_sandbox
+    wait_for_file "${fixture}/fake-wine-ready" "held wwine sandbox payload"
+
+    run_launch --firejail -- --joined-after-vienna
+    grep -Fxq "INSIDE_FIREJAIL=1" "$fake_reaper_log"
+    grep -Fxq "ARGS=<--joined-after-vienna>" "$fake_reaper_log"
+    [ "$(firejail --list 2>/dev/null | awk -F: -v name="$sandbox_name" '$3 == name { count++ } END { print count + 0 }')" -eq 1 ]
+
+    touch "${fixture}/stop-fake-wine"
+    wait "$vienna_pid"
+    ;;
+launch-reaper-linux-desktop-entries-are-terminal-free)
+    grep -Fxq "Name=REAPER [LINUX]" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
+    grep -Fxq "Terminal=false" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
+    ! grep -Fq "kitty" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
+
+    grep -Fxq "Name=REAPER [LINUX] (Firejail)" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
+    grep -Fxq "Terminal=false" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
+    ! grep -Fq "kitty" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
+
+    ! grep -Fq "exec kitty" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/launch-reaper-linux"
+    ! grep -Fq "kitty --hold" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/launch-reaper-linux"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

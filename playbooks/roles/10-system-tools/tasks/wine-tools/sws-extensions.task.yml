@@ -14,6 +14,85 @@
     - ~/.config/REAPER/UserPlugins
     - ~/.config/REAPER/Scripts
     - ~/.config/REAPER/Scripts/custom
+    - ~/.vst
+
+- name: "[archlinux] Wine tools: get native Helgobox/ReaLearn"
+  ansible.builtin.get_url:
+    url: "https://github.com/helgoboss/helgobox/releases/download/v{{ arch_helgobox_setup.version }}/{{ item.name }}"
+    dest: "{{ arch_helgobox_setup.backup_path }}/{{ item.name }}"
+    checksum: "{{ item.checksum }}"
+    mode: "755"
+  loop:
+    - name: "{{ arch_helgobox_setup.linux_vst_name }}"
+      checksum: "{{ arch_helgobox_setup.linux_vst_checksum }}"
+    - name: "{{ arch_helgobox_setup.linux_reaper_extension_name }}"
+      checksum: "{{ arch_helgobox_setup.linux_reaper_extension_checksum }}"
+
+- name: "[archlinux] Wine tools: install native Helgobox/ReaLearn VST"
+  ansible.builtin.copy:
+    src: "{{ arch_helgobox_setup.backup_path }}/{{ arch_helgobox_setup.linux_vst_name }}"
+    dest: "~/.vst/{{ arch_helgobox_setup.linux_vst_name }}"
+    mode: "755"
+    remote_src: true
+
+- name: "[archlinux] Wine tools: check native Helgobox/ReaLearn xdo ABI"
+  ansible.builtin.command: patchelf --print-needed "{{ ansible_facts.env.HOME }}/.vst/{{ arch_helgobox_setup.linux_vst_name }}"
+  changed_when: false
+  register: var_native_helgobox_needed
+
+- name: "[archlinux] Wine tools: patch native Helgobox/ReaLearn xdo ABI"
+  ansible.builtin.command: >
+    patchelf --replace-needed libxdo.so.3 libxdo.so.4
+    "{{ ansible_facts.env.HOME }}/.vst/{{ arch_helgobox_setup.linux_vst_name }}"
+  changed_when: true
+  when: "'libxdo.so.3' in var_native_helgobox_needed.stdout_lines"
+
+- name: "[archlinux] Wine tools: stat native reaper ini"
+  ansible.builtin.stat:
+    path: ~/.config/REAPER/REAPER.ini
+  register: var_native_reaper_ini
+
+- name: "[archlinux] Wine tools: check native reaper VST path key"
+  ansible.builtin.command: grep -Eq "^vstpath64=" "{{ ansible_facts.env.HOME }}/.config/REAPER/REAPER.ini"
+  changed_when: false
+  failed_when: false
+  register: var_native_reaper_vstpath64_key
+  when: var_native_reaper_ini.stat.exists
+
+- name: "[archlinux] Wine tools: check native reaper user VST path"
+  ansible.builtin.command: grep -Eq "^vstpath64=.*(^|;){{ ansible_facts.env.HOME | regex_escape }}/\\.vst(;|$)" "{{ ansible_facts.env.HOME }}/.config/REAPER/REAPER.ini"
+  changed_when: false
+  failed_when: false
+  register: var_native_reaper_user_vst_path
+  when: var_native_reaper_ini.stat.exists
+
+- name: "[archlinux] Wine tools: add native reaper VST path key"
+  ansible.builtin.lineinfile:
+    path: ~/.config/REAPER/REAPER.ini
+    insertafter: "^\\[reaper\\]"
+    line: "vstpath64={{ ansible_facts.env.HOME }}/.vst"
+    mode: "644"
+  when:
+    - var_native_reaper_ini.stat.exists
+    - var_native_reaper_vstpath64_key.rc != 0
+
+- name: "[archlinux] Wine tools: prepend native reaper user VST path"
+  ansible.builtin.lineinfile:
+    path: ~/.config/REAPER/REAPER.ini
+    regexp: "^vstpath64=(.*)$"
+    line: "vstpath64={{ ansible_facts.env.HOME }}/.vst;\\1"
+    backrefs: true
+  when:
+    - var_native_reaper_ini.stat.exists
+    - var_native_reaper_vstpath64_key.rc == 0
+    - var_native_reaper_user_vst_path.rc != 0
+
+- name: "[archlinux] Wine tools: install native Helgobox/ReaLearn extension"
+  ansible.builtin.copy:
+    src: "{{ arch_helgobox_setup.backup_path }}/{{ arch_helgobox_setup.linux_reaper_extension_name }}"
+    dest: "~/.config/REAPER/UserPlugins/{{ arch_helgobox_setup.linux_reaper_extension_name }}"
+    mode: "755"
+    remote_src: true
 
 - name: "[archlinux] Wine tools: symlink native reaper sws extension"
   ansible.builtin.file:
@@ -40,6 +119,9 @@
     mode: "644"
   loop:
     - alternate_position.lua
+    - item_state_feedback.lua
+    - midi_editor_state_feedback.lua
+    - project_transport_state_feedback.lua
     - yabridge_focus_repair.lua
 
 - name: "[archlinux] Wine tools: get sws extension"
@@ -100,3 +182,6 @@
     mode: "644"
   loop:
     - alternate_position.lua
+    - item_state_feedback.lua
+    - midi_editor_state_feedback.lua
+    - project_transport_state_feedback.lua

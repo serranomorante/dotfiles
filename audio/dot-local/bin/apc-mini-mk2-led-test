@@ -1,0 +1,631 @@
+#!/usr/bin/env bash
+# Purpose: Send known LED messages to an Akai APC Mini mk2 before involving REAPER/ReaLearn.
+# Usage: apc-mini-mk2-led-test [--list] [--port RAW_PORT] [--seq-port ALSA_PORT] [--no-init] [--demo|--corner-demo|--seq-corner-demo|--seq-channel-sweep|--sysex-demo|--inquiry|--intro-probe|--all-off|--pad NOTE COLOR [CHANNEL]|--rgb PAD R G B|--single NOTE STATE|--message HEX...]
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: apc-mini-mk2-led-test [OPTIONS] COMMAND
+
+Send MIDI LED messages to an Akai APC Mini mk2.
+
+Options:
+  --list          List visible raw MIDI ports.
+  --port PORT     Use a specific raw MIDI port, for example hw:3,0,0.
+  --seq-port PORT Use a specific ALSA sequencer output port, for example 28:0.
+  --hold SECONDS  Demo hold time before reset. Default: 4.
+  --timeout SEC   Response probe timeout. Default: 2.
+  --no-init      Do not send the APC Mini mk2 introduction SysEx first.
+  --no-reset      Leave demo LEDs on instead of clearing them at the end.
+  -h, --help      Show this help.
+
+Commands:
+  --demo                         Run a full-grid/peripheral Note-On LED demo. This is the default.
+  --corner-demo                  Light the physical grid corners using captured Session View notes.
+  --seq-corner-demo              Light the physical grid corners via ALSA sequencer output.
+  --seq-channel-sweep            Light grid notes 0x00-0x0f via ALSA sequencer statuses 0x90-0x9f.
+  --sysex-demo                   Run a full-grid RGB SysEx demo plus side LEDs.
+  --inquiry                      Send MIDI Device Inquiry and dump the response.
+  --intro-probe                  Send the APC Mini mk2 introduction SysEx and dump the response.
+  --all-off                      Turn pad and peripheral LEDs off.
+  --pad NOTE COLOR [CHANNEL]     Light one RGB pad via Note-On LED messages. NOTE and COLOR can be decimal or 0xNN. CHANNEL defaults to 6, which is solid 100% brightness.
+  --rgb PAD RED GREEN BLUE       Light one RGB pad via SysEx. Values can be decimal or 0xNN in the 0-255 range.
+  --single NOTE STATE            Set a single-color peripheral LED. STATE is on, off, or blink.
+  --message HEX...               Send an arbitrary raw MIDI hex message, for example --message 96 00 05.
+
+Environment:
+  APC_MINI_MK2_RAW_PORT  Default raw MIDI port when --port is omitted.
+  APC_MINI_MK2_SEQ_PORT  Default ALSA sequencer output port when --seq-port is omitted.
+
+Notes:
+  RGB pads use Note On messages: 9X <pad-note> <color-velocity>.
+  Channel/status 96 is solid 100% brightness; 97-9A pulse; 9B-9F blink.
+  RGB pads can also be set with SysEx messages, which is useful if Note-On LED messages are ignored by the grid.
+  Peripheral track/scene LEDs use 90 <button-note> 00/01/02.
+  Session View grid notes run bottom-left 0x00 to bottom-right 0x07, then upward by rows; top-left is 0x38 and top-right is 0x3f.
+  By default, this sends the APC Mini mk2 introduction SysEx before LED commands.
+EOF
+}
+
+log() {
+  printf 'apc-mini-mk2-led-test: %s\n' "$*" >&2
+}
+
+die() {
+  log "$*"
+  exit 1
+}
+
+require_cmd() {
+  command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+list_ports() {
+  require_cmd amidi
+  require_cmd aplaymidi
+
+  printf 'Raw MIDI ports:\n'
+  amidi -l
+  printf '\nALSA sequencer output ports:\n'
+  aplaymidi -l || true
+}
+
+detect_raw_port() {
+  amidi -l 2>/dev/null | awk '
+    NR > 1 && $1 ~ /O/ {
+      line = tolower($0)
+      if (line ~ /apc/ && line ~ /mini/ && line ~ /mk2/) {
+        print $2
+        exit
+      }
+    }
+  '
+}
+
+detect_seq_port() {
+  aplaymidi -l 2>/dev/null | awk '
+    NR > 1 && $1 ~ /^[0-9]+:[0-9]+$/ {
+      line = tolower($0)
+      if (line ~ /apc/ && line ~ /mini/ && line ~ /mk2/ && line ~ /control/) {
+        print $1
+        exit
+      }
+    }
+  '
+}
+
+byte_hex() {
+  local value=$1
+
+  if [[ "$value" =~ ^0[xX][0-9A-Fa-f]+$ ]]; then
+    value=$((value))
+  elif [[ "$value" =~ ^[0-9]+$ ]]; then
+    value=$((10#$value))
+  else
+    die "not a numeric byte value: $1"
+  fi
+
+  [ "$value" -ge 0 ] && [ "$value" -le 255 ] || die "byte out of range: $1"
+  printf '%02X' "$value"
+}
+
+send_hex() {
+  local message=
+
+  [ "$#" -gt 0 ] || die 'empty MIDI message'
+  while [ "$#" -gt 0 ]; do
+    message="${message:+$message }$(byte_hex "$1")"
+    shift
+  done
+
+  log "send $message"
+  amidi -p "$port" -S "$message"
+}
+
+raw_byte_hex() {
+  local value=${1#0x}
+  value=${value#0X}
+
+  [[ "$value" =~ ^[0-9A-Fa-f]{1,2}$ ]] || die "not a raw hex byte: $1"
+  printf '%02X' "$((16#$value))"
+}
+
+send_raw_hex() {
+  local message=
+
+  [ "$#" -gt 0 ] || die 'empty MIDI message'
+  while [ "$#" -gt 0 ]; do
+    message="${message:+$message }$(raw_byte_hex "$1")"
+    shift
+  done
+
+  log "send $message"
+  amidi -p "$port" -S "$message"
+}
+
+emit_hex_byte() {
+  local byte
+  byte=$(raw_byte_hex "$1")
+  printf '%b' "\\x$byte"
+}
+
+emit_hex_message() {
+  while [ "$#" -gt 0 ]; do
+    emit_hex_byte "$1"
+    shift
+  done
+}
+
+emit_u16_be() {
+  local value=$1
+  emit_hex_byte "$(printf '%02X' "$(((value >> 8) & 0xff))")"
+  emit_hex_byte "$(printf '%02X' "$((value & 0xff))")"
+}
+
+emit_u32_be() {
+  local value=$1
+  emit_hex_byte "$(printf '%02X' "$(((value >> 24) & 0xff))")"
+  emit_hex_byte "$(printf '%02X' "$(((value >> 16) & 0xff))")"
+  emit_hex_byte "$(printf '%02X' "$(((value >> 8) & 0xff))")"
+  emit_hex_byte "$(printf '%02X' "$((value & 0xff))")"
+}
+
+write_smf() {
+  local file=$1
+  local track_len
+  local message byte
+  shift
+
+  track_len=$((($# * 4) + 4))
+  {
+    emit_hex_message 4D 54 68 64
+    emit_u32_be 6
+    emit_u16_be 0
+    emit_u16_be 1
+    emit_u16_be 96
+    emit_hex_message 4D 54 72 6B
+    emit_u32_be "$track_len"
+    for message in "$@"; do
+      emit_hex_byte 00
+      for byte in $message; do
+        emit_hex_byte "$byte"
+      done
+    done
+    emit_hex_message 00 FF 2F 00
+  } >"$file"
+}
+
+send_raw_hex_and_dump() {
+  local message=
+
+  [ "$#" -gt 0 ] || die 'empty MIDI message'
+  while [ "$#" -gt 0 ]; do
+    message="${message:+$message }$(raw_byte_hex "$1")"
+    shift
+  done
+
+  log "send $message; dumping response for ${probe_timeout}s"
+  amidi -p "$port" -S "$message" -d -t "$probe_timeout"
+}
+
+send_intro() {
+  # Akai APC Mini mk2 introduction message from the communication protocol.
+  send_raw_hex F0 47 7F 4F 60 00 04 00 01 00 00 F7
+}
+
+inquiry_probe() {
+  send_raw_hex_and_dump F0 7E 00 06 01 F7
+}
+
+intro_probe() {
+  send_raw_hex_and_dump F0 47 7F 4F 60 00 04 00 01 00 00 F7
+}
+
+rgb_pair() {
+  local value
+  value=$(byte_hex "$1")
+  value=$((16#$value))
+  printf '%02X %02X' "$((value >> 7))" "$((value & 0x7f))"
+}
+
+grid_color_for_note() {
+  local note=$1
+
+  case "$((note % 8))" in
+    0) printf '5\n' ;;
+    1) printf '9\n' ;;
+    2) printf '13\n' ;;
+    3) printf '21\n' ;;
+    4) printf '37\n' ;;
+    5) printf '45\n' ;;
+    6) printf '53\n' ;;
+    7) printf '3\n' ;;
+  esac
+}
+
+grid_rgb_for_note() {
+  local note=$1
+
+  case "$((note % 8))" in
+    0) printf '255 0 0\n' ;;
+    1) printf '255 84 0\n' ;;
+    2) printf '255 255 0\n' ;;
+    3) printf '0 255 0\n' ;;
+    4) printf '0 170 255\n' ;;
+    5) printf '0 0 255\n' ;;
+    6) printf '255 0 255\n' ;;
+    7) printf '255 255 255\n' ;;
+  esac
+}
+
+pad_led() {
+  local note=$1
+  local color=$2
+  local channel=${3:-6}
+  local status
+
+  channel=$((channel))
+  [ "$channel" -ge 0 ] && [ "$channel" -le 15 ] || die "channel out of range: $channel"
+  status=$((0x90 + channel))
+  send_hex "$status" "$note" "$color"
+}
+
+single_led() {
+  local note=$1
+  local state=$2
+  local velocity
+
+  case "$state" in
+    off) velocity=0 ;;
+    on) velocity=1 ;;
+    blink) velocity=2 ;;
+    *) die "unknown single LED state: $state" ;;
+  esac
+
+  send_hex 0x90 "$note" "$velocity"
+}
+
+rgb_sysex_pad() {
+  local pad=$1
+  local red=$2
+  local green=$3
+  local blue=$4
+  local red_pair green_pair blue_pair
+
+  pad=$(byte_hex "$pad")
+  [ "$((16#$pad))" -le 63 ] || die "RGB pad out of range: $1"
+  red_pair=$(rgb_pair "$red")
+  green_pair=$(rgb_pair "$green")
+  blue_pair=$(rgb_pair "$blue")
+
+  # Message type 0x24, 8 data bytes: start pad, end pad, and 8-bit RGB split as 7-bit MSB/LSB pairs.
+  send_raw_hex F0 47 7F 4F 24 00 08 "$pad" "$pad" $red_pair $green_pair $blue_pair F7
+}
+
+all_off() {
+  local note
+
+  for note in $(seq 0 63); do
+    pad_led "$note" 0 0
+  done
+
+  for note in $(seq 100 107) $(seq 112 119); do
+    single_led "$note" off
+  done
+}
+
+sysex_demo() {
+  local note rgb
+
+  all_off
+
+  for note in $(seq 0 63); do
+    rgb=$(grid_rgb_for_note "$note")
+    # shellcheck disable=SC2086
+    rgb_sysex_pad "$note" $rgb
+  done
+
+  for note in $(seq 100 107); do
+    single_led "$note" on
+  done
+  for note in $(seq 112 119); do
+    single_led "$note" on
+  done
+
+  if [ "$reset_after_demo" -eq 1 ]; then
+    sleep "$hold_seconds"
+    all_off
+  fi
+}
+
+corner_demo() {
+  all_off
+
+  # Captured Session View physical corners on this unit:
+  # top-left 0x38, top-right 0x3f, bottom-right 0x07, bottom-left 0x00.
+  pad_led 56 5
+  pad_led 63 21
+  pad_led 7 45
+  pad_led 0 53
+  single_led 112 on
+
+  if [ "$reset_after_demo" -eq 1 ]; then
+    sleep "$hold_seconds"
+    all_off
+  fi
+}
+
+seq_corner_demo() {
+  local on_file off_file
+  local rc=0
+
+  on_file=$(mktemp "${TMPDIR:-/tmp}/apc-mini-mk2-corner-on.XXXXXX.mid")
+  off_file=$(mktemp "${TMPDIR:-/tmp}/apc-mini-mk2-corner-off.XXXXXX.mid")
+  trap "rm -f $(printf '%q' "$on_file") $(printf '%q' "$off_file")" EXIT INT TERM
+
+  write_smf "$on_file" \
+    "96 38 05" \
+    "96 3F 15" \
+    "96 07 2D" \
+    "96 00 35" \
+    "90 70 01"
+  write_smf "$off_file" \
+    "96 38 00" \
+    "96 3F 00" \
+    "96 07 00" \
+    "96 00 00" \
+    "90 70 00"
+
+  log "playing ALSA sequencer corner demo on $seq_port"
+  aplaymidi -p "$seq_port" "$on_file" || rc=$?
+
+  if [ "$rc" -eq 0 ] && [ "$reset_after_demo" -eq 1 ]; then
+    sleep "$hold_seconds"
+    aplaymidi -p "$seq_port" "$off_file" || rc=$?
+  fi
+
+  rm -f "$on_file" "$off_file"
+  trap - EXIT INT TERM
+  return "$rc"
+}
+
+seq_channel_sweep() {
+  local on_file off_file
+  local rc=0
+
+  on_file=$(mktemp "${TMPDIR:-/tmp}/apc-mini-mk2-channel-sweep-on.XXXXXX.mid")
+  off_file=$(mktemp "${TMPDIR:-/tmp}/apc-mini-mk2-channel-sweep-off.XXXXXX.mid")
+  trap "rm -f $(printf '%q' "$on_file") $(printf '%q' "$off_file")" EXIT INT TERM
+
+  write_smf "$on_file" \
+    "90 00 05" \
+    "91 01 05" \
+    "92 02 05" \
+    "93 03 05" \
+    "94 04 05" \
+    "95 05 05" \
+    "96 06 05" \
+    "97 07 05" \
+    "98 08 05" \
+    "99 09 05" \
+    "9A 0A 05" \
+    "9B 0B 05" \
+    "9C 0C 05" \
+    "9D 0D 05" \
+    "9E 0E 05" \
+    "9F 0F 05" \
+    "90 70 01"
+  write_smf "$off_file" \
+    "90 00 00" \
+    "91 01 00" \
+    "92 02 00" \
+    "93 03 00" \
+    "94 04 00" \
+    "95 05 00" \
+    "96 06 00" \
+    "97 07 00" \
+    "98 08 00" \
+    "99 09 00" \
+    "9A 0A 00" \
+    "9B 0B 00" \
+    "9C 0C 00" \
+    "9D 0D 00" \
+    "9E 0E 00" \
+    "9F 0F 00" \
+    "90 70 00"
+
+  log "playing ALSA sequencer channel sweep on $seq_port"
+  aplaymidi -p "$seq_port" "$on_file" || rc=$?
+
+  if [ "$rc" -eq 0 ] && [ "$reset_after_demo" -eq 1 ]; then
+    sleep "$hold_seconds"
+    aplaymidi -p "$seq_port" "$off_file" || rc=$?
+  fi
+
+  rm -f "$on_file" "$off_file"
+  trap - EXIT INT TERM
+  return "$rc"
+}
+
+demo() {
+  local note
+
+  all_off
+
+  for note in $(seq 0 63); do
+    pad_led "$note" "$(grid_color_for_note "$note")"
+  done
+
+  # Peripheral LED sanity check: track buttons red, scene buttons green.
+  for note in $(seq 100 107); do
+    single_led "$note" on
+  done
+  for note in $(seq 112 119); do
+    single_led "$note" on
+  done
+
+  if [ "$reset_after_demo" -eq 1 ]; then
+    sleep "$hold_seconds"
+    all_off
+  fi
+}
+
+port=${APC_MINI_MK2_RAW_PORT:-}
+seq_port=${APC_MINI_MK2_SEQ_PORT:-}
+hold_seconds=4
+probe_timeout=2
+send_init=1
+reset_after_demo=1
+command=demo
+command_args=()
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --list)
+      list_ports
+      exit 0
+      ;;
+    --port)
+      [ "$#" -ge 2 ] || die '--port requires a value'
+      port=$2
+      shift 2
+      ;;
+    --seq-port)
+      [ "$#" -ge 2 ] || die '--seq-port requires a value'
+      seq_port=$2
+      shift 2
+      ;;
+    --hold)
+      [ "$#" -ge 2 ] || die '--hold requires a value'
+      hold_seconds=$2
+      shift 2
+      ;;
+    --timeout)
+      [ "$#" -ge 2 ] || die '--timeout requires a value'
+      probe_timeout=$2
+      shift 2
+      ;;
+    --no-init)
+      send_init=0
+      shift
+      ;;
+    --no-reset)
+      reset_after_demo=0
+      shift
+      ;;
+    --demo)
+      command=demo
+      shift
+      ;;
+    --corner-demo)
+      command=corner_demo
+      shift
+      ;;
+    --seq-corner-demo)
+      command=seq_corner_demo
+      shift
+      ;;
+    --seq-channel-sweep)
+      command=seq_channel_sweep
+      shift
+      ;;
+    --sysex-demo)
+      command=sysex_demo
+      shift
+      ;;
+    --inquiry)
+      command=inquiry
+      shift
+      ;;
+    --intro-probe)
+      command=intro_probe
+      shift
+      ;;
+    --all-off)
+      command=all_off
+      shift
+      ;;
+    --pad)
+      [ "$#" -ge 3 ] || die '--pad requires NOTE COLOR [CHANNEL]'
+      command=pad
+      if [ "$#" -ge 4 ] && [[ ${4:-} != --* ]]; then
+        command_args=("$2" "$3" "$4")
+        shift 4
+      else
+        command_args=("$2" "$3" 6)
+        shift 3
+      fi
+      ;;
+    --rgb)
+      [ "$#" -ge 5 ] || die '--rgb requires PAD RED GREEN BLUE'
+      command=rgb
+      command_args=("$2" "$3" "$4" "$5")
+      shift 5
+      ;;
+    --single)
+      [ "$#" -ge 3 ] || die '--single requires NOTE STATE'
+      command=single
+      command_args=("$2" "$3")
+      shift 3
+      ;;
+    --message)
+      [ "$#" -ge 2 ] || die '--message requires at least one byte'
+      command=message
+      shift
+      command_args=("$@")
+      set --
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "unknown argument: $1"
+      ;;
+  esac
+done
+
+case "$command" in
+  seq_corner_demo|seq_channel_sweep)
+    require_cmd aplaymidi
+    if [ -z "$seq_port" ]; then
+      seq_port=$(detect_seq_port)
+    fi
+    [ -n "$seq_port" ] || {
+      list_ports >&2 || true
+      die 'could not auto-detect APC Mini mk2 ALSA sequencer output port; pass --seq-port PORT'
+    }
+    ;;
+  *)
+    require_cmd amidi
+    if [ -z "$port" ]; then
+      port=$(detect_raw_port)
+    fi
+    [ -n "$port" ] || {
+      list_ports >&2 || true
+      die 'could not auto-detect APC Mini mk2 raw MIDI output port; pass --port PORT'
+    }
+    ;;
+esac
+
+case "$command" in
+  demo|corner_demo|sysex_demo|all_off|pad|rgb|single)
+    [ "$send_init" -eq 0 ] || send_intro
+    ;;
+esac
+
+case "$command" in
+  demo) demo ;;
+  corner_demo) corner_demo ;;
+  seq_corner_demo) seq_corner_demo ;;
+  seq_channel_sweep) seq_channel_sweep ;;
+  sysex_demo) sysex_demo ;;
+  inquiry) inquiry_probe ;;
+  intro_probe) intro_probe ;;
+  all_off) all_off ;;
+  pad) pad_led "${command_args[@]}" ;;
+  rgb) rgb_sysex_pad "${command_args[@]}" ;;
+  single) single_led "${command_args[@]}" ;;
+  message) send_raw_hex "${command_args[@]}" ;;
+  *) die "internal error: unknown command $command" ;;
+esac

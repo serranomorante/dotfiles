@@ -28,6 +28,7 @@
     realtime_saved_uki_files:
       - /boot/EFI/Linux/arch-linux-lts.efi
       - /boot/EFI/Linux/arch-linux-rt-lts.efi
+    realtime_default_boot_entry: arch-linux-rt-lts.efi
 
   tasks:
     - name: "[archlinux] Realtime migration: assert Arch Linux"
@@ -183,10 +184,23 @@
           - "(var_realtime_final_dkms_status.stdout_lines | select('search', realtime_dkms_module_pattern) | select('search', ': built$') | list | length) == 0"
         fail_msg: "{{ var_realtime_final_dkms_status.stdout_lines | select('search', realtime_dkms_module_pattern) | select('search', ': built$') | list }}"
 
+    - name: "[archlinux] Realtime migration: check systemd-boot default entry"
+      become: true
+      ansible.builtin.command: bootctl get-default
+      register: var_realtime_boot_default
+      changed_when: false
+      failed_when: false
+
+    - name: "[archlinux] Realtime migration: set realtime UKI as default boot entry"
+      become: true
+      ansible.builtin.command: "bootctl set-default {{ realtime_default_boot_entry }}"
+      changed_when: true
+      when: (var_realtime_boot_default.stdout | trim) != realtime_default_boot_entry
+
     - name: "[archlinux] Realtime migration: show post-migration checks"
       ansible.builtin.debug:
         msg:
-          - "Reboot and select the linux-rt-lts UKI from systemd-boot."
-          - "Keep linux-lts installed and boot it if NVIDIA, display, or audio tests fail."
+          - "Reboot into the default linux-rt-lts UKI from systemd-boot."
+          - "Keep linux-lts installed and select it from the boot menu if NVIDIA, display, or audio tests fail."
           - "VirtualBox host modules are installed for fallback use, but their boot autoload is masked because vboxdrv is not clean on PREEMPT_RT."
           - "{{ var_realtime_final_dkms_status.stdout_lines }}"
