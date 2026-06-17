@@ -842,6 +842,29 @@ end
 ---@return string
 local function format_timestamp(timestamp) return timestamp:gsub("T", " "):gsub("%..+$", ""):gsub("Z$", "") end
 
+---@param path string?
+---@return boolean
+local function is_existing_dir(path) return type(path) == "string" and path ~= "" and vim.fn.isdirectory(path) == 1 end
+
+---@param provider table
+---@param session AgentStoredSession
+---@return AgentStoredSession
+local function session_with_resolved_cwd(provider, session)
+  if is_existing_dir(session.cwd) then return session end
+
+  local fallback_cwd = vim.fn.getcwd()
+  local resolved = vim.tbl_extend("force", session, { cwd = fallback_cwd })
+  vim.notify(
+    ("%s session cwd no longer exists; resuming from %s instead: %s"):format(
+      provider.display_name,
+      vim.fn.fnamemodify(fallback_cwd, ":~"),
+      session.cwd
+    ),
+    vim.log.levels.WARN
+  )
+  return resolved
+end
+
 ---@param winid integer
 ---@return boolean
 local function is_regular_win(winid)
@@ -926,6 +949,20 @@ local function running_task_for_session(provider, session)
   if task then
     link_task_to_session(task, session)
     return task
+  end
+end
+
+---@param provider table
+---@param session AgentStoredSession
+local function dispose_pending_task_for_session(provider, session)
+  local STATUS = require("overseer.constants").STATUS
+  local tasks = require("overseer").list_tasks({ status = STATUS.PENDING })
+  for _, task in ipairs(tasks) do
+    local metadata = task.metadata or {}
+    local matches_metadata = metadata[AGENT_PROVIDER_METADATA] == provider.name
+      and metadata[AGENT_SESSION_ID_METADATA] == session.id
+    local matches_command = task.cmd == provider.executable and task_references_session_id(task, session.id)
+    if matches_metadata or matches_command then task:dispose(true) end
   end
 end
 
@@ -1108,7 +1145,10 @@ local function open_task(provider, task, prompt, opts)
   task.metadata[AGENT_PROVIDER_METADATA] = provider.name
   task.metadata.wait_for_agent_ready = opts.wait_for_ready == true
   utils.attach_keymaps(task)
-  if opts.open_output ~= false then utils.schedule_open_overseer_task_output(task, { winid = opts.start_win }) end
+  if opts.open_output ~= false then
+    utils.schedule_open_overseer_task_output(task, { winid = opts.start_win })
+    require("serranomorante.remote_kitty_focus").focus_current_window()
+  end
   paste_prompt(provider, task, prompt)
 end
 
@@ -1123,10 +1163,12 @@ local function start_and_open_task_output(provider, task, start_win)
   utils.remember_overseer_output_previous_buffer(start_win)
   if not task:start() then
     vim.notify(("Failed to start %s task"):format(provider.display_name), vim.log.levels.ERROR)
+    task:dispose(true)
     return false
   end
 
   utils.schedule_open_overseer_task_output(task, { winid = start_win })
+  require("serranomorante.remote_kitty_focus").focus_current_window()
   return true
 end
 
@@ -1189,12 +1231,14 @@ end
 ---@param start_win integer
 local function resume_session(provider, session, prompt, start_win)
   restore_regular_win(start_win)
+  session = session_with_resolved_cwd(provider, session)
 
   local existing_task = running_task_for_session(provider, session)
   if existing_task then
     open_task(provider, existing_task, prompt, { start_win = start_win })
     return
   end
+  dispose_pending_task_for_session(provider, session)
 
   local task = require("overseer").new_task({
     name = ("%s resume: %s"):format(provider.name, session_display_title(session)),

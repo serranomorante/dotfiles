@@ -14,6 +14,7 @@ set -euo pipefail
 # dotfiles-test-case: overseer-dispose-removes-visible-output-buffer
 # dotfiles-test-case: codex-new-session-focuses-task-terminal-from-overseer-terminal
 # dotfiles-test-case: codex-new-session-from-shell-fence-uses-fence-as-alternate
+# dotfiles-test-case: codex-resume-missing-session-cwd-uses-current-cwd
 # dotfiles-test-case: overseer-open-recent-same-agent-task-pastes-visual
 # dotfiles-test-case: overseer-open-recent-other-agent-task-pastes-visual
 # dotfiles-test-case: overseer-open-recent-other-agent-task-continues-without-visual
@@ -413,6 +414,104 @@ SH
         'local ok, err = xpcall(main, debug.traceback)' \
         'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
     run_nvim_lua_file "$lua_file"
+    ;;
+codex-resume-missing-session-cwd-uses-current-cwd)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    missing_cwd="${DOTFILES_TEST_TMP}/missing-cwd"
+    mkdir -p "$fake_bin"
+    cat >"${fake_bin}/agent-session-store" <<'SH'
+#!/bin/sh
+set -eu
+
+provider=
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --provider)
+        provider=$2
+        shift 2
+        ;;
+    *)
+        shift
+        ;;
+    esac
+done
+
+case " ${provider} $* " in
+*" codex "*)
+    printf '{"version":1,"provider":"codex","sessions":[{"provider":"codex","path":"%s/session.jsonl","id":"resume-missing-cwd-session","cwd":"%s","timestamp":"2026-06-17T14:51:10Z","updated_at":"2026-06-17T15:03:39Z","title":"missing cwd session"}]}\n' "${DOTFILES_TEST_TMP}" "${DOTFILES_TEST_MISSING_CWD}"
+    ;;
+*)
+    printf '{"version":1,"provider":"%s","sessions":[]}\n' "${provider:-claude}"
+    ;;
+esac
+SH
+    cat >"${fake_bin}/codex" <<'SH'
+#!/bin/sh
+set -eu
+
+printf '%s\n' "$PWD" >"${DOTFILES_TEST_TMP}/codex-resume-pwd"
+printf '%s\n' "$*" >"${DOTFILES_TEST_TMP}/codex-resume-args"
+printf 'OpenAI Codex\n'
+printf 'model: fake\n'
+printf 'directory: %s\n' "$PWD"
+sleep 10
+SH
+    chmod +x "${fake_bin}/agent-session-store" "${fake_bin}/codex"
+
+    lua_file="${DOTFILES_TEST_TMP}/codex-resume-missing-session-cwd-uses-current-cwd.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  local session_id = "resume-missing-cwd-session"' \
+        '  local valid_cwd = vim.env.DOTFILES_TEST_TMP .. "/valid-cwd"' \
+        '  local missing_cwd = vim.env.DOTFILES_TEST_MISSING_CWD' \
+        '  vim.fn.mkdir(valid_cwd, "p")' \
+        '  assert(vim.fn.isdirectory(missing_cwd) == 0, "test fixture cwd should not exist: " .. missing_cwd)' \
+        '  vim.cmd.cd(vim.fn.fnameescape(valid_cwd))' \
+        '  vim.env.PATH = vim.env.DOTFILES_TEST_TMP .. "/bin:" .. vim.env.PATH' \
+        '  vim.env.AGENT_SESSION_STORE_BIN = vim.env.DOTFILES_TEST_TMP .. "/bin/agent-session-store"' \
+        '  vim.opt.packpath:prepend("/home/aaaa/.local/share/nvim/site")' \
+        '  vim.cmd.packloadall()' \
+        '  require("overseer").setup({' \
+        '    component_aliases = { defaults_without_notification = { "on_exit_set_status" } },' \
+        '  })' \
+        '  require("serranomorante.plugins.jobs.agent_sessions").keys()' \
+        '  vim.cmd("AgentResumeById " .. session_id)' \
+        '  local matching_task' \
+        '  local running = vim.wait(5000, function()' \
+        '    for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
+        '      local metadata = task.metadata or {}' \
+        '      local cmd = type(task.cmd) == "string" and task.cmd or ""' \
+        '      if metadata.agent_session_id == session_id or cmd:find(session_id, 1, true) then' \
+        '        matching_task = task' \
+        '        if task.status == require("overseer.constants").STATUS.RUNNING then return true end' \
+        '      end' \
+        '    end' \
+        '    return false' \
+        '  end, 20)' \
+        '  assert(running and matching_task, "resumed task did not start")' \
+        '  assert(matching_task.cwd == valid_cwd, ("expected task cwd %s, got %s"):format(valid_cwd, tostring(matching_task.cwd)))' \
+        '  local cmd = type(matching_task.cmd) == "string" and matching_task.cmd or table.concat(vim.tbl_map(tostring, matching_task.cmd or {}), " ")' \
+        '  assert(cmd:find("-C " .. valid_cwd, 1, true), cmd)' \
+        '  assert(not cmd:find(missing_cwd, 1, true), cmd)' \
+        '  local process_started = vim.wait(2000, function() return vim.fn.filereadable(vim.env.DOTFILES_TEST_TMP .. "/codex-resume-pwd") == 1 end, 20)' \
+        '  assert(process_started, "fake codex resume process did not start")' \
+        '  local process_cwd = table.concat(vim.fn.readfile(vim.env.DOTFILES_TEST_TMP .. "/codex-resume-pwd"), "\n")' \
+        '  local process_args = table.concat(vim.fn.readfile(vim.env.DOTFILES_TEST_TMP .. "/codex-resume-args"), "\n")' \
+        '  assert(process_cwd == valid_cwd, ("expected process cwd %s, got %s"):format(valid_cwd, process_cwd))' \
+        '  assert(process_args:find("-C " .. valid_cwd, 1, true), process_args)' \
+        '  assert(not process_args:find(missing_cwd, 1, true), process_args)' \
+        '  for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
+        '    local metadata = task.metadata or {}' \
+        '    if metadata.agent_session_id == session_id or (type(task.cmd) == "string" and task.cmd:find(session_id, 1, true)) then' \
+        '      assert(task.status ~= require("overseer.constants").STATUS.PENDING, "resume left a matching task in PENDING")' \
+        '    end' \
+        '    pcall(function() task:dispose(true) end)' \
+        '  end' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    DOTFILES_TEST_MISSING_CWD="$missing_cwd" run_nvim_lua_file "$lua_file"
     ;;
 overseer-open-recent-same-agent-task-pastes-visual)
     lua_file="${DOTFILES_TEST_TMP}/overseer-open-recent-same-agent-task-pastes-visual.lua"
