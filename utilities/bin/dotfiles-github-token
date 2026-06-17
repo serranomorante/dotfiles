@@ -1,0 +1,44 @@
+#!/bin/sh
+set -eu
+
+print_env_token() {
+    for name in DOTFILES_GITHUB_TOKEN RENOVATE_GITHUB_COM_TOKEN GITHUB_COM_TOKEN GITHUB_TOKEN GH_TOKEN; do
+        eval "value=\${$name:-}"
+        if [ -n "$value" ]; then
+            printf '%s\n' "$value"
+            return 0
+        fi
+    done
+    return 1
+}
+
+query_kwallet() {
+    wallet=${DOTFILES_GITHUB_TOKEN_WALLET:-kdewallet}
+    folder=${DOTFILES_GITHUB_TOKEN_FOLDER:-dev-tools}
+    entry=${DOTFILES_GITHUB_TOKEN_ENTRY:-github-temporal-access-token}
+
+    command -v kwallet-query >/dev/null 2>&1 || return 1
+    if command -v timeout >/dev/null 2>&1; then
+        timeout 10 kwallet-query --folder "$folder" --read-password "$entry" "$wallet" 2>/dev/null || return 1
+    else
+        kwallet-query --folder "$folder" --read-password "$entry" "$wallet" 2>/dev/null || return 1
+    fi
+}
+
+case ${DOTFILES_GITHUB_TOKEN_DISABLED:-} in
+1 | true | yes)
+    exit 1
+    ;;
+esac
+
+if print_env_token; then
+    exit 0
+fi
+
+token=$(query_kwallet | sed -n '1{s/[[:space:]]*$//;p;}' | tr -d '\r') || exit 1
+case $token in
+"" | "Failed to read entry "*)
+    exit 1
+    ;;
+esac
+printf '%s\n' "$token"

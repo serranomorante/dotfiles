@@ -29,23 +29,16 @@
       {{ ansible_facts.env.HOME }}/.local/share/uv
       {{ ansible_facts.env.HOME }}/.local/share/uv/tools
 
-- name: "[archlinux] Yaml language: ensure ansible language server npm prefix"
-  ansible.builtin.file:
-    path: "{{ node_ansible_language_server_npm_prefix }}"
-    state: directory
-    mode: "755"
-
-- name: "[archlinux] Yaml language: ensure ansible language server npm packages"
-  community.general.npm:
-    name: "{{ item.name }}"
-    version: "{{ item.version }}"
-    global: true
-    state: present
-    executable: "{{ ansible_firejail_npm_executable }}"
-  environment:
-    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_ansible_language_server_version }}"
-    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_ansible_language_server_npm_prefix }}"
-  loop: "{{ node_ansible_language_server_npm_packages }}"
+- name: "[archlinux] Yaml language: ensure ansible language server npm packages with diff capture"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: npm
+  vars:
+    update_diff_capture_scope: yaml-language
+    update_diff_npm_prefix: "{{ node_ansible_language_server_npm_prefix }}"
+    update_diff_npm_packages: "{{ node_ansible_language_server_npm_packages }}"
+    update_diff_npm_node_version: "{{ node_ansible_language_server_version }}"
+    update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
 
 - name: "[archlinux] Yaml language: install ansible language server wrapper"
   ansible.builtin.template:

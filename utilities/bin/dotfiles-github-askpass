@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+prompt=${1:-}
+
+case $prompt in
+*sername* | *Username*)
+    printf '%s\n' x-access-token
+    ;;
+*assword* | *Password*)
+    exec "$script_dir/dotfiles-github-token"
+    ;;
+*)
+    exec "$script_dir/dotfiles-github-token"
+    ;;
+esac

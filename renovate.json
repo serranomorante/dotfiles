@@ -1,0 +1,296 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "enabledManagers": ["custom.regex"],
+  "dependencyDashboard": false,
+  "dependencyDashboardApproval": false,
+  "automerge": false,
+  "branchConcurrentLimit": 8,
+  "prConcurrentLimit": 8,
+  "rangeStrategy": "pin",
+  "labels": ["dependencies"],
+  "minimumReleaseAge": "3 days",
+  "prBodyColumns": ["Package", "Update", "New value", "Package file", "References"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/(main|ai)\\.yml$/",
+        "/^playbooks\\/roles\\/30-lang-tools\\/defaults\\/main\\.yml$/"
+      ],
+      "matchStrings": ["(?:^|\\n)\\s*- name: \"?(?<depName>[^\"\\n]+)\"?\\n\\s+version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "datasourceTemplate": "npm",
+      "versioningTemplate": "semver",
+      "depTypeTemplate": "managed-npm"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)node_system_default_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "node",
+      "packageNameTemplate": "node",
+      "datasourceTemplate": "node-version",
+      "versioningTemplate": "semver",
+      "depTypeTemplate": "node-system-default"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)node_ansible_language_server_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "node",
+      "packageNameTemplate": "node",
+      "datasourceTemplate": "node-version",
+      "versioningTemplate": "semver",
+      "depTypeTemplate": "node-ansible-language-server"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)python_ml_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "python",
+      "packageNameTemplate": "python",
+      "datasourceTemplate": "python-version",
+      "versioningTemplate": "pep440",
+      "depTypeTemplate": "python-ml-runtime"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/ai\\.yml$/"],
+      "matchStrings": ["piper_tts_setup:\\n(?:\\s+[^\\n]+\\n)*?\\s+version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "piper-tts",
+      "packageNameTemplate": "piper-tts",
+      "datasourceTemplate": "pypi",
+      "versioningTemplate": "pep440",
+      "depTypeTemplate": "pypi-piper"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)plantuml_compiled_jar_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "plantuml",
+      "packageNameTemplate": "plantuml/plantuml",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": ["https://github.com/plantuml/plantuml/releases/download/v{{ newValue }}/plantuml-{{ newValue }}.jar"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/ai\\.yml$/"],
+      "matchStrings": ["whisper_cpp_setup:\\n(?:\\s+[^\\n]+\\n)*?\\s+version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "whisper.cpp",
+      "packageNameTemplate": "ggml-org/whisper.cpp",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "depTypeTemplate": "github-release-asset"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)archlinux_treesitter_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "tree-sitter-cli",
+      "packageNameTemplate": "tree-sitter/tree-sitter",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": ["https://github.com/tree-sitter/tree-sitter/releases/download/v{{ newValue }}/tree-sitter-linux-x64.gz"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)tmux_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "tmux",
+      "packageNameTemplate": "tmux/tmux",
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "loose",
+      "depTypeTemplate": "github-tag"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)arch_gnirehtet_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "gnirehtet",
+      "packageNameTemplate": "Genymobile/gnirehtet",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": ["https://github.com/Genymobile/gnirehtet/releases/download/v{{ newValue }}/gnirehtet-rust-linux64-v{{ newValue }}.zip"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/30-lang-tools\\/defaults\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)cpptools_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "vscode-cpptools",
+      "packageNameTemplate": "microsoft/vscode-cpptools",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": ["https://github.com/microsoft/vscode-cpptools/releases/download/{{ newValue }}/cpptools-linux-x64.vsix"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/30-lang-tools\\/defaults\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)bash_debug_adapter_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "vscode-bash-debug",
+      "packageNameTemplate": "rogalmic/vscode-bash-debug",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": ["https://github.com/rogalmic/vscode-bash-debug/releases/download/v{{ newValue }}/bash-debug-{{ newValue }}.vsix"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/30-lang-tools\\/defaults\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)vscode_js_debug_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "vscode-js-debug",
+      "packageNameTemplate": "microsoft/vscode-js-debug",
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-tag"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/30-lang-tools\\/defaults\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)arch_superhtml_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "superhtml",
+      "packageNameTemplate": "kristoff-it/superhtml",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": ["https://github.com/kristoff-it/superhtml/releases/download/v{{ newValue }}/x86_64-linux-musl.tar.gz"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/30-lang-tools\\/defaults\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)vscode_go_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "vscode-go",
+      "packageNameTemplate": "golang/vscode-go",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "loose",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-release"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/30-lang-tools\\/defaults\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)mdcat_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "mdcat",
+      "packageNameTemplate": "swsnr/mdcat",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^mdcat-(?<version>.*)$",
+      "depTypeTemplate": "github-release-asset"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/main\\.vars\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)arch_docker_credential_helpers_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "docker-credential-helpers",
+      "packageNameTemplate": "docker/docker-credential-helpers",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": ["https://github.com/docker/docker-credential-helpers/releases/download/v{{ newValue }}/docker-credential-secretservice-v{{ newValue }}.linux-amd64"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/fonts\\.vars\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)arch_pragmasevka_nerd_font_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "pragmasevka",
+      "packageNameTemplate": "shytikov/pragmasevka",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": ["https://github.com/shytikov/pragmasevka/releases/download/v{{ newValue }}/Pragmasevka_NF.zip"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/fonts\\.vars\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)arch_font_awesome_font_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "font-awesome",
+      "packageNameTemplate": "FortAwesome/Font-Awesome",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": ["https://github.com/FortAwesome/Font-Awesome/releases/download/{{ newValue }}/fontawesome-free-{{ newValue }}-desktop.zip"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/fonts\\.vars\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)arch_(hack|jetbrains_mono|firacode)_nerd_font_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "nerd-fonts",
+      "packageNameTemplate": "ryanoasis/nerd-fonts",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": [
+        "https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ newValue }}/Hack.zip",
+        "https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ newValue }}/JetBrainsMono.zip",
+        "https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ newValue }}/FiraCode.zip"
+      ]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/40-PKM\\/defaults\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)hypothesis_browser_extension_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "hypothesis-browser-extension",
+      "packageNameTemplate": "hypothesis/browser-extension",
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-tag"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": ["npm"],
+      "groupName": "npm managed tools",
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "matchDepNames": ["yarn"],
+      "allowedVersions": "/^1\\./",
+      "groupName": "npm managed tools"
+    },
+    {
+      "matchDatasources": ["pypi"],
+      "groupName": "python packages"
+    },
+    {
+      "matchDepTypes": ["node-system-default"],
+      "allowedVersions": "/^22\\./",
+      "groupName": "node runtimes"
+    },
+    {
+      "matchDepTypes": ["node-ansible-language-server"],
+      "allowedVersions": "/^24\\./",
+      "groupName": "node runtimes"
+    },
+    {
+      "matchDepTypes": ["python-ml-runtime"],
+      "allowedVersions": "/^3\\.14\\./",
+      "groupName": "python runtimes"
+    },
+    {
+      "matchDepTypes": ["github-release-asset"],
+      "groupName": "github release assets"
+    },
+    {
+      "matchDepTypes": ["github-tag"],
+      "groupName": "github tagged tools"
+    },
+    {
+      "matchPackageNames": ["microsoft/vscode-js-debug"],
+      "allowedVersions": "/^1\\./",
+      "groupName": "github tagged tools"
+    }
+  ]
+}

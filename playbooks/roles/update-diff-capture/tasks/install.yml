@@ -1,0 +1,28 @@
+---
+- name: "[update-diffs] Ensure user bin directory"
+  ansible.builtin.file:
+    path: "{{ update_diff_capture_bin_dir }}"
+    state: directory
+    mode: "755"
+
+- name: "[update-diffs] Ensure state directory"
+  ansible.builtin.file:
+    path: "{{ update_diff_capture_state_dir }}"
+    state: directory
+    mode: "755"
+
+- name: "[update-diffs] Install capture helper"
+  ansible.builtin.copy:
+    src: update-diff-capture
+    dest: "{{ update_diff_capture_script }}"
+    mode: "755"
+
+- name: "[update-diffs] Install viewer helper"
+  ansible.builtin.copy:
+    src: update-diffs
+    dest: "{{ update_diffs_script }}"
+    mode: "755"
+
+- name: "[update-diffs] Mark helper scripts installed"
+  ansible.builtin.set_fact:
+    update_diff_capture_helpers_installed: true

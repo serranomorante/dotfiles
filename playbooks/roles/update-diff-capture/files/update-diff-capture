@@ -1,0 +1,617 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Purpose: Capture best-effort before/after diffs for package updates managed by Ansible.
+# Usage: update-diff-capture npm|npm-version|pip|pip-version|git [OPTIONS]
+# Notes: Captures are stored as small Git repositories so Diffview can inspect them later.
+
+prog=${0##*/}
+state_dir=${UPDATE_DIFF_CAPTURE_STATE_DIR:-"$HOME/.local/state/dotfiles/update-diffs"}
+scope=ansible
+
+usage() {
+    cat <<EOF
+Usage:
+  $prog npm --prefix DIR --name PACKAGE --to VERSION --npm-executable PATH [--from VERSION|--from-absent] [--state-dir DIR] [--scope NAME]
+  $prog npm-version --prefix DIR --name PACKAGE --npm-executable PATH
+  $prog pip --venv DIR --name PACKAGE --to VERSION --pip-executable PATH [--from VERSION|--from-absent] [--state-dir DIR] [--scope NAME]
+  $prog pip-version --venv DIR --name PACKAGE --pip-executable PATH
+  $prog git --repo URL --dest DIR --to REF [--state-dir DIR] [--scope NAME]
+
+Environment:
+  UPDATE_DIFF_CAPTURE_STATE_DIR  Default capture root. Defaults to ~/.local/state/dotfiles/update-diffs.
+EOF
+}
+
+die() {
+    printf '%s: %s\n' "$prog" "$*" >&2
+    exit 1
+}
+
+need() {
+    command -v "$1" >/dev/null 2>&1 || die "$1 is required"
+}
+
+safe_name() {
+    printf '%s\n' "$1" | sed 's/[^A-Za-z0-9_.@+-]/_/g; s/@/_/g; s#/#_#g'
+}
+
+timestamp_utc() {
+    date -u +%Y%m%dT%H%M%SZ
+}
+
+json_string() {
+    python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'
+}
+
+write_manifest() {
+    local path=$1
+    local ecosystem=$2
+    local name=$3
+    local from_version=$4
+    local to_version=$5
+    local status=$6
+    local diff_quality=$7
+    local repo_path=$8
+    local patch_path=$9
+    local source_url=${10}
+    local range=${11}
+    local created_at=${12}
+    python3 - "$path" "$ecosystem" "$name" "$from_version" "$to_version" "$status" "$diff_quality" "$repo_path" "$patch_path" "$source_url" "$range" "$created_at" <<'PY'
+import json
+import sys
+
+path, ecosystem, name, old, new, status, quality, repo, patch, source, diff_range, created = sys.argv[1:]
+data = {
+    "schema": "dotfiles.update-diff.v1",
+    "created_at_utc": created,
+    "ecosystem": ecosystem,
+    "name": name,
+    "from": old or None,
+    "to": new or None,
+    "status": status,
+    "diff_quality": quality,
+    "repo_path": repo or None,
+    "patch_path": patch or None,
+    "source_url": source or None,
+    "diff_range": diff_range or None,
+}
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(data, handle, indent=2, sort_keys=True)
+    handle.write("\n")
+PY
+}
+
+write_summary() {
+    local path=$1
+    local title=$2
+    local from_version=$3
+    local to_version=$4
+    local status=$5
+    local quality=$6
+    local repo_path=$7
+    local range=$8
+    {
+        printf '# %s\n\n' "$title"
+        printf -- '- status: `%s`\n' "$status"
+        printf -- '- diff quality: `%s`\n' "$quality"
+        printf -- '- from: `%s`\n' "${from_version:-none}"
+        printf -- '- to: `%s`\n' "${to_version:-none}"
+        if [ -n "$repo_path" ] && [ -n "$range" ]; then
+            printf -- '- diffview: `cd %s && nvim -c "DiffviewOpen %s" .`\n' "$repo_path" "$range"
+        fi
+    } >"$path"
+}
+
+write_failure_summary() {
+    local path=$1
+    local title=$2
+    local from_version=$3
+    local to_version=$4
+    local failure_log=$5
+    {
+        printf '# %s\n\n' "$title"
+        printf -- '- status: `failed`\n'
+        printf -- '- diff quality: `metadata-only`\n'
+        printf -- '- from: `%s`\n' "${from_version:-none}"
+        printf -- '- to: `%s`\n' "${to_version:-none}"
+        printf -- '- failure log: `%s`\n' "$failure_log"
+    } >"$path"
+}
+
+record_capture_failure() {
+    local item_dir=$1
+    local ecosystem=$2
+    local name=$3
+    local from_version=$4
+    local to_version=$5
+    local source_url=$6
+    local created=$7
+    local message=$8
+    mkdir -p "$item_dir"
+    printf '%s\n' "$message" >"$item_dir/failure.log"
+    write_manifest "$item_dir/manifest.json" "$ecosystem" "$name" "$from_version" "$to_version" failed metadata-only "" "" "$source_url" "" "$created"
+    write_failure_summary "$item_dir/summary.md" "${ecosystem} ${name}" "$from_version" "$to_version" "$item_dir/failure.log"
+    set_latest "$(dirname "$(dirname "$item_dir")")"
+    printf 'failed\t%s\t%s -> %s\t%s\n' "$name" "${from_version:-none}" "${to_version:-none}" "$item_dir"
+}
+
+run_root() {
+    local created=$1
+    local safe_scope
+    safe_scope=$(safe_name "$scope")
+    printf '%s/runs/%s-%s-%s\n' "$state_dir" "$created" "$safe_scope" "$$"
+}
+
+set_latest() {
+    local run_dir=$1
+    ln -sfn "$run_dir" "$state_dir/latest"
+}
+
+clear_repo_worktree() {
+    local repo=$1
+    find "$repo" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+}
+
+copy_snapshot() {
+    local source=$1
+    local dest=$2
+    clear_repo_worktree "$dest"
+    if [ -d "$source/package" ]; then
+        cp -a "$source/package/." "$dest/"
+    else
+        cp -a "$source/." "$dest/"
+    fi
+}
+
+commit_snapshot() {
+    local repo=$1
+    local message=$2
+    git -C "$repo" add -A
+    if git -C "$repo" diff --cached --quiet; then
+        git -C "$repo" -c user.name=update-diff-capture -c user.email=update-diff-capture@localhost commit --allow-empty -q -m "$message"
+    else
+        git -C "$repo" -c user.name=update-diff-capture -c user.email=update-diff-capture@localhost commit -q -m "$message"
+    fi
+}
+
+npm_installed_version() {
+    local npm_executable=$1
+    local prefix=$2
+    local name=$3
+    local json
+    if ! json=$(ANSIBLE_FIREJAIL_NPM_PREFIX="$prefix" "$npm_executable" ls --global --depth=0 --json "$name" 2>/dev/null); then
+        return 1
+    fi
+    python3 -c '
+import json
+import sys
+
+name = sys.argv[1]
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+version = (data.get("dependencies") or {}).get(name, {}).get("version")
+if not version:
+    sys.exit(1)
+print(version)
+' "$name" <<<"$json"
+}
+
+npm_pack_one() {
+    local npm_executable=$1
+    local prefix=$2
+    local spec=$3
+    local out_dir=$4
+    mkdir -p "$out_dir"
+    local output
+    local writable_paths=${ANSIBLE_FIREJAIL_NPM_WRITABLE_PATHS:-}
+    writable_paths+=$'\n'"$out_dir"
+    output=$(mktemp)
+    ANSIBLE_FIREJAIL_NPM_PREFIX="$prefix" ANSIBLE_FIREJAIL_NPM_WRITABLE_PATHS="$writable_paths" "$npm_executable" pack "$spec" --pack-destination "$out_dir" >"$output"
+    tail -n 1 "$output"
+    rm -f "$output"
+}
+
+capture_npm() {
+    local prefix=
+    local name=
+    local to_version=
+    local from_version=
+    local from_version_set=0
+    local npm_executable=
+
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+        --state-dir) state_dir=$2; shift 2 ;;
+        --scope) scope=$2; shift 2 ;;
+        --prefix) prefix=$2; shift 2 ;;
+        --name) name=$2; shift 2 ;;
+        --to) to_version=$2; shift 2 ;;
+        --from) from_version=$2; from_version_set=1; shift 2 ;;
+        --from-absent) from_version=; from_version_set=1; shift ;;
+        --npm-executable) npm_executable=$2; shift 2 ;;
+        -h | --help) usage; exit 0 ;;
+        *) die "unknown npm option: $1" ;;
+        esac
+    done
+
+    [ -n "$prefix" ] || die "npm --prefix is required"
+    [ -n "$name" ] || die "npm --name is required"
+    [ -n "$to_version" ] || die "npm --to is required"
+    [ -n "$npm_executable" ] || die "npm --npm-executable is required"
+    [ -x "$npm_executable" ] || die "npm executable is not executable: $npm_executable"
+    need git
+    need tar
+    need python3
+
+    if [ "$from_version_set" -eq 0 ]; then
+        from_version=$(npm_installed_version "$npm_executable" "$prefix" "$name" || true)
+    fi
+    local created
+    created=$(timestamp_utc)
+    local item_dir
+    item_dir=$(run_root "$created")/npm/$(safe_name "$name")
+
+    if [ -z "$from_version" ]; then
+        mkdir -p "$item_dir"
+        write_manifest "$item_dir/manifest.json" npm "$name" "" "$to_version" initial-install metadata-only "" "" "npm:${name}" "" "$created"
+        write_summary "$item_dir/summary.md" "npm ${name}" "" "$to_version" initial-install metadata-only "" ""
+        set_latest "$(dirname "$(dirname "$item_dir")")"
+        printf 'initial-install\t%s\t%s\n' "$name" "$to_version"
+        return 0
+    fi
+
+    if [ "$from_version" = "$to_version" ]; then
+        printf 'unchanged\t%s\t%s\n' "$name" "$to_version"
+        return 0
+    fi
+
+    local tmp
+    tmp=$(mktemp -d)
+    trap "rm -rf -- $(printf '%q' "$tmp")" EXIT
+    mkdir -p "$item_dir"
+    mkdir -p "$tmp/packs" "$tmp/before" "$tmp/after"
+    local before_tgz after_tgz
+    before_tgz=$(npm_pack_one "$npm_executable" "$prefix" "${name}@${from_version}" "$tmp/packs")
+    after_tgz=$(npm_pack_one "$npm_executable" "$prefix" "${name}@${to_version}" "$tmp/packs")
+    tar -xzf "$tmp/packs/$before_tgz" -C "$tmp/before"
+    tar -xzf "$tmp/packs/$after_tgz" -C "$tmp/after"
+
+    local repo=$item_dir/repo
+    mkdir -p "$repo"
+    git -C "$repo" init -q
+    copy_snapshot "$tmp/before" "$repo"
+    commit_snapshot "$repo" "before ${name}@${from_version}"
+    copy_snapshot "$tmp/after" "$repo"
+    commit_snapshot "$repo" "after ${name}@${to_version}"
+    git -C "$repo" diff --binary HEAD~1..HEAD >"$item_dir/diff.patch"
+    write_manifest "$item_dir/manifest.json" npm "$name" "$from_version" "$to_version" captured artifact "$repo" "$item_dir/diff.patch" "npm:${name}" "HEAD~1..HEAD" "$created"
+    write_summary "$item_dir/summary.md" "npm ${name}" "$from_version" "$to_version" captured artifact "$repo" "HEAD~1..HEAD"
+    set_latest "$(dirname "$(dirname "$item_dir")")"
+    printf 'captured\t%s\t%s -> %s\t%s\n' "$name" "$from_version" "$to_version" "$item_dir"
+}
+
+show_npm_version() {
+    local prefix=
+    local name=
+    local npm_executable=
+
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+        --prefix) prefix=$2; shift 2 ;;
+        --name) name=$2; shift 2 ;;
+        --npm-executable) npm_executable=$2; shift 2 ;;
+        -h | --help) usage; exit 0 ;;
+        *) die "unknown npm-version option: $1" ;;
+        esac
+    done
+
+    [ -n "$prefix" ] || die "npm-version --prefix is required"
+    [ -n "$name" ] || die "npm-version --name is required"
+    [ -n "$npm_executable" ] || die "npm-version --npm-executable is required"
+    [ -x "$npm_executable" ] || die "npm executable is not executable: $npm_executable"
+
+    npm_installed_version "$npm_executable" "$prefix" "$name" || true
+}
+
+pip_installed_version() {
+    local pip_executable=$1
+    local venv=$2
+    local name=$3
+    local output
+    if ! output=$(ANSIBLE_FIREJAIL_PIP_VENV="$venv" "$pip_executable" show "$name" 2>/dev/null); then
+        return 1
+    fi
+    printf '%s\n' "$output" | awk -F ': ' '$1 == "Version" { print $2; found = 1 } END { exit found ? 0 : 1 }'
+}
+
+pip_download_one() {
+    local pip_executable=$1
+    local venv=$2
+    local spec=$3
+    local out_dir=$4
+    mkdir -p "$out_dir"
+    local writable_paths=${ANSIBLE_FIREJAIL_PIP_WRITABLE_PATHS:-}
+    writable_paths+=$'\n'"$out_dir"
+    ANSIBLE_FIREJAIL_PIP_VENV="$venv" ANSIBLE_FIREJAIL_PIP_WRITABLE_PATHS="$writable_paths" "$pip_executable" download --no-deps "$spec" -d "$out_dir" >/dev/null
+    local archive
+    archive=$(find "$out_dir" -maxdepth 1 -type f | sort | tail -n 1)
+    if [ -z "$archive" ]; then
+        printf 'pip download produced no archive for %s in %s\n' "$spec" "$out_dir" >&2
+        return 1
+    fi
+    printf '%s\n' "$archive"
+}
+
+unpack_python_archive() {
+    local archive=$1
+    local out_dir=$2
+    python3 - "$archive" "$out_dir" <<'PY'
+import pathlib
+import shutil
+import sys
+import tarfile
+import zipfile
+
+archive = pathlib.Path(sys.argv[1])
+out_dir = pathlib.Path(sys.argv[2])
+out_dir.mkdir(parents=True, exist_ok=True)
+name = archive.name
+if name.endswith(".whl") or name.endswith(".zip"):
+    with zipfile.ZipFile(archive) as zf:
+        zf.extractall(out_dir)
+elif name.endswith((".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".tar.xz", ".txz")):
+    with tarfile.open(archive) as tf:
+        tf.extractall(out_dir)
+else:
+    shutil.unpack_archive(str(archive), str(out_dir))
+PY
+}
+
+capture_pip() {
+    local venv=
+    local name=
+    local to_version=
+    local from_version=
+    local from_version_set=0
+    local pip_executable=
+
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+        --state-dir) state_dir=$2; shift 2 ;;
+        --scope) scope=$2; shift 2 ;;
+        --venv) venv=$2; shift 2 ;;
+        --name) name=$2; shift 2 ;;
+        --to) to_version=$2; shift 2 ;;
+        --from) from_version=$2; from_version_set=1; shift 2 ;;
+        --from-absent) from_version=; from_version_set=1; shift ;;
+        --pip-executable) pip_executable=$2; shift 2 ;;
+        -h | --help) usage; exit 0 ;;
+        *) die "unknown pip option: $1" ;;
+        esac
+    done
+
+    [ -n "$venv" ] || die "pip --venv is required"
+    [ -n "$name" ] || die "pip --name is required"
+    [ -n "$to_version" ] || die "pip --to is required"
+    [ -n "$pip_executable" ] || die "pip --pip-executable is required"
+    [ -x "$pip_executable" ] || die "pip executable is not executable: $pip_executable"
+    need git
+    need python3
+
+    if [ "$from_version_set" -eq 0 ]; then
+        from_version=$(pip_installed_version "$pip_executable" "$venv" "$name" || true)
+    fi
+    local created
+    created=$(timestamp_utc)
+    local item_dir
+    item_dir=$(run_root "$created")/pip/$(safe_name "$name")
+
+    if [ -z "$from_version" ]; then
+        mkdir -p "$item_dir"
+        write_manifest "$item_dir/manifest.json" pip "$name" "" "$to_version" initial-install metadata-only "" "" "pypi:${name}" "" "$created"
+        write_summary "$item_dir/summary.md" "pip ${name}" "" "$to_version" initial-install metadata-only "" ""
+        set_latest "$(dirname "$(dirname "$item_dir")")"
+        printf 'initial-install\t%s\t%s\n' "$name" "$to_version"
+        return 0
+    fi
+
+    if [ "$from_version" = "$to_version" ]; then
+        printf 'unchanged\t%s\t%s\n' "$name" "$to_version"
+        return 0
+    fi
+
+    local tmp
+    tmp=$(mktemp -d)
+    trap "rm -rf -- $(printf '%q' "$tmp")" EXIT
+    mkdir -p "$item_dir"
+    mkdir -p "$tmp/packs-before" "$tmp/packs-after" "$tmp/before" "$tmp/after"
+    local before_archive after_archive
+    if ! before_archive=$(pip_download_one "$pip_executable" "$venv" "${name}==${from_version}" "$tmp/packs-before" 2>"$tmp/before-download.err"); then
+        record_capture_failure "$item_dir" pip "$name" "$from_version" "$to_version" "pypi:${name}" "$created" "$(cat "$tmp/before-download.err")"
+        return 0
+    fi
+    if ! after_archive=$(pip_download_one "$pip_executable" "$venv" "${name}==${to_version}" "$tmp/packs-after" 2>"$tmp/after-download.err"); then
+        record_capture_failure "$item_dir" pip "$name" "$from_version" "$to_version" "pypi:${name}" "$created" "$(cat "$tmp/after-download.err")"
+        return 0
+    fi
+    if ! unpack_python_archive "$before_archive" "$tmp/before" 2>"$tmp/before-unpack.err"; then
+        record_capture_failure "$item_dir" pip "$name" "$from_version" "$to_version" "pypi:${name}" "$created" "$(cat "$tmp/before-unpack.err")"
+        return 0
+    fi
+    if ! unpack_python_archive "$after_archive" "$tmp/after" 2>"$tmp/after-unpack.err"; then
+        record_capture_failure "$item_dir" pip "$name" "$from_version" "$to_version" "pypi:${name}" "$created" "$(cat "$tmp/after-unpack.err")"
+        return 0
+    fi
+
+    local repo=$item_dir/repo
+    mkdir -p "$repo"
+    git -C "$repo" init -q
+    copy_snapshot "$tmp/before" "$repo"
+    commit_snapshot "$repo" "before ${name}==${from_version}"
+    copy_snapshot "$tmp/after" "$repo"
+    commit_snapshot "$repo" "after ${name}==${to_version}"
+    git -C "$repo" diff --binary HEAD~1..HEAD >"$item_dir/diff.patch"
+    write_manifest "$item_dir/manifest.json" pip "$name" "$from_version" "$to_version" captured artifact "$repo" "$item_dir/diff.patch" "pypi:${name}" "HEAD~1..HEAD" "$created"
+    write_summary "$item_dir/summary.md" "pip ${name}" "$from_version" "$to_version" captured artifact "$repo" "HEAD~1..HEAD"
+    set_latest "$(dirname "$(dirname "$item_dir")")"
+    printf 'captured\t%s\t%s -> %s\t%s\n' "$name" "$from_version" "$to_version" "$item_dir"
+}
+
+show_pip_version() {
+    local venv=
+    local name=
+    local pip_executable=
+
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+        --venv) venv=$2; shift 2 ;;
+        --name) name=$2; shift 2 ;;
+        --pip-executable) pip_executable=$2; shift 2 ;;
+        -h | --help) usage; exit 0 ;;
+        *) die "unknown pip-version option: $1" ;;
+        esac
+    done
+
+    [ -n "$venv" ] || die "pip-version --venv is required"
+    [ -n "$name" ] || die "pip-version --name is required"
+    [ -n "$pip_executable" ] || die "pip-version --pip-executable is required"
+    [ -x "$pip_executable" ] || die "pip executable is not executable: $pip_executable"
+
+    pip_installed_version "$pip_executable" "$venv" "$name" || true
+}
+
+git_cache_dir() {
+    local repo=$1
+    printf '%s/cache/git/%s.git\n' "$state_dir" "$(safe_name "$repo")"
+}
+
+github_git_helper() {
+    local script_dir
+    script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
+    local candidate
+    for candidate in \
+        "$script_dir/dotfiles-github-git" \
+        "$HOME/bin/dotfiles-github-git" \
+        "$HOME/dotfiles/utilities/bin/dotfiles-github-git"; do
+        if [ -x "$candidate" ]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    command -v dotfiles-github-git 2>/dev/null || true
+}
+
+is_github_url() {
+    case $1 in
+    https://github.com/* | http://github.com/*)
+        return 0
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
+remote_git() {
+    local repo_url=$1
+    shift
+    if is_github_url "$repo_url"; then
+        local helper
+        helper=$(github_git_helper)
+        if [ -n "$helper" ]; then
+            "$helper" "$@"
+            return $?
+        fi
+    fi
+    git "$@"
+}
+
+capture_git() {
+    local repo_url=
+    local dest=
+    local to_ref=
+
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+        --state-dir) state_dir=$2; shift 2 ;;
+        --scope) scope=$2; shift 2 ;;
+        --repo) repo_url=$2; shift 2 ;;
+        --dest) dest=$2; shift 2 ;;
+        --to) to_ref=$2; shift 2 ;;
+        -h | --help) usage; exit 0 ;;
+        *) die "unknown git option: $1" ;;
+        esac
+    done
+
+    [ -n "$repo_url" ] || die "git --repo is required"
+    [ -n "$dest" ] || die "git --dest is required"
+    [ -n "$to_ref" ] || die "git --to is required"
+    need git
+    need python3
+
+    local created
+    created=$(timestamp_utc)
+    local name
+    name=$(basename "$dest")
+    local item_dir
+    item_dir=$(run_root "$created")/git/$(safe_name "$name")
+
+    local old_commit=
+    if [ -d "$dest/.git" ]; then
+        old_commit=$(git -C "$dest" rev-parse --verify HEAD 2>/dev/null || true)
+    fi
+
+    local cache
+    cache=$(git_cache_dir "$repo_url")
+    mkdir -p "$(dirname "$cache")"
+    if [ -d "$cache" ]; then
+        remote_git "$repo_url" -C "$cache" fetch -q --tags --prune origin '+refs/heads/*:refs/heads/*'
+    else
+        remote_git "$repo_url" clone -q --mirror "$repo_url" "$cache"
+    fi
+
+    local new_commit
+    new_commit=$(git -C "$cache" rev-parse --verify "${to_ref}^{commit}") || die "unable to resolve git ref: $to_ref"
+
+    if [ -z "$old_commit" ]; then
+        mkdir -p "$item_dir"
+        write_manifest "$item_dir/manifest.json" git "$name" "" "$new_commit" initial-checkout metadata-only "" "" "$repo_url" "" "$created"
+        write_summary "$item_dir/summary.md" "git ${name}" "" "$new_commit" initial-checkout metadata-only "" ""
+        set_latest "$(dirname "$(dirname "$item_dir")")"
+        printf 'initial-checkout\t%s\t%s\n' "$name" "$new_commit"
+        return 0
+    fi
+
+    if [ "$old_commit" = "$new_commit" ]; then
+        printf 'unchanged\t%s\t%s\n' "$name" "$new_commit"
+        return 0
+    fi
+
+    mkdir -p "$item_dir"
+    local review_repo=$item_dir/repo
+    git clone -q "$cache" "$review_repo"
+    git -C "$review_repo" checkout -q "$new_commit"
+    git -C "$review_repo" diff --binary "$old_commit..$new_commit" >"$item_dir/diff.patch"
+    write_manifest "$item_dir/manifest.json" git "$name" "$old_commit" "$new_commit" captured source "$review_repo" "$item_dir/diff.patch" "$repo_url" "$old_commit..$new_commit" "$created"
+    write_summary "$item_dir/summary.md" "git ${name}" "$old_commit" "$new_commit" captured source "$review_repo" "$old_commit..$new_commit"
+    set_latest "$(dirname "$(dirname "$item_dir")")"
+    printf 'captured\t%s\t%s -> %s\t%s\n' "$name" "$old_commit" "$new_commit" "$item_dir"
+}
+
+main() {
+    [ "$#" -gt 0 ] || { usage; exit 2; }
+    case $1 in
+    npm) shift; capture_npm "$@" ;;
+    npm-version) shift; show_npm_version "$@" ;;
+    pip) shift; capture_pip "$@" ;;
+    pip-version) shift; show_pip_version "$@" ;;
+    git) shift; capture_git "$@" ;;
+    -h | --help) usage ;;
+    *) die "unknown action: $1" ;;
+    esac
+}
+
+main "$@"

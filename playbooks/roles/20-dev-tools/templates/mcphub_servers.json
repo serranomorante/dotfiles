@@ -1,16 +1,8 @@
 {% set figma_api_key = (mcp_server_figma_key.stdout | default('') | trim) if (mcp_server_figma_key.rc | default(1)) == 0 else '' %}
-{% set postman_api_key = (mcp_server_postman_key.stdout | default('') | trim) if (mcp_server_postman_key.rc | default(1)) == 0 else '' %}
 {
   "mcpServers": {
-    "figma_http": {
-      "url": "https://mcp.figma.com/mcp",
-      "type": "http"
-    },
-    "Sentry": {
-      "url": "https://mcp.sentry.dev/mcp",
-      "type": "http"
-    },
     "reaper": {
+      "disabled": true,
       "command": "{{ python_firejail_executable }}",
       "args": [
         "offline",
@@ -34,6 +26,7 @@
       }
     },
     "Figma": {
+      "disabled": true,
       "command": "{{ node_firejail_executable }}",
       "args": [
         "online",
@@ -42,6 +35,7 @@
         "{{ node_system_default_node_path }}",
         "{{ figma_mcp_server_setup.exe_path }}"{% if figma_api_key | length > 0 %},
         "--figma-api-key={{ figma_api_key }}"{% endif %},
+        "--skip-image-downloads",
         "--stdio"
       ],
       "env": {
@@ -49,6 +43,7 @@
       }
     },
     "figma-comments": {
+      "disabled": true,
       "command": "{{ node_firejail_executable }}",
       "args": [
         "online",
@@ -63,22 +58,8 @@
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"
       }
     },
-    "postman-mcp": {
-      "command": "{{ node_firejail_executable }}",
-      "args": [
-        "online",
-        "{{ postman_mcp_commentary_server_setup.project_path }}",
-        "--",
-        "/usr/bin/env"{% if postman_api_key | length > 0 %},
-        "POSTMAN_API_KEY={{ postman_api_key }}"{% endif %},
-        "{{ node_system_default_node_path }}",
-        "{{ postman_mcp_commentary_server_setup.exe_path }}"
-      ],
-      "env": {
-        "FJ_NODE_PROFILE": "fj-node-mcp.profile"
-      }
-    },
     "cf-projects": {
+      "disabled": true,
       "command": "{{ node_firejail_executable }}",
       "args": [
         "online",
@@ -92,6 +73,7 @@
       }
     },
     "chrome-devtools": {
+      "disabled": true,
       "command": "{{ node_firejail_executable }}",
       "args": [
         "online",
@@ -99,13 +81,17 @@
         "--",
         "{{ node_system_default_node_path }}",
         "{{ chrome_devtools_mcp_server_setup.exe_path }}",
-        "--browser-url=http://127.0.0.1:9222"
+        "--browser-url=http://127.0.0.1:9222",
+        "--no-usage-statistics",
+        "--no-performance-crux"
       ],
       "env": {
+        "CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS": "1",
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"
       }
     },
     "Context7": {
+      "disabled": true,
       "command": "{{ node_firejail_executable }}",
       "args": [
         "online",
@@ -119,6 +105,7 @@
       }
     },
     "playwright": {
+      "disabled": false,
       "command": "{{ node_firejail_executable }}",
       "args": [
         "online",

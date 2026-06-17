@@ -4,6 +4,11 @@ reaper_mcp_server_setup:
   projects_dir: "{{ ansible_facts.env.HOME }}/data/audio-pjs"
 
 node_ai_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/.npm"
+postman_mcp_legacy_project_path: "{{ ansible_facts.env.HOME }}/.local/share/postman-mcp-server"
+
+# Claude Code global settings forced into ~/.claude/settings.json. Runtime state and caches live in ~/.claude.json, but user-editable settings such as promptSuggestionEnabled belong in ~/.claude/settings.json.
+claude_global_settings_config:
+  promptSuggestionEnabled: false
 piper_tts_setup:
   project_path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/piper-tts"
   venv_path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/piper-tts/.venv"
@@ -17,7 +22,7 @@ piper_tts_setup:
     - es_ES-sharvard-medium
 whisper_cpp_setup:
   repo_path: "{{ ansible_facts.env.HOME }}/data/repos/whisper.cpp"
-  version: v1.8.1
+  version: v1.8.6
   model_dir: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/whisper.cpp/models"
   model_name: medium
   model_file: ggml-medium.bin
@@ -44,28 +49,28 @@ node_ai_npm_packages:
     bins:
       - mcp-hub
   - name: figma-developer-mcp
-    version: 0.8.0
+    version: 0.12.0
     bins:
       - figma-developer-mcp
   - name: "@anthropic-ai/claude-code"
-    version: 2.1.90
+    version: 2.1.177
     bins:
       - claude
   - name: "@google/gemini-cli"
-    version: 0.36.0
+    version: 0.46.0
     bins:
       - gemini
   - name: chrome-devtools-mcp
-    version: 0.21.0
+    version: 1.2.0
     bins:
       - chrome-devtools-mcp
       - chrome-devtools
   - name: playwright
-    version: 1.59.1
+    version: 1.60.0
     bins:
       - playwright
   - name: "@playwright/mcp"
-    version: 0.0.70
+    version: 0.0.76
     bins:
       - playwright-mcp
   - name: mcp-figma-comment-summary
@@ -73,11 +78,11 @@ node_ai_npm_packages:
     bins:
       - mcp-figma-comment-summary
   - name: "@upstash/context7-mcp"
-    version: 2.1.6
+    version: 3.2.1
     bins:
       - context7-mcp
   - name: cloudframework-projects-mcp
-    version: 1.5.0
+    version: 1.5.1
     bins:
       - cloudframework-projects-mcp
   - name: "@zed-industries/claude-agent-acp"
@@ -85,11 +90,11 @@ node_ai_npm_packages:
     bins:
       - claude-agent-acp
   - name: "@zed-industries/codex-acp"
-    version: 0.11.1
+    version: 0.16.0
     bins:
       - codex-acp
   - name: postman-cli
-    version: 1.33.2
+    version: 1.39.0
     bins:
       - postman
 
@@ -105,16 +110,6 @@ figma_mcp_commentary_server_setup:
   keyrings:
     folder: dev-tools
     passkey: mcp-cf-figma
-    wallet: kdewallet
-
-postman_mcp_commentary_server_setup:
-  project_path: "{{ ansible_facts.env.HOME }}/.local/share/postman-mcp-server"
-  host_store_dir: "{{ ansible_facts.env.HOME }}/.local/share/pnpm/store"
-  exe_path: "{{ postman_mcp_commentary_server_setup.project_path }}/node_modules/@postman/postman-mcp-server/dist/src/index.js"
-  version: 2.8.4
-  keyrings:
-    folder: dev-tools
-    passkey: postman-mcp
     wallet: kdewallet
 
 chrome_devtools_mcp_server_setup:

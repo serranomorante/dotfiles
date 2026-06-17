@@ -1,39 +1,14 @@
 ---
-- name: "[archlinux] Javascript language: ensure npm prefix"
-  ansible.builtin.file:
-    path: "{{ node_javascript_npm_prefix }}"
-    state: directory
-    mode: "755"
-
-- name: "[archlinux] Javascript language: stat npm package markers"
-  ansible.builtin.stat:
-    path: "{{ node_javascript_npm_prefix }}/.ansible-package-{{ item.name | regex_replace('[^A-Za-z0-9_.-]', '_') }}-{{ item.version }}"
-  register: node_javascript_npm_package_markers
-  loop: "{{ node_javascript_npm_packages }}"
-
-- name: "[archlinux] Javascript language: ensure npm packages"
-  community.general.npm:
-    name: "{{ item.name }}"
-    version: "{{ item.version }}"
-    global: true
-    state: present
-    executable: "{{ ansible_firejail_npm_executable }}"
-  environment:
-    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
-    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_javascript_npm_prefix }}"
-  loop: "{{ node_javascript_npm_packages }}"
-  loop_control:
-    extended: true
-  when: not node_javascript_npm_package_markers.results[ansible_loop.index0].stat.exists
-  register: node_javascript_npm_package_installs
-
-- name: "[archlinux] Javascript language: record npm package markers"
-  ansible.builtin.copy:
-    content: "{{ item.item.name }}@{{ item.item.version }}\n"
-    dest: "{{ node_javascript_npm_prefix }}/.ansible-package-{{ item.item.name | regex_replace('[^A-Za-z0-9_.-]', '_') }}-{{ item.item.version }}"
-    mode: "644"
-  loop: "{{ node_javascript_npm_package_installs.results }}"
-  when: item.changed | default(false)
+- name: "[archlinux] Javascript language: ensure npm packages with diff capture"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: npm
+  vars:
+    update_diff_capture_scope: javascript-language
+    update_diff_npm_prefix: "{{ node_javascript_npm_prefix }}"
+    update_diff_npm_packages: "{{ node_javascript_npm_packages }}"
+    update_diff_npm_node_version: "{{ node_system_default_version }}"
+    update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
 
 - name: "[archlinux] Javascript language: symlink npm binaries"
   ansible.builtin.file:
@@ -42,29 +17,17 @@
     state: link
   loop: "{{ node_javascript_npm_packages | subelements('bins') }}"
 
-- name: "[archlinux] Javascript language: stat prettierd marker"
-  ansible.builtin.stat:
-    path: "{{ node_javascript_npm_prefix }}/.ansible-package-_fsouza_prettierd-present"
-  register: node_javascript_prettierd_marker
-
-- name: "[archlinux] Javascript language: ensure prettierd"
-  community.general.npm:
-    name: "@fsouza/prettierd"
-    global: true
-    state: present
-    executable: "{{ ansible_firejail_npm_executable }}"
-  environment:
-    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
-    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_javascript_npm_prefix }}"
-  when: not node_javascript_prettierd_marker.stat.exists
-  register: node_javascript_prettierd_install
-
-- name: "[archlinux] Javascript language: record prettierd marker"
-  ansible.builtin.copy:
-    content: "@fsouza/prettierd\n"
-    dest: "{{ node_javascript_npm_prefix }}/.ansible-package-_fsouza_prettierd-present"
-    mode: "644"
-  when: node_javascript_prettierd_install.changed | default(false)
+- name: "[archlinux] Javascript language: ensure unpinned npm packages with diff capture"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: npm
+  vars:
+    update_diff_capture_scope: javascript-language
+    update_diff_npm_prefix: "{{ node_javascript_npm_prefix }}"
+    update_diff_npm_packages:
+      - name: "@fsouza/prettierd"
+    update_diff_npm_node_version: "{{ node_system_default_version }}"
+    update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
 
 - name: "[archlinux] Javascript language: symlink prettierd"
   ansible.builtin.file:
@@ -92,15 +55,18 @@
         or ((var_slurp_vscode_js_debug_marker.content | default('') | b64decode | trim) != ('v' ~ vscode_js_debug_version ~ ':stderr-patch-v1'))
       }}
 
-- name: "[archlinux] Javascript language: clone vscode-js-debug"
-  ansible.builtin.git:
-    repo: https://github.com/microsoft/vscode-js-debug.git
-    dest: ~/data/repos/vscode-js-debug
-    depth: 1
-    force: true
-    single_branch: true
-    version: v{{ vscode_js_debug_version }}
-  register: var_clone_vscode_js_debug
+- name: "[archlinux] Javascript language: clone vscode-js-debug with diff capture"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: javascript-language
+    update_diff_git_repo: https://github.com/microsoft/vscode-js-debug.git
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/vscode-js-debug"
+    update_diff_git_version: "v{{ vscode_js_debug_version }}"
+    update_diff_git_depth: 1
+    update_diff_git_force: true
+    update_diff_git_single_branch: true
   when: var_vscode_js_debug_needs_refresh
 
 - name: "[archlinux] Javascript language: apply custom patch"
@@ -122,6 +88,7 @@
     executable: "{{ ansible_firejail_npm_executable }}"
   environment:
     ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
+    NPM_CONFIG_IGNORE_SCRIPTS: "true"
   when: var_vscode_js_debug_needs_refresh or not var_stat_vscode_js_debug.stat.exists
 
 - name: "[archlinux] Javascript language: build vscode-js-debug"

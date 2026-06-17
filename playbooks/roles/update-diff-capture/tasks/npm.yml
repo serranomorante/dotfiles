@@ -1,0 +1,128 @@
+---
+- name: "[{{ update_diff_capture_scope | default('ansible-npm') }}] npm update diffs: validate variables"
+  ansible.builtin.assert:
+    that:
+      - update_diff_npm_prefix is defined
+      - update_diff_npm_packages is defined
+      - update_diff_npm_node_version is defined
+      - update_diff_npm_executable is defined
+    quiet: true
+
+- name: "[{{ update_diff_capture_scope | default('ansible-npm') }}] update diffs: install helper scripts once"
+  ansible.builtin.include_tasks: install.yml
+  when: not update_diff_capture_helpers_installed | default(false)
+
+- name: "[{{ update_diff_capture_scope | default('ansible-npm') }}] npm update diffs: ensure prefix"
+  ansible.builtin.file:
+    path: "{{ update_diff_npm_prefix }}"
+    state: directory
+    mode: "755"
+
+- name: "[{{ update_diff_capture_scope | default('ansible-npm') }}] npm update diffs: read versions before install"
+  ansible.builtin.command:
+    argv:
+      - "{{ update_diff_capture_script }}"
+      - npm-version
+      - --prefix
+      - "{{ update_diff_npm_prefix }}"
+      - --name
+      - "{{ item.name }}"
+      - --npm-executable
+      - "{{ update_diff_npm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ update_diff_npm_node_version }}"
+    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ update_diff_npm_prefix }}"
+  loop: "{{ update_diff_npm_packages }}"
+  loop_control:
+    label: "{{ item.name }}"
+  changed_when: false
+  register: update_diff_npm_package_versions_before
+
+- name: "[{{ update_diff_capture_scope | default('ansible-npm') }}] npm update diffs: ensure packages"
+  community.general.npm:
+    name: "{{ item.name }}"
+    version: "{{ item.version | default(omit) }}"
+    global: true
+    state: "{{ item.state | default(update_diff_npm_state | default('present')) }}"
+    executable: "{{ update_diff_npm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ update_diff_npm_node_version }}"
+    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ update_diff_npm_prefix }}"
+  loop: "{{ update_diff_npm_packages }}"
+  loop_control:
+    extended: true
+    label: "{{ item.name }}"
+  register: update_diff_npm_package_installs
+
+- name: "[{{ update_diff_capture_scope | default('ansible-npm') }}] npm update diffs: read versions after install"
+  ansible.builtin.command:
+    argv:
+      - "{{ update_diff_capture_script }}"
+      - npm-version
+      - --prefix
+      - "{{ update_diff_npm_prefix }}"
+      - --name
+      - "{{ item.name }}"
+      - --npm-executable
+      - "{{ update_diff_npm_executable }}"
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ update_diff_npm_node_version }}"
+    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ update_diff_npm_prefix }}"
+  loop: "{{ update_diff_npm_package_installs.results | map(attribute='item') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  changed_when: false
+  register: update_diff_npm_package_versions_after
+
+- name: "[{{ update_diff_capture_scope | default('ansible-npm') }}] npm update diffs: archive observed package diffs"
+  ansible.builtin.command:
+    argv: >-
+      {{
+        [
+          update_diff_capture_script,
+          'npm',
+          '--state-dir',
+          update_diff_capture_state_dir,
+          '--scope',
+          update_diff_capture_scope | default('ansible-npm'),
+          '--prefix',
+          update_diff_npm_prefix,
+          '--name',
+          item.item.name,
+          '--to',
+          item.stdout,
+          '--npm-executable',
+          update_diff_npm_executable
+        ]
+        + (
+          (update_diff_npm_package_versions_before.results[ansible_loop.index0].stdout | default('') | length > 0)
+          | ternary(['--from', update_diff_npm_package_versions_before.results[ansible_loop.index0].stdout], ['--from-absent'])
+        )
+      }}
+  environment:
+    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ update_diff_npm_node_version }}"
+    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ update_diff_npm_prefix }}"
+  loop: "{{ update_diff_npm_package_versions_after.results }}"
+  loop_control:
+    extended: true
+    label: "{{ item.item.name }} -> {{ item.stdout | default('') }}"
+  when:
+    - update_diff_capture_enabled | bool
+    - not update_diff_npm_package_installs.results[ansible_loop.index0].skipped | default(false)
+    - not update_diff_npm_package_installs.results[ansible_loop.index0].failed | default(false)
+    - item.stdout | default('') | length > 0
+    - (update_diff_npm_package_versions_before.results[ansible_loop.index0].stdout | default('')) != (item.stdout | default(''))
+  changed_when: false
+
+- name: "[{{ update_diff_capture_scope | default('ansible-npm') }}] npm update diffs: record package markers"
+  ansible.builtin.copy:
+    content: "{{ item.item.name }}@{{ item.item.version }}\n"
+    dest: "{{ update_diff_npm_prefix }}/.ansible-package-{{ item.item.name | regex_replace('[^A-Za-z0-9_.-]', '_') }}-{{ item.item.version }}"
+    mode: "644"
+  loop: "{{ update_diff_npm_package_installs.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when:
+    - item.item.version is defined
+    - not item.skipped | default(false)
+    - not item.failed | default(false)

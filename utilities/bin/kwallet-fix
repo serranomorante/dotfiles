@@ -1,0 +1,39 @@
+#!/usr/bin/env sh
+# Purpose: Recover KWallet after its Secret Service or wallet daemon gets stuck.
+# Notes: This does not read or write wallet entries; D-Bus relaunches the daemons on demand.
+
+set -eu
+
+log() {
+  printf 'kwallet-fix: %s\n' "$*"
+}
+
+stop_user_unit_if_loaded() {
+  unit="$1"
+
+  if systemctl --user --quiet status "$unit" >/dev/null 2>&1; then
+    log "stopping $unit"
+    systemctl --user stop "$unit"
+  else
+    log "$unit is not running"
+  fi
+}
+
+stop_user_unit_if_loaded 'dbus-:1.1-org.kde.secretservicecompat@0.service'
+stop_user_unit_if_loaded 'dbus-:1.1-org.kde.kwalletd6@0.service'
+
+if command -v qdbus6 >/dev/null 2>&1; then
+  if wallet="$(qdbus6 org.kde.kwalletd6 /modules/kwalletd6 org.kde.KWallet.networkWallet 2>/dev/null)"; then
+    log "KWallet is responding; default wallet is ${wallet:-unknown}"
+  else
+    log "KWallet did not respond to qdbus6; open an app that uses the wallet to retry"
+  fi
+
+  if qdbus6 org.kde.kded6 /kded org.kde.kded6.loadedModules 2>/dev/null | grep -qx networkmanagement; then
+    log "reloading kded networkmanagement module"
+    qdbus6 org.kde.kded6 /kded org.kde.kded6.unloadModule networkmanagement >/dev/null 2>&1 || true
+    qdbus6 org.kde.kded6 /kded org.kde.kded6.loadModule networkmanagement >/dev/null 2>&1 || true
+  fi
+else
+  log "qdbus6 is not available; open an app that uses the wallet to retry"
+fi

@@ -1,6 +1,6 @@
 ---
-plantuml_compiled_jar_version: 1.2024.6
-node_system_default_version: 22.19.0
+plantuml_compiled_jar_version: 1.2026.6
+node_system_default_version: 22.22.3
 node_ansible_language_server_version: 24.16.0
 node_managed_versions:
   - "{{ node_system_default_version }}"
@@ -26,15 +26,27 @@ node_package_manager_packages:
       - yarn
       - yarnpkg
   - name: pnpm
-    version: 10.33.0
+    version: 11.6.0
     bins:
       - pnpm
       - pnpx
+node_dependency_update_node_version: "{{ node_ansible_language_server_version }}"
+node_dependency_update_node_bin_dir: "{{ node_volta_home }}/tools/image/node/{{ node_dependency_update_node_version }}/bin"
+node_dependency_update_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/dependency-update-tools/node-{{ node_dependency_update_node_version }}/.npm"
+node_dependency_update_npm_packages:
+  - name: renovate
+    version: 43.227.0
+    bins:
+      - renovate
+node_dependency_update_github_token_keyring:
+  folder: dev-tools
+  passkey: github-temporal-access-token
+  wallet: kdewallet
 typescript_npm_version: 6.0.2
 rust_version: 1.75.0
-tmux_version: 3.5a
+tmux_version: 3.6b
 archlinux_neovim_version: master
-archlinux_treesitter_version: 0.25.9
+archlinux_treesitter_version: 0.26.9
 debian_neovim_version: 688b961d13bd # before cmake 3.16 requirement
 arch_gnirehtet_version: 2.5.1
 neovim_plugins:
@@ -56,7 +68,7 @@ neovim_plugins:
     repo: stevearc/conform.nvim
     name: conform
   - folder: start
-    repo: dlyongemallo/diffview.nvim
+    repo: sindrets/diffview.nvim
     name: diffview
   - folder: start
     repo: lewis6991/gitsigns.nvim
@@ -270,7 +282,7 @@ treesitter_parsers:
     filetype: org
     version: 64cfbc213f5a83da17632c95382a5a0a2f3357c1
 
-python_ml_version: 3.14.3
+python_ml_version: 3.14.6
 
 python_versions:
   - 3.11.2

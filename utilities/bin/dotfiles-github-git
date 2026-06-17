@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+token_helper=$script_dir/dotfiles-github-token
+askpass_helper=$script_dir/dotfiles-github-askpass
+
+if [ ! -x "$token_helper" ] || [ ! -x "$askpass_helper" ] || ! "$token_helper" >/dev/null 2>&1; then
+    exec git "$@"
+fi
+
+exec env \
+    GIT_ASKPASS="$askpass_helper" \
+    GIT_TERMINAL_PROMPT=0 \
+    git -c url.https://x-access-token@github.com/.insteadOf=https://github.com/ "$@"

@@ -11,18 +11,50 @@
   become: true
   ansible.builtin.package:
     state: present
-    name: marksman
-
-- name: "[archlinux] Markdown language: ensure aur packages"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
     name:
-      - mdcat-bin
+      - curl
+      - marksman
       - mathjax
-    aur_only: true
+
+- name: "[archlinux] Markdown language: check mdcat version"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/.cargo/bin/mdcat"
+      - --version
+  register: mdcat_version_check
+  changed_when: false
+  failed_when: false
+
+- block:
+    - name: "[archlinux] Markdown language: ensure mdcat via cargo"
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_facts.env.HOME }}/.cargo/bin/cargo"
+          - install
+          - mdcat
+          - --version
+          - "{{ mdcat_version }}"
+          - --locked
+      when: mdcat_version_check.rc != 0 or (mdcat_version | string) not in mdcat_version_check.stdout
+  rescue:
+    - name: "[archlinux] Markdown language: warn about mdcat"
+      ansible.builtin.debug:
+        msg: "Skipping mdcat installation after cargo failed: {{ ansible_failed_result.msg | default('unknown error') }}"
+
+- name: "[archlinux] Markdown language: check mdcat binary"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.cargo/bin/mdcat"
+  register: mdcat_binary
+
+- name: "[archlinux] Markdown language: symlink mdcat binaries"
+  ansible.builtin.file:
+    src: "{{ ansible_facts.env.HOME }}/.cargo/bin/mdcat"
+    dest: "{{ node_user_bin_dir }}/{{ item }}"
+    state: link
+  loop:
+    - mdcat
+    - mdless
+  when: mdcat_binary.stat.exists
 
 - name: "[archlinux] Markdown language: ensure aur texlive"
   become: true
@@ -36,23 +68,16 @@
     state: present
     name: texlive-xetex
 
-- name: "[archlinux] Markdown language: ensure npm prefix"
-  ansible.builtin.file:
-    path: "{{ node_markdown_npm_prefix }}"
-    state: directory
-    mode: "755"
-
-- name: "[archlinux] Markdown language: ensure npm packages"
-  community.general.npm:
-    name: "{{ item.name }}"
-    version: "{{ item.version }}"
-    global: true
-    state: present
-    executable: "{{ ansible_firejail_npm_executable }}"
-  environment:
-    ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
-    ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_markdown_npm_prefix }}"
-  loop: "{{ node_markdown_npm_packages }}"
+- name: "[archlinux] Markdown language: ensure npm packages with diff capture"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: npm
+  vars:
+    update_diff_capture_scope: markdown-language
+    update_diff_npm_prefix: "{{ node_markdown_npm_prefix }}"
+    update_diff_npm_packages: "{{ node_markdown_npm_packages }}"
+    update_diff_npm_node_version: "{{ node_system_default_version }}"
+    update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
 
 - name: "[archlinux] Markdown language: symlink npm binaries"
   ansible.builtin.file:
@@ -62,20 +87,22 @@
   loop: "{{ node_markdown_npm_packages | subelements('bins') }}"
 
 - name: "[archlinux] Markdown language: ensure virtualenv packages"
-  ansible.builtin.pip:
-    name:
-      - pip
-      - weasyprint
-      - mdformat
-      - mdformat-gfm
-      - mdformat_footnote
-      - mdformat-frontmatter
-      - mdformat-web
-      - mdformat-wikilink
-    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
-    state: present
-  environment:
-    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/note-taking-tools/utilities/.venv"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: pip
+  vars:
+    update_diff_capture_scope: markdown-tools
+    update_diff_pip_venv: "{{ ansible_facts.env.HOME }}/data/apps/note-taking-tools/utilities/.venv"
+    update_diff_pip_executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
+    update_diff_pip_packages:
+      - name: pip
+      - name: weasyprint
+      - name: mdformat
+      - name: mdformat-gfm
+      - name: mdformat_footnote
+      - name: mdformat-frontmatter
+      - name: mdformat-web
+      - name: mdformat-wikilink
 
 - name: "[archlinux] Markdown language: symlink virtualenv packages"
   ansible.builtin.file:

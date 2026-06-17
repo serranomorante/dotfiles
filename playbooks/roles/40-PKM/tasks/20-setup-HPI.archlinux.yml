@@ -1,10 +1,14 @@
 ---
 - name: "[archlinux] Setup HPI - clone packages"
-  ansible.builtin.git:
-    repo: "{{ item.repo }}"
-    dest: ~/data/repos/{{ item.name | default(item.repo) | basename }}
-    version: "{{ item.version | default('HEAD') }}"
-    single_branch: true
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: hpi-tools
+    update_diff_git_repo: "{{ item.repo }}"
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/{{ item.name | default(item.repo) | basename }}"
+    update_diff_git_version: "{{ item.version | default('HEAD') }}"
+    update_diff_git_single_branch: true
   loop:
     - { repo: https://github.com/karlicoss/open-in-editor }
     - { repo: https://github.com/karlicoss/HPI }
@@ -18,30 +22,33 @@
       - rsync
 
 - name: "[archlinux] Setup HPI - ensure virtualenv packages"
-  ansible.builtin.pip:
-    name:
-      - pip
-      - promnesia
-      - "{{ ansible_facts.env.HOME }}/data/repos/HPI"
-      # Optional dependencies
-      - bs4
-      - lxml
-      - mistletoe
-      - logzero
-      - mypy
-      - colorlog
-      - ijson
-      - orjson
-      # Modules
-      - git+https://github.com/karlicoss/hypexport
-      - browserexport
-      - cachew
-    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
-    state: present
-  environment:
-    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/PKM/.venv"
-    ANSIBLE_FIREJAIL_PIP_EXTRA_PATHS: |
-      {{ ansible_facts.env.HOME }}/data/repos/HPI
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: pip
+  vars:
+    update_diff_capture_scope: hpi-tools
+    update_diff_pip_venv: "{{ ansible_facts.env.HOME }}/data/apps/PKM/.venv"
+    update_diff_pip_executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
+    update_diff_pip_environment:
+      ANSIBLE_FIREJAIL_PIP_EXTRA_PATHS: |
+        {{ ansible_facts.env.HOME }}/data/repos/HPI
+    update_diff_pip_packages:
+      - name: pip
+      - name: promnesia
+      - name: "{{ ansible_facts.env.HOME }}/data/repos/HPI"
+        lookup_name: HPI
+      - name: bs4
+      - name: lxml
+      - name: mistletoe
+      - name: logzero
+      - name: mypy
+      - name: colorlog
+      - name: ijson
+      - name: orjson
+      - name: git+https://github.com/karlicoss/hypexport
+        lookup_name: hypexport
+      - name: browserexport
+      - name: cachew
 
 - name: "[archlinux] Setup HPI - stat h setup marker"
   ansible.builtin.stat:
@@ -70,13 +77,17 @@
       }}
 
 - name: "[archlinux] Setup HPI - clone h"
-  ansible.builtin.git:
-    repo: "{{ item }}"
-    dest: ~/data/repos/{{ item | basename }}
-    version: main
-    depth: 1
-    force: true
-    single_branch: true
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: hpi-tools
+    update_diff_git_repo: "{{ item }}"
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/{{ item | basename }}"
+    update_diff_git_version: main
+    update_diff_git_depth: 1
+    update_diff_git_force: true
+    update_diff_git_single_branch: true
   loop:
     - https://github.com/hypothesis/h # because I want to self-host
     - https://github.com/hypothesis/bouncer
@@ -622,6 +633,7 @@
 - name: "[archlinux] Setup HPI: clone hypothesis client"
   ansible.builtin.git:
     repo: https://github.com/hypothesis/client
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
     dest: ~/data/repos/client
     version: "v{{ hypothesis_client_version }}"
     depth: 1
@@ -751,6 +763,7 @@
 - name: "[archlinux] Setup HPI: clone hypothesis browser extension"
   ansible.builtin.git:
     repo: https://github.com/hypothesis/browser-extension
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
     dest: ~/data/repos/hypothesis-extension
     version: "v{{ hypothesis_browser_extension_version }}"
     depth: 1

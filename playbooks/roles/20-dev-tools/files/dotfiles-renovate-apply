@@ -1,0 +1,657 @@
+#!/usr/bin/env python3
+# Purpose: Create a local Renovate-style dependency update branch in a temporary worktree.
+# Usage: dotfiles-renovate-apply [--dry-run]
+# Notes: This uses renovate.json as metadata, but applies and commits changes locally because Renovate's local platform is lookup-only.
+
+from __future__ import annotations
+
+import argparse
+import datetime as _datetime
+import html.parser
+import json
+import os
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
+
+
+SUPPORTED_DATASOURCES = {
+    "github-releases",
+    "github-tags",
+    "node-version",
+    "npm",
+    "pypi",
+    "python-version",
+}
+
+
+class DotfilesRenovateApplyError(Exception):
+    pass
+
+
+class PythonVersionIndexParser(html.parser.HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.versions: set[str] = set()
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag != "a":
+            return
+        href = dict(attrs).get("href") or ""
+        match = re.fullmatch(r"([0-9]+\.[0-9]+\.[0-9]+)/", href)
+        if match:
+            self.versions.add(match.group(1))
+
+
+def run(
+    args: list[str],
+    cwd: pathlib.Path,
+    *,
+    capture: bool = True,
+    check: bool = True,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        args,
+        cwd=str(cwd),
+        check=check,
+        text=True,
+        stdout=subprocess.PIPE if capture else None,
+        stderr=subprocess.PIPE if capture else None,
+    )
+
+
+def git_root(start: pathlib.Path) -> pathlib.Path:
+    result = run(["git", "rev-parse", "--show-toplevel"], start)
+    return pathlib.Path(result.stdout.strip())
+
+
+def utc_timestamp() -> str:
+    return _datetime.datetime.now(_datetime.UTC).strftime("%Y%m%d-%H%M%S")
+
+
+def github_token_helper_candidates() -> list[pathlib.Path]:
+    candidates: list[pathlib.Path] = []
+    resolved = shutil.which("dotfiles-github-token")
+    if resolved:
+        candidates.append(pathlib.Path(resolved))
+    home = pathlib.Path.home()
+    candidates.extend(
+        [
+            home / "bin" / "dotfiles-github-token",
+            home / "dotfiles" / "utilities" / "bin" / "dotfiles-github-token",
+        ],
+    )
+    return candidates
+
+
+def load_github_token_from_helper() -> None:
+    if os.environ.get("RENOVATE_GITHUB_COM_TOKEN"):
+        return
+    for helper in github_token_helper_candidates():
+        if not helper.is_file():
+            continue
+        try:
+            result = subprocess.run(
+                [str(helper)],
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        token = result.stdout.strip()
+        if result.returncode == 0 and token:
+            os.environ["RENOVATE_GITHUB_COM_TOKEN"] = token
+            return
+
+
+def unwrap_renovate_regex(pattern: str) -> str:
+    if pattern.startswith("/") and pattern.endswith("/"):
+        return pattern[1:-1]
+    return pattern
+
+
+def python_regex(pattern: str) -> str:
+    return re.sub(r"\(\?<([A-Za-z_][A-Za-z0-9_]*)>", r"(?P<\1>", pattern)
+
+
+def compile_renovate_regex(pattern: str) -> re.Pattern[str]:
+    return re.compile(python_regex(unwrap_renovate_regex(pattern)))
+
+
+def version_key(value: str) -> tuple[tuple[int, int | str], ...]:
+    normalized = value.strip().lstrip("vV")
+    parts = re.findall(r"[0-9]+|[A-Za-z]+", normalized)
+    key: list[tuple[int, int | str]] = []
+    for part in parts:
+        if part.isdigit():
+            key.append((0, int(part)))
+        else:
+            key.append((1, part.lower()))
+    return tuple(key)
+
+
+def is_version_like(value: str) -> bool:
+    return bool(re.match(r"^[vV]?[0-9]", value))
+
+
+def is_stable_version(value: str) -> bool:
+    return is_version_like(value) and not re.search(
+        r"(alpha|beta|rc|pre|preview|dev|nightly|next)",
+        value,
+        re.IGNORECASE,
+    )
+
+
+def version_is_newer(candidate: str, current: str) -> bool:
+    return version_key(candidate) > version_key(current)
+
+
+def rule_matches(
+    rule: dict,
+    datasource: str,
+    dep_type: str | None,
+    dep_name: str,
+    package_name: str,
+) -> bool:
+    datasources = rule.get("matchDatasources")
+    dep_types = rule.get("matchDepTypes")
+    dep_names = rule.get("matchDepNames")
+    package_names = rule.get("matchPackageNames")
+    if datasources and datasource not in datasources:
+        return False
+    if dep_types and dep_type not in dep_types:
+        return False
+    if dep_names and dep_name not in dep_names:
+        return False
+    if package_names and package_name not in package_names:
+        return False
+    return True
+
+
+def allowed_regex(
+    config: dict,
+    datasource: str,
+    dep_type: str | None,
+    dep_name: str,
+    package_name: str,
+) -> re.Pattern[str] | None:
+    result = None
+    for rule in config.get("packageRules", []):
+        if not rule_matches(rule, datasource, dep_type, dep_name, package_name):
+            continue
+        allowed = rule.get("allowedVersions")
+        if not allowed:
+            continue
+        result = compile_renovate_regex(allowed)
+    return result
+
+
+def parse_minimum_release_age(value: str | None) -> _datetime.timedelta | None:
+    if not value:
+        return None
+    match = re.fullmatch(r"\s*([0-9]+)\s*(minute|minutes|hour|hours|day|days|week|weeks)\s*", value)
+    if not match:
+        return None
+    amount = int(match.group(1))
+    unit = match.group(2)
+    if unit.startswith("minute"):
+        return _datetime.timedelta(minutes=amount)
+    if unit.startswith("hour"):
+        return _datetime.timedelta(hours=amount)
+    if unit.startswith("day"):
+        return _datetime.timedelta(days=amount)
+    if unit.startswith("week"):
+        return _datetime.timedelta(weeks=amount)
+    return None
+
+
+def minimum_release_age(
+    config: dict,
+    datasource: str,
+    dep_type: str | None,
+    dep_name: str,
+    package_name: str,
+) -> _datetime.timedelta | None:
+    result = parse_minimum_release_age(config.get("minimumReleaseAge"))
+    for rule in config.get("packageRules", []):
+        if not rule_matches(rule, datasource, dep_type, dep_name, package_name):
+            continue
+        if "minimumReleaseAge" in rule:
+            result = parse_minimum_release_age(rule.get("minimumReleaseAge"))
+    return result
+
+
+def parse_release_time(value: str | None) -> _datetime.datetime | None:
+    if not value:
+        return None
+    if re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value):
+        value = f"{value}T00:00:00+00:00"
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+    try:
+        parsed = _datetime.datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=_datetime.UTC)
+    return parsed.astimezone(_datetime.UTC)
+
+
+def release_is_old_enough(published_at: str | None, min_age: _datetime.timedelta | None) -> bool:
+    if min_age is None or published_at is None:
+        return True
+    parsed = parse_release_time(published_at)
+    if parsed is None:
+        return True
+    return _datetime.datetime.now(_datetime.UTC) - parsed >= min_age
+
+
+def apply_extract_version(pattern: str | None, raw: str) -> str | None:
+    if not pattern:
+        return raw
+    match = compile_renovate_regex(pattern).search(raw)
+    if not match:
+        return None
+    return match.group("version")
+
+
+def http_text(url: str) -> str:
+    headers = {"User-Agent": "dotfiles-renovate-apply"}
+    token = (
+        os.environ.get("RENOVATE_GITHUB_COM_TOKEN")
+        or os.environ.get("GITHUB_COM_TOKEN")
+        or os.environ.get("GITHUB_TOKEN")
+    )
+    if token and "api.github.com" in url:
+        headers["Authorization"] = f"Bearer {token}"
+    request = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return response.read().decode("utf-8")
+    except urllib.error.HTTPError as error:
+        body = error.read().decode("utf-8", "replace")
+        raise DotfilesRenovateApplyError(f"{url}: HTTP {error.code}: {body[:240]}") from error
+    except urllib.error.URLError as error:
+        raise DotfilesRenovateApplyError(f"{url}: {error.reason}") from error
+
+
+def http_json(url: str):
+    return json.loads(http_text(url))
+
+
+def http_status(url: str, method: str) -> int:
+    request = urllib.request.Request(url, headers={"User-Agent": "dotfiles-renovate-apply"}, method=method)
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return response.status
+    except urllib.error.HTTPError as error:
+        return error.code
+    except urllib.error.URLError as error:
+        raise DotfilesRenovateApplyError(f"{url}: {error.reason}") from error
+
+
+def render_template(template: str, values: dict[str, str]) -> str:
+    result = template
+    for key, value in values.items():
+        result = result.replace("{{ " + key + " }}", value)
+        result = result.replace("{{" + key + "}}", value)
+    if "{{" in result or "}}" in result:
+        raise DotfilesRenovateApplyError(f"unresolved validation URL template: {template}")
+    return result
+
+
+def validation_url_warnings(manager: dict, match: re.Match[str], dep_name: str, package_name: str, latest: str) -> list[str]:
+    warnings = []
+    templates = manager.get("validationUrlTemplates", [])
+    if not templates:
+        return warnings
+
+    values = {key: value or "" for key, value in match.groupdict().items()}
+    values.update(
+        {
+            "currentValue": match.group("currentValue"),
+            "newValue": latest,
+            "depName": dep_name,
+            "packageName": package_name,
+        }
+    )
+
+    for template in templates:
+        try:
+            url = render_template(template, values)
+            status = http_status(url, "HEAD")
+            if status == 405:
+                status = http_status(url, "GET")
+        except DotfilesRenovateApplyError as error:
+            warnings.append(str(error))
+            continue
+        if status >= 400:
+            warnings.append(f"{url}: HTTP {status}")
+    return warnings
+
+
+def best_version(
+    values: list[tuple[str, str, str | None]],
+    current: str,
+    allowed: re.Pattern[str] | None,
+    min_age: _datetime.timedelta | None,
+) -> tuple[str, str] | None:
+    candidates: list[tuple[str, str]] = []
+    for raw, extracted, published_at in values:
+        if not extracted or not is_stable_version(extracted):
+            continue
+        if allowed and not allowed.search(extracted):
+            continue
+        if not release_is_old_enough(published_at, min_age):
+            continue
+        if version_is_newer(extracted, current):
+            candidates.append((raw, extracted))
+    if not candidates:
+        return None
+    return max(candidates, key=lambda item: version_key(item[1]))
+
+
+def resolve_latest(
+    datasource: str,
+    package_name: str,
+    current: str,
+    extract_pattern: str | None,
+    allowed: re.Pattern[str] | None,
+    min_age: _datetime.timedelta | None,
+) -> str | None:
+    if datasource == "npm":
+        quoted = urllib.parse.quote(package_name, safe="")
+        data = http_json(f"https://registry.npmjs.org/{quoted}")
+        versions = []
+        release_times = data.get("time", {})
+        for version in data.get("versions", {}):
+            versions.append((version, version, release_times.get(version)))
+        latest = best_version(versions, current, allowed, min_age)
+        return latest[0] if latest else None
+
+    if datasource == "pypi":
+        quoted = urllib.parse.quote(package_name, safe="")
+        data = http_json(f"https://pypi.org/pypi/{quoted}/json")
+        versions = []
+        for version, files in data.get("releases", {}).items():
+            published_at = None
+            if files:
+                published_at = files[0].get("upload_time_iso_8601") or files[0].get("upload_time")
+            versions.append((version, version, published_at))
+        latest = best_version(versions, current, allowed, min_age)
+        return latest[0] if latest else None
+
+    if datasource == "node-version":
+        data = http_json("https://nodejs.org/dist/index.json")
+        versions = [
+            (item["version"].lstrip("v"), item["version"].lstrip("v"), item.get("date"))
+            for item in data
+            if "version" in item
+        ]
+        latest = best_version(versions, current, allowed, min_age)
+        return latest[1] if latest else None
+
+    if datasource == "python-version":
+        parser = PythonVersionIndexParser()
+        parser.feed(http_text("https://www.python.org/ftp/python/"))
+        versions = [(version, version, None) for version in parser.versions]
+        latest = best_version(versions, current, allowed, min_age)
+        return latest[1] if latest else None
+
+    if datasource == "github-releases":
+        data = http_json(f"https://api.github.com/repos/{package_name}/releases?per_page=100")
+        versions = []
+        for release in data:
+            if release.get("draft") or release.get("prerelease"):
+                continue
+            raw = release.get("tag_name") or release.get("name")
+            if not raw:
+                continue
+            extracted = apply_extract_version(extract_pattern, raw)
+            if extracted:
+                versions.append((raw if extract_pattern is None else extracted, extracted, release.get("published_at")))
+        latest = best_version(versions, current, allowed, min_age)
+        return latest[0] if latest else None
+
+    if datasource == "github-tags":
+        data = http_json(f"https://api.github.com/repos/{package_name}/tags?per_page=100")
+        versions = []
+        for tag in data:
+            raw = tag.get("name")
+            if not raw:
+                continue
+            extracted = apply_extract_version(extract_pattern, raw)
+            if extracted:
+                versions.append((raw if extract_pattern is None else extracted, extracted, None))
+        latest = best_version(versions, current, allowed, min_age)
+        return latest[0] if latest else None
+
+    raise DotfilesRenovateApplyError(f"unsupported datasource: {datasource}")
+
+
+def template_value(manager: dict, key: str, match: re.Match[str]) -> str | None:
+    if key not in manager:
+        return None
+    value = manager[key]
+    for name, group_value in match.groupdict().items():
+        value = value.replace("{{" + name + "}}", group_value or "")
+    return value
+
+
+def repo_files(worktree: pathlib.Path) -> list[str]:
+    result = run(["git", "ls-files"], worktree)
+    return [line for line in result.stdout.splitlines() if line]
+
+
+def manager_files(worktree: pathlib.Path, manager: dict, files: list[str]) -> list[str]:
+    patterns = [compile_renovate_regex(pattern) for pattern in manager.get("managerFilePatterns", [])]
+    return [path for path in files if any(pattern.search(path) for pattern in patterns)]
+
+
+def collect_updates(worktree: pathlib.Path, config: dict) -> tuple[list[dict], list[str]]:
+    files = repo_files(worktree)
+    updates: list[dict] = []
+    errors: list[str] = []
+
+    for manager in config.get("customManagers", []):
+        datasource = manager.get("datasourceTemplate")
+        if datasource not in SUPPORTED_DATASOURCES:
+            errors.append(f"unsupported datasource {datasource}")
+            continue
+
+        dep_type = manager.get("depTypeTemplate")
+        extract_pattern = manager.get("extractVersionTemplate")
+        regexes = [compile_renovate_regex(pattern) for pattern in manager.get("matchStrings", [])]
+
+        for relative_path in manager_files(worktree, manager, files):
+            path = worktree / relative_path
+            text = path.read_text(encoding="utf-8")
+            replacements: list[tuple[int, int, str, dict]] = []
+
+            for regex in regexes:
+                for match in regex.finditer(text):
+                    current = match.group("currentValue")
+                    dep_name = match.groupdict().get("depName") or template_value(manager, "depNameTemplate", match)
+                    package_name = template_value(manager, "packageNameTemplate", match) or dep_name
+                    if not dep_name or not package_name:
+                        errors.append(f"{relative_path}: missing dependency name")
+                        continue
+                    allowed = allowed_regex(config, datasource, dep_type, dep_name, package_name)
+                    min_age = minimum_release_age(config, datasource, dep_type, dep_name, package_name)
+
+                    try:
+                        latest = resolve_latest(datasource, package_name, current, extract_pattern, allowed, min_age)
+                    except DotfilesRenovateApplyError as error:
+                        errors.append(f"{dep_name}: {error}")
+                        continue
+
+                    if latest is None or latest == current:
+                        continue
+
+                    warnings = validation_url_warnings(manager, match, dep_name, package_name, latest)
+                    if warnings:
+                        errors.append(
+                            f"{dep_name}: skipped {current} -> {latest} because validation URL failed: "
+                            + "; ".join(warnings)
+                        )
+                        continue
+
+                    start, end = match.span("currentValue")
+                    update = {
+                        "datasource": datasource,
+                        "dependency": dep_name,
+                        "package": package_name,
+                        "file": relative_path,
+                        "from": current,
+                        "to": latest,
+                    }
+                    replacements.append((start, end, latest, update))
+
+            if not replacements:
+                continue
+
+            new_text = text
+            for start, end, latest, update in sorted(replacements, key=lambda item: item[0], reverse=True):
+                new_text = new_text[:start] + latest + new_text[end:]
+                updates.append(update)
+            path.write_text(new_text, encoding="utf-8")
+
+    return updates, errors
+
+
+def load_config(worktree: pathlib.Path) -> dict:
+    config_path = worktree / "renovate.json"
+    with config_path.open(encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def format_update(update: dict) -> str:
+    return f"{update['dependency']}: {update['from']} -> {update['to']} ({update['file']})"
+
+
+def create_worktree(source_root: pathlib.Path, branch: str, worktree: pathlib.Path) -> None:
+    run(["git", "worktree", "add", "-b", branch, str(worktree), "HEAD"], source_root, capture=False)
+
+
+def remove_empty_worktree(source_root: pathlib.Path, branch: str, worktree: pathlib.Path) -> None:
+    run(["git", "worktree", "remove", "--force", str(worktree)], source_root, capture=False, check=False)
+    run(["git", "branch", "-D", branch], source_root, capture=False, check=False)
+
+
+def commit_updates(worktree: pathlib.Path, updates: list[dict]) -> str:
+    changed = run(["git", "diff", "--name-only"], worktree).stdout.splitlines()
+    if not changed:
+        raise DotfilesRenovateApplyError("updates were detected but no files changed")
+
+    run(["git", "add", *changed], worktree, capture=False)
+    body_lines = ["Update pinned versions discovered from renovate.json metadata.", ""]
+    body_lines.extend(f"- {format_update(update)}" for update in updates)
+    run(
+        [
+            "git",
+            "commit",
+            "-m",
+            "chore(deps): update pinned tool versions",
+            "-m",
+            "\n".join(body_lines),
+        ],
+        worktree,
+        capture=False,
+    )
+    return run(["git", "rev-parse", "--short", "HEAD"], worktree).stdout.strip()
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Create a local dependency update branch in a temporary worktree.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="resolve and edit a temporary worktree, print proposed updates, then remove it without committing",
+    )
+    parser.add_argument(
+        "--keep-empty-worktree",
+        action="store_true",
+        help="keep the temporary worktree even when no updates are found",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str]) -> int:
+    args = parse_args(argv)
+    load_github_token_from_helper()
+    source_root = git_root(pathlib.Path.cwd())
+    if not (source_root / "renovate.json").exists():
+        raise DotfilesRenovateApplyError(f"{source_root} does not look like the dotfiles repository root")
+
+    timestamp = utc_timestamp()
+    branch = f"renovate-pins/{timestamp}"
+    worktree = pathlib.Path(tempfile.gettempdir()) / f"dotfiles-renovate-{timestamp}-{os.getpid()}"
+
+    print(f"Creating worktree: {worktree}")
+    print(f"Creating branch:   {branch}")
+    create_worktree(source_root, branch, worktree)
+
+    try:
+        config = load_config(worktree)
+        updates, errors = collect_updates(worktree, config)
+
+        if errors:
+            print("\nLookup warnings:", file=sys.stderr)
+            for error in errors:
+                print(f"- {error}", file=sys.stderr)
+
+        if not updates:
+            print("\nNo dependency updates were found.")
+            if args.keep_empty_worktree:
+                print(f"Kept empty worktree: {worktree}")
+                print(f"Kept empty branch:   {branch}")
+            else:
+                remove_empty_worktree(source_root, branch, worktree)
+            return 0
+
+        print("\nProposed updates:")
+        for update in updates:
+            print(f"- {format_update(update)}")
+
+        if args.dry_run:
+            print(f"\nDry run complete. Removing worktree: {worktree}")
+            remove_empty_worktree(source_root, branch, worktree)
+            return 0
+
+        commit = commit_updates(worktree, updates)
+        print("\nLocal dependency update branch created.")
+        print(f"Worktree: {worktree}")
+        print(f"Branch:   {branch}")
+        print(f"Commit:   {commit}")
+        print("Review with:")
+        print(f"  git -C {shlex_quote(str(worktree))} diff HEAD^")
+        print(f"  nvim {shlex_quote(str(worktree))}")
+        return 0
+    except Exception:
+        print(f"\nLeaving worktree for inspection: {worktree}", file=sys.stderr)
+        raise
+
+
+def shlex_quote(value: str) -> str:
+    if re.fullmatch(r"[A-Za-z0-9_@%+=:,./-]+", value):
+        return value
+    return "'" + value.replace("'", "'\"'\"'") + "'"
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main(sys.argv[1:]))
+    except DotfilesRenovateApplyError as error:
+        print(f"dotfiles-renovate-apply: {error}", file=sys.stderr)
+        raise SystemExit(1)

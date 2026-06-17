@@ -1,0 +1,45 @@
+---
+- name: "[archlinux] Setup dependency update tools: ensure npm packages with diff capture"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: npm
+  vars:
+    update_diff_capture_scope: dependency-update-tools
+    update_diff_npm_prefix: "{{ node_dependency_update_npm_prefix }}"
+    update_diff_npm_packages: "{{ node_dependency_update_npm_packages }}"
+    update_diff_npm_node_version: "{{ node_dependency_update_node_version }}"
+    update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
+
+- name: "[archlinux] Setup dependency update tools: inspect npm package binary wrappers"
+  ansible.builtin.stat:
+    path: "{{ node_user_bin_dir }}/{{ item.1 }}"
+    follow: false
+  register: var_node_dependency_update_bin_wrappers
+  loop: "{{ node_dependency_update_npm_packages | subelements('bins') }}"
+
+- name: "[archlinux] Setup dependency update tools: remove stale npm package binary symlinks"
+  ansible.builtin.file:
+    path: "{{ node_user_bin_dir }}/{{ item.1 }}"
+    state: absent
+  loop: "{{ node_dependency_update_npm_packages | subelements('bins') }}"
+  loop_control:
+    extended: true
+  when: var_node_dependency_update_bin_wrappers.results[ansible_loop.index0].stat.islnk | default(false)
+
+- name: "[archlinux] Setup dependency update tools: install npm package binary wrappers"
+  ansible.builtin.copy:
+    dest: "{{ node_user_bin_dir }}/{{ item.1 }}"
+    mode: "755"
+    content: |
+      #!/usr/bin/env sh
+      PATH="{{ node_dependency_update_node_bin_dir }}:$PATH"
+      export PATH
+      cd "{{ ansible_facts.env.HOME }}/dotfiles" || exit 1
+      exec "{{ node_dependency_update_npm_prefix }}/bin/{{ item.1 }}" --onboarding=false --require-config=required "$@"
+  loop: "{{ node_dependency_update_npm_packages | subelements('bins') }}"
+
+- name: "[archlinux] Setup dependency update tools: install local apply helper"
+  ansible.builtin.copy:
+    src: dotfiles-renovate-apply
+    dest: "{{ node_user_bin_dir }}/dotfiles-renovate-apply"
+    mode: "755"

@@ -1,36 +1,42 @@
 ---
 - name: "[archlinux] Python language: ensure pylsp venv"
-  ansible.builtin.pip:
-    name:
-      - pip
-      - python-lsp-server
-      - pydocstyle
-      - pylsp-mypy
-      - python-lsp-ruff # disables pycodestyle, pyflakes, mccabe, autopep8, yapf
-    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
-    state: present
-  environment:
-    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/pylsp/.venv"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: pip
+  vars:
+    update_diff_capture_scope: python-pylsp
+    update_diff_pip_venv: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/pylsp/.venv"
+    update_diff_pip_executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
+    update_diff_pip_packages:
+      - name: pip
+      - name: python-lsp-server
+      - name: pydocstyle
+      - name: pylsp-mypy
+      - name: python-lsp-ruff
 
 - name: "[archlinux] Python language: ensure debugpy venv"
-  ansible.builtin.pip:
-    name:
-      - pip
-      - debugpy
-    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
-    state: present
-  environment:
-    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/debugpy/.venv"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: pip
+  vars:
+    update_diff_capture_scope: python-debugpy
+    update_diff_pip_venv: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/debugpy/.venv"
+    update_diff_pip_executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
+    update_diff_pip_packages:
+      - name: pip
+      - name: debugpy
 
 - name: "[archlinux] Python language: ensure python tools"
-  ansible.builtin.pip:
-    name:
-      - pip
-      - cookiecutter
-    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
-    state: present
-  environment:
-    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/python-tools/.venv"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: pip
+  vars:
+    update_diff_capture_scope: python-tools
+    update_diff_pip_venv: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/python-tools/.venv"
+    update_diff_pip_executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
+    update_diff_pip_packages:
+      - name: pip
+      - name: cookiecutter
 
 - name: "[archlinux] Python language: ensure symlinks"
   ansible.builtin.file:
@@ -43,14 +49,17 @@
     - { dir: pylsp, bin: pylsp }
 
 - name: "[archlinux] Python language: ensure ML dependencies"
-  ansible.builtin.pip:
-    name:
-      - pip
-      - torch
-      - numpy
-    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
-    state: present
-  environment:
-    PYENV_VERSION: "{{ python_ml_version }}"
-    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/ml-tools/.venv"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: pip
+  vars:
+    update_diff_capture_scope: python-ml-tools
+    update_diff_pip_venv: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/ml-tools/.venv"
+    update_diff_pip_executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
+    update_diff_pip_environment:
+      PYENV_VERSION: "{{ python_ml_version }}"
+    update_diff_pip_packages:
+      - name: pip
+      - name: torch
+      - name: numpy
   timeout: 0

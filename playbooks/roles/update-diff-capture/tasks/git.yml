@@ -1,0 +1,42 @@
+---
+- name: "[{{ update_diff_capture_scope | default('ansible-git') }}] git update diffs: validate variables"
+  ansible.builtin.assert:
+    that:
+      - update_diff_git_repo is defined
+      - update_diff_git_dest is defined
+      - update_diff_git_version is defined
+    quiet: true
+
+- name: "[{{ update_diff_capture_scope | default('ansible-git') }}] update diffs: install helper scripts once"
+  ansible.builtin.include_tasks: install.yml
+  when: not update_diff_capture_helpers_installed | default(false)
+
+- name: "[{{ update_diff_capture_scope | default('ansible-git') }}] git update diffs: archive pending repository diff"
+  ansible.builtin.command:
+    argv:
+      - "{{ update_diff_capture_script }}"
+      - git
+      - --state-dir
+      - "{{ update_diff_capture_state_dir }}"
+      - --scope
+      - "{{ update_diff_capture_scope | default('ansible-git') }}"
+      - --repo
+      - "{{ update_diff_git_repo }}"
+      - --dest
+      - "{{ update_diff_git_dest }}"
+      - --to
+      - "{{ update_diff_git_version }}"
+  when: update_diff_capture_enabled | bool
+  changed_when: false
+
+- name: "[{{ update_diff_capture_scope | default('ansible-git') }}] git update diffs: checkout repository"
+  ansible.builtin.git:
+    repo: "{{ update_diff_git_repo }}"
+    dest: "{{ update_diff_git_dest }}"
+    version: "{{ update_diff_git_version }}"
+    depth: "{{ update_diff_git_depth | default(omit) }}"
+    force: "{{ update_diff_git_force | default(omit) }}"
+    recursive: "{{ update_diff_git_recursive | default(omit) }}"
+    single_branch: "{{ update_diff_git_single_branch | default(omit) }}"
+    executable: "{{ playbook_dir }}/../utilities/bin/dotfiles-github-git"
+  register: update_diff_git_checkout

@@ -1,0 +1,6 @@
+---
+update_diff_capture_enabled: true
+update_diff_capture_state_dir: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/update-diffs"
+update_diff_capture_bin_dir: "{{ ansible_facts.env.HOME }}/bin"
+update_diff_capture_script: "{{ update_diff_capture_bin_dir }}/update-diff-capture"
+update_diffs_script: "{{ update_diff_capture_bin_dir }}/update-diffs"
