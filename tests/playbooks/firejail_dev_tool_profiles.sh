@@ -44,11 +44,14 @@ firejail-dev-nvim-avoids-global-nvim-state)
     ;;
 firejail-promnesia-exposes-stow-target)
     profile="$root/playbooks/roles/20-dev-tools/templates/fj-py-promnesia.profile"
-    path='whitelist-ro ${HOME}/dotfiles/PKM/dot-config/promnesia'
-    if ! grep -Fqx "$path" "$profile"; then
-        printf 'Promnesia profile does not expose stowed config target: %s\n' "$path" >&2
-        exit 1
-    fi
+    for path in \
+        'whitelist-ro ${HOME}/dotfiles/PKM/dot-config/my' \
+        'whitelist-ro ${HOME}/dotfiles/PKM/dot-config/promnesia'; do
+        if ! grep -Fqx "$path" "$profile"; then
+            printf 'Promnesia profile does not expose stowed config target: %s\n' "$path" >&2
+            exit 1
+        fi
+    done
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

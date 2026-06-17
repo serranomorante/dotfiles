@@ -23,6 +23,8 @@ try:
 except Exception:
     pass
 
+GOOGLE_TAKEOUT_PATH = Path("/run/media/aaaa/3dc52ee3-d7b3-4eb0-86aa-8237ca5c0ad7/data/PKM/takeouts")
+
 
 class browser:
     """
@@ -38,3 +40,7 @@ class browser:
 
 class hypothesis:
     export_path: Paths = data("highlights/hypothesis.*.json")
+
+
+class google:
+    takeout_path: Paths = GOOGLE_TAKEOUT_PATH if GOOGLE_TAKEOUT_PATH.exists() else ""

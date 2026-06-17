@@ -35,6 +35,8 @@
     update_diff_pip_packages:
       - name: pip
       - name: promnesia
+      - name: google-takeout-parser @ git+https://github.com/purarue/google_takeout_parser
+        lookup_name: google-takeout-parser
       - name: "{{ ansible_facts.env.HOME }}/data/repos/HPI"
         lookup_name: HPI
       - name: bs4

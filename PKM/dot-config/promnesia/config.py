@@ -1,6 +1,7 @@
 from promnesia.common import Source
 from promnesia.sources import auto, browser
 from promnesia.sources import hypothesis
+from promnesia.sources import takeout
 
 """
 List of sources to use.
@@ -11,6 +12,7 @@ See https://github.com/karlicoss/promnesia#setup for more information
 SOURCES = [
     browser,
     Source(hypothesis.index),
+    Source(takeout.index, name="google-takeout"),
     Source(
         auto.index,
         "~/data/notes/foam",
@@ -25,6 +27,8 @@ SOURCES = [
             "*.scss",
             "*.err",
             "*.plist",
+            "*/testing",
+            "*/testing/*",
             "*/tags",
             "*/Gemfile",
             "*/assets/*",
