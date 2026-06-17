@@ -1,6 +1,6 @@
 #!/bin/sh
 # Purpose: Print a bounded Remind agenda for agents or a human-readable next-reminder list.
-# Usage: remind-agenda [--days N] [--json|--markdown] [--next-all] [--timed-only]
+# Usage: remind-agenda [--days N] [--json|--markdown] [--next-all] [--timed-only] [--exclude-agent-reminders]
 # Notes: RUN directives and shell() are disabled so the command is safe for read-only agenda inspection.
 
 set -eu
@@ -12,20 +12,22 @@ days=3
 format=json
 mode=days
 timed_only=0
+exclude_agent_reminders=0
 
 usage_text() {
     cat <<EOF
 Usage:
-  $prog [--days N] [--json|--markdown] [--timed-only]
-  $prog --next-all [--json|--markdown] [--timed-only]
+  $prog [--days N] [--json|--markdown] [--timed-only] [--exclude-agent-reminders]
+  $prog --next-all [--json|--markdown] [--timed-only] [--exclude-agent-reminders]
 
 Options:
-  --days N       Show reminders triggered over the next N days. Default: 3.
-  --next-all     Show the next occurrence of each reminder.
-  --timed-only   Show only reminders with an explicit time.
-  --json         Emit JSON. Default.
-  --markdown     Emit a Markdown bullet list.
-  -h, --help     Show this help.
+  --days N                    Show reminders triggered over the next N days. Default: 3.
+  --next-all                  Show the next occurrence of each reminder.
+  --timed-only                Show only reminders with an explicit time.
+  --exclude-agent-reminders   Hide reminders backed by @run agent or @tags #autotrigger.
+  --json                      Emit JSON. Default.
+  --markdown                  Emit a Markdown bullet list.
+  -h, --help                  Show this help.
 
 Environment:
   REMIND_AGENDA_DIR  Remind input directory. Default: \$HOME/.config/remind.
@@ -62,6 +64,9 @@ while [ "$#" -gt 0 ]; do
     --timed-only)
         timed_only=1
         ;;
+    --exclude-agent-reminders)
+        exclude_agent_reminders=1
+        ;;
     --json)
         format=json
         ;;
@@ -90,30 +95,92 @@ esac
 [ -d "$remind_dir" ] || die "missing remind directory: $remind_dir"
 command -v remind >/dev/null 2>&1 || die "remind not found in PATH"
 
+metadata_file=$remind_dir/reminders.rem
+metadata_read_file=$metadata_file
+[ -f "$metadata_read_file" ] || metadata_read_file=/dev/null
+tmp_files=
+
+cleanup() {
+    [ -z "$tmp_files" ] || rm -f $tmp_files
+}
+
+trap cleanup EXIT HUP INT TERM
+
+new_tmp_file() {
+    tmp_file=$(mktemp "${TMPDIR:-/tmp}/remind-agenda.XXXXXX") || exit 2
+    tmp_files="${tmp_files}${tmp_files:+ }$tmp_file"
+    printf '%s\n' "$tmp_file"
+}
+
+run_remind_to_file() {
+    output_var=$1
+    shift
+    output_file=$(new_tmp_file)
+    error_file=$(new_tmp_file)
+    if remind "$@" >"$output_file" 2>"$error_file"; then
+        rm -f "$error_file"
+        eval "$output_var=\$output_file"
+        return 0
+    else
+        status=$?
+        cat "$error_file" >&2
+        return "$status"
+    fi
+}
+
+jq_filter='
+def remline($n):
+  ($metadata_text | split("\n")) as $lines | ($lines[$n - 1] // "");
+def metadata_line:
+  if .filename == $metadata_file and has("lineno") then remline(.lineno - 1) else "" end;
+def metadata_value($key):
+  metadata_line
+  | sub("^# remind-agenda-meta[ ]*"; "")
+  | split(" ")
+  | map(select(startswith($key + "=")))
+  | .[0] // ""
+  | sub("^" + $key + "="; "");
+def metadata_has_tag($tag):
+  (metadata_value("tags") | split(",") | index($tag)) != null;
+def adjacent_agent_run:
+  .filename == $metadata_file and has("lineno") and (remline(.lineno + 1) | test("^REM[[:space:]].*[[:space:]]RUN[[:space:]].*'\''agent'\''"));
+def agent_reminder:
+  metadata_value("run") == "agent" or metadata_has_tag("#autotrigger") or adjacent_agent_run;
+def keep_reminder:
+  has("date") and ($timed_only == 0 or has("time")) and ($exclude_agent_reminders == 0 or (agent_reminder | not));
+'
+
+jq_args() {
+    jq --argjson timed_only "$timed_only" \
+        --argjson exclude_agent_reminders "$exclude_agent_reminders" \
+        --arg metadata_file "$metadata_file" \
+        --rawfile metadata_text "$metadata_read_file" "$@"
+}
+
 if [ "$format" = json ]; then
     command -v jq >/dev/null 2>&1 || die "jq not found in PATH"
     if [ "$mode" = next_all ]; then
-        remind "-i\$OnceFile=\"$once_file\"" -q -r -n --json "$remind_dir" \
-            | jq --argjson timed_only "$timed_only" '[.[] | select(has("date")) | select($timed_only == 0 or has("time"))] | sort_by(.date, (.time // 1440), .body)'
+        run_remind_to_file remind_output "-i\$OnceFile=\"$once_file\"" -q -r -n --json "$remind_dir"
+        jq_args "$jq_filter [.[] | select(keep_reminder)] | sort_by(.date, (.time // 1440), .body)" "$remind_output"
     else
-        remind "-i\$OnceFile=\"$once_file\"" -q -r --json "$remind_dir" "*$days" \
-            | jq -s --argjson timed_only "$timed_only" '[.[][] | select(has("date")) | select($timed_only == 0 or has("time"))] | sort_by(.date, (.time // 1440), .body)'
+        run_remind_to_file remind_output "-i\$OnceFile=\"$once_file\"" -q -r --json "$remind_dir" "*$days"
+        jq_args -s "$jq_filter [.[][] | select(keep_reminder)] | sort_by(.date, (.time // 1440), .body)" "$remind_output"
     fi
 else
     if [ "$mode" = next_all ]; then
-        if [ "$timed_only" -eq 1 ]; then
+        if [ "$timed_only" -eq 1 ] || [ "$exclude_agent_reminders" -eq 1 ]; then
             command -v jq >/dev/null 2>&1 || die "jq not found in PATH"
-            remind "-i\$OnceFile=\"$once_file\"" -q -r -n --json "$remind_dir" \
-                | jq -r '[.[] | select(has("date")) | select(has("time"))] | sort_by(.date, .time, .body)[] | "- " + .body'
+            run_remind_to_file remind_output "-i\$OnceFile=\"$once_file\"" -q -r -n --json "$remind_dir"
+            jq_args -r "$jq_filter [.[] | select(keep_reminder)] | sort_by(.date, (.time // 1440), .body)[] | \"- \" + .body" "$remind_output"
         else
-            remind "-i\$OnceFile=\"$once_file\"" -q -r -n "$remind_dir" \
-                | sort \
-                | sed 's/^/- /'
+            run_remind_to_file remind_output "-i\$OnceFile=\"$once_file\"" -q -r -n "$remind_dir"
+            sort "$remind_output" |
+                sed 's/^/- /'
         fi
     else
         command -v jq >/dev/null 2>&1 || die "jq not found in PATH"
-        remind "-i\$OnceFile=\"$once_file\"" -q -r --json "$remind_dir" "*$days" \
-            | jq -rs --argjson timed_only "$timed_only" '.[][] | select(has("date")) | select($timed_only == 0 or has("time")) | "- " + .date + (if has("eventstart") then " " + (.eventstart | split("T")[1]) else "" end) + " " + .body' \
-            | sort
+        run_remind_to_file remind_output "-i\$OnceFile=\"$once_file\"" -q -r --json "$remind_dir" "*$days"
+        jq_args -rs "$jq_filter .[][] | select(keep_reminder) | \"- \" + .date + (if has(\"eventstart\") then \" \" + (.eventstart | split(\"T\")[1]) else \"\" end) + \" \" + .body" "$remind_output" |
+            sort
     fi
 fi

@@ -228,7 +228,7 @@ def payload_for(todo, notes_root):
     execution = {
         "agent": "codex",
         "model": meta.get("model") or None,
-        "cwd": os.path.expanduser(meta.get("cwd") or notes_root),
+        "cwd": os.path.abspath(os.path.expanduser(os.path.expandvars(meta.get("cwd") or notes_root))),
         "sandbox": meta.get("sandbox") or "workspace-write",
     }
     if meta.get("timeout"):
