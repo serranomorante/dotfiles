@@ -64,7 +64,11 @@ markdown-shell-fence-keymap-works-from-file-scratch-nofile-terminal-float)
         '  assert(run_shell_fence:find("prepare_shell_fence_task_start_window", 1, true), "run_shell_fence should choose a regular output window for terminal/float sources")' \
         '  assert(not run_shell_fence:find("alternate_bufnr", 1, true), "run_shell_fence should rely on normal buffer history instead of synthetic alternates")' \
         '  local function set_fence_lines(command)' \
-        '    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "```sh", command, "```" })' \
+        '    local body = type(command) == "table" and command or { command }' \
+        '    local lines = { "```sh" }' \
+        '    vim.list_extend(lines, body)' \
+        '    table.insert(lines, "```")' \
+        '    vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)' \
         '    vim.api.nvim_win_set_cursor(0, { 2, 0 })' \
         '  end' \
         '  local function cursor_to_line_containing(text)' \
@@ -120,6 +124,43 @@ markdown-shell-fence-keymap-works-from-file-scratch-nofile-terminal-float)
         '  vim.api.nvim_buf_set_name(0, "nofile://shell-fence-test")' \
         '  set_fence_lines("printf nofile-fence-ok")' \
         '  run_current_fence("nofile-fence-ok")' \
+        '  vim.cmd("enew!")' \
+        '  vim.api.nvim_buf_set_lines(0, 0, -1, false, {' \
+        '    "  ```sh",' \
+        '    "  cat <<'\''EOF'\''",' \
+        '    "  indented-heredoc-ok",' \
+        '    "  EOF",' \
+        '    "  ```",' \
+        '  })' \
+        '  vim.api.nvim_win_set_cursor(0, { 3, 0 })' \
+        '  run_current_fence("indented-heredoc-ok")' \
+        '  vim.cmd("enew!")' \
+        '  vim.api.nvim_buf_set_lines(0, 0, -1, false, {' \
+        '    "```sh",' \
+        '    "    cat <<'\''PY'\''",' \
+        '    "    nested-body-heredoc-ok",' \
+        '    "    PY",' \
+        '    "```",' \
+        '  })' \
+        '  vim.api.nvim_win_set_cursor(0, { 3, 0 })' \
+        '  run_current_fence("nested-body-heredoc-ok")' \
+        '  vim.cmd("enew!")' \
+        '  vim.api.nvim_buf_set_lines(0, 0, -1, false, {' \
+        '    "• ```sh",' \
+        '    "printf transcript-prefix-fence-ok",' \
+        '    "```",' \
+        '  })' \
+        '  vim.api.nvim_win_set_cursor(0, { 2, 0 })' \
+        '  run_current_fence("transcript-prefix-fence-ok")' \
+        '  vim.cmd("enew!")' \
+        '  vim.api.nvim_buf_set_lines(0, 0, -1, false, {' \
+        '    "│ ```sh",' \
+        '    "printf transcript-blank-cursor-ok",' \
+        '    "",' \
+        '    "│ ```",' \
+        '  })' \
+        '  vim.api.nvim_win_set_cursor(0, { 3, 0 })' \
+        '  run_current_fence("transcript-blank-cursor-ok")' \
         '  local float_bufnr = vim.api.nvim_create_buf(false, true)' \
         '  vim.api.nvim_buf_set_option(float_bufnr, "buftype", "nofile")' \
         '  local float_winid = vim.api.nvim_open_win(float_bufnr, true, { relative = "editor", row = 1, col = 1, width = 40, height = 5, style = "minimal" })' \

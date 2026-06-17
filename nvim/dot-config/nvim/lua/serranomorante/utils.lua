@@ -1385,9 +1385,7 @@ local function compact_overseer_task_output_label(label)
 
   label = vim.trim(label:gsub("%s+", " "):gsub("[%c/#?]", " "))
   if label == "" then return nil end
-  if #label > OVERSEER_TASK_OUTPUT_LABEL_MAX then
-    label = label:sub(1, OVERSEER_TASK_OUTPUT_LABEL_MAX - 3) .. "..."
-  end
+  if #label > OVERSEER_TASK_OUTPUT_LABEL_MAX then label = label:sub(1, OVERSEER_TASK_OUTPUT_LABEL_MAX - 3) .. "..." end
   return label
 end
 
@@ -1647,18 +1645,40 @@ local function shell_fence_under_cursor()
   local bufnr = vim.api.nvim_get_current_buf()
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local cursor = vim.api.nvim_win_get_cursor(0)[1]
-  local start_line, lang
+  local start_line, lang, fence_indent
 
-  local function fence_lang(line)
-    local fence_start = line:find("```", 1, true)
-    if not fence_start then return nil end
-    return line:sub(fence_start + 3):match("^%s*([%w_-]+)")
+  local function split_fence(line)
+    local indent, after = line:match("^([^`]*)```(.*)$")
+    if not after or indent:match("[^%s>%-%*+•●|│┃▏▎▍▌▐▕]") then return nil, nil end
+    return indent, after
   end
 
-  local function has_fence(line) return line:find("```", 1, true) ~= nil end
+  local function fence_lang(line)
+    local indent, after = split_fence(line)
+    if not after then return nil, nil end
+    return after:match("^%s*([%w_-]+)"), indent
+  end
+
+  local function has_fence(line) return split_fence(line) ~= nil end
+
+  local function dedent_common_indent(command_lines)
+    local min_indent
+    for _, line in ipairs(command_lines) do
+      if line:match("%S") then
+        local indent = line:match("^(%s*)")
+        min_indent = min_indent and math.min(min_indent, #indent) or #indent
+      end
+    end
+
+    if not min_indent or min_indent == 0 then return command_lines end
+    return vim.tbl_map(function(line)
+      if line:match("%S") then return line:sub(min_indent + 1) end
+      return line
+    end, command_lines)
+  end
 
   for lnum = cursor, 1, -1 do
-    lang = fence_lang(lines[lnum])
+    lang, fence_indent = fence_lang(lines[lnum])
     if lang then
       start_line = lnum
       break
@@ -1678,7 +1698,15 @@ local function shell_fence_under_cursor()
   end
 
   if not end_line or cursor > end_line then return nil end
-  return vim.list_slice(lines, start_line + 1, end_line - 1), lang
+  local command_lines = vim.list_slice(lines, start_line + 1, end_line - 1)
+  if fence_indent ~= "" then
+    command_lines = vim.tbl_map(function(line)
+      if vim.startswith(line, fence_indent) then return line:sub(#fence_indent + 1) end
+      return line
+    end, command_lines)
+  end
+  command_lines = dedent_common_indent(command_lines)
+  return command_lines, lang
 end
 
 local function shell_fence_cwd()
