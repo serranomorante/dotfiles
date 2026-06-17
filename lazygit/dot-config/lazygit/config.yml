@@ -33,6 +33,12 @@ refresher:
 promptToReturnFromSubprocess: false
 notARepository: 'quit'
 customCommands:
+  - key: "<c-r>"
+    description: "Custom: Generate local dependency update branch"
+    context: "global"
+    command: "dotfiles-renovate-apply"
+    loadingText: "Generating local dependency update branch"
+    output: terminal
   - key: "q"
     description: "Custom: Hide the kitty quick-access-terminal panel"
     context: "global"

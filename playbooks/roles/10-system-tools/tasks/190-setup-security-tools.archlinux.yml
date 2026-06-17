@@ -13,92 +13,11 @@
       - libsecret
       - python-gobject
 
-- name: "[archlinux] Setup security tools: get cryptomator AUR metadata"
-  ansible.builtin.uri:
-    url: "https://aur.archlinux.org/cgit/aur.git/plain/.SRCINFO?h=cryptomator"
-    return_content: true
-  register: var_cryptomator_aur_srcinfo
-
-- name: "[archlinux] Setup security tools: set cryptomator AUR signing keys fact"
-  ansible.builtin.set_fact:
-    cryptomator_aur_validpgpkeys: >-
-      {{
-        var_cryptomator_aur_srcinfo.content
-        | regex_findall('(?m)^\s*validpgpkeys = ([0-9A-Fa-f]+)\s*$')
-      }}
-
-- name: "[archlinux] Setup security tools: verify cryptomator AUR signing keys were found"
-  ansible.builtin.assert:
-    that:
-      - cryptomator_aur_validpgpkeys | length > 0
-    fail_msg: "No validpgpkeys entries were found in the cryptomator AUR .SRCINFO."
-
-- name: "[archlinux] Setup security tools: get cryptomator release signing keys"
-  ansible.builtin.get_url:
-    url: https://github.com/cryptobot.gpg
-    dest: /tmp/cryptomator-release-signing-keys.gpg
-    mode: "644"
-  register: var_cryptomator_release_signing_keys
-  ignore_errors: true
-  when: cryptomator_aur_validpgpkeys | length > 0
-
-- name: "[archlinux] Setup security tools: import cryptomator release signing keys"
-  become: true
-  become_user: aur_builder
-  ansible.builtin.command:
-    argv:
-      - gpg
-      - --batch
-      - --homedir
-      - /home/aur_builder/.gnupg
-      - --import
-      - /tmp/cryptomator-release-signing-keys.gpg
-  register: var_cryptomator_github_key_import
-  changed_when: "'imported:' in var_cryptomator_github_key_import.stderr and 'imported: 0' not in var_cryptomator_github_key_import.stderr"
-  when:
-    - cryptomator_aur_validpgpkeys | length > 0
-    - var_cryptomator_release_signing_keys is success
-
-- name: "[archlinux] Setup security tools: check cryptomator AUR signing keys"
-  become: true
-  become_user: aur_builder
-  ansible.builtin.command:
-    argv:
-      - gpg
-      - --homedir
-      - /home/aur_builder/.gnupg
-      - --list-keys
-      - "{{ item }}"
-  loop: "{{ cryptomator_aur_validpgpkeys }}"
-  register: var_cryptomator_aur_signing_key_checks
-  changed_when: false
-  failed_when: false
-
-- name: "[archlinux] Setup security tools: import missing cryptomator AUR signing keys from keyserver"
-  become: true
-  become_user: aur_builder
-  ansible.builtin.command:
-    argv:
-      - gpg
-      - --batch
-      - --homedir
-      - /home/aur_builder/.gnupg
-      - --keyserver
-      - hkps://keyserver.ubuntu.com
-      - --recv-keys
-      - "{{ item }}"
-  loop: "{{ var_cryptomator_aur_signing_key_checks.results | selectattr('rc', 'ne', 0) | map(attribute='item') | list }}"
-  changed_when: true
-
-- name: "[archlinux] Setup security tools: ensure aur packages"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name:
+- name: "[archlinux] Setup security tools: ensure local AUR packages"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages:
       - cryptomator
-  timeout: 600
 
 - name: "[archlinux] Setup security tools: setup kwallet password writer"
   ansible.builtin.template:
@@ -196,8 +115,11 @@
   loop:
     - "{{ figma_mcp_server_setup }}"
     - "{{ figma_mcp_commentary_server_setup }}"
-    - "{{ postman_mcp_commentary_server_setup }}"
     - "{{ intelephense_setup }}"
+
+- name: "[archlinux] Setup security tools: set dependency update keyrings facts"
+  ansible.builtin.set_fact:
+    keyrings: "{{ (keyrings | default([])) | union([node_dependency_update_github_token_keyring]) }}"
 
 - name: "[archlinux] Setup security tools: set video tools keyrings facts"
   ansible.builtin.set_fact:

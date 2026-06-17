@@ -6,14 +6,16 @@
     mode: "755"
 
 - name: "[archlinux] Setup NVR tools: ensure virtualenv packages"
-  ansible.builtin.pip:
-    name:
-      - pip
-      - neovim-remote
-    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
-    state: present
-  environment:
-    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/python-tools/.venv"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: pip
+  vars:
+    update_diff_capture_scope: nvr-tools
+    update_diff_pip_venv: "{{ ansible_facts.env.HOME }}/data/apps/python-tools/.venv"
+    update_diff_pip_executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
+    update_diff_pip_packages:
+      - name: pip
+      - name: neovim-remote
 
 - name: "[archlinux] Setup NVR tools: symlink virtualenv nvr"
   ansible.builtin.file:

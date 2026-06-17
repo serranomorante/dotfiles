@@ -15,11 +15,6 @@
     masked: false
 
 - name: "[archlinux] Automation utilities: ensure xdotool"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name: xdotool-git
-  environment:
-    PATH: "/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/bin/core_perl"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages: xdotool-git

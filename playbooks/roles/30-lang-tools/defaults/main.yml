@@ -1,18 +1,19 @@
 ---
-cpptools_version: v1.21.6
+cpptools_version: v1.32.2
 bash_debug_adapter_version: 0.3.7
-vscode_js_debug_version: 1.96.0
+vscode_js_debug_version: 1.117.0
 arch_superhtml_version: 0.5.3
 noise_suppression_for_voice_version: "1.10"
-vscode_go_version: "0.44"
+vscode_go_version: "0.54.0"
+mdcat_version: 2.7.1
 node_javascript_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/javascript-tools/.npm"
 node_ansible_language_server_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/ansible-language-server/.npm"
 node_ansible_language_server_npm_packages:
   - name: "@ansible/ansible-language-server"
-    version: 26.5.0
+    version: 26.6.0
 node_javascript_npm_packages:
   - name: eslint
-    version: 10.1.0
+    version: 10.5.0
     bins:
       - eslint
   - name: eslint_d
@@ -39,13 +40,13 @@ node_javascript_npm_packages:
     bins:
       - tailwindcss-language-server
   - name: "@vue/language-server"
-    version: 3.3.1
+    version: 3.3.5
     bins:
       - vue-language-server
 node_markdown_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/note-taking-tools/utilities/.npm"
 node_markdown_npm_packages:
   - name: "@mermaid-js/mermaid-cli"
-    version: 11.12.0
+    version: 11.15.0
     bins:
       - mmdc
   - name: mermaid-filter

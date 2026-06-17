@@ -11,6 +11,15 @@
   tags: [setup, "10-10"]
 
 - block:
+    - name: Setup XDG autostart policy
+      ansible.builtin.include_tasks:
+        file: 15-setup-xdg-autostart-policy.{{ user_os }}.yml
+        apply:
+          tags: xdg-autostart
+      when: "user_os in ['archlinux']"
+  tags: [setup, "10-15", xdg-autostart]
+
+- block:
     - name: Setup ansible aur module
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:

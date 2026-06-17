@@ -96,6 +96,15 @@
       ansible.builtin.include_role:
         name: 20-dev-tools
         tasks_from: node
+        apply:
+          tags: "30-100"
+
+    - name: Prepare rust before tools setup
+      ansible.builtin.include_role:
+        name: 20-dev-tools
+        tasks_from: rust
+        apply:
+          tags: "30-100"
 
     - name: Setup markdown tools
       ansible.builtin.include_tasks: "{{ task_file }}"

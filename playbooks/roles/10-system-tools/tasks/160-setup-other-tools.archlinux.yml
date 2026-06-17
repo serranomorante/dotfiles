@@ -1,13 +1,16 @@
 ---
-- name: "[archlinux] Other tools: ensure aur packages"
+- name: "[archlinux] Other tools: ensure packages"
   become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
+  ansible.builtin.package:
     state: present
     name:
-      - ccze
       - yt-dlp
+
+- name: "[archlinux] Other tools: ensure local AUR packages"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages:
+      - ccze
 
 - name: "[archlinux] Other tools: install jdownloader"
   community.general.flatpak:

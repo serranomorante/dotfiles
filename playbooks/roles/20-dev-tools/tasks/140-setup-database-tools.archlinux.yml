@@ -1,9 +1,7 @@
 ---
-- name: "[archlinux] Setup database tools: ensure aur packages"
+- name: "[archlinux] Setup database tools: ensure packages"
   become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
+  ansible.builtin.package:
     state: present
     name: postgresql
 

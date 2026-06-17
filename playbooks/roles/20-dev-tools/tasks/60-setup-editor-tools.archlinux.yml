@@ -5,26 +5,78 @@
     name: inotify-tools
     state: present
 
-- name: "[archlinux] Editor tools: ensure nvim plugins"
-  ansible.builtin.git:
-    repo: https://github.com/{{ item.repo }}
-    dest: ~/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}
-    single_branch: true
-    depth: 100
-    version: "{{ item.version | default('HEAD') }}"
-  async: 1000
-  poll: 0
-  loop: "{{ neovim_plugins }}"
-  register: var_async_clone_nvim_plugins
+- name: "[archlinux] Editor tools: ensure nvim plugin patch marker directory"
+  ansible.builtin.file:
+    path: ~/.local/state/dotfiles/nvim-plugin-patches
+    state: directory
+    mode: "755"
 
-- name: "[archlinux] Editor tools: wait for async clone nvim plugins"
-  ansible.builtin.async_status:
-    jid: "{{ item.ansible_job_id }}"
-  register: var_job_result
-  until: var_job_result is finished
-  retries: 100
-  delay: 10
-  loop: "{{ var_async_clone_nvim_plugins.results }}"
+- name: "[archlinux] Editor tools: check overseer local patch marker"
+  ansible.builtin.stat:
+    path: ~/.local/state/dotfiles/nvim-plugin-patches/overseer-local-patches-v2
+  register: var_overseer_local_patch_marker
+
+- name: "[archlinux] Editor tools: check overseer checkout"
+  ansible.builtin.stat:
+    path: ~/.local/share/nvim/site/pack/plugins/start/overseer/.git
+  register: var_overseer_checkout
+
+- name: "[archlinux] Editor tools: remove stale overseer in-repo patch artifacts"
+  ansible.builtin.file:
+    path: "~/.local/share/nvim/site/pack/plugins/start/overseer/{{ item }}"
+    state: absent
+  loop:
+    - .ansible-open-output-buffer-command-v1
+    - .ansible-terminal-normal-output-v1
+    - .ansible-overseer-local-patches-v2
+    - lua/overseer/strategy/jobstart.lua.orig
+
+- name: "[archlinux] Editor tools: ensure nvim plugins"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: nvim-plugins
+    update_diff_git_repo: "https://github.com/{{ item.repo }}"
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}"
+    update_diff_git_version: "{{ item.version | default('HEAD') }}"
+    update_diff_git_single_branch: true
+    update_diff_git_depth: 100
+  loop: "{{ neovim_plugins | rejectattr('repo', 'equalto', 'stevearc/overseer.nvim') | list }}"
+  register: var_clone_nvim_plugins
+
+- name: "[archlinux] Editor tools: refresh overseer.nvim for local patch contract"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: nvim-plugins
+    update_diff_git_repo: https://github.com/stevearc/overseer.nvim
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/.local/share/nvim/site/pack/plugins/start/overseer"
+    update_diff_git_version: master
+    update_diff_git_single_branch: true
+    update_diff_git_depth: 100
+    update_diff_git_force: true
+  register: var_overseer_nvim_plugin_result
+  when: not var_overseer_local_patch_marker.stat.exists or not var_overseer_checkout.stat.exists
+
+- name: "[archlinux] Editor tools: apply overseer local patches"
+  ansible.posix.patch:
+    src: "{{ item }}"
+    basedir: ~/.local/share/nvim/site/pack/plugins/start/overseer
+    strip: 1
+  loop:
+    - overseer.nvim.patch
+    - overseer-open-output-buffer-command.patch
+    - overseer-terminal-normal-output.patch
+  when: not var_overseer_local_patch_marker.stat.exists or not var_overseer_checkout.stat.exists
+
+- name: "[archlinux] Editor tools: record overseer local patch marker"
+  ansible.builtin.copy:
+    content: "overseer-local-patches-v2\n"
+    dest: ~/.local/state/dotfiles/nvim-plugin-patches/overseer-local-patches-v2
+    mode: "644"
+  when: not var_overseer_local_patch_marker.stat.exists or not var_overseer_checkout.stat.exists
 
 - name: "[archlinux] Editor tools: build lookup of nvim plugin results by repo (init)"
   ansible.builtin.set_fact:
@@ -32,8 +84,12 @@
 
 - name: "[archlinux] Editor tools: build lookup of nvim plugin results by repo"
   ansible.builtin.set_fact:
-    nvim_plugin_result_by_repo: "{{ nvim_plugin_result_by_repo | default({}) | combine({item.item.item.repo: item}) }}"
-  loop: "{{ var_job_result.results }}"
+    nvim_plugin_result_by_repo: "{{ nvim_plugin_result_by_repo | default({}) | combine({item.item.repo: item}) }}"
+  loop: "{{ var_clone_nvim_plugins.results }}"
+
+- name: "[archlinux] Editor tools: add overseer result to nvim plugin lookup"
+  ansible.builtin.set_fact:
+    nvim_plugin_result_by_repo: "{{ nvim_plugin_result_by_repo | combine({'stevearc/overseer.nvim': var_overseer_nvim_plugin_result | default({'changed': false})}) }}"
 
 - name: "[archlinux] Editor tools: remove stale nvim plugins"
   ansible.builtin.file:
@@ -43,15 +99,11 @@
     - coc.nvim
     - plenary
 
-- name: "[archlinux] Editor tools: ensure aur packages"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name:
+- name: "[archlinux] Editor tools: ensure local AUR packages"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages:
       - ctags-git
-  timeout: 0
 
 - name: "[archlinux] Editor tools: create treesitter tempdir"
   ansible.builtin.tempfile:
@@ -79,34 +131,31 @@
     mode: "755"
 
 - name: "[archlinux] Editor tools: clone treesitter parsers"
-  ansible.builtin.git:
-    repo: "{{ item.repo }}"
-    dest: ~/data/repos/{{ item.repo | basename }}
-    version: "{{ item.version | default('HEAD') }}"
-    recursive: false
-    single_branch: true
-  async: 1000
-  poll: 0
-  register: var_async_clone_treesitter_parsers
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: treesitter-parsers
+    update_diff_git_repo: "{{ item.repo }}"
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/{{ item.repo | basename }}"
+    update_diff_git_version: "{{ item.version | default('HEAD') }}"
+    update_diff_git_recursive: false
+    update_diff_git_single_branch: true
+  register: var_clone_treesitter_parsers
   loop: "{{ treesitter_parsers | unique(attribute='repo') | list }}"
 
-- name: "[archlinux] Editor tools: wait for async clone treesitter parsers"
-  ansible.builtin.async_status:
-    jid: "{{ item.ansible_job_id }}"
-  register: treesitter_clone_results
-  until: treesitter_clone_results is finished
-  retries: 100
-  delay: 10
-  loop: "{{ var_async_clone_treesitter_parsers.results }}"
-
 - name: "[archlinux] Editor tools: clone treesitter queries source"
-  ansible.builtin.git:
-    repo: "{{ treesitter_queries_repo.repo }}"
-    dest: ~/data/repos/nvim-treesitter
-    version: "{{ treesitter_queries_repo.version }}"
-    force: true
-    recursive: false
-    single_branch: true
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: treesitter-parsers
+    update_diff_git_repo: "{{ treesitter_queries_repo.repo }}"
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/nvim-treesitter"
+    update_diff_git_version: "{{ treesitter_queries_repo.version }}"
+    update_diff_git_force: true
+    update_diff_git_recursive: false
+    update_diff_git_single_branch: true
 
 - name: "[archlinux] Editor tools: build lookup of treesitter clone results by repo (init)"
   ansible.builtin.set_fact:
@@ -114,8 +163,8 @@
 
 - name: "[archlinux] Editor tools: build lookup of treesitter clone results by repo"
   ansible.builtin.set_fact:
-    treesitter_clone_result_by_repo: "{{ treesitter_clone_result_by_repo | combine({item.item.item.repo: item}) }}"
-  loop: "{{ treesitter_clone_results.results }}"
+    treesitter_clone_result_by_repo: "{{ treesitter_clone_result_by_repo | combine({item.item.repo: item}) }}"
+  loop: "{{ var_clone_treesitter_parsers.results }}"
 
 - name: "[archlinux] Editor tools: remove stale built treesitter parsers after repo updates"
   ansible.builtin.file:
@@ -198,16 +247,6 @@
   args:
     creates: ~/data/intelephense/licence.txt
   ignore_errors: true
-
-- name: "[archlinux] Editor tools: apply patches to nvim plugins"
-  ansible.posix.patch:
-    src: "{{ item.patch }}"
-    basedir: "{{ item.basedir }}"
-    strip: 1
-  loop:
-    - basedir: ~/.local/share/nvim/site/pack/plugins/start/overseer
-      patch: overseer.nvim.patch
-  when: "(nvim_plugin_result_by_repo['stevearc/overseer.nvim'] | default({})).changed | default(false)"
 
 - name: "[archlinux] Editor tools: generate helptags"
   ansible.builtin.command: ~/bin/nvim --headless -c "helptags ALL" -c "quit"

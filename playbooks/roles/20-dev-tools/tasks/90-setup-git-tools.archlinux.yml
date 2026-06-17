@@ -14,11 +14,6 @@
     name: lazygit
 
 - name: "[archlinux] Git tools: ensure lazygit from master"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: latest
-    name: lazygit-git
-    aur_only: true
-  timeout: 0
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages: lazygit-git

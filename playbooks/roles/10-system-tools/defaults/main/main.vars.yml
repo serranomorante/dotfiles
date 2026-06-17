@@ -7,6 +7,7 @@ dotfiles_stow_options:
 dotfiles_stow_ignore_patterns:
   - \.codex
   - \.claude
+  - ^roles$
 dotfiles_stow_wrapper_path: "{{ ansible_facts.env.HOME }}/bin/dotfiles-stow"
 dotfiles_public_stow_packages:
   - dunst
@@ -43,12 +44,14 @@ davinci_resolve_blackmagic_password_keyring:
   folder: creative-tools
   passkey: davinci-resolve-blackmagic-pass
   wallet: kdewallet
-arch_yay_version: HEAD
+arch_aur_local_repo_name: aur-local
+arch_aur_local_repo_path: /var/cache/pacman/aur-local
+arch_aur_local_chroot_path: /var/lib/aurbuild
 arch_nvidia_libs_version: 0.8.5
 arch_mouseless_click_version: 0.4.2
 arch_wine_staging_version: "9.21"
 arch_dwm_version: HEAD
-arch_docker_credential_helpers_version: 0.9.5
+arch_docker_credential_helpers_version: 0.9.8
 wine_path: "{{ ansible_facts.env.HOME }}/data/apps/virt-tools/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64"
 arch_mypaint_version: 2.1.0-alpha-400-g90b36db-2021-05-04_18.41
 arch_stt_vosk_models:

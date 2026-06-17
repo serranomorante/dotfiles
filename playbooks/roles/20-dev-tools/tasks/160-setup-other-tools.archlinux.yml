@@ -1,8 +1,5 @@
 ---
-- name: "[archlinux] Setup other tools: ensure packages"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name: postman-bin
+- name: "[archlinux] Setup other tools: ensure local AUR packages"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages: postman-bin

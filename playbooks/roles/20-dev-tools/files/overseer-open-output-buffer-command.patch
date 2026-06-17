@@ -1,0 +1,49 @@
+diff --git a/lua/overseer/task.lua b/lua/overseer/task.lua
+index e384941..93b8104 100644
+--- a/lua/overseer/task.lua
++++ b/lua/overseer/task.lua
+@@ -360,13 +360,15 @@ function Task:open_output(direction)
+   if not bufnr then
+     return
+   end
+-
++  local function open_buf()
++    vim.cmd.buffer({ args = { tostring(bufnr) } })
++  end
+   if direction == "float" then
+     local winid = layout.open_fullscreen_float(bufnr)
+     util.scroll_to_end(winid)
+   elseif direction == "tab" then
+     vim.cmd.tabnew()
+-    vim.api.nvim_win_set_buf(0, bufnr)
++    open_buf()
+     util.set_term_window_opts()
+     util.scroll_to_end(0)
+   elseif direction == "vertical" then
+@@ -381,7 +383,7 @@ function Task:open_output(direction)
+       end
+     end
+     vim.cmd.vsplit()
+-    vim.api.nvim_win_set_buf(0, bufnr)
++    open_buf()
+     util.set_term_window_opts()
+     util.scroll_to_end(0)
+   elseif direction == "horizontal" then
+@@ -396,7 +398,7 @@ function Task:open_output(direction)
+       end
+     end
+     vim.cmd.split()
+-    vim.api.nvim_win_set_buf(0, bufnr)
++    open_buf()
+     util.set_term_window_opts()
+     util.scroll_to_end(0)
+   else
+@@ -410,7 +412,7 @@ function Task:open_output(direction)
+       end
+     end
+     vim.cmd.normal({ args = { "m'" }, bang = true })
+-    vim.api.nvim_win_set_buf(0, bufnr)
++    open_buf()
+     util.scroll_to_end(0)
+   end
+ end

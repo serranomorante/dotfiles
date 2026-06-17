@@ -2,6 +2,7 @@
 - name: "[debian] Neovim: ensure Neovim - clone"
   ansible.builtin.git:
     repo: https://github.com/neovim/neovim.git
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
     dest: ~/data/repos/neovim
     force: true
     depth: 1

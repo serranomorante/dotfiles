@@ -192,6 +192,22 @@
   tags: ["20-170"]
 
 - block:
+    - name: Prepare volta, npm, node, etc before dependency update setup
+      ansible.builtin.include_role:
+        name: 20-dev-tools
+        tasks_from: node
+
+    - name: Setup dependency update tools
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 175-setup-dependency-update-tools.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["20-175"]
+
+- block:
     - name: Setup whisper.cpp STT backend
       ansible.builtin.include_tasks:
         file: "{{ task_file }}"
@@ -229,3 +245,14 @@
       loop_control:
         loop_var: task_file
   tags: ["20-190"]
+
+- block:
+    - name: Setup embedded hardware tools
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 200-setup-embedded-tools.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["20-200"]

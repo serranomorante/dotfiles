@@ -10,10 +10,11 @@
 - name: "[archlinux] Go language: clone vscode-go"
   ansible.builtin.git:
     repo: https://github.com/golang/vscode-go
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
     dest: ~/data/repos/vscode-go
     depth: 1
     single_branch: true
-    version: release-v{{ vscode_go_version }}
+    version: v{{ vscode_go_version }}
   register: var_clone_vscode_go
 
 - name: "[archlinux] Go language: stat vscode-go build marker"
@@ -51,7 +52,7 @@
 
 - name: "[archlinux] Go language: record vscode-go build marker"
   ansible.builtin.copy:
-    content: "release-v{{ vscode_go_version }}\n"
+    content: "v{{ vscode_go_version }}\n"
     dest: ~/data/repos/vscode-go/extension/.ansible-vscode-go-build
     mode: "644"
   when: var_clone_vscode_go.changed or not var_vscode_go_build_marker.stat.exists

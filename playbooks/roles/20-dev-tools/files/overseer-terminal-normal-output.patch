@@ -1,0 +1,12 @@
+diff --git a/lua/overseer/strategy/jobstart.lua b/lua/overseer/strategy/jobstart.lua
+index 3007710..f94ca1b 100644
+--- a/lua/overseer/strategy/jobstart.lua
++++ b/lua/overseer/strategy/jobstart.lua
+@@ -93,4 +93,5 @@ local function can_create_terminal()
+-  -- Only allow creating a terminal in normal mode when we are not in a floating win.
++  -- Only allow creating a terminal in normal or terminal-normal mode when we are not in a floating win.
+   -- Creating the terminal will exit visual/insert mode and can cause some dialogs to close.
+-  return vim.api.nvim_get_mode().mode == "n" and not util.is_floating_win(0)
++  local mode = vim.api.nvim_get_mode().mode
++  return (mode == "n" or mode == "nt") and not util.is_floating_win(0)
+ end

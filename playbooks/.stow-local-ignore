@@ -1,4 +1,5 @@
 ^/\.gitignore$
+^roles$
 \.mypy_cache.*
 ^/\.claude
 ^/\.codex

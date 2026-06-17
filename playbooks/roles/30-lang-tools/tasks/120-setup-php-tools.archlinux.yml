@@ -5,9 +5,7 @@
 #     `php-legacy` with its own /etc/php-legacy tree and module dir.
 - name: "[archlinux] PHP language: ensure packages"
   become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
+  ansible.builtin.package:
     state: present
     name:
       - php
@@ -26,9 +24,14 @@
       - php-legacy-redis
       - php-legacy-igbinary
       - php-legacy-grpc
-      - php-legacy-xdebug
       - composer
       - xdebug
+
+- name: "[archlinux] PHP language: ensure local AUR packages"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages:
+      - php-legacy-xdebug
 
 - name: "[archlinux] PHP language: enable extensions"
   become: true
@@ -85,13 +88,10 @@
     - /etc/php/conf.d/xdebug.ini
     - /etc/php-legacy/conf.d/xdebug.ini
 
-- name: "[archlinux] PHP language: ensure packages (using aur)"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name:
+- name: "[archlinux] PHP language: ensure local AUR tooling"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages:
       - phpactor
       - vscode-php-debug
       - symfony-cli

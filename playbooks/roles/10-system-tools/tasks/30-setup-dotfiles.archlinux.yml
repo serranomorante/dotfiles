@@ -1,18 +1,16 @@
 ---
-- name: "[archlinux] Dotfiles: ensure aur packages"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name: downgrade
+- name: "[archlinux] Dotfiles: ensure local AUR packages"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages: downgrade
 
-- name: "[archlinux] Dotfiles: ensure stow installed"
+- name: "[archlinux] Dotfiles: ensure package dependencies"
   become: true
   ansible.builtin.package:
     state: present
     name:
       - git
+      - go
       - rsync
       - stow
 
@@ -177,6 +175,14 @@
   when: var_arch_plasma_clipboard_service.stat.exists
   notify: "10-system-tools : handler_restart_plasma_clipboard_service"
 
+- name: "[archlinux] Dotfiles: compile agent session store"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/agent-session-store"
+      - --compile-cache
+  register: var_agent_session_store_compile_cache
+  changed_when: "'compiled' in var_agent_session_store_compile_cache.stdout_lines"
+
 - name: "[archlinux] Dotfiles: ensure system health timer"
   ansible.builtin.systemd_service:
     scope: user
@@ -186,6 +192,82 @@
     state: started
     daemon_reload: true
 
+- name: "[archlinux] Dotfiles: compile system spike watcher"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/system-spike-watch"
+      - --compile-cache
+  register: var_system_spike_watch_compile_cache
+  changed_when: "'compiled' in var_system_spike_watch_compile_cache.stdout_lines"
+  notify: "10-system-tools : handler_restart_system_spike_watch_service"
+
+- name: "[archlinux] Dotfiles: compile browser task snapshot receiver"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/browser-task-snapshotd"
+      - --compile-cache
+  register: var_browser_task_snapshotd_compile_cache
+  changed_when: "'compiled' in var_browser_task_snapshotd_compile_cache.stdout_lines"
+  notify: "10-system-tools : handler_restart_browser_task_snapshotd_service"
+
+- name: "[archlinux] Dotfiles: ensure browser task snapshot receiver"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: browser-task-snapshotd.service
+    enabled: true
+    masked: false
+    state: started
+    daemon_reload: true
+
+- name: "[archlinux] Dotfiles: ensure system spike watcher"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: system-spike-watch.service
+    enabled: true
+    masked: false
+    state: started
+    daemon_reload: true
+
+- name: "[archlinux] Dotfiles: ensure system spike report timer"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: dotfiles-spikes.timer
+    enabled: true
+    masked: false
+    state: started
+    daemon_reload: true
+
+- name: "[archlinux] Dotfiles: stat system spike notifier script"
+  ansible.builtin.stat:
+    path: ~/dotfiles/utilities/bin/system-spike-notify
+    checksum_algorithm: sha256
+  register: var_system_spike_notify_script
+
+- name: "[archlinux] Dotfiles: stat system spike notifier service"
+  ansible.builtin.stat:
+    path: ~/dotfiles/utilities/dot-config/systemd/user/system-spike-notify.service
+    checksum_algorithm: sha256
+  register: var_system_spike_notify_service
+
+- name: "[archlinux] Dotfiles: ensure system spike notifier"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: system-spike-notify.service
+    enabled: true
+    masked: false
+    state: started
+    daemon_reload: true
+
+- name: "[archlinux] Dotfiles: record applied system spike notifier checksum"
+  ansible.builtin.copy:
+    content: "{{ var_system_spike_notify_script.stat.checksum }}\n{{ var_system_spike_notify_service.stat.checksum }}\n"
+    dest: ~/.local/state/dotfiles/system-spike-notify.sha256
+    mode: "644"
+  when:
+    - var_system_spike_notify_script.stat.exists
+    - var_system_spike_notify_service.stat.exists
+  notify: "10-system-tools : handler_restart_system_spike_notify_service"
+
 - name: "[archlinux] Dotfiles: install laptop LAN NetworkManager dispatcher"
   become: true
   ansible.builtin.template:
@@ -194,17 +276,3 @@
     owner: root
     group: root
     mode: "755"
-
-- name: "[archlinux] Dotfiles: stat keyd observer script"
-  ansible.builtin.stat:
-    path: ~/dotfiles/peripherals/bin/keyd-observer
-    checksum_algorithm: sha256
-  register: var_arch_keyd_observer_script
-
-- name: "[archlinux] Dotfiles: record applied keyd observer checksum"
-  ansible.builtin.copy:
-    content: "{{ var_arch_keyd_observer_script.stat.checksum }}\n"
-    dest: ~/.local/state/dotfiles/keyd-observer.sha256
-    mode: "644"
-  when: var_arch_keyd_observer_script.stat.exists
-  notify: "10-system-tools : handler_restart_keyd_observer_service"

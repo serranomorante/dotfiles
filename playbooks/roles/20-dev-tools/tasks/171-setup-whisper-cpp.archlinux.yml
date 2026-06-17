@@ -20,6 +20,7 @@
 - name: "[archlinux] Setup whisper.cpp: clone repo"
   ansible.builtin.git:
     repo: https://github.com/ggml-org/whisper.cpp.git
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
     dest: "{{ whisper_cpp_setup.repo_path }}"
     version: "{{ whisper_cpp_setup.version }}"
     force: true

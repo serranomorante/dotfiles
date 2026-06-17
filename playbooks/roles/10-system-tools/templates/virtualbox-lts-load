@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  printf 'Usage: %s [--load|--status|--unload]\n' "${0##*/}" >&2
+}
+
+kernel=$(uname -r)
+action=${1:---load}
+
+case "$action" in
+  --load | --status | --unload) ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac
+
+case "$kernel" in
+  *rt*)
+    printf 'virtualbox-lts-load: current kernel is %s; boot linux-lts before using VirtualBox.\n' "$kernel" >&2
+    exit 1
+    ;;
+  *-lts) ;;
+  *)
+    printf 'virtualbox-lts-load: current kernel is %s; expected linux-lts.\n' "$kernel" >&2
+    exit 1
+    ;;
+esac
+
+show_status() {
+  lsmod | awk 'NR == 1 || /^vbox/ || /^kvm/'
+}
+
+if [[ "$action" == "--status" ]]; then
+  show_status
+  exit 0
+fi
+
+if (( EUID != 0 )); then
+  exec sudo -- bash "$0" "$@"
+fi
+
+if [[ "$action" == "--unload" ]]; then
+  modprobe -r vboxnetflt vboxnetadp vboxdrv
+  show_status
+  exit 0
+fi
+
+cpu_vendor=$(awk -F ': ' '/vendor_id/ { print $2; exit }' /proc/cpuinfo)
+case "$cpu_vendor" in
+  AuthenticAMD)
+    modprobe kvm_amd
+    ;;
+  GenuineIntel)
+    modprobe kvm_intel
+    ;;
+esac
+
+if ! lsmod | awk '$1 == "vboxdrv" { found = 1 } END { exit !found }'; then
+  if ! modprobe vboxdrv; then
+    module_path=$(modinfo -n vboxdrv)
+    insmod "$module_path"
+  fi
+fi
+
+modprobe vboxnetadp vboxnetflt
+show_status

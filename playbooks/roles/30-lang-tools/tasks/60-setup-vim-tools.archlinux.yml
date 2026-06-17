@@ -1,8 +1,5 @@
 ---
-- name: "[archlinux] Vim language: ensure LSP (using aur)"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name: vim-language-server
+- name: "[archlinux] Vim language: ensure local AUR LSP"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages: vim-language-server

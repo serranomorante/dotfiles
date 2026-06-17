@@ -1,12 +1,16 @@
 ---
 - name: "[archlinux] Setup file manager: clone packages"
-  ansible.builtin.git:
-    repo: "{{ item.repo }}"
-    dest: ~/data/repos/{{ item.name | default(item.repo) | basename }}
-    depth: 10
-    force: true
-    single_branch: true
-    version: "{{ item.version | default('HEAD') }}"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: file-manager-tools
+    update_diff_git_repo: "{{ item.repo }}"
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/{{ item.name | default(item.repo) | basename }}"
+    update_diff_git_depth: 10
+    update_diff_git_force: true
+    update_diff_git_single_branch: true
+    update_diff_git_version: "{{ item.version | default('HEAD') }}"
   loop:
     - { repo: https://github.com/jarun/nnn, version: v5.2 }
   register: var_nnn_repo
@@ -34,19 +38,16 @@
       - dragon
       - libimobiledevice
       - usbmuxd
-
-- name: "[archlinux] Setup file manager: ensure aur deps"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name:
-      - pmount
       - gnome-epub-thumbnailer
+
+- name: "[archlinux] Setup file manager: ensure local AUR deps"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages:
+      - pmount
       - xdg-desktop-portal-termfilechooser-hunkyburrito-git
-  changed_when: true
-  notify: handler_restart_xdg_desktop_portal_termfilechooser
+    aur_local_package_notify:
+      - handler_restart_xdg_desktop_portal_termfilechooser
 
 - name: "[archlinux] Setup file manager: check nnn binary"
   ansible.builtin.stat:

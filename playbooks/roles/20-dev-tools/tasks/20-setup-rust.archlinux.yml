@@ -1,6 +1,12 @@
 ---
+- name: "[archlinux] Setup rust: check rustup"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.cargo/bin/rustup"
+  register: rustup_binary
+
 - name: "[archlinux] Setup rust: ensure rustup"
   ansible.builtin.shell: >
     set -o pipefail &&
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable-x86_64-unknown-linux-gnu
   changed_when: true
+  when: not rustup_binary.stat.exists

@@ -7,11 +7,9 @@
       - meson
       - ninja
 
-- name: "[archlinux] Setup virtualbox: ensure aur packages"
+- name: "[archlinux] Setup virtualbox: ensure packages"
   become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
+  ansible.builtin.package:
     state: present
     name:
       - virtualbox
@@ -26,6 +24,28 @@
     state: absent
     name:
       - virtualbox-host-modules-lts
+
+- name: "[archlinux] Setup virtualbox: mask host module autoload"
+  become: true
+  ansible.builtin.file:
+    src: /dev/null
+    dest: /etc/modules-load.d/virtualbox-host-dkms.conf
+    state: link
+    force: true
+    owner: root
+    group: root
+
+- name: "[archlinux] Setup virtualbox: ensure user bin path"
+  ansible.builtin.file:
+    path: ~/bin
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Setup virtualbox: install linux-lts module loader"
+  ansible.builtin.template:
+    src: virtualbox-lts-load
+    dest: ~/bin/virtualbox-lts-load
+    mode: "755"
 
 # https://wiki.archlinux.org/title/VirtualBox#Accessing_host_USB_devices_in_guest
 - name: "[archlinux] Setup virtualbox: ensure vboxusers group"

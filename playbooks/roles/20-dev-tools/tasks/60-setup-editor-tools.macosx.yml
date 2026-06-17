@@ -10,26 +10,19 @@
     - ~/.config/nvim/pack/
 
 - name: "[macosx] Editor tools: ensure nvim plugins"
-  ansible.builtin.git:
-    repo: https://github.com/{{ item.repo }}
-    dest: ~/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}
-    single_branch: true
-    depth: 10
-    version: "{{ item.version | default('HEAD') }}"
-    force: true
-  async: 1000
-  poll: 0
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: nvim-plugins
+    update_diff_git_repo: "https://github.com/{{ item.repo }}"
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/.local/share/nvim/site/pack/plugins/{{ item.folder }}/{{ item.name | default(item.repo) | basename }}"
+    update_diff_git_version: "{{ item.version | default('HEAD') }}"
+    update_diff_git_single_branch: true
+    update_diff_git_depth: 10
+    update_diff_git_force: true
   loop: "{{ neovim_plugins }}"
-  register: var_async_clone_nvim_plugins
-
-- name: "[macosx] Editor tools: wait for async clone nvim plugins"
-  ansible.builtin.async_status:
-    jid: "{{ item.ansible_job_id }}"
-  register: var_job_result
-  until: var_job_result is finished
-  retries: 100
-  delay: 10
-  loop: "{{ var_async_clone_nvim_plugins.results }}"
+  register: var_clone_nvim_plugins
 
 - name: "[macosx] Editor tools: build lookup of nvim plugin results by repo (init)"
   ansible.builtin.set_fact:
@@ -37,8 +30,8 @@
 
 - name: "[macosx] Editor tools: build lookup of nvim plugin results by repo"
   ansible.builtin.set_fact:
-    nvim_plugin_result_by_repo: "{{ nvim_plugin_result_by_repo | default({}) | combine({item.item.item.repo: item}) }}"
-  loop: "{{ var_job_result.results }}"
+    nvim_plugin_result_by_repo: "{{ nvim_plugin_result_by_repo | default({}) | combine({item.item.repo: item}) }}"
+  loop: "{{ var_clone_nvim_plugins.results }}"
 
 - name: "[macosx] Editor tools: remove stale nvim plugins"
   ansible.builtin.file:

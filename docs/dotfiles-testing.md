@@ -27,6 +27,8 @@ The other stable runner contracts are:
 
 Neovim has two useful test layers. Isolated behavior tests should use `nvim --headless -u NONE` and add only the repo runtimepath they need. Integrated Neovim tests should load the active configuration through temporary XDG directories and read-only host allowlists: symlink `/home/aaaa/.config/nvim` into the temporary `XDG_CONFIG_HOME`, symlink plugin data such as `/home/aaaa/.local/share/nvim/site` into the temporary `XDG_DATA_HOME`, and keep state/cache writes inside `DOTFILES_TEST_TMP`. This catches plugin, parser, LSP, ftplugin, keymap, and runtimepath conflicts without writing to the host configuration.
 
+Neovim regressions that depend on real Terminal-mode state or TUI input delivery, such as chained terminal-backed pickers, should include a pseudo-TTY test with `script(1)` or an equivalent PTY driver. Headless tests may still guard internal contracts, but they are not sufficient when the failure is whether a visible terminal buffer actually receives typed keys.
+
 Fast Neovim local-state tests should prefer headless checks for concrete option/path behavior, such as cwd-keyed `shadafile`, cwd-keyed `undodir`, broad-cwd persistence disablement, and buffer-local persistent undo suppression for secret-looking paths. These tests should not launch the full UI or require real workstation cache/state directories.
 
 Tests should be hermetic by default and should prefer behavior checks over load-only checks for features where regressions matter. Load checks are still useful as cheap smoke tests, especially for Neovim modules, shell syntax, systemd unit verification, and formatter/linter checks.
