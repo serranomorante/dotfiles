@@ -1,0 +1,82 @@
+#!/bin/sh
+# Purpose: Talk to sibling Claude/Codex agent overseer tasks under the running Neovim socket.
+# Usage: claude-agents list
+#        claude-agents status [ref]
+#        claude-agents read <ref> [lines]
+#        claude-agents send <ref> <text...>      # types text into the input box (no submit)
+#        claude-agents send-nl <ref> <text...>   # same, then a '\r' = NEWLINE in the box (NOT a submit)
+#        claude-agents open <session-id...>      # open existing session(s) as overseer task(s) by id
+#        claude-agents new [task to run...]       # spawn a NEW Claude session as a task (reuses <leader>an); optional initial task
+# Notes: <ref> = session-id, session-id prefix, overseer numeric id, or unique name substring.
+#        The Neovim server socket is read from $CLAUDE_AGENTS_NVIM, else $NVIM (set by Neovim
+#        inside every terminal it owns). Output of `list`/`status`/`send` is JSON; `read` is text.
+
+set -eu
+
+prog=${0##*/}
+mod="serranomorante.plugins.jobs.claude_agents"
+sock=${CLAUDE_AGENTS_NVIM:-${NVIM:-}}
+
+die() {
+    printf '%s: %s\n' "$prog" "$*" >&2
+    exit 1
+}
+
+[ -n "$sock" ] || die "no Neovim socket (set \$NVIM or \$CLAUDE_AGENTS_NVIM)"
+command -v nvim >/dev/null 2>&1 || die "nvim not found in PATH"
+
+# remote <module-method-call>: evaluate `<mod>.<call>` in the server and print the result.
+# Always reloads the module from disk (clears package.loaded) so the running Neovim
+# picks up edits without a restart. Self-healing: if the module is not in the runtime
+# loader index yet (file added after startup), reset the loader once and retry.
+remote() {
+    expr="(function() package.loaded['$mod']=nil local ok,m=pcall(require,'$mod') if not ok then pcall(function() if vim.loader then vim.loader.reset() end end) m=require('$mod') end return m.$1 end)()"
+    nvim --server "$sock" --remote-expr "luaeval(\"$expr\")"
+}
+
+b64() {
+    printf '%s' "$1" | base64 | tr -d '\n'
+}
+
+cmd=${1:-list}
+[ $# -gt 0 ] && shift || true
+
+case "$cmd" in
+list)
+    remote "list_json()"
+    ;;
+status)
+    remote "status('${1:-}')"
+    ;;
+read)
+    [ $# -ge 1 ] || die "usage: $prog read <ref> [lines]"
+    ref=$1
+    lines=${2:-80}
+    remote "read('$ref', $lines)"
+    ;;
+send | send-nl)
+    [ $# -ge 2 ] || die "usage: $prog $cmd <ref> <text...>"
+    ref=$1
+    shift
+    enc=$(b64 "$*")
+    nl=false
+    [ "$cmd" = "send-nl" ] && nl=true
+    remote "send('$ref', '$enc', $nl)"
+    ;;
+open)
+    [ $# -ge 1 ] || die "usage: $prog open <session-id> [session-id...]"
+    ids=$(printf '%s,' "$@" | sed 's/,$//')
+    remote "open('$ids')"
+    ;;
+new)
+    enc=""
+    [ $# -ge 1 ] && enc=$(b64 "$*")
+    remote "new('$enc')"
+    ;;
+-h | --help | help)
+    sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+    ;;
+*)
+    die "unknown subcommand: $cmd (list|status|read|send|send-nl|open|new)"
+    ;;
+esac

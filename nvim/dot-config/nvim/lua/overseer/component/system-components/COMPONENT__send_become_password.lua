@@ -45,7 +45,7 @@ local comp = {
         if not self.output_tail:find(PROMPT, 1, true) then return end
 
         self.sent = true
-        utils.schedule_open_overseer_task_float(task)
+        utils.schedule_open_overseer_task_output(task)
 
         local job_id = task_job_id(task)
         if not job_id then

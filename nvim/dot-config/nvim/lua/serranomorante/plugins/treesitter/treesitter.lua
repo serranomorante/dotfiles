@@ -1,3 +1,5 @@
+local utils = require("serranomorante.utils")
+
 local M = {}
 
 local function keys()
@@ -155,12 +157,12 @@ local function keys()
 
   --- REPEAT MOVE
   vim.keymap.set({ "n", "x", "o" }, ";", function()
-    vim.cmd([[normal! ]] .. "m`")
+    utils.mark_cur_pos()
     ts_repeat_move.repeat_last_move()
   end, { desc = "Treesitter: Repeat last move" })
 
   vim.keymap.set({ "n", "x", "o" }, ",", function()
-    vim.cmd([[normal! ]] .. "m`")
+    utils.mark_cur_pos()
     ts_repeat_move.repeat_last_move_opposite()
   end, { desc = "Treesitter: Repeat last move opposite" })
 

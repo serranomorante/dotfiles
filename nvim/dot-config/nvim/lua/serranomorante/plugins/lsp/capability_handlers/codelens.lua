@@ -52,7 +52,7 @@ return {
   end,
 
   detach = function(_, bufnr)
-    vim.api.nvim_buf_del_keymap(bufnr, "n", "<leader>uL")
-    vim.api.nvim_buf_del_keymap(bufnr, "n", "<leader>ll")
+    pcall(vim.api.nvim_buf_del_keymap, bufnr, "n", "<leader>uL")
+    pcall(vim.api.nvim_buf_del_keymap, bufnr, "n", "<leader>ll")
   end,
 }

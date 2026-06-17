@@ -39,11 +39,11 @@ return {
         self.parser = parser.new(parser_defn)
       end,
       on_output = function(self, task, data)
-        ---Open float when prompted for passphrase
+        ---Open task output when prompted for passphrase
         if vim.islist(data) and data ~= nil then
           for _, line in ipairs(data) do
             local is_passphrase_prompt = string.match(line, "Passphrase:")
-            if is_passphrase_prompt ~= nil then utils.schedule_open_overseer_task_float(task) end
+            if is_passphrase_prompt ~= nil then utils.schedule_open_overseer_task_output(task) end
           end
         end
       end,
@@ -57,8 +57,7 @@ return {
 
         ---Close the terminal to prevent showing decrypted content on the screen
         local winbuf = vim.api.nvim_win_get_buf(0)
-        local buftype = vim.api.nvim_get_option_value("buftype", { buf = winbuf })
-        if buftype == "terminal" then vim.api.nvim_win_close(0, true) end
+        if utils.is_terminal_buffer(winbuf) then vim.api.nvim_win_close(0, true) end
         local opts = { [params.plugin_opt_name] = decrypted_content[params.parser_capture_group_name] }
         require("serranomorante.plugins." .. params.plugin).config(nil, opts)
       end,

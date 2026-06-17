@@ -34,6 +34,14 @@ local function keys()
   })
 end
 
+---@param opts? conform.FormatOpts
+---@return integer
+local function format_bufnr(opts) return opts and opts.bufnr or vim.api.nvim_get_current_buf() end
+
+---@param bufnr integer
+---@return boolean
+local function can_format(bufnr) return vim.bo[bufnr].modifiable end
+
 ---@param fmts string[]
 ---@param opts conform.DefaultFiletypeFormatOpts?
 ---@return conform.FiletypeFormatter
@@ -83,6 +91,11 @@ function M.config()
   ---@return boolean True if any formatters were attempted
   local function format_patch(opts, callback)
     _ = callback
+    local bufnr = format_bufnr(opts)
+    if not can_format(bufnr) then
+      vim.api.nvim_echo({ { "[Conform]: buffer is not modifiable.", "DiagnosticWarn" } }, false, {})
+      return false
+    end
     vim.api.nvim_echo({ { "[Conform]: formatting...", "DiagnosticInfo" } }, false, {})
     return format(opts, function(err)
       ---https://github.com/stevearc/conform.nvim/issues/250#issuecomment-1868544121

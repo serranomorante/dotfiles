@@ -98,6 +98,40 @@ M.GLOBAL_MARKS = {
   ["'Z"] = nil,
 }
 
+M.GLOBAL_MARKS_BY_CWD = {
+  [vim.env.HOME .. "/data/notes/foam"] = {
+    ["'A"] = "todos:knowing", -- like the Nicolas Cage movie
+    ["'B"] = "todos:personal",
+    ["'C"] = "system:health",
+    ["'D"] = "system:spikes",
+    ["'E"] = "agent:runs",
+    ["'F"] = "todos:finance",
+    ["'G"] = "todos:events",
+    ["'H"] = "todos:ai-autotrigger",
+  },
+}
+
+local function normalize_path(path)
+  if not path or path == "" then return "" end
+  local expanded = vim.fn.expand(path)
+  local real = (vim.uv or vim.loop).fs_realpath(expanded)
+  local normalized = real or vim.fn.fnamemodify(expanded, ":p")
+  normalized = normalized:gsub("/+$", "")
+  return normalized == "" and "/" or normalized
+end
+
+---@param cwd? string
+---@return table<string, string>
+function M.global_marks_for_cwd(cwd)
+  local normalized_cwd = normalize_path(cwd or vim.fn.getcwd())
+
+  for mark_cwd, marks in pairs(M.GLOBAL_MARKS_BY_CWD) do
+    if normalize_path(mark_cwd) == normalized_cwd then return marks end
+  end
+
+  return M.GLOBAL_MARKS
+end
+
 M.KEYRINGS = {
   anthropic = {
     folder = "dev-tools",

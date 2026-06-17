@@ -42,6 +42,23 @@ local function reminder_to_run(reminder, argv)
   return reminder .. " RUN " .. table.concat(command, " ")
 end
 
+local function agenda_metadata_comment(metadata, run)
+  local fields = {}
+
+  if run and run[1] then table.insert(fields, "run=" .. run[1]) end
+
+  if metadata.tags then
+    local tags = {}
+    for tag in metadata.tags:gmatch("#[a-z][a-z0-9-]*") do
+      table.insert(tags, tag)
+    end
+    if #tags > 0 then table.insert(fields, "tags=" .. table.concat(tags, ",")) end
+  end
+
+  if #fields == 0 then return nil end
+  return "# remind-agenda-meta " .. table.concat(fields, " ")
+end
+
 local function markdown_files()
   local output = vim.fn.systemlist({ "rg", "--files", "--glob", "*.md", NOTES_DIR })
   if vim.v.shell_error ~= 0 then return {} end
@@ -78,8 +95,13 @@ local function reminder_items_for_block(title, block, metadata)
     elseif line:match("^%s*$") then
       -- skip blank lines in remind fences
     elseif line:match("^%s*REM%s") then
+      local metadata_comment = agenda_metadata_comment(metadata, run)
+      if metadata_comment then table.insert(items, metadata_comment) end
       table.insert(items, reminder_to_msg(line, title))
-      if run then table.insert(items, reminder_to_run(line, run)) end
+      if run then
+        if metadata_comment then table.insert(items, metadata_comment) end
+        table.insert(items, reminder_to_run(line, run))
+      end
     else
       table.insert(items, line)
     end
@@ -106,6 +128,36 @@ local function has_remind_dir()
   end
 
   return true
+end
+
+local function validate_generated_reminders()
+  local once_arg = "-i$OnceFile=\"" .. vim.env.HOME .. "/.local/state/remind/oncefile\""
+  local cmd = table.concat({
+    "remind",
+    shell_quote(once_arg),
+    "-q",
+    "-r",
+    "-n",
+    shell_quote(REMIND_DIR),
+    "2>&1",
+    ">/dev/null",
+  }, " ")
+
+  local output = vim.fn.system(cmd)
+  local status = vim.v.shell_error
+  output = vim.iter(vim.split(output, "\n", { plain = true }))
+    :filter(function(line) return not line:match(": RUN disabled$") end)
+    :totable()
+  output = vim.trim(table.concat(output, "\n"))
+
+  if output == "" then
+    if status == 0 then return end
+    output = "Remind validation failed with exit code " .. status
+  end
+
+  if status ~= 0 then error(output, 0) end
+
+  vim.notify(output, vim.log.levels.WARN)
 end
 
 local function remind_update()
@@ -143,6 +195,7 @@ local function remind_update()
   end
 
   utils.write_file(GENERATED_PATH, vim.fn.join(items, "\n"))
+  validate_generated_reminders()
 end
 
 local function remind(args)

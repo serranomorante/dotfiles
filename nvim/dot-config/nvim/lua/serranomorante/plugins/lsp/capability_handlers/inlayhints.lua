@@ -25,6 +25,6 @@ return {
 
   detach = function(_, bufnr)
     vim.lsp.inlay_hint.enable(false)
-    vim.api.nvim_buf_del_keymap(bufnr, "n", "<leader>uH")
+    pcall(vim.api.nvim_buf_del_keymap, bufnr, "n", "<leader>uH")
   end,
 }

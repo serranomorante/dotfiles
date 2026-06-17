@@ -27,10 +27,10 @@ local function open_directory_mark_with_overseer(dir)
     params = { startdir = dir },
   }, function(task)
     if not task then return end
-    utils.force_very_fullscreen_float(task)
     task:subscribe("on_output", utils.dispose_on_window_close)
     task:subscribe("on_complete", utils.close_window_on_exit_0)
     task:start()
+    utils.schedule_open_overseer_task_output(task)
   end)
 end
 
@@ -65,6 +65,86 @@ vim.keymap.set("x", "K", ":m '<-2<CR>gv=gv", { desc = "Move lines up" })
 vim.keymap.set("x", "H", "<gv", { desc = "Indent lines left" })
 vim.keymap.set("x", "L", ">gv", { desc = "Indent lines right" })
 
+local VISUAL_SEARCH_PREFIX = "\\%V"
+local visual_search_state = nil
+
+local function prepare_visual_search_state()
+  local pattern = vim.fn.getreg("/")
+  if pattern == "" then return nil end
+
+  local visual_pattern = pattern
+  local restore_pattern = false
+  if not vim.startswith(pattern, VISUAL_SEARCH_PREFIX) then
+    visual_pattern = VISUAL_SEARCH_PREFIX .. pattern
+    restore_pattern = true
+  end
+
+  visual_search_state = {
+    pattern = pattern,
+    restore_pattern = restore_pattern,
+    visual_pattern = visual_pattern,
+  }
+  return visual_search_state
+end
+
+local function visual_search_repeat(direction, state)
+  state = state or visual_search_state
+  if not state then return false end
+  if vim.fn.getreg("/") ~= state.pattern and vim.fn.getreg("/") ~= state.visual_pattern then
+    visual_search_state = nil
+    return false
+  end
+
+  local count = math.max(vim.v.count, 1)
+  local forward = vim.v.searchforward == 1
+  local visual_pattern = state.visual_pattern
+  vim.fn.setreg("/", visual_pattern)
+
+  local backwards = (direction == "n" and not forward) or (direction == "N" and forward)
+  local flags = backwards and "b" or ""
+  for _ = 1, count do
+    if vim.fn.search(visual_pattern, flags) == 0 then break end
+  end
+
+  if state.restore_pattern and vim.fn.getreg("/") == visual_pattern then vim.fn.setreg("/", state.pattern) end
+  return true
+end
+
+local function normal_search_repeat(direction)
+  local count = vim.v.count > 0 and tostring(vim.v.count) or ""
+  local ok, err = pcall(vim.cmd.normal, { count .. direction, bang = true })
+  if ok then return end
+
+  local msg = tostring(err):match("Vim:(E%d+: .*)") or tostring(err):match("(E%d+: .*)") or tostring(err)
+  vim.v.errmsg = msg
+  vim.api.nvim_echo({ { msg, "ErrorMsg" } }, true, {})
+end
+
+vim.keymap.set("x", "/", "/" .. VISUAL_SEARCH_PREFIX, { desc = "Search forward inside visual selection" })
+vim.keymap.set("x", "?", "?" .. VISUAL_SEARCH_PREFIX, { desc = "Search backward inside visual selection" })
+vim.keymap.set("x", "n", function()
+  local state = prepare_visual_search_state()
+  vim.cmd("normal! \27")
+  visual_search_repeat("n", state)
+end, {
+  desc = "Next search match inside visual selection",
+})
+vim.keymap.set("x", "N", function()
+  local state = prepare_visual_search_state()
+  vim.cmd("normal! \27")
+  visual_search_repeat("N", state)
+end, {
+  desc = "Previous search match inside visual selection",
+})
+vim.keymap.set("n", "n", function()
+  if visual_search_repeat("n") then return end
+  normal_search_repeat("n")
+end, { desc = "Next search match" })
+vim.keymap.set("n", "N", function()
+  if visual_search_repeat("N") then return end
+  normal_search_repeat("N")
+end, { desc = "Previous search match" })
+
 -- Replace the highlighted word
 vim.keymap.set(
   "n",
@@ -88,7 +168,10 @@ end, { desc = "Zen: Focus split on new tab" })
 vim.keymap.set("n", "<t", "<cmd>tabmove -1<CR>", { desc = "Move tab left" })
 vim.keymap.set("n", ">t", "<cmd>tabmove +1<CR>", { desc = "Move tab right" })
 
-vim.keymap.set("n", "<ESC>", "<cmd>noh<CR><ESC>", { desc = "Escape and clear hlsearch" })
+vim.keymap.set("n", "<ESC>", function()
+  visual_search_state = nil
+  return "<cmd>noh<CR><ESC>"
+end, { desc = "Escape and clear hlsearch", expr = true })
 
 vim.keymap.set("n", "<leader>zl", function()
   local winid = vim.api.nvim_get_current_win()
@@ -124,6 +207,7 @@ vim.keymap.set("n", "<C-S-u>", "50zh", { desc = "Scroll left horizontally +50" }
 vim.keymap.set("n", "z.", "<cmd>normal! zszH<CR>", { desc = "Horizontally center cursor position" })
 
 vim.keymap.set({ "n", "x", "o" }, "'", "`", { desc = "Make single quote act like backtick" })
+vim.keymap.set({ "n", "x", "o" }, "''", "``zz", { desc = "Go to `` mark and center view" })
 
 local FIND_EX_CMD = ":Find ''" .. constants.POSITION_CURSOR_BETWEEN_QUOTES
 vim.keymap.set("n", "<leader>ff", FIND_EX_CMD, { desc = "Find files" })
@@ -158,6 +242,11 @@ vim.keymap.set({ "x", "v" }, "<leader>fv", function()
   local region = vim.fn.getregion(start_pos, end_pos, { type = mode })
   return (":<C-u>Grep '%s'"):format(region[1])
 end, { desc = "Find visual selection", expr = true })
+vim.keymap.set({ "x", "v" }, "<leader>fV", function()
+  local start_pos, end_pos, mode = vim.fn.getpos("v"), vim.fn.getpos("."), vim.fn.mode()
+  local region = vim.fn.getregion(start_pos, end_pos, { type = mode })
+  return (":<C-u>Grep '%s' ~/dotfiles"):format(region[1])
+end, { desc = "Find visual selection in dotfiles", expr = true })
 
 local function redir_cmd()
   local position_cursor_start = "<HOME>"
@@ -175,7 +264,7 @@ end
 vim.keymap.set({ "n", "x" }, "<leader>re", redir_cmd, { desc = "Prepare redir command", expr = true })
 
 vim.keymap.set({ "n", "x" }, "<leader>rm", function()
-  utils.new_scratch_buffer({ filetype = "markdown" })
+  vim.cmd("enew | setlocal ft=markdown ff=unix")
   local output = utils.cmd({ "remind-agenda", "--next-all", "--markdown" })
   if not output then return end
   vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(output:gsub("\n$", ""), "\n", { plain = true }))
@@ -186,7 +275,7 @@ vim.keymap.set("t", "<C-q>", function()
   return "<cmd>close<CR>"
 end, { desc = "Close terminal window", expr = true, nowait = true, silent = true })
 
-vim.keymap.set("t", "<C-g>", "<C-\\><C-n>", {
+vim.keymap.set("t", "<C-g>", "<C-\\><C-n><Cmd>stopinsert<CR>", {
   desc = "Exit terminal mode",
   nowait = true,
   silent = true,
@@ -248,6 +337,7 @@ vim.keymap.set("n", "<leader>tb", function()
 end, { desc = "Reload colors/default.lua" })
 
 vim.keymap.set("n", "<A-'>", function()
+  local global_marks = constants.global_marks_for_cwd()
   local marks = vim.tbl_filter(
     ---@param item vim.fn.getmarklist.ret.item
     function(item) return not vim.list_contains(constants.NUMBERED_MARKS, item.mark) end,
@@ -256,18 +346,43 @@ vim.keymap.set("n", "<A-'>", function()
   vim.ui.select(marks, {
     prompt = "Go to mark",
     ---@param item vim.fn.getmarklist.ret.item
-    format_item = function(item)
-      return string.format("%s | %s", constants.GLOBAL_MARKS[item.mark] or item.mark, item.file)
-    end,
+    format_item = function(item) return string.format("%s | %s", global_marks[item.mark] or item.mark, item.file) end,
   }, function(choice)
+    if not choice then return end
     vim.cmd.normal({ "`" .. choice.mark:sub(2), bang = true })
     vim.cmd.normal({ "zz", bang = true })
-    vim.notify(string.format("[marks] go to mark: %s", constants.GLOBAL_MARKS[choice.mark] or choice.mark))
+    vim.notify(string.format("[marks] go to mark: %s", global_marks[choice.mark] or choice.mark))
   end)
-end, { desc = "[marks] Go to mark" })
+end, { desc = "[marks] Go to custom mark" })
+
+vim.keymap.set("n", "<leader>m'", function()
+  local source_win = vim.api.nvim_get_current_win()
+  local source_buf = vim.api.nvim_get_current_buf()
+  vim.ui.select(vim.fn.getmarklist(source_buf), {
+    prompt = "Buffer marks",
+    ---@param item vim.fn.getmarklist.ret.item
+    format_item = function(item)
+      local line = vim.api.nvim_buf_get_lines(source_buf, item.pos[2] - 1, item.pos[2], false)[1] or ""
+      return string.format("%s %d:%d | %s", item.mark, item.pos[2], item.pos[3], line)
+    end,
+  }, function(choice)
+    if not choice then return end
+    if vim.api.nvim_win_is_valid(source_win) then vim.api.nvim_set_current_win(source_win) end
+    if vim.api.nvim_get_current_buf() ~= source_buf and vim.api.nvim_buf_is_valid(source_buf) then
+      vim.api.nvim_set_current_buf(source_buf)
+    end
+    vim.api.nvim_win_set_cursor(0, { choice.pos[2], math.max(choice.pos[3] - 1, 0) })
+    vim.cmd.normal({ "zz", bang = true })
+    vim.notify(string.format("[marks] go to buffer mark: %s", choice.mark))
+  end)
+end, { desc = "[marks] Go to buffer mark" })
 
 vim.keymap.set("n", "<A-l>", function()
-  vim.ui.select(vim.tbl_keys(constants.GLOBAL_MARKS), {
+  local global_marks = constants.global_marks_for_cwd()
+  local global_mark_keys = vim.tbl_keys(global_marks)
+  table.sort(global_mark_keys)
+
+  vim.ui.select(global_mark_keys, {
     prompt = "Set a mark",
     ---@param item string
     format_item = function(item)
@@ -276,13 +391,14 @@ vim.keymap.set("n", "<A-l>", function()
         function(mark) return mark.mark == item end,
         vim.fn.getmarklist()
       )) > 0
-      return string.format("%s %s", has_marks and " " or "", constants.GLOBAL_MARKS[item] or item)
+      return string.format("%s %s", has_marks and " " or "", global_marks[item] or item)
     end,
   }, function(choice)
+    if not choice then return end
     vim.cmd.normal({ "m" .. choice:sub(2), bang = true })
-    vim.notify(string.format("[marks] new mark: %s", constants.GLOBAL_MARKS[choice] or choice))
+    vim.notify(string.format("[marks] new mark: %s", global_marks[choice] or choice))
   end)
-end, { desc = "[marks] set a mark" })
+end, { desc = "[marks] set a custom mark" })
 
 vim.keymap.set("n", "'0", function()
   for _, m in ipairs(vim.fn.getmarklist()) do
@@ -310,6 +426,8 @@ vim.keymap.set("n", "t^", function()
   local prev_tab = vim.fn.tabpagenr("#")
   if prev_tab > 0 then vim.cmd("tabn " .. prev_tab) end
 end, { desc = "Toggle between current and previous tab" })
+
+vim.keymap.set("n", "t$", "<cmd>tablast<CR>", { desc = "Go to last tab" })
 
 vim.keymap.set({ "i", "c" }, "<C-f>", function()
   if vim.fn.getcmdpos() > #vim.fn.getcmdline() then

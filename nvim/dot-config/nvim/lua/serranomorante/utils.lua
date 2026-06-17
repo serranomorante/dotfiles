@@ -20,6 +20,9 @@ function M.nnn_search_in_dir(search_type, filepath)
   end, 200)
 end
 
+---Mark current position so you can go back by pressing ``
+function M.mark_cur_pos() return vim.cmd([[normal! ]] .. "m`") end
+
 ---Check if a plugin has been loaded
 ---@param plugin string # The name of the plugin. It should be the same as the one you use in `require(plugin name)`
 ---@return boolean available # Whether the plugin is available
@@ -81,6 +84,7 @@ local function lua_pattern_escape(value) return (value:gsub("([^%w])", "%%%1")) 
 
 local FOAM_TODO_EXCLUDED_PATHS = {
   ["docs/agents/remind-usage.md"] = true,
+  ["docs/agents/ai-autotrigger.md"] = true,
 }
 local FOAM_TODO_EXCLUDED_PREFIXES = {
   "misc/agent-runs/",
@@ -990,6 +994,37 @@ local function wait_for_fzf_socket(fzf_sock, callback, attempts)
   vim.defer_fn(function() wait_for_fzf_socket(fzf_sock, callback, attempts - 1) end, 50)
 end
 
+local function stop_terminal_mode()
+  pcall(vim.cmd.stopinsert)
+  if vim.api.nvim_get_mode().mode ~= "t" then return end
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true), "x", false)
+  pcall(vim.cmd.stopinsert)
+end
+
+local fzf_terminal_insert_queued = {}
+
+local function start_fzf_terminal_insert(bufnr, winid)
+  if not vim.api.nvim_buf_is_valid(bufnr) then return end
+  if not M.is_terminal_buffer(bufnr) then return end
+  if vim.api.nvim_get_option_value("filetype", { buf = bufnr }) ~= "fzf" then return end
+  if winid and vim.api.nvim_win_is_valid(winid) then pcall(vim.api.nvim_set_current_win, winid) end
+  if vim.api.nvim_get_current_buf() ~= bufnr then return end
+
+  if vim.api.nvim_get_mode().mode == "t" then
+    fzf_terminal_insert_queued[bufnr] = nil
+    return
+  end
+  if fzf_terminal_insert_queued[bufnr] then return end
+
+  fzf_terminal_insert_queued[bufnr] = true
+  vim.api.nvim_input("i")
+  vim.schedule(function() fzf_terminal_insert_queued[bufnr] = nil end)
+end
+
+local function schedule_fzf_terminal_insert(bufnr, winid)
+  vim.schedule(function() start_fzf_terminal_insert(bufnr, winid) end)
+end
+
 ---https://elanmed.dev/blog/native-fzf-in-neovim
 ---@param opts FzfOpts
 function M.fzf(opts)
@@ -1002,15 +1037,19 @@ function M.fzf(opts)
   local editor_height = vim.o.lines - 1
   local border_height = 2
 
+  local source_winid = vim.api.nvim_get_current_win()
+  local function restore_source_window()
+    if vim.api.nvim_win_is_valid(source_winid) then pcall(vim.api.nvim_set_current_win, source_winid) end
+  end
+
   local listed = false
   local scratch = true
   local term_bufnr = vim.api.nvim_create_buf(listed, scratch)
-  vim.api.nvim_create_autocmd("TermOpen", {
+  vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = term_bufnr })
+  local term_winnr
+  vim.api.nvim_create_autocmd({ "TermOpen", "BufEnter", "WinEnter" }, {
     buffer = term_bufnr,
-    callback = function(args)
-      if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) ~= "terminal" then return end
-      vim.cmd.startinsert()
-    end,
+    callback = function(args) schedule_fzf_terminal_insert(args.buf, term_winnr) end,
   })
   vim.api.nvim_set_option_value("filetype", "fzf", { buf = term_bufnr })
   vim.keymap.set(
@@ -1019,7 +1058,7 @@ function M.fzf(opts)
     "<CR>",
     { desc = "Alternative to pressing enter on fuzzy picker", nowait = true, silent = true, buffer = term_bufnr }
   )
-  local term_winnr = vim.api.nvim_open_win(term_bufnr, true, {
+  term_winnr = vim.api.nvim_open_win(term_bufnr, true, {
     relative = "editor",
     row = editor_height,
     col = 0,
@@ -1063,22 +1102,31 @@ function M.fzf(opts)
         pcall(vim.fn.jobstop, refresh_cancel)
       end
 
+      stop_terminal_mode()
       if vim.api.nvim_win_is_valid(term_winnr) then pcall(vim.api.nvim_win_close, term_winnr, true) end
+      if vim.api.nvim_buf_is_valid(term_bufnr) then pcall(vim.api.nvim_buf_delete, term_bufnr, { force = true }) end
+      restore_source_window()
+      stop_terminal_mode()
       local temp_content = vim.fn.readfile(tempname)
-      if #temp_content > 0 then
-        if opts.sink then
-          opts.sink(temp_content[1])
-        elseif opts.sinklist then
-          opts.sinklist(temp_content)
-        end
-      end
 
       vim.fn.delete(tempname)
       vim.fn.delete(source_temp)
       if fzf_sock then vim.fn.delete(fzf_sock) end
+
+      if #temp_content > 0 then
+        vim.schedule(function()
+          restore_source_window()
+          if opts.sink then
+            opts.sink(temp_content[1])
+          elseif opts.sinklist then
+            opts.sinklist(temp_content)
+          end
+        end)
+      end
     end,
   })
 
+  if job_id > 0 then schedule_fzf_terminal_insert(term_bufnr, term_winnr) end
   if job_id <= 0 or not opts.refresh or not fzf_sock then return end
 
   refresh_cancel = opts.refresh(function(next_source)
@@ -1118,13 +1166,6 @@ function M.select(items, opts, on_choice)
   })
 end
 
----@param opts table?
-function M.new_scratch_buffer(opts)
-  opts = opts or {}
-  M.feedkeys(":tabnew<CR>")
-  if opts.filetype then M.feedkeys(string.format(":set filetype=%s<CR>", opts.filetype)) end
-end
-
 ---Get a uuid
 ---@param opts table?
 function M.get_uuid(opts)
@@ -1136,10 +1177,7 @@ end
 ---@param task overseer.Task
 ---@param status overseer.Status Can be CANCELED, FAILURE, or SUCCESS
 function M.close_window_on_exit_0(task, status)
-  if
-    status == require("overseer.constants").STATUS.SUCCESS
-    and vim.api.nvim_get_option_value("buftype", { buf = task:get_bufnr() }) == "terminal"
-  then
+  if status == require("overseer.constants").STATUS.SUCCESS and M.is_terminal_buffer(task:get_bufnr()) then
     vim.api.nvim_win_close(0, true)
   end
 end
@@ -1149,11 +1187,131 @@ local function is_preview(buf)
   return winid ~= -1 and vim.api.nvim_win_get_config(winid).row == 1
 end
 
----@param bufnr integer?
+---@param bufnr integer? If leaved empty, uses 0 by default
 ---@return boolean
-local function is_terminal_buffer(bufnr)
+function M.is_terminal_buffer(bufnr)
   if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return false end
-  return vim.api.nvim_get_option_value("buftype", { buf = bufnr }) == "terminal"
+  return vim.api.nvim_get_option_value("buftype", { buf = bufnr or 0 }) == "terminal"
+end
+
+local overseer_output_dispose_cleanup_attached = setmetatable({}, { __mode = "k" })
+
+local function is_replacement_buffer(bufnr, disposed_bufnr)
+  return bufnr
+    and bufnr > 0
+    and bufnr ~= disposed_bufnr
+    and vim.api.nvim_buf_is_valid(bufnr)
+    and vim.api.nvim_get_option_value("buftype", { buf = bufnr }) ~= "nofile"
+end
+
+local function remembered_buffer_for_window(winid, disposed_bufnr)
+  local bufnr = vim.w[winid].overseer_output_previous_bufnr
+  if is_replacement_buffer(bufnr, disposed_bufnr) then return bufnr end
+end
+
+local function alternate_buffer_for_window(winid, disposed_bufnr)
+  local ok, alternate_bufnr = pcall(vim.api.nvim_win_call, winid, function() return vim.fn.bufnr("#") end)
+  if ok and is_replacement_buffer(alternate_bufnr, disposed_bufnr) then return alternate_bufnr end
+end
+
+local function create_empty_buffer() return vim.api.nvim_create_buf(true, false) end
+
+local function remember_overseer_output_previous_buffer(winid, output_bufnr, opts)
+  opts = opts or {}
+  if not vim.api.nvim_win_is_valid(winid) then return end
+  local current_bufnr = vim.api.nvim_win_get_buf(winid)
+  if current_bufnr == output_bufnr or not vim.api.nvim_buf_is_valid(current_bufnr) then return end
+  if
+    not opts.force
+    and vim.bo[current_bufnr].filetype == "OverseerOutput"
+    and remembered_buffer_for_window(winid, output_bufnr)
+  then
+    return
+  end
+  if is_replacement_buffer(current_bufnr, output_bufnr) then
+    vim.w[winid].overseer_output_previous_bufnr = current_bufnr
+  end
+end
+
+---@param winid integer?
+function M.remember_overseer_output_previous_buffer(winid)
+  if winid and vim.api.nvim_win_is_valid(winid) then
+    remember_overseer_output_previous_buffer(winid, nil, { force = true })
+  end
+end
+
+local function restore_remembered_buffer_before_opening_output(winid, output_bufnr)
+  if not vim.api.nvim_win_is_valid(winid) then return end
+  if vim.api.nvim_win_get_buf(winid) ~= output_bufnr then return end
+
+  local previous_bufnr = remembered_buffer_for_window(winid, output_bufnr)
+  if previous_bufnr then pcall(vim.api.nvim_win_set_buf, winid, previous_bufnr) end
+end
+
+local function repair_overseer_output_alternate_buffer(winid, output_bufnr)
+  if not vim.api.nvim_win_is_valid(winid) then return end
+  if vim.api.nvim_win_get_buf(winid) ~= output_bufnr then return end
+
+  local previous_bufnr = remembered_buffer_for_window(winid, output_bufnr)
+  if not previous_bufnr then return end
+
+  local ok, alternate_bufnr = pcall(vim.api.nvim_win_call, winid, function() return vim.fn.bufnr("#") end)
+  if ok and alternate_bufnr == previous_bufnr then return end
+
+  local current_winid = vim.api.nvim_get_current_win()
+  pcall(vim.api.nvim_set_current_win, winid)
+  if vim.api.nvim_win_get_buf(winid) == output_bufnr then
+    pcall(vim.api.nvim_win_set_buf, winid, previous_bufnr)
+    pcall(vim.cmd.buffer, output_bufnr)
+  end
+  if current_winid ~= winid and vim.api.nvim_win_is_valid(current_winid) then
+    pcall(vim.api.nvim_set_current_win, current_winid)
+  end
+  stop_terminal_mode()
+end
+
+---@param bufnr integer?
+function M.cleanup_overseer_task_output_buffer(bufnr)
+  if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return end
+
+  if vim.api.nvim_get_current_buf() == bufnr then stop_terminal_mode() end
+  vim.api.nvim_set_option_value("buflisted", false, { buf = bufnr })
+  local empty_replacement
+  for _, winid in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_is_valid(winid) and vim.api.nvim_win_get_buf(winid) == bufnr then
+      local replacement = remembered_buffer_for_window(winid, bufnr) or alternate_buffer_for_window(winid, bufnr)
+      if not replacement then
+        empty_replacement = empty_replacement or create_empty_buffer()
+        replacement = empty_replacement
+      end
+      pcall(vim.api.nvim_win_set_buf, winid, replacement)
+      vim.w[winid].overseer_output_previous_bufnr = nil
+    end
+  end
+
+  if not vim.api.nvim_buf_is_valid(bufnr) then return end
+  local deleted = pcall(vim.api.nvim_buf_delete, bufnr, { force = true })
+  if not deleted and vim.api.nvim_buf_is_valid(bufnr) then
+    vim.api.nvim_set_option_value("buflisted", false, { buf = bufnr })
+    vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = bufnr })
+  end
+end
+
+---@param task overseer.Task
+function M.cleanup_overseer_task_output_on_dispose(task)
+  if not task or type(task.get_bufnr) ~= "function" then return end
+  M.cleanup_overseer_task_output_buffer(task:get_bufnr())
+end
+
+---@param task overseer.Task?
+local function attach_overseer_task_output_dispose_cleanup(task)
+  if not task or type(task.subscribe) ~= "function" then return end
+  if overseer_output_dispose_cleanup_attached[task] then return end
+  overseer_output_dispose_cleanup_attached[task] = true
+  task:subscribe("on_dispose", function(disposed_task)
+    M.cleanup_overseer_task_output_on_dispose(disposed_task)
+    return true
+  end)
 end
 
 ---@param task overseer.Task
@@ -1184,14 +1342,7 @@ local function setup_task_terminal(task, desc, apply)
     return true
   end
 
-  wait_for_task_terminal(task):thenCall(function(bufnr)
-    apply_if_terminal(bufnr)
-    vim.api.nvim_create_autocmd("BufEnter", {
-      desc = desc,
-      buffer = bufnr,
-      callback = function(args) apply_if_terminal(args.buf) end,
-    })
-  end, function() end)
+  wait_for_task_terminal(task):thenCall(function(bufnr) apply_if_terminal(bufnr) end, function() end)
 end
 
 ---@param task overseer.Task
@@ -1202,7 +1353,7 @@ function M.dispose_on_window_close(task, data)
     buffer = task:get_bufnr(),
     callback = function(args)
       if is_preview(args.buf) then return end
-      if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) ~= "terminal" then return end
+      if not M.is_terminal_buffer(args.buf) then return end
       if task.status == require("overseer.constants").STATUS.RUNNING then task:dispose(true) end
     end,
   })
@@ -1211,8 +1362,8 @@ end
 ---@param task overseer.Task
 function M.attach_keymaps(task)
   setup_task_terminal(task, "Attach task terminal keymaps", function(bufnr)
-    M.attach_overseer_task_float_navigation(bufnr)
-    if vim.api.nvim_get_current_buf() == bufnr then vim.cmd.startinsert() end
+    M.attach_overseer_task_output_navigation(bufnr)
+    vim.schedule(function() M.attach_overseer_task_output_navigation(bufnr) end)
   end)
 end
 
@@ -1225,16 +1376,67 @@ local function overseer_task_for_buf(bufnr)
   return require("overseer.task_list").get(task_id)
 end
 
+local OVERSEER_TASK_OUTPUT_LABEL_MAX = 44
+
+---@param label string?
+---@return string?
+local function compact_overseer_task_output_label(label)
+  if type(label) ~= "string" then return nil end
+
+  label = vim.trim(label:gsub("%s+", " "):gsub("[%c/#?]", " "))
+  if label == "" then return nil end
+  if #label > OVERSEER_TASK_OUTPUT_LABEL_MAX then
+    label = label:sub(1, OVERSEER_TASK_OUTPUT_LABEL_MAX - 3) .. "..."
+  end
+  return label
+end
+
+---@param task overseer.Task
+---@param bufnr integer
+local function name_overseer_task_output(task, bufnr)
+  local current_name = vim.api.nvim_buf_get_name(bufnr)
+  local managed_name = vim.b[bufnr].overseer_output_name
+  local old_task_name = vim.trim((task.name or ""):gsub("%s+", " "))
+  if
+    current_name ~= ""
+    and current_name ~= managed_name
+    and current_name ~= old_task_name
+    and not current_name:match("^overseer%-task://")
+    and not current_name:match("^task://")
+    and not current_name:match("^term://")
+  then
+    return
+  end
+
+  local metadata = task.metadata or {}
+  local task_name = metadata.agent_session_id
+  if type(task_name) ~= "string" or task_name == "" then
+    if metadata.shell_fence_task == true then task_name = ("shell-fenced %s"):format(task.id or bufnr) end
+  end
+  if type(task_name) ~= "string" or task_name == "" then task_name = compact_overseer_task_output_label(task.name) end
+  if type(task_name) ~= "string" or task_name == "" then task_name = ("overseer-%s"):format(task.id or bufnr) end
+  task_name = "task://" .. task_name
+
+  local existing = vim.fn.bufnr(task_name)
+  if existing ~= -1 and existing ~= bufnr then task_name = ("%s#%s"):format(task_name, task.id or bufnr) end
+  if not pcall(vim.api.nvim_buf_set_name, bufnr, task_name) then
+    task_name = ("%s#%s"):format(task_name, bufnr)
+    pcall(vim.api.nvim_buf_set_name, bufnr, task_name)
+  end
+  vim.b[bufnr].overseer_output_name = task_name
+end
+
 ---@param bufnr? integer
-function M.open_current_overseer_task_action(bufnr)
+---@param action_name? string
+function M.open_current_overseer_task_action(bufnr, action_name)
   local task = overseer_task_for_buf(bufnr)
   if not task then return vim.notify("Current buffer is not an Overseer task output", vim.log.levels.WARN) end
 
-  require("overseer").run_action(task)
+  require("overseer").run_action(task, action_name)
 end
 
 ---@param step integer
-function M.open_adjacent_overseer_task_float(step)
+function M.open_adjacent_overseer_task_output(step)
   local current_task = overseer_task_for_buf()
   if not current_task then return vim.notify("Current buffer is not an Overseer task output", vim.log.levels.WARN) end
 
@@ -1257,44 +1459,122 @@ function M.open_adjacent_overseer_task_float(step)
 
   local next_index = ((current_index - 1 + step) % #tasks) + 1
   local next_task = tasks[next_index]
-  M.attach_overseer_task_float_navigation(next_task:get_bufnr())
-  require("overseer").run_action(next_task, "open float")
+  M.attach_overseer_task_output_navigation(next_task:get_bufnr())
+  M.schedule_open_overseer_task_output(next_task)
+end
+
+---@param step integer
+---@return string
+local function terminal_task_output_navigation_rhs(step)
+  return ("<C-\\><C-n><Cmd>stopinsert<CR><Cmd>lua require('serranomorante.utils').open_adjacent_overseer_task_output(%d)<CR>"):format(
+    step
+  )
 end
 
 ---@param bufnr? integer
-function M.attach_overseer_task_float_navigation(bufnr)
+function M.attach_overseer_task_output_navigation(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-  if not vim.api.nvim_buf_is_valid(bufnr) or vim.b[bufnr].overseer_float_navigation_attached then return end
-  vim.b[bufnr].overseer_float_navigation_attached = true
+  if not vim.api.nvim_buf_is_valid(bufnr) then return end
+  vim.bo[bufnr].buflisted = true
+  local task = overseer_task_for_buf(bufnr)
+  if task then
+    name_overseer_task_output(task, bufnr)
+    attach_overseer_task_output_dispose_cleanup(task)
+  end
+  vim.b[bufnr].overseer_output_navigation_attached = true
 
-  vim.keymap.set("n", "]o", function() M.open_adjacent_overseer_task_float(1) end, {
+  vim.keymap.set("n", "]o", function() M.open_adjacent_overseer_task_output(1) end, {
     buffer = bufnr,
-    desc = "Overseer: next task output float",
+    desc = "Overseer: next task output",
   })
-  vim.keymap.set("n", "[o", function() M.open_adjacent_overseer_task_float(-1) end, {
+  vim.keymap.set("n", "[o", function() M.open_adjacent_overseer_task_output(-1) end, {
     buffer = bufnr,
-    desc = "Overseer: previous task output float",
+    desc = "Overseer: previous task output",
   })
-  vim.keymap.set("n", "<leader>od", function() M.open_current_overseer_task_action(bufnr) end, {
+  vim.keymap.set("n", "<leader>oa", function() M.open_current_overseer_task_action(bufnr) end, {
     buffer = bufnr,
     desc = "Overseer: task actions",
   })
-  vim.keymap.set({ "n", "t" }, "<M-j>", function() M.open_adjacent_overseer_task_float(1) end, {
+  vim.keymap.set("n", "<leader>od", function()
+    local current_task = overseer_task_for_buf(bufnr)
+    require("serranomorante.plugins.jobs.overseer_task_actions").open_recent_task({
+      noop_task_id = current_task and current_task.id or nil,
+    })
+  end, {
     buffer = bufnr,
-    desc = "Overseer: next task output float",
+    desc = "Overseer: open recent task output",
   })
-  vim.keymap.set({ "n", "t" }, "<M-k>", function() M.open_adjacent_overseer_task_float(-1) end, {
+  vim.keymap.set("n", "<A-j>", function() M.open_adjacent_overseer_task_output(1) end, {
     buffer = bufnr,
-    desc = "Overseer: previous task output float",
+    desc = "Overseer: next task output",
+  })
+  vim.keymap.set("n", "<A-k>", function() M.open_adjacent_overseer_task_output(-1) end, {
+    buffer = bufnr,
+    desc = "Overseer: previous task output",
+  })
+  vim.keymap.set("t", "<C-g>", "<C-\\><C-n><Cmd>stopinsert<CR>", {
+    buffer = bufnr,
+    desc = "Exit terminal mode",
+    nowait = true,
+    silent = true,
+  })
+  vim.keymap.set("t", "<A-j>", terminal_task_output_navigation_rhs(1), {
+    buffer = bufnr,
+    desc = "Overseer: next task output",
+  })
+  vim.keymap.set("t", "<A-k>", terminal_task_output_navigation_rhs(-1), {
+    buffer = bufnr,
+    desc = "Overseer: previous task output",
   })
 end
 
 ---@param task overseer.Task
-function M.schedule_open_overseer_task_float(task)
-  vim.schedule(function()
-    if not task or not task:get_bufnr() then return end
-    pcall(require("overseer").run_action, task, "open float")
-  end)
+---@param opts? { winid?: integer }
+---@return boolean
+function M.open_started_overseer_task_output(task, opts)
+  opts = opts or {}
+  if not task then return false end
+
+  local bufnr = task:get_bufnr()
+  if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return false end
+
+  stop_terminal_mode()
+  local winid = opts.winid or vim.api.nvim_get_current_win()
+  if vim.api.nvim_win_is_valid(winid) then pcall(vim.api.nvim_set_current_win, winid) end
+  restore_remembered_buffer_before_opening_output(winid, bufnr)
+  remember_overseer_output_previous_buffer(winid, bufnr)
+  local ok, err = pcall(vim.cmd.buffer, bufnr)
+  if not ok then
+    vim.notify(("Could not open Overseer output buffer: %s"):format(err), vim.log.levels.ERROR)
+    return false
+  end
+  M.attach_overseer_task_output_navigation(bufnr)
+  local task_winid = vim.fn.bufwinid(bufnr)
+  if task_winid ~= -1 then pcall(vim.api.nvim_set_current_win, task_winid) end
+  stop_terminal_mode()
+  -- Overseer can rewrite # after the scheduled open; repair it once events settle.
+  vim.schedule(function() repair_overseer_output_alternate_buffer(task_winid, bufnr) end)
+  return true
+end
+
+---@param task overseer.Task
+---@param opts? { winid?: integer }
+function M.schedule_open_overseer_task_output(task, opts)
+  opts = opts or {}
+  local winid = opts.winid or vim.api.nvim_get_current_win()
+  local attempts = 20
+
+  local function open()
+    local bufnr = task and task:get_bufnr()
+    if not M.is_terminal_buffer(bufnr) then
+      stop_terminal_mode()
+      attempts = attempts - 1
+      if attempts > 0 then vim.defer_fn(open, 50) end
+      return
+    end
+    M.open_started_overseer_task_output(task, { winid = winid })
+  end
+  vim.schedule(open)
 end
 
 ---@param bufnr integer
@@ -1401,6 +1681,39 @@ local function shell_fence_under_cursor()
   return vim.list_slice(lines, start_line + 1, end_line - 1), lang
 end
 
+local function shell_fence_cwd()
+  local name = vim.api.nvim_buf_get_name(0)
+  if name ~= "" and not name:match("^%w[%w+.-]*://") then
+    local dir = vim.fn.fnamemodify(name, ":p:h")
+    if dir ~= "" and M.is_directory(dir) then return dir end
+  end
+  return vim.fn.getcwd()
+end
+
+---@param winid integer
+---@return boolean
+local function is_floating_win(winid)
+  return vim.api.nvim_win_is_valid(winid) and vim.api.nvim_win_get_config(winid).relative ~= ""
+end
+
+local function shell_fence_output_win(source_win)
+  if vim.api.nvim_win_is_valid(source_win) and not is_floating_win(source_win) then return source_win end
+
+  for _, winid in ipairs(vim.api.nvim_list_wins()) do
+    if not is_floating_win(winid) then return winid end
+  end
+
+  return source_win
+end
+
+local function prepare_shell_fence_task_start_window(source_win)
+  local winid = shell_fence_output_win(source_win)
+  if vim.api.nvim_win_is_valid(winid) then pcall(vim.api.nvim_set_current_win, winid) end
+
+  stop_terminal_mode()
+  return vim.api.nvim_get_current_win()
+end
+
 function M.run_shell_fence()
   local command_lines, lang = shell_fence_under_cursor()
   if not command_lines or vim.iter(command_lines):all(function(line) return line:match("^%s*$") ~= nil end) then
@@ -1418,6 +1731,8 @@ function M.run_shell_fence()
   first_line = vim.trim(first_line)
   if #first_line > 60 then first_line = first_line:sub(1, 57) .. "..." end
 
+  local source_win = vim.api.nvim_get_current_win()
+  local cwd = shell_fence_cwd()
   local script_path = vim.fn.tempname()
   local write_ok, write_result = pcall(vim.fn.writefile, command_lines, script_path)
   if not write_ok or write_result ~= 0 then
@@ -1428,36 +1743,26 @@ function M.run_shell_fence()
   local task = overseer.new_task({
     name = "shell fence: " .. first_line,
     cmd = { lang == "bash" and "bash" or "sh", script_path },
-    cwd = vim.fn.expand("%:p:h"),
+    cwd = cwd,
     metadata = {
       PREVENT_QUIT = true,
+      shell_fence_task = true,
     },
-    components = { "default" },
+    components = {
+      "on_exit_set_status",
+      "on_complete_notify",
+      { "on_complete_dispose", timeout = 1, statuses = { require("overseer.constants").STATUS.SUCCESS } },
+    },
   })
   task:subscribe("on_complete", function() vim.fn.delete(script_path) end)
-  task:start()
-
-  vim.defer_fn(function()
-    if not task:get_bufnr() then return end
-    M.attach_keymaps(task)
-    M.schedule_open_overseer_task_float(task)
-  end, 100)
-end
-
----@param task overseer.Task
-function M.force_very_fullscreen_float(task)
-  setup_task_terminal(task, "Resize task terminal float", function(bufnr)
-    if vim.api.nvim_get_current_buf() ~= bufnr then return end
-    pcall(vim.fn.jobresize, task.job_id, vim.o.columns, vim.o.lines - 3)
-    vim.cmd.wincmd({ "|" })
-  end)
-end
-
----@param task overseer.Task
-function M.start_insert_mode(task)
-  setup_task_terminal(task, "Start insert mode in task terminal", function(bufnr)
-    if vim.api.nvim_get_current_buf() == bufnr then vim.cmd.startinsert() end
-  end)
+  local start_win = prepare_shell_fence_task_start_window(source_win)
+  if not task:start() then
+    vim.fn.delete(script_path)
+    return vim.notify("Failed to start shell fence task", vim.log.levels.ERROR)
+  end
+  if not M.open_started_overseer_task_output(task, { winid = start_win }) then
+    vim.notify("Shell fence task did not create an output buffer", vim.log.levels.WARN)
+  end
 end
 
 return M

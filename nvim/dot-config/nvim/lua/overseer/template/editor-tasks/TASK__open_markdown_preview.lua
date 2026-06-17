@@ -20,7 +20,6 @@ return {
         vim.fn.expand("%:p"),
       },
       components = {
-        { "open_output", direction = "float", on_start = "always", focus = true },
         { "on_complete_dispose", timeout = 1, statuses = { require("overseer.constants").STATUS.SUCCESS } },
         "unique",
         "defaults_without_notification",

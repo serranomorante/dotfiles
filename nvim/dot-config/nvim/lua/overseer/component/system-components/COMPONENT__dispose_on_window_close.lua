@@ -8,6 +8,8 @@ local comp = {
   -- Doesn't make sense for user to add this using a form.
   editable = false,
   constructor = function()
+    local utils = require("serranomorante.utils")
+
     return {
       ---@param data string[] Output of process. See :help channel-lines
       on_output = function(self, task, data)
@@ -16,7 +18,7 @@ local comp = {
           buffer = task:get_bufnr(),
           callback = function(args)
             if is_preview(args.buf) then return end
-            if vim.api.nvim_get_option_value("buftype", { buf = args.buf }) ~= "terminal" then return end
+            if not utils.is_terminal_buffer(args.buf) then return end
             if task.status == require("overseer.constants").STATUS.RUNNING then task:dispose(true) end
           end,
         })

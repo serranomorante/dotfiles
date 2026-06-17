@@ -2,6 +2,92 @@ local utils = require("serranomorante.utils")
 
 local general_settings_group = vim.api.nvim_create_augroup("general_settings", { clear = true })
 local indent_line_group = vim.api.nvim_create_augroup("indent_line", { clear = true })
+local terminal_window_options_group = vim.api.nvim_create_augroup("terminal_window_options", { clear = true })
+
+local terminal_window_option_names = {
+  "number",
+  "relativenumber",
+  "signcolumn",
+  "foldcolumn",
+  "foldenable",
+}
+local plain_terminal_window_options = {
+  number = false,
+  relativenumber = false,
+  signcolumn = "no",
+  foldcolumn = "0",
+  foldenable = false,
+}
+
+local function current_window_options()
+  local winid = vim.api.nvim_get_current_win()
+  local options = {}
+  for _, name in ipairs(terminal_window_option_names) do
+    options[name] = vim.api.nvim_get_option_value(name, { win = winid })
+  end
+  return options
+end
+
+local function set_current_window_options(options)
+  local winid = vim.api.nvim_get_current_win()
+  for name, value in pairs(options) do
+    vim.api.nvim_set_option_value(name, value, { win = winid })
+  end
+end
+
+local function terminal_regular_options_from_other_window(bufnr)
+  local current_winid = vim.api.nvim_get_current_win()
+  for _, winid in ipairs(vim.fn.win_findbuf(bufnr)) do
+    if winid ~= current_winid and vim.api.nvim_win_is_valid(winid) then
+      local options = vim.w[winid].plain_terminal_saved_window_options
+        or vim.w[winid].plain_terminal_last_regular_window_options
+      if options then return vim.deepcopy(options) end
+    end
+  end
+end
+
+local function apply_terminal_window_options(bufnr)
+  if not utils.is_terminal_buffer(bufnr) then
+    if vim.w.plain_terminal_options_active then
+      local saved_options = vim.w.plain_terminal_saved_window_options
+        or vim.w.plain_terminal_last_regular_window_options
+      if saved_options then set_current_window_options(saved_options) end
+      vim.w.plain_terminal_saved_window_options = nil
+      vim.w.plain_terminal_options_active = nil
+      vim.w.plain_terminal_last_regular_window_options = saved_options or current_window_options()
+    else
+      vim.w.plain_terminal_last_regular_window_options = current_window_options()
+    end
+    return
+  end
+
+  if not vim.w.plain_terminal_options_active then
+    vim.w.plain_terminal_saved_window_options = terminal_regular_options_from_other_window(bufnr)
+      or vim.w.plain_terminal_last_regular_window_options
+      or current_window_options()
+  end
+  vim.w.plain_terminal_options_active = true
+  set_current_window_options(plain_terminal_window_options)
+  vim.schedule(function()
+    if vim.api.nvim_get_current_buf() == bufnr then utils.refresh_terminal_window(bufnr) end
+  end)
+end
+
+vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter", "WinEnter", "WinNew", "TermOpen" }, {
+  desc = "Keep terminal windows free of editor columns",
+  group = terminal_window_options_group,
+  callback = function(args) apply_terminal_window_options(args.buf) end,
+})
+
+vim.api.nvim_create_autocmd("OptionSet", {
+  desc = "Remember non-terminal window column options",
+  group = terminal_window_options_group,
+  pattern = terminal_window_option_names,
+  callback = function(args)
+    if utils.is_terminal_buffer(args.buf) or vim.w.plain_terminal_saved_window_options then return end
+    vim.w.plain_terminal_last_regular_window_options = current_window_options()
+  end,
+})
 
 vim.api.nvim_create_autocmd("TextYankPost", {
   desc = "Highlight yanked text",
@@ -211,9 +297,7 @@ vim.api.nvim_create_autocmd("BufWritePost", {
     if not utils.cwd_is_notes() then return end
     local ok, error = pcall(vim.cmd.RemindUpdate)
     if not ok then return vim.api.nvim_echo({ { vim.fn.string(error) } }, false, { err = true }) end
-    vim.schedule(function()
-      vim.api.nvim_echo({ { "Reminder database updated", "DiagnosticOk" } }, false, {})
-    end)
+    vim.schedule(function() vim.api.nvim_echo({ { "Reminder database updated", "DiagnosticOk" } }, false, {}) end)
   end),
 })
 
@@ -223,4 +307,13 @@ vim.api.nvim_create_autocmd("VimEnter", {
   callback = vim.schedule_wrap(function()
     if utils.nvim_started_without_args() and not utils.cwd_is_home() then vim.cmd.normal({ "'0" }) end
   end),
+})
+
+vim.api.nvim_create_autocmd({ "TermOpen", "BufWinEnter" }, {
+  desc = "Set keymaps for terminals",
+  group = general_settings_group,
+  callback = function(args)
+    if not utils.is_terminal_buffer(args.buf) then return end
+    vim.keymap.set("n", "i", "<cmd>normal! m`<CR>i", { buffer = args.buf, desc = "" })
+  end,
 })

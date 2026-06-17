@@ -1,20 +1,20 @@
 #!/bin/sh
-# Purpose: Require valid assistant conversation ids for Codex-generated commits.
+# Purpose: Require valid assistant conversation ids for agent-generated commits.
 # Usage: Git runs this as commit-msg when core.hooksPath points here.
 
 set -eu
 
 msg_file=$1
 
-has_codex_env() {
-    env | grep -q '^CODEX_'
+has_agent_env() {
+    env | grep -Eq '^(CODEX_|CLAUDE_)'
 }
 
 pid_parent() {
     awk '/^PPid:/ { print $2; exit }' "/proc/$1/status" 2>/dev/null || true
 }
 
-pid_is_codex() {
+pid_is_agent() {
     pid=$1
     comm=
     cmdline=
@@ -23,18 +23,20 @@ pid_is_codex() {
     if [ -r "/proc/$pid/comm" ]; then
         IFS= read -r comm <"/proc/$pid/comm" || comm=
         [ "$comm" = codex ] && return 0
+        [ "$comm" = claude ] && return 0
     fi
 
     if [ -r "/proc/$pid/cmdline" ]; then
         cmdline=$(tr '\0' '\n' <"/proc/$pid/cmdline" 2>/dev/null | sed -n '1p')
         argv0=${cmdline##*/}
         [ "$argv0" = codex ] && return 0
+        [ "$argv0" = claude ] && return 0
     fi
 
     return 1
 }
 
-has_codex_parent() {
+has_agent_parent() {
     pid=${PPID:-}
 
     case $pid in
@@ -42,7 +44,7 @@ has_codex_parent() {
     esac
 
     while [ -n "$pid" ] && [ "$pid" != 1 ]; do
-        if pid_is_codex "$pid"; then
+        if pid_is_agent "$pid"; then
             return 0
         fi
 
@@ -55,7 +57,7 @@ has_codex_parent() {
     return 1
 }
 
-if ! has_codex_env && ! has_codex_parent; then
+if ! has_agent_env && ! has_agent_parent; then
     exit 0
 fi
 
@@ -104,15 +106,15 @@ ok)
     exit 0
     ;;
 missing)
-    printf '%s\n' "commit-msg: Codex-generated commits require an @agent trailer." >&2
-    printf '%s\n' "Resolve the real conversation id with codex-session-store and add: @agent <conversation id>" >&2
+    printf '%s\n' "commit-msg: agent-generated commits require an @agent trailer." >&2
+    printf '%s\n' "Resolve the real conversation id with agent-session-store and add: @agent <conversation id>" >&2
     exit 1
     ;;
 invalid:*)
     invalid_agent_line=${agent_status#invalid:}
     printf '%s\n' "commit-msg: invalid assistant conversation id trailer:" >&2
     printf '%s\n' "  $invalid_agent_line" >&2
-    printf '%s\n' "Resolve the real conversation id with codex-session-store and use: @agent <conversation id>" >&2
+    printf '%s\n' "Resolve the real conversation id with agent-session-store and use: @agent <conversation id>" >&2
     exit 1
     ;;
 *)

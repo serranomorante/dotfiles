@@ -1,6 +1,6 @@
 # Neovim Runtime Performance
 
-Neovim runs Lua callbacks, timers, user commands, keymaps, and terminal interaction on its main event loop. Code that is triggered from interactive paths must keep that loop responsive, especially code used by Overseer terminals, floating task windows, completion, folds, keymaps, and remote commands.
+Neovim runs Lua callbacks, timers, user commands, keymaps, and terminal interaction on its main event loop. Code that is triggered from interactive paths must keep that loop responsive, especially code used by Overseer terminals, task output windows, completion, folds, keymaps, and remote commands.
 
 ## Main-Loop Rule
 
@@ -25,3 +25,7 @@ Before committing Neovim runtime code, check whether any interactive path does o
 - Polls by repeatedly doing filesystem or process discovery from Lua.
 
 If any item applies, move the work behind a promise/async flow and a nonblocking primitive, or document why the synchronous work is bounded and harmless.
+
+## Agent Session Caches
+
+Agent-session discovery runs outside Neovim through `agent-session-store`, but its JSON payload is decoded on the Neovim main loop by the picker/task integration. Keep exported session titles bounded and UI-oriented; never emit full user prompts, generated context blocks, or transcript excerpts as titles. When Neovim decodes a large session payload, schedule explicit Lua garbage collection after callbacks have consumed the decoded sessions so temporary JSON strings and decoded tables do not linger long enough to slow terminal input and redraw.

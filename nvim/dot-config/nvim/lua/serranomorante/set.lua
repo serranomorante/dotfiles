@@ -26,6 +26,8 @@ vim.go.tabclose = "left"
 vim.bo.shiftwidth = 4
 vim.o.matchpairs = vim.o.matchpairs .. ",<:>"
 vim.go.showmode = false
+vim.wo.smoothscroll = true
+vim.go.display = vim.go.display .. ",lastline"
 
 vim.o.swapfile = false
 vim.go.backup = false
@@ -105,6 +107,6 @@ vim.cmd.colorscheme("default")
 vim.filetype.get_option = utils.hijack_commentstring_get_option()
 
 vim.go.grepprg = "rg --vimgrep"
-vim.go.chistory = 20
+vim.go.chistory = 100
 
 vim.ui.select = utils.select

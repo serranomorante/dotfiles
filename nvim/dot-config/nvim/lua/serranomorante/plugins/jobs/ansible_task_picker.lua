@@ -229,8 +229,9 @@ local function refresh_task_cache_if_stale(cache_mtime)
   end, 10)
 end
 
-local function run_selected_playbook_task(choice)
+local function run_selected_playbook_task(choice, opts)
   if not choice then return end
+  opts = opts or {}
 
   local playbooks = require("overseer.template.system-tasks.TASK__run_ansible_playbook")
   require("overseer").run_task({
@@ -238,13 +239,13 @@ local function run_selected_playbook_task(choice)
     params = { task_id = choice, pass = vim.g.pass },
   }, function(task)
     if not task then return end
-    utils.force_very_fullscreen_float(task)
     utils.attach_keymaps(task)
-    utils.schedule_open_overseer_task_float(task)
+    utils.schedule_open_overseer_task_output(task, { winid = opts.winid })
   end)
 end
 
 local function select_playbook_task(public_items)
+  local source_winid = vim.api.nvim_get_current_win()
   local items = picker_items(public_items)
   if #items == 0 then
     vim.notify("No tasks with numeric tags found", vim.log.levels.WARN)
@@ -254,7 +255,7 @@ local function select_playbook_task(public_items)
   vim.ui.select(items, {
     prompt = "Ansible tasks",
     format_item = function(item) return item end,
-  }, run_selected_playbook_task)
+  }, function(choice) run_selected_playbook_task(choice, { winid = source_winid }) end)
 end
 
 function M.select()

@@ -7,7 +7,9 @@ set -euo pipefail
 # dotfiles-test-readonly: /home/aaaa/.local/lib/nvim
 # dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: reminders-agent-run-uses-attached-id
+# dotfiles-test-case: reminders-agent-run-emits-agenda-metadata
 # dotfiles-test-case: reminders-agent-run-without-id-does-not-emit-run
+# dotfiles-test-case: reminders-update-reports-remind-warnings
 # dotfiles-test-case: reminders-ignore-remind-usage-doc
 # dotfiles-test-case: reminders-ignore-agent-run-output
 
@@ -55,6 +57,23 @@ reminders-agent-run-uses-attached-id)
     rg -q "MSG \\*\\*Review sample task\\*\\*" "${HOME}/.config/remind/reminders.rem"
     rg -q "RUN '${HOME}/bin/remind-run' 'agent' 'todo-sample-agent-task'" "${HOME}/.config/remind/reminders.rem"
     ;;
+reminders-agent-run-emits-agenda-metadata)
+    make_foam_note \
+        "# Sample | TODOS" \
+        "" \
+        "- [ ] **Review sample task**" \
+        "  @id todo-sample-agent-task" \
+        "  @tags #autotrigger #sample" \
+        "" \
+        "  \`\`\`remind" \
+        "  @run agent" \
+        "  REM jun 1 2026 AT 10:00 UNTIL oct 1 2026 *3" \
+        "  \`\`\`"
+
+    run_remind_update
+
+    rg -q "^# remind-agenda-meta run=agent tags=#autotrigger,#sample$" "${HOME}/.config/remind/reminders.rem"
+    ;;
 reminders-agent-run-without-id-does-not-emit-run)
     make_foam_note \
         "# Sample | TODOS" \
@@ -70,6 +89,20 @@ reminders-agent-run-without-id-does-not-emit-run)
 
     rg -q "MSG \\*\\*Review sample task\\*\\*" "${HOME}/.config/remind/reminders.rem"
     ! rg -q "RUN .*remind-run.*agent" "${HOME}/.config/remind/reminders.rem"
+    ;;
+reminders-update-reports-remind-warnings)
+    make_foam_note \
+        "# Sample | TODOS" \
+        "" \
+        "- [ ] **Review sample warning**" \
+        "" \
+        "  \`\`\`remind" \
+        "  REM FooBarBaz 2026" \
+        "  \`\`\`"
+
+    run_remind_update >"${DOTFILES_TEST_TMP}/nvim.out" 2>&1
+
+    rg -q "Missing REM type; assuming MSG" "${DOTFILES_TEST_TMP}/nvim.out"
     ;;
 reminders-ignore-remind-usage-doc)
     make_foam_note_at "docs/agents/remind-usage.md" \

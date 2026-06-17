@@ -2,7 +2,4 @@ layout stack
 
 launch --title base-title
 
-new_tab claude
-launch
-
 focus_tab 0

@@ -152,7 +152,7 @@ kitty_simple_edit_at_line)
     ;;
 agent_conversation)
     agent_id=$(ex_command_arg "$1")
-    nvr --servername "$servername" --nostart -c "CodexResumeById $agent_id"
+    nvr --servername "$servername" --nostart -c "AgentResumeById $agent_id"
     ;;
 goto_foam_block_by_id)
     block_id=$(ex_command_arg "$1")

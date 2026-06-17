@@ -8,8 +8,12 @@ return {
     audio_source = {
       desc = "Audio source",
       type = "enum",
-      choices = { "source_node.work_audio", "source_node.music-production-audio" },
-      default = "source_node.work_audio",
+      choices = {
+        "capture.sink_node.work.monitor",
+        "source_node.work_audio_with_mic",
+        "capture.sink_node.music-production.monitor",
+      },
+      default = "source_node.work_audio_with_mic",
       order = 1,
     },
     output = {

@@ -12,10 +12,12 @@ local function init()
     end,
   })
   vim.api.nvim_create_autocmd("FileType", {
-    desc = "Attach task output float navigation keymaps",
+    desc = "Attach task output navigation keymaps",
     pattern = "OverseerOutput",
     -- Covers Overseer tasks that were not created through our task helpers.
-    callback = function(args) utils.attach_overseer_task_float_navigation(args.buf) end,
+    callback = function(args)
+      vim.schedule(function() utils.attach_overseer_task_output_navigation(args.buf) end)
+    end,
   })
 end
 
@@ -26,7 +28,8 @@ local function keys()
   vim.keymap.set("n", "<leader>oo", "<cmd>OverseerToggle<CR>", { desc = "Overseer: Toggle the overseer window" })
   vim.keymap.set("n", "<leader>or", "<cmd>OverseerRun<CR>", { desc = "Overseer: Run a task from a template" })
   vim.keymap.set("n", "<leader>oc", "<cmd>OverseerRunCmd<CR>", { desc = "Overseer: Run a raw shell command" })
-  require("serranomorante.plugins.jobs.codex_sessions").keys()
+  require("serranomorante.plugins.jobs.agent_sessions").keys()
+  require("serranomorante.plugins.jobs.claude_agents").setup_commands()
   vim.keymap.set(
     "n",
     "<leader>ol",
@@ -41,9 +44,27 @@ local function keys()
   )
   vim.keymap.set(
     "n",
-    "<leader>od",
+    "<leader>oa",
     function() require("serranomorante.plugins.jobs.overseer_task_actions").run_recent_task_action() end,
     { desc = "Overseer: task actions sorted by recent activity" }
+  )
+  vim.keymap.set(
+    "x",
+    "<leader>oa",
+    function() require("serranomorante.plugins.jobs.overseer_task_actions").run_recent_task_action({ visual = true }) end,
+    { desc = "Overseer: task actions sorted by recent activity" }
+  )
+  vim.keymap.set(
+    "n",
+    "<leader>od",
+    function() require("serranomorante.plugins.jobs.overseer_task_actions").open_recent_task() end,
+    { desc = "Overseer: open task output sorted by recent activity" }
+  )
+  vim.keymap.set(
+    "x",
+    "<leader>od",
+    function() require("serranomorante.plugins.jobs.overseer_task_actions").open_recent_task({ visual = true }) end,
+    { desc = "Overseer: open task output sorted by recent activity" }
   )
 
   vim.keymap.set("n", "<leader>lm", function()
@@ -123,8 +144,8 @@ local function opts()
       ["close term window"] = {
         desc = "Close terminal window without killing process",
         condition = function(task) return task:get_bufnr() end,
-        run = function()
-          if vim.bo.buftype ~= "terminal" then return end
+        run = function(task)
+          if not utils.is_terminal_buffer(task:get_bufnr()) then return end
           utils.feedkeys("<C-\\><C-n>", "t")
           vim.api.nvim_win_close(vim.api.nvim_get_current_win(), false)
         end,
@@ -135,7 +156,7 @@ local function opts()
         run = function(task)
           require("overseer").run_action(task, "restart")
           utils.attach_keymaps(task)
-          utils.schedule_open_overseer_task_float(task)
+          utils.schedule_open_overseer_task_output(task)
         end,
       },
     }, record_screen_actions.actions()),

@@ -1,5 +1,81 @@
 vim.go.quickfixtextfunc = "v:lua.user.QuickfixTextFunc"
 
+local history_group = vim.api.nvim_create_augroup("user.quickfix_history", { clear = true })
+
+local function history_file()
+  if vim.o.shadafile == "" or vim.o.shadafile == "NONE" then return nil end
+  return vim.fn.fnamemodify(vim.o.shadafile, ":r") .. ".quickfix.json"
+end
+
+local function serializable_item(item)
+  local copy = vim.deepcopy(item)
+  local bufnr = copy.bufnr
+  if bufnr and bufnr > 0 and vim.api.nvim_buf_is_valid(bufnr) then
+    local name = vim.api.nvim_buf_get_name(bufnr)
+    if name ~= "" then copy.filename = name end
+  end
+  copy.bufnr = nil
+  return copy
+end
+
+local function save_history()
+  local file = history_file()
+  if not file then return end
+
+  local data = { version = 1, current = vim.fn.getqflist({ nr = 0 }).nr, lists = {} }
+  for nr = 1, vim.fn.getqflist({ nr = "$" }).nr do
+    local qf = vim.fn.getqflist({ nr = nr, title = 0, items = 0, idx = 0, context = 0, quickfixtextfunc = 0 })
+    local items = vim.tbl_map(serializable_item, qf.items or {})
+    table.insert(data.lists, {
+      title = qf.title,
+      idx = qf.idx,
+      context = qf.context,
+      quickfixtextfunc = qf.quickfixtextfunc ~= "" and qf.quickfixtextfunc or nil,
+      items = items,
+    })
+  end
+
+  local ok, encoded = pcall(vim.json.encode, data)
+  if ok then
+    vim.fn.mkdir(vim.fn.fnamemodify(file, ":h"), "p")
+    pcall(vim.fn.writefile, { encoded }, file)
+  end
+end
+
+local function restore_history()
+  local file = history_file()
+  if not file or vim.fn.filereadable(file) == 0 or vim.fn.getqflist({ nr = "$" }).nr > 0 then return end
+
+  local ok, lines = pcall(vim.fn.readfile, file)
+  if not ok or #lines == 0 then return end
+
+  local decoded, data = pcall(vim.json.decode, table.concat(lines, "\n"))
+  if not decoded or type(data) ~= "table" or data.version ~= 1 or type(data.lists) ~= "table" then return end
+
+  local first = math.max(1, #data.lists - vim.go.chistory + 1)
+  for nr = first, #data.lists do
+    local qf = data.lists[nr]
+    if type(qf) == "table" and type(qf.items) == "table" then
+      vim.fn.setqflist({}, " ", {
+        title = qf.title or "",
+        idx = qf.idx or 1,
+        context = qf.context or "",
+        quickfixtextfunc = qf.quickfixtextfunc or "",
+        items = qf.items,
+      })
+    end
+  end
+
+  local current = tonumber(data.current) and tonumber(data.current) - first + 1
+  if current and current > 0 and current <= vim.fn.getqflist({ nr = "$" }).nr then
+    pcall(vim.cmd, "silent " .. current .. "chistory")
+  end
+end
+
+vim.api.nvim_create_autocmd("VimEnter", { group = history_group, callback = restore_history })
+vim.api.nvim_create_autocmd("VimLeavePre", { group = history_group, callback = save_history })
+restore_history()
+
 local function init() vim.wo.wrap = false end
 
 local function echo_stack_warn(direction)

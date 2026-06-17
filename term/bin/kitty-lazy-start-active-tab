@@ -27,7 +27,7 @@ for _ in $(seq 1 20); do
     IFS=$'\t' read -r tab_title window_id lazy_started <<<"$tab_info"
 
     case "$tab_title" in
-        claude|gemini) ;;
+        gemini) ;;
         *)
             exit 0
             ;;

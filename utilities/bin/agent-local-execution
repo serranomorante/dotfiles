@@ -116,6 +116,8 @@ def build_prompt(payload):
         [
             "Execute this automated Foam TODO and return only the final result.",
             "Do not ask for confirmation; either complete the task or fail with a clear error.",
+            "Treat repository or project paths outside execution_cwd as read-only context unless execution_cwd explicitly points at that project.",
+            "When a TODO asks for edits, commits, or system changes outside execution_cwd, inspect readable files if useful, then return concrete recommendations, patches, or commands instead of attempting those writes.",
             "If this task creates a Markdown file, edits a Markdown file with a new block, or creates a Markdown TODO, include a backlink to the origin TODO in the new Markdown content.",
             "Use the exact origin_link below for that backlink.",
             "",
@@ -125,6 +127,7 @@ def build_prompt(payload):
             f"tags: {tags_text}",
             f"agent: {execution.get('agent') or ''}",
             f"model: {execution.get('model') or ''}",
+            f"execution_cwd: {execution.get('cwd') or ''}",
             f"source_file: {source.get('file', '')}",
             f"source_line: {source.get('line', '')}",
             f"origin_link: {origin_link}",

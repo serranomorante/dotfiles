@@ -12,7 +12,7 @@ local function nnn_search_in_dir(command_args)
     local msg = '[NNN] %s search aborted. Directory "%s" not found'
     return vim.api.nvim_echo({ { msg:format(search_type, search_dir) } }, false, { err = true })
   end
-  if vim.api.nvim_get_option_value("buftype", { buf = 0 }) == "terminal" then vim.api.nvim_win_close(0, true) end
+  if utils.is_terminal_buffer() then vim.api.nvim_win_close(0, true) end
   utils.feedkeys(string.format(":%s '' %s", search_type, search_dir), "n")
   utils.feedkeys(constants.POSITION_CURSOR_BETWEEN_QUOTES, "n")
   remote_kitty_focus.focus_current_window()
