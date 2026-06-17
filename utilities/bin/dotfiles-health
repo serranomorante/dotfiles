@@ -18,6 +18,8 @@ hardware_sources_dir="$sources_dir/hardware"
 app_sources_dir="$sources_dir/apps"
 discovery_sources_dir="$sources_dir/discovery"
 reports_dir="$health_dir/reports"
+spikes_state_dir=${DOTFILES_SPIKES_STATE_DIR:-"$HOME/.local/state/dotfiles/system-spikes"}
+spike_events_dir="$spikes_state_dir/events"
 manual_start='<!-- dotfiles-health:manual-reminders:start -->'
 manual_end='<!-- dotfiles-health:manual-reminders:end -->'
 
@@ -30,6 +32,70 @@ Usage:
   $prog check     Print current user failed units
 EOF
     exit 2
+}
+
+positive_int_or_default() {
+    case "$1" in
+    '' | *[!0-9]* | 0) printf '%s\n' "$2" ;;
+    *) printf '%s\n' "$1" ;;
+    esac
+}
+
+journal_lines=$(positive_int_or_default "${DOTFILES_HEALTH_JOURNAL_LINES:-1000}" 1000)
+kernel_journal_lines=$(positive_int_or_default "${DOTFILES_HEALTH_KERNEL_JOURNAL_LINES:-5000}" 5000)
+run_cache_dir=
+
+cleanup_run_cache() {
+    [ -n "$run_cache_dir" ] || return 0
+    rm -rf "$run_cache_dir"
+}
+
+init_run_cache() {
+    run_cache_dir=$(mktemp -d)
+    trap cleanup_run_cache EXIT
+}
+
+journal_cache_key() {
+    printf '%s\n' "$@" | cksum | awk '{print $1 "-" $2}'
+}
+
+journal_today() {
+    if [ -z "$run_cache_dir" ]; then
+        journalctl --since today -n "$journal_lines" --no-pager "$@" 2>/dev/null
+        return
+    fi
+
+    key=$(journal_cache_key "$@")
+    cache_file="$run_cache_dir/journal-$key.log"
+    if [ ! -f "$cache_file" ]; then
+        tmp_file="$cache_file.tmp"
+        if journalctl --since today -n "$journal_lines" --no-pager "$@" >"$tmp_file" 2>/dev/null; then
+            mv "$tmp_file" "$cache_file"
+        else
+            rm -f "$tmp_file"
+            : >"$cache_file"
+        fi
+    fi
+    cat "$cache_file"
+}
+
+kernel_journal_today() {
+    if [ -z "$run_cache_dir" ]; then
+        journalctl -k --since today -n "$kernel_journal_lines" --no-pager 2>/dev/null
+        return
+    fi
+
+    cache_file="$run_cache_dir/kernel-journal.log"
+    if [ ! -f "$cache_file" ]; then
+        tmp_file="$cache_file.tmp"
+        if journalctl -k --since today -n "$kernel_journal_lines" --no-pager >"$tmp_file" 2>/dev/null; then
+            mv "$tmp_file" "$cache_file"
+        else
+            rm -f "$tmp_file"
+            : >"$cache_file"
+        fi
+    fi
+    cat "$cache_file"
 }
 
 now_local() {
@@ -194,7 +260,7 @@ xorg_signal_lines() {
             xorg_signal_lines_for_file "$file"
         done
     fi
-    journalctl -k --since today --no-pager 2>/dev/null |
+    kernel_journal_today |
         awk '
             {
                 line = tolower($0)
@@ -226,7 +292,7 @@ pacman_signal_count() {
 }
 
 kernel_signal_lines() {
-    journalctl -k --since today --no-pager 2>/dev/null |
+    kernel_journal_today |
         awk '
             {
                 line = tolower($0)
@@ -247,7 +313,7 @@ kernel_signal_count() {
 }
 
 audio_signal_lines() {
-    journalctl --user -u pipewire.service -u pipewire-pulse.service -u wireplumber.service --since today --no-pager 2>/dev/null |
+    journal_today --user -u pipewire.service -u pipewire-pulse.service -u wireplumber.service |
         awk '
             {
                 line = tolower($0)
@@ -271,14 +337,13 @@ redact_log_lines() {
 }
 
 network_signal_lines() {
-    journalctl \
+    journal_today \
         -u NetworkManager.service \
         -u systemd-networkd.service \
         -u systemd-resolved.service \
         -u iwd.service \
         -u wpa_supplicant.service \
-        -u tailscaled.service \
-        --since today --no-pager 2>/dev/null |
+        -u tailscaled.service |
         awk '
             {
                 line = tolower($0)
@@ -299,8 +364,8 @@ network_signal_count() {
 
 bluetooth_signal_lines() {
     {
-        journalctl -u bluetooth.service --since today --no-pager 2>/dev/null
-        journalctl -k --since today --no-pager 2>/dev/null |
+        journal_today -u bluetooth.service
+        kernel_journal_today |
             awk '/Bluetooth|hci[0-9]/ {print}'
     } |
         awk '
@@ -319,7 +384,7 @@ bluetooth_signal_count() {
 }
 
 storage_signal_lines() {
-    journalctl -k --since today --no-pager 2>/dev/null |
+    kernel_journal_today |
         awk '
             {
                 line = tolower($0)
@@ -343,11 +408,10 @@ storage_signal_count() {
 
 container_signal_lines() {
     {
-        journalctl \
+        journal_today \
             -u docker.service \
             -u containerd.service \
-            -u podman.service \
-            --since today --no-pager 2>/dev/null
+            -u podman.service
         timeout 3s docker ps -a --format 'container {{.Names}} {{.Status}}' 2>/dev/null || true
     } |
         awk '
@@ -366,7 +430,7 @@ container_signal_count() {
 }
 
 sync_signal_lines() {
-    journalctl --user -u syncthing.service --since today --no-pager 2>/dev/null |
+    journal_today --user -u syncthing.service |
         awk '
             {
                 line = tolower($0)
@@ -454,12 +518,11 @@ music_signal_count() {
 }
 
 security_signal_lines() {
-    journalctl \
+    journal_today \
         -u sshd.service \
         -u ssh.service \
         -u auditd.service \
-        -u polkit.service \
-        --since today --no-pager 2>/dev/null |
+        -u polkit.service |
         awk '
             {
                 line = tolower($0)
@@ -473,6 +536,15 @@ security_signal_lines() {
 
 security_signal_count() {
     security_signal_lines | count_lines
+}
+
+spike_event_count_today() {
+    file="$spike_events_dir/$(today).jsonl"
+    [ -r "$file" ] || {
+        printf '0\n'
+        return
+    }
+    awk 'NF {count++} END {print count + 0}' "$file"
 }
 
 journal_warning_lines() {
@@ -1154,10 +1226,13 @@ write_coverage_page() {
         printf '%s\n' "- [[system-health-editor]]: Neovim LSP and Overseer state logs."
         printf '%s\n' "- [[system-health-music]]: REAPER, yabridge, WineASIO, and related user-session signals."
         printf '%s\n' "- [[system-health-security]]: sshd, auditd, polkit, and authentication warnings visible without sudo."
+        printf '%s\n' '- [[system-spikes]]: lightweight CPU spike events and attribution captured by `system-spike-watch`.'
         printf '%s\n\n' "- [[system-health-unclassified]]: recent journal warnings that do not match a known classifier."
         printf '## Partial Coverage\n\n'
         printf '%s\n' '- SMART/NVMe device health is limited to kernel symptoms because direct device health checks may need elevated permissions.'
         printf '%s\n' '- Security coverage is limited to journal-visible warnings; privileged audit details may require sudo.'
+        printf '%s\n' "- Journal-backed detectors inspect the latest \`$journal_lines\` service entries and \`$kernel_journal_lines\` kernel entries by default so noisy services or drivers cannot make timer runs crawl all logs."
+        printf '%s\n' '- CPU spike attribution is best-effort and uses temporal evidence from `/proc` and systemd cgroups; it should name likely causes, not guarantee causality.'
         printf '%s\n' '- Application logs outside known paths are not crawled globally to avoid slow scans and noisy private data dumps.'
         printf '%s\n\n' '- Unclassified warnings are discovery signals; repeated or actionable families should become explicit rules.'
         printf '## Promotion Workflow\n\n'
@@ -1286,6 +1361,7 @@ write_main() {
     editor_count=$(editor_signal_count)
     music_count=$(music_signal_count)
     security_count=$(security_signal_count)
+    spike_count=$(spike_event_count_today)
     unclassified_count=$(unclassified_warning_top_family_count)
     manual_block=$(manual_reminders)
     groups=$(failed_units | while IFS= read -r unit; do
@@ -1314,6 +1390,7 @@ write_main() {
         printf '%s\n' "- Editor/LSP signals: \`$editor_count\`"
         printf '%s\n' "- Music production signals: \`$music_count\`"
         printf '%s\n' "- Auth/security signals: \`$security_count\`"
+        printf '%s\n' "- CPU spike events today: \`$spike_count\`"
         printf '%s\n' "- Top unclassified warning families: \`$unclassified_count\`"
         printf '%s\n' '- Rules: [[rules]]'
         printf '%s\n' '- Runbook: [[runbook]]'
@@ -1334,6 +1411,7 @@ write_main() {
         printf '%s\n' "- [[system-health-editor]]: \`$editor_count editor signals\`"
         printf '%s\n' "- [[system-health-music]]: \`$music_count music production signals\`"
         printf '%s\n' "- [[system-health-security]]: \`$security_count auth/security signals\`"
+        printf '%s\n' "- [[system-spikes]]: \`$spike_count CPU spike events today\`"
         printf '%s\n' "- [[system-health-unclassified]]: \`$unclassified_count unclassified families\`"
         printf '%s\n\n' "- [[system-health-coverage]]: coverage map and promotion workflow"
         printf '## Active Issues\n\n'
@@ -1379,6 +1457,9 @@ write_main() {
         if [ "$security_count" -gt 0 ]; then
             printf '%s\n' "- [[system-health-security]]: \`$security_count auth/security signals\`"
         fi
+        if [ "$spike_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-spikes]]: \`$spike_count CPU spike events today\`"
+        fi
         if [ "$unclassified_count" -gt 0 ]; then
             printf '%s\n' "- [[system-health-unclassified]]: \`$unclassified_count warning families need triage\`"
         fi
@@ -1413,6 +1494,7 @@ write_main() {
             [ "$editor_count" -eq 0 ] &&
             [ "$music_count" -eq 0 ] &&
             [ "$security_count" -eq 0 ] &&
+            [ "$spike_count" -eq 0 ] &&
             [ "$unclassified_count" -eq 0 ]; then
             printf '%s\n' '- No active issues in the latest check.'
         fi
@@ -1479,6 +1561,7 @@ update_monthly_digest() {
         printf '%s\n' "- Editor/LSP signals: \`$(editor_signal_count)\`"
         printf '%s\n' "- Music production signals: \`$(music_signal_count)\`"
         printf '%s\n' "- Auth/security signals: \`$(security_signal_count)\`"
+        printf '%s\n' "- CPU spike events today: \`$(spike_event_count_today)\`"
         printf '%s\n\n' "- Top unclassified warning families: \`$(unclassified_warning_top_family_count)\`"
         printf '### Signal Sources\n\n'
         printf '%s\n' "- [[system-health-crashes]]"
@@ -1494,6 +1577,7 @@ update_monthly_digest() {
         printf '%s\n' "- [[system-health-editor]]"
         printf '%s\n' "- [[system-health-music]]"
         printf '%s\n' "- [[system-health-security]]"
+        printf '%s\n' "- [[system-spikes]]"
         printf '%s\n' "- [[system-health-unclassified]]"
         printf '%s\n\n' "- [[system-health-coverage]]"
         printf '### Coredumps 7d\n\n'
@@ -1660,6 +1744,7 @@ update_monthly_digest() {
 }
 
 update() {
+    init_run_cache
     ensure_dirs
     write_rules
     write_runbook

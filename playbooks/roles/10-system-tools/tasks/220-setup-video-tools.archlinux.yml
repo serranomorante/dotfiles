@@ -13,15 +13,6 @@
     - ~/temp/makepkg/davinci-resolve
     - ~/makepkg/davinci-resolve
 
-- name: "[archlinux] Setup video tools: fix permission denied issue with davinci install"
-  become: true
-  become_user: aur_builder
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - ~/makepkg/davinci-resolve
-
 - name: "[archlinux] Setup video tools: ensure davinci-resolve folder"
   ansible.builtin.file:
     path: ~/data/apps/video-tools/davinci-resolve
@@ -294,88 +285,34 @@
   when: is_x_display_session
 
 - name: "[archlinux] Setup video tools: ensure pip deps for davinci-resolve-checker"
-  ansible.builtin.pip:
-    name:
-      - distro
-      - pylspci
-    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
-    state: present
-  environment:
-    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/video-tools/.venv"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: pip
+  vars:
+    update_diff_capture_scope: video-tools
+    update_diff_pip_venv: "{{ ansible_facts.env.HOME }}/data/apps/video-tools/.venv"
+    update_diff_pip_executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
+    update_diff_pip_packages:
+      - name: distro
+      - name: pylspci
 
 - name: "[archlinux] Setup video tools: clone davinci-resolve-checker repo"
   ansible.builtin.git:
     repo: https://github.com/Ashark/davinci-resolve-checker
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
     dest: ~/data/repos/davinci-resolve-checker
     version: master
     single_branch: true
     depth: 1
 
-- name: "[archlinux] Setup video tools: extract deps from aur package"
-  # https://bbs.archlinux.org/viewtopic.php?id=251411
-  ansible.builtin.command: sed -n 's/.*depends = //p' .SRCINFO
-  args:
-    chdir: ~/data/apps/video-tools/davinci-resolve
-  register: davinci_resolve_deps
-  changed_when: false
+- name: "[archlinux] Setup video tools: install davinci-resolve from local AUR repository"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages: davinci-resolve
   when:
     - is_x_display_session
     - not var_davinci_resolve_version_installed
     - var_stat_davinci_zip.stat.exists
-
-- name: "[archlinux] Setup video tools: install davinci-resolve deps"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name: "{{ davinci_resolve_deps.stdout | regex_findall('(.*)\n') }}"
-  timeout: 0
-  when:
-    - is_x_display_session
-    - not var_davinci_resolve_version_installed
-    - var_stat_davinci_zip.stat.exists
-    - davinci_resolve_deps is success
-
-- name: "[archlinux] Setup video tools: upgrade pkg sums to prevent yay error"
-  ansible.builtin.command: updpkgsums
-  args:
-    chdir: "{{ ansible_facts.env.HOME }}/data/apps/video-tools/davinci-resolve"
-  changed_when: true
-  when:
-    - is_x_display_session
-    - not var_davinci_resolve_version_installed
-    - var_stat_davinci_zip.stat.exists
-
-- name: "[archlinux] Setup video tools: setup makepkg folder on aur_builder user"
-  become: true
-  become_user: aur_builder
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-    mode: "755"
-  loop:
-    - /home/aur_builder
-    - /home/aur_builder/makepkg
-
-- name: "[archlinux] Setup video tools: install davinci-resolve"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: makepkg
-    name: davinci-resolve
-    state: latest
-    local_pkgbuild: "{{ ansible_facts.env.HOME }}/data/apps/video-tools/davinci-resolve"
-  environment:
-    BUILDDIR: /home/aur_builder/makepkg # more space
-    # https://wiki.archlinux.org/title/DaVinci_Resolve
-    PKGEXT: ".pkg.tar"
-  when:
-    - is_x_display_session
-    - not var_davinci_resolve_version_installed
-    - var_stat_davinci_zip.stat.exists
-    - davinci_resolve_deps is success
-  timeout: 0
 
 - name: "[archlinux] Setup video tools: remove faulty wine .dekstop"
   ansible.builtin.file:

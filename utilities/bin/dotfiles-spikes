@@ -1,0 +1,1211 @@
+#!/usr/bin/env python3
+# Purpose: Generate a compact Foam report from recorded system spike events.
+# Usage: dotfiles-spikes update|report|open|check
+# Notes: The report links to bounded evidence and runbook commands instead of
+# storing raw process snapshots in Markdown.
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import statistics
+import sys
+from collections import Counter, defaultdict
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_NOTES_ROOT = Path.home() / "data/notes/foam"
+DEFAULT_STATE_DIR = Path.home() / ".local/state/dotfiles/system-spikes"
+MANUAL_START = "<!-- dotfiles-spikes:manual-reminders:start -->"
+MANUAL_END = "<!-- dotfiles-spikes:manual-reminders:end -->"
+MONITOR_UNITS = {
+    "system-spike-watch.service",
+    "dotfiles-spikes.service",
+    "dotfiles-health.service",
+    "browser-task-snapshotd.service",
+}
+DISPLAY_HOST_UNITS = {
+    "sddm.service",
+    "display-manager.service",
+}
+INTERACTIVE_KINDS = {"xorg", "compositor", "audio", "input"}
+INCIDENT_GAP_SECONDS = 180
+
+
+def is_monitor_unit(unit: str) -> bool:
+    return unit in MONITOR_UNITS
+
+
+def is_display_host_unit(unit: str) -> bool:
+    return unit in DISPLAY_HOST_UNITS
+
+
+def is_actionable_unit(unit: str) -> bool:
+    return bool(unit) and unit not in {"unknown", "init.scope"} and not is_monitor_unit(unit) and not is_display_host_unit(unit)
+
+
+def is_docker_unit(unit: str) -> bool:
+    return unit.startswith("docker-") and unit.endswith(".scope")
+
+
+def format_cpu(value: Any) -> str:
+    try:
+        return f"{float(value):.1f}%"
+    except (TypeError, ValueError):
+        return "0.0%"
+
+
+def cpu_value(value: Any) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def compact_text(value: Any, limit: int = 120) -> str:
+    text = " ".join(str(value or "").split())
+    if limit <= 0 or len(text) <= limit:
+        return text
+    return text[: max(0, limit - 3)] + "..."
+
+
+def inline_code(value: Any, limit: int = 120) -> str:
+    return "`" + compact_text(value, limit).replace("`", "'") + "`"
+
+
+@dataclass
+class SpikeEvent:
+    raw: dict[str, Any]
+
+    @property
+    def event_id(self) -> str:
+        return str(self.raw.get("event_id", "unknown"))
+
+    @property
+    def started_at(self) -> datetime:
+        value = str(self.raw.get("started_at", ""))
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return datetime.fromtimestamp(0).astimezone()
+
+    @property
+    def victim_comm(self) -> str:
+        victim = self.raw.get("victim") or {}
+        return str(victim.get("comm") or self.raw.get("trigger_process", {}).get("comm") or "unknown")
+
+    @property
+    def victim_unit(self) -> str:
+        victim = self.raw.get("victim") or {}
+        unit = str(victim.get("unit") or "")
+        if unit:
+            return unit
+        for proc in self.raw.get("top_processes") or []:
+            if proc.get("pid") == victim.get("pid") or proc.get("comm") == self.victim_comm:
+                return str(proc.get("unit") or "")
+        trigger = self.raw.get("trigger_process") or {}
+        return str(trigger.get("unit") or "")
+
+    @property
+    def victim_kind(self) -> str:
+        return str(self.raw.get("victim_kind") or "generic")
+
+    @property
+    def dominant_unit(self) -> str:
+        for unit in self.raw.get("top_units") or []:
+            name = str(unit.get("unit") or "")
+            if is_actionable_unit(name):
+                return name
+        return ""
+
+    def unit_cpu_pct(self, unit_name: str) -> float:
+        if not unit_name:
+            return 0.0
+        for unit in self.raw.get("top_units") or []:
+            if str(unit.get("unit") or "") != unit_name:
+                continue
+            try:
+                return float(unit.get("cpu_pct", 0))
+            except (TypeError, ValueError):
+                return 0.0
+        total = 0.0
+        for proc in self.raw.get("top_processes") or []:
+            if str(proc.get("unit") or "") != unit_name:
+                continue
+            try:
+                total += float(proc.get("cpu_pct", 0))
+            except (TypeError, ValueError):
+                pass
+        return total
+
+    @property
+    def primary_suspect(self) -> dict[str, Any]:
+        suspects = self.raw.get("suspects") or []
+        if self.victim_kind in {"generic", "saturation"} and is_actionable_unit(self.victim_unit):
+            victim_cpu = self.unit_cpu_pct(self.victim_unit)
+            if victim_cpu >= 20:
+                return {"unit": self.victim_unit, "comm": self.victim_unit, "role": "victim-unit", "cpu_pct": victim_cpu}
+        for suspect in suspects:
+            unit = str(suspect.get("unit") or "")
+            try:
+                cpu_pct = float(suspect.get("cpu_pct", 0))
+            except (TypeError, ValueError):
+                cpu_pct = 0
+            if is_monitor_unit(unit) or (self.victim_kind == "xorg" and is_display_host_unit(unit)):
+                continue
+            if str(suspect.get("role") or "") == "concurrent":
+                continue
+            if self.victim_kind in {"generic", "saturation"} and self.dominant_unit:
+                if unit == self.dominant_unit or cpu_pct < 5:
+                    break
+            if unit or suspect.get("comm"):
+                return suspect
+        if self.dominant_unit:
+            return {"unit": self.dominant_unit, "comm": self.dominant_unit, "role": "dominant-unit"}
+        return {}
+
+    @property
+    def suspect_label(self) -> str:
+        suspect = self.primary_suspect
+        if not suspect:
+            return "unknown"
+        return str(suspect.get("unit") or suspect.get("comm") or "unknown")
+
+    @property
+    def top_unit_label(self) -> str:
+        return self.dominant_unit or "unknown"
+
+    @property
+    def trigger_cpu_pct(self) -> float:
+        try:
+            return float(self.raw.get("trigger_cpu_pct", 0))
+        except (TypeError, ValueError):
+            return 0.0
+
+    @property
+    def monitor_overhead_cpu(self) -> float:
+        total = 0.0
+        units = self.raw.get("top_units") or []
+        if units:
+            for unit in units:
+                if is_monitor_unit(str(unit.get("unit") or "")):
+                    try:
+                        total += float(unit.get("cpu_pct", 0))
+                    except (TypeError, ValueError):
+                        pass
+            return total
+        for proc in self.raw.get("monitor_overhead") or []:
+            try:
+                total += float(proc.get("cpu_pct", 0))
+            except (TypeError, ValueError):
+                pass
+        return total
+
+    @property
+    def confidence(self) -> str:
+        return str(self.raw.get("confidence") or "low")
+
+    @property
+    def classification(self) -> str:
+        return str(self.raw.get("classification") or "warning")
+
+    @property
+    def duration(self) -> float:
+        try:
+            return float(self.raw.get("duration_s", 0))
+        except (TypeError, ValueError):
+            return 0.0
+
+    @property
+    def notes(self) -> str:
+        return str(self.raw.get("notes") or "")
+
+    @property
+    def summary_note(self) -> str:
+        suspect = self.primary_suspect
+        if suspect.get("role") == "victim-unit":
+            return f"{self.victim_comm} spiked inside active victim unit {self.suspect_label}; other burst units are concurrent context"
+        if self.suspect_label != "unknown":
+            return f"{self.victim_comm} spiked; selected suspect {self.suspect_label} from burst unit/process evidence"
+        if self.notes:
+            return self.notes
+        return f"{self.victim_comm} spiked but no clear suspect was captured"
+
+    @property
+    def context_summary(self) -> str:
+        visible = self.visible_context_parts(full_commands=False)
+        return "; ".join(part.text for part in visible[:2])
+
+    @property
+    def context_details(self) -> list[str]:
+        return [part.text for part in self.visible_context_parts(full_commands=True)[:2]]
+
+    def visible_context_parts(self, full_commands: bool) -> list["ContextSummaryPart"]:
+        parts = self.context_parts(full_commands=full_commands)
+        if not parts:
+            return []
+        ordered = sorted(parts, key=self.context_summary_priority)
+        visible = [part for part in ordered if self.context_summary_priority(part)[0] < 80]
+        if not visible:
+            visible = ordered
+        return visible
+
+    def context_parts(self, full_commands: bool) -> list["ContextSummaryPart"]:
+        text_limit = 0 if full_commands else 60
+        cmd_limit = 0 if full_commands else 90
+        context = self.raw.get("context") or {}
+        parts: list[ContextSummaryPart] = []
+        victim = self.raw.get("victim") or {}
+        if self.victim_unit.startswith("kitty-") and (victim.get("cwd") or victim.get("cmdline")):
+            detail = f"kitty victim {victim.get('comm') or self.victim_comm} {format_cpu(self.trigger_cpu_pct)}"
+            if victim.get("cwd"):
+                detail += f" cwd {compact_text(victim.get('cwd'), text_limit)}"
+            if victim.get("cmdline"):
+                detail += f" cmd {inline_code(victim.get('cmdline'), cmd_limit)}"
+            parts.append(ContextSummaryPart(detail, self.victim_unit, self.trigger_cpu_pct, "victim"))
+        window = context.get("window") or {}
+        if window.get("status") == "ok":
+            detail = f"active window {compact_text(window.get('title') or 'untitled', 70)}"
+            if window.get("unit") and window.get("unit") not in {self.victim_unit, self.suspect_label}:
+                detail += f" unit {compact_text(window.get('unit'), 70)}"
+            if window.get("comm"):
+                detail += f" process {compact_text(window.get('comm'), 30)}"
+            parts.append(ContextSummaryPart(detail, str(window.get("unit") or ""), 0.0, "window"))
+        for browser in context.get("browsers") or []:
+            name = browser.get("browser") or "browser"
+            unit = str(browser.get("unit") or "")
+            prefix = self.context_prefix(browser.get("unit"))
+            renderer = first_context_process([proc for proc in browser.get("processes") or [] if proc.get("kind") == "renderer"])
+            tabs = browser.get("tabs") or []
+            cpu_pct = cpu_value(renderer.get("cpu_pct", 0)) if renderer else 0.0
+            if renderer:
+                suffix = f" renderer {format_cpu(renderer.get('cpu_pct', 0))}"
+                if renderer.get("renderer_client_id"):
+                    suffix += f" renderer-client-id {renderer.get('renderer_client_id')}"
+                active = active_browser_tab(tabs)
+                if active and not any(browser_tab_has_score(tab) for tab in tabs):
+                    suffix += f"; active tab {compact_text(active.get('title') or 'untitled', 50)} {compact_text(active.get('url'), 70)}"
+                else:
+                    suffix += f"; {browser_tabs_summary(tabs)}"
+                parts.append(ContextSummaryPart(f"{prefix}{name}{suffix}", unit, cpu_pct, "browser"))
+            elif tabs:
+                active = active_browser_tab(tabs)
+                if active and not any(browser_tab_has_score(tab) for tab in tabs):
+                    parts.append(ContextSummaryPart(f"{prefix}{name} active tab {compact_text(active.get('title') or 'untitled', 50)} {compact_text(active.get('url'), 70)}", unit, 0.0, "browser"))
+                else:
+                    parts.append(ContextSummaryPart(f"{prefix}{name} {browser_tabs_summary(tabs)}", unit, 0.0, "browser"))
+            elif browser.get("status"):
+                parts.append(ContextSummaryPart(f"{prefix}{name} tabs {browser.get('status')}", unit, 0.0, "browser"))
+        for kitty in context.get("kitty") or []:
+            unit = str(kitty.get("unit") or "")
+            prefix = self.context_prefix(kitty.get("unit"))
+            proc = self.expand_context_process(first_context_process(kitty.get("unit_processes") or []))
+            if proc:
+                cpu_pct = cpu_value(proc.get("cpu_pct", 0))
+                detail = f"{prefix}kitty process {proc.get('comm') or 'unknown'} {format_cpu(proc.get('cpu_pct', 0))}"
+                if proc.get("cwd"):
+                    detail += f" cwd {compact_text(proc.get('cwd'), text_limit)}"
+                if proc.get("cmdline"):
+                    detail += f" cmd {inline_code(proc.get('cmdline'), cmd_limit)}"
+                parts.append(ContextSummaryPart(detail, unit, cpu_pct, "kitty"))
+                continue
+            windows = kitty.get("windows") or []
+            if windows:
+                foreground = windows[0].get("foreground_processes") or []
+                fg = self.expand_context_process(first_context_process(foreground))
+                if fg:
+                    parts.append(ContextSummaryPart(f"{prefix}kitty foreground {fg.get('comm') or 'unknown'} cwd {compact_text(fg.get('cwd'), 60)}", unit, 0.0, "kitty"))
+        for docker in context.get("docker") or []:
+            unit = str(docker.get("unit") or "")
+            prefix = self.context_prefix(docker.get("unit"))
+            label = docker.get("name") or docker.get("short_id") or docker.get("unit") or "unknown"
+            detail = f"{prefix}docker container {label}"
+            if docker.get("image"):
+                detail += f" image {compact_text(docker.get('image'), 60)}"
+            if docker.get("compose_service"):
+                detail += f" compose service {compact_text(docker.get('compose_service'), 40)}"
+            proc = first_context_process(docker.get("processes") or [])
+            cpu_pct = cpu_value(proc.get("cpu_pct", 0)) if proc else 0.0
+            if proc:
+                detail += f" process {proc.get('comm') or 'unknown'} {format_cpu(proc.get('cpu_pct', 0))}"
+            elif docker.get("inspect_status"):
+                detail += f" inspect {docker.get('inspect_status')}"
+            parts.append(ContextSummaryPart(detail, unit, cpu_pct, "docker"))
+        audio = context.get("audio") or {}
+        for node in (audio.get("nodes") or [])[:2]:
+            label = node.get("description") or node.get("name") or node.get("id") or "unknown"
+            detail = f"audio node {label}"
+            if node.get("media_class"):
+                detail += f" class {compact_text(node.get('media_class'), 40)}"
+            if node.get("busy_quantum") and node.get("busy_quantum") != "---":
+                detail += f" B/Q {node.get('busy_quantum')}"
+            elif node.get("busy") and node.get("busy") != "---":
+                detail += f" busy {node.get('busy')}"
+            if node.get("errors"):
+                detail += f" errors {node.get('errors')}"
+            parts.append(ContextSummaryPart(detail, "", 0.0, "audio"))
+        if not audio.get("nodes") and audio.get("status") and audio.get("status") != "ok":
+            parts.append(ContextSummaryPart(f"audio context {audio.get('status')}", "", 0.0, "audio"))
+        return parts
+
+    def expand_context_process(self, proc: dict[str, Any]) -> dict[str, Any]:
+        if not proc:
+            return {}
+        expanded = dict(proc)
+        proc_pid = proc.get("pid")
+        proc_unit = str(proc.get("unit") or "")
+        proc_comm = str(proc.get("comm") or "")
+        for top_proc in self.raw.get("top_processes") or []:
+            same_pid = proc_pid and top_proc.get("pid") == proc_pid
+            same_process = proc_unit and proc_comm and str(top_proc.get("unit") or "") == proc_unit and str(top_proc.get("comm") or "") == proc_comm
+            if not same_pid and not same_process:
+                continue
+            for key in ("cmdline", "cwd"):
+                current = str(expanded.get(key) or "")
+                candidate = str(top_proc.get(key) or "")
+                if len(candidate) > len(current):
+                    expanded[key] = candidate
+            if top_proc.get("cpu_pct") is not None:
+                expanded["cpu_pct"] = top_proc.get("cpu_pct")
+            break
+        return expanded
+
+    def context_summary_priority(self, part: "ContextSummaryPart") -> tuple[int, float]:
+        relevant_units = {self.victim_unit, self.suspect_label, self.top_unit_label}
+        if part.kind == "victim":
+            return (-10, -part.cpu_pct)
+        if part.unit and part.unit in relevant_units:
+            return (0, -part.cpu_pct)
+        if part.cpu_pct >= 20:
+            return (20, -part.cpu_pct)
+        if part.kind == "browser" and part.cpu_pct < 10:
+            return (80, -part.cpu_pct)
+        return (40, -part.cpu_pct)
+
+    def context_prefix(self, unit: Any) -> str:
+        name = str(unit or "")
+        if not name or name == self.suspect_label or name == self.victim_unit:
+            return ""
+        if self.victim_kind in INTERACTIVE_KINDS and is_docker_unit(name):
+            return "system pressure "
+        return "concurrent "
+
+    @property
+    def visible_suspects(self) -> list[dict[str, Any]]:
+        visible: list[dict[str, Any]] = []
+        for suspect in self.raw.get("suspects") or []:
+            unit = str(suspect.get("unit") or "")
+            if is_monitor_unit(unit) or (self.victim_kind == "xorg" and is_display_host_unit(unit)):
+                continue
+            try:
+                cpu_pct = float(suspect.get("cpu_pct", 0))
+            except (TypeError, ValueError):
+                cpu_pct = 0
+            if cpu_pct < 5 and unit != self.suspect_label:
+                continue
+            visible.append(suspect)
+        return visible
+
+
+@dataclass
+class ContextSummaryPart:
+    text: str
+    unit: str
+    cpu_pct: float
+    kind: str
+
+
+def now_local() -> str:
+    return datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+
+
+def notes_root() -> Path:
+    return Path(os.environ.get("DOTFILES_SPIKES_NOTES_ROOT", str(DEFAULT_NOTES_ROOT))).expanduser()
+
+
+def spikes_dir() -> Path:
+    return Path(os.environ.get("DOTFILES_SPIKES_DIR", str(notes_root() / "ops/system-health/spikes"))).expanduser()
+
+
+def state_dir() -> Path:
+    return Path(os.environ.get("DOTFILES_SPIKES_STATE_DIR", str(DEFAULT_STATE_DIR))).expanduser()
+
+
+def read_events() -> list[SpikeEvent]:
+    events_dir = state_dir() / "events"
+    events: list[SpikeEvent] = []
+    if not events_dir.exists():
+        return events
+    for path in sorted(events_dir.glob("*.jsonl")):
+        try:
+            lines = path.read_text(errors="replace").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                raw = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            events.append(SpikeEvent(raw))
+    events.sort(key=lambda event: event.started_at)
+    return events
+
+
+def ensure_dirs() -> None:
+    root = spikes_dir()
+    for path in [
+        root,
+        root / "sources",
+        root / "reports" / datetime.now().astimezone().strftime("%Y"),
+    ]:
+        path.mkdir(parents=True, exist_ok=True)
+
+
+def preserve_manual_block(path: Path) -> str:
+    if not path.exists():
+        return default_manual_block()
+    text = path.read_text(errors="replace")
+    start = text.find(MANUAL_START)
+    end = text.find(MANUAL_END)
+    if start < 0 or end < start:
+        return default_manual_block()
+    return text[start : end + len(MANUAL_END)]
+
+
+def default_manual_block() -> str:
+    return f"""{MANUAL_START}
+
+## Review Reminders
+
+- [ ] **Review system spike patterns**
+
+  Open [[system-spikes]], inspect repeated high-confidence suspects, and decide whether each pattern needs a fix, threshold adjustment, or allowlist entry.
+
+{MANUAL_END}"""
+
+
+def pattern_key(event: SpikeEvent) -> tuple[str, str]:
+    return event.victim_comm, event.suspect_label
+
+
+def aggregate_patterns(events: list[SpikeEvent]) -> list[dict[str, Any]]:
+    groups: dict[tuple[str, str], list[SpikeEvent]] = defaultdict(list)
+    for event in events:
+        groups[pattern_key(event)].append(event)
+    rows: list[dict[str, Any]] = []
+    for (victim, suspect), group in groups.items():
+        durations = [event.duration for event in group if event.duration > 0]
+        rows.append(
+            {
+                "victim": victim,
+                "suspect": suspect,
+                "count": len(group),
+                "victim_unit": Counter(event.victim_unit or "unknown" for event in group).most_common(1)[0][0],
+                "top_unit": Counter(event.top_unit_label for event in group).most_common(1)[0][0],
+                "first_seen": group[0].started_at.strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "last_seen": group[-1].started_at.strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "avg_duration": round(statistics.mean(durations), 2) if durations else 0,
+                "max_duration": round(max(durations), 2) if durations else 0,
+                "max_trigger_cpu": round(max(event.trigger_cpu_pct for event in group), 1),
+                "max_monitor_overhead": round(max(event.monitor_overhead_cpu for event in group), 1),
+                "confidence": Counter(event.confidence for event in group).most_common(1)[0][0],
+                "classification": Counter(event.classification for event in group).most_common(1)[0][0],
+            }
+        )
+    rows.sort(key=lambda row: (row["count"], row["max_duration"]), reverse=True)
+    return rows
+
+
+def incident_key(event: SpikeEvent) -> tuple[str, str]:
+    return event.victim_kind, event.victim_comm
+
+
+def aggregate_incidents(events: list[SpikeEvent]) -> list[dict[str, Any]]:
+    incidents: list[list[SpikeEvent]] = []
+    current: list[SpikeEvent] = []
+    for event in sorted(events, key=lambda item: item.started_at):
+        if not current:
+            current = [event]
+            continue
+        previous = current[-1]
+        gap = (event.started_at - previous.started_at).total_seconds()
+        if incident_key(event) == incident_key(previous) and gap <= INCIDENT_GAP_SECONDS:
+            current.append(event)
+            continue
+        incidents.append(current)
+        current = [event]
+    if current:
+        incidents.append(current)
+
+    rows: list[dict[str, Any]] = []
+    for group in incidents:
+        start = group[0].started_at
+        end = group[-1].started_at
+        suspects = Counter(event.suspect_label for event in group)
+        top_units = Counter(event.top_unit_label for event in group)
+        contexts = [event.context_summary for event in reversed(group) if event.context_summary]
+        rows.append(
+            {
+                "start": start,
+                "end": end,
+                "count": len(group),
+                "victim": Counter(event.victim_comm for event in group).most_common(1)[0][0],
+                "victim_unit": Counter(event.victim_unit or "unknown" for event in group).most_common(1)[0][0],
+                "suspects": ", ".join(f"{name} x{count}" for name, count in suspects.most_common(3)),
+                "top_units": ", ".join(f"{name} x{count}" for name, count in top_units.most_common(3)),
+                "max_trigger_cpu": round(max(event.trigger_cpu_pct for event in group), 1),
+                "max_monitor_overhead": round(max(event.monitor_overhead_cpu for event in group), 1),
+                "confidence": Counter(event.confidence for event in group).most_common(1)[0][0],
+                "classification": Counter(event.classification for event in group).most_common(1)[0][0],
+                "context": contexts[0] if contexts else "",
+            }
+        )
+    rows.sort(key=lambda row: row["start"], reverse=True)
+    return rows
+
+
+def recent_events(events: list[SpikeEvent], limit: int = 12) -> list[SpikeEvent]:
+    return list(reversed(events[-limit:]))
+
+
+def write_main(events: list[SpikeEvent]) -> None:
+    path = spikes_dir() / "system-spikes.md"
+    patterns = aggregate_patterns(events)
+    incidents = aggregate_incidents(events)
+    victims = Counter(event.victim_comm for event in events)
+    victim_units = Counter(event.victim_unit or "unknown" for event in events)
+    suspects = Counter(event.suspect_label for event in events)
+    top_units = Counter(event.top_unit_label for event in events)
+    classifications = Counter(event.classification for event in events)
+    manual = preserve_manual_block(path)
+    today = datetime.now().astimezone().date()
+    today_count = sum(1 for event in events if event.started_at.date() == today)
+    recent = recent_events(events)
+
+    lines: list[str] = [
+        "# System Spikes",
+        "",
+        "@tags #system-health #performance #ops",
+        "",
+        "This generated report summarizes interactive CPU spikes captured by `system-spike-watch`; start here to see victims, likely suspects, confidence, and short evidence.",
+        "@id system-spikes-report",
+        "",
+        f"Last generated: {now_local()}",
+        "",
+        "## Current Status",
+        "",
+        f"- Spikes today: `{today_count}`",
+        f"- Recorded spikes: `{len(events)}`",
+        f"- Unique patterns: `{len(patterns)}`",
+        f"- Unique incidents: `{len(incidents)}`",
+        f"- High-confidence events: `{sum(1 for event in events if event.confidence == 'high')}`",
+        f"- Events with monitor overhead: `{sum(1 for event in events if event.monitor_overhead_cpu >= 5)}`",
+        "- Rules: [[system-spike-rules]]",
+        "- Runbook: [[system-spike-runbook]]",
+        "- Coverage: [[system-spike-coverage]]",
+        f"- Monthly digest: [[{datetime.now().astimezone().strftime('system-spikes-%Y-%m')}]]",
+        "",
+        "## Top Victims",
+        "",
+    ]
+    lines.extend(counter_lines(victims, "No victim processes recorded."))
+    lines.extend(["", "## Top Victim Units", ""])
+    lines.extend(counter_lines(victim_units, "No victim units recorded."))
+    lines.extend(["", "## Top Suspects", ""])
+    lines.extend(counter_lines(suspects, "No suspects recorded."))
+    lines.extend(["", "## Dominant Burst Units", ""])
+    lines.extend(counter_lines(top_units, "No dominant burst units recorded."))
+    lines.extend(["", "## Classifications", ""])
+    lines.extend(counter_lines(classifications, "No classifications recorded."))
+    lines.extend(["", "## Monitor Overhead", ""])
+    overhead_events = [event for event in events if event.monitor_overhead_cpu >= 5]
+    if overhead_events:
+        for event in sorted(overhead_events, key=lambda item: item.monitor_overhead_cpu, reverse=True)[:8]:
+            lines.append(f"- `{event.started_at.strftime('%Y-%m-%d %H:%M:%S %Z')}` monitor `{format_cpu(event.monitor_overhead_cpu)}` while victim `{event.victim_comm}` top unit `{event.top_unit_label}`")
+    else:
+        lines.append("- No monitor overhead above 5% captured.")
+    lines.extend(["", "## Top Patterns", ""])
+    if patterns:
+        for row in patterns[:10]:
+            lines.append(
+                f"- `{row['victim']}` <- `{row['suspect']}`: `{row['count']}` events, victim unit `{row['victim_unit']}`, top unit `{row['top_unit']}`, confidence `{row['confidence']}`, classification `{row['classification']}`, max trigger `{format_cpu(row['max_trigger_cpu'])}`, max monitor `{format_cpu(row['max_monitor_overhead'])}`, avg `{row['avg_duration']}s`, max `{row['max_duration']}s`, last `{row['last_seen']}`"
+            )
+    else:
+        lines.append("- No spike patterns recorded.")
+    lines.extend(["", "## Recent Incidents", ""])
+    if incidents:
+        for row in incidents[:8]:
+            context = f", context {row['context']}" if row["context"] else ""
+            lines.append(
+                f"- `{row['start'].strftime('%Y-%m-%d %H:%M:%S %Z')}` to `{row['end'].strftime('%Y-%m-%d %H:%M:%S %Z')}` victim `{row['victim']}` unit `{row['victim_unit']}` events `{row['count']}` suspects `{row['suspects']}` top units `{row['top_units']}` max trigger `{format_cpu(row['max_trigger_cpu'])}` max monitor `{format_cpu(row['max_monitor_overhead'])}` confidence `{row['confidence']}` classification `{row['classification']}`{context}"
+            )
+    else:
+        lines.append("- No spike incidents recorded.")
+    lines.extend(["", "## Recent Events", ""])
+    if recent:
+        for event in recent:
+            summary = event.summary_note
+            lines.append(
+                f"- `{event.started_at.strftime('%Y-%m-%d %H:%M:%S %Z')}` victim `{event.victim_comm}` unit `{event.victim_unit or 'unknown'}` suspect `{event.suspect_label}` top unit `{event.top_unit_label}` trigger `{format_cpu(event.trigger_cpu_pct)}` monitor `{format_cpu(event.monitor_overhead_cpu)}` confidence `{event.confidence}` classification `{event.classification}`: {summary}"
+            )
+            for detail in event.context_details:
+                lines.append(f"  - context: {detail}")
+    else:
+        lines.append("- No recent spike events recorded.")
+    lines.extend(
+        [
+            "",
+            "## Source Pages",
+            "",
+            "- [[system-spike-xorg]]",
+            "- [[system-spike-compositor]]",
+            "- [[system-spike-audio]]",
+            "- [[system-spike-input]]",
+            "- [[system-spike-generic]]",
+            "",
+            "## Quick Commands",
+            "",
+            "```sh",
+            "dotfiles-spikes update",
+            "```",
+            "",
+            "```sh",
+            "system-spike-watch check",
+            "```",
+            "",
+            "```sh",
+            "systemd-cgtop --batch --iterations=1 --raw --cpu=percentage --depth=4",
+            "```",
+            "",
+            manual,
+            "",
+        ]
+    )
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def counter_lines(counter: Counter[str], empty: str) -> list[str]:
+    if not counter:
+        return [f"- {empty}"]
+    return [f"- `{name}`: `{count}`" for name, count in counter.most_common(10)]
+
+
+def first_context_process(processes: list[dict[str, Any]]) -> dict[str, Any]:
+    for proc in processes:
+        if str(proc.get("comm") or "") not in {"kitty", "brave", "chromium"}:
+            return proc
+    if processes:
+        return processes[0]
+    return {}
+
+
+def active_browser_tab(tabs: list[dict[str, Any]]) -> dict[str, Any]:
+    for tab in tabs:
+        if tab.get("active"):
+            return tab
+    return {}
+
+
+def browser_tabs_summary(tabs: list[dict[str, Any]], limit: int = 3) -> str:
+    if not tabs:
+        return "0 candidate tabs"
+    items: list[str] = []
+    for tab in tabs[:limit]:
+        items.append(browser_tab_summary_item(tab))
+    remaining = len(tabs) - len(items)
+    suffix = f"; +{remaining} more" if remaining > 0 else ""
+    label = "probable tabs" if any(browser_tab_has_score(tab) for tab in tabs) else "candidate tabs"
+    return f"{label} {'; '.join(items)}{suffix}"
+
+
+def browser_tab_has_score(tab: dict[str, Any]) -> bool:
+    try:
+        return bool(tab.get("probable") or float(tab.get("score", 0)) > 0 or float(tab.get("browser_task_cpu_pct", 0)) > 0)
+    except (TypeError, ValueError):
+        return bool(tab.get("probable"))
+
+
+def browser_tab_summary_item(tab: dict[str, Any]) -> str:
+    title = compact_text(tab.get("title") or "untitled", 45)
+    details: list[str] = [title]
+    if tab.get("browser_task_cpu_pct"):
+        details.append(f"cpu {format_float(tab.get('browser_task_cpu_pct'))}%")
+        if tab.get("browser_task_shared"):
+            details.append("shared-process")
+    if browser_tab_has_score(tab) and not tab.get("browser_task_cpu_pct"):
+        details.append(f"score {format_float(tab.get('score'))}")
+        if tab.get("task_ms"):
+            details.append(f"task {format_float(tab.get('task_ms'))}ms")
+        if tab.get("script_ms"):
+            details.append(f"script {format_float(tab.get('script_ms'))}ms")
+    if tab.get("visibility_state"):
+        details.append(str(tab.get("visibility_state")))
+    url = compact_text(tab.get("url"), 60)
+    if url:
+        details.append(url)
+    return " ".join(details)
+
+
+def format_float(value: Any) -> str:
+    try:
+        return f"{float(value):.1f}"
+    except (TypeError, ValueError):
+        return "0.0"
+
+
+def process_evidence_label(proc: dict[str, Any]) -> str:
+    pieces = [inline_code(proc.get("comm") or "unknown", 50)]
+    if proc.get("kind"):
+        pieces.append(f"kind {inline_code(proc.get('kind'), 40)}")
+    if proc.get("renderer_client_id"):
+        pieces.append(f"renderer-client-id {inline_code(proc.get('renderer_client_id'), 20)}")
+    try:
+        cpu_pct = float(proc.get("cpu_pct", 0))
+    except (TypeError, ValueError):
+        cpu_pct = 0
+    if cpu_pct > 0:
+        pieces.append(format_cpu(cpu_pct))
+    if proc.get("cwd"):
+        pieces.append(f"cwd {inline_code(proc.get('cwd'), 90)}")
+    if proc.get("cmdline"):
+        pieces.append(f"cmd {inline_code(proc.get('cmdline'), 140)}")
+    return " ".join(pieces)
+
+
+def audio_node_evidence_label(node: dict[str, Any]) -> str:
+    label = node.get("description") or node.get("name") or node.get("id") or "unknown"
+    pieces = [f"node {inline_code(label, 90)}"]
+    if node.get("id") is not None:
+        pieces.append(f"id {inline_code(node.get('id'), 12)}")
+    if node.get("media_class"):
+        pieces.append(f"class {inline_code(node.get('media_class'), 50)}")
+    if node.get("app_name"):
+        pieces.append(f"app {inline_code(node.get('app_name'), 60)}")
+    if node.get("busy_quantum") and node.get("busy_quantum") != "---":
+        pieces.append(f"B/Q {inline_code(node.get('busy_quantum'), 20)}")
+    if node.get("busy") and node.get("busy") != "---":
+        pieces.append(f"BUSY {inline_code(node.get('busy'), 20)}")
+    if node.get("wait_quantum") and node.get("wait_quantum") != "---":
+        pieces.append(f"W/Q {inline_code(node.get('wait_quantum'), 20)}")
+    if node.get("errors"):
+        pieces.append(f"errors {inline_code(node.get('errors'), 20)}")
+    if node.get("format"):
+        pieces.append(f"format {inline_code(node.get('format'), 80)}")
+    return " ".join(pieces)
+
+
+def browser_tab_evidence_label(tab: dict[str, Any]) -> str:
+    pieces: list[str] = []
+    if tab.get("probable"):
+        pieces.append("probable")
+    if tab.get("active"):
+        pieces.append("active")
+    pieces.append(inline_code(tab.get("title") or "untitled", 90))
+    pieces.append(inline_code(tab.get("url"), 120))
+    if tab.get("browser_task_cpu_pct"):
+        pieces.append(f"browser cpu {inline_code(format_float(tab.get('browser_task_cpu_pct')) + '%', 20)}")
+        if tab.get("browser_task_process_id"):
+            pieces.append(f"browser-process-id {inline_code(tab.get('browser_task_process_id'), 20)}")
+        if tab.get("browser_task_os_pid"):
+            pieces.append(f"os-pid {inline_code(tab.get('browser_task_os_pid'), 20)}")
+        if tab.get("browser_task_source"):
+            pieces.append(f"source {inline_code(tab.get('browser_task_source'), 40)}")
+        if tab.get("browser_task_age_s"):
+            pieces.append(f"age {inline_code(format_float(tab.get('browser_task_age_s')) + 's', 20)}")
+        if tab.get("browser_task_shared"):
+            pieces.append("shared-process")
+    if browser_tab_has_score(tab) and not tab.get("browser_task_cpu_pct"):
+        pieces.append(f"score {inline_code(format_float(tab.get('score')), 20)}")
+    if tab.get("score_reason"):
+        pieces.append(f"reason {inline_code(tab.get('score_reason'), 120)}")
+    elif tab.get("task_ms"):
+        pieces.append(f"task {inline_code(format_float(tab.get('task_ms')) + 'ms', 20)}")
+    if tab.get("visibility_state"):
+        pieces.append(f"visibility {inline_code(tab.get('visibility_state'), 20)}")
+    if tab.get("match"):
+        pieces.append(f"match {inline_code(tab.get('match'), 40)}")
+    return " ".join(pieces)
+
+
+def context_evidence_lines(event: SpikeEvent) -> list[str]:
+    context = event.raw.get("context") or {}
+    lines: list[str] = []
+    window = context.get("window") or {}
+    if window:
+        if window.get("status") == "ok":
+            parts = [
+                f"active window {inline_code(window.get('title') or 'untitled', 100)}",
+            ]
+            if window.get("id"):
+                parts.append(f"id {inline_code(window.get('id'), 20)}")
+            if window.get("pid"):
+                parts.append(f"pid {inline_code(window.get('pid'), 20)}")
+            if window.get("unit"):
+                parts.append(f"unit {inline_code(window.get('unit'), 90)}")
+            if window.get("comm"):
+                parts.append(f"process {inline_code(window.get('comm'), 50)}")
+            if window.get("cwd"):
+                parts.append(f"cwd {inline_code(window.get('cwd'), 90)}")
+            if window.get("cmdline"):
+                parts.append(f"cmd {inline_code(window.get('cmdline'), 140)}")
+            lines.append(" ".join(parts))
+        elif window.get("status"):
+            extra = f" error {inline_code(window.get('error'), 100)}" if window.get("error") else ""
+            lines.append(f"active window context: {inline_code(window.get('status'), 60)}{extra}")
+    for kitty in context.get("kitty") or []:
+        unit = kitty.get("unit") or "unknown"
+        processes = kitty.get("unit_processes") or []
+        if processes:
+            details = ", ".join(process_evidence_label(proc) for proc in processes[:3])
+            lines.append(f"kitty unit {inline_code(unit, 80)} process evidence: {details}")
+        status = kitty.get("status")
+        if status and status != "ok":
+            extra = f" error {inline_code(kitty.get('error'), 100)}" if kitty.get("error") else ""
+            lines.append(f"kitty remote context: {inline_code(status, 60)}{extra}")
+        for window in (kitty.get("windows") or [])[:3]:
+            foreground = window.get("foreground_processes") or []
+            fg = ", ".join(process_evidence_label(proc) for proc in foreground[:2]) if foreground else "none"
+            parts = [
+                f"kitty window {inline_code(window.get('id'), 20)}",
+                f"title {inline_code(window.get('title') or 'untitled', 90)}",
+            ]
+            if window.get("cwd"):
+                parts.append(f"cwd {inline_code(window.get('cwd'), 90)}")
+            if window.get("last_reported_cmdline"):
+                parts.append(f"last cmd {inline_code(window.get('last_reported_cmdline'), 90)}")
+            parts.append(f"foreground {fg}")
+            lines.append(" ".join(parts))
+    for browser in context.get("browsers") or []:
+        name = browser.get("browser") or "browser"
+        unit = browser.get("unit") or "unknown"
+        processes = browser.get("processes") or []
+        if processes:
+            details = ", ".join(process_evidence_label(proc) for proc in processes[:4])
+            lines.append(f"{name} unit {inline_code(unit, 90)} process evidence: {details}")
+        tabs = browser.get("tabs") or []
+        status = browser.get("status") or "unknown"
+        port = browser.get("debug_port") or "unknown"
+        task_status = browser.get("task_sampler_status")
+        if task_status and task_status not in {"ok", "not-found"}:
+            extra = f" error {inline_code(browser.get('task_sampler_error'), 100)}" if browser.get("task_sampler_error") else ""
+            age = f" age {inline_code(format_float(browser.get('task_sampler_age_s')) + 's', 20)}" if browser.get("task_sampler_age_s") else ""
+            lines.append(f"{name} browser task sampler: {inline_code(task_status, 60)}{age}{extra}")
+        if tabs:
+            source = "DevTools/task sampler" if any(tab.get("browser_task_cpu_pct") for tab in tabs) else "DevTools"
+            details = "; ".join(browser_tab_evidence_label(tab) for tab in tabs[:5])
+            lines.append(f"{name} candidate tabs via {source} {inline_code(port, 20)}: {details}")
+        else:
+            extra = f" error {inline_code(browser.get('error'), 100)}" if browser.get("error") else ""
+            lines.append(f"{name} tabs via DevTools {inline_code(port, 20)}: {inline_code(status, 60)}{extra}")
+    for docker in context.get("docker") or []:
+        unit = docker.get("unit") or "unknown"
+        container = docker.get("name") or docker.get("short_id") or "unknown"
+        parts = [
+            f"docker unit {inline_code(unit, 110)}",
+            f"container {inline_code(container, 80)}",
+        ]
+        if docker.get("short_id"):
+            parts.append(f"id {inline_code(docker.get('short_id'), 20)}")
+        if docker.get("image"):
+            parts.append(f"image {inline_code(docker.get('image'), 100)}")
+        if docker.get("container_status"):
+            parts.append(f"status {inline_code(docker.get('container_status'), 40)}")
+        if docker.get("health"):
+            parts.append(f"health {inline_code(docker.get('health'), 40)}")
+        if docker.get("compose_project"):
+            parts.append(f"compose project {inline_code(docker.get('compose_project'), 60)}")
+        if docker.get("compose_service"):
+            parts.append(f"compose service {inline_code(docker.get('compose_service'), 60)}")
+        if docker.get("inspect_status") and docker.get("inspect_status") != "ok":
+            parts.append(f"inspect {inline_code(docker.get('inspect_status'), 50)}")
+        if docker.get("error"):
+            parts.append(f"error {inline_code(docker.get('error'), 100)}")
+        lines.append(" ".join(parts))
+        processes = docker.get("processes") or []
+        if processes:
+            details = ", ".join(process_evidence_label(proc) for proc in processes[:4])
+            lines.append(f"docker unit {inline_code(unit, 110)} process evidence: {details}")
+    audio = context.get("audio") or {}
+    processes = audio.get("processes") or []
+    if processes:
+        details = ", ".join(process_evidence_label(proc) for proc in processes[:4])
+        lines.append(f"audio process evidence: {details}")
+    nodes = audio.get("nodes") or []
+    if nodes:
+        details = "; ".join(audio_node_evidence_label(node) for node in nodes[:6])
+        lines.append(f"pipewire node evidence: {details}")
+    elif audio.get("status") and audio.get("status") != "ok":
+        extra = f" error {inline_code(audio.get('error'), 120)}" if audio.get("error") else ""
+        lines.append(f"pipewire node evidence: {inline_code(audio.get('status'), 60)}{extra}")
+    return lines[:10]
+
+
+def write_rules() -> None:
+    path = spikes_dir() / "system-spike-rules.md"
+    if path.exists():
+        return
+    path.write_text(
+        "\n".join(
+            [
+                "# System Spike Rules",
+                "",
+                "@tags #system-health #performance #ops",
+                "",
+                "This file documents how spike reports classify recurring workstation CPU bursts. It is policy, not raw evidence.",
+                "",
+                "## Critical",
+                "",
+                "- Repeated `Xorg`, compositor, input-helper, or audio spikes that visibly freeze the session.",
+                "- High-confidence background suspects causing interactive-path victims.",
+                "",
+                "## Warning",
+                "",
+                "- Repeated background units, timers, indexers, sync jobs, or health checks that correlate with interactive spikes.",
+                "- Medium-confidence Xorg spikes with recurring suspects.",
+                "",
+                "## Informational",
+                "",
+                "- Expected foreground builds, package installs, renders, exports, and benchmarks when they do not cause an interactive victim to spike.",
+                "- Generic high-CPU processes outside latency-sensitive paths.",
+                "- Self-contained generic spikes where the victim process belongs to the dominant burst unit.",
+                "",
+                "## Ignored Noise Candidates",
+                "",
+                "- `system-spike-watch.service`, `system-spike-notify.service`, `dotfiles-spikes.service`, `dotfiles-health.service`, and `browser-task-snapshotd.service` as primary suspects; report them as monitor overhead instead.",
+                "- `sddm.service` as the host unit for `Xorg`; keep it as victim-unit context unless a separate client or helper process provides causal evidence.",
+                "- One-off low-confidence spikes below the freeze threshold.",
+                "- Known foreground commands that the user intentionally launched and that do not affect `Xorg`, input, compositor, or audio.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def write_runbook() -> None:
+    path = spikes_dir() / "system-spike-runbook.md"
+    path.write_text(
+        "\n".join(
+            [
+                "# System Spike Runbook",
+                "",
+                "@tags #system-health #performance #ops",
+                "",
+                "Use these bounded commands when [[system-spikes]] points to recurring interactive CPU spikes.",
+                "",
+                "## Daily",
+                "",
+                "```sh",
+                "dotfiles-spikes update",
+                "```",
+                "",
+                "```sh",
+                "system-spike-watch check",
+                "```",
+                "",
+                "```sh",
+                "systemd-cgtop --batch --iterations=1 --raw --cpu=percentage --depth=4",
+                "```",
+                "",
+                "```sh",
+                "systemctl --user list-timers --all",
+                "```",
+                "",
+                "## Investigate A Suspect Unit",
+                "",
+                "```sh",
+                "SYSTEMD_PAGER='less -R +G' journalctl --user -u UNIT --since today -n 200 --pager-end",
+                "```",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def write_coverage() -> None:
+    path = spikes_dir() / "system-spike-coverage.md"
+    path.write_text(
+        "\n".join(
+            [
+                "# System Spike Coverage",
+                "",
+                "@tags #system-health #performance #ops",
+                "",
+                "This page documents what the generated spike report currently watches and where attribution is partial.",
+                "",
+                f"Last updated: {now_local()}",
+                "",
+                "## Covered",
+                "",
+                "- Xorg victim spikes.",
+                "- Picom and Plasma compositor/UI spikes.",
+                "- PipeWire, WirePlumber, and pipewire-pulse spikes.",
+                "- keyd, keyd-observer, mouseless, and ydotoold input-path spikes.",
+                "- Node.js process spikes at lower-than-generic CPU levels.",
+                "- Generic high-CPU processes as informational context.",
+                "- Burst-only Kitty context for `kitty-*` scopes: top processes, cwd, remote-control socket, windows, and foreground processes when available.",
+                "- Burst-only X11 active-window context when `DISPLAY` and `xdotool` are available: title, PID, unit, cwd, and command line.",
+                "- Burst-only Brave and Chromium context for browser scopes: renderer process evidence plus DevTools tab candidates when a local debugging port is available, browser task CPU snapshots when the local extension and receiver have fresh data, and probable-tab ranking from task CPU, short CDP activity probes, and X11 active-window correlation.",
+                "- Burst-only Docker context for `docker-*.scope` units: container name, image, status, Compose labels, and top processes when Docker inspect is available.",
+                "- Burst-only PipeWire context for audio spikes: audio processes plus `pw-top` node load evidence enriched with `pw-dump` node metadata.",
+                "",
+                "## Partial",
+                "",
+                "- Root cause attribution is confidence-scored, not guaranteed causality.",
+                "- Short-lived processes can be missed if they start and exit between burst samples.",
+                "- X11 client attribution is inferred through timing, command, cgroup, and unit evidence.",
+                "- Browser tab context prefers fresh `chrome.processes` task CPU snapshots when available, then falls back to recent CDP `Performance.getMetrics` deltas and X11 title correlation; shared renderer processes can still make per-tab causality approximate.",
+                "- Docker container context depends on the user service being able to run `docker inspect` within the burst timeout.",
+                "- PipeWire node context depends on `pw-top` and `pw-dump`; node load is graph/quantum evidence, not the same metric as Linux process CPU percentage.",
+                "- Monitor overhead is reported separately and is excluded from primary suspect selection.",
+                "- Deep stack traces are intentionally out of scope for the always-on monitor.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def write_source_pages(events: list[SpikeEvent]) -> None:
+    mapping = {
+        "xorg": "system-spike-xorg",
+        "compositor": "system-spike-compositor",
+        "audio": "system-spike-audio",
+        "input": "system-spike-input",
+        "generic": "system-spike-generic",
+        "saturation": "system-spike-generic",
+    }
+    grouped: dict[str, list[SpikeEvent]] = defaultdict(list)
+    for event in events:
+        grouped[mapping.get(event.victim_kind, "system-spike-generic")].append(event)
+    for stem in set(mapping.values()):
+        group = grouped.get(stem, [])
+        title = stem.replace("system-spike-", "").replace("-", " ").title()
+        path = spikes_dir() / "sources" / f"{stem}.md"
+        lines = [
+            f"# {title} Spikes",
+            "",
+            "@tags #system-health #performance #ops",
+            "",
+            "This source page keeps bounded evidence for one class of recorded CPU spike events.",
+            "",
+            f"Last updated: {now_local()}",
+            "",
+            "## Current Status",
+            "",
+            f"- Events: `{len(group)}`",
+            "",
+            "## Recent Evidence",
+            "",
+        ]
+        if not group:
+            lines.append("- No events recorded for this source.")
+        for event in recent_events(group, 10):
+            lines.append(f"- `{event.started_at.strftime('%Y-%m-%d %H:%M:%S %Z')}` victim `{event.victim_comm}` unit `{event.victim_unit or 'unknown'}` suspect `{event.suspect_label}` top unit `{event.top_unit_label}` trigger `{format_cpu(event.trigger_cpu_pct)}` monitor `{format_cpu(event.monitor_overhead_cpu)}` confidence `{event.confidence}` duration `{event.duration}s`")
+            top_units = event.raw.get("top_units") or []
+            if top_units:
+                details = ", ".join(f"{unit.get('unit') or 'unknown'} {format_cpu(unit.get('cpu_pct', 0))}" for unit in top_units[:3])
+                lines.append(f"  - top units: {details}")
+            if event.monitor_overhead_cpu >= 5:
+                lines.append(f"  - monitor overhead: `{format_cpu(event.monitor_overhead_cpu)}` from dotfiles spike tooling")
+            for suspect in event.visible_suspects[:2]:
+                label = "suspect"
+                if str(suspect.get("unit") or "") != event.suspect_label:
+                    label = "concurrent"
+                if suspect.get("role") == "concurrent":
+                    label = "concurrent"
+                details = [f"{label} `{suspect.get('comm') or 'unknown'}` unit `{suspect.get('unit') or 'unknown'}`"]
+                if suspect.get("cwd"):
+                    details.append(f"cwd {inline_code(suspect.get('cwd'), 90)}")
+                if suspect.get("cmdline"):
+                    details.append(f"cmd {inline_code(suspect.get('cmdline'), 140)}")
+                details.append(f"reason `{suspect.get('reason') or 'n/a'}`")
+                lines.append("  - " + " ".join(details))
+            for detail in context_evidence_lines(event):
+                lines.append(f"  - {detail}")
+        lines.extend(["", "## Quick Commands", "", "```sh", "dotfiles-spikes update", "```", ""])
+        path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def write_monthly_digest(events: list[SpikeEvent]) -> None:
+    ym = datetime.now().astimezone().strftime("%Y-%m")
+    year = datetime.now().astimezone().strftime("%Y")
+    path = spikes_dir() / "reports" / year / f"system-spikes-{ym}.md"
+    month_events = [event for event in events if event.started_at.strftime("%Y-%m") == ym]
+    patterns = aggregate_patterns(month_events)
+    incidents = aggregate_incidents(month_events)
+    lines = [
+        f"# System Spikes {ym}",
+        "",
+        "@tags #system-health #performance #ops",
+        "",
+        "This monthly digest keeps compact spike summaries so recurring performance patterns stay visible without storing raw process tables in Foam.",
+        "",
+        f"Last generated: {now_local()}",
+        "",
+        f"- Events this month: `{len(month_events)}`",
+        f"- Unique patterns: `{len(patterns)}`",
+        f"- Unique incidents: `{len(incidents)}`",
+        "",
+        "## Top Patterns",
+        "",
+    ]
+    if patterns:
+        for row in patterns[:15]:
+            lines.append(f"- `{row['victim']}` <- `{row['suspect']}`: `{row['count']}` events, victim unit `{row['victim_unit']}`, top unit `{row['top_unit']}`, confidence `{row['confidence']}`, max trigger `{format_cpu(row['max_trigger_cpu'])}`, max monitor `{format_cpu(row['max_monitor_overhead'])}`, max `{row['max_duration']}s`")
+    else:
+        lines.append("- No spike patterns recorded this month.")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def update() -> int:
+    ensure_dirs()
+    events = read_events()
+    write_main(events)
+    write_rules()
+    write_runbook()
+    write_coverage()
+    write_source_pages(events)
+    write_monthly_digest(events)
+    return 0
+
+
+def report() -> int:
+    print(spikes_dir() / "system-spikes.md")
+    return 0
+
+
+def check() -> int:
+    events = read_events()
+    print(f"events={len(events)}")
+    print(f"state_dir={state_dir()}")
+    print(f"spikes_dir={spikes_dir()}")
+    return 0
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Generate Foam reports for recorded system CPU spikes.")
+    parser.add_argument("command", choices=["update", "report", "open", "check"])
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str]) -> int:
+    args = parse_args(argv)
+    if args.command == "update":
+        return update()
+    if args.command in {"report", "open"}:
+        return report()
+    if args.command == "check":
+        return check()
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

@@ -1,5 +1,0 @@
-# Trigger display health checks for DRM connector changes. External monitor
-# power-state policy is handled by monitor-power-watch.service via DDC/CI,
-# because HDMI can remain connected while the monitor is powered off.
-
-KERNEL=="card*-*", ACTION=="add|remove|change|bind|unbind", SUBSYSTEM=="drm", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="display-health-check.service"

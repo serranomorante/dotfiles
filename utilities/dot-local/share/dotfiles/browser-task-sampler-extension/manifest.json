@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Dotfiles Browser Task Sampler",
+  "version": "0.1.0",
+  "description": "Publishes local browser task CPU snapshots for system spike attribution.",
+  "permissions": [
+    "processes",
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:17643/*"
+  ],
+  "background": {
+    "service_worker": "service_worker.js"
+  }
+}

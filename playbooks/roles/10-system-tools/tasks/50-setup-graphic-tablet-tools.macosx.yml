@@ -26,6 +26,7 @@
 - name: "[macosx] Graphic tablet peripheral: clone patched weylus"
   ansible.builtin.git:
     repo: https://github.com/P1YU5H-50N1/Weylus
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
     dest: "{{ ansible_facts.env.HOME }}/data/repos/Weylus"
     force: true
     depth: 1

@@ -1,0 +1,72 @@
+#!/bin/sh
+# Purpose: Compile/cache and run the Go system spike watcher.
+# Usage: system-spike-watch [--compile-cache]|[run|check] [options...]
+
+set -eu
+
+prog=${0##*/}
+source_dir=${DOTFILES_SYSTEM_SPIKE_WATCH_SOURCE_DIR:-"$HOME/.local/share/dotfiles/system-spike-watch"}
+cache_dir=${XDG_CACHE_HOME:-"$HOME/.cache"}
+build_dir="$cache_dir/dotfiles/system-spike-watch"
+binary="$build_dir/system-spike-watch"
+hash_file="$build_dir/source.sha256"
+
+usage() {
+    printf 'usage: %s [--compile-cache]|[run|check] [options...]\n' "$prog" >&2
+    exit 2
+}
+
+source_hash() {
+    [ -d "$source_dir" ] || {
+        printf '%s: missing Go source dir: %s\n' "$prog" "$source_dir" >&2
+        exit 1
+    }
+    find -L "$source_dir" -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \) -print |
+        sort |
+        xargs sha256sum |
+        sha256sum |
+        awk '{print $1}'
+}
+
+needs_compile() {
+    [ -x "$binary" ] || return 0
+    current=$(source_hash)
+    previous=$(cat "$hash_file" 2>/dev/null || true)
+    [ "$current" != "$previous" ]
+}
+
+compile_cache() {
+    emit_status=$1
+    current=$(source_hash)
+    mkdir -p "$build_dir"
+    tmp="$binary.tmp.$$"
+    trap 'rm -f "$tmp"' EXIT HUP INT TERM
+    command -v go >/dev/null 2>&1 || {
+        printf '%s: go is required to build %s\n' "$prog" "$source_dir" >&2
+        exit 1
+    }
+    (
+        cd "$source_dir"
+        GOWORK=off go build -buildvcs=false -trimpath -ldflags="-s -w" -o "$tmp" .
+    )
+    mv "$tmp" "$binary"
+    chmod 755 "$binary"
+    printf '%s\n' "$current" >"$hash_file"
+    trap - EXIT HUP INT TERM
+    if [ "$emit_status" -eq 1 ]; then
+        printf 'compiled\n'
+    fi
+}
+
+case "${1:-}" in
+--compile-cache)
+    needs_compile && compile_cache 1
+    exit 0
+    ;;
+-h | --help)
+    usage
+    ;;
+esac
+
+needs_compile && compile_cache 0
+exec "$binary" "$@"

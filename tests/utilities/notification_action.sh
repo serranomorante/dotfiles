@@ -6,6 +6,7 @@ set -euo pipefail
 # dotfiles-test-case: notification-action-syntax
 # dotfiles-test-case: notification-action-dispatch-opens-foam-block
 # dotfiles-test-case: notification-action-send-dispatches-selected-action
+# dotfiles-test-case: notification-action-send-caps-timeout
 # dotfiles-test-case: notification-action-falls-back-to-plain-notify
 
 # Purpose: Verify versioned notification action payloads without requiring a live Dunst session.
@@ -27,6 +28,18 @@ BASH
 
 payload() {
     printf '{"schema":"dotfiles.notification-action.v1","action":"open-foam-block-section","cwd":"%s","foam-section-id":"todo-sample-agent-task"}\n' "${DOTFILES_TEST_TMP}/notes"
+}
+
+assert_arg_value() {
+    local args_file="$1"
+    local expected_key="$2"
+    local expected_value="$3"
+
+    awk -v key="$expected_key" -v expected="$expected_value" '
+        previous == key && $0 == expected { found = 1 }
+        { previous = $0 }
+        END { exit found ? 0 : 1 }
+    ' "$args_file"
 }
 
 write_fake_dunstify() {
@@ -85,8 +98,15 @@ notification-action-send-dispatches-selected-action)
     bin=$(write_fake_dunstify)
     HOME="$home" PATH="${bin}:/usr/bin:/bin" "$script_under_test" send --summary Done --body todo --label Open "$(payload)"
     rg -q -- '^-A$' "${DOTFILES_TEST_TMP}/dunstify.args"
+    assert_arg_value "${DOTFILES_TEST_TMP}/dunstify.args" -t 7000
     rg -q -- '^Done$' "${DOTFILES_TEST_TMP}/dunstify.args"
     [[ "$(cat "${DOTFILES_TEST_TMP}/open-in-nvim.args")" == "--cwd ${DOTFILES_TEST_TMP}/notes goto_foam_block_by_id todo-sample-agent-task" ]]
+    ;;
+notification-action-send-caps-timeout)
+    home=$(make_fake_home)
+    bin=$(write_fake_dunstify)
+    HOME="$home" PATH="${bin}:/usr/bin:/bin" "$script_under_test" send --summary Done --body todo --label Open --timeout-ms 600000 "$(payload)"
+    assert_arg_value "${DOTFILES_TEST_TMP}/dunstify.args" -t 7000
     ;;
 notification-action-falls-back-to-plain-notify)
     home=$(make_fake_home)

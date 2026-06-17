@@ -27,12 +27,16 @@
   notify: "10-system-tools : handler_ensure_compositor_service"
 
 - name: "[archlinux] Compositor: clone picom shaders"
-  ansible.builtin.git:
-    repo: "{{ item.repo }}"
-    dest: ~/data/repos/{{ item.name | default(item.repo) | basename }}
-    version: "{{ item.version | default('HEAD') }}"
-    single_branch: true
-    depth: 1
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: compositor-tools
+    update_diff_git_repo: "{{ item.repo }}"
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/{{ item.name | default(item.repo) | basename }}"
+    update_diff_git_version: "{{ item.version | default('HEAD') }}"
+    update_diff_git_single_branch: true
+    update_diff_git_depth: 1
   loop:
     - repo: https://github.com/ikz87/picom-shaders
 
@@ -42,13 +46,23 @@
     dest: ~/.config/picom/
     mode: "644"
 
+- name: "[archlinux] Compositor: stat dwm patch marker"
+  ansible.builtin.stat:
+    path: ~/data/repos/dwm/.ansible-dwm-patches-{{ arch_dwm_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}-patch-stack-v1
+  register: var_dwm_patch_marker
+
 - name: "[archlinux] Compositor: clone latest dwm"
-  ansible.builtin.git:
-    repo: git://git.suckless.org/dwm
-    dest: ~/data/repos/dwm
-    version: "{{ arch_dwm_version }}"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: compositor-tools
+    update_diff_git_repo: git://git.suckless.org/dwm
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/dwm"
+    update_diff_git_version: "{{ arch_dwm_version }}"
+    update_diff_git_force: true
   register: var_dwm_clone
-  ignore_errors: true
+  when: not var_dwm_patch_marker.stat.exists
 
 - name: "[archlinux] Compositor: perform sudo make to generate config.h"
   become: true
@@ -87,11 +101,6 @@
   loop_control:
     label: "{{ item | basename }}"
     pause: 1
-
-- name: "[archlinux] Compositor: stat dwm patch marker"
-  ansible.builtin.stat:
-    path: ~/data/repos/dwm/.ansible-dwm-patches-{{ arch_dwm_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}-patch-stack-v1
-  register: var_dwm_patch_marker
 
 - name: "[archlinux] Compositor: apply dwm patches"
   ansible.posix.patch:
@@ -138,14 +147,14 @@
     # My changes. Always leave this last.
     - make-dwm-debuggable.patch
     - custom.patch
-  when: var_dwm_clone.changed or not var_dwm_patch_marker.stat.exists
+  when: not var_dwm_patch_marker.stat.exists
 
 - name: "[archlinux] Compositor: record dwm patch marker"
   ansible.builtin.copy:
     content: "{{ arch_dwm_version }}:patch-stack-v1\n"
     dest: ~/data/repos/dwm/.ansible-dwm-patches-{{ arch_dwm_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}-patch-stack-v1
     mode: "644"
-  when: var_dwm_clone.changed or not var_dwm_patch_marker.stat.exists
+  when: not var_dwm_patch_marker.stat.exists
 
 - name: "[archlinux] Compositor: stat installed dwm"
   ansible.builtin.stat:
@@ -159,7 +168,7 @@
     chdir: "{{ ansible_facts.env.HOME }}/data/repos/dwm"
   register: var_dwm_result
   changed_when: var_dwm_result.rc == 0
-  when: var_dwm_clone.changed or not var_dwm_patch_marker.stat.exists or not var_installed_dwm.stat.exists
+  when: not var_dwm_patch_marker.stat.exists or not var_installed_dwm.stat.exists
 
 - name: "[archlinux] Compositor: ensure dwm service"
   ansible.builtin.systemd_service:

@@ -9,13 +9,10 @@
       - libnotify
   notify: handler_restart_remind_service
 
-- name: "[archlinux] Notification utilities: ensure aur packages"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name: tcllib
+- name: "[archlinux] Notification utilities: ensure local AUR packages"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages: tcllib
 
 - name: "[archlinux] Notification utilities: ensure dunst service"
   ansible.builtin.systemd_service:

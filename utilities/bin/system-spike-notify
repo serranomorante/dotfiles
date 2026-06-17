@@ -1,0 +1,212 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Purpose: Notify about selected system spike events only after Foam reports are refreshed.
+# Usage: system-spike-notify run|once|check
+# Notes: The watcher remains decoupled; this helper reads JSONL events, updates reports, then notifies.
+
+state_dir=${DOTFILES_SPIKES_STATE_DIR:-"$HOME/.local/state/dotfiles/system-spikes"}
+events_dir="${state_dir}/events"
+notify_state_dir=${DOTFILES_SPIKE_NOTIFY_STATE_DIR:-"${state_dir}/notify"}
+notified_file="${notify_state_dir}/xorg-notified-events"
+spikes_cmd=${DOTFILES_SPIKE_NOTIFY_DOTFILES_SPIKES:-dotfiles-spikes}
+notification_action=${DOTFILES_SPIKE_NOTIFY_NOTIFICATION_ACTION:-notification-action}
+notes_root=${DOTFILES_SPIKE_NOTIFY_FOAM_CWD:-"$HOME/data/notes/foam"}
+section_id=${DOTFILES_SPIKE_NOTIFY_SECTION_ID:-system-spikes-report}
+poll_interval=${DOTFILES_SPIKE_NOTIFY_POLL_INTERVAL:-2}
+
+usage() {
+    sed -n '2,4s/^# //p' "$0"
+}
+
+process_once() {
+    local mode=${1:-notify}
+
+    mkdir -p "$events_dir" "$notify_state_dir"
+    "$spikes_cmd" update
+
+    SYSTEM_SPIKE_NOTIFY_MODE="$mode" \
+        python3 - "$events_dir" "$notified_file" "$notification_action" "$notes_root" "$section_id" <<'PY'
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+events_dir = Path(sys.argv[1])
+notified_file = Path(sys.argv[2])
+notification_action = sys.argv[3]
+notes_root = sys.argv[4]
+section_id = sys.argv[5]
+mode = os.environ.get("SYSTEM_SPIKE_NOTIFY_MODE", "notify")
+
+
+def event_id(event):
+    return str(event.get("event_id") or f"{event.get('started_at', '')}:{event.get('victim', {}).get('pid', '')}:{event.get('victim', {}).get('comm', '')}")
+
+
+def is_xorg_event(event):
+    if str(event.get("victim_kind") or "") == "xorg":
+        return True
+    victim = event.get("victim") or {}
+    trigger = event.get("trigger_process") or {}
+    return str(victim.get("comm") or trigger.get("comm") or "") == "Xorg"
+
+
+def event_sort_key(event):
+    return str(event.get("started_at") or ""), event_id(event)
+
+
+def read_events():
+    events = []
+    for path in sorted(events_dir.glob("*.jsonl")):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if is_xorg_event(event):
+                events.append(event)
+    events.sort(key=event_sort_key)
+    return events
+
+
+def read_notified():
+    if not notified_file.exists():
+        return set(), False
+    try:
+        return {line.strip() for line in notified_file.read_text(encoding="utf-8").splitlines() if line.strip()}, True
+    except OSError:
+        return set(), False
+
+
+def write_notified(ids):
+    notified_file.parent.mkdir(parents=True, exist_ok=True)
+    tmp = notified_file.with_suffix(".tmp")
+    tmp.write_text("".join(f"{item}\n" for item in sorted(ids)), encoding="utf-8")
+    tmp.replace(notified_file)
+
+
+def format_cpu(value):
+    try:
+        return f"{float(value):.1f}%"
+    except (TypeError, ValueError):
+        return "unknown"
+
+
+def suspect_label(event):
+    suspects = event.get("suspects") or []
+    if suspects:
+        first = suspects[0] or {}
+        return str(first.get("unit") or first.get("comm") or "unknown")
+    victim = event.get("victim") or {}
+    return str(victim.get("unit") or victim.get("comm") or "unknown")
+
+
+def send_notification(event):
+    executable = notification_action
+    if "/" not in executable:
+        resolved = shutil.which(executable)
+        if not resolved:
+            print("system-spike-notify: notification-action not found", file=sys.stderr)
+            return
+        executable = resolved
+
+    payload = {
+        "schema": "dotfiles.notification-action.v1",
+        "action": "open-foam-block-section",
+        "cwd": notes_root,
+        "foam-section-id": section_id,
+    }
+    started = str(event.get("started_at") or "unknown time")
+    victim = event.get("victim") or {}
+    unit = str(victim.get("unit") or "unknown unit")
+    body = (
+        f"{started}\n"
+        f"trigger {format_cpu(event.get('trigger_cpu_pct'))}, suspect {suspect_label(event)}\n"
+        f"unit {unit}\n"
+        "Report updated: [[system-spikes]]"
+    )
+    result = subprocess.run(
+        [
+            executable,
+            "send",
+            "--summary",
+            "Xorg CPU spike",
+            "--body",
+            body,
+            "--label",
+            "Open report",
+            "--app-name",
+            "system-spike-notify",
+            "--category",
+            "system.spike",
+            json.dumps(payload, separators=(",", ":")),
+        ],
+        check=False,
+    )
+    print(f"notified {event_id(event)} rc={result.returncode}")
+
+
+events = read_events()
+notified, state_existed = read_notified()
+all_ids = {event_id(event) for event in events}
+
+if not state_existed and mode != "notify-existing":
+    write_notified(all_ids)
+    print(f"initialized {len(all_ids)} xorg events")
+    raise SystemExit(0)
+
+new_events = [event for event in events if event_id(event) not in notified]
+for event in new_events:
+    send_notification(event)
+    notified.add(event_id(event))
+
+if new_events or not state_existed:
+    write_notified(notified | all_ids)
+PY
+}
+
+wait_for_change() {
+    if command -v inotifywait >/dev/null 2>&1; then
+        inotifywait -q -e close_write,create,moved_to "$events_dir" >/dev/null 2>&1 || sleep "$poll_interval"
+    else
+        sleep "$poll_interval"
+    fi
+}
+
+case "${1:-}" in
+run)
+    process_once initialize
+    while :; do
+        wait_for_change
+        process_once notify
+    done
+    ;;
+once)
+    process_once notify
+    ;;
+check)
+    mkdir -p "$events_dir" "$notify_state_dir"
+    printf 'state_dir=%s\n' "$state_dir"
+    printf 'events_dir=%s\n' "$events_dir"
+    printf 'notify_state_dir=%s\n' "$notify_state_dir"
+    printf 'spikes_cmd=%s\n' "$spikes_cmd"
+    printf 'notification_action=%s\n' "$notification_action"
+    ;;
+-h | --help)
+    usage
+    ;;
+*)
+    usage >&2
+    exit 2
+    ;;
+esac

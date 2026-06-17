@@ -1,0 +1,1 @@
+ACTION=="add|change", SUBSYSTEM=="backlight", KERNEL=="amdgpu_bl*", TEST=="brightness", RUN+="/usr/bin/chgrp {{ ansible_facts.env.USER }} /sys/class/backlight/%k/brightness", RUN+="/usr/bin/chmod 0664 /sys/class/backlight/%k/brightness"

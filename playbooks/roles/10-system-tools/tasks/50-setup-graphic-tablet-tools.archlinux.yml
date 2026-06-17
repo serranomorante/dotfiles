@@ -7,16 +7,11 @@
       - xf86-input-wacom
       - usbutils
       - gimp
-      - flameshot
-      - ddcutil
 
-- name: "[archlinux] Graphic tablet peripheral: ensure tools (using aur)"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name:
+- name: "[archlinux] Graphic tablet peripheral: ensure local AUR tools"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages:
       - gromit-mpx
       - weylus-bin
 
@@ -37,18 +32,25 @@
   loop:
     - { source: ~/dotfiles/assets/udev-rules/99-wacom.rules, dest: /etc/udev/rules.d/99-wacom.rules }
     - { source: ~/dotfiles/assets/udev-rules/60-weylus.rules, dest: /etc/udev/rules.d/60-weylus.rules }
-    - { source: ~/dotfiles/assets/udev-rules/95-monitor-hotplug.rules, dest: /etc/udev/rules.d/95-monitor-hotplug.rules }
   notify: "10-system-tools : handler_reload_udev_rules"
 
-- name: "[archlinux] Graphic tablet peripheral: load i2c-dev for DDC monitor state"
+- name: "[archlinux] Graphic tablet peripheral: remove automatic display health udev trigger"
   become: true
-  ansible.builtin.copy:
-    dest: /etc/modules-load.d/i2c-dev.conf
-    content: |
-      i2c-dev
+  ansible.builtin.file:
+    path: /etc/udev/rules.d/95-monitor-hotplug.rules
+    state: absent
+  notify: "10-system-tools : handler_reload_udev_rules"
+
+- name: "[archlinux] Graphic tablet peripheral: copy display udev rules"
+  become: true
+  ansible.builtin.template:
+    src: "{{ item.source }}"
+    dest: "{{ item.dest }}"
     owner: root
-    group: root
     mode: "644"
+  loop:
+    - { source: ~/dotfiles/assets/udev-rules/90-internal-backlight.rules, dest: /etc/udev/rules.d/90-internal-backlight.rules }
+  notify: "10-system-tools : handler_reload_udev_rules"
 
 - name: "[archlinux] Graphic tablet peripheral: ensure Xorg config dir"
   become: true
@@ -75,6 +77,7 @@
 - name: "[archlinux] Graphic tablet peripheral: clone weylus"
   ansible.builtin.git:
     repo: https://github.com/H-M-H/Weylus.git
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
     dest: ~/data/repos/Weylus
     depth: 1
     version: "{{ arch_weylus_version }}"
@@ -118,21 +121,15 @@
     enabled: false
     masked: false
 
-- name: "[archlinux] Graphic tablet: ensure monitor power watcher"
-  ansible.builtin.systemd_service:
-    scope: user
-    name: monitor-power-watch.service
-    enabled: true
-    masked: false
-    state: started
-    daemon_reload: true
-
-- name: "[archlinux] Graphic tablet: ensure display health timer"
-  ansible.builtin.systemd_service:
-    scope: user
-    name: display-health-check.timer
-    enabled: true
-    masked: false
+- name: "[archlinux] Graphic tablet: remove automatic display health units"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - ~/.config/systemd/user/display-health-check.service
+    - ~/.config/systemd/user/display-health-check.timer
+    - ~/.config/systemd/user/timers.target.wants/display-health-check.timer
+  notify: "10-system-tools : handler_reload_user_systemd"
 
 - name: "[archlinux] Graphic tablet: ensure mypaint"
   # Mypaint from arch repos was failing for me

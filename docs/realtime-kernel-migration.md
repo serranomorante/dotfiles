@@ -14,15 +14,15 @@ The pre-hibernation setup used on the current machine has hibernation disabled a
 
 `nvidia-open-lts` is built for Arch's `linux-lts` package. The realtime kernel needs `nvidia-open-dkms` so the open NVIDIA kernel module is built for every installed kernel that has headers available.
 
-VirtualBox host modules need the same treatment. Use `virtualbox-host-dkms`, not `virtualbox-host-modules-lts`, so host modules build for `linux-rt-lts` as well as the fallback `linux-lts` kernel. The migration masks `/usr/lib/modules-load.d/virtualbox-host-dkms.conf` through `/etc/modules-load.d/virtualbox-host-dkms.conf -> /dev/null` because `vboxdrv` can trigger scheduler BUG warnings on `PREEMPT_RT`; load those modules manually only when you intentionally use VirtualBox, preferably from the fallback `linux-lts` boot.
+VirtualBox host modules need the same package treatment, but the supported workstation workflow is `linux-lts` only. Use `virtualbox-host-dkms`, not `virtualbox-host-modules-lts`, keep `/etc/modules-load.d/virtualbox-host-dkms.conf -> /dev/null` masked because `vboxdrv` can trigger scheduler BUG warnings on `PREEMPT_RT`, and load the host modules manually from the fallback `linux-lts` boot with `~/bin/virtualbox-lts-load` before starting VMs.
 
 `linux-rt-lts` itself provides `VIRTUALBOX-GUEST-MODULES`, which satisfies the guest-utils dependency path. Host support still needs the DKMS host module package when running VirtualBox guests on the workstation.
 
 ## Boot Flow
 
-The install uses systemd-boot with UKIs under `/boot/EFI/Linux/`. The migration playbook rewrites the `linux-rt-lts` mkinitcpio preset to use `/boot` instead of `/efi`, runs `mkinitcpio --allpresets`, saves the LTS and RT UKIs in the `sbctl` signing database, signs any unsigned `/boot` EFI files reported by `sbctl verify`, regenerates the presets once more so the signed UKIs are fresh, verifies that no `/boot` file remains unsigned, masks VirtualBox host module autoloading, and installs any migration DKMS entries that were left in a built-only state.
+The install uses systemd-boot with UKIs under `/boot/EFI/Linux/`. The migration playbook rewrites the `linux-rt-lts` mkinitcpio preset to use `/boot` instead of `/efi`, runs `mkinitcpio --allpresets`, saves the LTS and RT UKIs in the `sbctl` signing database, signs any unsigned `/boot` EFI files reported by `sbctl verify`, regenerates the presets once more so the signed UKIs are fresh, verifies that no `/boot` file remains unsigned, masks VirtualBox host module autoloading, installs any migration DKMS entries that were left in a built-only state, and sets `arch-linux-rt-lts.efi` as the systemd-boot default entry.
 
-After the playbook succeeds, reboot and select the `linux-rt-lts` UKI from systemd-boot. Keep the existing `linux-lts` entry available until NVIDIA, audio, display switching, and VirtualBox have been tested on the RT kernel.
+After the playbook succeeds, reboot normally to enter the `linux-rt-lts` UKI by default. Keep the existing `linux-lts` entry available in the systemd-boot menu until NVIDIA, audio, display switching, and VirtualBox have been tested on the RT kernel; if the RT boot path regresses, use the boot menu or `bootctl set-default arch-linux-lts.efi` to return the fallback kernel to default.
 
 ## Expected Side Effects
 
@@ -30,4 +30,4 @@ The audio stack is already mostly prepared for RT use: `realtime-privileges`, `r
 
 The NVIDIA display workflow should remain functionally the same because the userspace packages, Xorg offload config, SDDM `Xsetup`, `nvidia-prime-rtd3pm`, and `/etc/cmdline.d/video.conf` are unchanged. The higher-risk part is DKMS build success for the open module against the RT headers.
 
-VirtualBox host modules are deliberately not autoloaded after the migration. `virtualbox-host-dkms` remains installed and built for both kernels, but `vboxdrv` has shown scheduler BUG warnings on the RT kernel. For VirtualBox work, boot `linux-lts` and load the modules explicitly with `modprobe vboxdrv vboxnetadp vboxnetflt` before starting VMs.
+VirtualBox host modules are deliberately not autoloaded after the migration. `virtualbox-host-dkms` remains installed, but `vboxdrv` has shown scheduler BUG warnings on the RT kernel and VM use is intentionally limited to `linux-lts`. For VirtualBox work, boot `linux-lts`, run `~/bin/virtualbox-lts-load`, and then start the VM; the helper refuses to run on `linux-rt-lts` so the RT boot path remains the default audio-focused environment.

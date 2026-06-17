@@ -29,13 +29,10 @@
     - arch_has_nvidia_gpu
     - is_x_display_session
 
-- name: "[archlinux] Nvidia tools: ensure aur packages"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name: nvidia-prime-rtd3pm
+- name: "[archlinux] Nvidia tools: ensure local AUR packages"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages: nvidia-prime-rtd3pm
   when: arch_has_nvidia_gpu
 
 - name: "[archlinux] Nvidia tools: add kernel param"

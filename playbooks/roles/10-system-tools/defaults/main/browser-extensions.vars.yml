@@ -9,6 +9,9 @@ local_extension_promnesia: phjbangbkhghaapdoklnbbipfkdmdjgk
 local_hypothesis_extension: eajkghkpdleogcecilhonjdokiipfmdb
 
 browser_local_extensions:
+  - name: dotfiles-browser-task-sampler
+    path: "{{ prefix | default(ansible_facts.env.HOME) }}/.local/share/dotfiles/browser-task-sampler-extension"
+    repo: dotfiles-browser-task-sampler
   - name: hypothesis-extension
     path: "{{ prefix | default(ansible_facts.env.HOME) }}/data/repos/hypothesis-extension/build"
     repo: https://github.com/hypothesis/browser-extension

@@ -1,0 +1,14 @@
+[Unit]
+Description=Watch lightweight CPU spikes for Foam reporting
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/bin/system-spike-watch run
+Restart=on-failure
+RestartSec=5s
+Nice=10
+IOSchedulingClass=idle
+MemoryMax=96M
+
+[Install]
+WantedBy=graphical-session.target

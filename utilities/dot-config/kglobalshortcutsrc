@@ -279,9 +279,6 @@ repeat_action=,,Manually Invoke Action on Current Clipboard
 show-barcode=,,Show Barcode…
 show-on-mouse-pos=none,Meta+V,Show Clipboard Items at Mouse Position
 
-[services][org.flameshot.Flameshot.desktop]
-Capture=Meta+Shift+Print
-
 [services][org.kde.kcalc.desktop]
 _launch=none
 
@@ -304,7 +301,6 @@ _launch=none
 [services][org.kde.spectacle.desktop]
 CurrentMonitorScreenShot=
 OpenWithoutScreenshot=
-RectangularRegionScreenShot=none
 
 [services][org.kde.touchpadshortcuts.desktop]
 ToggleTouchpad=Touchpad Toggle\tMeta+Ctrl+Zenkaku Hankaku

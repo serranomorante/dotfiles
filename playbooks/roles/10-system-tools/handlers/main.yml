@@ -39,21 +39,20 @@
 
 - name: handler_restart_keyd
   become: true
-  ansible.builtin.shell: |
-    if systemctl is-active --quiet keyd.service; then
-      keyd reload
-    else
-      exit 2
-    fi
-  args:
-    executable: /bin/sh
-  register: handler_restart_keyd_result
-  changed_when: handler_restart_keyd_result.rc == 0
-  failed_when: handler_restart_keyd_result.rc not in [0, 2]
+  ansible.builtin.systemd_service:
+    scope: system
+    name: keyd.service
+    state: restarted
+    enabled: true
+    masked: false
 
 - name: handler_reload_udev_rules
   become: true
   ansible.builtin.command: udevadm control --reload-rules
+  changed_when: false
+
+- name: handler_reload_user_systemd
+  ansible.builtin.command: systemctl --user daemon-reload
   changed_when: false
 
 - name: handler_sync_yabridge_plugins
@@ -79,13 +78,60 @@
     enabled: true
     masked: false
 
+- name: handler_restart_mode_osd_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: mode-osd.service
+    state: restarted
+    enabled: true
+    masked: false
+
+- name: handler_restart_system_spike_watch_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: system-spike-watch.service
+    state: restarted
+    enabled: true
+    masked: false
+    daemon_reload: true
+
+- name: handler_restart_system_spike_notify_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: system-spike-notify.service
+    state: restarted
+    enabled: true
+    masked: false
+    daemon_reload: true
+
+- name: handler_restart_browser_task_snapshotd_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: browser-task-snapshotd.service
+    state: restarted
+    enabled: true
+    masked: false
+    daemon_reload: true
+
+- name: handler_reset_failed_readline_mode_notify_service
+  become: true
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - reset-failed
+      - readline-mode-notify.service
+  changed_when: false
+  failed_when: false
+
 - name: handler_ensure_readline_mode_notify_service
   become: true
   ansible.builtin.systemd_service:
     scope: system
     name: readline-mode-notify.service
+    state: restarted
     enabled: true
     masked: false
+    daemon_reload: true
 
 - name: handler_ensure_mypaint_service
   ansible.builtin.systemd_service:
@@ -199,6 +245,13 @@
     scope: user
     name: keyd-observer.service
     state: restarted
+
+- name: handler_restart_keyboard_midi_controller_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: keyboard-midi-controller.service
+    state: restarted
+    daemon_reload: true
 
 - name: handler_kill_reaper_wineserver
   ansible.builtin.shell: >

@@ -209,9 +209,11 @@ Section "Screen"
 EndSection
 ```
 
-For this laptop's HDMI path, Xorg must expose the NVIDIA GPU screen so `xrandr --listproviders` includes `NVIDIA-G0`; otherwise DDC/CI can still see the monitor power state while XRandR has no HDMI output to enable. The SDDM `Xsetup` command resolves the actual NVIDIA provider name dynamically because the Reverse PRIME provider is commonly `NVIDIA-G0`, not `NVIDIA-0`.
+For this laptop's HDMI path, Xorg must expose the NVIDIA GPU screen so `xrandr --listproviders` includes `NVIDIA-G0`; otherwise XRandR has no HDMI output to enable. The SDDM `Xsetup` command resolves the actual NVIDIA provider name dynamically because the Reverse PRIME provider is commonly `NVIDIA-G0`, not `NVIDIA-0`.
 
-### Handle connect/disconnect of external monitor
+### Historical monitor hotplug approach
+
+This `udev` approach is historical and is no longer installed by the dotfiles. External monitor layout changes are handled manually by `setup-displays.sh --toggle` through the `Tab+Shift+M` keyd action, and stale laptop-panel scanout recovery remains a manual `Tab+Shift+R` keyd action so routine XRandR queries do not spike Xorg.
 
 tdlr: I created a `udev` rule, a custom script and added a config to my `.bashrc` file.
 

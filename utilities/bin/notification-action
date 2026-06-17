@@ -15,6 +15,7 @@ import sys
 
 SCHEMA = "dotfiles.notification-action.v1"
 ACTION_KEY_PREFIX = "dotfiles-action-v1:"
+MAX_VISIBLE_TIMEOUT_MS = 7000
 SUPPORTED_ACTIONS = {"open-foam-block-section"}
 BLOCK_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]{0,127}$")
 
@@ -127,7 +128,14 @@ def plain_notify(summary, body):
     return result.returncode
 
 
+def visible_timeout_ms(timeout_ms):
+    if timeout_ms <= 0:
+        return MAX_VISIBLE_TIMEOUT_MS
+    return min(timeout_ms, MAX_VISIBLE_TIMEOUT_MS)
+
+
 def notify_with_action(args, action_key):
+    timeout_ms = visible_timeout_ms(args.timeout_ms)
     dunstify = shutil.which("dunstify")
     if dunstify:
         label = args.label.replace(",", " ")
@@ -140,7 +148,7 @@ def notify_with_action(args, action_key):
                 "-c",
                 args.category,
                 "-t",
-                str(args.timeout_ms),
+                str(timeout_ms),
                 "-A",
                 f"{action_key},{label}",
                 args.summary,
@@ -164,7 +172,7 @@ def notify_with_action(args, action_key):
             "-c",
             args.category,
             "-t",
-            str(args.timeout_ms),
+            str(timeout_ms),
             "-A",
             f"{action_key}={args.label}",
             args.summary,
@@ -208,7 +216,7 @@ def main():
     send_parser.add_argument("--summary", required=True)
     send_parser.add_argument("--body", default="")
     send_parser.add_argument("--label", default="Open")
-    send_parser.add_argument("--timeout-ms", type=int, default=600000)
+    send_parser.add_argument("--timeout-ms", type=int, default=MAX_VISIBLE_TIMEOUT_MS)
     send_parser.add_argument("--app-name", default="dotfiles-notification-action")
     send_parser.add_argument("--category", default="dotfiles.action")
     send_parser.add_argument("payload")

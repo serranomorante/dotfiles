@@ -3,7 +3,7 @@ app_cgroup_profiles:
   brave:
     unit_prefix: browser-brave
     description: Brave browser
-    cpu_quota: 400%
+    cpu_quota: 300%
     cpu_weight: 70
     io_weight: 70
     nice: 5
@@ -12,7 +12,7 @@ app_cgroup_profiles:
   chromium:
     unit_prefix: browser-chromium
     description: Chromium browser
-    cpu_quota: 300%
+    cpu_quota: 250%
     cpu_weight: 50
     io_weight: 50
     nice: 8

@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Purpose: Adjust the real internal panel backlight without going through PowerDevil.
+
+set -euo pipefail
+
+action="${1:-}"
+sysfs_root="${INTERNAL_BACKLIGHT_SYSFS_ROOT:-/sys}"
+
+usage() {
+    printf '%s\n' 'usage: internal-backlight up|down'
+}
+
+backlight_dir() {
+    local candidate
+
+    for candidate in "$sysfs_root"/class/drm/card*-eDP-*/amdgpu_bl* "$sysfs_root"/class/backlight/amdgpu_bl*; do
+        [[ -d "$candidate" && -r "$candidate/max_brightness" && -w "$candidate/brightness" ]] || continue
+        printf '%s\n' "$candidate"
+        return 0
+    done
+
+    return 1
+}
+
+read_uint() {
+    local path="$1"
+    local value
+
+    value="$(sed -n '1p' "$path")"
+    [[ "$value" =~ ^[0-9]+$ ]] || return 1
+    printf '%s\n' "$value"
+}
+
+case "$action" in
+up | down)
+    ;;
+--help | -h)
+    usage
+    exit 0
+    ;;
+*)
+    usage >&2
+    exit 2
+    ;;
+esac
+
+backlight="$(backlight_dir)" || {
+    printf '%s\n' 'internal-backlight: no writable amdgpu internal backlight found' >&2
+    exit 1
+}
+
+max="$(read_uint "$backlight/max_brightness")"
+current="$(read_uint "$backlight/brightness")"
+[[ "$max" -gt 0 ]] || exit 1
+
+step=$((max / 20))
+[[ "$step" -gt 0 ]] || step=1
+
+floor=$((max / 100))
+[[ "$floor" -gt 0 ]] || floor=1
+
+bogus_threshold="$floor"
+if [[ "$max" -gt 1000 && "$bogus_threshold" -lt 100 ]]; then
+    bogus_threshold=100
+fi
+
+if [[ "$current" -le "$bogus_threshold" ]]; then
+    current=$((max / 2))
+fi
+
+case "$action" in
+up)
+    next=$((current + step))
+    [[ "$next" -le "$max" ]] || next="$max"
+    ;;
+down)
+    next=$((current - step))
+    [[ "$next" -ge "$floor" ]] || next="$floor"
+    ;;
+esac
+
+printf '%s\n' "$next" >"$backlight/brightness"

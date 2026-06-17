@@ -1,0 +1,15 @@
+[Unit]
+Description=Notify after updated Xorg spike reports
+After=graphical-session.target system-spike-watch.service
+Wants=system-spike-watch.service
+
+[Service]
+ExecStart=%h/bin/system-spike-notify run
+Restart=on-failure
+RestartSec=5s
+Nice=15
+IOSchedulingClass=idle
+MemoryMax=128M
+
+[Install]
+WantedBy=graphical-session.target

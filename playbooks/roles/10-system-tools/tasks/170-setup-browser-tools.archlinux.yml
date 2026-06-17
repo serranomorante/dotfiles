@@ -12,16 +12,13 @@
     name:
       - ruby # to install extensionator
       - firefox
-
-- name: "[archlinux] Setup browser tools: ensure aur packages"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name:
-      - brave-bin
       - chromium
+
+- name: "[archlinux] Setup browser tools: ensure local AUR packages"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages:
+      - brave-bin
 
 - name: "[archlinux] Setup browser tools: ensure folder exists"
   ansible.builtin.file:
@@ -80,13 +77,17 @@
       marker: HEAD:plain-v1
 
 - name: "[archlinux] Setup browser tools: clone chrome extensions"
-  ansible.builtin.git:
-    repo: "{{ item.repo }}"
-    dest: ~/data/repos/{{ item.name | default(item.repo) | basename }}
-    version: "{{ item.version | default('HEAD') }}"
-    force: true
-    depth: 1
-    single_branch: true
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: browser-extensions
+    update_diff_git_repo: "{{ item.repo }}"
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/{{ item.name | default(item.repo) | basename }}"
+    update_diff_git_version: "{{ item.version | default('HEAD') }}"
+    update_diff_git_force: true
+    update_diff_git_depth: 1
+    update_diff_git_single_branch: true
   register: var_clone_chrome_extensions
   loop_control:
     extended: true
@@ -310,7 +311,12 @@
     dest: "{{ ansible_facts.env.HOME }}/.local/share/applications/brave-browser.desktop"
     marker: "# {mark} ANSIBLE MANAGED BLOCK"
     insertafter: "^\\[Desktop Entry\\]"
-    block: Exec={{ ansible_facts.env.HOME }}/bin/app-cgroup-launch brave /usr/bin/brave --load-extension={{ browser_local_extensions | map(attribute='path') | join(',') }} %U
+    block: >
+      Exec={{ ansible_facts.env.HOME }}/bin/app-cgroup-launch brave /usr/bin/brave
+      --remote-debugging-port=9223
+      --enable-experimental-extension-apis
+      --load-extension={{ browser_local_extensions | map(attribute='path') | join(',') }}
+      %U
   notify: handler_update_desktop_database
 
 - name: "[archlinux] Setup browser tools: copy chromium desktop file to user directory"

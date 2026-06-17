@@ -13,16 +13,18 @@
     masked: false
 
 - name: "[archlinux] Persistence tools: ensure virtualenv packages"
-  ansible.builtin.pip:
-    name:
-      - pip
-      # Ansible's redis fact cache client also talks to Valkey.
-      - redis
-      - ansible
-    executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
-    state: latest
-  environment:
-    ANSIBLE_FIREJAIL_PIP_VENV: "{{ ansible_facts.env.HOME }}/data/apps/persistence-tools/.venv"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: pip
+  vars:
+    update_diff_capture_scope: persistence-tools
+    update_diff_pip_venv: "{{ ansible_facts.env.HOME }}/data/apps/persistence-tools/.venv"
+    update_diff_pip_executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
+    update_diff_pip_state: latest
+    update_diff_pip_packages:
+      - name: pip
+      - name: redis
+      - name: ansible
 
 - name: "[archlinux] Persistence tools: symlink virtualenv ansible"
   ansible.builtin.file:

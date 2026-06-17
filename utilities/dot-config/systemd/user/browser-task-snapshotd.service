@@ -1,0 +1,14 @@
+[Unit]
+Description=Receive browser task CPU snapshots for spike attribution
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/bin/browser-task-snapshotd run
+Restart=on-failure
+RestartSec=5s
+Nice=10
+IOSchedulingClass=idle
+MemoryMax=64M
+
+[Install]
+WantedBy=graphical-session.target
