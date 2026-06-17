@@ -915,7 +915,7 @@ accept_repo() {
             printf "%s: refusing to accept with local worktree changes in %s\n" "$0" "$PWD" >&2
             exit 1
         fi
-        git checkout master >/dev/null
+        git checkout --quiet master
         git merge --ff-only origin/master
     ' "$prog"
 }
@@ -940,7 +940,7 @@ baseline_installed_repo() {
             fi
             exit 1
         fi
-        git checkout master >/dev/null
+        git checkout --quiet master
         git reset --hard "$baseline" >/dev/null
         printf "%s\tbaseline=%s\tinstalled=%s\n" "$pkg" "$(git rev-parse --short master)" "$(installed_version "$pkg")"
     )
@@ -958,7 +958,7 @@ require_publishable_repo() {
             printf "%s: %s has %s unreviewed AUR commit(s); run diffview/lazygit and accept first\n" "$0" "$1" "$pending" >&2
             exit 1
         fi
-        git checkout master >/dev/null
+        git checkout --quiet master
         test -f PKGBUILD || { printf "%s: no PKGBUILD found in %s\n" "$0" "$PWD" >&2; exit 1; }
     ' "$prog" "$pkg"
 }
@@ -1010,7 +1010,7 @@ configure_chroot_local_repo() {
 
 verify_sources() {
     pkg=$1
-    repo=$(repo_path "$pkg")
+    repo=$2
     source_dir=$build_dir/sources
     mkdir -p "$source_dir"
     (
@@ -1045,7 +1045,7 @@ prepare_makepkg_config() {
 
 build_with_chroot() {
     pkg=$1
-    repo=$(repo_path "$pkg")
+    repo=$2
     pkg_out=$build_dir/$pkg/packages
     log_out=$build_dir/$pkg/logs
     source_dir=$build_dir/sources
@@ -1078,7 +1078,7 @@ build_with_chroot() {
 
 build_with_makepkg() {
     pkg=$1
-    repo=$(repo_path "$pkg")
+    repo=$2
     pkg_out=$build_dir/$pkg/packages
     log_out=$build_dir/$pkg/logs
     source_dir=$build_dir/sources
@@ -1103,12 +1103,13 @@ build_with_makepkg() {
 
 build_package() {
     pkg=$1
+    repo=$2
     case $build_mode in
     chroot)
-        build_with_chroot "$pkg"
+        build_with_chroot "$pkg" "$repo"
         ;;
     makepkg)
-        build_with_makepkg "$pkg"
+        build_with_makepkg "$pkg" "$repo"
         ;;
     *)
         die "unsupported AUR_REVIEW_BUILD_MODE: $build_mode"
@@ -1130,13 +1131,52 @@ publish_built_packages() {
     done
 }
 
+cleanup_publish_tree() {
+    work_dir=$1
+    case $work_dir in
+    "$build_dir"/*/worktrees/publish.*)
+        rm -rf "$work_dir" || printf '%s: warning: could not remove temporary build tree %s\n' "$prog" "$work_dir" >&2
+        ;;
+    esac
+}
+
+prepare_publish_tree() {
+    pkg=$1
+    repo=$(repo_path "$pkg")
+    work_root=$build_dir/$pkg/worktrees
+    need tar
+    mkdir -p "$work_root"
+    work_dir=$(mktemp -d "$work_root/publish.XXXXXX") || die "could not create publish worktree"
+    archive=$(mktemp "$work_root/archive.XXXXXX.tar") || {
+        cleanup_publish_tree "$work_dir"
+        die "could not create publish archive"
+    }
+    if ! git -C "$repo" archive --format=tar --output="$archive" master; then
+        rm -f "$archive"
+        cleanup_publish_tree "$work_dir"
+        die "could not export accepted AUR commit for $pkg"
+    fi
+    if ! tar -xf "$archive" -C "$work_dir"; then
+        rm -f "$archive"
+        cleanup_publish_tree "$work_dir"
+        die "could not unpack accepted AUR commit for $pkg"
+    fi
+    rm -f "$archive"
+    printf '%s\n' "$work_dir"
+}
+
 publish_repo() {
     pkg=$1
     require_publishable_repo "$pkg"
     ensure_local_repo
-    verify_sources "$pkg"
-    build_package "$pkg"
-    publish_built_packages "$pkg"
+    work_dir=$(prepare_publish_tree "$pkg")
+    printf '==> Prepared isolated build tree for %s at %s\n' "$pkg" "$work_dir"
+    (
+        trap 'cleanup_publish_tree "$work_dir"' EXIT
+        verify_sources "$pkg" "$work_dir"
+        build_package "$pkg" "$work_dir"
+        publish_built_packages "$pkg"
+    )
 }
 
 print_path() {
