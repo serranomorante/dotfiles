@@ -7,8 +7,12 @@
 # wrapper passes the current KITTY_OS_INSTANCE_ID (set by term/bin/kitty) to
 # keep each Kitty OS window's panel independent. The default fallback only
 # matters when the kitten is invoked from outside the kitty wrapper.
+#
+# Tcell v3 can negotiate xterm's advanced keyboard protocol by emitting a CSI
+# sequence that Kitty logs as an unsupported parse error. Keep lazygit on the
+# legacy keyboard path until Kitty/tcell agree on that sequence.
 
 exec kitten quick-access-terminal \
     --instance-group="${KITTY_OS_INSTANCE_ID:-default}" \
     --override app_id=kitty-lazygit \
-    lazygit
+    env TCELL_KEYBOARD_PROTOCOL=legacy lazygit

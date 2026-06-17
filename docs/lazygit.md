@@ -19,7 +19,7 @@ playbooks/roles/20-dev-tools/tasks/90-setup-git-tools.archlinux.yml
 
 ## Lazygit Focus And Editor Handoff
 
-Lazygit is launched through Kitty's quick-access-terminal kitten. The panel settings live in `term/dot-config/kitty/quick-access-terminal.conf`. Every toggle goes through the shared `term/bin/kitty-lazygit-quick-access` wrapper, which invokes the kitten with `--instance-group="$KITTY_OS_INSTANCE_ID"` so each Kitty OS window owns an independent panel.
+Lazygit is launched through Kitty's quick-access-terminal kitten. The panel settings live in `term/dot-config/kitty/quick-access-terminal.conf`. Every toggle goes through the shared `term/bin/kitty-lazygit-quick-access` wrapper, which invokes the kitten with `--instance-group="$KITTY_OS_INSTANCE_ID"` so each Kitty OS window owns an independent panel. The wrapper also runs lazygit with `TCELL_KEYBOARD_PROTOCOL=legacy`; tcell v3's xterm advanced keyboard negotiation emits `CSI ? 4 m`, which Kitty logs as an unsupported parse error even though lazygit continues to work.
 
 The bindings wired around lazygit:
 
