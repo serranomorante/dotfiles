@@ -107,12 +107,12 @@
 
 - name: "[archlinux] Dotfiles: apply stow public packages"
   ansible.builtin.command:
-    argv: "{{ [dotfiles_stow_wrapper_path] + dotfiles_public_stow_packages }}"
+    argv: "{{ [dotfiles_stow_wrapper_path, '--recreate'] + dotfiles_public_stow_packages }}"
   changed_when: false
 
 - name: "[archlinux] Dotfiles: apply stow private package"
   ansible.builtin.command:
-    argv: "{{ [dotfiles_stow_wrapper_path] + (var_arch_private_dotfiles.results | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir') | map(attribute='item') | list) }}"
+    argv: "{{ [dotfiles_stow_wrapper_path, '--recreate'] + (var_arch_private_dotfiles.results | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir') | map(attribute='item') | list) }}"
   changed_when: false
   when: >-
     (

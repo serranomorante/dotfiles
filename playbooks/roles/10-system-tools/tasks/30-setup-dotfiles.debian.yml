@@ -47,6 +47,7 @@
   ansible.builtin.command:
     argv:
       - "{{ dotfiles_stow_wrapper_path }}"
+      - --recreate
       - nvim
       - term
   changed_when: false

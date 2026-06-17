@@ -15,6 +15,7 @@ usage() {
     cat <<'USAGE'
 Usage:
   dotfiles-stow [STOW_OPTION ...] PACKAGE ...
+  dotfiles-stow --recreate [STOW_OPTION ...] PACKAGE ...
   dotfiles-stow --check-stowed FILE...
   dotfiles-stow --check-stowed-from FILE
   dotfiles-stow --print-stow-dir
@@ -26,6 +27,7 @@ Wrapper behavior:
   Uses $HOME as Stow's target directory.
 
 Wrapper options:
+  --recreate                  Atomically re-stow packages (via `stow --restow`), migrating any links that point at a legacy Stow dir first.
   --check-stowed FILE...       Check whether Stow would still create links for the given source files.
   --check-stowed-from FILE     Read source paths from FILE and run the same check.
   --print-stow-dir             Print the managed dotfiles repository path used by this wrapper.
@@ -49,6 +51,93 @@ else
 fi
 
 cd "$dotfiles_stow_dir"
+
+append_arg() {
+    printf '%s\n' "$2" >>"$1"
+}
+
+append_stow_arg() {
+    append_arg "$recreate_stow_args_file" "$1"
+}
+
+append_delete_arg() {
+    append_arg "$recreate_delete_args_file" "$1"
+}
+
+append_package_arg() {
+    append_arg "$recreate_packages_file" "$1"
+}
+
+append_stow_and_delete_arg() {
+    append_stow_arg "$1"
+    append_delete_arg "$1"
+}
+
+canonical_dir() {
+    case $1 in
+    /*) canonical_dir_path=$1 ;;
+    *) canonical_dir_path=$dotfiles_stow_dir/$1 ;;
+    esac
+
+    if [ -d "$canonical_dir_path" ]; then
+        (cd "$canonical_dir_path" && pwd -P)
+    else
+        printf '%s\n' "$canonical_dir_path"
+    fi
+}
+
+dotfiles_target_rel_for_source_rel() {
+    printf '%s\n' "$1" | sed 's#^dot-#.#; s#/dot-#/.#g'
+}
+
+current_stow_dir_for_package() {
+    current_package=$1
+    current_package_dir=$recreate_stow_dir/$current_package
+    [ -d "$current_package_dir" ] || return 0
+
+    find "$current_package_dir" \( -type f -o -type l \) -print 2>/dev/null | while IFS= read -r current_source; do
+        current_source_rel=${current_source#"$current_package_dir"/}
+        current_target_rel=$(dotfiles_target_rel_for_source_rel "$current_source_rel")
+        current_link=$recreate_target_dir/$current_target_rel
+        [ -L "$current_link" ] || continue
+
+        current_target=$(readlink "$current_link") || continue
+        case $current_target in
+        /*) current_target_path=$current_target ;;
+        *) current_target_path=$(dirname "$current_link")/$current_target ;;
+        esac
+
+        case $current_target_path in
+        */"$current_package"/*)
+            current_dir=${current_target_path%%/"$current_package"/*}
+            [ -d "$current_dir/$current_package" ] || continue
+            canonical_dir "$current_dir"
+            break
+            ;;
+        esac
+    done | sed -n '1{p;q;}'
+}
+
+delete_recreate_package_from_dir() {
+    delete_package=$1
+    delete_dir=$2
+
+    set -- {% for option in dotfiles_stow_options %}{{ option | quote }} {% endfor %}{% for pattern in stow_ignore_patterns %}--ignore={{ pattern | quote }} {% endfor %}--delete --dir "$delete_dir"
+    while IFS= read -r arg; do
+        set -- "$@" "$arg"
+    done <"$recreate_delete_args_file"
+    set -- "$@" "$delete_package"
+
+    "$stow_bin" "$@"
+}
+
+recreate=0
+for arg do
+    if [ "$arg" = "--recreate" ]; then
+        recreate=1
+        break
+    fi
+done
 
 case ${1:-} in
 -h | --help)
@@ -88,6 +177,117 @@ case ${1:-} in
     exit "$stow_check_rc"
     ;;
 esac
+
+if [ "$recreate" -eq 1 ]; then
+    recreate_stow_args_file=$(mktemp "${TMPDIR:-/tmp}/dotfiles-stow-stow-args.XXXXXX")
+    recreate_delete_args_file=$(mktemp "${TMPDIR:-/tmp}/dotfiles-stow-delete-args.XXXXXX")
+    recreate_packages_file=$(mktemp "${TMPDIR:-/tmp}/dotfiles-stow-packages.XXXXXX")
+    trap 'rm -f "$recreate_stow_args_file" "$recreate_delete_args_file" "$recreate_packages_file"' EXIT HUP INT TERM
+
+    recreate_package_count=0
+    packages_only=0
+    recreate_stow_dir=$dotfiles_stow_dir
+    recreate_target_dir=$HOME
+
+    while [ "$#" -gt 0 ]; do
+        arg=$1
+        shift
+
+        if [ "$packages_only" -eq 1 ]; then
+            append_stow_arg "$arg"
+            append_package_arg "$arg"
+            recreate_package_count=$((recreate_package_count + 1))
+            continue
+        fi
+
+        case $arg in
+        --recreate)
+            ;;
+        --)
+            packages_only=1
+            ;;
+        --dir | -d)
+            if [ "$#" -eq 0 ]; then
+                echo "dotfiles-stow: $arg needs a value" >&2
+                exit 2
+            fi
+            append_stow_arg "$arg"
+            append_stow_arg "$1"
+            recreate_stow_dir=$1
+            shift
+            ;;
+        --dir=*)
+            append_stow_arg "$arg"
+            recreate_stow_dir=${arg#--dir=}
+            ;;
+        -d?*)
+            append_stow_arg "$arg"
+            recreate_stow_dir=${arg#-d}
+            ;;
+        --delete | --stow | --restow | -D | -S | -R)
+            echo "dotfiles-stow: --recreate cannot be combined with Stow action option: $arg" >&2
+            exit 2
+            ;;
+        --target | -t | --ignore | --defer | --override)
+            if [ "$#" -eq 0 ]; then
+                echo "dotfiles-stow: $arg needs a value" >&2
+                exit 2
+            fi
+            append_stow_and_delete_arg "$arg"
+            append_stow_and_delete_arg "$1"
+            if [ "$arg" = "--target" ] || [ "$arg" = "-t" ]; then
+                recreate_target_dir=$1
+            fi
+            shift
+            ;;
+        --target=*)
+            append_stow_and_delete_arg "$arg"
+            recreate_target_dir=${arg#--target=}
+            ;;
+        -t?*)
+            append_stow_and_delete_arg "$arg"
+            recreate_target_dir=${arg#-t}
+            ;;
+        --ignore=* | --defer=* | --override=*)
+            append_stow_and_delete_arg "$arg"
+            ;;
+        -*)
+            append_stow_and_delete_arg "$arg"
+            ;;
+        *)
+            append_stow_arg "$arg"
+            append_package_arg "$arg"
+            recreate_package_count=$((recreate_package_count + 1))
+            ;;
+        esac
+    done
+
+    if [ "$recreate_package_count" -eq 0 ]; then
+        echo "dotfiles-stow: --recreate needs at least one package" >&2
+        exit 2
+    fi
+
+    recreate_stow_dir=$(canonical_dir "$recreate_stow_dir")
+    recreate_target_dir=$(canonical_dir "$recreate_target_dir")
+    # Only delete links that point at a *different* (legacy) Stow dir. Re-stowing
+    # from the current dir is done atomically by `stow --restow` below, so we must
+    # NOT delete those links here: a separate delete + stow leaves the system bare
+    # if the stow step fails, whereas `--restow` plans the delete and the restow in
+    # a single pass and aborts without touching anything on conflict.
+    while IFS= read -r package; do
+        current_stow_dir=$(current_stow_dir_for_package "$package")
+        if [ -n "$current_stow_dir" ] && [ "$current_stow_dir" != "$recreate_stow_dir" ]; then
+            delete_recreate_package_from_dir "$package" "$current_stow_dir"
+        fi
+    done <"$recreate_packages_file"
+
+    set -- {% for option in dotfiles_stow_options %}{{ option | quote }} {% endfor %}{% for pattern in stow_ignore_patterns %}--ignore={{ pattern | quote }} {% endfor %}--restow ;
+    while IFS= read -r arg; do
+        set -- "$@" "$arg"
+    done <"$recreate_stow_args_file"
+
+    exec "$stow_bin" "$@"
+fi
 
 set -- {% for option in dotfiles_stow_options %}{{ option | quote }} {% endfor %}{% for pattern in stow_ignore_patterns %}--ignore={{ pattern | quote }} {% endfor %}"$@"
 
