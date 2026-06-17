@@ -1,0 +1,55 @@
+---
+- name: "[archlinux] Local AUR packages: normalize requested package list"
+  ansible.builtin.set_fact:
+    var_aur_local_requested_packages: "{{ [aur_local_packages] if aur_local_packages is string else aur_local_packages }}"
+
+- name: "[archlinux] Local AUR packages: refresh package databases"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - pacman
+      - -Sy
+      - --noconfirm
+  changed_when: false
+  failed_when: false
+  when: not var_aur_local_package_cache_refreshed | default(false)
+  register: var_aur_local_package_cache_refresh
+
+- name: "[archlinux] Local AUR packages: record cache refresh"
+  ansible.builtin.set_fact:
+    var_aur_local_package_cache_refreshed: true
+  when: not var_aur_local_package_cache_refreshed | default(false)
+
+- name: "[archlinux] Local AUR packages: list published packages"
+  ansible.builtin.command:
+    argv:
+      - pacman
+      - -Slq
+      - "{{ arch_aur_local_repo_name | default('aur-local') }}"
+  changed_when: false
+  failed_when: false
+  register: var_aur_local_published_packages
+  when: var_aur_local_published_package_names is not defined
+
+- name: "[archlinux] Local AUR packages: record published package list"
+  ansible.builtin.set_fact:
+    var_aur_local_published_package_names: "{{ var_aur_local_published_packages.stdout_lines | default([]) }}"
+  when: var_aur_local_published_package_names is not defined
+
+- name: "[archlinux] Local AUR packages: compute availability"
+  ansible.builtin.set_fact:
+    var_aur_local_available_packages: "{{ var_aur_local_requested_packages | select('in', var_aur_local_published_package_names | default([])) | list }}"
+    var_aur_local_missing_packages: "{{ var_aur_local_requested_packages | reject('in', var_aur_local_published_package_names | default([])) | list }}"
+
+- name: "[archlinux] Local AUR packages: report unpublished packages"
+  ansible.builtin.debug:
+    msg: "Skipping unpublished local AUR packages from [{{ arch_aur_local_repo_name | default('aur-local') }}]: {{ var_aur_local_missing_packages | join(', ') }}. Review and publish them with aur-review before Ansible can install them."
+  when: var_aur_local_missing_packages | length > 0
+
+- name: "[archlinux] Local AUR packages: install published packages"
+  become: true
+  community.general.pacman:
+    state: "{{ aur_local_package_state | default('latest') }}"
+    name: "{{ var_aur_local_available_packages }}"
+  notify: "{{ aur_local_package_notify | default([]) }}"
+  when: var_aur_local_available_packages | length > 0

@@ -1,0 +1,1317 @@
+#!/bin/sh
+# Purpose: Review AUR Git changes, then build and publish approved packages to a local pacman repository.
+# Usage: aur-review [list-updates|fetch|status|diff|diffview|upstream-diff|upstream-diffview|lazygit|nvim|accept|baseline-installed|publish|path] [OPTIONS] [PACKAGE...]
+# Notes: The local master branch is the reviewed state; origin/master is the latest AUR state.
+# shellcheck disable=SC2016
+
+set -eu
+
+prog=${0##*/}
+review_dir=${AUR_REVIEW_DIR:-"$HOME/data/aur-review"}
+build_dir=${AUR_REVIEW_BUILD_DIR:-"$HOME/data/aur-review-build"}
+upstream_dir=${AUR_REVIEW_UPSTREAM_DIR:-"$HOME/data/aur-review-upstream"}
+local_repo_name=${AUR_REVIEW_REPO_NAME:-aur-local}
+local_repo_dir=${AUR_REVIEW_REPO_DIR:-/var/cache/pacman/aur-local}
+chroot_dir=${AUR_REVIEW_CHROOT_DIR:-/var/lib/aurbuild}
+build_mode=${AUR_REVIEW_BUILD_MODE:-chroot}
+default_action=${AUR_REVIEW_ACTION:-diffview}
+nocheck=${AUR_REVIEW_NOCHECK:-0}
+php_extensions=${AUR_REVIEW_PHP_EXTENSIONS:-}
+list_format=${AUR_REVIEW_LIST_FORMAT:-auto}
+color_mode=${AUR_REVIEW_COLOR:-auto}
+upstream_from=
+upstream_to=
+upstream_source=
+
+usage() {
+    cat <<EOF
+Usage: $prog [list-updates|fetch|status|diff|diffview|upstream-diff|upstream-diffview|lazygit|nvim|accept|baseline-installed|publish|path] [OPTIONS] [PACKAGE...]
+
+Actions:
+  list-updates
+            List installed AUR/local AUR packages with AUR or upstream VCS updates.
+  fetch     Clone missing AUR repos and fetch origin/master.
+  status    Show reviewed and remote commits.
+  diff      Show master..origin/master in the terminal.
+  diffview  Open Neovim diffview for master..origin/master.
+  upstream-diff
+            Show upstream VCS changes for a -git package.
+  upstream-diffview
+            Open Neovim diffview for upstream VCS changes.
+  lazygit   Open lazygit in the package checkout.
+  nvim      Open Neovim in the package checkout.
+  accept    Fast-forward local master to origin/master after review.
+  baseline-installed
+            Move local master to the AUR commit matching the installed package version.
+  publish   Build the accepted commit and add resulting packages to the local pacman repo.
+  path      Print the local checkout path.
+
+Options:
+  --nocheck           Skip PKGBUILD check() during publish.
+  --php-extension EXT Enable a PHP extension during publish. Repeatable.
+  --plain             Print list-updates as tab-separated records.
+  --table             Print list-updates as an aligned table.
+  --color WHEN        Color list-updates output: auto, always, or never.
+  --no-color          Disable list-updates color.
+  --from COMMIT       Override the inferred installed upstream commit.
+  --to REF            Override the target upstream ref. Default: PKGBUILD source ref or origin/HEAD.
+  --source NAME       Select a VCS source alias when .SRCINFO has more than one.
+
+Environment:
+  AUR_REVIEW_DIR         Checkout root. Default: ~/data/aur-review
+  AUR_REVIEW_BUILD_DIR   Build output root. Default: ~/data/aur-review-build
+  AUR_REVIEW_UPSTREAM_DIR
+                          Upstream VCS checkout root. Default: ~/data/aur-review-upstream
+  AUR_REVIEW_REPO_NAME   Local pacman repo name. Default: aur-local
+  AUR_REVIEW_REPO_DIR    Local pacman repo path. Default: /var/cache/pacman/aur-local
+  AUR_REVIEW_CHROOT_DIR  Clean chroot parent. Default: /var/lib/aurbuild
+  AUR_REVIEW_BUILD_MODE  Build mode: chroot or makepkg. Default: chroot
+  AUR_REVIEW_NOCHECK     Skip PKGBUILD check() during publish when set to 1.
+  AUR_REVIEW_PHP_EXTENSIONS
+                          Whitespace-separated PHP extensions to enable during publish.
+  AUR_REVIEW_LIST_FORMAT
+                          list-updates format: auto, table, or plain. Default: auto
+  AUR_REVIEW_COLOR        list-updates color: auto, always, or never. Default: auto
+  AUR_REVIEW_ACTION      Default action when no action is given. Default: diffview
+EOF
+}
+
+die() {
+    printf '%s: %s\n' "$prog" "$*" >&2
+    exit 1
+}
+
+need() {
+    command -v "$1" >/dev/null 2>&1 || die "$1 is required"
+}
+
+github_git_helper() {
+    script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+    for candidate in \
+        "$script_dir/dotfiles-github-git" \
+        "$HOME/bin/dotfiles-github-git" \
+        "$HOME/dotfiles/utilities/bin/dotfiles-github-git"; do
+        if [ -x "$candidate" ]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    command -v dotfiles-github-git 2>/dev/null || true
+}
+
+is_github_url() {
+    case $1 in
+    https://github.com/* | http://github.com/*)
+        return 0
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
+git_for_url() {
+    url=$1
+    shift
+    if is_github_url "$url"; then
+        helper=$(github_git_helper)
+        if [ -n "$helper" ]; then
+            "$helper" "$@"
+            return $?
+        fi
+    fi
+    git "$@"
+}
+
+use_nocheck() {
+    case $nocheck in
+    1 | true | yes)
+        return 0
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
+use_color() {
+    case $color_mode in
+    always)
+        return 0
+        ;;
+    never)
+        return 1
+        ;;
+    auto | "")
+        [ -t 1 ] && [ -z "${NO_COLOR:-}" ]
+        ;;
+    *)
+        die "unsupported AUR_REVIEW_COLOR: $color_mode"
+        ;;
+    esac
+}
+
+use_list_table() {
+    case $list_format in
+    table)
+        return 0
+        ;;
+    plain)
+        return 1
+        ;;
+    auto | "")
+        [ -t 1 ]
+        ;;
+    *)
+        die "unsupported AUR_REVIEW_LIST_FORMAT: $list_format"
+        ;;
+    esac
+}
+
+valid_color_mode() {
+    case $1 in
+    auto | always | never)
+        return 0
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
+valid_php_extension() {
+    case $1 in
+    "" | *[!A-Za-z0-9_]*)
+        return 1
+        ;;
+    *)
+        return 0
+        ;;
+    esac
+}
+
+append_php_extension() {
+    ext=$1
+    valid_php_extension "$ext" || die "invalid PHP extension name: $ext"
+    php_extensions=${php_extensions:+"$php_extensions "}$ext
+}
+
+run_as_root() {
+    if [ "$(id -u)" -eq 0 ]; then
+        "$@"
+    else
+        need sudo
+        sudo "$@"
+    fi
+}
+
+valid_pkg() {
+    case $1 in
+    "" | .* | */* | *..* | *[!A-Za-z0-9@._+-]*)
+        return 1
+        ;;
+    esac
+}
+
+repo_path() {
+    printf '%s/%s\n' "$review_dir" "$1"
+}
+
+installed_version() {
+    pacman -Q "$1" 2>/dev/null | awk 'NR == 1 { print $2 }'
+}
+
+local_repo_version() {
+    pacman -Sl "$local_repo_name" 2>/dev/null | awk -v pkg="$1" '$2 == pkg { print $3; exit }'
+}
+
+upstream_commit_from_version() {
+    version=$1
+    version=${version%-*}
+    commit=$(printf '%s\n' "$version" | sed -n 's/.*\.g\([0-9A-Fa-f][0-9A-Fa-f]*\)$/\1/p')
+    if [ -z "$commit" ]; then
+        commit=$(printf '%s\n' "$version" | sed -n 's/.*\.r[0-9][0-9]*\.\([0-9A-Fa-f]\{7,\}\)$/\1/p')
+    fi
+    [ -n "$commit" ] || return 1
+    printf '%s\n' "$commit"
+}
+
+installed_upstream_commit() {
+    pkg=$1
+    version=$(installed_version "$pkg" || true)
+    [ -n "$version" ] || return 1
+    upstream_commit_from_version "$version"
+}
+
+accepted_status() {
+    pending=$1
+    if [ "$pending" -eq 0 ] 2>/dev/null; then
+        printf 'yes\n'
+    else
+        printf 'no\n'
+    fi
+}
+
+published_version_status() {
+    pkg=$1
+    target_version=$2
+    [ -n "$target_version" ] || {
+        printf 'unknown\n'
+        return 0
+    }
+    version=$(local_repo_version "$pkg" || true)
+    if [ -z "$version" ]; then
+        printf 'no\n'
+    elif [ "$version" = "$target_version" ]; then
+        printf 'yes\n'
+    else
+        printf 'no\n'
+    fi
+}
+
+published_upstream_status() {
+    pkg=$1
+    checkout=$2
+    target_commit=$3
+    version=$(local_repo_version "$pkg" || true)
+    if [ -z "$version" ]; then
+        printf 'no\n'
+        return 0
+    fi
+    published_commit=$(upstream_commit_from_version "$version" || true)
+    if [ -z "$published_commit" ]; then
+        printf 'unknown\n'
+        return 0
+    fi
+    published_full=$(git -C "$checkout" rev-parse --verify "$published_commit^{commit}" 2>/dev/null || true)
+    if [ -n "$published_full" ] && [ "$published_full" = "$target_commit" ]; then
+        printf 'yes\n'
+        return 0
+    fi
+    case $target_commit in
+    "$published_commit"*)
+        printf 'yes\n'
+        ;;
+    *)
+        printf 'no\n'
+        ;;
+    esac
+}
+
+srcinfo_version_at() {
+    git show "$1:.SRCINFO" 2>/dev/null | awk '
+        $1 == "epoch" && $2 == "=" { epoch = $3 }
+        $1 == "pkgver" && $2 == "=" { pkgver = $3 }
+        $1 == "pkgrel" && $2 == "=" { pkgrel = $3 }
+        END {
+            if (pkgver == "" || pkgrel == "") {
+                exit 1
+            }
+            if (epoch != "") {
+                printf "%s:%s-%s\n", epoch, pkgver, pkgrel
+            } else {
+                printf "%s-%s\n", pkgver, pkgrel
+            }
+        }
+    '
+}
+
+find_installed_commit() {
+    pkg=$1
+    wanted=$(installed_version "$pkg" || true)
+    [ -n "$wanted" ] || return 1
+    for commit in $(git rev-list --max-count=300 origin/master); do
+        version=$(srcinfo_version_at "$commit" || true)
+        if [ "$version" = "$wanted" ]; then
+            printf '%s\n' "$commit"
+            return 0
+        fi
+    done
+    return 1
+}
+
+ensure_repo() {
+    pkg=$1
+    valid_pkg "$pkg" || die "invalid AUR package name: $pkg"
+    need git
+    mkdir -p "$review_dir"
+    repo=$(repo_path "$pkg")
+    if [ ! -d "$repo/.git" ]; then
+        git clone "https://aur.archlinux.org/$pkg.git" "$repo"
+    fi
+    (
+        cd "$repo"
+        git fetch --prune origin
+        git rev-parse --verify origin/master >/dev/null
+        if ! git rev-parse --verify master >/dev/null 2>&1; then
+            baseline=$(find_installed_commit "$pkg" || true)
+            if [ -n "$baseline" ]; then
+                git branch master "$baseline"
+            else
+                git branch master origin/master
+            fi
+        fi
+    )
+}
+
+with_repo() {
+    pkg=$1
+    ensure_repo "$pkg"
+    repo=$(repo_path "$pkg")
+    shift
+    (
+        cd "$repo"
+        "$@"
+    )
+}
+
+srcinfo_git_sources() {
+    srcinfo_git_sources_from_stream <.SRCINFO
+}
+
+srcinfo_git_sources_from_stream() {
+    awk '
+        $1 == "source" && $2 == "=" {
+            value = $0
+            sub(/^[[:space:]]*source[[:space:]]*=[[:space:]]*/, "", value)
+            if (value ~ /(^|::)git\+/) {
+                print value
+            }
+        }
+    '
+}
+
+srcinfo_git_sources_at() {
+    git show "$1:.SRCINFO" 2>/dev/null | srcinfo_git_sources_from_stream
+}
+
+git_source_alias() {
+    source=$1
+    case $source in
+    *::*)
+        printf '%s\n' "${source%%::*}"
+        ;;
+    *)
+        printf '%s\n' "$source"
+        ;;
+    esac
+}
+
+select_git_source() {
+    count=$(srcinfo_git_sources | wc -l | awk '{ print $1 }')
+    case $count in
+    0)
+        die "no git source found in .SRCINFO"
+        ;;
+    1)
+        srcinfo_git_sources
+        ;;
+    *)
+        if [ -z "$upstream_source" ]; then
+            srcinfo_git_sources | sed -n '1p'
+            return 0
+        fi
+        selected=
+        while IFS= read -r source; do
+            alias=$(git_source_alias "$source")
+            case $alias:$source in
+            "$upstream_source":* | *"$upstream_source"*)
+                selected=$source
+                break
+                ;;
+            esac
+        done <<EOF_SOURCES
+$(srcinfo_git_sources)
+EOF_SOURCES
+        if [ -n "$selected" ]; then
+            printf '%s\n' "$selected"
+            return 0
+        fi
+        srcinfo_git_sources >&2
+        die "no git source matched --source $upstream_source"
+        ;;
+    esac
+}
+
+select_git_source_at() {
+    ref=$1
+    sources=$(srcinfo_git_sources_at "$ref")
+    count=$(printf '%s\n' "$sources" | sed '/^$/d' | wc -l | awk '{ print $1 }')
+    case $count in
+    0)
+        die "no git source found in .SRCINFO at $ref"
+        ;;
+    1)
+        printf '%s\n' "$sources" | sed '/^$/d'
+        ;;
+    *)
+        if [ -z "$upstream_source" ]; then
+            printf '%s\n' "$sources" | sed '/^$/d' | sed -n '1p'
+            return 0
+        fi
+        selected=
+        while IFS= read -r source; do
+            [ -n "$source" ] || continue
+            alias=$(git_source_alias "$source")
+            case $alias:$source in
+            "$upstream_source":* | *"$upstream_source"*)
+                selected=$source
+                break
+                ;;
+            esac
+        done <<EOF_SOURCES
+$sources
+EOF_SOURCES
+        if [ -n "$selected" ]; then
+            printf '%s\n' "$selected"
+            return 0
+        fi
+        printf '%s\n' "$sources" >&2
+        die "no git source matched --source $upstream_source at $ref"
+        ;;
+    esac
+}
+
+git_source_url() {
+    source=$1
+    source=${source#*::}
+    source=${source%%#*}
+    case $source in
+    git+*)
+        printf '%s\n' "${source#git+}"
+        ;;
+    *)
+        die "unsupported git source: $1"
+        ;;
+    esac
+}
+
+git_source_target_ref() {
+    source=$1
+    fragment=
+    case $source in
+    *#*)
+        fragment=${source#*#}
+        ;;
+    esac
+    if [ -n "$upstream_to" ]; then
+        printf '%s\n' "$upstream_to"
+        return 0
+    fi
+    if [ -n "$fragment" ]; then
+        old_ifs=$IFS
+        IFS='&'
+        for part in $fragment; do
+            IFS=$old_ifs
+            case $part in
+            commit=*)
+                printf '%s\n' "${part#commit=}"
+                return 0
+                ;;
+            tag=*)
+                printf '%s\n' "${part#tag=}"
+                return 0
+                ;;
+            branch=*)
+                printf 'origin/%s\n' "${part#branch=}"
+                return 0
+                ;;
+            esac
+            IFS='&'
+        done
+        IFS=$old_ifs
+    fi
+    printf '%s\n' origin/HEAD
+}
+
+git_source_is_movable() {
+    source=$1
+    fragment=
+    case $source in
+    *#*)
+        fragment=${source#*#}
+        ;;
+    esac
+    if [ -n "$fragment" ]; then
+        old_ifs=$IFS
+        IFS='&'
+        for part in $fragment; do
+            IFS=$old_ifs
+            case $part in
+            commit=* | tag=*)
+                IFS=$old_ifs
+                return 1
+                ;;
+            esac
+            IFS='&'
+        done
+        IFS=$old_ifs
+    fi
+    return 0
+}
+
+upstream_cache_path() {
+    pkg=$1
+    url=$2
+    key=$(printf '%s\n' "$url" | cksum | awk '{ print $1 }')
+    printf '%s/%s/%s\n' "$upstream_dir" "$pkg" "$key"
+}
+
+ensure_upstream_repo() {
+    pkg=$1
+    url=$2
+    path=$(upstream_cache_path "$pkg" "$url")
+    mkdir -p "${path%/*}"
+    if [ ! -d "$path/.git" ]; then
+        git_for_url "$url" clone --quiet "$url" "$path" || return 1
+    else
+        current=$(git -C "$path" remote get-url origin) || return 1
+        [ "$current" = "$url" ] || die "cached upstream remote mismatch in $path"
+        git_for_url "$url" -C "$path" fetch --quiet --prune --tags origin || return 1
+    fi
+    git -C "$path" remote set-head origin -a >/dev/null 2>&1 || true
+    printf '%s\n' "$path"
+}
+
+resolve_upstream_target() {
+    checkout=$1
+    target=$2
+    commit=$(git -C "$checkout" rev-parse --verify "$target^{commit}" 2>/dev/null || true)
+    if [ -n "$commit" ]; then
+        printf '%s\n%s\n' "$target" "$commit"
+        return 0
+    fi
+    if [ "$target" = origin/HEAD ]; then
+        for fallback in origin/master origin/main; do
+            commit=$(git -C "$checkout" rev-parse --verify "$fallback^{commit}" 2>/dev/null || true)
+            if [ -n "$commit" ]; then
+                printf '%s\n%s\n' "$fallback" "$commit"
+                return 0
+            fi
+        done
+    fi
+    return 1
+}
+
+resolve_upstream_review() {
+    pkg=$1
+    ensure_repo "$pkg" >/dev/null
+    repo=$(repo_path "$pkg")
+    (
+        cd "$repo"
+        source=$(select_git_source)
+        url=$(git_source_url "$source")
+        target=$(git_source_target_ref "$source")
+        if [ -n "$upstream_from" ]; then
+            base=$upstream_from
+        else
+            base=$(installed_upstream_commit "$pkg" || true)
+        fi
+        [ -n "$base" ] || die "could not infer installed upstream commit for $pkg; pass --from COMMIT"
+        checkout=$(ensure_upstream_repo "$pkg" "$url")
+        base_commit=$(git -C "$checkout" rev-parse --verify "$base^{commit}") || die "base upstream commit not found: $base"
+        resolved_target=$(resolve_upstream_target "$checkout" "$target") || die "target upstream ref not found: $target"
+        target=$(printf '%s\n' "$resolved_target" | sed -n '1p')
+        target_commit=$(printf '%s\n' "$resolved_target" | sed -n '2p')
+        printf '%s\n%s\n%s\n%s\n%s\n%s\n' "$checkout" "$source" "$url" "$base_commit" "$target" "$target_commit"
+    )
+}
+
+show_upstream_diff() {
+    pkg=$1
+    review=$(resolve_upstream_review "$pkg")
+    checkout=$(printf '%s\n' "$review" | sed -n '1p')
+    source=$(printf '%s\n' "$review" | sed -n '2p')
+    url=$(printf '%s\n' "$review" | sed -n '3p')
+    base_commit=$(printf '%s\n' "$review" | sed -n '4p')
+    target=$(printf '%s\n' "$review" | sed -n '5p')
+    target_commit=$(printf '%s\n' "$review" | sed -n '6p')
+    printf "== %s upstream ==\n" "$pkg"
+    printf "source: %s\n" "$source"
+    printf "url: %s\n" "$url"
+    printf "from: %s\n" "$base_commit"
+    printf "to: %s (%s)\n" "$target" "$target_commit"
+    printf "\n-- commits --\n"
+    git -C "$checkout" log --oneline --decorate --max-count=40 "$base_commit..$target_commit" || true
+    printf "\n-- changed files --\n"
+    git -C "$checkout" diff --name-status "$base_commit..$target_commit"
+    printf "\n-- diff --\n"
+    if [ -t 1 ] && command -v less >/dev/null 2>&1; then
+        git -C "$checkout" diff --color=always "$base_commit..$target_commit" | less -R
+    else
+        git -C "$checkout" diff --color=always "$base_commit..$target_commit"
+    fi
+}
+
+open_upstream_diffview() {
+    pkg=$1
+    command -v nvim >/dev/null 2>&1 || die "nvim is required"
+    review=$(resolve_upstream_review "$pkg")
+    checkout=$(printf '%s\n' "$review" | sed -n '1p')
+    base_commit=$(printf '%s\n' "$review" | sed -n '4p')
+    target_commit=$(printf '%s\n' "$review" | sed -n '6p')
+    (
+        cd "$checkout"
+        exec nvim -c "DiffviewOpen $base_commit..$target_commit" .
+    )
+}
+
+local_repo_installed_packages() {
+    if ! pacman -Slq "$local_repo_name" >/dev/null 2>&1; then
+        return 0
+    fi
+    pacman -Slq "$local_repo_name" | while IFS= read -r pkg; do
+        [ -n "$pkg" ] || continue
+        if pacman -Qq "$pkg" >/dev/null 2>&1; then
+            printf '%s\n' "$pkg"
+        fi
+    done
+}
+
+installed_review_packages() {
+    {
+        pacman -Qqm 2>/dev/null || true
+        local_repo_installed_packages
+    } | awk '
+        $0 == "" { next }
+        $0 ~ /-debug$/ { next }
+        !seen[$0]++
+    ' | sort
+}
+
+format_short_commit() {
+    printf '%.12s\n' "$1"
+}
+
+list_header() {
+    if use_list_table; then
+        if use_color; then
+            bold=$(printf '\033[1m')
+            reset=$(printf '\033[0m')
+        else
+            bold=
+            reset=
+        fi
+        printf '%s%-8s %-46s %-32s %-9s %-9s %s%s\n' "$bold" TYPE PACKAGE UPDATE ACCEPTED PUBLISHED DETAILS "$reset"
+    fi
+}
+
+print_list_line() {
+    line=$1
+    if ! use_list_table; then
+        printf '%s\n' "$line"
+        return 0
+    fi
+    if use_color; then
+        reset=$(printf '\033[0m')
+        cyan=$(printf '\033[36m')
+        yellow=$(printf '\033[33m')
+        magenta=$(printf '\033[35m')
+        red=$(printf '\033[31m')
+    else
+        reset=
+        cyan=
+        yellow=
+        magenta=
+        red=
+    fi
+    printf '%s\n' "$line" | awk -F '\t' \
+        -v reset="$reset" \
+        -v cyan="$cyan" \
+        -v yellow="$yellow" \
+        -v magenta="$magenta" \
+        -v red="$red" '
+        {
+            kind = $1
+            pkg = $2
+            update = $3
+            accepted = "-"
+            published = "-"
+            details = ""
+            for (i = 4; i <= NF; i++) {
+                if ($i ~ /^accepted=/) {
+                    accepted = substr($i, 10)
+                } else if ($i ~ /^published=/) {
+                    published = substr($i, 11)
+                } else {
+                    details = details (details == "" ? "" : "  ") $i
+                }
+            }
+            color = ""
+            if (kind == "aur") {
+                color = yellow
+            } else if (kind == "vcs") {
+                color = cyan
+            } else if (kind == "unknown") {
+                color = magenta
+            } else if (kind == "error") {
+                color = red
+            }
+            printf "%s%-8s%s %-46s %-32s %-9s %-9s %s\n", color, kind, reset, pkg, update, accepted, published, details
+        }
+    '
+}
+
+list_aur_update() {
+    pkg=$1
+    repo=$2
+    installed=$3
+    is_vcs=$4
+    remote_version=$(cd "$repo" && srcinfo_version_at origin/master || true)
+    pending=$(git -C "$repo" rev-list --count master..origin/master 2>/dev/null || printf '0')
+    reviewed=$(git -C "$repo" rev-parse --short master 2>/dev/null || printf '?')
+    remote=$(git -C "$repo" rev-parse --short origin/master 2>/dev/null || printf '?')
+    accepted=$(accepted_status "$pending")
+    published=$(published_version_status "$pkg" "$remote_version")
+    if [ "$is_vcs" -eq 0 ] && [ -n "$remote_version" ] && [ -n "$installed" ] && [ "$remote_version" != "$installed" ]; then
+        printf 'aur\t%s\t%s -> %s\taccepted=%s\tpublished=%s\treviewed=%s\tremote=%s\tpending=%s\n' "$pkg" "$installed" "$remote_version" "$accepted" "$published" "$reviewed" "$remote" "$pending"
+    elif [ "$pending" -gt 0 ] 2>/dev/null; then
+        printf 'aur\t%s\t%s\taccepted=%s\tpublished=%s\treviewed=%s\tremote=%s\tpending=%s\n' "$pkg" "${installed:-unknown}" "$accepted" "$published" "$reviewed" "$remote" "$pending"
+    fi
+}
+
+list_vcs_update() {
+    pkg=$1
+    repo=$2
+    installed=$3
+    source=$(cd "$repo" && select_git_source_at origin/master)
+    alias=$(git_source_alias "$source")
+    url=$(git_source_url "$source")
+    target=$(git_source_target_ref "$source")
+    pending=$(git -C "$repo" rev-list --count master..origin/master 2>/dev/null || printf '0')
+    accepted=$(accepted_status "$pending")
+    base=$(installed_upstream_commit "$pkg" || true)
+    if [ -z "$base" ]; then
+        printf 'unknown\t%s\tinstalled=%s\taccepted=%s\tpublished=unknown\tsource=%s\treason=no-installed-upstream-commit\n' "$pkg" "${installed:-unknown}" "$accepted" "$alias"
+        return 0
+    fi
+    if ! checkout=$(ensure_upstream_repo "$pkg" "$url" 2>/dev/null); then
+        printf 'error\t%s\t-\taccepted=%s\tpublished=unknown\tsource=%s\treason=upstream-fetch-failed\n' "$pkg" "$accepted" "$alias"
+        return 0
+    fi
+    base_commit=$(git -C "$checkout" rev-parse --verify "$base^{commit}" 2>/dev/null || true)
+    if [ -z "$base_commit" ]; then
+        printf 'unknown\t%s\tinstalled=%s\taccepted=%s\tpublished=unknown\tsource=%s\tfrom=%s\treason=installed-commit-not-found\n' "$pkg" "${installed:-unknown}" "$accepted" "$alias" "$base"
+        return 0
+    fi
+    resolved_target=$(resolve_upstream_target "$checkout" "$target" || true)
+    if [ -z "$resolved_target" ]; then
+        printf 'error\t%s\t-\taccepted=%s\tpublished=unknown\tsource=%s\tto=%s\treason=target-ref-not-found\n' "$pkg" "$accepted" "$alias" "$target"
+        return 0
+    fi
+    target=$(printf '%s\n' "$resolved_target" | sed -n '1p')
+    target_commit=$(printf '%s\n' "$resolved_target" | sed -n '2p')
+    if [ "$base_commit" != "$target_commit" ]; then
+        published=$(published_upstream_status "$pkg" "$checkout" "$target_commit")
+        printf 'vcs\t%s\t%s -> %s\taccepted=%s\tpublished=%s\tsource=%s\tref=%s\n' "$pkg" "$(format_short_commit "$base_commit")" "$(format_short_commit "$target_commit")" "$accepted" "$published" "$alias" "$target"
+    fi
+}
+
+list_package_updates() {
+    pkg=$1
+    if ! (ensure_repo "$pkg" >/dev/null 2>&1); then
+        printf 'error\t%s\t-\taccepted=unknown\tpublished=unknown\treason=aur-repo-or-fetch-failed\n' "$pkg"
+        return 0
+    fi
+    repo=$(repo_path "$pkg")
+    installed=$(installed_version "$pkg" || true)
+    if [ -n "$(cd "$repo" && srcinfo_git_sources_at origin/master)" ]; then
+        source=$(cd "$repo" && select_git_source_at origin/master)
+        if git_source_is_movable "$source"; then
+            list_aur_update "$pkg" "$repo" "$installed" 1
+            list_vcs_update "$pkg" "$repo" "$installed"
+        else
+            list_aur_update "$pkg" "$repo" "$installed" 0
+        fi
+    else
+        list_aur_update "$pkg" "$repo" "$installed" 0
+    fi
+}
+
+list_update_candidate() {
+    pkg=$1
+    valid_pkg "$pkg" || {
+        printf 'error\t%s\t-\taccepted=unknown\tpublished=unknown\treason=invalid-package-name\n' "$pkg"
+        return 0
+    }
+    (list_package_updates "$pkg") || printf 'error\t%s\t-\taccepted=unknown\tpublished=unknown\treason=list-check-failed\n' "$pkg"
+}
+
+list_updates() {
+    list_header
+    if [ "$#" -eq 0 ]; then
+        installed_review_packages | while IFS= read -r pkg; do
+            [ -n "$pkg" ] || continue
+            list_update_candidate "$pkg" | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                print_list_line "$line"
+            done
+        done
+        return 0
+    fi
+    for pkg do
+        list_update_candidate "$pkg" | while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            print_list_line "$line"
+        done
+    done
+}
+
+show_status() {
+    pkg=$1
+    with_repo "$pkg" sh -c '
+        reviewed=$(git rev-parse --short master)
+        remote=$(git rev-parse --short origin/master)
+        behind=$(git rev-list --count master..origin/master)
+        ahead=$(git rev-list --count origin/master..master)
+        printf "%s\treviewed=%s\tremote=%s\tpending=%s\tahead=%s\n" "$1" "$reviewed" "$remote" "$behind" "$ahead"
+    ' sh "$pkg"
+}
+
+show_diff() {
+    pkg=$1
+    with_repo "$pkg" sh -c '
+        printf "== %s ==\n" "$1"
+        git log --oneline --decorate --max-count=12 master..origin/master || true
+        printf "\n-- changed files --\n"
+        git diff --name-status master..origin/master
+        printf "\n-- diff --\n"
+        if [ -t 1 ] && command -v less >/dev/null 2>&1; then
+            git diff --color=always master..origin/master | less -R
+        else
+            git diff --color=always master..origin/master
+        fi
+    ' sh "$pkg"
+}
+
+open_diffview() {
+    pkg=$1
+    with_repo "$pkg" sh -c '
+        command -v nvim >/dev/null 2>&1 || { printf "%s: nvim is required\n" "$0" >&2; exit 1; }
+        exec nvim -c "DiffviewOpen master..origin/master" .
+    ' "$prog"
+}
+
+open_lazygit() {
+    pkg=$1
+    with_repo "$pkg" sh -c '
+        command -v lazygit >/dev/null 2>&1 || { printf "%s: lazygit is required\n" "$0" >&2; exit 1; }
+        exec lazygit
+    ' "$prog"
+}
+
+open_nvim() {
+    pkg=$1
+    with_repo "$pkg" sh -c '
+        command -v nvim >/dev/null 2>&1 || { printf "%s: nvim is required\n" "$0" >&2; exit 1; }
+        exec nvim .
+    ' "$prog"
+}
+
+accept_repo() {
+    pkg=$1
+    with_repo "$pkg" sh -c '
+        if ! git diff --quiet || ! git diff --cached --quiet; then
+            printf "%s: refusing to accept with local worktree changes in %s\n" "$0" "$PWD" >&2
+            exit 1
+        fi
+        git checkout master >/dev/null
+        git merge --ff-only origin/master
+    ' "$prog"
+}
+
+baseline_installed_repo() {
+    pkg=$1
+    ensure_repo "$pkg"
+    repo=$(repo_path "$pkg")
+    (
+        cd "$repo"
+        if ! git diff --quiet || ! git diff --cached --quiet; then
+            printf "%s: refusing to change baseline with local worktree changes in %s\n" "$prog" "$PWD" >&2
+            exit 1
+        fi
+        baseline=$(find_installed_commit "$pkg" || true)
+        if [ -z "$baseline" ]; then
+            installed=$(installed_version "$pkg" || true)
+            if [ -n "$installed" ]; then
+                printf "%s: no AUR commit found for installed %s version %s\n" "$prog" "$pkg" "$installed" >&2
+            else
+                printf "%s: %s is not installed according to pacman\n" "$prog" "$pkg" >&2
+            fi
+            exit 1
+        fi
+        git checkout master >/dev/null
+        git reset --hard "$baseline" >/dev/null
+        printf "%s\tbaseline=%s\tinstalled=%s\n" "$pkg" "$(git rev-parse --short master)" "$(installed_version "$pkg")"
+    )
+}
+
+require_publishable_repo() {
+    pkg=$1
+    with_repo "$pkg" sh -c '
+        if ! git diff --quiet || ! git diff --cached --quiet; then
+            printf "%s: refusing to publish with local worktree changes in %s\n" "$0" "$PWD" >&2
+            exit 1
+        fi
+        pending=$(git rev-list --count master..origin/master)
+        if [ "$pending" -ne 0 ]; then
+            printf "%s: %s has %s unreviewed AUR commit(s); run diffview/lazygit and accept first\n" "$0" "$1" "$pending" >&2
+            exit 1
+        fi
+        git checkout master >/dev/null
+        test -f PKGBUILD || { printf "%s: no PKGBUILD found in %s\n" "$0" "$PWD" >&2; exit 1; }
+    ' "$prog" "$pkg"
+}
+
+ensure_local_repo() {
+    need repo-add
+    if [ ! -d "$local_repo_dir" ]; then
+        run_as_root install -d -o root -g wheel -m 2775 "$local_repo_dir"
+    fi
+    if [ ! -w "$local_repo_dir" ]; then
+        die "$local_repo_dir is not writable; run the AUR setup Ansible tag first"
+    fi
+    umask 002
+    db_path=$local_repo_dir/$local_repo_name.db.tar.gz
+    if [ ! -f "$db_path" ]; then
+        repo-add "$db_path"
+    fi
+}
+
+ensure_pacman_conf_local_repo() {
+    conf=$1
+    [ -f "$conf" ] || die "missing pacman config: $conf"
+    if run_as_root grep -q "^\[$local_repo_name\]$" "$conf"; then
+        return 0
+    fi
+    run_as_root sh -c '
+        conf=$1
+        repo_name=$2
+        repo_dir=$3
+        {
+            printf "\n## BEGIN AUR-REVIEW LOCAL REPOSITORY\n"
+            printf "[%s]\n" "$repo_name"
+            printf "SigLevel = Optional TrustAll\n"
+            printf "Server = file://%s\n" "$repo_dir"
+            printf "## END AUR-REVIEW LOCAL REPOSITORY\n"
+        } >>"$conf"
+    ' sh "$conf" "$local_repo_name" "$local_repo_dir"
+}
+
+configure_chroot_local_repo() {
+    ensure_local_repo
+    for chroot_copy in "$chroot_dir"/*; do
+        [ -d "$chroot_copy" ] || continue
+        [ -f "$chroot_copy/etc/pacman.conf" ] || continue
+        run_as_root install -d -o root -g root -m 755 "$chroot_copy$local_repo_dir"
+        ensure_pacman_conf_local_repo "$chroot_copy/etc/pacman.conf"
+    done
+}
+
+verify_sources() {
+    pkg=$1
+    repo=$(repo_path "$pkg")
+    source_dir=$build_dir/sources
+    mkdir -p "$source_dir"
+    (
+        cd "$repo"
+        printf '==> Verifying sources for %s\n' "$pkg"
+        SRCDEST=$source_dir makepkg --verifysource
+    )
+}
+
+makepkg_extra_dir() {
+    printf '%s/%s/makepkg-extra\n' "$build_dir" "$1"
+}
+
+prepare_makepkg_config() {
+    pkg=$1
+    [ -n "$php_extensions" ] || return 1
+    extra_dir=$(makepkg_extra_dir "$pkg")
+    php_conf_dir=$extra_dir/php-conf.d
+    makepkg_conf=$extra_dir/makepkg.conf
+    mkdir -p "$php_conf_dir"
+    find "$php_conf_dir" -maxdepth 1 -type f -name '*.ini' -delete
+    for ext in $php_extensions; do
+        valid_php_extension "$ext" || die "invalid PHP extension name: $ext"
+        printf 'extension=%s\n' "$ext" >"$php_conf_dir/$ext.ini"
+    done
+    {
+        printf 'source /etc/makepkg.conf\n'
+        printf 'export PHP_INI_SCAN_DIR=:%s\n' "$php_conf_dir"
+    } >"$makepkg_conf"
+    printf '%s\n' "$makepkg_conf"
+}
+
+build_with_chroot() {
+    pkg=$1
+    repo=$(repo_path "$pkg")
+    pkg_out=$build_dir/$pkg/packages
+    log_out=$build_dir/$pkg/logs
+    source_dir=$build_dir/sources
+    srcpkg_out=$build_dir/$pkg/srcpkg
+    need makechrootpkg
+    need mkarchroot
+    mkdir -p "$pkg_out" "$log_out" "$source_dir" "$srcpkg_out"
+    find "$pkg_out" -maxdepth 1 -type f -name '*.pkg.tar*' ! -name '*.sig' -delete
+    if [ ! -d "$chroot_dir/root" ]; then
+        run_as_root install -d -o root -g wheel -m 2775 "$chroot_dir"
+        run_as_root mkarchroot "$chroot_dir/root" base-devel
+    fi
+    configure_chroot_local_repo
+    (
+        cd "$repo"
+        printf '==> Building %s in clean chroot %s\n' "$pkg" "$chroot_dir"
+        makepkg_config=$(prepare_makepkg_config "$pkg" || true)
+        set -- -f
+        if use_nocheck; then
+            set -- "$@" --nocheck
+        fi
+        if [ -n "$makepkg_config" ]; then
+            set -- "$@" --config "$makepkg_config"
+            PKGDEST=$pkg_out LOGDEST=$log_out SRCDEST=$source_dir SRCPKGDEST=$srcpkg_out makechrootpkg -r "$chroot_dir" -u -D "$local_repo_dir" -D "$(makepkg_extra_dir "$pkg")" -- "$@"
+        else
+            PKGDEST=$pkg_out LOGDEST=$log_out SRCDEST=$source_dir SRCPKGDEST=$srcpkg_out makechrootpkg -r "$chroot_dir" -u -D "$local_repo_dir" -- "$@"
+        fi
+    )
+}
+
+build_with_makepkg() {
+    pkg=$1
+    repo=$(repo_path "$pkg")
+    pkg_out=$build_dir/$pkg/packages
+    log_out=$build_dir/$pkg/logs
+    source_dir=$build_dir/sources
+    srcpkg_out=$build_dir/$pkg/srcpkg
+    need makepkg
+    mkdir -p "$pkg_out" "$log_out" "$source_dir" "$srcpkg_out"
+    find "$pkg_out" -maxdepth 1 -type f -name '*.pkg.tar*' ! -name '*.sig' -delete
+    (
+        cd "$repo"
+        printf '==> Building %s with makepkg\n' "$pkg"
+        makepkg_config=$(prepare_makepkg_config "$pkg" || true)
+        set -- -sCcf --noconfirm --log
+        if use_nocheck; then
+            set -- "$@" --nocheck
+        fi
+        if [ -n "$makepkg_config" ]; then
+            set -- "$@" --config "$makepkg_config"
+        fi
+        PKGDEST=$pkg_out LOGDEST=$log_out SRCDEST=$source_dir SRCPKGDEST=$srcpkg_out makepkg "$@"
+    )
+}
+
+build_package() {
+    pkg=$1
+    case $build_mode in
+    chroot)
+        build_with_chroot "$pkg"
+        ;;
+    makepkg)
+        build_with_makepkg "$pkg"
+        ;;
+    *)
+        die "unsupported AUR_REVIEW_BUILD_MODE: $build_mode"
+        ;;
+    esac
+}
+
+publish_built_packages() {
+    pkg=$1
+    pkg_out=$build_dir/$pkg/packages
+    db_path=$local_repo_dir/$local_repo_name.db.tar.gz
+    package_list=$(find "$pkg_out" -maxdepth 1 -type f -name '*.pkg.tar*' ! -name '*.sig' | sort)
+    [ -n "$package_list" ] || die "no built package files found in $pkg_out"
+    printf '%s\n' "$package_list" | while IFS= read -r package_file; do
+        dest=$local_repo_dir/${package_file##*/}
+        cp "$package_file" "$dest"
+        repo-add "$db_path" "$dest"
+        printf '==> Published %s to [%s]\n' "${dest##*/}" "$local_repo_name"
+    done
+}
+
+publish_repo() {
+    pkg=$1
+    require_publishable_repo "$pkg"
+    ensure_local_repo
+    verify_sources "$pkg"
+    build_package "$pkg"
+    publish_built_packages "$pkg"
+}
+
+print_path() {
+    pkg=$1
+    ensure_repo "$pkg"
+    repo_path "$pkg"
+}
+
+case ${1:-} in
+"" | -h | --help)
+    usage
+    exit 0
+    ;;
+list-updates | fetch | status | diff | diffview | upstream-diff | upstream-diffview | lazygit | nvim | accept | baseline-installed | publish | path)
+    action=$1
+    shift
+    ;;
+*)
+    action=$default_action
+    ;;
+esac
+
+case $action in
+list-updates)
+    ;;
+*)
+    [ "$#" -gt 0 ] || die "missing package name"
+    ;;
+esac
+
+while [ "$#" -gt 0 ]; do
+    case $1 in
+    --nocheck)
+        [ "$action" = publish ] || die "--nocheck is only valid with publish"
+        nocheck=1
+        shift
+        ;;
+    --php-extension)
+        [ "$action" = publish ] || die "--php-extension is only valid with publish"
+        [ "$#" -ge 2 ] || die "--php-extension requires a value"
+        append_php_extension "$2"
+        shift 2
+        ;;
+    --php-extension=*)
+        [ "$action" = publish ] || die "--php-extension is only valid with publish"
+        append_php_extension "${1#--php-extension=}"
+        shift
+        ;;
+    --plain)
+        [ "$action" = list-updates ] || die "--plain is only valid with list-updates"
+        list_format=plain
+        shift
+        ;;
+    --table)
+        [ "$action" = list-updates ] || die "--table is only valid with list-updates"
+        list_format=table
+        shift
+        ;;
+    --no-color)
+        [ "$action" = list-updates ] || die "--no-color is only valid with list-updates"
+        color_mode=never
+        shift
+        ;;
+    --color)
+        [ "$action" = list-updates ] || die "--color is only valid with list-updates"
+        [ "$#" -ge 2 ] || die "--color requires a value"
+        valid_color_mode "$2" || die "invalid --color value: $2"
+        color_mode=$2
+        shift 2
+        ;;
+    --color=*)
+        [ "$action" = list-updates ] || die "--color is only valid with list-updates"
+        color_mode=${1#--color=}
+        valid_color_mode "$color_mode" || die "invalid --color value: $color_mode"
+        shift
+        ;;
+    --from)
+        case $action in upstream-diff | upstream-diffview | list-updates) ;; *) die "--from is only valid with upstream-diff/upstream-diffview/list-updates" ;; esac
+        [ "$#" -ge 2 ] || die "--from requires a value"
+        upstream_from=$2
+        shift 2
+        ;;
+    --from=*)
+        case $action in upstream-diff | upstream-diffview | list-updates) ;; *) die "--from is only valid with upstream-diff/upstream-diffview/list-updates" ;; esac
+        upstream_from=${1#--from=}
+        shift
+        ;;
+    --to)
+        case $action in upstream-diff | upstream-diffview | list-updates) ;; *) die "--to is only valid with upstream-diff/upstream-diffview/list-updates" ;; esac
+        [ "$#" -ge 2 ] || die "--to requires a value"
+        upstream_to=$2
+        shift 2
+        ;;
+    --to=*)
+        case $action in upstream-diff | upstream-diffview | list-updates) ;; *) die "--to is only valid with upstream-diff/upstream-diffview/list-updates" ;; esac
+        upstream_to=${1#--to=}
+        shift
+        ;;
+    --source)
+        case $action in upstream-diff | upstream-diffview | list-updates) ;; *) die "--source is only valid with upstream-diff/upstream-diffview/list-updates" ;; esac
+        [ "$#" -ge 2 ] || die "--source requires a value"
+        upstream_source=$2
+        shift 2
+        ;;
+    --source=*)
+        case $action in upstream-diff | upstream-diffview | list-updates) ;; *) die "--source is only valid with upstream-diff/upstream-diffview/list-updates" ;; esac
+        upstream_source=${1#--source=}
+        shift
+        ;;
+    --)
+        shift
+        break
+        ;;
+    -*)
+        die "unknown option: $1"
+        ;;
+    *)
+        break
+        ;;
+    esac
+done
+
+case $action in
+list-updates)
+    ;;
+*)
+    [ "$#" -gt 0 ] || die "missing package name"
+    ;;
+esac
+
+case $action in
+list-updates)
+    list_updates "$@"
+    ;;
+fetch)
+    for pkg do ensure_repo "$pkg"; done
+    ;;
+status)
+    for pkg do show_status "$pkg"; done
+    ;;
+diff)
+    for pkg do show_diff "$pkg"; done
+    ;;
+diffview)
+    [ "$#" -eq 1 ] || die "diffview opens one package at a time"
+    open_diffview "$1"
+    ;;
+upstream-diff)
+    for pkg do show_upstream_diff "$pkg"; done
+    ;;
+upstream-diffview)
+    [ "$#" -eq 1 ] || die "upstream-diffview opens one package at a time"
+    open_upstream_diffview "$1"
+    ;;
+lazygit)
+    [ "$#" -eq 1 ] || die "lazygit opens one package at a time"
+    open_lazygit "$1"
+    ;;
+nvim)
+    [ "$#" -eq 1 ] || die "nvim opens one package at a time"
+    open_nvim "$1"
+    ;;
+accept)
+    for pkg do accept_repo "$pkg"; done
+    ;;
+baseline-installed)
+    for pkg do baseline_installed_repo "$pkg"; done
+    ;;
+publish)
+    for pkg do publish_repo "$pkg"; done
+    ;;
+path)
+    for pkg do print_path "$pkg"; done
+    ;;
+*)
+    die "unknown action: $action"
+    ;;
+esac

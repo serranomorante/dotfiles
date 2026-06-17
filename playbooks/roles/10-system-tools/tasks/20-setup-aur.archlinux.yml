@@ -1,175 +1,72 @@
 ---
-- name: "[archlinux] AUR: check repo-local kewlfft.aur module checkout"
-  ansible.builtin.stat:
-    path: "{{ playbook_dir }}/collections/ansible_collections/kewlfft/aur/plugins/modules/aur.py"
-  register: var_kewlfft_aur_module
-  delegate_to: localhost
-  run_once: true
-
-- name: "[archlinux] AUR: remove incomplete kewlfft.aur checkout"
-  ansible.builtin.file:
-    path: "{{ playbook_dir }}/collections/ansible_collections/kewlfft/aur"
-    state: absent
-  when: not var_kewlfft_aur_module.stat.exists
-  delegate_to: localhost
-  run_once: true
-
-- name: "[archlinux] AUR: ensure repo-local collection path"
-  ansible.builtin.file:
-    path: "{{ playbook_dir }}/collections/ansible_collections/kewlfft/aur"
-    state: directory
-    mode: "755"
-  delegate_to: localhost
-  run_once: true
-
-- name: "[archlinux] AUR: create temp dir for upstream collection download"
-  ansible.builtin.tempfile:
-    state: directory
-    prefix: kewlfft-aur-
-  register: var_kewlfft_aur_tmpdir
-  when: not var_kewlfft_aur_module.stat.exists
-  delegate_to: localhost
-  run_once: true
-
-- name: "[archlinux] AUR: download upstream kewlfft.aur collection archive"
-  ansible.builtin.get_url:
-    url: https://github.com/kewlfft/ansible-aur/archive/refs/heads/master.tar.gz
-    dest: "{{ var_kewlfft_aur_tmpdir.path }}/kewlfft-aur.tar.gz"
-    mode: "644"
-  when: not var_kewlfft_aur_module.stat.exists
-  delegate_to: localhost
-  run_once: true
-
-- name: "[archlinux] AUR: unpack upstream kewlfft.aur collection on controller"
-  ansible.builtin.unarchive:
-    src: "{{ var_kewlfft_aur_tmpdir.path }}/kewlfft-aur.tar.gz"
-    dest: "{{ playbook_dir }}/collections/ansible_collections/kewlfft/aur"
-    remote_src: true
-    extra_opts:
-      - --strip-components=1
-  when: not var_kewlfft_aur_module.stat.exists
-  delegate_to: localhost
-  run_once: true
-
-- name: "[archlinux] AUR: remove temp dir for upstream collection download"
-  ansible.builtin.file:
-    path: "{{ var_kewlfft_aur_tmpdir.path }}"
-    state: absent
-  when: not var_kewlfft_aur_module.stat.exists
-  delegate_to: localhost
-  run_once: true
-
-- name: "[archlinux] AUR: force UTF-8 locale in repo-local collection commands"
-  ansible.builtin.lineinfile:
-    path: "{{ playbook_dir }}/collections/ansible_collections/kewlfft/aur/plugins/modules/aur.py"
-    regexp: "^def_lang = \\['env', .*'LANGUAGE=C'\\]$"
-    line: "def_lang = ['env', 'LANG=C.UTF-8', 'LC_ALL=C.UTF-8', 'LANGUAGE=C']"
-    backrefs: true
-  delegate_to: localhost
-  run_once: true
-
-- name: "[archlinux] AUR: Create the `aur_builder` user"
+- name: "[archlinux] AUR: ensure local review/build dependencies"
   become: true
-  ansible.builtin.user:
-    name: aur_builder
-    create_home: true
-    group: wheel
+  ansible.builtin.package:
+    state: present
+    name:
+      - base-devel
+      - devtools
+      - git
 
-- name: "[archlinux] AUR: ensure aur_builder gnupg directory"
+- name: "[archlinux] AUR: remove legacy aur_builder passwordless pacman rule"
   become: true
   ansible.builtin.file:
-    path: /home/aur_builder/.gnupg
-    state: directory
-    owner: aur_builder
-    group: wheel
-    mode: "700"
-
-- name: "[archlinux] AUR: configure aur_builder gpg keyserver"
-  become: true
-  ansible.builtin.copy:
-    dest: /home/aur_builder/.gnupg/gpg.conf
-    owner: aur_builder
-    group: wheel
-    mode: "600"
-    content: |
-      keyserver hkps://keyserver.ubuntu.com
-  register: var_aur_builder_gpg_config
-
-- name: "[archlinux] AUR: configure aur_builder dirmngr keyserver"
-  become: true
-  ansible.builtin.copy:
-    dest: /home/aur_builder/.gnupg/dirmngr.conf
-    owner: aur_builder
-    group: wheel
-    mode: "600"
-    content: |
-      keyserver hkps://keyserver.ubuntu.com
-      keyserver hkps://keys.openpgp.org
-  register: var_aur_builder_dirmngr_config
-
-- name: "[archlinux] AUR: reload aur_builder dirmngr"
-  become: true
-  become_user: aur_builder
-  ansible.builtin.command:
-    argv:
-      - gpgconf
-      - --kill
-      - dirmngr
-  changed_when: false
-  when: var_aur_builder_gpg_config.changed or var_aur_builder_dirmngr_config.changed
-
-- name: "[archlinux] AUR: Allow the `aur_builder` user to run `sudo pacman` without a password"
-  become: true
-  ansible.builtin.lineinfile:
     path: /etc/sudoers.d/11-install-aur_builder
-    line: "aur_builder ALL=(ALL) NOPASSWD: /usr/bin/pacman"
-    create: true
-    mode: "644"
-    validate: "visudo -cf %s"
+    state: absent
 
-- name: "[archlinux] AUR: add aur_builder to user group"
-  become: true
-  ansible.builtin.user:
-    append: true
-    groups: "{{ ansible_facts.env.USER }}"
-    name: aur_builder
-
-- name: "[archlinux] AUR: append user to wheel group"
-  become: true
-  ansible.builtin.user:
-    append: true
-    groups: wheel
-    name: "{{ ansible_facts.env.USER }}"
-
-- name: "[archlinux] AUR: clone yay"
-  ansible.builtin.git:
-    repo: https://aur.archlinux.org/yay-bin
-    dest: /tmp/yay
-    depth: 1
-    force: true
-    version: "{{ arch_yay_version }}"
-    single_branch: true
-
-- name: "[archlinux] AUR: ensure standard tmp permissions"
+- name: "[archlinux] AUR: ensure local package repository directory"
   become: true
   ansible.builtin.file:
-    path: /tmp
+    path: "{{ arch_aur_local_repo_path }}"
     state: directory
     owner: root
-    group: root
-    mode: "1777"
+    group: wheel
+    mode: "2775"
 
-- name: "[archlinux] AUR: ensure yay folder permissions"
+- name: "[archlinux] AUR: ensure clean chroot parent directory"
   become: true
   ansible.builtin.file:
-    path: /tmp/yay
-    mode: "770"
+    path: "{{ arch_aur_local_chroot_path }}"
+    state: directory
+    owner: root
     group: wheel
+    mode: "2775"
 
-- name: "[archlinux] AUR: install yay"
+- name: "[archlinux] AUR: check local package repository database"
+  ansible.builtin.stat:
+    path: "{{ arch_aur_local_repo_path }}/{{ arch_aur_local_repo_name }}.db.tar.gz"
+  register: var_arch_aur_local_repo_db
+
+- name: "[archlinux] AUR: initialize empty local package repository database"
   become: true
-  become_user: aur_builder
-  ansible.builtin.command: makepkg -si --noconfirm
-  args:
-    chdir: /tmp/yay
-    creates: /usr/bin/yay
+  ansible.builtin.command:
+    argv:
+      - repo-add
+      - "{{ arch_aur_local_repo_path }}/{{ arch_aur_local_repo_name }}.db.tar.gz"
+  when: not var_arch_aur_local_repo_db.stat.exists
+  changed_when: true
+
+- name: "[archlinux] AUR: ensure local package repository files are group writable"
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: root
+    group: wheel
+    mode: "664"
+  loop:
+    - "{{ arch_aur_local_repo_path }}/{{ arch_aur_local_repo_name }}.db"
+    - "{{ arch_aur_local_repo_path }}/{{ arch_aur_local_repo_name }}.db.tar.gz"
+    - "{{ arch_aur_local_repo_path }}/{{ arch_aur_local_repo_name }}.files"
+    - "{{ arch_aur_local_repo_path }}/{{ arch_aur_local_repo_name }}.files.tar.gz"
+  when: not var_arch_aur_local_repo_db.stat.exists
+
+- name: "[archlinux] AUR: configure pacman local package repository"
+  become: true
+  ansible.builtin.blockinfile:
+    dest: /etc/pacman.conf
+    insertafter: EOF
+    marker: "## {mark} ANSIBLE MANAGED BLOCK - AUR LOCAL REPOSITORY"
+    block: |
+      [{{ arch_aur_local_repo_name }}]
+      SigLevel = Optional TrustAll
+      Server = file://{{ arch_aur_local_repo_path }}
