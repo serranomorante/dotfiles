@@ -19,6 +19,7 @@ Environment:
   LAPTOP_LAN_PROBE_HOST      Host or IP used to choose the local route.
   LAPTOP_LAN_PROBE_IP        Fallback route probe IP. Defaults to 1.1.1.1.
   LAPTOP_OVERSEERR_PORT      Overseerr port. Defaults to 5055.
+  LAPTOP_PRESENT_WINDOW_PORT Present-window port. Defaults to 14510.
   LAPTOP_LAN_PHONE_ENV_DEST  Remote path for laptop-lan.env.
 EOF
 }
@@ -45,6 +46,8 @@ esac
 
 remote=${1:-phone2}
 port=${LAPTOP_OVERSEERR_PORT:-5055}
+present_window_port=${LAPTOP_PRESENT_WINDOW_PORT:-14510}
+present_window_path=${LAPTOP_PRESENT_WINDOW_PATH:-vnc.html?autoconnect=true&reconnect=true&reconnect_delay=500&view_only=1&resize=remote&path=websockify}
 state_dir=${XDG_STATE_HOME:-"$HOME/.local/state"}/laptop-lan
 env_file=$state_dir/laptop-lan.env
 phone_env_dest=${LAPTOP_LAN_PHONE_ENV_DEST:-/data/data/com.termux/files/home/laptop-lan.env}
@@ -111,6 +114,12 @@ case $port in
     ;;
 esac
 
+case $present_window_port in
+'' | *[!0-9]*)
+    die "invalid LAPTOP_PRESENT_WINDOW_PORT: $present_window_port"
+    ;;
+esac
+
 umask 077
 mkdir -p "$state_dir"
 
@@ -118,6 +127,7 @@ updated_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 if [ "$upload" = false ]; then
     printf 'LAPTOP_LAN_IPV4=%s\n' "$lan_ipv4"
     printf 'LAPTOP_OVERSEERR_URL=http://%s:%s/\n' "$lan_ipv4" "$port"
+    printf 'LAPTOP_PRESENT_WINDOW_URL=http://%s:%s/%s\n' "$lan_ipv4" "$present_window_port" "$present_window_path"
     printf 'LAPTOP_LAN_UPDATED_AT=%s\n' "$updated_at"
     exit 0
 fi
@@ -126,6 +136,7 @@ tmp_file=$(mktemp "$state_dir/laptop-lan.env.XXXXXX")
 {
     printf 'LAPTOP_LAN_IPV4=%s\n' "$lan_ipv4"
     printf 'LAPTOP_OVERSEERR_URL=http://%s:%s/\n' "$lan_ipv4" "$port"
+    printf 'LAPTOP_PRESENT_WINDOW_URL=http://%s:%s/%s\n' "$lan_ipv4" "$present_window_port" "$present_window_path"
     printf 'LAPTOP_LAN_UPDATED_AT=%s\n' "$updated_at"
 } >"$tmp_file"
 mv "$tmp_file" "$env_file"

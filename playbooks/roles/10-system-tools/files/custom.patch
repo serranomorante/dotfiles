@@ -32,7 +32,7 @@ index 56ee471..7232cb5 100644
 +	{ "kitty-lazygit",        "kitty-lazygit",        NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,                  0,           1 }, // float and size lazygit quick-access window
 +	{ "kitty-nnn",            "kitty-nnn",            NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,                  0,           1 }, // float and size nnn quick-access window
 +	{ "jdownloader",          "jdownloader",          "JDownloader 2",           1 << 8,       0,           -1,        -1,-1,-1,-1,     -1                                  }, // send jdownloader to tag 9
-+	{ NULL,                   NULL,                   "is sharing your screen.", 1 << 8,       1,           -1,        -1,-1,-1,-1,     -1                                  }, // send google meet popup to tag 9
++	{ NULL,                   NULL,                   "is sharing your screen.", 1 << 8,       1,           -1,        -1,-1,-1,-1,     -1                                  }, // send screen-sharing popup to tag 9
 +	{ "kcalc",                "kcalc",                NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1                                  }, // make calculator floating by default
 +	{ "plasmawindowed",       "plasmawindowed",       "Clipboard Popup",         0,            1,           -1,        -1,-1,-1,-1,     -1                                  }, // make clipboard popup floating by default
 +	{ "mouseless",            "Mouseless",            "Mouseless",               0,            1,           -1,        -1,-1,-1,-1,     -1                                  }, // make mouseless-click config floating by default

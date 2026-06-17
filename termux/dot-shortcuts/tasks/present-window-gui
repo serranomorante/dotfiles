@@ -1,0 +1,43 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Purpose: Open the laptop-hosted present-window preview from Termux:Widget.
+# Notes: Android browsers cannot read Termux-only host aliases, so use the
+# laptop LAN address published by the workstation.
+
+env_file=${LAPTOP_LAN_ENV:-/data/data/com.termux/files/home/laptop-lan.env}
+url=
+ip=
+
+toast() {
+    if command -v termux-toast >/dev/null 2>&1; then
+        termux-toast "$*"
+    else
+        printf '%s\n' "$*" >&2
+    fi
+}
+
+if [ -r "$env_file" ]; then
+    while IFS='=' read -r key value; do
+        case $key in
+        LAPTOP_PRESENT_WINDOW_URL)
+            url=$value
+            ;;
+        LAPTOP_LAN_IPV4)
+            ip=$value
+            ;;
+        esac
+    done <"$env_file"
+fi
+
+if [ -z "$url" ] && [ -n "$ip" ]; then
+    url="http://$ip:14510/vnc.html?autoconnect=true&reconnect=true&reconnect_delay=500&view_only=1&resize=remote&path=websockify"
+fi
+
+case $url in
+http://[0-9]*.[0-9]*.[0-9]*.[0-9]*:14510/*)
+    exec /data/data/com.termux/files/usr/bin/termux-open-url "$url"
+    ;;
+*)
+    toast "No laptop LAN address for Present Window"
+    exit 1
+    ;;
+esac

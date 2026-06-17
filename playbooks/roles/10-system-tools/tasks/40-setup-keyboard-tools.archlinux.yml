@@ -6,6 +6,13 @@
     name: python-xlib
   notify: handler_enable_start_keyd_application_mapper_service
 
+- name: "[archlinux] Keyboard peripheral: ensure local AUR packages"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages:
+      - websockify
+      - novnc
+
 - name: "[archlinux] Keyboard peripheral: ensure packages"
   become: true
   ansible.builtin.package:
@@ -25,6 +32,8 @@
       - libxtst
       - libx11
       - libxkbcommon
+      # present-window serves selected X11 windows through x11vnc and noVNC.
+      - x11vnc
 
 - name: "[archlinux] Keyboard peripheral: clone keyd"
   ansible.builtin.include_role:

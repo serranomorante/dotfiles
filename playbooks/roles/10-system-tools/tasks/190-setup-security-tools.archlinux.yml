@@ -71,6 +71,15 @@
     - WWW Full
   ignore_errors: true
 
+- name: "[archlinux] Setup security tools: allow present-window LAN preview"
+  become: true
+  community.general.ufw:
+    rule: allow
+    port: "14510"
+    proto: tcp
+    comment: present-window LAN preview
+  ignore_errors: true
+
 - name: "[archlinux] Setup security tools: enable ufw"
   become: true
   community.general.ufw:

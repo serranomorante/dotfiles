@@ -1,0 +1,552 @@
+#!/usr/bin/env sh
+# Purpose: Mirror selected existing X11 windows through x11vnc and noVNC.
+# Usage: present-window [toggle|start|stop|open|status|add|remove|toggle-window|clear|select] [WINDOWID]
+# Notes: The noVNC tab follows the focused window only when that window is in the selected set.
+
+set -eu
+
+port="${DOTFILES_PRESENT_WINDOW_PORT:-14510}"
+vnc_port="${DOTFILES_PRESENT_WINDOW_VNC_PORT:-14511}"
+bind_host="${DOTFILES_PRESENT_WINDOW_BIND_HOST:-0.0.0.0}"
+profile="${DOTFILES_PRESENT_WINDOW_PROFILE:-low}"
+case "$profile" in
+low)
+    default_wait_ms=90
+    default_defer_ms=35
+    default_scale=1/2
+    ;;
+medium)
+    default_wait_ms=35
+    default_defer_ms=15
+    default_scale=1/2
+    ;;
+balanced)
+    default_wait_ms=45
+    default_defer_ms=20
+    default_scale=3/4
+    ;;
+quality)
+    default_wait_ms=20
+    default_defer_ms=10
+    default_scale=1
+    ;;
+*)
+    printf 'present-window: invalid DOTFILES_PRESENT_WINDOW_PROFILE=%s; expected low, medium, balanced, or quality\n' "$profile" >&2
+    exit 2
+    ;;
+esac
+wait_ms="${DOTFILES_PRESENT_WINDOW_WAIT_MS:-$default_wait_ms}"
+defer_ms="${DOTFILES_PRESENT_WINDOW_DEFER_MS:-$default_defer_ms}"
+scale="${DOTFILES_PRESENT_WINDOW_SCALE:-$default_scale}"
+active_poll_ms="${DOTFILES_PRESENT_WINDOW_ACTIVE_POLL_MS:-500}"
+idle_mode="${DOTFILES_PRESENT_WINDOW_IDLE:-last}"
+capture_mode="${DOTFILES_PRESENT_WINDOW_CAPTURE_MODE:-window}"
+view_only="${DOTFILES_PRESENT_WINDOW_VIEW_ONLY:-1}"
+# noVNC display sizing: "scale" stretches the captured framebuffer to fill the
+# browser viewport (pure client-side zoom, no resolution change), "remote" asks
+# the server to resize (a no-op when mirroring a fixed window), "off" is 1:1.
+resize_mode="${DOTFILES_PRESENT_WINDOW_RESIZE:-scale}"
+browser="${DOTFILES_PRESENT_BROWSER:-${BROWSER:-}}"
+runtime_base="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+state_dir="${runtime_base}/present-window"
+pid_file="${state_dir}/server.pid"
+web_pid_file="${state_dir}/websockify.pid"
+vnc_pid_file="${state_dir}/x11vnc.pid"
+current_target_file="${state_dir}/current-target"
+windows_file="${state_dir}/windows"
+last_window_file="${state_dir}/last-window"
+log_file="${state_dir}/present-window.log"
+systemd_unit="${DOTFILES_PRESENT_WINDOW_SYSTEMD_UNIT:-dotfiles-present-window.service}"
+novnc_path="${DOTFILES_PRESENT_WINDOW_NOVNC_PATH:-vnc.html}"
+url="http://127.0.0.1:${port}/${novnc_path}?autoconnect=true&reconnect=true&reconnect_delay=500&view_only=${view_only}&resize=${resize_mode}&path=websockify"
+script_path="$0"
+case "$script_path" in
+*/*)
+    ;;
+*)
+    resolved_script_path="$(command -v "$script_path" 2>/dev/null || true)"
+    [ -n "$resolved_script_path" ] && script_path="$resolved_script_path"
+    ;;
+esac
+
+warn() {
+    printf 'present-window: %s\n' "$*" >&2
+}
+
+die() {
+    warn "$*"
+    exit 1
+}
+
+usage() {
+    printf '%s\n' 'usage: present-window [toggle|start|stop|open|status|add|remove|toggle-window|clear|select] [WINDOWID]'
+}
+
+need_command() {
+    command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+server_pid() {
+    [ -r "$pid_file" ] || return 1
+    read -r pid <"$pid_file" || return 1
+    [ -n "$pid" ] || return 1
+    printf '%s\n' "$pid"
+}
+
+running() {
+    pid="$(server_pid 2>/dev/null)" || return 1
+    kill -0 "$pid" >/dev/null 2>&1
+}
+
+normalize_window_id() {
+    window_id="$1"
+    case "$window_id" in
+    0x* | 0X*)
+        printf '%d\n' "$window_id"
+        ;;
+    *)
+        printf '%s\n' "$window_id"
+        ;;
+    esac
+}
+
+active_window_id() {
+    need_command xdotool
+    xdotool getactivewindow
+}
+
+selected_window_id() {
+    need_command xdotool
+    xdotool selectwindow
+}
+
+resolve_window_id() {
+    requested="${1:-active}"
+    case "$requested" in
+    active)
+        active_window_id
+        ;;
+    select)
+        selected_window_id
+        ;;
+    *)
+        normalize_window_id "$requested"
+        ;;
+    esac
+}
+
+validate_window() {
+    need_command xwininfo
+    xwininfo -id "$1" >/dev/null 2>&1 || die "window '$1' is not a readable X11 window"
+}
+
+window_marked() {
+    [ -r "$windows_file" ] || return 1
+    grep -Fx "$1" "$windows_file" >/dev/null 2>&1
+}
+
+novnc_web_dir() {
+    if [ -n "${DOTFILES_PRESENT_WINDOW_NOVNC_WEB:-}" ]; then
+        [ -r "${DOTFILES_PRESENT_WINDOW_NOVNC_WEB}/$novnc_path" ] || die "DOTFILES_PRESENT_WINDOW_NOVNC_WEB does not contain $novnc_path"
+        printf '%s\n' "$DOTFILES_PRESENT_WINDOW_NOVNC_WEB"
+        return 0
+    fi
+
+    for candidate in \
+        /usr/share/novnc \
+        /usr/share/noVNC \
+        /usr/share/webapps/novnc \
+        /usr/share/webapps/noVNC
+    do
+        if [ -r "$candidate/$novnc_path" ]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    die "missing noVNC web files; install/publish the novnc package or set DOTFILES_PRESENT_WINDOW_NOVNC_WEB"
+}
+
+novnc_proxy_command() {
+    if [ -n "${DOTFILES_PRESENT_WINDOW_NOVNC_PROXY:-}" ]; then
+        [ -x "$DOTFILES_PRESENT_WINDOW_NOVNC_PROXY" ] || die "DOTFILES_PRESENT_WINDOW_NOVNC_PROXY is not executable"
+        printf '%s\n' "$DOTFILES_PRESENT_WINDOW_NOVNC_PROXY"
+        return 0
+    fi
+
+    if command -v websockify >/dev/null 2>&1; then
+        printf '%s\n' websockify
+        return 0
+    fi
+
+    if command -v novnc_proxy >/dev/null 2>&1; then
+        printf '%s\n' novnc_proxy
+        return 0
+    fi
+
+    web_dir="$(novnc_web_dir)"
+    if [ -x "$web_dir/utils/novnc_proxy" ]; then
+        printf '%s\n' "$web_dir/utils/novnc_proxy"
+        return 0
+    fi
+
+    die "missing noVNC proxy; install/publish novnc/websockify"
+}
+
+open_tab() {
+    if [ -n "$browser" ] && command -v "$browser" >/dev/null 2>&1; then
+        "$browser" "$url" >/dev/null 2>&1 &
+    elif command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "$url" >/dev/null 2>&1 &
+    else
+        warn "open $url in a browser tab"
+    fi
+}
+
+server_env_args() {
+    printf '%s\n' \
+        "DOTFILES_PRESENT_WINDOW_PORT=$port" \
+        "DOTFILES_PRESENT_WINDOW_VNC_PORT=$vnc_port" \
+        "DOTFILES_PRESENT_WINDOW_BIND_HOST=$bind_host" \
+        "DOTFILES_PRESENT_WINDOW_PROFILE=$profile" \
+        "DOTFILES_PRESENT_WINDOW_WAIT_MS=$wait_ms" \
+        "DOTFILES_PRESENT_WINDOW_DEFER_MS=$defer_ms" \
+        "DOTFILES_PRESENT_WINDOW_SCALE=$scale" \
+        "DOTFILES_PRESENT_WINDOW_ACTIVE_POLL_MS=$active_poll_ms" \
+        "DOTFILES_PRESENT_WINDOW_WINDOWS_FILE=$windows_file" \
+        "DOTFILES_PRESENT_WINDOW_LAST_FILE=$last_window_file" \
+        "DOTFILES_PRESENT_WINDOW_LOG=$log_file" \
+        "DOTFILES_PRESENT_WINDOW_IDLE=$idle_mode" \
+        "DOTFILES_PRESENT_WINDOW_CAPTURE_MODE=$capture_mode" \
+        "DOTFILES_PRESENT_WINDOW_VIEW_ONLY=$view_only" \
+        "DOTFILES_PRESENT_WINDOW_NOVNC_PATH=$novnc_path" \
+        "DOTFILES_PRESENT_WINDOW_PID_FILE=$pid_file" \
+        "DOTFILES_PRESENT_WINDOW_WEB_PID_FILE=$web_pid_file" \
+        "DOTFILES_PRESENT_WINDOW_VNC_PID_FILE=$vnc_pid_file" \
+        "DOTFILES_PRESENT_WINDOW_CURRENT_TARGET_FILE=$current_target_file"
+}
+
+wait_until_running() {
+    tries=0
+    while [ "$tries" -lt 50 ]; do
+        running && return 0
+        tries=$((tries + 1))
+        sleep 0.1
+    done
+    return 1
+}
+
+sleep_poll_interval() {
+    case "$active_poll_ms" in
+    '' | *[!0-9]*)
+        sleep 0.5
+        ;;
+    *)
+        awk -v ms="$active_poll_ms" 'BEGIN { printf "%.3f\n", (ms < 100 ? 100 : ms) / 1000 }' | {
+            read -r seconds
+            sleep "$seconds"
+        }
+        ;;
+    esac
+}
+
+read_last_window() {
+    [ -r "$last_window_file" ] || return 1
+    read -r value <"$last_window_file" || return 1
+    [ -n "$value" ] || return 1
+    printf '%s\n' "$value"
+}
+
+write_last_window() {
+    printf '%s\n' "$1" >"$last_window_file"
+}
+
+selected_target() {
+    if [ "$capture_mode" = desktop ]; then
+        printf '%s\n' desktop
+        return 0
+    fi
+
+    active="$(xdotool getactivewindow 2>/dev/null || true)"
+    if [ -n "$active" ] && window_marked "$active"; then
+        write_last_window "$active"
+        printf '%s\n' "$active"
+        return 0
+    fi
+
+    last="$(read_last_window 2>/dev/null || true)"
+    if [ "$idle_mode" = last ] && [ -n "$last" ] && window_marked "$last"; then
+        printf '%s\n' "$last"
+        return 0
+    fi
+
+    printf '%s\n' none
+}
+
+stop_pid_file() {
+    file="$1"
+    [ -r "$file" ] || return 0
+    read -r pid <"$file" || return 0
+    [ -n "$pid" ] || return 0
+    kill "$pid" >/dev/null 2>&1 || true
+    wait "$pid" 2>/dev/null || true
+    rm -f "$file"
+}
+
+start_novnc_proxy() {
+    web_dir="$(novnc_web_dir)"
+    proxy="$(novnc_proxy_command)"
+
+    case "$proxy" in
+    *novnc_proxy)
+        "$proxy" --listen "$bind_host:$port" --vnc "127.0.0.1:$vnc_port" --web "$web_dir" >>"$log_file" 2>&1 &
+        ;;
+    *)
+        "$proxy" --web "$web_dir" "$bind_host:$port" "127.0.0.1:$vnc_port" >>"$log_file" 2>&1 &
+        ;;
+    esac
+    printf '%s\n' "$!" >"$web_pid_file"
+}
+
+start_x11vnc() {
+    target="$1"
+    stop_pid_file "$vnc_pid_file"
+    rm -f "$current_target_file"
+
+    [ "$target" = none ] && return 0
+
+    # Paint the pointer into the framebuffer (-nocursorshape/-nocursorpos)
+    # instead of sending it as a separate cursor-shape layer. noVNC would
+    # otherwise render that layer as the browser's local CSS cursor, which is
+    # invisible on touch devices that have no hovering pointer.
+    set -- x11vnc \
+        -display "${DISPLAY:-:0}" \
+        -rfbport "$vnc_port" \
+        -localhost \
+        -viewonly \
+        -shared \
+        -forever \
+        -nopw \
+        -quiet \
+        -cursor most \
+        -nocursorshape \
+        -nocursorpos \
+        -wait "$wait_ms" \
+        -defer "$defer_ms"
+
+    case "$scale" in
+    1 | 1.0)
+        ;;
+    *)
+        set -- "$@" -scale "$scale"
+        ;;
+    esac
+
+    if [ "$target" != desktop ]; then
+        set -- "$@" -id "$target"
+    fi
+
+    printf 'starting x11vnc target=%s display=%s web_port=%s vnc_port=%s\n' "$target" "${DISPLAY:-:0}" "$port" "$vnc_port" >>"$log_file"
+    "$@" >>"$log_file" 2>&1 &
+    printf '%s\n' "$!" >"$vnc_pid_file"
+    printf '%s\n' "$target" >"$current_target_file"
+}
+
+server_main() {
+    need_command awk
+    need_command x11vnc
+    need_command xdotool
+    mkdir -p "$state_dir"
+    touch "$windows_file" "$log_file"
+    printf '%s\n' "$$" >"$pid_file"
+
+    cleanup() {
+        stop_pid_file "$vnc_pid_file"
+        stop_pid_file "$web_pid_file"
+        rm -f "$pid_file" "$current_target_file"
+        exit 0
+    }
+    trap cleanup HUP INT TERM
+
+    start_novnc_proxy
+    current=
+    while :; do
+        target="$(selected_target)"
+        if [ "$target" != "$current" ]; then
+            start_x11vnc "$target"
+            current="$target"
+        fi
+        sleep_poll_interval
+    done
+}
+
+start_server() {
+    should_open="${1:-1}"
+    need_command x11vnc
+    need_command xdotool
+    novnc_web_dir >/dev/null
+    novnc_proxy_command >/dev/null
+
+    mkdir -p "$state_dir"
+    touch "$windows_file"
+
+    if running; then
+        if [ "$should_open" = "1" ]; then
+            open_tab
+        fi
+        return 0
+    fi
+
+    if command -v systemd-run >/dev/null 2>&1; then
+        systemctl --user stop "$systemd_unit" >/dev/null 2>&1 || true
+        set -- --user --unit="$systemd_unit" --collect --quiet
+        for env_arg in $(server_env_args); do
+            set -- "$@" --setenv="$env_arg"
+        done
+        systemd-run "$@" "$script_path" server
+    else
+        need_command nohup
+        env $(server_env_args) nohup "$script_path" server >"$log_file" 2>&1 &
+        printf '%s\n' "$!" >"$pid_file"
+    fi
+
+    if ! wait_until_running; then
+        warn "server did not become ready at $url"
+        return 1
+    fi
+    if [ "$should_open" = "1" ]; then
+        open_tab
+    fi
+}
+
+stop_server() {
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user stop "$systemd_unit" >/dev/null 2>&1 || true
+    fi
+    pid="$(server_pid 2>/dev/null)" || {
+        stop_pid_file "$vnc_pid_file"
+        stop_pid_file "$web_pid_file"
+        return 0
+    }
+    kill "$pid" >/dev/null 2>&1 || true
+    wait "$pid" 2>/dev/null || true
+    stop_pid_file "$vnc_pid_file"
+    stop_pid_file "$web_pid_file"
+    rm -f "$pid_file" "$current_target_file"
+}
+
+unmark_window_id() {
+    mkdir -p "$state_dir"
+    touch "$windows_file"
+    tmp_file="${state_dir}/windows.$$"
+    grep -Fxv "$1" "$windows_file" >"$tmp_file" || true
+    mv "$tmp_file" "$windows_file"
+}
+
+add_window() {
+    window_id="$(resolve_window_id "${1:-active}")"
+    validate_window "$window_id"
+    mkdir -p "$state_dir"
+    touch "$windows_file"
+    already_marked=0
+    if ! window_marked "$window_id"; then
+        printf '%s\n' "$window_id" >>"$windows_file"
+    else
+        already_marked=1
+    fi
+    printf '%s\n' "$window_id" >"$last_window_file"
+    if ! start_server 0; then
+        if [ "$already_marked" = "0" ]; then
+            unmark_window_id "$window_id"
+        fi
+        die "window '$window_id' was not added because the noVNC mirror did not start"
+    fi
+    printf 'added window=%s url=%s\n' "$window_id" "$url"
+}
+
+remove_window() {
+    window_id="$(resolve_window_id "${1:-active}")"
+    unmark_window_id "$window_id"
+    if [ ! -s "$windows_file" ]; then
+        rm -f "$last_window_file"
+        stop_server
+    fi
+    printf 'removed window=%s\n' "$window_id"
+}
+
+toggle_window() {
+    window_id="$(resolve_window_id "${1:-active}")"
+    if window_marked "$window_id"; then
+        remove_window "$window_id"
+    else
+        add_window "$window_id"
+    fi
+}
+
+clear_windows() {
+    mkdir -p "$state_dir"
+    : >"$windows_file"
+    rm -f "$last_window_file"
+    stop_server
+    printf 'cleared\n'
+}
+
+status_server() {
+    if running; then
+        target="$(cat "$current_target_file" 2>/dev/null || printf 'none')"
+        printf 'running url=%s target=%s bind=%s web_port=%s vnc_port=%s profile=%s mode=%s\n' "$url" "$target" "$bind_host" "$port" "$vnc_port" "$profile" "$capture_mode"
+    else
+        printf 'stopped url=%s\n' "$url"
+    fi
+    if [ -r "$windows_file" ]; then
+        sed 's/^/window=/' "$windows_file"
+    fi
+}
+
+command_name="${1:-toggle-window}"
+case "$command_name" in
+toggle)
+    if running; then
+        stop_server
+    else
+        start_server 1
+    fi
+    ;;
+start)
+    start_server 0
+    ;;
+open)
+    start_server 1
+    ;;
+stop)
+    stop_server
+    ;;
+status)
+    status_server
+    ;;
+add)
+    add_window "${2:-active}"
+    ;;
+remove)
+    remove_window "${2:-active}"
+    ;;
+toggle-window)
+    toggle_window "${2:-active}"
+    ;;
+clear)
+    clear_windows
+    ;;
+select)
+    add_window select
+    ;;
+server)
+    server_main
+    ;;
+-h | --help | help)
+    usage
+    ;;
+*)
+    usage >&2
+    exit 2
+    ;;
+esac

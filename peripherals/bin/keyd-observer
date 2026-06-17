@@ -24,6 +24,7 @@ stt_dictate="$HOME/bin/stt-dictate"
 keyboard_midi_controller="$HOME/bin/keyboard-midi-controller"
 display_health_check="$HOME/bin/display-health-check"
 setup_displays="$HOME/bin/setup-displays.sh"
+present_window="$HOME/bin/present-window"
 
 # Reopening warpd must be fast: keep the exact worker PID and kill it directly
 # on the next tab+f instead of scanning processes. The generation file prevents
@@ -33,6 +34,18 @@ warpd_generation_file="$state_dir/warpd-generation"
 warpd_generation=0
 warpd_worker_pid=""
 toggle_armed=0
+
+notify_keyd_action() {
+    summary="$1"
+    body="$(printf '%s' "$2" | tr '\n' ' ' | cut -c 1-240)"
+    urgency="${3:-normal}"
+
+    if command -v dunstify >/dev/null 2>&1; then
+        dunstify -a keyd-observer -u "$urgency" -t 1800 -r 14510 "$summary" "$body" >/dev/null 2>&1 || true
+    elif command -v notify-send >/dev/null 2>&1; then
+        notify-send -a keyd-observer -u "$urgency" -t 1800 "$summary" "$body" >/dev/null 2>&1 || true
+    fi
+}
 
 next_warpd_generation() {
     mkdir -p "$state_dir" || return 1
@@ -103,6 +116,42 @@ run_toggle_display_layout() {
         logger -t keyd-observer "setup-displays --toggle failed with rc=$rc: $output"
     elif [ -n "$output" ]; then
         logger -t keyd-observer "setup-displays --toggle: $output"
+    fi
+
+    return "$rc"
+}
+
+run_open_present_window() {
+    output="$("$present_window" open 2>&1)"
+    rc="$?"
+
+    if [ "$rc" -ne 0 ]; then
+        logger -t keyd-observer "present-window open failed with rc=$rc: $output"
+        notify_keyd_action "Present window" "Error: $output" critical
+    elif [ -n "$output" ]; then
+        logger -t keyd-observer "present-window open: $output"
+    fi
+
+    return "$rc"
+}
+
+run_toggle_present_window() {
+    output="$("$present_window" toggle-window 2>&1)"
+    rc="$?"
+
+    if [ "$rc" -ne 0 ]; then
+        logger -t keyd-observer "present-window toggle-window failed with rc=$rc: $output"
+        notify_keyd_action "Present window" "Error: $output" critical
+    elif [ -n "$output" ]; then
+        logger -t keyd-observer "present-window toggle-window: $output"
+        case "$output" in
+        *added\ window=*)
+            notify_keyd_action "Present window" "$output"
+            ;;
+        *removed\ window=*)
+            notify_keyd_action "Present window" "$output"
+            ;;
+        esac
     fi
 
     return "$rc"
@@ -225,6 +274,16 @@ keyd listen | while read x; do
     +signal_toggle_display_layout)
         keyd do $leave_mouseless_mode &
         run_toggle_display_layout >/dev/null 2>&1 &
+        ;;
+
+    +signal_open_present_window)
+        keyd do $leave_mouseless_mode &
+        run_open_present_window >/dev/null 2>&1 &
+        ;;
+
+    +signal_toggle_present_window)
+        keyd do $leave_mouseless_mode &
+        run_toggle_present_window >/dev/null 2>&1 &
         ;;
 
     +signal_open_kitty_dmenu)
