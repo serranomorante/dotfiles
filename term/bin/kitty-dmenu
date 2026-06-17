@@ -3,7 +3,7 @@
 
 source "$HOME/dotfiles/term/bin/kitty-dmenu-common.bash"
 
-KITTY_DMENU_PROJECT_CACHE_KEY=${KITTY_DMENU_PROJECT_CACHE_KEY:-project-dirs-v1}
+KITTY_DMENU_PROJECT_CACHE_KEY=${KITTY_DMENU_PROJECT_CACHE_KEY:-project-dirs-v2}
 KITTY_DMENU_PROJECT_CACHE_TTL=${KITTY_DMENU_PROJECT_CACHE_TTL:-604800}
 KITTY_DMENU_PROJECT_CACHE_TRUST_SECONDS=${KITTY_DMENU_PROJECT_CACHE_TRUST_SECONDS:-300}
 
@@ -13,6 +13,8 @@ project_roots=(
     "$HOME/data/courses"
     "$HOME/data/issues"
     "$HOME/dotfiles"
+    "$HOME/dotfiles*"
+    "/tmp/dotfiles*"
     "$HOME/.local/share/Cryptomator/mnt"
     "$HOME/.local/share/nvim/site/pack/plugins/start"
     "$HOME/.local/share/nvim/site/pack/plugins/opt"
@@ -24,28 +26,61 @@ project_roots=(
     "$HOME/data/dev-pjs"
 )
 
+project_root_is_pattern() {
+    case $1 in
+        *'*'* | *'?'* | *'['*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+project_root_pattern_matches() {
+    local pattern=$1
+    local match
+
+    compgen -G "$pattern" | while IFS= read -r match; do
+        [[ -d $match ]] && printf '%s\n' "$match"
+    done
+}
+
 project_root_signature() {
-    local root mtime
+    local root match mtime
 
     {
         for root in "${project_roots[@]}"; do
-            [[ -d $root ]] || continue
-            mtime=$(stat -Lc %Y "$root" 2>/dev/null) || continue
-            printf '%s=%s\n' "$root" "$mtime"
+            if project_root_is_pattern "$root"; then
+                printf 'pattern:%s\n' "$root"
+                while IFS= read -r match; do
+                    mtime=$(stat -Lc %Y "$match" 2>/dev/null) || continue
+                    printf '%s=%s\n' "$match" "$mtime"
+                done < <(project_root_pattern_matches "$root")
+            else
+                [[ -d $root ]] || continue
+                mtime=$(stat -Lc %Y "$root" 2>/dev/null) || continue
+                printf '%s=%s\n' "$root" "$mtime"
+            fi
         done
     } | sha256sum | awk '{ print $1 }'
 }
 
 build_project_dirs() {
-    local root
-    local existing_roots=()
+    local root dir
+    local -A seen_dirs=()
 
     for root in "${project_roots[@]}"; do
-        [[ -d $root ]] && existing_roots+=("$root")
+        if project_root_is_pattern "$root"; then
+            while IFS= read -r dir; do
+                [[ -n ${seen_dirs[$dir]+set} ]] && continue
+                seen_dirs[$dir]=1
+                printf '%s\n' "$dir"
+            done < <(project_root_pattern_matches "$root")
+        elif [[ -d $root ]]; then
+            while IFS= read -r dir; do
+                [[ -n ${seen_dirs[$dir]+set} ]] && continue
+                seen_dirs[$dir]=1
+                printf '%s\n' "$dir"
+            done < <(find "$root" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+        fi
     done
-
-    ((${#existing_roots[@]} > 0)) || return 0
-    find "${existing_roots[@]}" -mindepth 1 -maxdepth 1 -type d 2>/dev/null
 }
 
 project_dirs_cache_set() {
