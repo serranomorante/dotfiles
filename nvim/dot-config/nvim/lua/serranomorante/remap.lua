@@ -48,6 +48,12 @@ end, { desc = "Toggle wrap" })
 vim.keymap.set("n", "<leader>nb", "<cmd>enew<CR>", { desc = "New buffer" })
 vim.keymap.set("n", "<leader>p", "<cmd>PasteClipboardImage<CR>", { desc = "Paste clipboard image" })
 vim.keymap.set("n", "<leader>mr", utils.run_shell_fence, { desc = "Run shell fence" })
+vim.keymap.set(
+  "x",
+  "<leader>mr",
+  function() utils.run_shell_fence({ visual = true }) end,
+  { desc = "Run shell selection" }
+)
 
 ---Closing vim
 vim.keymap.set("n", "ZQ", function()

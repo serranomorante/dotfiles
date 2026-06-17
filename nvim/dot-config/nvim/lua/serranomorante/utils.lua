@@ -1709,6 +1709,26 @@ local function shell_fence_under_cursor()
   return command_lines, lang
 end
 
+local function shell_lines_from_visual_selection()
+  local mode = vim.fn.mode()
+  local is_current_visual = vim.list_contains({ "v", "V", "\22" }, mode)
+  local start_pos = is_current_visual and vim.fn.getpos("v") or vim.fn.getpos("'<")
+  local end_pos = is_current_visual and vim.fn.getpos(".") or vim.fn.getpos("'>")
+  if start_pos[2] == 0 or end_pos[2] == 0 then return nil end
+
+  local region_type = is_current_visual and mode or vim.fn.visualmode()
+  if region_type == "" then region_type = "V" end
+  local lines = vim.fn.getregion(start_pos, end_pos, { type = region_type })
+  if #lines == 0 then return nil end
+  return lines
+end
+
+local function leave_visual_mode()
+  local mode = vim.fn.mode()
+  if not vim.list_contains({ "v", "V", "\22" }, mode) then return end
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "x", false)
+end
+
 local function shell_fence_cwd()
   local name = vim.api.nvim_buf_get_name(0)
   if name ~= "" and not name:match("^%w[%w+.-]*://") then
@@ -1742,10 +1762,19 @@ local function prepare_shell_fence_task_start_window(source_win)
   return vim.api.nvim_get_current_win()
 end
 
-function M.run_shell_fence()
-  local command_lines, lang = shell_fence_under_cursor()
+function M.run_shell_fence(opts)
+  opts = opts or {}
+  local command_lines, lang
+  if opts.visual then
+    command_lines = shell_lines_from_visual_selection()
+    lang = "sh"
+    leave_visual_mode()
+  else
+    command_lines, lang = shell_fence_under_cursor()
+  end
+
   if not command_lines or vim.iter(command_lines):all(function(line) return line:match("^%s*$") ~= nil end) then
-    vim.notify("No shell fence under cursor", vim.log.levels.WARN)
+    vim.notify(opts.visual and "No shell selection" or "No shell fence under cursor", vim.log.levels.WARN)
     return
   end
 

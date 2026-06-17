@@ -53,9 +53,10 @@ markdown-shell-fence-keymap-works-from-file-scratch-nofile-terminal-float)
         '  })' \
         '  vim.g.mapleader = " "' \
         '  require("serranomorante.remap")' \
+        '  assert(vim.fn.maparg("<leader>mr", "x") ~= "", "visual <leader>mr keymap should be registered")' \
         '  local utils_path = vim.env.DOTFILES_TEST_ROOT .. "/nvim/dot-config/nvim/lua/serranomorante/utils.lua"' \
         '  local utils_text = table.concat(vim.fn.readfile(utils_path), "\n")' \
-        '  local run_shell_fence = utils_text:match("function M%.run_shell_fence%(%)%s*(.-)%s*return M")' \
+        '  local run_shell_fence = utils_text:match("function M%.run_shell_fence%([^)]*%)%s*(.-)%s*return M")' \
         '  assert(run_shell_fence, "could not find run_shell_fence implementation")' \
         '  assert(not run_shell_fence:find("defer_fn", 1, true), "run_shell_fence must not rely on defer_fn timing")' \
         '  assert(not run_shell_fence:find("schedule_open_overseer_task_output", 1, true), "run_shell_fence must not use retry-based output scheduling")' \
@@ -109,6 +110,12 @@ markdown-shell-fence-keymap-works-from-file-scratch-nofile-terminal-float)
         '    assert(vim.api.nvim_get_mode().mode ~= "t", "shell fence output should not leave Neovim in terminal insert mode")' \
         '    pcall(function() task:dispose(true) end)' \
         '  end' \
+        '  local function run_visual_shell_selection(start_lnum, end_lnum, expected)' \
+        '    vim.api.nvim_win_set_cursor(0, { start_lnum, 0 })' \
+        '    vim.api.nvim_feedkeys(("V%dG"):format(end_lnum), "x", false)' \
+        '    assert(vim.api.nvim_get_mode().mode == "V", "visual selection was not active")' \
+        '    run_current_fence(expected)' \
+        '  end' \
         '  local project = vim.env.DOTFILES_TEST_TMP .. "/shell-fence-project"' \
         '  vim.fn.mkdir(project, "p")' \
         '  local note_path = project .. "/note.md"' \
@@ -119,6 +126,12 @@ markdown-shell-fence-keymap-works-from-file-scratch-nofile-terminal-float)
         '  vim.cmd("enew!")' \
         '  set_fence_lines("printf scratch-fence-ok")' \
         '  run_current_fence("scratch-fence-ok")' \
+        '  vim.cmd("enew!")' \
+        '  vim.api.nvim_buf_set_lines(0, 0, -1, false, {' \
+        '    "printf visual-selection-first-ok",' \
+        '    "printf visual-selection-second-ok",' \
+        '  })' \
+        '  run_visual_shell_selection(1, 2, "visual-selection-second-ok")' \
         '  vim.cmd("enew!")' \
         '  vim.bo.buftype = "nofile"' \
         '  vim.api.nvim_buf_set_name(0, "nofile://shell-fence-test")' \
