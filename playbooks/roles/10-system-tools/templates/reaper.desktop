@@ -1,8 +1,9 @@
 # {{ ansible_managed }}
 [Desktop Entry]
-Name=(debug) REAPER
+Name=REAPER
 Exec={{ ansible_facts.env.HOME }}/.local/bin/launch-reaper-wine
 Type=Application
+Terminal=false
 StartupNotify=true
 Icon=3716_reaper.0
 StartupWMClass=reaper.exe

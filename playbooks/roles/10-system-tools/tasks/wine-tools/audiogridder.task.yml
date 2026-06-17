@@ -61,3 +61,9 @@
     dest: ~/.local/share/applications/wine/Programs/AudioGridderServer.desktop
     mode: "644"
   notify: handler_update_desktop_database
+
+- name: "[archlinux] Wine tools: setup launch-audiogridder-wine file"
+  ansible.builtin.template:
+    src: launch-audiogridder-wine
+    dest: ~/.local/bin/launch-audiogridder-wine
+    mode: "755"

@@ -5,6 +5,7 @@ set -euo pipefail
 # dotfiles-test-tags: firejail static fast
 # dotfiles-test-case: firejail-dev-tool-profiles-avoid-broad-xdg
 # dotfiles-test-case: firejail-dev-nvim-avoids-global-nvim-state
+# dotfiles-test-case: firejail-promnesia-exposes-stow-target
 
 # Purpose: Static guardrails for dev-tool Firejail profile path exposure.
 
@@ -40,6 +41,14 @@ firejail-dev-nvim-avoids-global-nvim-state)
             exit 1
         fi
     done
+    ;;
+firejail-promnesia-exposes-stow-target)
+    profile="$root/playbooks/roles/20-dev-tools/templates/fj-py-promnesia.profile"
+    path='whitelist-ro ${HOME}/dotfiles/PKM/dot-config/promnesia'
+    if ! grep -Fqx "$path" "$profile"; then
+        printf 'Promnesia profile does not expose stowed config target: %s\n' "$path" >&2
+        exit 1
+    fi
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

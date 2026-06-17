@@ -6,6 +6,7 @@ set -euo pipefail
 # dotfiles-test-firejail: disabled
 # dotfiles-test-case: wwine-template-renders-and-has-shell-syntax
 # dotfiles-test-case: wwine-opens-light-wine-window-with-and-without-desktop
+# dotfiles-test-case: wine-desktop-launchers-are-terminal-free-and-logged
 
 # Purpose: Verify wwine's virtual-desktop toggle with a temporary Wine prefix.
 
@@ -183,6 +184,55 @@ write_function_exports() {
     declare -f run_wwine wait_for_notepad_window open_notepad_and_assert_window assert_registry_has_desktop assert_registry_has_no_active_desktop >"${DOTFILES_TEST_TMP}/test-functions.bash"
 }
 
+assert_desktop_terminal_free() {
+    local desktop_file=$1
+
+    grep -Fxq "Terminal=false" "$desktop_file"
+    ! grep -Fq "kitty" "$desktop_file"
+    ! grep -Fq "Name=(debug)" "$desktop_file"
+}
+
+assert_launcher_uses_log_id() {
+    local launcher_file=$1
+    local log_id=$2
+
+    grep -Fq -- "--log-id $log_id" "$launcher_file"
+    ! grep -Fq "exec kitty" "$launcher_file"
+    ! grep -Fq "kitty --hold" "$launcher_file"
+}
+
+assert_launcher_is_logged_and_terminal_free() {
+    local launcher_file=$1
+
+    grep -Eq -- "--log-id[[:space:]]+[^[:space:]]+" "$launcher_file"
+    ! grep -Fq "exec kitty" "$launcher_file"
+    ! grep -Fq "kitty --hold" "$launcher_file"
+}
+
+assert_private_wine_templates_are_terminal_free_and_logged() {
+    local templates_dir=$1
+    local desktop_file
+    local launcher_file
+    local exec_target
+
+    [ -d "$templates_dir" ] || return 0
+
+    while IFS= read -r -d '' desktop_file; do
+        ! grep -Fxq "Terminal=true" "$desktop_file"
+        ! grep -Fq "kitty" "$desktop_file"
+        ! grep -Fq "Name=(debug)" "$desktop_file"
+
+        exec_target=$(sed -n 's#^Exec=.*/\(launch-[^[:space:]]*\).*#\1#p' "$desktop_file")
+        if [ -n "$exec_target" ]; then
+            [ -f "${templates_dir}/${exec_target}" ]
+        fi
+    done < <(find "$templates_dir" -maxdepth 1 -type f -name "*.desktop" -print0)
+
+    while IFS= read -r -d '' launcher_file; do
+        assert_launcher_is_logged_and_terminal_free "$launcher_file"
+    done < <(find "$templates_dir" -maxdepth 1 -type f -name "launch-*-wine" -print0)
+}
+
 case "${DOTFILES_TEST_CASE:-}" in
 wwine-template-renders-and-has-shell-syntax)
     skip_missing_commands bash python3
@@ -198,6 +248,17 @@ wwine-opens-light-wine-window-with-and-without-desktop)
     write_function_exports
     export WWINE_UNDER_TEST="$rendered"
     run_desktop_toggle_test
+    ;;
+wine-desktop-launchers-are-terminal-free-and-logged)
+    assert_desktop_terminal_free "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper.desktop"
+    assert_launcher_uses_log_id "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/launch-reaper-wine" "reaper"
+
+    assert_desktop_terminal_free "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/audiogridder.desktop"
+    assert_launcher_uses_log_id "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/launch-audiogridder-wine" "audiogridder"
+
+    assert_desktop_terminal_free "${DOTFILES_TEST_ROOT}/utilities/dot-local/share/applications/resolve.desktop"
+
+    assert_private_wine_templates_are_terminal_free_and_logged "${DOTFILES_TEST_ROOT}/for-my-eyes-only/playbooks/roles/60-for-my-eyes-only/templates"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

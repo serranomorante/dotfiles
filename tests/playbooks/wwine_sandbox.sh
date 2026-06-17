@@ -7,6 +7,7 @@ set -euo pipefail
 # dotfiles-test-case: wwine-prepare-env-exports-sandbox-loader
 # dotfiles-test-case: wwine-use-sandbox-starts-real-firejail-and-checks-profile
 # dotfiles-test-case: wwine-wine-loader-mode-starts-real-firejail-and-preserves-args
+# dotfiles-test-case: wwine-log-id-rotates-and-captures-output-before-sandbox
 # dotfiles-test-case: wwine-reuses-existing-named-firejail-sandbox
 # dotfiles-test-case: wwine-serializes-parallel-named-sandbox-startup
 # dotfiles-test-case: wwine-fails-closed-when-inherited-sandbox-does-not-match-profile
@@ -55,6 +56,7 @@ make_fixture() {
     hidden="${fixture}/hidden"
     wine_prefix="${fixture}/wine-prefix"
     fake_wine_log="${fixture}/fake-wine.log"
+    fake_logrotate_log="${fixture}/fake-logrotate.log"
     checker_log="${fixture}/fj-profile-checker.log"
     output="${fixture}/output.log"
     sandbox_name="wwine-test-$(sanitize_case_name)-$$"
@@ -110,6 +112,10 @@ fi
   printf '\n'
 } >> "$fake_wine_log"
 for arg in "\$@"; do
+  if [ "\$arg" = emit-output ]; then
+    printf 'FAKE_WINE_STDOUT=1\n'
+    printf 'FAKE_WINE_STDERR=1\n' >&2
+  fi
   if [ "\$arg" = hold-sandbox ]; then
     touch "${fixture}/fake-wine-holding"
     while [ ! -e "${fixture}/stop-fake-wine" ]; do
@@ -127,6 +133,14 @@ printf '<%s>' "\$@" >> "$fake_wine_log"
 printf '\n' >> "$fake_wine_log"
 SH
     chmod +x "${fixture}/fake-wineserver"
+
+    cat >"${fixture}/logrotate" <<SH
+#!/usr/bin/env sh
+printf 'LOGROTATE_ARGS=' >> "$fake_logrotate_log"
+printf '<%s>' "\$@" >> "$fake_logrotate_log"
+printf '\n' >> "$fake_logrotate_log"
+SH
+    chmod +x "${fixture}/logrotate"
 
     render_wwine
 }
@@ -325,6 +339,24 @@ assert_profile_checker_ran() {
     grep -Fq "$sandbox_check_profile" "$checker_log"
 }
 
+install_logrotate_config() {
+    local config_home="${XDG_CONFIG_HOME:-$home/.config}"
+    local state_root="${XDG_STATE_HOME:-$home/.local/state}/wine-apps"
+
+    mkdir -p "${config_home}/logrotate"
+    cat >"${config_home}/logrotate/wine-apps.conf" <<CONF
+${state_root}/*/*.log {
+    size 20M
+    rotate 5
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+CONF
+}
+
 case "${DOTFILES_TEST_CASE:-}" in
 wwine-prepare-env-exports-sandbox-loader)
     make_fixture
@@ -346,6 +378,23 @@ wwine-use-sandbox-starts-real-firejail-and-checks-profile)
     assert_profile_checker_ran
     grep -Fq 'ARGS=<reg><delete><HKEY_CURRENT_USER\Software\Wine\Explorer><' "$fake_wine_log"
     grep -Fxq 'ARGS=<marker>' "$fake_wine_log"
+    ;;
+wwine-log-id-rotates-and-captures-output-before-sandbox)
+    make_fixture
+    install_logrotate_config
+    trap shutdown_sandbox EXIT
+
+    run_wwine --prefix reaper --use-sandbox --log-id reaper wine emit-output
+
+    state_root="${XDG_STATE_HOME:-$home/.local/state}/wine-apps"
+    config_home="${XDG_CONFIG_HOME:-$home/.config}"
+    app_log="${state_root}/reaper/reaper.log"
+    [ -s "$fake_logrotate_log" ]
+    grep -Fq "<-s><${state_root}/logrotate.status><${config_home}/logrotate/wine-apps.conf>" "$fake_logrotate_log"
+    grep -Fxq "FAKE_WINE_STDOUT=1" "$app_log"
+    grep -Fxq "FAKE_WINE_STDERR=1" "$app_log"
+    assert_fake_wine_ran_inside_firejail
+    assert_profile_checker_ran
     ;;
 wwine-wine-loader-mode-starts-real-firejail-and-preserves-args)
     make_fixture

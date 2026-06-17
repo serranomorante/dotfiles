@@ -44,6 +44,7 @@
     state: present
     name:
       - winetricks
+      - logrotate
       - wine-gecko
       - wine-mono
       - libxcomposite
@@ -51,6 +52,7 @@
       - lib32-vulkan-icd-loader
       - vulkan-radeon
       - lib32-vulkan-radeon
+      - patchelf
 
 - name: "[archlinux] Wine tools: ensure wine 32bit drivers"
   # https://wiki.archlinux.org/title/Steam#Installation
@@ -61,17 +63,13 @@
       - lib32-pipewire
       - lib32-nvidia-utils
       - lib32-libxcomposite
-
-- name: "[archlinux] Wine tools: ensure aur packages"
-  become: true
-  become_user: aur_builder
-  kewlfft.aur.aur:
-    use: yay
-    state: present
-    name:
       - steam
+
+- name: "[archlinux] Wine tools: ensure local AUR packages"
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  vars:
+    aur_local_packages:
       - protonplus
-    aur_only: true
 
 - name: "[archlinux] Wine tools: ensure sysctl conf"
   become: true
@@ -122,6 +120,18 @@
   loop:
     - wwine
     - wwine-wine-loader
+
+- name: "[archlinux] Wine tools: ensure logrotate config directory"
+  ansible.builtin.file:
+    path: ~/.config/logrotate
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Wine tools: install wine app logrotate config"
+  ansible.builtin.template:
+    src: wine-apps.logrotate
+    dest: ~/.config/logrotate/wine-apps.conf
+    mode: "644"
 
 - name: force handler
   ansible.builtin.command: echo

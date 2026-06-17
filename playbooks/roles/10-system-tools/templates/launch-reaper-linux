@@ -14,10 +14,61 @@ Options:
   --firejail     Run REAPER through the configured Wine Firejail profile.
   --no-firejail  Run REAPER directly. This is the default.
   -h, --help     Show this help.
+
+Environment:
+  DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME  Override the Firejail sandbox name.
 EOF
 }
 
 use_firejail=0
+firejail_sandbox_name="${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-wwine-reaper}"
+firejail_profile="{{ ansible_facts.env.HOME }}/.config/firejail/wine-reaper.local"
+wwine_prepare_args=(--prefix reaper --no-desktop --use-sandbox)
+if [ -n "${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-}" ]; then
+  wwine_prepare_args+=(--sandbox-name "$firejail_sandbox_name")
+fi
+
+sandbox_is_registered() {
+  firejail --list 2>/dev/null | awk -F: -v name="$firejail_sandbox_name" '$3 == name { found = 1 } END { exit found ? 0 : 1 }'
+}
+
+exec_named_firejail() {
+  local -a firejail_command=("$@")
+  local lock_dir="${XDG_RUNTIME_DIR:-/tmp}/wwine"
+  local lock_key="${firejail_sandbox_name//[^A-Za-z0-9_.-]/_}"
+  local sandbox_lock_fd
+  local firejail_pid
+  local status
+
+  command -v flock >/dev/null 2>&1 || {
+    printf 'launch-reaper-linux: cannot serialize Firejail sandbox startup because flock is missing\n' >&2
+    exit 1
+  }
+
+  mkdir -p "$lock_dir"
+  exec {sandbox_lock_fd}>"$lock_dir/${lock_key}.lock"
+  flock "$sandbox_lock_fd"
+
+  "${firejail_command[@]}" &
+  firejail_pid=$!
+
+  while kill -0 "$firejail_pid" 2>/dev/null; do
+    if sandbox_is_registered; then
+      break
+    fi
+    sleep 0.05
+  done
+
+  flock -u "$sandbox_lock_fd" || true
+  exec {sandbox_lock_fd}>&-
+
+  set +e
+  wait "$firejail_pid"
+  status=$?
+  set -e
+  exit "$status"
+}
+
 case "${1:-}" in
   --firejail)
     use_firejail=1
@@ -37,24 +88,19 @@ if [ "${1:-}" = "--" ]; then
 fi
 
 "{{ ansible_facts.env.HOME }}/.local/bin/connect-reaper-to-music-production" &
-if [ "$use_firejail" -eq 1 ]; then
-  eval "$("{{ ansible_facts.env.HOME }}/bin/wwine" --prefix reaper --no-desktop prepare-env)"
-else
-  eval "$("{{ ansible_facts.env.HOME }}/bin/wwine" --prefix reaper --no-desktop --use-sandbox prepare-env)"
-fi
 
-kitty_args=(
-  --hold
-  -o "env=WINEDEBUG=-all,+err"
+eval "$("{{ ansible_facts.env.HOME }}/bin/wwine" "${wwine_prepare_args[@]}" prepare-env)"
+
+export WINEDEBUG=-all,+err
 {% for env in pipewire_latency_vars.items() %}
-  -o "env={{ env | join('=') }}"
+export {{ env | join('=') }}
 {% endfor %}
-  --directory="{{ ansible_facts.env.HOME }}/data/audio-pjs"
-)
+cd "{{ ansible_facts.env.HOME }}/data/audio-pjs"
 
 reaper_cmd=(/usr/bin/reaper "$@")
 if [ "$use_firejail" -eq 1 ]; then
-  reaper_cmd=(firejail --profile="{{ ansible_facts.env.HOME }}/.config/firejail/wine-reaper.local" --join-or-start=wwine-reaper "${reaper_cmd[@]}")
+  reaper_cmd=(firejail --profile="$firejail_profile" --join-or-start="$firejail_sandbox_name" "${reaper_cmd[@]}")
+  exec_named_firejail "${reaper_cmd[@]}"
 fi
 
-exec kitty "${kitty_args[@]}" "${reaper_cmd[@]}"
+exec "${reaper_cmd[@]}"

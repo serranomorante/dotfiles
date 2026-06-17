@@ -17,12 +17,15 @@
 # launches. Keep the default desktop name as `Default`: Ansible wait loops
 # match Wine virtual desktop windows through `wmctrl -lx` and `explorer.exe`,
 # while the DWM Wine rule also expects Wine's virtual desktop window title.
+#
+# Desktop launchers can pass `--log-id <app-id>` to rotate and capture stdout
+# and stderr under ~/.local/state/wine-apps without opening a terminal window.
 
 set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: wwine --prefix <alias-or-path> [--arch <arch>] [--desktop|--no-desktop] [--use-sandbox] [--sandbox-profile <path>] [--sandbox-check-profile <path>] [--sandbox-name <name>] <tool> [tool-args...]
+usage: wwine --prefix <alias-or-path> [--arch <arch>] [--desktop|--no-desktop] [--use-sandbox] [--sandbox-profile <path>] [--sandbox-check-profile <path>] [--sandbox-name <name>] [--log-id <app-id>] <tool> [tool-args...]
 
 tools: wine, winecfg, wineserver, winetricks, wineboot, prepare-env
 EOF
@@ -108,6 +111,7 @@ use_sandbox=0
 sandbox_profile=""
 sandbox_check_profile=""
 sandbox_name=""
+log_id=""
 sandbox_attempted="$(bool_arg "${WWINE_SANDBOX_ATTEMPTED:-0}")"
 desktop_name="Default"
 desktop_size=""
@@ -191,6 +195,14 @@ else
         ;;
       --sandbox-name=*)
         sandbox_name="${1#*=}"
+        ;;
+      --log-id)
+        shift
+        [[ $# -gt 0 ]] || die "missing value for --log-id"
+        log_id="$1"
+        ;;
+      --log-id=*)
+        log_id="${1#*=}"
         ;;
       --help|-h)
         usage
@@ -298,6 +310,56 @@ verify_inherited_sandbox() {
   "$profile_checker" "$sandbox_check_profile" -- true
 }
 
+validate_log_id() {
+  [[ -n "$log_id" ]] || return 0
+
+  if [[ ! "$log_id" =~ ^[a-z][a-z0-9]*(-[a-z0-9]+)*$ ]]; then
+    die "--log-id must be lowercase kebab-case starting with a letter: $log_id"
+  fi
+}
+
+setup_launcher_log() {
+  local state_root
+  local app_state_dir
+  local log_file
+  local config_home
+  local logrotate_config
+  local logrotate_state
+
+  [[ -n "$log_id" ]] || return 0
+  [[ "$tool" != "prepare-env" ]] || return 0
+  validate_log_id
+
+  if [[ "${WWINE_LOG_ACTIVE:-0}" == 1 ]]; then
+    return 0
+  fi
+
+  state_root="${XDG_STATE_HOME:-$HOME/.local/state}/wine-apps"
+  app_state_dir="$state_root/$log_id"
+  log_file="$app_state_dir/$log_id.log"
+  config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+  logrotate_config="$config_home/logrotate/wine-apps.conf"
+  logrotate_state="$state_root/logrotate.status"
+
+  mkdir -p "$app_state_dir"
+
+  if [[ ! -r "$logrotate_config" ]]; then
+    die "--log-id needs readable logrotate config: $logrotate_config"
+  fi
+
+  if ! command -v logrotate >/dev/null 2>&1; then
+    die "--log-id needs logrotate in PATH"
+  fi
+
+  logrotate -s "$logrotate_state" "$logrotate_config"
+
+  export WWINE_LOG_ACTIVE=1
+  exec >>"$log_file" 2>&1
+  printf '== wwine %s log-id=%s tool=%s ==\n' "$(date -Is)" "$log_id" "$tool"
+}
+
+setup_launcher_log
+
 if [[ "$use_sandbox" == 1 && "$tool" != "prepare-env" ]]; then
   if is_inside_firejail; then
     verify_inherited_sandbox
@@ -341,6 +403,9 @@ if [[ "$use_sandbox" == 1 && "$tool" != "prepare-env" ]]; then
     fi
     if [[ -n "$sandbox_name" ]]; then
       reexec_args+=(--sandbox-name "$sandbox_name")
+    fi
+    if [[ -n "$log_id" ]]; then
+      reexec_args+=(--log-id "$log_id")
     fi
 
     if [[ -n "$sandbox_name" ]]; then

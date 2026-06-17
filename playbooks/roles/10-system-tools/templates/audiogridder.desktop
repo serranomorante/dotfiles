@@ -1,8 +1,9 @@
 # {{ ansible_managed }}
 [Desktop Entry]
-Name=(debug) AudioGridderServer
-Exec=kitty --hold -o env=LC_ALL=C {% for env in pipewire_latency_vars.items() %}-o env={{ env | join('=') }} {% endfor %} --directory '{{ arch_reaper_wine_setup.wine_prefix }}/dosdevices/c:/ProgramData/Microsoft/Windows/Start Menu/Programs' {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper --use-sandbox wine 'C:/ProgramData/Microsoft/Windows/Start Menu/Programs/AudioGridderServer.lnk'
+Name=AudioGridderServer
+Exec={{ ansible_facts.env.HOME }}/.local/bin/launch-audiogridder-wine
 Type=Application
+Terminal=false
 StartupNotify=true
 Icon=05B9_AudioGridderServer.0
 StartupWMClass=audiogridderserver.exe
