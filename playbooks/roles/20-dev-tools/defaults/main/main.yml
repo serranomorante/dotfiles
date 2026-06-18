@@ -45,7 +45,7 @@ node_dependency_update_github_token_keyring:
 volta_version: 2.0.2
 isd_tui_version: 0.6.1
 luaunit_version: LUAUNIT_V3_5
-firebase_cli_version: 14.26.0
+firebase_cli_version: 15.20.0
 typescript_npm_version: 6.0.2
 rust_version: 1.96.0
 archlinux_neovim_version: master
