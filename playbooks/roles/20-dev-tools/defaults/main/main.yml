@@ -26,7 +26,7 @@ node_package_manager_packages:
       - yarn
       - yarnpkg
   - name: pnpm
-    version: 11.6.0
+    version: 11.7.0
     bins:
       - pnpm
       - pnpx
