@@ -3,6 +3,7 @@
 
 local channel = 10
 local notes = {
+    record = 39,
     metronome = 41,
     metronome_badge = 95,
 }
@@ -42,9 +43,16 @@ local function safe_number(default, fn, ...)
     return default
 end
 
+local function has_flag(value, flag)
+    return value % (flag * 2) >= flag
+end
+
 local function project_transport_state()
     local metronome = safe_number(0, reaper.GetToggleCommandStateEx, 0, metronome_action_id) > 0
+    local play_state = safe_number(0, reaper.GetPlayState)
+    local recording = has_flag(play_state, 4)
     return {
+        record = recording,
         metronome = metronome,
         metronome_badge = metronome,
     }
