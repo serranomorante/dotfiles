@@ -14,6 +14,12 @@
     aur_local_packages:
       - gromit-mpx
 
+- name: "[archlinux] Graphic tablet peripheral: ensure app directory"
+  ansible.builtin.file:
+    path: ~/data/apps/graphic-tablet-tools
+    state: directory
+    mode: "755"
+
 - name: "[archlinux] Graphic tablet peripheral: enable gromit-mpx service"
   ansible.builtin.systemd_service:
     scope: user
@@ -92,8 +98,16 @@
   # Mypaint from arch repos was failing for me
   ansible.builtin.get_url:
     url: https://github.com/mypaint/mypaint-appimage/releases/download/continuous/MyPaint-v{{ arch_mypaint_version }}-no-translations.AppImage
-    dest: ~/bin/mypaint
+    dest: ~/data/apps/graphic-tablet-tools/mypaint-{{ arch_mypaint_version }}.AppImage
     mode: "755"
+  notify: "10-system-tools : handler_ensure_mypaint_service"
+
+- name: "[archlinux] Graphic tablet: link mypaint"
+  ansible.builtin.file:
+    src: ~/data/apps/graphic-tablet-tools/mypaint-{{ arch_mypaint_version }}.AppImage
+    dest: ~/bin/mypaint
+    state: link
+    force: true
   notify: "10-system-tools : handler_ensure_mypaint_service"
 
 - name: "[archlinux] Graphic tablet peripheral: ensure services"

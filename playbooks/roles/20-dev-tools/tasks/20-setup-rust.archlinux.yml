@@ -1,12 +1,28 @@
 ---
-- name: "[archlinux] Setup rust: check rustup"
+- name: "[archlinux] Setup rust: check rustup marker"
   ansible.builtin.stat:
-    path: "{{ ansible_facts.env.HOME }}/.cargo/bin/rustup"
-  register: rustup_binary
+    path: "{{ ansible_facts.env.HOME }}/.cargo/.ansible-rust-{{ rust_version }}"
+  register: var_rust_marker
 
 - name: "[archlinux] Setup rust: ensure rustup"
   ansible.builtin.shell: >
     set -o pipefail &&
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable-x86_64-unknown-linux-gnu
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain {{ rust_version }}-x86_64-unknown-linux-gnu
   changed_when: true
-  when: not rustup_binary.stat.exists
+  when: not var_rust_marker.stat.exists
+
+- name: "[archlinux] Setup rust: update default toolchain"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/.cargo/bin/rustup"
+      - default
+      - "{{ rust_version }}-x86_64-unknown-linux-gnu"
+  when: not var_rust_marker.stat.exists
+  changed_when: true
+
+- name: "[archlinux] Setup rust: record rust marker"
+  ansible.builtin.copy:
+    content: "{{ rust_version }}\n"
+    dest: "{{ ansible_facts.env.HOME }}/.cargo/.ansible-rust-{{ rust_version }}"
+    mode: "644"
+  when: not var_rust_marker.stat.exists

@@ -32,6 +32,26 @@
       - name: piper-tts[http]
         version: "{{ piper_tts_setup.version }}"
 
+- name: "[archlinux] Setup ai tools: stat piper tts voice markers"
+  ansible.builtin.stat:
+    path: "{{ piper_tts_setup.voice_dir }}/.ansible-piper-voice-{{ item }}-{{ piper_tts_setup.version }}"
+  register: var_piper_tts_voice_markers
+  loop: "{{ piper_tts_setup.voices }}"
+
+- name: "[archlinux] Setup ai tools: remove stale piper tts voice model before refresh"
+  ansible.builtin.file:
+    path: "{{ piper_tts_setup.voice_dir }}/{{ item.item }}.onnx"
+    state: absent
+  loop: "{{ var_piper_tts_voice_markers.results }}"
+  when: not item.stat.exists
+
+- name: "[archlinux] Setup ai tools: remove stale piper tts voice metadata before refresh"
+  ansible.builtin.file:
+    path: "{{ piper_tts_setup.voice_dir }}/{{ item.item }}.onnx.json"
+    state: absent
+  loop: "{{ var_piper_tts_voice_markers.results }}"
+  when: not item.stat.exists
+
 - name: "[archlinux] Setup ai tools: download piper tts voices"
   ansible.builtin.command:
     argv:
@@ -44,13 +64,22 @@
       - piper.download_voices
       - --data-dir
       - "{{ piper_tts_setup.voice_dir }}"
-      - "{{ item }}"
+      - "{{ item.item }}"
   args:
-    creates: "{{ piper_tts_setup.voice_dir }}/{{ item }}.onnx"
+    creates: "{{ piper_tts_setup.voice_dir }}/.ansible-piper-voice-{{ item.item }}-{{ piper_tts_setup.version }}"
   environment:
     PYENV_VERSION: "{{ piper_tts_setup.python_version }}"
-  loop: "{{ piper_tts_setup.voices }}"
+  loop: "{{ var_piper_tts_voice_markers.results }}"
+  when: not item.stat.exists
   timeout: 0
+
+- name: "[archlinux] Setup ai tools: record piper tts voice markers"
+  ansible.builtin.copy:
+    content: "{{ item.item }} {{ piper_tts_setup.version }}\n"
+    dest: "{{ piper_tts_setup.voice_dir }}/.ansible-piper-voice-{{ item.item }}-{{ piper_tts_setup.version }}"
+    mode: "644"
+  loop: "{{ var_piper_tts_voice_markers.results }}"
+  when: not item.stat.exists
 
 - name: "[archlinux] Setup ai tools: stat piper tts user service"
   ansible.builtin.stat:
@@ -110,6 +139,15 @@
     state: directory
     mode: "755"
 
+- name: "[archlinux] Setup ai tools: set playwright package version fact"
+  ansible.builtin.set_fact:
+    playwright_package_version: "{{ node_ai_npm_packages | selectattr('name', 'equalto', 'playwright') | map(attribute='version') | first }}"
+
+- name: "[archlinux] Setup ai tools: stat playwright browser marker"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.cache/ms-playwright/.ansible-playwright-{{ playwright_package_version }}"
+  register: var_playwright_browser_marker
+
 - name: "[archlinux] Setup ai tools: execute playwright install"
   ansible.builtin.command:
     argv:
@@ -121,12 +159,18 @@
       - "{{ node_ai_npm_prefix }}/bin/playwright"
       - install
   environment:
-    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-    FJ_NODE_FORWARD_ENV: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD
     FJ_NODE_WRITABLE_PATHS: |
       {{ ansible_facts.env.HOME }}/.cache/ms-playwright
   args:
-    creates: ~/.cache/ms-playwright/chromium-*/INSTALLATION_COMPLETE
+    creates: "{{ ansible_facts.env.HOME }}/.cache/ms-playwright/.ansible-playwright-{{ playwright_package_version }}"
+  when: not var_playwright_browser_marker.stat.exists
+
+- name: "[archlinux] Setup ai tools: record playwright browser marker"
+  ansible.builtin.copy:
+    content: "{{ playwright_package_version }}\n"
+    dest: "{{ ansible_facts.env.HOME }}/.cache/ms-playwright/.ansible-playwright-{{ playwright_package_version }}"
+    mode: "644"
+  when: not var_playwright_browser_marker.stat.exists
 
 - name: "[archlinux] Setup ai tools: clone reaper mcp"
   ansible.builtin.include_role:

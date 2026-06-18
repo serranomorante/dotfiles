@@ -29,9 +29,17 @@
 - name: "[archlinux] Setup whisper.cpp: download profile models"
   ansible.builtin.get_url:
     url: "{{ item.model_url }}"
-    dest: "{{ whisper_cpp_setup.model_dir }}/{{ item.model_file }}"
+    dest: "{{ whisper_cpp_setup.model_dir }}/{{ item.model_file }}.{{ item.model_url | hash('sha256') }}"
     mode: "644"
     timeout: 900
+  loop: "{{ whisper_cpp_setup.profiles }}"
+
+- name: "[archlinux] Setup whisper.cpp: link profile models"
+  ansible.builtin.file:
+    src: "{{ whisper_cpp_setup.model_dir }}/{{ item.model_file }}.{{ item.model_url | hash('sha256') }}"
+    dest: "{{ whisper_cpp_setup.model_dir }}/{{ item.model_file }}"
+    state: link
+    force: true
   loop: "{{ whisper_cpp_setup.profiles }}"
 
 - name: "[archlinux] Setup whisper.cpp: check binary"

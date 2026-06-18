@@ -225,6 +225,11 @@
   tags: [never, slow, "20-170-whisper"]
 
 - block:
+    - name: Prepare python sandbox before android setup
+      ansible.builtin.include_role:
+        name: 20-dev-tools
+        tasks_from: python
+
     - name: Setup android tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:

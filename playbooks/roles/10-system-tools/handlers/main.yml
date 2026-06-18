@@ -187,7 +187,6 @@
   ansible.builtin.command: go build -ldflags="-s -w" .
   args:
     chdir: ~/data/repos/mouseless
-    creates: ~/data/repos/mouseless/mouseless
   notify: handler_ensure_mouseless_service
 
 - name: handler_ensure_mouseless_udev_rules
@@ -286,13 +285,6 @@
     enabled: false
     masked: false
     daemon_reload: true
-
-- name: handler_ensure_mouseless_click_service
-  ansible.builtin.systemd_service:
-    scope: user
-    name: mouseless-click.service
-    enabled: false
-    masked: false
 
 - name: handler_ensure_fc_cache
   ansible.builtin.command: fc-cache

@@ -7,15 +7,62 @@
 
 - name: "[archlinux] Setup android tools: ensure folder"
   ansible.builtin.file:
-    path: ~/data/apps/android-tools
+    path: "{{ item }}"
     state: directory
     mode: "770"
+  loop:
+    - "{{ ansible_facts.env.HOME }}/data/apps/android-tools"
+    - "{{ ansible_facts.env.HOME }}/data/apps/android-tools/downloads"
 
-- name: "[archlinux] Setup android tools: get gnirehtet rust version"
+- name: "[archlinux] Setup android tools: stat gnirehtet marker"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/data/apps/android-tools/.ansible-gnirehtet-{{ arch_gnirehtet_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
+  register: var_gnirehtet_marker
+
+- name: "[archlinux] Setup android tools: download gnirehtet rust version"
   # Make sure to enable developer mode and usb debugger in your device
-  ansible.builtin.unarchive:
-    src: https://github.com/Genymobile/gnirehtet/releases/download/v{{ arch_gnirehtet_version }}/gnirehtet-rust-linux64-v{{ arch_gnirehtet_version }}.zip
-    dest: ~/data/apps/android-tools
-    remote_src: true
-    creates: ~/data/apps/android-tools/gnirehtet-rust-linux64
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/apps/android-tools/downloads"
+      - --
+      - curl
+      - -L
+      - -o
+      - "{{ ansible_facts.env.HOME }}/data/apps/android-tools/downloads/gnirehtet-rust-linux64-v{{ arch_gnirehtet_version }}.zip"
+      - "https://github.com/Genymobile/gnirehtet/releases/download/v{{ arch_gnirehtet_version }}/gnirehtet-rust-linux64-v{{ arch_gnirehtet_version }}.zip"
+  environment:
+    FJ_PY_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/data/apps/android-tools/downloads
+  args:
+    creates: "{{ ansible_facts.env.HOME }}/data/apps/android-tools/downloads/gnirehtet-rust-linux64-v{{ arch_gnirehtet_version }}.zip"
+  when: not var_gnirehtet_marker.stat.exists
+
+- name: "[archlinux] Setup android tools: install gnirehtet rust version"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - offline
+      - "{{ ansible_facts.env.HOME }}/data/apps/android-tools/downloads"
+      - --
+      - bsdtar
+      - -xf
+      - "{{ ansible_facts.env.HOME }}/data/apps/android-tools/downloads/gnirehtet-rust-linux64-v{{ arch_gnirehtet_version }}.zip"
+      - -C
+      - "{{ ansible_facts.env.HOME }}/data/apps/android-tools"
+  environment:
+    FJ_PY_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/data/apps/android-tools
+      {{ ansible_facts.env.HOME }}/data/apps/android-tools/downloads
+  when: not var_gnirehtet_marker.stat.exists
+  changed_when: true
+  notify: handler_ensure_gnirehtet_service
+
+- name: "[archlinux] Setup android tools: record gnirehtet marker"
+  ansible.builtin.copy:
+    content: "{{ arch_gnirehtet_version }}\n"
+    dest: "{{ ansible_facts.env.HOME }}/data/apps/android-tools/.ansible-gnirehtet-{{ arch_gnirehtet_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
+    mode: "644"
+  when: not var_gnirehtet_marker.stat.exists
   notify: handler_ensure_gnirehtet_service

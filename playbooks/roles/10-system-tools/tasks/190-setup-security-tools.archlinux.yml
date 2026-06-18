@@ -221,11 +221,24 @@
     dest: ~/.local/share/dbus-1/services/org.freedesktop.secrets.service
     mode: "644"
 
+- name: "[archlinux] Setup security tools: ensure app cache folder"
+  ansible.builtin.file:
+    path: ~/data/apps/security-tools
+    state: directory
+    mode: "755"
+
 - name: "[archlinux] Setup security tools: get docker credential secretservice helper"
   ansible.builtin.get_url:
     url: https://github.com/docker/docker-credential-helpers/releases/download/v{{ arch_docker_credential_helpers_version }}/docker-credential-secretservice-v{{ arch_docker_credential_helpers_version }}.linux-amd64
-    dest: ~/bin/docker-credential-secretservice
+    dest: ~/data/apps/security-tools/docker-credential-secretservice-v{{ arch_docker_credential_helpers_version }}
     mode: "755"
+
+- name: "[archlinux] Setup security tools: link docker credential secretservice helper"
+  ansible.builtin.file:
+    src: ~/data/apps/security-tools/docker-credential-secretservice-v{{ arch_docker_credential_helpers_version }}
+    dest: ~/bin/docker-credential-secretservice
+    state: link
+    force: true
 
 - name: "[archlinux] Setup security tools: ensure docker config path"
   ansible.builtin.file:

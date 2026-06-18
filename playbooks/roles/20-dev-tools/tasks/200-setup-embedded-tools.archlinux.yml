@@ -47,11 +47,18 @@
 - name: "[archlinux] Setup embedded tools: update Arduino package index"
   ansible.builtin.command: arduino-cli core update-index
   changed_when: false
-  when: "'arduino:avr' not in var_arduino_core_list.stdout"
 
 - name: "[archlinux] Setup embedded tools: install Arduino AVR core"
   ansible.builtin.command: arduino-cli core install arduino:avr
   when: "'arduino:avr' not in var_arduino_core_list.stdout"
+
+- name: "[archlinux] Setup embedded tools: upgrade Arduino AVR core"
+  ansible.builtin.command: arduino-cli core upgrade arduino:avr
+  register: var_arduino_avr_core_upgrade
+  changed_when: >-
+    'already at the latest version' not in var_arduino_avr_core_upgrade.stdout and
+    'No updates' not in var_arduino_avr_core_upgrade.stdout
+  when: "'arduino:avr' in var_arduino_core_list.stdout"
 
 - name: "[archlinux] Setup embedded tools: update Arduino ESP32 package index"
   ansible.builtin.command:
@@ -62,7 +69,6 @@
       - --additional-urls
       - "{{ var_arduino_esp32_package_index_url }}"
   changed_when: false
-  when: "'esp32:esp32' not in var_arduino_core_list.stdout"
 
 - name: "[archlinux] Setup embedded tools: install Arduino ESP32 core"
   ansible.builtin.command:
@@ -75,6 +81,21 @@
       - "{{ var_arduino_esp32_package_index_url }}"
   when: "'esp32:esp32' not in var_arduino_core_list.stdout"
 
+- name: "[archlinux] Setup embedded tools: upgrade Arduino ESP32 core"
+  ansible.builtin.command:
+    argv:
+      - arduino-cli
+      - core
+      - upgrade
+      - esp32:esp32
+      - --additional-urls
+      - "{{ var_arduino_esp32_package_index_url }}"
+  register: var_arduino_esp32_core_upgrade
+  changed_when: >-
+    'already at the latest version' not in var_arduino_esp32_core_upgrade.stdout and
+    'No updates' not in var_arduino_esp32_core_upgrade.stdout
+  when: "'esp32:esp32' in var_arduino_core_list.stdout"
+
 - name: "[archlinux] Setup embedded tools: check Arduino libraries"
   ansible.builtin.command: arduino-cli lib list
   register: var_arduino_library_list
@@ -83,12 +104,6 @@
 - name: "[archlinux] Setup embedded tools: update Arduino library index"
   ansible.builtin.command: arduino-cli lib update-index
   changed_when: false
-  when: >-
-    'Adafruit NeoPixel' not in var_arduino_library_list.stdout or
-    'MIDIUSB' not in var_arduino_library_list.stdout or
-    'Adafruit BusIO' not in var_arduino_library_list.stdout or
-    'Adafruit GFX Library' not in var_arduino_library_list.stdout or
-    'Adafruit ILI9341' not in var_arduino_library_list.stdout
 
 - name: "[archlinux] Setup embedded tools: install Adafruit NeoPixel library"
   ansible.builtin.command: arduino-cli lib install "Adafruit NeoPixel"
@@ -109,6 +124,13 @@
 - name: "[archlinux] Setup embedded tools: install Adafruit ILI9341 library"
   ansible.builtin.command: arduino-cli lib install "Adafruit ILI9341"
   when: "'Adafruit ILI9341' not in var_arduino_library_list.stdout"
+
+- name: "[archlinux] Setup embedded tools: upgrade Arduino libraries"
+  ansible.builtin.command: arduino-cli lib upgrade
+  register: var_arduino_library_upgrade
+  changed_when: >-
+    var_arduino_library_upgrade.stdout | trim | length > 0 and
+    'No updates' not in var_arduino_library_upgrade.stdout
 
 - name: "[archlinux] Setup embedded tools: stat keyboard MIDI LED matrix firmware"
   ansible.builtin.stat:

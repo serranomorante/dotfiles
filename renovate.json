@@ -54,6 +54,59 @@
     },
     {
       "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)volta_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "volta",
+      "packageNameTemplate": "volta-cli/volta",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": ["https://github.com/volta-cli/volta/releases/download/v{{ newValue }}/volta-{{ newValue }}-linux.tar.gz"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)rust_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "rust",
+      "packageNameTemplate": "rust-lang/rust",
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "semver",
+      "depTypeTemplate": "github-tag"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)isd_tui_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "isd-tui",
+      "packageNameTemplate": "isd-tui",
+      "datasourceTemplate": "pypi",
+      "versioningTemplate": "pep440",
+      "depTypeTemplate": "pypi-tool"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)firebase_cli_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "firebase-tools",
+      "packageNameTemplate": "firebase-tools",
+      "datasourceTemplate": "npm",
+      "versioningTemplate": "semver",
+      "depTypeTemplate": "standalone-node-tool",
+      "validationUrlTemplates": ["https://firebase.tools/bin/linux/v{{ newValue }}"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)luaunit_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "luaunit",
+      "packageNameTemplate": "bluebird75/luaunit",
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "loose",
+      "depTypeTemplate": "github-tag"
+    },
+    {
+      "customType": "regex",
       "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/ai\\.yml$/"],
       "matchStrings": ["piper_tts_setup:\\n(?:\\s+[^\\n]+\\n)*?\\s+version: \"?(?<currentValue>[^\"\\s]+)\"?"],
       "depNameTemplate": "piper-tts",
@@ -99,16 +152,6 @@
     {
       "customType": "regex",
       "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
-      "matchStrings": ["(?:^|\\n)tmux_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
-      "depNameTemplate": "tmux",
-      "packageNameTemplate": "tmux/tmux",
-      "datasourceTemplate": "github-tags",
-      "versioningTemplate": "loose",
-      "depTypeTemplate": "github-tag"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": ["/^playbooks\\/roles\\/20-dev-tools\\/defaults\\/main\\/main\\.yml$/"],
       "matchStrings": ["(?:^|\\n)arch_gnirehtet_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
       "depNameTemplate": "gnirehtet",
       "packageNameTemplate": "Genymobile/gnirehtet",
@@ -128,6 +171,28 @@
       "versioningTemplate": "semver-coerced",
       "depTypeTemplate": "github-release-asset",
       "validationUrlTemplates": ["https://github.com/microsoft/vscode-cpptools/releases/download/{{ newValue }}/cpptools-linux-x64.vsix"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/30-lang-tools\\/defaults\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)ansible_lint_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "ansible-lint",
+      "packageNameTemplate": "ansible-lint",
+      "datasourceTemplate": "pypi",
+      "versioningTemplate": "pep440",
+      "depTypeTemplate": "pypi-tool"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/30-lang-tools\\/defaults\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)noise_suppression_for_voice_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "noise-suppression-for-voice",
+      "packageNameTemplate": "werman/noise-suppression-for-voice",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": ["https://github.com/werman/noise-suppression-for-voice/releases/download/v{{ newValue }}/win-rnnoise.zip"]
     },
     {
       "customType": "regex",
@@ -189,6 +254,28 @@
     {
       "customType": "regex",
       "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/main\\.vars\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)chrome_session_dump_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "chrome-session-dump",
+      "packageNameTemplate": "lemnos/chrome-session-dump",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": ["https://github.com/lemnos/chrome-session-dump/releases/download/v{{ newValue }}/chrome-session-dump-linux"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/main\\.vars\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)arch_mypaint_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "mypaint-appimage",
+      "packageNameTemplate": "mypaint/mypaint-appimage",
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "loose",
+      "depTypeTemplate": "github-tag"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/main\\.vars\\.yml$/"],
       "matchStrings": ["(?:^|\\n)arch_docker_credential_helpers_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
       "depNameTemplate": "docker-credential-helpers",
       "packageNameTemplate": "docker/docker-credential-helpers",
@@ -236,6 +323,28 @@
         "https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ newValue }}/JetBrainsMono.zip",
         "https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ newValue }}/FiraCode.zip"
       ]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/music-production\\.vars\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)arch_yabridge_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "yabridge",
+      "packageNameTemplate": "robbert-vdh/yabridge",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": ["https://github.com/robbert-vdh/yabridge/releases/download/{{ newValue }}/yabridge-{{ newValue }}.tar.gz"]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/music-production\\.vars\\.yml$/"],
+      "matchStrings": ["arch_helgobox_setup:\\n(?:\\s+[^\\n]+\\n)*?\\s+version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "helgobox",
+      "packageNameTemplate": "helgoboss/helgobox",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^v(?<version>.*)$",
+      "depTypeTemplate": "github-release-asset"
     },
     {
       "customType": "regex",

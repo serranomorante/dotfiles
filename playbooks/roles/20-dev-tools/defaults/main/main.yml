@@ -42,9 +42,12 @@ node_dependency_update_github_token_keyring:
   folder: dev-tools
   passkey: github-temporal-access-token
   wallet: kdewallet
+volta_version: 2.0.2
+isd_tui_version: 0.6.1
+luaunit_version: LUAUNIT_V3_5
+firebase_cli_version: 14.26.0
 typescript_npm_version: 6.0.2
-rust_version: 1.75.0
-tmux_version: 3.6b
+rust_version: 1.96.0
 archlinux_neovim_version: master
 archlinux_treesitter_version: 0.26.9
 debian_neovim_version: 688b961d13bd # before cmake 3.16 requirement

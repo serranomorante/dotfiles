@@ -15,7 +15,7 @@
 - name: "[archlinux] Other tools: install jdownloader"
   community.general.flatpak:
     name: org.jdownloader.JDownloader
-    state: present
+    state: latest
   register: var_jdownloader_install
   ignore_errors: true
 
@@ -38,7 +38,7 @@
 
 - name: "[archlinux] Other tools: stat font markers"
   ansible.builtin.stat:
-    path: ~/.local/share/fonts/{{ item | basename | splitext | first }}/.ansible-font-installed
+    path: ~/.local/share/fonts/{{ item | basename | splitext | first }}/.ansible-font-installed-{{ item | hash('sha256') }}
   register: var_arch_font_markers
   loop: "{{ arch_fonts }}"
 
@@ -57,7 +57,7 @@
 - name: "[archlinux] Other tools: record font markers"
   ansible.builtin.copy:
     content: "{{ item.item }}\n"
-    dest: ~/.local/share/fonts/{{ item.item | basename | splitext | first }}/.ansible-font-installed
+    dest: ~/.local/share/fonts/{{ item.item | basename | splitext | first }}/.ansible-font-installed-{{ item.item | hash('sha256') }}
     mode: "644"
   loop: "{{ var_arch_font_installs.results }}"
   when: item.changed | default(false)

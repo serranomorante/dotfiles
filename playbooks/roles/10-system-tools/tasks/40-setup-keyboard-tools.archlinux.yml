@@ -18,8 +18,6 @@
   ansible.builtin.package:
     state: present
     name:
-      # Mouseless.click dependencies
-      - webkit2gtk-4.1
       # keyboard-midi-controller dependencies
       - alsa-lib
       - pipewire-jack
@@ -35,18 +33,47 @@
       # present-window serves selected X11 windows through x11vnc and noVNC.
       - x11vnc
 
+- name: "[archlinux] Keyboard peripheral: ensure runtime state dir"
+  ansible.builtin.file:
+    path: ~/.local/state/dotfiles
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Keyboard peripheral: inspect keyd remote commit"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
+      - ls-remote
+      - https://github.com/rvaiya/keyd
+      - refs/heads/master
+  register: var_keyd_remote_commit
+  changed_when: false
+
+- name: "[archlinux] Keyboard peripheral: set keyd build marker fact"
+  ansible.builtin.set_fact:
+    keyd_build_marker: "keyd-{{ var_keyd_remote_commit.stdout.split()[0] }}-midi-layers-v1"
+
+- name: "[archlinux] Keyboard peripheral: stat keyd build marker"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/{{ keyd_build_marker }}"
+  register: var_keyd_build_marker
+
+- name: "[archlinux] Keyboard peripheral: clean keyd checkout for new remote commit"
+  become: true
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/data/repos/keyd"
+    state: absent
+  when: not var_keyd_build_marker.stat.exists
+
 - name: "[archlinux] Keyboard peripheral: clone keyd"
-  ansible.builtin.include_role:
-    name: update-diff-capture
-    tasks_from: git
-  vars:
-    update_diff_capture_scope: keyboard-tools
-    update_diff_git_repo: https://github.com/rvaiya/keyd
-    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/keyd"
-    update_diff_git_version: master
-    update_diff_git_force: true
-    update_diff_git_single_branch: true
-    update_diff_git_depth: 100
+  ansible.builtin.git:
+    repo: https://github.com/rvaiya/keyd
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
+    dest: "{{ ansible_facts.env.HOME }}/data/repos/keyd"
+    version: "{{ var_keyd_remote_commit.stdout.split()[0] }}"
+    depth: 100
+    force: true
+  when: not var_keyd_build_marker.stat.exists
 
 - name: "[archlinux] Keyboard peripheral: patch keyd"
   ansible.posix.patch:
@@ -56,20 +83,25 @@
   loop:
     - dwm-support-keyd-application-mapper.patch
     - increase-max-layers-for-midi.patch
+  when: not var_keyd_build_marker.stat.exists
 
 - name: "[archlinux] Keyboard peripheral: install keyd"
   become: true
   ansible.builtin.shell: >
     set -o pipefail &&
     make &&
-    make install &&
-    install -d -o {{ ansible_facts.env.USER }} -g {{ ansible_facts.env.USER }} {{ ansible_facts.env.HOME }}/.local/state/dotfiles &&
-    touch {{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyd-build-midi-layers-v1 &&
-    chown {{ ansible_facts.env.USER }}:{{ ansible_facts.env.USER }} {{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyd-build-midi-layers-v1
+    make install
   args:
     chdir: "{{ ansible_facts.env.HOME }}/data/repos/keyd"
-    creates: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyd-build-midi-layers-v1"
+  when: not var_keyd_build_marker.stat.exists
   notify: "10-system-tools : handler_ensure_keyd_service"
+
+- name: "[archlinux] Keyboard peripheral: record keyd build marker"
+  ansible.builtin.copy:
+    content: "{{ var_keyd_remote_commit.stdout.split()[0] }}\n"
+    dest: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/{{ keyd_build_marker }}"
+    mode: "644"
+  when: not var_keyd_build_marker.stat.exists
 
 - name: "[archlinux] Keyboard peripheral: setup run as user script"
   become: true
@@ -262,16 +294,13 @@
     - "10-system-tools : handler_ensure_readline_mode_notify_service"
 
 - name: "[archlinux] Keyboard peripheral: clone mouseless"
-  ansible.builtin.include_role:
-    name: update-diff-capture
-    tasks_from: git
-  vars:
-    update_diff_capture_scope: keyboard-tools
-    update_diff_git_repo: https://github.com/jbensmann/mouseless
-    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/mouseless"
-    update_diff_git_version: main
-    update_diff_git_single_branch: true
-    update_diff_git_depth: 1
+  ansible.builtin.git:
+    repo: https://github.com/jbensmann/mouseless
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
+    dest: "{{ ansible_facts.env.HOME }}/data/repos/mouseless"
+    version: main
+    single_branch: true
+    depth: 1
   register: var_mouseless_clone
 
 - name: "[archlinux] Keyboard peripheral: queue mouseless handlers"
@@ -287,18 +316,41 @@
 - name: flush_handlers
   ansible.builtin.meta: flush_handlers
 
+- name: "[archlinux] Keyboard peripheral: inspect warpd remote commit"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
+      - ls-remote
+      - https://github.com/rvaiya/warpd
+      - refs/heads/master
+  register: var_warpd_remote_commit
+  changed_when: false
+
+- name: "[archlinux] Keyboard peripheral: set warpd build marker fact"
+  ansible.builtin.set_fact:
+    warpd_build_marker: "warpd-{{ var_warpd_remote_commit.stdout.split()[0] }}-patch-stack-v1"
+
+- name: "[archlinux] Keyboard peripheral: stat warpd build marker"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/{{ warpd_build_marker }}"
+  register: var_warpd_build_marker
+
+- name: "[archlinux] Keyboard peripheral: clean warpd checkout for new remote commit"
+  become: true
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/data/repos/warpd"
+    state: absent
+  when: not var_warpd_build_marker.stat.exists
+
 - name: "[archlinux] Keyboard peripheral: clone warpd"
-  ansible.builtin.include_role:
-    name: update-diff-capture
-    tasks_from: git
-  vars:
-    update_diff_capture_scope: keyboard-tools
-    update_diff_git_repo: https://github.com/rvaiya/warpd
-    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/warpd"
-    update_diff_git_version: master
-    update_diff_git_force: true
-    update_diff_git_single_branch: true
-    update_diff_git_depth: 1
+  ansible.builtin.git:
+    repo: https://github.com/rvaiya/warpd
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
+    dest: "{{ ansible_facts.env.HOME }}/data/repos/warpd"
+    version: "{{ var_warpd_remote_commit.stdout.split()[0] }}"
+    force: true
+    depth: 1
+  when: not var_warpd_build_marker.stat.exists
 
 - name: "[archlinux] Keyboard peripheral: patch warpd"
   ansible.posix.patch:
@@ -308,6 +360,7 @@
   loop:
     - horizontal_scroll.patch
     - typo.patch
+  when: not var_warpd_build_marker.stat.exists
 
 - name: "[archlinux] Keyboard peripheral: install warpd"
   become: true
@@ -316,7 +369,14 @@
     DISABLE_WAYLAND: "true"
   args:
     chdir: "{{ ansible_facts.env.HOME }}/data/repos/warpd"
-    creates: /usr/local/bin/warpd
+  when: not var_warpd_build_marker.stat.exists
+
+- name: "[archlinux] Keyboard peripheral: record warpd build marker"
+  ansible.builtin.copy:
+    content: "{{ var_warpd_remote_commit.stdout.split()[0] }}\n"
+    dest: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/{{ warpd_build_marker }}"
+    mode: "644"
+  when: not var_warpd_build_marker.stat.exists
 
 - name: "[archlinux] Keyboard peripheral: stop retired cursor indicator services"
   ansible.builtin.command:
@@ -349,19 +409,6 @@
     append: true
     groups: keyd
     name: "{{ ansible_facts.env.USER }}"
-
-- name: "[archlinux] Other tools: ensure keyboard-tools dir exists"
-  ansible.builtin.file:
-    path: ~/data/apps/keyboard-tools
-    state: directory
-    mode: "775"
-
-- name: "[archlinux] Keyboard peripheral: download mouseless.click"
-  ansible.builtin.get_url:
-    url: https://github.com/croian/mouseless/releases/download/v{{ arch_mouseless_click_version }}/Mouseless_v{{ arch_mouseless_click_version }}_arch-20251005.0.430597_x86_64.AppImage
-    dest: ~/data/apps/keyboard-tools/Mouseless.AppImage
-    mode: "755"
-  notify: handler_ensure_mouseless_click_service
 
 - name: flush_handlers
   ansible.builtin.meta: flush_handlers

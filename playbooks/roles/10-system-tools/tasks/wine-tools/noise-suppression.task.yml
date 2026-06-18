@@ -3,5 +3,11 @@
   ansible.builtin.unarchive:
     src: https://github.com/werman/noise-suppression-for-voice/releases/download/v{{ noise_suppression_for_voice_version }}/win-rnnoise.zip
     dest: ~/data/Downloads/music-production
-    creates: ~/data/Downloads/music-production/win-rnnoise
     remote_src: true
+    creates: ~/data/Downloads/music-production/.ansible-win-rnnoise-{{ noise_suppression_for_voice_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}
+
+- name: "[archlinux] Wine tools: record noise suppression marker"
+  ansible.builtin.copy:
+    content: "{{ noise_suppression_for_voice_version }}\n"
+    dest: ~/data/Downloads/music-production/.ansible-win-rnnoise-{{ noise_suppression_for_voice_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}
+    mode: "644"

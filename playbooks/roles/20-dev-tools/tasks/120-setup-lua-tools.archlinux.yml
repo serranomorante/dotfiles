@@ -5,14 +5,26 @@
     state: present
     name: luarocks
 
-- name: "[archlinux] Setup lua tools: ensure lua modules with diff capture"
-  ansible.builtin.include_role:
-    name: update-diff-capture
-    tasks_from: luarocks
-  vars:
-    update_diff_capture_scope: lua-tools
-    update_diff_luarocks_executable: /usr/bin/luarocks
-    update_diff_luarocks_become: true
-    update_diff_luarocks_packages:
-      - name: luaunit
-        creates: /usr/share/lua/*/luaunit.lua
+- name: "[archlinux] Setup lua tools: stat luaunit marker"
+  ansible.builtin.stat:
+    path: /usr/share/lua/.ansible-package-luaunit-{{ luaunit_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}
+  register: var_luaunit_marker
+
+- name: "[archlinux] Setup lua tools: ensure luaunit"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/luarocks
+      - install
+      - luaunit
+      - "{{ luaunit_version | regex_replace('^LUAUNIT_V([0-9]+)_([0-9]+)$', '\\1.\\2') }}"
+  when: not var_luaunit_marker.stat.exists
+  changed_when: true
+
+- name: "[archlinux] Setup lua tools: record luaunit marker"
+  become: true
+  ansible.builtin.copy:
+    content: "luaunit {{ luaunit_version }}\n"
+    dest: /usr/share/lua/.ansible-package-luaunit-{{ luaunit_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}
+    mode: "644"
+  when: not var_luaunit_marker.stat.exists

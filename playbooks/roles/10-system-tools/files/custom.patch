@@ -35,7 +35,6 @@ index 56ee471..7232cb5 100644
 +	{ NULL,                   NULL,                   "is sharing your screen.", 1 << 8,       1,           -1,        -1,-1,-1,-1,     -1                                  }, // send screen-sharing popup to tag 9
 +	{ "kcalc",                "kcalc",                NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1                                  }, // make calculator floating by default
 +	{ "plasmawindowed",       "plasmawindowed",       "Clipboard Popup",         0,            1,           -1,        -1,-1,-1,-1,     -1                                  }, // make clipboard popup floating by default
-+	{ "mouseless",            "Mouseless",            "Mouseless",               0,            1,           -1,        -1,-1,-1,-1,     -1                                  }, // make mouseless-click config floating by default
 +	{ "kronometer",           "kronometer",           NULL,                      0,            1,           -1,        -1,-1,1800,800,  -1                                  }, // make nnn picker floating by default
 +	{ "Bitwarden",            "bitwarden",            "Bitwarden",               1 << 8,       0,           -1,        -1,-1,-1,-1,     -1                                  }, // use tag 9 for bitwarden
 +	{ NULL,                   NULL,                   "NoiseTorch",              1 << 8,       0,           -1,        -1,-1,-1,-1,     -1                                  }, // use tag 3 for noisetorch

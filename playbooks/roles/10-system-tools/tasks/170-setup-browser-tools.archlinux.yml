@@ -32,9 +32,8 @@
 
 - name: "[archlinux] Setup browser tools: get chrome-session-dump"
   ansible.builtin.get_url:
-    url: https://github.com/lemnos/chrome-session-dump/releases/download/v0.0.2/chrome-session-dump-linux
-    dest: ~/data/apps/browser-tools/chrome/chrome-session-dump-linux
-    force: true
+    url: https://github.com/lemnos/chrome-session-dump/releases/download/v{{ chrome_session_dump_version }}/chrome-session-dump-linux
+    dest: ~/data/apps/browser-tools/chrome/chrome-session-dump-linux-v{{ chrome_session_dump_version }}
     mode: "755"
     timeout: 30
   register: var_chrome_session_dump_download
@@ -42,14 +41,15 @@
 
 - name: "[archlinux] Setup browser tools: symlink chrome-session-dump"
   ansible.builtin.file:
-    src: ~/data/apps/browser-tools/chrome/chrome-session-dump-linux
+    src: ~/data/apps/browser-tools/chrome/chrome-session-dump-linux-v{{ chrome_session_dump_version }}
     dest: ~/bin/chrome-session-dump
     state: link
+    force: true
 
 - name: "[archlinux] Setup browser tools: ensure ruby packages"
   community.general.gem:
     name: "{{ item }}"
-    state: present
+    state: latest
   loop:
     - base64
     - extensionator

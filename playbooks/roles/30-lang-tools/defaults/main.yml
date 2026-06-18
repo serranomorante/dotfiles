@@ -4,6 +4,7 @@ bash_debug_adapter_version: 0.3.7
 vscode_js_debug_version: 1.117.0
 arch_superhtml_version: 0.5.3
 noise_suppression_for_voice_version: "1.10"
+ansible_lint_version: 26.4.0
 vscode_go_version: "0.54.0"
 mdcat_version: 2.7.1
 node_javascript_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/javascript-tools/.npm"

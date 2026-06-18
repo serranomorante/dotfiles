@@ -47,6 +47,17 @@
     - "{{ ansible_facts.env.HOME }}/.local/state/firejail-wrapper/node"
     - "{{ ansible_facts.env.HOME }}/.local/share/firejail-wrapper/node"
 
+- name: "[archlinux] Setup node: ensure volta tool project dir"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools"
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Setup node: stat volta marker"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools/.ansible-volta-{{ volta_version }}"
+  register: var_volta_marker
+
 - name: "[archlinux] Setup node: install volta"
   ansible.builtin.command:
     argv:
@@ -61,10 +72,16 @@
       - "XDG_STATE_HOME={{ ansible_facts.env.HOME }}/.local/state/firejail-wrapper/node"
       - bash
       - -lc
-      - "set -o pipefail && curl https://get.volta.sh | bash -s -- --skip-setup"
+      - "set -o pipefail && curl https://get.volta.sh | bash -s -- --skip-setup --version {{ volta_version }}"
   changed_when: true
-  args:
-    creates: "{{ node_volta_home }}/bin/volta"
+  when: not var_volta_marker.stat.exists
+
+- name: "[archlinux] Setup node: record volta marker"
+  ansible.builtin.copy:
+    content: "{{ volta_version }}\n"
+    dest: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools/.ansible-volta-{{ volta_version }}"
+    mode: "644"
+  when: not var_volta_marker.stat.exists
 
 - name: "[archlinux] Setup node: install generic firejail node wrapper"
   ansible.builtin.copy:
@@ -98,12 +115,6 @@
       {% endif %}
   loop:
     - { script: ~/dotfiles/home/dot-bashrc }
-
-- name: "[archlinux] Setup node: ensure volta tool project dir"
-  ansible.builtin.file:
-    path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools"
-    state: directory
-    mode: "755"
 
 - name: "[archlinux] Setup node: install node versions"
   ansible.builtin.command:

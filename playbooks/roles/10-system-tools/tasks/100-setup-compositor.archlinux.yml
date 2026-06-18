@@ -46,21 +46,38 @@
     dest: ~/.config/picom/
     mode: "644"
 
+- name: "[archlinux] Compositor: inspect dwm remote commit"
+  ansible.builtin.command:
+    argv:
+      - git
+      - ls-remote
+      - git://git.suckless.org/dwm
+      - HEAD
+  register: var_dwm_remote_commit
+  changed_when: false
+
+- name: "[archlinux] Compositor: set dwm patch marker fact"
+  ansible.builtin.set_fact:
+    dwm_patch_marker: "dwm-{{ var_dwm_remote_commit.stdout.split()[0] }}-patch-stack-v1"
+
 - name: "[archlinux] Compositor: stat dwm patch marker"
   ansible.builtin.stat:
-    path: ~/data/repos/dwm/.ansible-dwm-patches-{{ arch_dwm_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}-patch-stack-v1
+    path: ~/data/repos/dwm/.ansible-{{ dwm_patch_marker }}
   register: var_dwm_patch_marker
 
+- name: "[archlinux] Compositor: clean dwm checkout for new remote commit"
+  become: true
+  ansible.builtin.file:
+    path: ~/data/repos/dwm
+    state: absent
+  when: not var_dwm_patch_marker.stat.exists
+
 - name: "[archlinux] Compositor: clone latest dwm"
-  ansible.builtin.include_role:
-    name: update-diff-capture
-    tasks_from: git
-  vars:
-    update_diff_capture_scope: compositor-tools
-    update_diff_git_repo: git://git.suckless.org/dwm
-    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/dwm"
-    update_diff_git_version: "{{ arch_dwm_version }}"
-    update_diff_git_force: true
+  ansible.builtin.git:
+    repo: git://git.suckless.org/dwm
+    dest: "{{ ansible_facts.env.HOME }}/data/repos/dwm"
+    version: "{{ var_dwm_remote_commit.stdout.split()[0] }}"
+    force: true
   register: var_dwm_clone
   when: not var_dwm_patch_marker.stat.exists
 
@@ -151,8 +168,8 @@
 
 - name: "[archlinux] Compositor: record dwm patch marker"
   ansible.builtin.copy:
-    content: "{{ arch_dwm_version }}:patch-stack-v1\n"
-    dest: ~/data/repos/dwm/.ansible-dwm-patches-{{ arch_dwm_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}-patch-stack-v1
+    content: "{{ var_dwm_remote_commit.stdout.split()[0] }}:patch-stack-v1\n"
+    dest: ~/data/repos/dwm/.ansible-{{ dwm_patch_marker }}
     mode: "644"
   when: not var_dwm_patch_marker.stat.exists
 

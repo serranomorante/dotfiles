@@ -4,10 +4,59 @@
   vars:
     aur_local_packages: vscode-langservers-extracted
 
-- name: "[archlinux] HTML language: ensure superhtml"
-  ansible.builtin.unarchive:
-    src: https://github.com/kristoff-it/superhtml/releases/download/v{{ arch_superhtml_version }}/x86_64-linux-musl.tar.gz
-    dest: ~/bin
-    remote_src: true
-    creates: ~/bin/superhtml
-    extra_opts: ["--strip-components=2", "--show-stored-names"]
+- name: "[archlinux] HTML language: ensure superhtml download directory"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/superhtml"
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] HTML language: stat superhtml marker"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/superhtml/.ansible-superhtml-{{ arch_superhtml_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
+  register: var_superhtml_marker
+
+- name: "[archlinux] HTML language: download superhtml"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/superhtml"
+      - --
+      - curl
+      - -L
+      - -o
+      - "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/superhtml/superhtml-{{ arch_superhtml_version }}.tar.gz"
+      - "https://github.com/kristoff-it/superhtml/releases/download/v{{ arch_superhtml_version }}/x86_64-linux-musl.tar.gz"
+  environment:
+    FJ_PY_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/data/apps/lang-tools/superhtml
+  args:
+    creates: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/superhtml/superhtml-{{ arch_superhtml_version }}.tar.gz"
+  when: not var_superhtml_marker.stat.exists
+
+- name: "[archlinux] HTML language: install superhtml"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - offline
+      - "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/superhtml"
+      - --
+      - bsdtar
+      - -xf
+      - "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/superhtml/superhtml-{{ arch_superhtml_version }}.tar.gz"
+      - -C
+      - "{{ ansible_facts.env.HOME }}/bin"
+      - --strip-components=2
+  environment:
+    FJ_PY_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/bin
+      {{ ansible_facts.env.HOME }}/data/apps/lang-tools/superhtml
+  when: not var_superhtml_marker.stat.exists
+  changed_when: true
+
+- name: "[archlinux] HTML language: record superhtml marker"
+  ansible.builtin.copy:
+    content: "{{ arch_superhtml_version }}\n"
+    dest: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/superhtml/.ansible-superhtml-{{ arch_superhtml_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
+    mode: "644"
+  when: not var_superhtml_marker.stat.exists

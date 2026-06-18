@@ -1,5 +1,10 @@
 ---
 - block:
+    - name: Prepare python sandbox before C setup
+      ansible.builtin.include_role:
+        name: 20-dev-tools
+        tasks_from: python
+
     - name: Setup C tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
@@ -117,6 +122,11 @@
   tags: ["30-100"]
 
 - block:
+    - name: Prepare python sandbox before html setup
+      ansible.builtin.include_role:
+        name: 20-dev-tools
+        tasks_from: python
+
     - name: Setup html tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
