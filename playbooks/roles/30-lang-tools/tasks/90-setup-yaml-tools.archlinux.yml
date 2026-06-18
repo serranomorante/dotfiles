@@ -7,27 +7,23 @@
       - yamllint
       - yaml-language-server
 
-- name: "[archlinux] Yaml language: ensure ansible-lint"
-  ansible.builtin.command:
-    argv:
-      - "{{ python_firejail_executable }}"
-      - online
-      - "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/uv-tools"
-      - --
-      - uv
-      - tool
-      - install
-      - --python=3.12
-      - ansible-lint
-  args:
-    creates: ~/.local/bin/ansible-lint
-  environment:
-    UV_TOOL_DIR: "{{ ansible_facts.env.HOME }}/.local/share/uv/tools"
-    UV_TOOL_BIN_DIR: "{{ ansible_facts.env.HOME }}/.local/bin"
-    FJ_PY_WRITABLE_PATHS: |
+- name: "[archlinux] Yaml language: ensure ansible-lint with diff capture"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: uv-tool
+  vars:
+    update_diff_capture_scope: yaml-language
+    update_diff_uv_firejail_executable: "{{ python_firejail_executable }}"
+    update_diff_uv_project_dir: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/uv-tools"
+    update_diff_uv_tool_dir: "{{ ansible_facts.env.HOME }}/.local/share/uv/tools"
+    update_diff_uv_bin_dir: "{{ ansible_facts.env.HOME }}/.local/bin"
+    update_diff_uv_writable_paths: |
       {{ ansible_facts.env.HOME }}/.local/bin
       {{ ansible_facts.env.HOME }}/.local/share/uv
       {{ ansible_facts.env.HOME }}/.local/share/uv/tools
+    update_diff_uv_tools:
+      - name: ansible-lint
+        creates: ~/.local/bin/ansible-lint
 
 - name: "[archlinux] Yaml language: ensure ansible language server npm packages with diff capture"
   ansible.builtin.include_role:

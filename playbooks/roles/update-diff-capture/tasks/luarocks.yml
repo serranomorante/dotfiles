@@ -1,0 +1,102 @@
+---
+- name: "[{{ update_diff_capture_scope | default('ansible-luarocks') }}] luarocks update diffs: validate variables"
+  ansible.builtin.assert:
+    that:
+      - update_diff_luarocks_packages is defined
+      - update_diff_luarocks_executable is defined
+    quiet: true
+
+- name: "[{{ update_diff_capture_scope | default('ansible-luarocks') }}] update diffs: install helper scripts once"
+  ansible.builtin.include_tasks: install.yml
+  when: not update_diff_capture_helpers_installed | default(false)
+
+- name: "[{{ update_diff_capture_scope | default('ansible-luarocks') }}] luarocks update diffs: read versions before install"
+  ansible.builtin.command:
+    argv:
+      - "{{ update_diff_capture_script }}"
+      - luarocks-version
+      - --name
+      - "{{ item.name }}"
+      - --luarocks-executable
+      - "{{ update_diff_luarocks_executable }}"
+  loop: "{{ update_diff_luarocks_packages }}"
+  loop_control:
+    label: "{{ item.name }}"
+  changed_when: false
+  register: update_diff_luarocks_package_versions_before
+
+- name: "[{{ update_diff_capture_scope | default('ansible-luarocks') }}] luarocks update diffs: ensure packages"
+  become: "{{ update_diff_luarocks_become | default(false) }}"
+  ansible.builtin.command:
+    argv: "{{ [update_diff_luarocks_executable, 'install', item.name] + ((item.version is defined) | ternary([item.version], [])) }}"
+  args:
+    creates: "{{ item.creates | default(omit) }}"
+  loop: "{{ update_diff_luarocks_packages }}"
+  loop_control:
+    extended: true
+    label: "{{ item.name }}"
+  register: update_diff_luarocks_package_installs
+
+- name: "[{{ update_diff_capture_scope | default('ansible-luarocks') }}] luarocks update diffs: read versions after install"
+  ansible.builtin.command:
+    argv:
+      - "{{ update_diff_capture_script }}"
+      - luarocks-version
+      - --name
+      - "{{ item.name }}"
+      - --luarocks-executable
+      - "{{ update_diff_luarocks_executable }}"
+  loop: "{{ update_diff_luarocks_package_installs.results | map(attribute='item') | list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  changed_when: false
+  register: update_diff_luarocks_package_versions_after
+
+- name: "[{{ update_diff_capture_scope | default('ansible-luarocks') }}] luarocks update diffs: archive observed package diffs"
+  ansible.builtin.command:
+    argv: >-
+      {{
+        [
+          update_diff_capture_script,
+          'luarocks',
+          '--state-dir',
+          update_diff_capture_state_dir,
+          '--scope',
+          update_diff_capture_scope | default('ansible-luarocks'),
+          '--name',
+          item.item.name,
+          '--to',
+          item.stdout,
+          '--luarocks-executable',
+          update_diff_luarocks_executable
+        ]
+        + (
+          (update_diff_luarocks_package_versions_before.results[ansible_loop.index0].stdout | default('') | length > 0)
+          | ternary(['--from', update_diff_luarocks_package_versions_before.results[ansible_loop.index0].stdout], ['--from-absent'])
+        )
+      }}
+  loop: "{{ update_diff_luarocks_package_versions_after.results }}"
+  loop_control:
+    extended: true
+    label: "{{ item.item.name }} -> {{ item.stdout | default('') }}"
+  when:
+    - update_diff_capture_enabled | bool
+    - not update_diff_luarocks_package_installs.results[ansible_loop.index0].skipped | default(false)
+    - not update_diff_luarocks_package_installs.results[ansible_loop.index0].failed | default(false)
+    - item.stdout | default('') | length > 0
+    - (update_diff_luarocks_package_versions_before.results[ansible_loop.index0].stdout | default('')) != (item.stdout | default(''))
+  changed_when: false
+
+- name: "[{{ update_diff_capture_scope | default('ansible-luarocks') }}] luarocks update diffs: record package markers"
+  become: "{{ update_diff_luarocks_become | default(false) }}"
+  ansible.builtin.copy:
+    content: "{{ item.item.name }} {{ item.item.version }}\n"
+    dest: "{{ update_diff_luarocks_marker_dir | default('/usr/share/lua') }}/.ansible-package-{{ item.item.name | regex_replace('[^A-Za-z0-9_.-]', '_') }}-{{ item.item.version }}"
+    mode: "644"
+  loop: "{{ update_diff_luarocks_package_installs.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when:
+    - item.item.version is defined
+    - not item.skipped | default(false)
+    - not item.failed | default(false)

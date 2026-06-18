@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Purpose: Capture best-effort before/after diffs for package updates managed by Ansible.
-# Usage: update-diff-capture npm|npm-version|pip|pip-version|git [OPTIONS]
+# Usage: update-diff-capture npm|npm-version|pip|pip-version|uv-tool|uv-tool-version|luarocks|luarocks-version|git [OPTIONS]
 # Notes: Captures are stored as small Git repositories so Diffview can inspect them later.
 
 prog=${0##*/}
@@ -16,6 +16,10 @@ Usage:
   $prog npm-version --prefix DIR --name PACKAGE --npm-executable PATH
   $prog pip --venv DIR --name PACKAGE --to VERSION --pip-executable PATH [--from VERSION|--from-absent] [--state-dir DIR] [--scope NAME]
   $prog pip-version --venv DIR --name PACKAGE --pip-executable PATH
+  $prog uv-tool --name PACKAGE --to VERSION [--from VERSION|--from-absent] [--state-dir DIR] [--scope NAME]
+  $prog uv-tool-version --tool-dir DIR --name PACKAGE
+  $prog luarocks --name ROCK --to VERSION --luarocks-executable PATH [--from VERSION|--from-absent] [--state-dir DIR] [--scope NAME]
+  $prog luarocks-version --name ROCK --luarocks-executable PATH
   $prog git --repo URL --dest DIR --to REF [--state-dir DIR] [--scope NAME]
 
 Environment:
@@ -370,6 +374,20 @@ else:
 PY
 }
 
+python_pip_download_one() {
+    local spec=$1
+    local out_dir=$2
+    mkdir -p "$out_dir"
+    python3 -m pip download --no-deps "$spec" -d "$out_dir" >/dev/null
+    local archive
+    archive=$(find "$out_dir" -maxdepth 1 -type f | sort | tail -n 1)
+    if [ -z "$archive" ]; then
+        printf 'pip download produced no archive for %s in %s\n' "$spec" "$out_dir" >&2
+        return 1
+    fi
+    printf '%s\n' "$archive"
+}
+
 capture_pip() {
     local venv=
     local name=
@@ -481,6 +499,249 @@ show_pip_version() {
     [ -x "$pip_executable" ] || die "pip executable is not executable: $pip_executable"
 
     pip_installed_version "$pip_executable" "$venv" "$name" || true
+}
+
+uv_tool_installed_version() {
+    local tool_dir=$1
+    local name=$2
+    [ -d "$tool_dir" ] || return 1
+    python3 - "$tool_dir" "$name" <<'PY'
+import email.parser
+import pathlib
+import re
+import sys
+
+tool_dir = pathlib.Path(sys.argv[1]).expanduser()
+wanted = re.sub(r"[-_.]+", "-", sys.argv[2].lower())
+
+metadata_files = sorted(tool_dir.glob("*/lib/python*/site-packages/*.dist-info/METADATA"))
+for metadata_path in metadata_files:
+    try:
+        metadata = email.parser.Parser().parsestr(metadata_path.read_text(encoding="utf-8", errors="replace"))
+    except OSError:
+        continue
+    name = metadata.get("Name", "")
+    version = metadata.get("Version", "")
+    if re.sub(r"[-_.]+", "-", name.lower()) == wanted and version:
+        print(version)
+        sys.exit(0)
+sys.exit(1)
+PY
+}
+
+capture_uv_tool() {
+    local name=
+    local to_version=
+    local from_version=
+    local from_version_set=0
+
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+        --state-dir) state_dir=$2; shift 2 ;;
+        --scope) scope=$2; shift 2 ;;
+        --name) name=$2; shift 2 ;;
+        --to) to_version=$2; shift 2 ;;
+        --from) from_version=$2; from_version_set=1; shift 2 ;;
+        --from-absent) from_version=; from_version_set=1; shift ;;
+        -h | --help) usage; exit 0 ;;
+        *) die "unknown uv-tool option: $1" ;;
+        esac
+    done
+
+    [ -n "$name" ] || die "uv-tool --name is required"
+    [ -n "$to_version" ] || die "uv-tool --to is required"
+    need git
+    need python3
+
+    local created
+    created=$(timestamp_utc)
+    local item_dir
+    item_dir=$(run_root "$created")/uv-tool/$(safe_name "$name")
+
+    if [ -z "$from_version" ] && [ "$from_version_set" -eq 0 ]; then
+        from_version=
+    fi
+    if [ -z "$from_version" ]; then
+        mkdir -p "$item_dir"
+        write_manifest "$item_dir/manifest.json" uv-tool "$name" "" "$to_version" initial-install metadata-only "" "" "pypi:${name}" "" "$created"
+        write_summary "$item_dir/summary.md" "uv-tool ${name}" "" "$to_version" initial-install metadata-only "" ""
+        set_latest "$(dirname "$(dirname "$item_dir")")"
+        printf 'initial-install\t%s\t%s\n' "$name" "$to_version"
+        return 0
+    fi
+
+    if [ "$from_version" = "$to_version" ]; then
+        printf 'unchanged\t%s\t%s\n' "$name" "$to_version"
+        return 0
+    fi
+
+    local tmp
+    tmp=$(mktemp -d)
+    trap "rm -rf -- $(printf '%q' "$tmp")" EXIT
+    mkdir -p "$item_dir"
+    mkdir -p "$tmp/packs-before" "$tmp/packs-after" "$tmp/before" "$tmp/after"
+    local before_archive after_archive
+    if ! before_archive=$(python_pip_download_one "${name}==${from_version}" "$tmp/packs-before" 2>"$tmp/before-download.err"); then
+        record_capture_failure "$item_dir" uv-tool "$name" "$from_version" "$to_version" "pypi:${name}" "$created" "$(cat "$tmp/before-download.err")"
+        return 0
+    fi
+    if ! after_archive=$(python_pip_download_one "${name}==${to_version}" "$tmp/packs-after" 2>"$tmp/after-download.err"); then
+        record_capture_failure "$item_dir" uv-tool "$name" "$from_version" "$to_version" "pypi:${name}" "$created" "$(cat "$tmp/after-download.err")"
+        return 0
+    fi
+    if ! unpack_python_archive "$before_archive" "$tmp/before" 2>"$tmp/before-unpack.err"; then
+        record_capture_failure "$item_dir" uv-tool "$name" "$from_version" "$to_version" "pypi:${name}" "$created" "$(cat "$tmp/before-unpack.err")"
+        return 0
+    fi
+    if ! unpack_python_archive "$after_archive" "$tmp/after" 2>"$tmp/after-unpack.err"; then
+        record_capture_failure "$item_dir" uv-tool "$name" "$from_version" "$to_version" "pypi:${name}" "$created" "$(cat "$tmp/after-unpack.err")"
+        return 0
+    fi
+
+    local repo=$item_dir/repo
+    mkdir -p "$repo"
+    git -C "$repo" init -q
+    copy_snapshot "$tmp/before" "$repo"
+    commit_snapshot "$repo" "before ${name}==${from_version}"
+    copy_snapshot "$tmp/after" "$repo"
+    commit_snapshot "$repo" "after ${name}==${to_version}"
+    git -C "$repo" diff --binary HEAD~1..HEAD >"$item_dir/diff.patch"
+    write_manifest "$item_dir/manifest.json" uv-tool "$name" "$from_version" "$to_version" captured artifact "$repo" "$item_dir/diff.patch" "pypi:${name}" "HEAD~1..HEAD" "$created"
+    write_summary "$item_dir/summary.md" "uv-tool ${name}" "$from_version" "$to_version" captured artifact "$repo" "HEAD~1..HEAD"
+    set_latest "$(dirname "$(dirname "$item_dir")")"
+    printf 'captured\t%s\t%s -> %s\t%s\n' "$name" "$from_version" "$to_version" "$item_dir"
+}
+
+show_uv_tool_version() {
+    local tool_dir=
+    local name=
+
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+        --tool-dir) tool_dir=$2; shift 2 ;;
+        --name) name=$2; shift 2 ;;
+        -h | --help) usage; exit 0 ;;
+        *) die "unknown uv-tool-version option: $1" ;;
+        esac
+    done
+
+    [ -n "$tool_dir" ] || die "uv-tool-version --tool-dir is required"
+    [ -n "$name" ] || die "uv-tool-version --name is required"
+
+    uv_tool_installed_version "$tool_dir" "$name" || true
+}
+
+luarocks_installed_version() {
+    local luarocks_executable=$1
+    local name=$2
+    "$luarocks_executable" show --mversion "$name" 2>/dev/null || true
+}
+
+luarocks_unpack_one() {
+    local luarocks_executable=$1
+    local name=$2
+    local version=$3
+    local out_dir=$4
+    mkdir -p "$out_dir"
+    (cd "$out_dir" && "$luarocks_executable" unpack --force "$name" "$version" >/dev/null)
+}
+
+capture_luarocks() {
+    local name=
+    local to_version=
+    local from_version=
+    local from_version_set=0
+    local luarocks_executable=
+
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+        --state-dir) state_dir=$2; shift 2 ;;
+        --scope) scope=$2; shift 2 ;;
+        --name) name=$2; shift 2 ;;
+        --to) to_version=$2; shift 2 ;;
+        --from) from_version=$2; from_version_set=1; shift 2 ;;
+        --from-absent) from_version=; from_version_set=1; shift ;;
+        --luarocks-executable) luarocks_executable=$2; shift 2 ;;
+        -h | --help) usage; exit 0 ;;
+        *) die "unknown luarocks option: $1" ;;
+        esac
+    done
+
+    [ -n "$name" ] || die "luarocks --name is required"
+    [ -n "$to_version" ] || die "luarocks --to is required"
+    [ -n "$luarocks_executable" ] || die "luarocks --luarocks-executable is required"
+    [ -x "$luarocks_executable" ] || die "luarocks executable is not executable: $luarocks_executable"
+    need git
+    need python3
+
+    if [ "$from_version_set" -eq 0 ]; then
+        from_version=$(luarocks_installed_version "$luarocks_executable" "$name" || true)
+    fi
+    local created
+    created=$(timestamp_utc)
+    local item_dir
+    item_dir=$(run_root "$created")/luarocks/$(safe_name "$name")
+
+    if [ -z "$from_version" ]; then
+        mkdir -p "$item_dir"
+        write_manifest "$item_dir/manifest.json" luarocks "$name" "" "$to_version" initial-install metadata-only "" "" "luarocks:${name}" "" "$created"
+        write_summary "$item_dir/summary.md" "luarocks ${name}" "" "$to_version" initial-install metadata-only "" ""
+        set_latest "$(dirname "$(dirname "$item_dir")")"
+        printf 'initial-install\t%s\t%s\n' "$name" "$to_version"
+        return 0
+    fi
+
+    if [ "$from_version" = "$to_version" ]; then
+        printf 'unchanged\t%s\t%s\n' "$name" "$to_version"
+        return 0
+    fi
+
+    local tmp
+    tmp=$(mktemp -d)
+    trap "rm -rf -- $(printf '%q' "$tmp")" EXIT
+    mkdir -p "$item_dir"
+    mkdir -p "$tmp/before" "$tmp/after"
+    if ! luarocks_unpack_one "$luarocks_executable" "$name" "$from_version" "$tmp/before" 2>"$tmp/before-unpack.err"; then
+        record_capture_failure "$item_dir" luarocks "$name" "$from_version" "$to_version" "luarocks:${name}" "$created" "$(cat "$tmp/before-unpack.err")"
+        return 0
+    fi
+    if ! luarocks_unpack_one "$luarocks_executable" "$name" "$to_version" "$tmp/after" 2>"$tmp/after-unpack.err"; then
+        record_capture_failure "$item_dir" luarocks "$name" "$from_version" "$to_version" "luarocks:${name}" "$created" "$(cat "$tmp/after-unpack.err")"
+        return 0
+    fi
+
+    local repo=$item_dir/repo
+    mkdir -p "$repo"
+    git -C "$repo" init -q
+    copy_snapshot "$tmp/before" "$repo"
+    commit_snapshot "$repo" "before ${name}-${from_version}"
+    copy_snapshot "$tmp/after" "$repo"
+    commit_snapshot "$repo" "after ${name}-${to_version}"
+    git -C "$repo" diff --binary HEAD~1..HEAD >"$item_dir/diff.patch"
+    write_manifest "$item_dir/manifest.json" luarocks "$name" "$from_version" "$to_version" captured source "$repo" "$item_dir/diff.patch" "luarocks:${name}" "HEAD~1..HEAD" "$created"
+    write_summary "$item_dir/summary.md" "luarocks ${name}" "$from_version" "$to_version" captured source "$repo" "HEAD~1..HEAD"
+    set_latest "$(dirname "$(dirname "$item_dir")")"
+    printf 'captured\t%s\t%s -> %s\t%s\n' "$name" "$from_version" "$to_version" "$item_dir"
+}
+
+show_luarocks_version() {
+    local name=
+    local luarocks_executable=
+
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+        --name) name=$2; shift 2 ;;
+        --luarocks-executable) luarocks_executable=$2; shift 2 ;;
+        -h | --help) usage; exit 0 ;;
+        *) die "unknown luarocks-version option: $1" ;;
+        esac
+    done
+
+    [ -n "$name" ] || die "luarocks-version --name is required"
+    [ -n "$luarocks_executable" ] || die "luarocks-version --luarocks-executable is required"
+    [ -x "$luarocks_executable" ] || die "luarocks executable is not executable: $luarocks_executable"
+
+    luarocks_installed_version "$luarocks_executable" "$name" || true
 }
 
 git_cache_dir() {
@@ -608,6 +869,10 @@ main() {
     npm-version) shift; show_npm_version "$@" ;;
     pip) shift; capture_pip "$@" ;;
     pip-version) shift; show_pip_version "$@" ;;
+    uv-tool) shift; capture_uv_tool "$@" ;;
+    uv-tool-version) shift; show_uv_tool_version "$@" ;;
+    luarocks) shift; capture_luarocks "$@" ;;
+    luarocks-version) shift; show_luarocks_version "$@" ;;
     git) shift; capture_git "$@" ;;
     -h | --help) usage ;;
     *) die "unknown action: $1" ;;

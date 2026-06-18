@@ -1,0 +1,116 @@
+---
+- name: "[{{ update_diff_capture_scope | default('ansible-uv-tool') }}] uv tool update diffs: validate variables"
+  ansible.builtin.assert:
+    that:
+      - update_diff_uv_tool_dir is defined
+      - update_diff_uv_bin_dir is defined
+      - update_diff_uv_project_dir is defined
+      - update_diff_uv_firejail_executable is defined
+      - update_diff_uv_tools is defined
+    quiet: true
+
+- name: "[{{ update_diff_capture_scope | default('ansible-uv-tool') }}] update diffs: install helper scripts once"
+  ansible.builtin.include_tasks: install.yml
+  when: not update_diff_capture_helpers_installed | default(false)
+
+- name: "[{{ update_diff_capture_scope | default('ansible-uv-tool') }}] uv tool update diffs: read versions before install"
+  ansible.builtin.command:
+    argv:
+      - "{{ update_diff_capture_script }}"
+      - uv-tool-version
+      - --tool-dir
+      - "{{ update_diff_uv_tool_dir }}"
+      - --name
+      - "{{ item.lookup_name | default(item.name) }}"
+  loop: "{{ update_diff_uv_tools }}"
+  loop_control:
+    label: "{{ item.lookup_name | default(item.name) }}"
+  changed_when: false
+  register: update_diff_uv_tool_versions_before
+
+- name: "[{{ update_diff_capture_scope | default('ansible-uv-tool') }}] uv tool update diffs: ensure tools"
+  ansible.builtin.command:
+    argv:
+      - "{{ update_diff_uv_firejail_executable }}"
+      - online
+      - "{{ update_diff_uv_project_dir }}"
+      - --
+      - "{{ update_diff_uv_executable | default('uv') }}"
+      - tool
+      - install
+      - "--python={{ item.python | default(update_diff_uv_python | default('3.12')) }}"
+      - "{{ item.name }}{% if item.version is defined %}=={{ item.version }}{% endif %}"
+  args:
+    creates: "{{ item.creates | default(omit) }}"
+  environment: "{{ update_diff_uv_environment | default({}) | combine({
+    'UV_TOOL_DIR': update_diff_uv_tool_dir,
+    'UV_TOOL_BIN_DIR': update_diff_uv_bin_dir,
+    'FJ_PY_WRITABLE_PATHS': update_diff_uv_writable_paths | default(update_diff_uv_bin_dir ~ '\n' ~ update_diff_uv_tool_dir ~ '\n' ~ (update_diff_uv_tool_dir | dirname))
+  }) }}"
+  loop: "{{ update_diff_uv_tools }}"
+  loop_control:
+    extended: true
+    label: "{{ item.name }}"
+  register: update_diff_uv_tool_installs
+  timeout: "{{ update_diff_uv_timeout | default(0) }}"
+
+- name: "[{{ update_diff_capture_scope | default('ansible-uv-tool') }}] uv tool update diffs: read versions after install"
+  ansible.builtin.command:
+    argv:
+      - "{{ update_diff_capture_script }}"
+      - uv-tool-version
+      - --tool-dir
+      - "{{ update_diff_uv_tool_dir }}"
+      - --name
+      - "{{ item.lookup_name | default(item.name) }}"
+  loop: "{{ update_diff_uv_tool_installs.results | map(attribute='item') | list }}"
+  loop_control:
+    label: "{{ item.lookup_name | default(item.name) }}"
+  changed_when: false
+  register: update_diff_uv_tool_versions_after
+
+- name: "[{{ update_diff_capture_scope | default('ansible-uv-tool') }}] uv tool update diffs: archive observed tool diffs"
+  ansible.builtin.command:
+    argv: >-
+      {{
+        [
+          update_diff_capture_script,
+          'uv-tool',
+          '--state-dir',
+          update_diff_capture_state_dir,
+          '--scope',
+          update_diff_capture_scope | default('ansible-uv-tool'),
+          '--name',
+          item.item.lookup_name | default(item.item.name),
+          '--to',
+          item.stdout
+        ]
+        + (
+          (update_diff_uv_tool_versions_before.results[ansible_loop.index0].stdout | default('') | length > 0)
+          | ternary(['--from', update_diff_uv_tool_versions_before.results[ansible_loop.index0].stdout], ['--from-absent'])
+        )
+      }}
+  loop: "{{ update_diff_uv_tool_versions_after.results }}"
+  loop_control:
+    extended: true
+    label: "{{ item.item.lookup_name | default(item.item.name) }} -> {{ item.stdout | default('') }}"
+  when:
+    - update_diff_capture_enabled | bool
+    - not update_diff_uv_tool_installs.results[ansible_loop.index0].skipped | default(false)
+    - not update_diff_uv_tool_installs.results[ansible_loop.index0].failed | default(false)
+    - item.stdout | default('') | length > 0
+    - (update_diff_uv_tool_versions_before.results[ansible_loop.index0].stdout | default('')) != (item.stdout | default(''))
+  changed_when: false
+
+- name: "[{{ update_diff_capture_scope | default('ansible-uv-tool') }}] uv tool update diffs: record tool markers"
+  ansible.builtin.copy:
+    content: "{{ item.item.name }}=={{ item.item.version }}\n"
+    dest: "{{ update_diff_uv_tool_dir }}/.ansible-package-{{ item.item.name | regex_replace('[^A-Za-z0-9_.-]', '_') }}-{{ item.item.version }}"
+    mode: "644"
+  loop: "{{ update_diff_uv_tool_installs.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when:
+    - item.item.version is defined
+    - not item.skipped | default(false)
+    - not item.failed | default(false)

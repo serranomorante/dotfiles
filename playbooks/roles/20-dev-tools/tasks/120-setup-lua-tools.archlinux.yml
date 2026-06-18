@@ -5,8 +5,14 @@
     state: present
     name: luarocks
 
-- name: "[archlinux] Setup lua tools: ensure lua modules"
-  become: true
-  ansible.builtin.command: luarocks install luaunit
-  args:
-    creates: /usr/share/lua/*/luaunit.lua
+- name: "[archlinux] Setup lua tools: ensure lua modules with diff capture"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: luarocks
+  vars:
+    update_diff_capture_scope: lua-tools
+    update_diff_luarocks_executable: /usr/bin/luarocks
+    update_diff_luarocks_become: true
+    update_diff_luarocks_packages:
+      - name: luaunit
+        creates: /usr/share/lua/*/luaunit.lua
