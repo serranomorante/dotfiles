@@ -9,6 +9,7 @@ set -euo pipefail
 # dotfiles-test-case: keyboard-midi-controller-wrapper-compile-cache
 # dotfiles-test-case: mode-osd-wrapper-compile-cache
 # dotfiles-test-case: keyboard-midi-controller-keyd-template-check
+# dotfiles-test-case: vim-register-clipboard-keyd-template-contract
 # dotfiles-test-case: keyboard-midi-controller-dotfiles-contract
 
 # Purpose: Verify the HHKB MIDI controller daemon and its dotfiles integration.
@@ -147,6 +148,17 @@ keyboard-midi-controller-keyd-template-check)
     keyd_binary="$(keyd_check_binary)"
     ansible localhost -m ansible.builtin.template -a "src=${keyd_template} dest=${rendered} mode=0644" -e "@${peripherals_vars}" -e '{"ansible_user_uid":1000,"ansible_facts":{"env":{"USER":"aaaa","HOME":"/home/aaaa"}}}' >/dev/null
     "$keyd_binary" check "$rendered"
+    ;;
+vim-register-clipboard-keyd-template-contract)
+    sh -n "${DOTFILES_TEST_ROOT}/utilities/bin/vim-register-clipboard"
+    rg -q "^' = oneshot\\(vim_register_paste\\)$" "$keyd_template"
+    rg -q '^\[vim_register_paste\]$' "$keyd_template"
+    rg -q 'vim_register_paste_command = ".*/bin/vim-register-clipboard paste"' "$keyd_template"
+    for register in {a..z}; do
+        rg -q "^${register} = command\\(\\{\\{ vim_register_paste_command \\}\\} ${register}\\)$" "$keyd_template"
+    done
+    ! rg -q 'signal_paste_vim_register' "$keyd_template"
+    ! rg -q 'signal_paste_vim_register|paste_vim_register|vim_register_clipboard' "$keyd_observer"
     ;;
 keyboard-midi-controller-dotfiles-contract)
     ! rg -q '^\[signal_toggle_keyboard_midi_controller\]$' "$keyd_template"

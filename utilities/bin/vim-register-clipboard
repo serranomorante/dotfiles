@@ -1,0 +1,126 @@
+#!/usr/bin/env sh
+# Purpose: Share Vim-style text registers between Neovim and global keyboard actions.
+# Usage: vim-register-clipboard get|set|paste <register>
+# Notes: Values are stored in cachectl with a long TTL because cachectl is runtime state.
+
+set -eu
+
+prog=${0##*/}
+namespace=${VIM_REGISTER_CLIPBOARD_NAMESPACE:-vim-registers}
+ttl=${VIM_REGISTER_CLIPBOARD_TTL:-2592000}
+cachectl_bin=${VIM_REGISTER_CLIPBOARD_CACHECTL:-}
+# Space-separated, lowercase X11 window classes that paste with Ctrl+Shift+V
+# (terminals) instead of the Ctrl+V used by GTK/Qt clients.
+terminals=${VIM_REGISTER_CLIPBOARD_TERMINALS:-kitty alacritty foot wezterm xterm urxvt konsole st ghostty}
+
+die() {
+    printf '%s: %s\n' "$prog" "$*" >&2
+    exit 2
+}
+
+usage() {
+    cat >&2 <<EOF
+Usage:
+  $prog get <register>
+  $prog set <register>
+  $prog paste <register>
+
+"set" reads text from stdin. "paste" copies the register to the system clipboard
+and asks the focused X11 client to paste it.
+EOF
+    exit 2
+}
+
+find_cachectl() {
+    if [ -n "$cachectl_bin" ]; then
+        printf '%s\n' "$cachectl_bin"
+    elif [ -x "$HOME/dotfiles/utilities/bin/cachectl" ]; then
+        printf '%s\n' "$HOME/dotfiles/utilities/bin/cachectl"
+    else
+        command -v cachectl 2>/dev/null || die "cachectl not found"
+    fi
+}
+
+normalize_register() {
+    reg=$1
+    case $reg in
+    [A-Z])
+        printf '%s\n' "$reg" | tr '[:upper:]' '[:lower:]'
+        ;;
+    [a-z0-9])
+        printf '%s\n' "$reg"
+        ;;
+    'apostrophe')
+        printf 'unnamed\n'
+        ;;
+    '"')
+        printf 'unnamed\n'
+        ;;
+    '+')
+        printf 'plus\n'
+        ;;
+    '*')
+        printf 'star\n'
+        ;;
+    '-')
+        printf 'small-delete\n'
+        ;;
+    *)
+        die "unsupported register: $reg"
+        ;;
+    esac
+}
+
+set_clipboard() {
+    if command -v xclip >/dev/null 2>&1; then
+        xclip -selection clipboard
+    else
+        die "xclip not found"
+    fi
+}
+
+focused_is_terminal() {
+    class=$(xdotool getactivewindow getwindowclassname 2>/dev/null) || return 1
+    class=$(printf '%s' "$class" | tr '[:upper:]' '[:lower:]')
+    [ -n "$class" ] || return 1
+    for t in $terminals; do
+        [ "$class" = "$t" ] && return 0
+    done
+    return 1
+}
+
+paste_clipboard() {
+    command -v xdotool >/dev/null 2>&1 || die "xdotool not found"
+    if focused_is_terminal; then
+        xdotool key --clearmodifiers ctrl+shift+v
+    else
+        xdotool key --clearmodifiers ctrl+v
+    fi
+}
+
+[ "$#" -ge 1 ] || usage
+command=$1
+shift
+
+case $command in
+get)
+    [ "$#" -eq 1 ] || usage
+    reg=$(normalize_register "$1")
+    "$(find_cachectl)" get "$namespace" "$reg"
+    ;;
+set)
+    [ "$#" -eq 1 ] || usage
+    reg=$(normalize_register "$1")
+    "$(find_cachectl)" set "$namespace" "$reg" "$ttl"
+    ;;
+paste)
+    [ "$#" -eq 1 ] || usage
+    reg=$(normalize_register "$1")
+    value=$("$(find_cachectl)" get "$namespace" "$reg") || die "register $1 is empty"
+    printf '%s' "$value" | set_clipboard
+    paste_clipboard
+    ;;
+*)
+    usage
+    ;;
+esac
