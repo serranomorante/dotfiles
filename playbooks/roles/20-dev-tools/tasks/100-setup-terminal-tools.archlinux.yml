@@ -92,26 +92,45 @@
     not var_isd_tui_marker.stat.exists
     or not var_isd_tui_python_interpreter.stdout.startswith(ansible_facts.env.HOME + '/.local/share/uv/python/')
 
-- name: "[archlinux] Setup terminal tools: check kitty nightly asset revision"
-  ansible.builtin.shell: |
-    set -o pipefail
-    curl -fsSL https://api.github.com/repos/kovidgoyal/kitty/releases/tags/nightly \
-      | jq -r '
-          .assets[]
-          | select(.name | test("^kitty-nightly-linux-(x86_64|amd64)\\.txz$"))
-          | [.name, .digest, .updated_at, .browser_download_url]
-          | @tsv
-        ' \
-      | head -n 1
-  args:
-    executable: /bin/bash
-  register: var_kitty_nightly_asset_revision
-  changed_when: false
-
 - name: "[archlinux] Setup terminal tools: stat kitty nightly binary"
   ansible.builtin.stat:
     path: "{{ ansible_facts.env.HOME }}/.local/kitty.app/bin/kitty"
   register: var_kitty_nightly_binary
+
+- name: "[archlinux] Setup terminal tools: check kitty nightly asset revision"
+  ansible.builtin.shell: |
+    set -o pipefail
+    api_url=https://api.github.com/repos/kovidgoyal/kitty/releases/tags/nightly
+    token_helper={{ (playbook_dir + '/../utilities/bin/dotfiles-github-token') | quote }}
+    curl_args=(
+      -fsSL
+      --retry 5
+      --retry-delay 3
+      --retry-all-errors
+      --connect-timeout 10
+      --max-time 60
+      -H 'Accept: application/vnd.github+json'
+      -H 'X-GitHub-Api-Version: 2022-11-28'
+    )
+    if [ -x "$token_helper" ] && token="$("$token_helper")"; then
+      curl_args+=(-H "Authorization: Bearer $token")
+    fi
+    curl "${curl_args[@]}" "$api_url" \
+      | jq -r '
+          first(
+            .assets[]
+            | select(.name | test("^kitty-nightly-linux-(x86_64|amd64)\\.txz$"))
+            | [.name, .digest, .updated_at, .browser_download_url]
+            | @tsv
+          ) // empty
+        '
+  args:
+    executable: /bin/bash
+  register: var_kitty_nightly_asset_revision
+  changed_when: false
+  failed_when:
+    - var_kitty_nightly_asset_revision.rc != 0
+    - not var_kitty_nightly_binary.stat.exists
 
 - name: "[archlinux] Setup terminal tools: fail when kitty nightly Linux asset is unavailable"
   ansible.builtin.fail:
