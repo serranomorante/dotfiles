@@ -95,6 +95,8 @@ Use `copytruncate` because GUI Wine apps can keep stdout and stderr open for the
 
 For sandboxed launches, the outer `wwine` invocation should set up rotation and redirection before Firejail re-exec so Firejail startup messages and the Wine process both land in the same app log.
 
+When `--use-sandbox` is used with a raw prefix path instead of a configured alias, pass `--sandbox-profile` explicitly; `wwine` must preserve that profile across its Firejail re-exec so the inner process can validate the inherited sandbox.
+
 ## Viewing Logs
 
 Viewing logs is a separate action from launching the app.

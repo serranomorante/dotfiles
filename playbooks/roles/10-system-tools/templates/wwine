@@ -386,6 +386,9 @@ if [[ "$use_sandbox" == 1 && "$tool" != "prepare-env" ]]; then
     fi
 
     reexec_args=(--prefix "$prefix" --use-sandbox)
+    if [[ -n "$sandbox_profile" ]]; then
+      reexec_args+=(--sandbox-profile "$sandbox_profile")
+    fi
     if [[ -n "$sandbox_check_profile" ]]; then
       reexec_args+=(--sandbox-check-profile "$sandbox_check_profile")
     fi
