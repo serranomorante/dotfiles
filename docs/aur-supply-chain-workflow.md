@@ -4,7 +4,7 @@ This workstation treats AUR updates as a separate trust decision from normal Arc
 
 Normal daily upgrades should use `pacman -Syu` for official repositories and leave AUR updates for an explicit review batch. The review batch must inspect changed AUR Git commits before any build or install step runs.
 
-The `aur-review` helper maintains local AUR Git checkouts under `~/data/aur-review` by default. In each checkout, local `master` is the last reviewed state and `origin/master` is the current AUR remote state. Review the diff `master..origin/master` with the normal Neovim, Diffview, or lazygit workflow, then run `aur-review accept <package>` only after the change is approved.
+The `aur-review` helper maintains local AUR Git checkouts under `~/data/aur-review` by default. In each checkout, local `master` is the last reviewed state and `origin/master` is the current AUR remote state. Review the diff `master..origin/master` with the normal Neovim, Diffview, or lazygit workflow, then run `aur-review accept <package>` only after the change is approved. `accept`, `baseline-installed`, and `publish` automatically restore the known VCS-package `makepkg` side effect where the only local change is a generated `pkgver=` update in `PKGBUILD`; every other local worktree change is still rejected.
 
 Useful review commands:
 

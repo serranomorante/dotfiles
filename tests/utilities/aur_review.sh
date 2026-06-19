@@ -4,6 +4,8 @@ set -euo pipefail
 # dotfiles-test-unit: utilities
 # dotfiles-test-tags: utilities aur shell
 # dotfiles-test-case: aur-review-publish-keeps-review-checkout-clean
+# dotfiles-test-case: aur-review-accept-restores-generated-pkgver-change
+# dotfiles-test-case: aur-review-accept-rejects-non-pkgver-change
 
 # Purpose: Verify aur-review builds packages outside the reviewed AUR checkout.
 
@@ -36,6 +38,18 @@ shift
 printf '%s\n' "$@" >>"${DOTFILES_TEST_TMP}/repo-add.packages"
 SH
     chmod +x "${bin}/repo-add"
+    printf '%s\n' "$bin"
+}
+
+write_fake_external_diff() {
+    local bin="${DOTFILES_TEST_TMP}/external-diff"
+    cat >"$bin" <<'SH'
+#!/usr/bin/env sh
+set -eu
+
+printf 'external diff should be ignored by generated pkgver cleanup\n'
+SH
+    chmod +x "$bin"
     printf '%s\n' "$bin"
 }
 
@@ -103,6 +117,31 @@ aur-review-publish-keeps-review-checkout-clean)
     done <"${DOTFILES_TEST_TMP}/makepkg.cwd"
     [[ ! -e "${build_dir}/fake-git/worktrees" ]] || [[ -z "$(find "${build_dir}/fake-git/worktrees" -mindepth 1 -print -quit)" ]]
     rg -q 'fake-git-1-1-any.pkg.tar.zst' "${DOTFILES_TEST_TMP}/repo-add.packages"
+    ;;
+aur-review-accept-restores-generated-pkgver-change)
+    review_dir="${DOTFILES_TEST_TMP}/review"
+    prepare_review_repo "$review_dir"
+    git -C "${review_dir}/fake-git" config diff.external "$(write_fake_external_diff)"
+    sed -i 's/^pkgver=.*/pkgver=1.r2.g1234567/' "${review_dir}/fake-git/PKGBUILD"
+
+    AUR_REVIEW_DIR="$review_dir" "$script_under_test" accept fake-git >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+
+    rg -q 'restoring generated PKGBUILD pkgver change' "${DOTFILES_TEST_TMP}/stderr"
+    git -C "${review_dir}/fake-git" diff --quiet -- PKGBUILD
+    ! rg -q '1.r2.g1234567' "${review_dir}/fake-git/PKGBUILD"
+    ;;
+aur-review-accept-rejects-non-pkgver-change)
+    review_dir="${DOTFILES_TEST_TMP}/review"
+    prepare_review_repo "$review_dir"
+    sed -i "s/^pkgdesc=.*/pkgdesc='Locally changed description'/" "${review_dir}/fake-git/PKGBUILD"
+
+    if AUR_REVIEW_DIR="$review_dir" "$script_under_test" accept fake-git >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"; then
+        printf 'aur-review unexpectedly accepted a non-pkgver local change\n' >&2
+        exit 1
+    fi
+
+    rg -q 'refusing to accept with local worktree changes' "${DOTFILES_TEST_TMP}/stderr"
+    rg -q 'Locally changed description' "${review_dir}/fake-git/PKGBUILD"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

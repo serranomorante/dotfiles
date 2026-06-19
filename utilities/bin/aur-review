@@ -908,16 +908,35 @@ open_nvim() {
     ' "$prog"
 }
 
+restore_generated_pkgver_change() {
+    git diff --cached --quiet || return 0
+    [ "$(git diff --no-ext-diff --name-only)" = PKGBUILD ] || return 0
+    if git diff --no-ext-diff --unified=0 -- PKGBUILD | awk '
+        /^diff --git / || /^index / || /^--- / || /^\+\+\+ / || /^@@ / { next }
+        /^-pkgver=/ { removed++; next }
+        /^\+pkgver=/ { added++; next }
+        { other++ }
+        END { exit !(removed == 1 && added == 1 && other == 0) }
+    '; then
+        printf '%s: restoring generated PKGBUILD pkgver change in %s\n' "$prog" "$PWD" >&2
+        git checkout -- PKGBUILD
+    fi
+}
+
 accept_repo() {
     pkg=$1
-    with_repo "$pkg" sh -c '
+    ensure_repo "$pkg"
+    repo=$(repo_path "$pkg")
+    (
+        cd "$repo"
+        restore_generated_pkgver_change
         if ! git diff --quiet || ! git diff --cached --quiet; then
-            printf "%s: refusing to accept with local worktree changes in %s\n" "$0" "$PWD" >&2
+            printf "%s: refusing to accept with local worktree changes in %s\n" "$prog" "$PWD" >&2
             exit 1
         fi
         git checkout --quiet master
         git merge --ff-only origin/master
-    ' "$prog"
+    )
 }
 
 baseline_installed_repo() {
@@ -926,6 +945,7 @@ baseline_installed_repo() {
     repo=$(repo_path "$pkg")
     (
         cd "$repo"
+        restore_generated_pkgver_change
         if ! git diff --quiet || ! git diff --cached --quiet; then
             printf "%s: refusing to change baseline with local worktree changes in %s\n" "$prog" "$PWD" >&2
             exit 1
@@ -948,19 +968,23 @@ baseline_installed_repo() {
 
 require_publishable_repo() {
     pkg=$1
-    with_repo "$pkg" sh -c '
+    ensure_repo "$pkg"
+    repo=$(repo_path "$pkg")
+    (
+        cd "$repo"
+        restore_generated_pkgver_change
         if ! git diff --quiet || ! git diff --cached --quiet; then
-            printf "%s: refusing to publish with local worktree changes in %s\n" "$0" "$PWD" >&2
+            printf "%s: refusing to publish with local worktree changes in %s\n" "$prog" "$PWD" >&2
             exit 1
         fi
         pending=$(git rev-list --count master..origin/master)
         if [ "$pending" -ne 0 ]; then
-            printf "%s: %s has %s unreviewed AUR commit(s); run diffview/lazygit and accept first\n" "$0" "$1" "$pending" >&2
+            printf "%s: %s has %s unreviewed AUR commit(s); run diffview/lazygit and accept first\n" "$prog" "$pkg" "$pending" >&2
             exit 1
         fi
         git checkout --quiet master
-        test -f PKGBUILD || { printf "%s: no PKGBUILD found in %s\n" "$0" "$PWD" >&2; exit 1; }
-    ' "$prog" "$pkg"
+        test -f PKGBUILD || { printf "%s: no PKGBUILD found in %s\n" "$prog" "$PWD" >&2; exit 1; }
+    )
 }
 
 ensure_local_repo() {
