@@ -192,7 +192,15 @@ ansible-task-picker-preserves-source-window-for-output)
         '  }, cachectl)' \
         '  vim.fn.setfperm(cachectl, "rwxr-xr-x")' \
         '  vim.env.CACHECTL_BIN = cachectl' \
-        '  package.preload["overseer.template.system-tasks.TASK__run_ansible_playbook"] = function() return { name = "run-ansible-playbook" } end' \
+        '  package.preload["overseer.template.system-tasks.TASK__run_ansible_playbook"] = function() return { name = "run-ansible-playbook", params = { task_id = { type = "string" }, pass = { type = "string" } } } end' \
+        '  package.preload["overseer.form"] = function()' \
+        '    return {' \
+        '      open = function(_, _, initial_params, on_submit)' \
+        '        assert(initial_params.task_id == "20-10 : Demo task", initial_params.task_id)' \
+        '        on_submit(initial_params)' \
+        '      end,' \
+        '    }' \
+        '  end' \
         '  local scheduled_task' \
         '  local scheduled_opts' \
         '  local utils = require("serranomorante.utils")' \

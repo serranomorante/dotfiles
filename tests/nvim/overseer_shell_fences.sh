@@ -60,10 +60,23 @@ markdown-shell-fence-keymap-works-from-file-scratch-nofile-terminal-float)
         '  assert(run_shell_fence, "could not find run_shell_fence implementation")' \
         '  assert(not run_shell_fence:find("defer_fn", 1, true), "run_shell_fence must not rely on defer_fn timing")' \
         '  assert(not run_shell_fence:find("schedule_open_overseer_task_output", 1, true), "run_shell_fence must not use retry-based output scheduling")' \
-        '  assert(run_shell_fence:find("open_started_overseer_task_output", 1, true), "run_shell_fence should open the started task output directly")' \
+        '  assert(utils_text:find("open_started_overseer_task_output", 1, true), "run_shell_fence should open the started task output directly")' \
+        '  assert(not utils_text:find("vim.ui.input", 1, true), "ansible shell fence passwords should use the concealed Overseer form, not vim.ui.input")' \
+        '  assert(utils_text:find("overseer.form", 1, true), "ansible shell fence passwords should use an Overseer form")' \
         '  assert(run_shell_fence:find("shell_fence_cwd", 1, true), "run_shell_fence should use a cwd resolver that works for non-file buffers")' \
-        '  assert(run_shell_fence:find("prepare_shell_fence_task_start_window", 1, true), "run_shell_fence should choose a regular output window for terminal/float sources")' \
+        '  assert(utils_text:find("prepare_shell_fence_task_start_window", 1, true), "run_shell_fence should choose a regular output window for terminal/float sources")' \
         '  assert(not run_shell_fence:find("alternate_bufnr", 1, true), "run_shell_fence should rely on normal buffer history instead of synthetic alternates")' \
+        '  local fake_bin = vim.env.DOTFILES_TEST_TMP .. "/bin"' \
+        '  vim.fn.mkdir(fake_bin, "p")' \
+        '  local fake_ansible = fake_bin .. "/ansible-playbook"' \
+        '  vim.fn.writefile({' \
+        '    "#!/bin/sh",' \
+        '    "printf BECOME\\ password:",' \
+        '    "IFS= read -r password",' \
+        '    "printf ansible-password:%s\\n \"$password\"", ' \
+        '  }, fake_ansible)' \
+        '  vim.fn.setfperm(fake_ansible, "rwxr-xr-x")' \
+        '  vim.env.PATH = fake_bin .. ":" .. vim.env.PATH' \
         '  local function set_fence_lines(command)' \
         '    local body = type(command) == "table" and command or { command }' \
         '    local lines = { "```sh" }' \
@@ -81,7 +94,8 @@ markdown-shell-fence-keymap-works-from-file-scratch-nofile-terminal-float)
         '    end' \
         '    error("could not find line containing " .. text)' \
         '  end' \
-        '  local function run_current_fence(expected)' \
+        '  local function run_current_fence(expected, opts)' \
+        '    opts = opts or {}' \
         '    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(" mr", true, false, true), "x", false)' \
         '    local task' \
         '    assert(vim.wait(5000, function()' \
@@ -108,7 +122,10 @@ markdown-shell-fence-keymap-works-from-file-scratch-nofile-terminal-float)
         '    assert(vim.bo[bufnr].buflisted, "shell fence output should be listed")' \
         '    assert(vim.fn.bufwinid(bufnr) ~= -1, "shell fence output should be visible")' \
         '    assert(vim.api.nvim_get_mode().mode ~= "t", "shell fence output should not leave Neovim in terminal insert mode")' \
-        '    pcall(function() task:dispose(true) end)' \
+        '    if not opts.keep then' \
+        '      pcall(function() task:dispose(true) end)' \
+        '    end' \
+        '    return task' \
         '  end' \
         '  local function run_visual_shell_selection(start_lnum, end_lnum, expected)' \
         '    vim.api.nvim_win_set_cursor(0, { start_lnum, 0 })' \
@@ -122,7 +139,51 @@ markdown-shell-fence-keymap-works-from-file-scratch-nofile-terminal-float)
         '  vim.fn.writefile({ "# Note", "", "```sh", "printf file-fence-ok", "```" }, note_path)' \
         '  vim.cmd.edit(note_path)' \
         '  vim.api.nvim_win_set_cursor(0, { 4, 0 })' \
-        '  run_current_fence("file-fence-ok")' \
+        '  local restart_task = run_current_fence("file-fence-ok", { keep = true })' \
+        '  assert(vim.wait(5000, function() return restart_task:is_complete() end, 20), "shell fence did not complete before restart")' \
+        '  assert(restart_task.exit_code == 0, ("initial shell fence exit code was %s"):format(vim.inspect(restart_task.exit_code)))' \
+        '  local restart_script_path = assert(restart_task.cmd[2], "shell fence task should keep its script path in task.cmd")' \
+        '  assert(vim.fn.filereadable(restart_script_path) == 1, "shell fence restart script should survive task completion")' \
+        '  assert(restart_task:restart(true), "completed shell fence task should restart")' \
+        '  assert(vim.wait(5000, function() return restart_task:is_complete() end, 20), "shell fence restart did not complete")' \
+        '  local restart_bufnr = restart_task:get_bufnr()' \
+        '  assert(restart_bufnr and vim.api.nvim_buf_is_valid(restart_bufnr), "shell fence restart should keep an output buffer")' \
+        '  local restart_output = table.concat(vim.api.nvim_buf_get_lines(restart_bufnr, 0, -1, false), "\n")' \
+        '  assert(restart_task.exit_code == 0, ("restarted shell fence exit code was %s; output: %s"):format(vim.inspect(restart_task.exit_code), restart_output))' \
+        '  assert(restart_output:find("file-fence-ok", 1, true), restart_output)' \
+        '  assert(not restart_output:find("No such file or directory", 1, true), restart_output)' \
+        '  pcall(function() restart_task:dispose(true) end)' \
+        '  assert(vim.fn.filereadable(restart_script_path) == 0, "shell fence restart script should be deleted on dispose")' \
+        '  local form_calls = 0' \
+        '  vim.g.pass = nil' \
+        '  vim.ui.input = function() error("ansible shell fence password must not use vim.ui.input") end' \
+        '  package.loaded["overseer.form"] = {' \
+        '    open = function(title, schema, initial_params, on_submit)' \
+        '      form_calls = form_calls + 1' \
+        '      assert(title == "Ansible become password", title)' \
+        '      assert(schema.pass and schema.pass.conceal == true, "password field should be concealed")' \
+        '      assert(initial_params.pass == "", initial_params.pass)' \
+        '      local shell_tasks_before_submit = 0' \
+        '      for _, candidate in ipairs(overseer.list_tasks({ include_ephemeral = true })) do' \
+        '        if candidate.name:find("^shell fence:") then shell_tasks_before_submit = shell_tasks_before_submit + 1 end' \
+        '      end' \
+        '      on_submit({ pass = "from-overseer-form" })' \
+        '      local shell_tasks_after_submit = 0' \
+        '      for _, candidate in ipairs(overseer.list_tasks({ include_ephemeral = true })) do' \
+        '        if candidate.name:find("^shell fence:") then shell_tasks_after_submit = shell_tasks_after_submit + 1 end' \
+        '      end' \
+        '      assert(shell_tasks_after_submit == shell_tasks_before_submit, "password form callback should let Overseer clean up before starting the shell fence task")' \
+        '    end,' \
+        '  }' \
+        '  vim.cmd("enew!")' \
+        '  set_fence_lines({ "cd " .. vim.fn.shellescape(project), "ansible-playbook -K fake.yml" })' \
+        '  run_current_fence("ansible-password:from-overseer-form")' \
+        '  assert(vim.g.pass == "from-overseer-form", "ansible shell fence should cache the prompted password")' \
+        '  assert(form_calls == 1, ("expected one password form, got %d"):format(form_calls))' \
+        '  package.loaded["overseer.form"].open = function() error("cached ansible password should avoid the Overseer password form") end' \
+        '  vim.cmd("enew!")' \
+        '  set_fence_lines("ansible-playbook --ask-become-pass fake.yml")' \
+        '  run_current_fence("ansible-password:from-overseer-form")' \
         '  vim.cmd("enew!")' \
         '  set_fence_lines("printf scratch-fence-ok")' \
         '  run_current_fence("scratch-fence-ok")' \

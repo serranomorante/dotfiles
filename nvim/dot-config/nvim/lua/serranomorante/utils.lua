@@ -1763,6 +1763,105 @@ local function prepare_shell_fence_task_start_window(source_win)
   return vim.api.nvim_get_current_win()
 end
 
+local ANSIBLE_BECOME_PASSWORD_FLAGS = {
+  ["-K"] = true,
+  ["--ask-become-pass"] = true,
+  ["--ask-become-password"] = true,
+}
+
+local ANSIBLE_SHELL_COMMANDS = {
+  ansible = true,
+  ["ansible-playbook"] = true,
+  ["vansible-playbook"] = true,
+}
+
+local function shell_fence_needs_ansible_password(command_lines)
+  local has_ansible_command = false
+  local has_become_password_flag = false
+
+  for _, line in ipairs(command_lines) do
+    line = line:gsub("#.*$", "")
+    for token in line:gmatch("[^%s;&|()]+") do
+      token = token:gsub("^['\"]", ""):gsub("['\"]$", "")
+      token = token:gsub("\\$", "")
+      local basename = token:match("([^/]+)$") or token
+      if ANSIBLE_SHELL_COMMANDS[basename] then has_ansible_command = true end
+      if ANSIBLE_BECOME_PASSWORD_FLAGS[token] or token:match("^%-[^-]*K[^-]*$") then has_become_password_flag = true end
+    end
+  end
+
+  return has_ansible_command and has_become_password_flag
+end
+
+local function resolve_shell_fence_ansible_password(command_lines, callback)
+  if not shell_fence_needs_ansible_password(command_lines) then
+    callback(nil)
+    return
+  end
+
+  if type(vim.g.pass) == "string" and vim.g.pass ~= "" then
+    callback(vim.g.pass)
+    return
+  end
+
+  local ok, form = pcall(require, "overseer.form")
+  if not ok then
+    vim.notify("overseer.nvim form is not available", vim.log.levels.ERROR)
+    return
+  end
+
+  form.open("Ansible become password", {
+    pass = {
+      desc = "Password",
+      type = "string",
+      conceal = true,
+      order = 1,
+    },
+  }, { pass = "" }, function(params)
+    if not params then return end
+    vim.g.pass = params.pass
+    vim.schedule(function() callback(params.pass) end)
+  end)
+end
+
+local function start_shell_fence_task(overseer, command_lines, lang, first_line, source_win, cwd, ansible_password)
+  local script_path = vim.fn.tempname()
+  local write_ok, write_result = pcall(vim.fn.writefile, command_lines, script_path)
+  if not write_ok or write_result ~= 0 then
+    vim.notify("Failed to write shell fence script", vim.log.levels.ERROR)
+    return
+  end
+
+  local components = {
+    "on_exit_set_status",
+    "on_complete_notify",
+    { "on_complete_dispose", timeout = 1, statuses = { require("overseer.constants").STATUS.SUCCESS } },
+  }
+  if ansible_password ~= nil then
+    table.insert(components, 1, { "system-components.COMPONENT__send_become_password", password = ansible_password })
+  end
+
+  local task = overseer.new_task({
+    name = "shell fence: " .. first_line,
+    cmd = { lang == "bash" and "bash" or "sh", script_path },
+    cwd = cwd,
+    metadata = {
+      PREVENT_QUIT = true,
+      shell_fence_task = true,
+    },
+    components = components,
+  })
+  task:subscribe("on_dispose", function() vim.fn.delete(script_path) end)
+  local start_win = prepare_shell_fence_task_start_window(source_win)
+  if not task:start() then
+    vim.fn.delete(script_path)
+    return vim.notify("Failed to start shell fence task", vim.log.levels.ERROR)
+  end
+  if not M.open_started_overseer_task_output(task, { winid = start_win }) then
+    vim.notify("Shell fence task did not create an output buffer", vim.log.levels.WARN)
+  end
+end
+
 function M.run_shell_fence(opts)
   opts = opts or {}
   local command_lines, lang
@@ -1791,36 +1890,12 @@ function M.run_shell_fence(opts)
 
   local source_win = vim.api.nvim_get_current_win()
   local cwd = shell_fence_cwd()
-  local script_path = vim.fn.tempname()
-  local write_ok, write_result = pcall(vim.fn.writefile, command_lines, script_path)
-  if not write_ok or write_result ~= 0 then
-    vim.notify("Failed to write shell fence script", vim.log.levels.ERROR)
-    return
-  end
-
-  local task = overseer.new_task({
-    name = "shell fence: " .. first_line,
-    cmd = { lang == "bash" and "bash" or "sh", script_path },
-    cwd = cwd,
-    metadata = {
-      PREVENT_QUIT = true,
-      shell_fence_task = true,
-    },
-    components = {
-      "on_exit_set_status",
-      "on_complete_notify",
-      { "on_complete_dispose", timeout = 1, statuses = { require("overseer.constants").STATUS.SUCCESS } },
-    },
-  })
-  task:subscribe("on_complete", function() vim.fn.delete(script_path) end)
-  local start_win = prepare_shell_fence_task_start_window(source_win)
-  if not task:start() then
-    vim.fn.delete(script_path)
-    return vim.notify("Failed to start shell fence task", vim.log.levels.ERROR)
-  end
-  if not M.open_started_overseer_task_output(task, { winid = start_win }) then
-    vim.notify("Shell fence task did not create an output buffer", vim.log.levels.WARN)
-  end
+  resolve_shell_fence_ansible_password(
+    command_lines,
+    function(ansible_password)
+      start_shell_fence_task(overseer, command_lines, lang, first_line, source_win, cwd, ansible_password)
+    end
+  )
 end
 
 return M
