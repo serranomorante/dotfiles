@@ -1,6 +1,6 @@
 #!/bin/sh
 # Purpose: Compile/cache and run the local agent session store.
-# Usage: agent-session-store [--compile-cache]|[--provider codex|claude] [--root PATH] refresh|ids|watch-new|wait-new|current-id ...
+# Usage: agent-session-store [--compile-cache]|[--provider codex|claude|gemini] [--root PATH] refresh|ids|watch-new|wait-new|current-id ...
 
 set -eu
 

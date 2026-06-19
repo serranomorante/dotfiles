@@ -1,28 +1,28 @@
 #!/bin/sh
-# Purpose: Talk to sibling Claude/Codex agent overseer tasks under the running Neovim socket.
-# Usage: claude-agents list
-#        claude-agents status [ref]
-#        claude-agents read <ref> [lines]
-#        claude-agents send <ref> <text...>      # types text into the input box (no submit)
-#        claude-agents send-nl <ref> <text...>   # same, then a '\r' = NEWLINE in the box (NOT a submit)
-#        claude-agents open <session-id...>      # open existing session(s) as overseer task(s) by id
-#        claude-agents new [task to run...]       # spawn a NEW Claude session as a task (reuses <leader>an); optional initial task
+# Purpose: Talk to sibling agent Overseer tasks under the running Neovim socket.
+# Usage: agent-tasks list
+#        agent-tasks status [ref]
+#        agent-tasks read <ref> [lines]
+#        agent-tasks send <ref> <text...>        # types text into the input box (no submit)
+#        agent-tasks send-nl <ref> <text...>     # same, then a '\r' to the terminal input
+#        agent-tasks open <session-id...>        # open existing session(s) as overseer task(s) by id
+#        agent-tasks new <provider> [task...]    # spawn a new agent session; provider: codex, claude, gemini
 # Notes: <ref> = session-id, session-id prefix, overseer numeric id, or unique name substring.
-#        The Neovim server socket is read from $CLAUDE_AGENTS_NVIM, else $NVIM (set by Neovim
+#        The Neovim server socket is read from $AGENT_TASKS_NVIM, else $NVIM (set by Neovim
 #        inside every terminal it owns). Output of `list`/`status`/`send` is JSON; `read` is text.
 
 set -eu
 
 prog=${0##*/}
-mod="serranomorante.plugins.jobs.claude_agents"
-sock=${CLAUDE_AGENTS_NVIM:-${NVIM:-}}
+mod="serranomorante.plugins.jobs.agent_tasks"
+sock=${AGENT_TASKS_NVIM:-${NVIM:-}}
 
 die() {
     printf '%s: %s\n' "$prog" "$*" >&2
     exit 1
 }
 
-[ -n "$sock" ] || die "no Neovim socket (set \$NVIM or \$CLAUDE_AGENTS_NVIM)"
+[ -n "$sock" ] || die "no Neovim socket (set \$NVIM or \$AGENT_TASKS_NVIM)"
 command -v nvim >/dev/null 2>&1 || die "nvim not found in PATH"
 
 # remote <module-method-call>: evaluate `<mod>.<call>` in the server and print the result.
@@ -69,9 +69,12 @@ open)
     remote "open('$ids')"
     ;;
 new)
+    [ $# -ge 1 ] || die "usage: $prog new <provider> [task...]"
+    provider=$1
+    shift
     enc=""
     [ $# -ge 1 ] && enc=$(b64 "$*")
-    remote "new('$enc')"
+    remote "new('$provider', '$enc')"
     ;;
 -h | --help | help)
     sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'

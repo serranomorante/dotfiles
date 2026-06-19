@@ -47,6 +47,17 @@ local function claude_ready(output, cwd)
     or (cwd ~= nil and text:find(vim.fn.fnamemodify(cwd, ":~"), 1, true) ~= nil)
 end
 
+---@param output string
+---@param cwd? string
+---@return boolean
+local function gemini_ready(output, cwd)
+  local text = strip_ansi(output)
+  return text:find("Gemini CLI", 1, true) ~= nil
+    or text:find("Loaded cached credentials", 1, true) ~= nil
+    or text:find("? for shortcuts", 1, true) ~= nil
+    or (cwd ~= nil and text:find(vim.fn.fnamemodify(cwd, ":~"), 1, true) ~= nil)
+end
+
 ---@param ... string
 ---@return string[]
 local function codex_args(...) return vim.list_extend(vim.deepcopy(CODEX_AUTO_REVIEW_ARGS), { ... }) end
@@ -96,10 +107,8 @@ local PROVIDERS = {
     continuation_name = "claude",
     ready = claude_ready,
     preallocate_session_id = true,
-    -- Forzamos el Opus recomendado CON 1M de contexto (opción "Default" del picker) en cada
-    -- lanzamiento, tanto sesión nueva como resume. El flag de CLI prevalece sobre el pin de
-    -- modelo en .claude/settings.json (que fija Sonnet), evitando cambiarlo a mano. El sufijo
-    -- `[1m]` selecciona la ventana de 1M; alias `opus` = ultimo Opus (a prueba de futuro).
+    -- Force the recommended Opus variant with the 1M context window on every
+    -- launch and resume. The CLI flag overrides the model pin in settings.
     start_args = function(session_id)
       local args = { "--model", "opus[1m]" }
       if type(session_id) == "string" and session_id ~= "" then
@@ -109,7 +118,28 @@ local PROVIDERS = {
     end,
     resume_args = function(session) return { "--model", "opus[1m]", "--resume", session.id } end,
   },
+  gemini = {
+    name = "gemini",
+    display_name = "Gemini",
+    executable = "gemini",
+    sessions_dir = vim.fn.expand("~/.gemini/tmp"),
+    cache_key = "agent-sessions-gemini-v1",
+    key_prefix = "g",
+    continuation_name = "gemini",
+    ready = gemini_ready,
+    preallocate_session_id = true,
+    start_args = function(session_id)
+      local args = {}
+      if type(session_id) == "string" and session_id ~= "" then
+        vim.list_extend(args, { "--session-id", session_id })
+      end
+      return args
+    end,
+    resume_args = function(session) return { "--resume", session.id } end,
+  },
 }
+
+M.providers = PROVIDERS
 
 ---@param name string
 ---@return table
@@ -1030,7 +1060,7 @@ local function prompt_from_agent_task(task)
   local provider_name = metadata[AGENT_PROVIDER_METADATA]
   local provider = provider_name and PROVIDERS[provider_name] or nil
   local continuation_name = provider and provider.continuation_name or "agent"
-  return ("continuando con esta conversación de %s con id: %s\n\n"):format(continuation_name, session_id)
+  return ("continuing this %s conversation with id: %s\n\n"):format(continuation_name, session_id)
 end
 
 ---@return string?
@@ -1529,6 +1559,7 @@ function M.keys()
   create_agent_resume_command()
   create_provider_keymaps(PROVIDERS.codex)
   create_provider_keymaps(PROVIDERS.claude)
+  create_provider_keymaps(PROVIDERS.gemini)
 end
 
 return M

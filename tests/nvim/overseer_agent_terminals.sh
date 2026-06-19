@@ -127,6 +127,9 @@ overseer-agent-session-terminal-contract)
         '  local path = vim.env.DOTFILES_TEST_ROOT .. "/nvim/dot-config/nvim/lua/serranomorante/plugins/jobs/agent_sessions.lua"' \
         '  local text = table.concat(vim.fn.readfile(path), "\n")' \
         '  assert(text:find([[codex_args("resume", "--no-alt-screen", "-C", session.cwd, session.id)]], 1, true) ~= nil, "Codex resume must keep --no-alt-screen")' \
+        '  assert(text:find([[name = "gemini"]], 1, true) ~= nil, "Gemini provider must be registered")' \
+        '  assert(text:find([[vim.list_extend(args, { "--session-id", session_id })]], 1, true) ~= nil, "Gemini new sessions should accept preallocated session ids")' \
+        '  assert(text:find([[resume_args = function(session) return { "--resume", session.id } end]], 1, true) ~= nil, "Gemini resume should use --resume <id>")' \
         '  assert(not text:find("startinsert", 1, true), "agent sessions should not force permanent terminals into insert mode")' \
         '  assert(not text:find("start_task", 1, true), "do not reintroduce the failed synchronous start_task flow")' \
         '  assert(not text:find("utils.open_overseer_task_output", 1, true), "agent sessions should use the scheduler helper, not a synchronous output opener")' \
@@ -557,7 +560,7 @@ overseer-open-recent-same-agent-task-pastes-visual)
         '  assert(opened_task == current_task, "same task was not opened through agent prompt path")' \
         '  assert(type(opened_prompt) == "string" and opened_prompt:find("selected_alpha%(%)") and opened_prompt:find("selected_beta%(%)"), opened_prompt)' \
         '  assert(opened_prompt:find("```lua", 1, true), opened_prompt)' \
-        '  assert(not opened_prompt:find("continuando con esta conversación", 1, true), opened_prompt)' \
+        '  assert(not opened_prompt:find("continuing this ", 1, true), opened_prompt)' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
         'local ok, err = xpcall(main, debug.traceback)' \
@@ -618,7 +621,7 @@ overseer-open-recent-other-agent-task-pastes-visual)
         '  assert(opened_task == target_task, "target task was not opened through agent prompt path")' \
         '  assert(type(opened_prompt) == "string" and opened_prompt:find("selected_gamma%(%)") and opened_prompt:find("selected_delta%(%)"), opened_prompt)' \
         '  assert(opened_prompt:find("```lua", 1, true), opened_prompt)' \
-        '  assert(not opened_prompt:find("continuando con esta conversación", 1, true), opened_prompt)' \
+        '  assert(not opened_prompt:find("continuing this ", 1, true), opened_prompt)' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
         'local ok, err = xpcall(main, debug.traceback)' \
@@ -673,7 +676,7 @@ overseer-open-recent-other-agent-task-continues-without-visual)
         '  end' \
         '  require("serranomorante.plugins.jobs.overseer_task_actions").open_recent_task()' \
         '  assert(opened_task == target_task, "target task was not opened through agent prompt path")' \
-        '  assert(type(opened_prompt) == "string" and opened_prompt:find("continuando con esta conversación de claude con id: source%-session"), opened_prompt)' \
+        '  assert(type(opened_prompt) == "string" and opened_prompt:find("continuing this claude conversation with id: source%-session"), opened_prompt)' \
         '  assert(not opened_prompt:find("```", 1, true), opened_prompt)' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \

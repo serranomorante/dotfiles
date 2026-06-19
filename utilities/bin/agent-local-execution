@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Purpose: Run a local AI agent from a stable JSON TODO execution payload.
-# Usage: agent-local-execution --agent codex --input-json -; agent-local-execution --agent codex --text '<payload>'
+# Usage: agent-local-execution --agent codex --input-json -; agent-local-execution --agent gemini --text '<payload>'
 # Notes: Intended for non-interactive service execution; it never asks the user for approval.
 
 import argparse
@@ -11,7 +11,7 @@ import sys
 
 
 SCHEMA = "foam-ai-autotrigger.v1"
-SUPPORTED_AGENTS = {"codex", "claude"}
+SUPPORTED_AGENTS = {"codex", "claude", "gemini"}
 
 
 def die(message, code=2):
@@ -163,7 +163,7 @@ def run_agent(payload, opts):
                 "-",
             ]
         )
-    else:
+    elif opts["agent"] == "claude":
         cmd = [
             "claude",
             "-p",
@@ -171,6 +171,14 @@ def run_agent(payload, opts):
             "dontAsk",
             "--output-format",
             "text",
+        ]
+        if opts["model"]:
+            cmd.extend(["--model", opts["model"]])
+    else:
+        cmd = [
+            "gemini",
+            "--prompt",
+            "",
         ]
         if opts["model"]:
             cmd.extend(["--model", opts["model"]])

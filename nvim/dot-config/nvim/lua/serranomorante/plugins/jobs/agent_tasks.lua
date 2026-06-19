@@ -1,27 +1,46 @@
 -- ============================================================================
--- claude_agents — orquestación de tasks de agentes hermanas bajo este Neovim
+-- agent_tasks - orchestration helpers for sibling agent Overseer tasks.
 --
--- Permite a UNA task de overseer (p.ej. un Claude "orquestador") inspeccionar y
--- pilotar OTRAS tasks de agente (Claude/Codex) que corren en terminales bajo el
--- MISMO socket de Neovim: leer su output, enviarles input y consultar su estado.
+-- This module lets one agent task inspect and steer other agent tasks running
+-- under the same Neovim socket: list status, read terminal output, type input,
+-- resume stored sessions, and spawn new provider-backed sessions.
 --
--- Las funciones públicas devuelven STRING (texto plano o JSON) a propósito, para
--- ser llamadas vía RPC sin UI desde fuera del editor:
---   nvim --server "$NVIM" --remote-expr \
---     "luaeval(\"require('serranomorante.plugins.jobs.claude_agents').list_json()\")"
--- El wrapper de shell ~/dotfiles/utilities/bin/claude-agents envuelve esto.
---
--- Las claves de metadata (agent_provider / agent_session_id) las fija
--- agent_sessions.lua al crear/enlazar cada task; aquí se leen tal cual.
+-- Public functions intentionally return plain strings or JSON so they can be
+-- called over Neovim RPC from the agent-tasks shell wrapper.
 -- ============================================================================
 
 local M = {}
 
--- Mantener en sync con agent_sessions.lua (AGENT_PROVIDER_METADATA / AGENT_SESSION_ID_METADATA).
 local PROVIDER_KEY = "agent_provider"
 local SESSION_ID_KEY = "agent_session_id"
 
 local DEFAULT_READ_LINES = 80
+
+---@return table<string, table>
+local function providers()
+  local ok, agent_sessions = pcall(require, "serranomorante.plugins.jobs.agent_sessions")
+  if not ok or type(agent_sessions.providers) ~= "table" then return {} end
+  return agent_sessions.providers
+end
+
+---@param name string
+---@return table?
+local function provider_by_name(name)
+  local provider = providers()[name]
+  return provider
+end
+
+---@return table[]
+local function store_providers()
+  local items = {}
+  for _, provider in pairs(providers()) do
+    if type(provider.name) == "string" and type(provider.sessions_dir) == "string" then
+      table.insert(items, { name = provider.name, root = provider.sessions_dir })
+    end
+  end
+  table.sort(items, function(a, b) return a.name < b.name end)
+  return items
+end
 
 ---@return overseer.Task[]
 local function list_tasks()
@@ -62,10 +81,7 @@ local function task_buffer_lines(t)
   return vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 end
 
----Best-effort estado de un agente leyendo el tail del terminal. Heurística:
----  - "busy"  si aparece el marcador de trabajo en curso ("esc to interrupt").
----  - "idle"  si hay un prompt de entrada (❯) y no está busy.
----  - "unknown" en otro caso.
+---Best-effort agent state from a terminal tail.
 ---@param lines string[]?
 ---@return string
 local function detect_state(lines)
@@ -74,11 +90,12 @@ local function detect_state(lines)
   local tail = table.concat(vim.list_slice(lines, from, #lines), "\n")
   if tail:find("esc to interrupt", 1, true) then return "busy" end
   if tail:find("❯", 1, true) then return "idle" end
+  if tail:find("> ", 1, true) then return "idle" end
   return "unknown"
 end
 
----Resuelve una task por: session-id exacto > id numérico de overseer >
----prefijo único de session-id > substring único de nombre (case-insensitive).
+---Resolve a task by exact session id, Overseer numeric id, unique session id
+---prefix, or unique case-insensitive name substring.
 ---@param ref string
 ---@return overseer.Task? task
 ---@return string? err
@@ -130,10 +147,10 @@ local function task_summary(t)
 end
 
 -- ---------------------------------------------------------------------------
--- API pública (devuelven string para uso vía --remote-expr/luaeval)
+-- Public RPC API
 -- ---------------------------------------------------------------------------
 
----JSON con el roster de tasks de agente y su estado.
+---JSON roster of agent tasks and best-effort state.
 ---@return string
 function M.list_json()
   local tasks = {}
@@ -143,7 +160,7 @@ function M.list_json()
   return vim.json.encode({ version = 1, count = #tasks, tasks = tasks })
 end
 
----Tail del buffer de terminal de una task. Cabecera con id/estado + N últimas líneas.
+---Terminal tail for a task with a small metadata header.
 ---@param ref string
 ---@param n? integer|string
 ---@return string
@@ -171,9 +188,9 @@ function M.read(ref, n)
   return header .. "\n" .. table.concat(vim.list_slice(lines, start, total), "\n")
 end
 
----Inyecta texto en el input de una task de agente vía nvim_chan_send.
----IMPORTANTE: `with_newline` envía un '\r' = SALTO DE LÍNEA en la caja de
----entrada, NO un submit. El envío real lo decide quien orquesta, aparte.
+---Type text into an agent task through nvim_chan_send.
+---`with_newline` sends '\r' to the terminal input; the receiving TUI decides
+---whether that inserts a line break or submits.
 ---@param ref string
 ---@param b64_text string base64 del texto (evita problemas de quoting vía RPC)
 ---@param with_newline? boolean|string|integer
@@ -208,7 +225,7 @@ function M.send(ref, b64_text, with_newline)
   })
 end
 
----Estado de una task (si se pasa ref) o el roster completo.
+---Status for one task, or the full roster when ref is empty.
 ---@param ref? string
 ---@return string json
 function M.status(ref)
@@ -222,8 +239,7 @@ function M.status(ref)
   return M.list_json()
 end
 
----Resuelve el binario `agent-session-store` igual que agent_sessions.lua:
----$AGENT_SESSION_STORE_BIN > ~/dotfiles/utilities/bin/agent-session-store > PATH.
+---Resolve agent-session-store in the same order used by agent_sessions.lua.
 ---@return string?
 local function store_bin()
   local env = vim.env.AGENT_SESSION_STORE_BIN
@@ -234,22 +250,14 @@ local function store_bin()
   return nil
 end
 
--- Roots por provider (en sync con PROVIDERS de agent_sessions.lua).
-local STORE_PROVIDERS = {
-  { name = "claude", root = vim.fn.expand("~/.claude/projects") },
-  { name = "codex", root = vim.fn.expand("~/.codex/sessions") },
-}
-
----Ids de sesión conocidos por el store, scoped al cwd actual (a través de
----todos los providers). Síncrono (`ids` es rápido). Devuelve `nil` si el store
----no está disponible — el caller lo trata como "no he podido validar".
+---Known session ids for the current cwd across all configured providers.
 ---@return string[]?
 local function known_session_ids()
   local bin = store_bin()
   if not bin then return nil end
   local cwd = vim.fn.getcwd()
   local ids, seen, any_ok = {}, {}, false
-  for _, p in ipairs(STORE_PROVIDERS) do
+  for _, p in ipairs(store_providers()) do
     local out = vim.fn.system({ bin, "--provider", p.name, "--root", p.root, "ids", cwd })
     if vim.v.shell_error == 0 and out ~= "" then
       local ok, decoded = pcall(vim.json.decode, out)
@@ -268,7 +276,7 @@ local function known_session_ids()
   return ids
 end
 
----Resuelve `ref` (UUID completo o prefijo único) al UUID completo conocido.
+---Resolve a full session id or unique prefix against known ids.
 ---@param ref string
 ---@param known string[]
 ---@return string? full_id
@@ -286,18 +294,7 @@ local function resolve_session_ref(ref, known)
   return nil, "not_found"
 end
 
----Abre una o varias sesiones EXISTENTES como tasks de overseer, por id.
----Reusa el comando AgentResumeById (misma vía que `open_in_nvim agent_conversation
----<id>`): resuelve la sesión en el store de agentes (Claude o Codex) y, si ya está
----corriendo, ENFOCA la task existente en vez de duplicarla; si no, la crea con
----`<provider> --resume <id>`. `ids` = lista separada por comas o espacios.
----
----VALIDA cada id contra el store ANTES de programar el resume: acepta UUID
----completo o prefijo único (lo resuelve al UUID completo, que es lo que
----AgentResumeById exige para su lookup exacto). Los ids que no existen / son
----ambiguos NO se abren y se devuelven en `not_found` / `ambiguous` con `ok:false`,
----en vez de fallar en silencio (AgentResumeField notifica "Agent session not
----found" pero por debajo de un pcall que se tragaba el error).
+---Open existing sessions as Overseer tasks by id or unique id prefix.
 ---@param ids string
 ---@return string json
 function M.open(ids)
@@ -307,7 +304,6 @@ function M.open(ids)
   for id in tostring(ids):gmatch("[^,%s]+") do
     table.insert(requested, id)
     if known == nil then
-      -- Store no disponible: no puedo validar; abro best-effort y lo marco.
       local target = id
       vim.schedule(function() pcall(vim.cmd, "AgentResumeById " .. target) end)
       table.insert(opened, id)
@@ -315,8 +311,6 @@ function M.open(ids)
       local full, err = resolve_session_ref(id, known)
       if full then
         table.insert(opened, full)
-        -- AgentResumeById hace gestión de ventana sobre la ventana actual; lo
-        -- programamos para no correrlo en el contexto RPC/fast.
         vim.schedule(function() pcall(vim.cmd, "AgentResumeById " .. full) end)
       elseif err == "ambiguous" then
         table.insert(ambiguous, id)
@@ -333,29 +327,42 @@ function M.open(ids)
   if #not_found > 0 then result.not_found = not_found end
   if #ambiguous > 0 then result.ambiguous = ambiguous end
   if known == nil then result.warning = "session store unavailable; ids not validated" end
-  if not ok then
-    result.error = ("could not resolve %d of %d id(s)"):format(#not_found + #ambiguous, #requested)
-  end
+  if not ok then result.error = ("could not resolve %d of %d id(s)"):format(#not_found + #ambiguous, #requested) end
   return vim.json.encode(result)
 end
 
----Abre una sesión Claude NUEVA como task de overseer, reusando
----`agent_sessions.open_new("claude")` (la misma vía que el keymap `<leader>an`):
----preasigna session-id, crea la task `claude --session-id <uuid>`, abre su output
----y la enlaza. NO duplica esa lógica.
----
----Si se pasa `b64_prompt`, espera (best-effort) a que la nueva task esté lista
----(detect_state == "idle") e inyecta el prompt como bracketed-paste + un `\r`
----discreto para DESPACHARLO (la tarea X que debe hacer el nuevo agente hijo).
----@param b64_prompt? string base64 del prompt inicial (opcional)
+---@param provider_name string
+---@param t overseer.Task
+---@return boolean
+local function task_is_ready(provider_name, t)
+  local lines = task_buffer_lines(t)
+  if detect_state(lines) == "idle" then return true end
+
+  local provider = provider_by_name(provider_name)
+  if type(provider) ~= "table" or type(provider.ready) ~= "function" then return false end
+  local output = type(lines) == "table" and table.concat(lines, "\n") or ""
+  local ok, ready = pcall(provider.ready, output, t.cwd)
+  return ok and ready == true
+end
+
+---Open a new provider-backed session as an Overseer task.
+---When a prompt is supplied, wait best-effort until the new task is ready and
+---paste the prompt into it using bracketed paste followed by '\r'.
+---@param provider_name string
+---@param b64_prompt? string optional base64-encoded initial prompt
 ---@return string json
-function M.new(b64_prompt)
+function M.new(provider_name, b64_prompt)
+  if type(provider_name) ~= "string" or provider_name == "" then
+    return vim.json.encode({ ok = false, error = "missing provider" })
+  end
+  local provider = provider_by_name(provider_name)
+  if not provider then return vim.json.encode({ ok = false, error = "unknown provider: " .. provider_name }) end
+
   local ok_as, agent_sessions = pcall(require, "serranomorante.plugins.jobs.agent_sessions")
   if not ok_as or type(agent_sessions.open_new) ~= "function" then
-    return vim.json.encode({ ok = false, error = "agent_sessions.open_new no disponible" })
+    return vim.json.encode({ ok = false, error = "agent_sessions.open_new unavailable" })
   end
 
-  -- Snapshot de session-ids previos para identificar la task recién creada.
   local before = {}
   for _, t in ipairs(list_tasks()) do
     local sid = task_session_id(t)
@@ -368,29 +375,23 @@ function M.new(b64_prompt)
     if dok then prompt = decoded end
   end
 
-  -- Spawn por la vía existente (no en contexto RPC/fast). open_new añade su prompt
-  -- de contexto (la línea "continuando con esta conversación de claude con id: …")
-  -- que enlaza al hijo con la conversación activa — se conserva a propósito. La
-  -- tarea real la añade el glue de abajo (paste) y la despacha con el \r.
-  vim.schedule(function() agent_sessions.open_new("claude") end)
+  vim.schedule(function() agent_sessions.open_new(provider.name) end)
 
-  -- Si hay prompt, localizar la task nueva cuando aparezca + esté lista, e inyectar.
   if prompt then
     local tries = 0
     local function find_new()
       for _, t in ipairs(list_tasks()) do
         local sid = task_session_id(t)
-        if sid and not before[sid] and task_provider(t) == "claude" then return t end
+        if sid and not before[sid] and task_provider(t) == provider.name then return t end
       end
     end
     local function step()
       tries = tries + 1
       local t = find_new()
       local job = t and task_job_id(t)
-      local ready = t and detect_state(task_buffer_lines(t)) == "idle"
+      local ready = t and task_is_ready(provider.name, t)
       if t and job and ready then
         pcall(vim.api.nvim_chan_send, job, "\27[200~" .. prompt .. "\27[201~")
-        -- \r discreto, separado de la paste, para que el TUI lo tome como submit.
         vim.defer_fn(function() pcall(vim.api.nvim_chan_send, job, "\r") end, 400)
       elseif tries < 60 then
         vim.defer_fn(step, 500)
@@ -399,15 +400,15 @@ function M.new(b64_prompt)
     vim.defer_fn(step, 1000)
   end
 
-  return vim.json.encode({ ok = true, spawning = true, with_prompt = prompt ~= nil })
+  return vim.json.encode({ ok = true, provider = provider.name, spawning = true, with_prompt = prompt ~= nil })
 end
 
 -- ---------------------------------------------------------------------------
--- Ex commands (capa humana — el orquestador usa el wrapper claude-agents)
+-- Ex commands for humans; automated callers use the agent-tasks wrapper.
 -- ---------------------------------------------------------------------------
 
 function M.setup_commands()
-  vim.api.nvim_create_user_command("ClaudeAgents", function()
+  vim.api.nvim_create_user_command("AgentTasks", function()
     local data = vim.json.decode(M.list_json())
     local lines = { ("Agent tasks (%d):"):format(data.count) }
     for _, t in ipairs(data.tasks) do
@@ -423,32 +424,33 @@ function M.setup_commands()
       )
     end
     vim.api.nvim_echo({ { table.concat(lines, "\n") } }, false, {})
-  end, { desc = "Claude: list sibling agent tasks + state" })
+  end, { desc = "Agent tasks: list sibling agent tasks and state" })
 
   vim.api.nvim_create_user_command(
-    "ClaudeAgentRead",
+    "AgentTaskRead",
     function(a) vim.api.nvim_echo({ { M.read(a.fargs[1], a.fargs[2]) } }, false, {}) end,
-    { nargs = "+", desc = "Claude: read tail of an agent task buffer (<ref> [lines])" }
+    { nargs = "+", desc = "Agent tasks: read tail of an agent task buffer (<ref> [lines])" }
   )
 
-  vim.api.nvim_create_user_command("ClaudeAgentSend", function(a)
+  vim.api.nvim_create_user_command("AgentTaskSend", function(a)
     local ref = a.fargs[1]
     local text = table.concat(vim.list_slice(a.fargs, 2, #a.fargs), " ")
     local b64 = vim.base64.encode(text)
     vim.api.nvim_echo({ { M.send(ref, b64, false) } }, false, {})
-  end, { nargs = "+", desc = "Claude: type text into an agent task input, no submit (<ref> <text...>)" })
+  end, { nargs = "+", desc = "Agent tasks: type text into an agent task input, no submit (<ref> <text...>)" })
 
   vim.api.nvim_create_user_command(
-    "ClaudeAgentOpen",
+    "AgentTaskOpen",
     function(a) vim.api.nvim_echo({ { M.open(table.concat(a.fargs, ",")) } }, false, {}) end,
-    { nargs = "+", desc = "Claude: open existing agent session(s) as overseer task(s) by id" }
+    { nargs = "+", desc = "Agent tasks: open existing agent session(s) by id" }
   )
 
-  vim.api.nvim_create_user_command("ClaudeAgentNew", function(a)
-    local prompt = table.concat(a.fargs, " ")
+  vim.api.nvim_create_user_command("AgentTaskNew", function(a)
+    local provider_name = a.fargs[1]
+    local prompt = table.concat(vim.list_slice(a.fargs, 2, #a.fargs), " ")
     local b64 = prompt ~= "" and vim.base64.encode(prompt) or ""
-    vim.api.nvim_echo({ { M.new(b64) } }, false, {})
-  end, { nargs = "*", desc = "Claude: spawn a NEW Claude session as an overseer task ([task to run])" })
+    vim.api.nvim_echo({ { M.new(provider_name, b64) } }, false, {})
+  end, { nargs = "+", desc = "Agent tasks: spawn a new provider session (<provider> [task to run])" })
 end
 
 return M

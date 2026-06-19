@@ -42,6 +42,14 @@ var providers = map[string]providerDefaults{
 			"CLAUDE_CURRENT_SESSION_ID",
 		},
 	},
+	"gemini": {
+		root:    "~/.gemini/tmp",
+		history: "~/.gemini/history.jsonl",
+		envSessionKeys: []string{
+			"GEMINI_SESSION_ID",
+			"GEMINI_CURRENT_SESSION_ID",
+		},
+	},
 }
 
 type providerDefaults struct {
@@ -292,31 +300,31 @@ func wantsCommandHelp(args []string) bool {
 }
 
 func printUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude] [--root PATH] refresh")
-	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude] [--root PATH] ids CWD")
-	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude] [--root PATH] wait-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS")
-	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude] [--root PATH] watch-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS TITLE_TIMEOUT_SECONDS")
-	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude] [--root PATH] current-id [--cwd CWD] [--history PATH]")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini] [--root PATH] refresh")
+	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini] [--root PATH] ids CWD")
+	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini] [--root PATH] wait-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS")
+	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini] [--root PATH] watch-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS TITLE_TIMEOUT_SECONDS")
+	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini] [--root PATH] current-id [--cwd CWD] [--history PATH]")
 }
 
 func printRefreshUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude] [--root PATH] refresh")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini] [--root PATH] refresh")
 }
 
 func printIDsUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude] [--root PATH] ids CWD")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini] [--root PATH] ids CWD")
 }
 
 func printWaitNewUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude] [--root PATH] wait-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini] [--root PATH] wait-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS")
 }
 
 func printWatchNewUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude] [--root PATH] watch-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS TITLE_TIMEOUT_SECONDS")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini] [--root PATH] watch-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS TITLE_TIMEOUT_SECONDS")
 }
 
 func printCurrentIDUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude] [--root PATH] current-id [--cwd CWD] [--history PATH]")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini] [--root PATH] current-id [--cwd CWD] [--history PATH]")
 }
 
 func compactTitleText(text string) string {
@@ -446,6 +454,36 @@ func claudeUserMessageTitle(item map[string]any) string {
 	return normalizeTitle(contentText(message["content"]))
 }
 
+func geminiUserMessageTitle(item map[string]any) string {
+	if messages, ok := item["messages"].([]any); ok {
+		for _, raw := range messages {
+			message, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			if title := geminiUserMessageTitle(message); title != "" {
+				return title
+			}
+		}
+	}
+
+	role, _ := stringValue(item["role"])
+	itemType, _ := stringValue(item["type"])
+	if role != "user" && itemType != "user" {
+		return ""
+	}
+	if title := normalizeTitle(contentText(item["content"])); title != "" {
+		return title
+	}
+	if title := normalizeTitle(contentText(item["parts"])); title != "" {
+		return title
+	}
+	if title := normalizeTitle(contentText(item["text"])); title != "" {
+		return title
+	}
+	return ""
+}
+
 func fileMtimeTimestamp(path string) string {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -573,6 +611,97 @@ func parseClaudeSession(path string, cwd string) *session {
 	return &result
 }
 
+func projectRootForGeminiSession(path string) string {
+	projectDir := filepath.Dir(filepath.Dir(path))
+	projectRootPath := filepath.Join(projectDir, ".project_root")
+	data, err := os.ReadFile(projectRootPath)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
+}
+
+func applyGeminiSessionItem(result *session, item map[string]any) {
+	if result.ID == "" {
+		if id, ok := stringValue(item["sessionId"]); ok {
+			result.ID = id
+		}
+	}
+	if result.Timestamp == "" {
+		if timestamp, ok := stringValue(item["startTime"]); ok {
+			result.Timestamp = timestamp
+		} else if timestamp, ok := stringValue(item["timestamp"]); ok {
+			result.Timestamp = timestamp
+		}
+	}
+	if result.UpdatedAt == "" {
+		if updatedAt, ok := stringValue(item["lastUpdated"]); ok {
+			result.UpdatedAt = updatedAt
+		} else if updatedAt, ok := stringValue(item["updatedAt"]); ok {
+			result.UpdatedAt = updatedAt
+		}
+	}
+	if result.Title == "" {
+		result.Title = geminiUserMessageTitle(item)
+	}
+}
+
+func parseGeminiJSONObject(path string, cwd string) *session {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var item map[string]any
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := decoder.Decode(&item); err != nil {
+		return nil
+	}
+
+	result := session{Provider: "gemini", Path: path, CWD: projectRootForGeminiSession(path)}
+	applyGeminiSessionItem(&result, item)
+	return finishGeminiSession(result, cwd)
+}
+
+func parseGeminiSession(path string, cwd string) *session {
+	if strings.HasSuffix(path, ".json") {
+		return parseGeminiJSONObject(path, cwd)
+	}
+
+	result := session{Provider: "gemini", Path: path, CWD: projectRootForGeminiSession(path)}
+	err := readSessionLines(path, func(item map[string]any) bool {
+		applyGeminiSessionItem(&result, item)
+		return !(result.ID != "" && result.CWD != "" && result.Timestamp != "" && result.Title != "" && result.UpdatedAt != "")
+	})
+	if err != nil {
+		return nil
+	}
+	return finishGeminiSession(result, cwd)
+}
+
+func finishGeminiSession(result session, cwd string) *session {
+	if result.ID == "" {
+		filename := filepath.Base(result.Path)
+		if strings.HasPrefix(filename, "session-") {
+			parts := strings.Split(strings.TrimSuffix(strings.TrimSuffix(filename, ".jsonl"), ".json"), "-")
+			if len(parts) > 0 {
+				result.ID = parts[len(parts)-1]
+			}
+		}
+	}
+	if (cwd != "" && result.CWD != cwd) || result.ID == "" || result.CWD == "" || result.Timestamp == "" {
+		return nil
+	}
+
+	if result.UpdatedAt == "" {
+		result.UpdatedAt = fileMtimeTimestamp(result.Path)
+	}
+	if result.UpdatedAt == "" {
+		result.UpdatedAt = result.Timestamp
+	}
+	return &result
+}
+
 func readSessionLines(path string, handle func(map[string]any) bool) error {
 	file, err := os.Open(path)
 	if err != nil {
@@ -612,13 +741,21 @@ func decodeJSONObject(line []byte) (map[string]any, bool) {
 	return item, true
 }
 
-func sessionFiles(root string) []string {
+func sessionFiles(provider string, root string) []string {
 	files := []string{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
 		if entry.IsDir() {
+			return nil
+		}
+		if provider == "gemini" {
+			parent := filepath.Base(filepath.Dir(path))
+			if parent == "chats" && strings.HasPrefix(entry.Name(), "session-") &&
+				(strings.HasSuffix(entry.Name(), ".jsonl") || strings.HasSuffix(entry.Name(), ".json")) {
+				files = append(files, path)
+			}
 			return nil
 		}
 		if strings.HasSuffix(entry.Name(), ".jsonl") {
@@ -638,6 +775,8 @@ func parseSession(provider string, path string, cwd string) *session {
 		return parseCodexSession(path, cwd)
 	case "claude":
 		return parseClaudeSession(path, cwd)
+	case "gemini":
+		return parseGeminiSession(path, cwd)
 	default:
 		return nil
 	}
@@ -645,7 +784,7 @@ func parseSession(provider string, path string, cwd string) *session {
 
 func sessions(provider string, root string, cwd string) []session {
 	items := []session{}
-	for _, path := range sessionFiles(root) {
+	for _, path := range sessionFiles(provider, root) {
 		if item := parseSession(provider, path, cwd); item != nil {
 			items = append(items, *item)
 		}
@@ -809,6 +948,10 @@ func latestHistorySessionID(provider string, historyPath string, cwd string) str
 					continue
 				}
 			}
+			if sessionID, ok := stringValue(item["sessionId"]); ok && sessionID != "" {
+				return sessionID
+			}
+		case "gemini":
 			if sessionID, ok := stringValue(item["sessionId"]); ok && sessionID != "" {
 				return sessionID
 			}

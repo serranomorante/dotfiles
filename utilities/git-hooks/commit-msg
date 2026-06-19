@@ -7,7 +7,7 @@ set -eu
 msg_file=$1
 
 has_agent_env() {
-    env | grep -Eq '^(CODEX_|CLAUDE_)'
+    env | grep -Eq '^(CODEX_|CLAUDE_|GEMINI_)'
 }
 
 pid_parent() {
@@ -24,6 +24,7 @@ pid_is_agent() {
         IFS= read -r comm <"/proc/$pid/comm" || comm=
         [ "$comm" = codex ] && return 0
         [ "$comm" = claude ] && return 0
+        [ "$comm" = gemini ] && return 0
     fi
 
     if [ -r "/proc/$pid/cmdline" ]; then
@@ -31,6 +32,7 @@ pid_is_agent() {
         argv0=${cmdline##*/}
         [ "$argv0" = codex ] && return 0
         [ "$argv0" = claude ] && return 0
+        [ "$argv0" = gemini ] && return 0
     fi
 
     return 1
