@@ -18,9 +18,12 @@
   register: var_clone_vscode_go
 
 - name: "[archlinux] Go language: stat vscode-go build marker"
-  ansible.builtin.stat:
-    path: ~/data/repos/vscode-go/extension/.ansible-vscode-go-build
-  register: var_vscode_go_build_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: vscode-go-build
+    dotfiles_marker_register: var_vscode_go_build_marker
 
 - name: "[archlinux] Go language: install vscode-go npm packages"
   community.general.npm:
@@ -51,8 +54,10 @@
   when: var_clone_vscode_go.changed or not var_vscode_go_build_marker.stat.exists
 
 - name: "[archlinux] Go language: record vscode-go build marker"
-  ansible.builtin.copy:
-    content: "v{{ vscode_go_version }}\n"
-    dest: ~/data/repos/vscode-go/extension/.ansible-vscode-go-build
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: vscode-go-build
+    dotfiles_marker_content: "v{{ vscode_go_version }}\n"
   when: var_clone_vscode_go.changed or not var_vscode_go_build_marker.stat.exists

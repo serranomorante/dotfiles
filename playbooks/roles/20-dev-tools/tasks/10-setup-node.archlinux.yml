@@ -54,9 +54,12 @@
     mode: "755"
 
 - name: "[archlinux] Setup node: stat volta marker"
-  ansible.builtin.stat:
-    path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools/.ansible-volta-{{ volta_version }}"
-  register: var_volta_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "volta-{{ volta_version }}"
+    dotfiles_marker_register: var_volta_marker
 
 - name: "[archlinux] Setup node: install volta"
   ansible.builtin.command:
@@ -77,10 +80,12 @@
   when: not var_volta_marker.stat.exists
 
 - name: "[archlinux] Setup node: record volta marker"
-  ansible.builtin.copy:
-    content: "{{ volta_version }}\n"
-    dest: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools/.ansible-volta-{{ volta_version }}"
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "volta-{{ volta_version }}"
+    dotfiles_marker_content: "{{ volta_version }}\n"
   when: not var_volta_marker.stat.exists
 
 - name: "[archlinux] Setup node: install generic firejail node wrapper"
@@ -134,11 +139,26 @@
   loop: "{{ node_managed_versions | unique }}"
   changed_when: true
 
-- name: "[archlinux] Setup node: stat package manager markers"
-  ansible.builtin.stat:
-    path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools/.ansible-volta-package-{{ item.name }}-{{ item.version }}"
-  register: var_node_package_manager_markers
+- name: "[archlinux] Setup node: reset package manager marker specs"
+  ansible.builtin.set_fact:
+    var_node_package_manager_marker_specs: []
+
+- name: "[archlinux] Setup node: build package manager marker specs"
+  ansible.builtin.set_fact:
+    var_node_package_manager_marker_specs: "{{ var_node_package_manager_marker_specs + [var_node_package_manager_marker_spec] }}"
+  vars:
+    var_node_package_manager_marker_spec:
+      name: "volta-package-{{ item.name }}-{{ item.version }}"
+      item: "{{ item }}"
   loop: "{{ node_package_manager_packages }}"
+
+- name: "[archlinux] Setup node: stat package manager markers"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check-many
+  vars:
+    dotfiles_marker_register: var_node_package_manager_markers
+    dotfiles_marker_items: "{{ var_node_package_manager_marker_specs | default([]) }}"
 
 - name: "[archlinux] Setup node: ensure package managers"
   ansible.builtin.command:
@@ -161,10 +181,12 @@
   register: var_node_package_manager_install
 
 - name: "[archlinux] Setup node: record package manager markers"
-  ansible.builtin.copy:
-    content: "{{ item.item.name }}@{{ item.item.version }}\n"
-    dest: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools/.ansible-volta-package-{{ item.item.name }}-{{ item.item.version }}"
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "volta-package-{{ item.item.name }}-{{ item.item.version }}"
+    dotfiles_marker_content: "{{ item.item.name }}@{{ item.item.version }}\n"
   loop: "{{ var_node_package_manager_install.results }}"
   when: item.changed | default(false)
 

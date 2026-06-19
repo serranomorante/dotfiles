@@ -5,31 +5,18 @@
     name: inotify-tools
     state: present
 
-- name: "[archlinux] Editor tools: ensure nvim plugin patch marker directory"
-  ansible.builtin.file:
-    path: ~/.local/state/dotfiles/nvim-plugin-patches
-    state: directory
-    mode: "755"
-
 - name: "[archlinux] Editor tools: check overseer local patch marker"
-  ansible.builtin.stat:
-    path: ~/.local/state/dotfiles/nvim-plugin-patches/overseer-local-patches-v2
-  register: var_overseer_local_patch_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: nvim-plugin-overseer-local-patches-v2
+    dotfiles_marker_register: var_overseer_local_patch_marker
 
 - name: "[archlinux] Editor tools: check overseer checkout"
   ansible.builtin.stat:
     path: ~/.local/share/nvim/site/pack/plugins/start/overseer/.git
   register: var_overseer_checkout
-
-- name: "[archlinux] Editor tools: remove stale overseer in-repo patch artifacts"
-  ansible.builtin.file:
-    path: "~/.local/share/nvim/site/pack/plugins/start/overseer/{{ item }}"
-    state: absent
-  loop:
-    - .ansible-open-output-buffer-command-v1
-    - .ansible-terminal-normal-output-v1
-    - .ansible-overseer-local-patches-v2
-    - lua/overseer/strategy/jobstart.lua.orig
 
 - name: "[archlinux] Editor tools: ensure nvim plugins"
   ansible.builtin.include_role:
@@ -72,10 +59,12 @@
   when: not var_overseer_local_patch_marker.stat.exists or not var_overseer_checkout.stat.exists
 
 - name: "[archlinux] Editor tools: record overseer local patch marker"
-  ansible.builtin.copy:
-    content: "overseer-local-patches-v2\n"
-    dest: ~/.local/state/dotfiles/nvim-plugin-patches/overseer-local-patches-v2
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: nvim-plugin-overseer-local-patches-v2
+    dotfiles_marker_content: "overseer-local-patches-v2\n"
   when: not var_overseer_local_patch_marker.stat.exists or not var_overseer_checkout.stat.exists
 
 - name: "[archlinux] Editor tools: build lookup of nvim plugin results by repo (init)"

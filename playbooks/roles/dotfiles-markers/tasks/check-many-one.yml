@@ -1,0 +1,24 @@
+---
+- name: "[dotfiles-markers] Check marker item"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "{{ dotfiles_marker_many_entry.name }}"
+    dotfiles_marker_register: dotfiles_marker_many_current
+    dotfiles_marker_read: "{{ dotfiles_marker_many_entry.read | default(dotfiles_marker_many_read_default) }}"
+    dotfiles_marker_mode: "{{ dotfiles_marker_many_entry.mode | default(dotfiles_marker_many_mode_default) }}"
+
+- name: "[dotfiles-markers] Append marker item result"
+  ansible.builtin.set_fact:
+    dotfiles_marker_many_results: >-
+      {{
+        dotfiles_marker_many_results
+        + [
+          dotfiles_marker_many_current
+          | combine({
+            'item': dotfiles_marker_many_entry.item | default(dotfiles_marker_many_entry),
+            'marker': dotfiles_marker_many_entry.name
+          })
+        ]
+      }}

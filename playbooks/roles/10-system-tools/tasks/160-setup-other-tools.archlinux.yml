@@ -36,11 +36,26 @@
     mode: "775"
   loop: "{{ arch_fonts }}"
 
-- name: "[archlinux] Other tools: stat font markers"
-  ansible.builtin.stat:
-    path: ~/.local/share/fonts/{{ item | basename | splitext | first }}/.ansible-font-installed-{{ item | hash('sha256') }}
-  register: var_arch_font_markers
+- name: "[archlinux] Other tools: reset font marker specs"
+  ansible.builtin.set_fact:
+    var_arch_font_marker_specs: []
+
+- name: "[archlinux] Other tools: build font marker specs"
+  ansible.builtin.set_fact:
+    var_arch_font_marker_specs: "{{ var_arch_font_marker_specs + [var_arch_font_marker_spec] }}"
+  vars:
+    var_arch_font_marker_spec:
+      name: "font-installed-{{ item | hash('sha256') }}"
+      item: "{{ item }}"
   loop: "{{ arch_fonts }}"
+
+- name: "[archlinux] Other tools: stat font markers"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check-many
+  vars:
+    dotfiles_marker_register: var_arch_font_markers
+    dotfiles_marker_items: "{{ var_arch_font_marker_specs }}"
 
 - name: "[archlinux] Other tools: install font"
   ansible.builtin.unarchive:
@@ -55,10 +70,12 @@
   notify: handler_ensure_fc_cache
 
 - name: "[archlinux] Other tools: record font markers"
-  ansible.builtin.copy:
-    content: "{{ item.item }}\n"
-    dest: ~/.local/share/fonts/{{ item.item | basename | splitext | first }}/.ansible-font-installed-{{ item.item | hash('sha256') }}
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "font-installed-{{ item.item | hash('sha256') }}"
+    dotfiles_marker_content: "{{ item.item }}\n"
   loop: "{{ var_arch_font_installs.results }}"
   when: item.changed | default(false)
 

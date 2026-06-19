@@ -36,23 +36,31 @@
     delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
     retries_n: "{{ arch_ansible_long_retries_config.retries_n }}"
 
-- name: "[archlinux] Wine tools: get audiogridder client"
+- name: "[archlinux] Wine tools: stat audiogridder client marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
   vars:
-    audiogridder_client_marker: ~/.vst3/.ansible-audiogridder-client-{{ arch_audiogridder_wine_setup.plugin_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}
+    dotfiles_marker_name: "audiogridder-client-{{ arch_audiogridder_wine_setup.plugin_version }}"
+    dotfiles_marker_register: var_audiogridder_client_marker
+
+- name: "[archlinux] Wine tools: get audiogridder client"
   ansible.builtin.unarchive:
     src: https://audiogridder.com/github/releases/download/release_{{ arch_audiogridder_wine_setup.plugin_version_slug | default(arch_audiogridder_wine_setup.plugin_version) }}/AudioGridder_{{ arch_audiogridder_wine_setup.plugin_version }}-Linux.zip
     dest: ~/.vst3/
-    creates: "{{ audiogridder_client_marker }}"
     remote_src: true
   timeout: 60
   ignore_errors: true
   register: var_get_audiogridder_client
+  when: not var_audiogridder_client_marker.stat.exists
 
 - name: "[archlinux] Wine tools: record audiogridder client marker"
-  ansible.builtin.copy:
-    content: "{{ arch_audiogridder_wine_setup.plugin_version }}\n"
-    dest: ~/.vst3/.ansible-audiogridder-client-{{ arch_audiogridder_wine_setup.plugin_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "audiogridder-client-{{ arch_audiogridder_wine_setup.plugin_version }}"
+    dotfiles_marker_content: "{{ arch_audiogridder_wine_setup.plugin_version }}\n"
   when: var_get_audiogridder_client is success and var_get_audiogridder_client.changed | default(false)
 
 - name: "[archlinux] Wine tools: setup audiogridder.desktop file"

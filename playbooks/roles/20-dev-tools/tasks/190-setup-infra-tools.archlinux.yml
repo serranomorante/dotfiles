@@ -16,7 +16,6 @@
     k3s_system_kubeconfig_path: /etc/rancher/k3s/k3s.yaml
     k3s_user_kubeconfig_dir: "{{ ansible_facts.env.HOME }}/.kube"
     k3s_user_kubeconfig_path: "{{ k3s_user_kubeconfig_dir }}/config"
-    k3s_install_marker_path: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/k3s-install"
     k3s_install_marker: "{{ k3s_install_version }}:{{ k3s_install_exec }}"
   block:
     - name: "[archlinux] Setup infra tools: inspect k3s version"
@@ -30,15 +29,13 @@
       failed_when: false
 
     - name: "[archlinux] Setup infra tools: stat k3s install marker"
-      ansible.builtin.stat:
-        path: "{{ k3s_install_marker_path }}"
-      register: var_k3s_install_marker
-
-    - name: "[archlinux] Setup infra tools: read k3s install marker"
-      ansible.builtin.slurp:
-        src: "{{ k3s_install_marker_path }}"
-      register: var_k3s_install_marker_slurp
-      when: var_k3s_install_marker.stat.exists
+      ansible.builtin.include_role:
+        name: dotfiles-markers
+        tasks_from: check
+      vars:
+        dotfiles_marker_name: k3s-install
+        dotfiles_marker_register: var_k3s_install_marker
+        dotfiles_marker_read: true
 
     - name: "[archlinux] Setup infra tools: determine whether k3s reinstall is required"
       ansible.builtin.set_fact:
@@ -48,7 +45,7 @@
             or k3s_install_version not in (var_k3s_version.stdout | default(''))
             or (
               var_k3s_install_marker.stat.exists
-              and ((var_k3s_install_marker_slurp.content | default('') | b64decode | trim) != k3s_install_marker)
+              and ((var_k3s_install_marker.content | default('') | b64decode | trim) != k3s_install_marker)
             )
           }}
 
@@ -72,17 +69,13 @@
       changed_when: true
       when: k3s_reinstall_required
 
-    - name: "[archlinux] Setup infra tools: ensure k3s marker directory"
-      ansible.builtin.file:
-        path: "{{ k3s_install_marker_path | dirname }}"
-        state: directory
-        mode: "755"
-
     - name: "[archlinux] Setup infra tools: record k3s install marker"
-      ansible.builtin.copy:
-        content: "{{ k3s_install_marker }}\n"
-        dest: "{{ k3s_install_marker_path }}"
-        mode: "644"
+      ansible.builtin.include_role:
+        name: dotfiles-markers
+        tasks_from: record
+      vars:
+        dotfiles_marker_name: k3s-install
+        dotfiles_marker_content: "{{ k3s_install_marker }}\n"
       when:
         - k3s_reinstall_required or not var_k3s_install_marker.stat.exists
 

@@ -38,9 +38,12 @@
     mode: "755"
 
 - name: "[archlinux] Setup terminal tools: stat isd-tui marker"
-  ansible.builtin.stat:
-    path: "{{ ansible_facts.env.HOME }}/.local/share/uv/tools/.ansible-package-isd-tui-{{ isd_tui_version }}"
-  register: var_isd_tui_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "uv-tool-isd-tui-{{ isd_tui_version }}"
+    dotfiles_marker_register: var_isd_tui_marker
 
 - name: "[archlinux] Setup terminal tools: inspect isd-tui Python interpreter"
   ansible.builtin.command:
@@ -78,10 +81,12 @@
   changed_when: true
 
 - name: "[archlinux] Setup terminal tools: record isd-tui marker"
-  ansible.builtin.copy:
-    content: "isd-tui=={{ isd_tui_version }}\n"
-    dest: "{{ ansible_facts.env.HOME }}/.local/share/uv/tools/.ansible-package-isd-tui-{{ isd_tui_version }}"
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "uv-tool-isd-tui-{{ isd_tui_version }}"
+    dotfiles_marker_content: "isd-tui=={{ isd_tui_version }}\n"
   when: >-
     not var_isd_tui_marker.stat.exists
     or not var_isd_tui_python_interpreter.stdout.startswith(ansible_facts.env.HOME + '/.local/share/uv/python/')
@@ -115,9 +120,12 @@
     - not var_kitty_nightly_binary.stat.exists
 
 - name: "[archlinux] Setup terminal tools: stat kitty nightly marker"
-  ansible.builtin.stat:
-    path: "{{ ansible_facts.env.HOME }}/.local/kitty.app/.ansible-kitty-nightly-{{ var_kitty_nightly_asset_revision.stdout | hash('sha256') }}"
-  register: var_kitty_nightly_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "kitty-nightly-{{ var_kitty_nightly_asset_revision.stdout | hash('sha256') }}"
+    dotfiles_marker_register: var_kitty_nightly_marker
   when: var_kitty_nightly_asset_revision.stdout | trim | length > 0
 
 - name: "[archlinux] Setup terminal tools: install kitty nightly"
@@ -133,10 +141,12 @@
   changed_when: true
 
 - name: "[archlinux] Setup terminal tools: record kitty nightly marker"
-  ansible.builtin.copy:
-    content: "{{ var_kitty_nightly_asset_revision.stdout }}\n"
-    dest: "{{ ansible_facts.env.HOME }}/.local/kitty.app/.ansible-kitty-nightly-{{ var_kitty_nightly_asset_revision.stdout | hash('sha256') }}"
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "kitty-nightly-{{ var_kitty_nightly_asset_revision.stdout | hash('sha256') }}"
+    dotfiles_marker_content: "{{ var_kitty_nightly_asset_revision.stdout }}\n"
   when:
     - var_kitty_nightly_asset_revision.stdout | trim | length > 0
     - not var_kitty_nightly_marker.stat.exists

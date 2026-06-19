@@ -1,0 +1,10 @@
+---
+- name: "[dotfiles-markers] Record marker item"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "{{ dotfiles_marker_many_entry.name }}"
+    dotfiles_marker_content: "{{ dotfiles_marker_many_entry.content }}"
+    dotfiles_marker_mode: "{{ dotfiles_marker_many_entry.mode | default(dotfiles_marker_many_mode_default) }}"
+    dotfiles_marker_notify: "{{ dotfiles_marker_many_entry.notify | default(dotfiles_marker_many_notify_default) }}"

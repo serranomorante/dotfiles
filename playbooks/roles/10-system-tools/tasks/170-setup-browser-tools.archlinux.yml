@@ -59,10 +59,17 @@
   register: var_ruby_version
   changed_when: false
 
-- name: "[archlinux] Setup browser tools: stat chrome extension checkout markers"
-  ansible.builtin.stat:
-    path: ~/data/repos/{{ item.name | default(item.repo) | basename }}/.ansible-browser-extension-{{ item.marker | regex_replace('[^A-Za-z0-9_.-]', '_') }}
-  register: var_chrome_extension_markers
+- name: "[archlinux] Setup browser tools: reset chrome extension marker specs"
+  ansible.builtin.set_fact:
+    var_chrome_extension_marker_specs: []
+
+- name: "[archlinux] Setup browser tools: build chrome extension marker specs"
+  ansible.builtin.set_fact:
+    var_chrome_extension_marker_specs: "{{ var_chrome_extension_marker_specs + [var_chrome_extension_marker_spec] }}"
+  vars:
+    var_chrome_extension_marker_spec:
+      name: "browser-extension-{{ item.name | default(item.repo) | basename }}-{{ item.marker }}"
+      item: "{{ item }}"
   loop:
     - repo: https://github.com/jimschubert/NewTab-Redirect
       marker: HEAD:newtab-patch-v1
@@ -75,6 +82,14 @@
       marker: v{{ facebook_react_extension_version }}:plain-v1
     - repo: https://github.com/karlicoss/promnesia
       marker: HEAD:plain-v1
+
+- name: "[archlinux] Setup browser tools: stat chrome extension checkout markers"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check-many
+  vars:
+    dotfiles_marker_register: var_chrome_extension_markers
+    dotfiles_marker_items: "{{ var_chrome_extension_marker_specs }}"
 
 - name: "[archlinux] Setup browser tools: clone chrome extensions"
   ansible.builtin.include_role:
@@ -128,10 +143,12 @@
   when: not var_chrome_extension_markers.results[1].stat.exists
 
 - name: "[archlinux] Setup browser tools: record chrome extension checkout markers"
-  ansible.builtin.copy:
-    content: "{{ item.item.marker }}\n"
-    dest: ~/data/repos/{{ item.item.name | default(item.item.repo) | basename }}/.ansible-browser-extension-{{ item.item.marker | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "browser-extension-{{ item.item.name | default(item.item.repo) | basename }}-{{ item.item.marker }}"
+    dotfiles_marker_content: "{{ item.item.marker }}\n"
   loop: "{{ var_clone_chrome_extensions.results }}"
   when: not item.skipped | default(false)
 

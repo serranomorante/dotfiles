@@ -6,9 +6,12 @@
     name: luarocks
 
 - name: "[archlinux] Setup lua tools: stat luaunit marker"
-  ansible.builtin.stat:
-    path: /usr/share/lua/.ansible-package-luaunit-{{ luaunit_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}
-  register: var_luaunit_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "luarocks-luaunit-{{ luaunit_version }}"
+    dotfiles_marker_register: var_luaunit_marker
 
 - name: "[archlinux] Setup lua tools: ensure luaunit"
   become: true
@@ -22,9 +25,10 @@
   changed_when: true
 
 - name: "[archlinux] Setup lua tools: record luaunit marker"
-  become: true
-  ansible.builtin.copy:
-    content: "luaunit {{ luaunit_version }}\n"
-    dest: /usr/share/lua/.ansible-package-luaunit-{{ luaunit_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "luarocks-luaunit-{{ luaunit_version }}"
+    dotfiles_marker_content: "luaunit {{ luaunit_version }}\n"
   when: not var_luaunit_marker.stat.exists

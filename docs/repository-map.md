@@ -36,6 +36,8 @@ playbooks/roles/20-dev-tools/
 playbooks/roles/30-lang-tools/
 playbooks/roles/40-PKM/
 playbooks/roles/50-cloud-tools/
+playbooks/roles/dotfiles-markers/
+playbooks/roles/update-diff-capture/
 ```
 
 Common patterns:
@@ -46,6 +48,7 @@ Common patterns:
 - Embedded hardware and serial development is owned by `playbooks/roles/20-dev-tools/tasks/200-setup-embedded-tools.archlinux.yml`; tag `20-200` installs Arduino CLI tooling, AVR board support, serial-port access through the Arch `uucp` group, Arduino Micro udev rules from `assets/udev-rules/`, and compiles/uploads the keyboard MIDI LED matrix firmware when the Arduino Micro is connected and the firmware hash changed.
 - Templates live under `playbooks/roles/<role>/templates/`.
 - Patches used by playbooks usually live under `playbooks/roles/<role>/files/` or `assets/patches/`.
+- Installation/build/checksum markers are centralized through `playbooks/roles/dotfiles-markers/` and stored under `~/.local/state/dotfiles/ansible-markers/`. New Ansible idempotence markers should use `include_role: name=dotfiles-markers tasks_from=check` before the expensive work and `tasks_from=record` after it; do not write `.ansible-*` marker files inside checkout or install directories.
 
 ## Stow Model
 

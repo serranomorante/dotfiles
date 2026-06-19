@@ -1,8 +1,11 @@
 ---
 - name: "[archlinux] Setup rust: check rustup marker"
-  ansible.builtin.stat:
-    path: "{{ ansible_facts.env.HOME }}/.cargo/.ansible-rust-{{ rust_version }}"
-  register: var_rust_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "rust-{{ rust_version }}"
+    dotfiles_marker_register: var_rust_marker
 
 - name: "[archlinux] Setup rust: ensure rustup"
   ansible.builtin.shell: >
@@ -21,8 +24,10 @@
   changed_when: true
 
 - name: "[archlinux] Setup rust: record rust marker"
-  ansible.builtin.copy:
-    content: "{{ rust_version }}\n"
-    dest: "{{ ansible_facts.env.HOME }}/.cargo/.ansible-rust-{{ rust_version }}"
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "rust-{{ rust_version }}"
+    dotfiles_marker_content: "{{ rust_version }}\n"
   when: not var_rust_marker.stat.exists

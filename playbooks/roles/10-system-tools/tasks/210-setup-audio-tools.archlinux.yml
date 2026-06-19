@@ -117,20 +117,44 @@
     timeout: 300
   loop: "{{ arch_stt_vosk_models }}"
 
-- name: "[archlinux] Setup audio tools: unpack STT Vosk model"
-  ansible.builtin.unarchive:
-    src: "{{ item.archive_path | dirname }}/{{ item.url | basename | regex_replace('\\.zip$', '') }}-{{ item.url | hash('sha256') }}.zip"
-    dest: "{{ item.parent_dir }}"
-    remote_src: true
-    creates: "{{ item.parent_dir }}/.ansible-vosk-model-{{ item.name }}-{{ item.url | hash('sha256') }}"
+- name: "[archlinux] Setup audio tools: reset STT Vosk model marker specs"
+  ansible.builtin.set_fact:
+    var_arch_stt_vosk_model_marker_specs: []
+
+- name: "[archlinux] Setup audio tools: build STT Vosk model marker specs"
+  ansible.builtin.set_fact:
+    var_arch_stt_vosk_model_marker_specs: "{{ var_arch_stt_vosk_model_marker_specs + [var_arch_stt_vosk_model_marker_spec] }}"
+  vars:
+    var_arch_stt_vosk_model_marker_spec:
+      name: "vosk-model-{{ item.name }}-{{ item.url | hash('sha256') }}"
+      item: "{{ item }}"
   loop: "{{ arch_stt_vosk_models }}"
 
+- name: "[archlinux] Setup audio tools: stat STT Vosk model markers"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check-many
+  vars:
+    dotfiles_marker_register: var_arch_stt_vosk_model_markers
+    dotfiles_marker_items: "{{ var_arch_stt_vosk_model_marker_specs }}"
+
+- name: "[archlinux] Setup audio tools: unpack STT Vosk model"
+  ansible.builtin.unarchive:
+    src: "{{ item.item.archive_path | dirname }}/{{ item.item.url | basename | regex_replace('\\.zip$', '') }}-{{ item.item.url | hash('sha256') }}.zip"
+    dest: "{{ item.item.parent_dir }}"
+    remote_src: true
+  loop: "{{ var_arch_stt_vosk_model_markers.results }}"
+  when: not item.stat.exists
+
 - name: "[archlinux] Setup audio tools: record STT Vosk model marker"
-  ansible.builtin.copy:
-    content: "{{ item.url }}\n"
-    dest: "{{ item.parent_dir }}/.ansible-vosk-model-{{ item.name }}-{{ item.url | hash('sha256') }}"
-    mode: "644"
-  loop: "{{ arch_stt_vosk_models }}"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "vosk-model-{{ item.item.name }}-{{ item.item.url | hash('sha256') }}"
+    dotfiles_marker_content: "{{ item.item.url }}\n"
+  loop: "{{ var_arch_stt_vosk_model_markers.results }}"
+  when: not item.stat.exists
 
 - name: "[archlinux] Setup audio tools: setup reaper-linux.desktop file"
   ansible.builtin.template:

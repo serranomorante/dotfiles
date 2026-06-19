@@ -115,10 +115,12 @@
   changed_when: false
 
 - name: "[{{ update_diff_capture_scope | default('ansible-npm') }}] npm update diffs: record package markers"
-  ansible.builtin.copy:
-    content: "{{ item.item.name }}@{{ item.item.version }}\n"
-    dest: "{{ update_diff_npm_prefix }}/.ansible-package-{{ item.item.name | regex_replace('[^A-Za-z0-9_.-]', '_') }}-{{ item.item.version }}"
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "npm-{{ update_diff_capture_scope | default('ansible-npm') }}-{{ item.item.name }}-{{ item.item.version }}"
+    dotfiles_marker_content: "{{ item.item.name }}@{{ item.item.version }}\n"
   loop: "{{ update_diff_npm_package_installs.results }}"
   loop_control:
     label: "{{ item.item.name }}"

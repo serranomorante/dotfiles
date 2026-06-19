@@ -98,9 +98,12 @@
   register: var_wineasio_system_install
 
 - name: "[archlinux] Wine tools: stat wineasio registration marker"
-  ansible.builtin.stat:
-    path: "{{ arch_reaper_wine_setup.wine_prefix }}/.dotfiles-wineasio-registered"
-  register: var_wineasio_registration_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: wineasio-registered-reaper
+    dotfiles_marker_register: var_wineasio_registration_marker
 
 - name: "[archlinux] Wine tools: ensure wineasio dll dirs in reaper prefix"
   ansible.builtin.file:
@@ -162,10 +165,12 @@
     not var_wineasio_registration_marker.stat.exists
 
 - name: "[archlinux] Wine tools: mark wineasio registered"
-  ansible.builtin.file:
-    path: "{{ arch_reaper_wine_setup.wine_prefix }}/.dotfiles-wineasio-registered"
-    state: touch
-    mode: "0644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: wineasio-registered-reaper
+    dotfiles_marker_content: "registered\n"
   when: >
     var_wineasio_portable_install.changed or
     var_wineasio_system_install.changed or

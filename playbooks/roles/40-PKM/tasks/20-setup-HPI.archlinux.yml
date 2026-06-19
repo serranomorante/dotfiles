@@ -53,15 +53,13 @@
       - name: cachew
 
 - name: "[archlinux] Setup HPI - stat h setup marker"
-  ansible.builtin.stat:
-    path: ~/data/repos/h/.ansible-h-setup
-  register: h_setup_marker_result
-
-- name: "[archlinux] Setup HPI - read h setup marker"
-  ansible.builtin.slurp:
-    src: ~/data/repos/h/.ansible-h-setup
-  register: h_setup_marker_slurp
-  when: h_setup_marker_result.stat.exists
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: h-setup
+    dotfiles_marker_register: h_setup_marker_result
+    dotfiles_marker_read: true
 
 - name: "[archlinux] Setup HPI - stat bouncer checkout"
   ansible.builtin.stat:
@@ -75,7 +73,7 @@
       {{
         not h_setup_marker_result.stat.exists
         or not h_bouncer_checkout_result.stat.exists
-        or ((h_setup_marker_slurp.content | default('') | b64decode | trim) != 'main:h-patches-v1')
+        or ((h_setup_marker_result.content | default('') | b64decode | trim) != 'main:h-patches-v1')
       }}
 
 - name: "[archlinux] Setup HPI - clone h"
@@ -205,10 +203,12 @@
   when: h_setup_refresh_required
 
 - name: "[archlinux] Setup HPI - record h setup marker"
-  ansible.builtin.copy:
-    content: "{{ h_setup_marker }}\n"
-    dest: ~/data/repos/h/.ansible-h-setup
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: h-setup
+    dotfiles_marker_content: "{{ h_setup_marker }}\n"
   when: h_setup_refresh_required
 
 - name: "[archlinux] Setup HPI - remove tempdir"
@@ -415,9 +415,12 @@
   when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - stat h db marker"
-  ansible.builtin.stat:
-    path: ~/data/repos/h/.ansible-h-db
-  register: h_db_marker_result
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: h-db
+    dotfiles_marker_register: h_db_marker_result
   when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - ensure h db"
@@ -447,10 +450,12 @@
       or not (h_db_marker_result.stat.exists | default(false))
 
 - name: "[archlinux] Setup HPI - record h db marker"
-  ansible.builtin.copy:
-    content: "{{ h_setup_marker }}\n"
-    dest: ~/data/repos/h/.ansible-h-db
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: h-db
+    dotfiles_marker_content: "{{ h_setup_marker }}\n"
   when:
     - hpi_self_hosted_available
     - ensure_h_db_result.rc | default(1) == 0
@@ -613,15 +618,13 @@
   when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI: stat hypothesis client marker"
-  ansible.builtin.stat:
-    path: ~/data/repos/client/.ansible-hypothesis-client-build
-  register: hypothesis_client_marker_result
-
-- name: "[archlinux] Setup HPI: read hypothesis client marker"
-  ansible.builtin.slurp:
-    src: ~/data/repos/client/.ansible-hypothesis-client-build
-  register: hypothesis_client_marker_slurp
-  when: hypothesis_client_marker_result.stat.exists
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: hypothesis-client-build
+    dotfiles_marker_register: hypothesis_client_marker_result
+    dotfiles_marker_read: true
 
 - name: "[archlinux] Setup HPI: set hypothesis client marker facts"
   ansible.builtin.set_fact:
@@ -629,7 +632,7 @@
     hypothesis_client_refresh_required: >-
       {{
         not hypothesis_client_marker_result.stat.exists
-        or ((hypothesis_client_marker_slurp.content | default('') | b64decode | trim) != ('v' ~ hypothesis_client_version ~ ':pdf-fixes-v1'))
+        or ((hypothesis_client_marker_result.content | default('') | b64decode | trim) != ('v' ~ hypothesis_client_version ~ ':pdf-fixes-v1'))
       }}
 
 - name: "[archlinux] Setup HPI: clone hypothesis client"
@@ -736,22 +739,22 @@
   changed_when: true
 
 - name: "[archlinux] Setup HPI: record hypothesis client marker"
-  ansible.builtin.copy:
-    content: "{{ hypothesis_client_marker }}\n"
-    dest: ~/data/repos/client/.ansible-hypothesis-client-build
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: hypothesis-client-build
+    dotfiles_marker_content: "{{ hypothesis_client_marker }}\n"
   when: hypothesis_client_refresh_required
 
 - name: "[archlinux] Setup HPI: stat hypothesis extension marker"
-  ansible.builtin.stat:
-    path: ~/data/repos/hypothesis-extension/.ansible-hypothesis-extension-build
-  register: hypothesis_extension_marker_result
-
-- name: "[archlinux] Setup HPI: read hypothesis extension marker"
-  ansible.builtin.slurp:
-    src: ~/data/repos/hypothesis-extension/.ansible-hypothesis-extension-build
-  register: hypothesis_extension_marker_slurp
-  when: hypothesis_extension_marker_result.stat.exists
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: hypothesis-extension-build
+    dotfiles_marker_register: hypothesis_extension_marker_result
+    dotfiles_marker_read: true
 
 - name: "[archlinux] Setup HPI: set hypothesis extension marker facts"
   ansible.builtin.set_fact:
@@ -759,7 +762,7 @@
     hypothesis_extension_refresh_required: >-
       {{
         not hypothesis_extension_marker_result.stat.exists
-        or ((hypothesis_extension_marker_slurp.content | default('') | b64decode | trim) != ('v' ~ hypothesis_browser_extension_version ~ ':extension-patches-v1'))
+        or ((hypothesis_extension_marker_result.content | default('') | b64decode | trim) != ('v' ~ hypothesis_browser_extension_version ~ ':extension-patches-v1'))
       }}
 
 - name: "[archlinux] Setup HPI: clone hypothesis browser extension"
@@ -875,10 +878,12 @@
     - "'Nothing to be done' not in prepare_hypothesis_extension_result.stderr"
 
 - name: "[archlinux] Setup HPI: record hypothesis extension marker"
-  ansible.builtin.copy:
-    content: "{{ hypothesis_extension_marker }}\n"
-    dest: ~/data/repos/hypothesis-extension/.ansible-hypothesis-extension-build
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: hypothesis-extension-build
+    dotfiles_marker_content: "{{ hypothesis_extension_marker }}\n"
   when: hypothesis_extension_refresh_required
 
 - name: "[archlinux] Setup HPI: version to extensionator path"

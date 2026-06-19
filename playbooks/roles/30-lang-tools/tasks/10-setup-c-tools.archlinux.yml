@@ -15,9 +15,12 @@
     - "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/cpptools-downloads"
 
 - name: "[archlinux] C language: ensure DAP - stat cpptools marker"
-  ansible.builtin.stat:
-    path: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/cpptools/.ansible-cpptools-{{ cpptools_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
-  register: var_cpptools_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "cpptools-{{ cpptools_version }}"
+    dotfiles_marker_register: var_cpptools_marker
 
 - name: "[archlinux] C language: ensure DAP - download cpptools"
   ansible.builtin.command:
@@ -58,10 +61,12 @@
   changed_when: true
 
 - name: "[archlinux] C language: ensure DAP - record cpptools marker"
-  ansible.builtin.copy:
-    content: "{{ cpptools_version }}\n"
-    dest: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/cpptools/.ansible-cpptools-{{ cpptools_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "cpptools-{{ cpptools_version }}"
+    dotfiles_marker_content: "{{ cpptools_version }}\n"
   when: not var_cpptools_marker.stat.exists
 
 - name: "[archlinux] C language: ensure DAP - set cpptools as executable"

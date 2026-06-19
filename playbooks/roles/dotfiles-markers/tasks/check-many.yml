@@ -1,0 +1,25 @@
+---
+- name: "[dotfiles-markers] Validate marker check-many variables"
+  ansible.builtin.assert:
+    that:
+      - dotfiles_marker_items is defined
+      - dotfiles_marker_register is defined
+    quiet: true
+
+- name: "[dotfiles-markers] Reset marker check-many results"
+  ansible.builtin.set_fact:
+    dotfiles_marker_many_results: []
+    dotfiles_marker_many_read_default: "{{ dotfiles_marker_read | default(false) }}"
+    dotfiles_marker_many_mode_default: "{{ dotfiles_marker_mode | default('644') }}"
+
+- name: "[dotfiles-markers] Check marker items"
+  ansible.builtin.include_tasks: check-many-one.yml
+  loop: "{{ dotfiles_marker_items }}"
+  loop_control:
+    loop_var: dotfiles_marker_many_entry
+    label: "{{ dotfiles_marker_many_entry.name }}"
+
+- name: "[dotfiles-markers] Publish marker check-many results"
+  ansible.builtin.set_fact:
+    "{{ dotfiles_marker_register }}":
+      results: "{{ dotfiles_marker_many_results }}"

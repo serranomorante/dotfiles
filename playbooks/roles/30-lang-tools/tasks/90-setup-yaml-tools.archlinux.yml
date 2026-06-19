@@ -8,9 +8,12 @@
       - yaml-language-server
 
 - name: "[archlinux] Yaml language: stat ansible-lint marker"
-  ansible.builtin.stat:
-    path: "{{ ansible_facts.env.HOME }}/.local/share/uv/tools/.ansible-package-ansible-lint-{{ ansible_lint_version }}"
-  register: var_ansible_lint_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "uv-tool-ansible-lint-{{ ansible_lint_version }}"
+    dotfiles_marker_register: var_ansible_lint_marker
 
 - name: "[archlinux] Yaml language: inspect ansible-lint Python interpreter"
   ansible.builtin.command:
@@ -48,10 +51,12 @@
   changed_when: true
 
 - name: "[archlinux] Yaml language: record ansible-lint marker"
-  ansible.builtin.copy:
-    content: "ansible-lint=={{ ansible_lint_version }}\n"
-    dest: "{{ ansible_facts.env.HOME }}/.local/share/uv/tools/.ansible-package-ansible-lint-{{ ansible_lint_version }}"
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "uv-tool-ansible-lint-{{ ansible_lint_version }}"
+    dotfiles_marker_content: "ansible-lint=={{ ansible_lint_version }}\n"
   when: >-
     not var_ansible_lint_marker.stat.exists
     or not var_ansible_lint_python_interpreter.stdout.startswith(ansible_facts.env.HOME + '/.local/share/uv/python/')

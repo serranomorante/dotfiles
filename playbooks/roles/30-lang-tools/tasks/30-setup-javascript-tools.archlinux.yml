@@ -36,23 +36,21 @@
     state: link
 
 - name: "[archlinux] Javascript language: stat vscode-js-debug marker"
-  ansible.builtin.stat:
-    path: ~/data/repos/vscode-js-debug/.ansible-vscode-js-debug-build
-  register: var_stat_vscode_js_debug_marker
-
-- name: "[archlinux] Javascript language: read vscode-js-debug marker"
-  ansible.builtin.slurp:
-    src: ~/data/repos/vscode-js-debug/.ansible-vscode-js-debug-build
-  register: var_slurp_vscode_js_debug_marker
-  when: var_stat_vscode_js_debug_marker.stat.exists
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: vscode-js-debug-build
+    dotfiles_marker_register: var_vscode_js_debug_marker_result
+    dotfiles_marker_read: true
 
 - name: "[archlinux] Javascript language: set vscode-js-debug marker facts"
   ansible.builtin.set_fact:
     var_vscode_js_debug_marker: "v{{ vscode_js_debug_version }}:stderr-patch-v1"
     var_vscode_js_debug_needs_refresh: >-
       {{
-        not var_stat_vscode_js_debug_marker.stat.exists
-        or ((var_slurp_vscode_js_debug_marker.content | default('') | b64decode | trim) != ('v' ~ vscode_js_debug_version ~ ':stderr-patch-v1'))
+        not var_vscode_js_debug_marker_result.stat.exists
+        or ((var_vscode_js_debug_marker_result.content | default('') | b64decode | trim) != ('v' ~ vscode_js_debug_version ~ ':stderr-patch-v1'))
       }}
 
 - name: "[archlinux] Javascript language: clone vscode-js-debug with diff capture"
@@ -110,8 +108,10 @@
   when: var_vscode_js_debug_needs_refresh or not var_stat_vscode_js_debug.stat.exists
 
 - name: "[archlinux] Javascript language: record vscode-js-debug marker"
-  ansible.builtin.copy:
-    content: "{{ var_vscode_js_debug_marker }}\n"
-    dest: ~/data/repos/vscode-js-debug/.ansible-vscode-js-debug-build
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: vscode-js-debug-build
+    dotfiles_marker_content: "{{ var_vscode_js_debug_marker }}\n"
   when: var_vscode_js_debug_needs_refresh

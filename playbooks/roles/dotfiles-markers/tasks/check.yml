@@ -1,0 +1,49 @@
+---
+- name: "[dotfiles-markers] Validate marker check variables"
+  ansible.builtin.assert:
+    that:
+      - dotfiles_marker_name is defined
+      - dotfiles_marker_register is defined
+    quiet: true
+
+- name: "[dotfiles-markers] Set marker path fact"
+  ansible.builtin.set_fact:
+    dotfiles_marker_safe_name: "{{ dotfiles_marker_name | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
+    dotfiles_marker_path: "{{ dotfiles_marker_root }}/{{ dotfiles_marker_name | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
+
+- name: "[dotfiles-markers] Ensure marker directory"
+  ansible.builtin.file:
+    path: "{{ dotfiles_marker_root }}"
+    state: directory
+    mode: "755"
+
+- name: "[dotfiles-markers] Stat marker"
+  ansible.builtin.stat:
+    path: "{{ dotfiles_marker_path }}"
+  register: dotfiles_marker_stat
+
+- name: "[dotfiles-markers] Reset per-marker scratch facts"
+  ansible.builtin.set_fact:
+    dotfiles_marker_slurp: {}
+
+- name: "[dotfiles-markers] Read marker"
+  ansible.builtin.slurp:
+    src: "{{ dotfiles_marker_path }}"
+  register: dotfiles_marker_slurp
+  when:
+    - dotfiles_marker_read | default(false) | bool
+    - dotfiles_marker_stat.stat.exists
+
+- name: "[dotfiles-markers] Publish marker result"
+  ansible.builtin.set_fact:
+    "{{ dotfiles_marker_register }}": >-
+      {{
+        {
+          'stat': dotfiles_marker_stat.stat,
+          'path': dotfiles_marker_path
+        }
+        | combine(
+          (dotfiles_marker_slurp.content is defined)
+          | ternary({'content': dotfiles_marker_slurp.content}, {})
+        )
+      }}

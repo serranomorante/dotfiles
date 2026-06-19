@@ -138,19 +138,16 @@
     checksum_algorithm: sha256
   register: var_arch_kglobalshortcutsrc
 
-- name: "[archlinux] Dotfiles: ensure KDE state marker directory"
-  ansible.builtin.file:
-    path: ~/.local/state/dotfiles
-    state: directory
-    mode: "755"
-
 - name: "[archlinux] Dotfiles: record applied KDE global shortcuts checksum"
-  ansible.builtin.copy:
-    content: "{{ var_arch_kglobalshortcutsrc.stat.checksum }}\n"
-    dest: ~/.local/state/dotfiles/kglobalshortcutsrc.sha256
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: kglobalshortcutsrc-sha256
+    dotfiles_marker_content: "{{ var_arch_kglobalshortcutsrc.stat.checksum }}\n"
+    dotfiles_marker_notify:
+      - "10-system-tools : handler_restart_kglobalaccel_service"
   when: var_arch_kglobalshortcutsrc.stat.exists
-  notify: "10-system-tools : handler_restart_kglobalaccel_service"
 
 - name: "[archlinux] Dotfiles: stat Plasma clipboard service"
   ansible.builtin.stat:
@@ -168,12 +165,15 @@
     daemon_reload: true
 
 - name: "[archlinux] Dotfiles: record applied Plasma clipboard service checksum"
-  ansible.builtin.copy:
-    content: "{{ var_arch_plasma_clipboard_service.stat.checksum }}\n"
-    dest: ~/.local/state/dotfiles/plasma-clipboard.service.sha256
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: plasma-clipboard-service-sha256
+    dotfiles_marker_content: "{{ var_arch_plasma_clipboard_service.stat.checksum }}\n"
+    dotfiles_marker_notify:
+      - "10-system-tools : handler_restart_plasma_clipboard_service"
   when: var_arch_plasma_clipboard_service.stat.exists
-  notify: "10-system-tools : handler_restart_plasma_clipboard_service"
 
 - name: "[archlinux] Dotfiles: compile agent session store"
   ansible.builtin.command:
@@ -259,14 +259,17 @@
     daemon_reload: true
 
 - name: "[archlinux] Dotfiles: record applied system spike notifier checksum"
-  ansible.builtin.copy:
-    content: "{{ var_system_spike_notify_script.stat.checksum }}\n{{ var_system_spike_notify_service.stat.checksum }}\n"
-    dest: ~/.local/state/dotfiles/system-spike-notify.sha256
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: system-spike-notify-sha256
+    dotfiles_marker_content: "{{ var_system_spike_notify_script.stat.checksum }}\n{{ var_system_spike_notify_service.stat.checksum }}\n"
+    dotfiles_marker_notify:
+      - "10-system-tools : handler_restart_system_spike_notify_service"
   when:
     - var_system_spike_notify_script.stat.exists
     - var_system_spike_notify_service.stat.exists
-  notify: "10-system-tools : handler_restart_system_spike_notify_service"
 
 - name: "[archlinux] Dotfiles: install laptop LAN NetworkManager dispatcher"
   become: true

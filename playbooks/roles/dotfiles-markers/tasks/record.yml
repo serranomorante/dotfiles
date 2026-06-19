@@ -1,0 +1,25 @@
+---
+- name: "[dotfiles-markers] Validate marker record variables"
+  ansible.builtin.assert:
+    that:
+      - dotfiles_marker_name is defined
+      - dotfiles_marker_content is defined
+    quiet: true
+
+- name: "[dotfiles-markers] Set marker path fact"
+  ansible.builtin.set_fact:
+    dotfiles_marker_safe_name: "{{ dotfiles_marker_name | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
+    dotfiles_marker_path: "{{ dotfiles_marker_root }}/{{ dotfiles_marker_name | regex_replace('[^A-Za-z0-9_.-]', '_') }}"
+
+- name: "[dotfiles-markers] Ensure marker directory"
+  ansible.builtin.file:
+    path: "{{ dotfiles_marker_root }}"
+    state: directory
+    mode: "755"
+
+- name: "[dotfiles-markers] Record marker"
+  ansible.builtin.copy:
+    content: "{{ dotfiles_marker_content }}"
+    dest: "{{ dotfiles_marker_path }}"
+    mode: "{{ dotfiles_marker_mode | default('644') }}"
+  notify: "{{ dotfiles_marker_notify | default([]) }}"

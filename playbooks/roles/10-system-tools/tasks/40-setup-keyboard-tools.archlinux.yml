@@ -33,12 +33,6 @@
       # present-window serves selected X11 windows through x11vnc and noVNC.
       - x11vnc
 
-- name: "[archlinux] Keyboard peripheral: ensure runtime state dir"
-  ansible.builtin.file:
-    path: ~/.local/state/dotfiles
-    state: directory
-    mode: "755"
-
 - name: "[archlinux] Keyboard peripheral: inspect keyd remote commit"
   ansible.builtin.command:
     argv:
@@ -54,9 +48,12 @@
     keyd_build_marker: "keyd-{{ var_keyd_remote_commit.stdout.split()[0] }}-midi-layers-v1"
 
 - name: "[archlinux] Keyboard peripheral: stat keyd build marker"
-  ansible.builtin.stat:
-    path: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/{{ keyd_build_marker }}"
-  register: var_keyd_build_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "{{ keyd_build_marker }}"
+    dotfiles_marker_register: var_keyd_build_marker
 
 - name: "[archlinux] Keyboard peripheral: clean keyd checkout for new remote commit"
   become: true
@@ -97,10 +94,12 @@
   notify: "10-system-tools : handler_ensure_keyd_service"
 
 - name: "[archlinux] Keyboard peripheral: record keyd build marker"
-  ansible.builtin.copy:
-    content: "{{ var_keyd_remote_commit.stdout.split()[0] }}\n"
-    dest: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/{{ keyd_build_marker }}"
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "{{ keyd_build_marker }}"
+    dotfiles_marker_content: "{{ var_keyd_remote_commit.stdout.split()[0] }}\n"
   when: not var_keyd_build_marker.stat.exists
 
 - name: "[archlinux] Keyboard peripheral: setup run as user script"
@@ -139,12 +138,6 @@
     - warpd-marker.service
     - mode-osd.service
 
-- name: "[archlinux] Keyboard peripheral: ensure runtime state dir"
-  ansible.builtin.file:
-    path: ~/.local/state/dotfiles
-    state: directory
-    mode: "755"
-
 - name: "[archlinux] Keyboard peripheral: stat keyd observer script"
   ansible.builtin.stat:
     path: ~/dotfiles/peripherals/bin/keyd-observer
@@ -152,12 +145,15 @@
   register: var_arch_keyd_observer_script
 
 - name: "[archlinux] Keyboard peripheral: record applied keyd observer checksum"
-  ansible.builtin.copy:
-    content: "{{ var_arch_keyd_observer_script.stat.checksum }}\n"
-    dest: ~/.local/state/dotfiles/keyd-observer.sha256
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: keyd-observer-sha256
+    dotfiles_marker_content: "{{ var_arch_keyd_observer_script.stat.checksum }}\n"
+    dotfiles_marker_notify:
+      - "10-system-tools : handler_restart_keyd_observer_service"
   when: var_arch_keyd_observer_script.stat.exists
-  notify: "10-system-tools : handler_restart_keyd_observer_service"
 
 - name: "[archlinux] Keyboard peripheral: ensure X11 helper cache dirs"
   ansible.builtin.file:
@@ -298,7 +294,7 @@
     repo: https://github.com/jbensmann/mouseless
     executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
     dest: "{{ ansible_facts.env.HOME }}/data/repos/mouseless"
-    version: main
+    version: 3e21e6433892f7dd552c62e23d8cde87ee9e4a34
     single_branch: true
     depth: 1
   register: var_mouseless_clone
@@ -331,9 +327,12 @@
     warpd_build_marker: "warpd-{{ var_warpd_remote_commit.stdout.split()[0] }}-patch-stack-v1"
 
 - name: "[archlinux] Keyboard peripheral: stat warpd build marker"
-  ansible.builtin.stat:
-    path: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/{{ warpd_build_marker }}"
-  register: var_warpd_build_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "{{ warpd_build_marker }}"
+    dotfiles_marker_register: var_warpd_build_marker
 
 - name: "[archlinux] Keyboard peripheral: clean warpd checkout for new remote commit"
   become: true
@@ -372,10 +371,12 @@
   when: not var_warpd_build_marker.stat.exists
 
 - name: "[archlinux] Keyboard peripheral: record warpd build marker"
-  ansible.builtin.copy:
-    content: "{{ var_warpd_remote_commit.stdout.split()[0] }}\n"
-    dest: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/{{ warpd_build_marker }}"
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "{{ warpd_build_marker }}"
+    dotfiles_marker_content: "{{ var_warpd_remote_commit.stdout.split()[0] }}\n"
   when: not var_warpd_build_marker.stat.exists
 
 - name: "[archlinux] Keyboard peripheral: stop retired cursor indicator services"

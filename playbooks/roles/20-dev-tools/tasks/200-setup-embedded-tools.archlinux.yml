@@ -144,25 +144,25 @@
     checksum_algorithm: sha256
   register: var_keyboard_midi_tft_display_firmware
 
-- name: "[archlinux] Setup embedded tools: ensure dotfiles state directory"
-  ansible.builtin.file:
-    path: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles"
-    state: directory
-    mode: "700"
-
 - name: "[archlinux] Setup embedded tools: read keyboard MIDI LED matrix firmware marker"
-  ansible.builtin.slurp:
-    src: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyboard-midi-led-matrix.sha256"
-  register: var_keyboard_midi_led_matrix_firmware_marker
-  changed_when: false
-  failed_when: false
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: keyboard-midi-led-matrix-firmware-sha256
+    dotfiles_marker_register: var_keyboard_midi_led_matrix_firmware_marker
+    dotfiles_marker_read: true
+    dotfiles_marker_mode: "600"
 
 - name: "[archlinux] Setup embedded tools: read keyboard MIDI TFT display firmware marker"
-  ansible.builtin.slurp:
-    src: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyboard-midi-tft-display.sha256"
-  register: var_keyboard_midi_tft_display_firmware_marker
-  changed_when: false
-  failed_when: false
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: keyboard-midi-tft-display-firmware-sha256
+    dotfiles_marker_register: var_keyboard_midi_tft_display_firmware_marker
+    dotfiles_marker_read: true
+    dotfiles_marker_mode: "600"
 
 - name: "[archlinux] Setup embedded tools: detect Arduino Micro port"
   ansible.builtin.shell: |
@@ -280,17 +280,23 @@
     )
 
 - name: "[archlinux] Setup embedded tools: record keyboard MIDI LED matrix firmware marker"
-  ansible.builtin.copy:
-    content: "{{ var_keyboard_midi_led_matrix_firmware.stat.checksum }}\n"
-    dest: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyboard-midi-led-matrix.sha256"
-    mode: "600"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: keyboard-midi-led-matrix-firmware-sha256
+    dotfiles_marker_content: "{{ var_keyboard_midi_led_matrix_firmware.stat.checksum }}\n"
+    dotfiles_marker_mode: "600"
   when: var_keyboard_midi_led_matrix_firmware_upload.changed | default(false)
 
 - name: "[archlinux] Setup embedded tools: record keyboard MIDI TFT display firmware marker"
-  ansible.builtin.copy:
-    content: "{{ var_keyboard_midi_tft_display_firmware.stat.checksum }}\n"
-    dest: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/keyboard-midi-tft-display.sha256"
-    mode: "600"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: keyboard-midi-tft-display-firmware-sha256
+    dotfiles_marker_content: "{{ var_keyboard_midi_tft_display_firmware.stat.checksum }}\n"
+    dotfiles_marker_mode: "600"
   when: var_keyboard_midi_tft_display_firmware_upload.changed | default(false)
 
 - name: "[archlinux] Setup embedded tools: restart keyboard MIDI controller after TFT upload"

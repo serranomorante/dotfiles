@@ -1,0 +1,2 @@
+---
+dotfiles_marker_root: "{{ ansible_facts.env.HOME }}/.local/state/dotfiles/ansible-markers"

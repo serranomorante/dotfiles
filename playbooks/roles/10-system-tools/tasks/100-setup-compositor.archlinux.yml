@@ -61,9 +61,12 @@
     dwm_patch_marker: "dwm-{{ var_dwm_remote_commit.stdout.split()[0] }}-patch-stack-v1"
 
 - name: "[archlinux] Compositor: stat dwm patch marker"
-  ansible.builtin.stat:
-    path: ~/data/repos/dwm/.ansible-{{ dwm_patch_marker }}
-  register: var_dwm_patch_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "{{ dwm_patch_marker }}"
+    dotfiles_marker_register: var_dwm_patch_marker
 
 - name: "[archlinux] Compositor: clean dwm checkout for new remote commit"
   become: true
@@ -167,10 +170,12 @@
   when: not var_dwm_patch_marker.stat.exists
 
 - name: "[archlinux] Compositor: record dwm patch marker"
-  ansible.builtin.copy:
-    content: "{{ var_dwm_remote_commit.stdout.split()[0] }}:patch-stack-v1\n"
-    dest: ~/data/repos/dwm/.ansible-{{ dwm_patch_marker }}
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "{{ dwm_patch_marker }}"
+    dotfiles_marker_content: "{{ var_dwm_remote_commit.stdout.split()[0] }}:patch-stack-v1\n"
   when: not var_dwm_patch_marker.stat.exists
 
 - name: "[archlinux] Compositor: stat installed dwm"

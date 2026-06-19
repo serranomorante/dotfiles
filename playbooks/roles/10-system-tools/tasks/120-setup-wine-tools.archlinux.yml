@@ -152,9 +152,12 @@
   timeout: 60
 
 - name: "[archlinux] Wine tools: stat reaper LogPixels marker"
-  ansible.builtin.stat:
-    path: "{{ arch_reaper_wine_setup.wine_prefix }}/.ansible-logpixels-{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
-  register: var_reaper_log_pixels_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "wine-reaper-logpixels-{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
+    dotfiles_marker_register: var_reaper_log_pixels_marker
 
 - name: "[archlinux] Wine tools: test reg query LogPixels"
   ansible.builtin.command: >
@@ -176,18 +179,23 @@
   register: var_setup_reaper_prefix_dpi
 
 - name: "[archlinux] Wine tools: record reaper LogPixels marker"
-  ansible.builtin.copy:
-    content: "{{ arch_reaper_wine_setup.dpi | default(0x60) }}\n"
-    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/.ansible-logpixels-{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "wine-reaper-logpixels-{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
+    dotfiles_marker_content: "{{ arch_reaper_wine_setup.dpi | default(0x60) }}\n"
   when:
     - not var_reaper_log_pixels_marker.stat.exists
     - var_reg_log_pixels is succeeded or ((var_setup_reaper_prefix_dpi | default({})).changed | default(false))
 
 - name: "[archlinux] Wine tools: stat synthv LogPixels marker"
-  ansible.builtin.stat:
-    path: "{{ arch_synthv_wine_prefix }}/.ansible-logpixels-{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
-  register: var_synthv_log_pixels_marker
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "wine-synthv-logpixels-{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
+    dotfiles_marker_register: var_synthv_log_pixels_marker
 
 - name: "[archlinux] Wine tools: test synthv reg query LogPixels"
   ansible.builtin.command: >
@@ -209,10 +217,12 @@
   register: var_setup_synthv_prefix_dpi
 
 - name: "[archlinux] Wine tools: record synthv LogPixels marker"
-  ansible.builtin.copy:
-    content: "{{ arch_reaper_wine_setup.dpi | default(0x60) }}\n"
-    dest: "{{ arch_synthv_wine_prefix }}/.ansible-logpixels-{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
-    mode: "644"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "wine-synthv-logpixels-{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
+    dotfiles_marker_content: "{{ arch_reaper_wine_setup.dpi | default(0x60) }}\n"
   when:
     - not var_synthv_log_pixels_marker.stat.exists
     - var_reg_log_pixels_synthv is succeeded or ((var_setup_synthv_prefix_dpi | default({})).changed | default(false))
