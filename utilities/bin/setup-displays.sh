@@ -12,6 +12,7 @@ warn() {
 state_dir="${XDG_RUNTIME_DIR:-/tmp}/setup-displays"
 internal_brightness_state="$state_dir/internal-brightness"
 sysfs_root="${SETUP_DISPLAYS_SYSFS_ROOT:-/sys}"
+compositor_service="${SETUP_DISPLAYS_COMPOSITOR_SERVICE:-compositor.service}"
 
 usage() {
     printf '%s\n' 'usage: setup-displays.sh [--toggle]'
@@ -236,24 +237,13 @@ force_internal_scanout() {
     xset dpms force on >/dev/null 2>&1 || true
 }
 
-repair_stale_output_scanout() {
+refresh_output_mode() {
     local output="$1"
     local output_state current mode current_rate alt_mode alt_rate base_mode
-    local drm_path enabled dpms
-    local stale=0
 
     output_state="$(xrandr --query 2>/dev/null)" || return 0
     current="$(current_mode_rate "$output" "$output_state")"
     [[ -n "$current" ]] || return 0
-
-    drm_path="$(drm_path_for_output "$output")"
-    [[ -n "$drm_path" ]] || return 0
-
-    enabled="$(sed -n '1p' "$drm_path/enabled" 2>/dev/null || true)"
-    dpms="$(sed -n '1p' "$drm_path/dpms" 2>/dev/null || true)"
-    [[ -n "$enabled" && "$enabled" != "enabled" ]] && stale=1
-    [[ -n "$dpms" && "$dpms" != "On" ]] && stale=1
-    [[ "$stale" -eq 1 ]] || return 0
 
     read -r mode current_rate <<<"$current"
     alt_mode="$mode"
@@ -265,7 +255,6 @@ repair_stale_output_scanout() {
         [[ -n "$alt_rate" ]] && alt_mode="$base_mode"
     fi
 
-    warn "$output scanout looks stale after layout toggle; refreshing mode"
     force_internal_scanout
 
     if [[ -n "$alt_rate" ]]; then
@@ -273,6 +262,38 @@ repair_stale_output_scanout() {
     fi
     xrandr --output "$output" --mode "$mode" --rate "$current_rate" >/dev/null 2>&1 ||
         xrandr --output "$output" --auto >/dev/null 2>&1 || true
+}
+
+output_scanout_is_stale() {
+    local output="$1"
+    local output_state current
+    local drm_path enabled dpms
+
+    output_state="$(xrandr --query 2>/dev/null)" || return 1
+    current="$(current_mode_rate "$output" "$output_state")"
+    [[ -n "$current" ]] || return 1
+
+    drm_path="$(drm_path_for_output "$output")"
+    [[ -n "$drm_path" ]] || return 1
+
+    enabled="$(sed -n '1p' "$drm_path/enabled" 2>/dev/null || true)"
+    dpms="$(sed -n '1p' "$drm_path/dpms" 2>/dev/null || true)"
+
+    [[ -n "$enabled" && "$enabled" != "enabled" ]] && return 0
+    [[ -n "$dpms" && "$dpms" != "On" ]] && return 0
+    return 1
+}
+
+refresh_compositor() {
+    # A laptop/external layout change can leave the X compositor (picom) holding
+    # a stale black overlay over the new geometry: the panel is lit and
+    # XRandR/DRM report an active output, yet nothing is painted. This is a
+    # compositor-layer wedge that no GPU mode or DPMS refresh can clear, so
+    # rebuild the overlay by restarting the user compositor service. Only act
+    # when the unit is already active so this stays off the boot/auto path.
+    command -v systemctl >/dev/null 2>&1 || return 0
+    systemctl --user is-active --quiet "$compositor_service" 2>/dev/null || return 0
+    systemctl --user restart "$compositor_service" >/dev/null 2>&1 || true
 }
 
 internal_backlight_dir() {
@@ -349,8 +370,10 @@ switch_to_external_only() {
 
 switch_to_internal_only() {
     local output="${1:-}"
+    local returned_from_external=0
 
     if [[ -n "$output" ]]; then
+        returned_from_external=1
         ensure_internal_mode
         xrandr --output "$internal" --primary --mode "1920x1080f" --rate 120.21 --pos 0x0 --output "$output" --off >/dev/null 2>&1 ||
             xrandr --output "$internal" --primary --auto --pos 0x0 --output "$output" --off >/dev/null 2>&1 || true
@@ -361,7 +384,12 @@ switch_to_internal_only() {
     fi
 
     force_internal_scanout
-    repair_stale_output_scanout "$internal"
+    if [[ "$returned_from_external" -eq 1 ]]; then
+        if output_scanout_is_stale "$internal"; then
+            warn "$internal scanout looks stale after layout toggle; refreshing mode"
+        fi
+        refresh_output_mode "$internal"
+    fi
     restore_internal_brightness
 }
 
@@ -375,6 +403,7 @@ case "$mode" in
     else
         switch_to_external_only "$external"
     fi
+    refresh_compositor
     ;;
 *)
     if [[ -n "$external" ]]; then

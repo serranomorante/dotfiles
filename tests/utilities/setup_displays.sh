@@ -11,7 +11,10 @@ set -euo pipefail
 # dotfiles-test-case: setup-displays-external-failure-tries-auto
 # dotfiles-test-case: setup-displays-toggle-internal-to-external
 # dotfiles-test-case: setup-displays-toggle-external-to-internal
+# dotfiles-test-case: setup-displays-toggle-external-to-internal-refreshes-healthy-scanout
 # dotfiles-test-case: setup-displays-toggle-external-to-internal-repairs-stale-scanout
+# dotfiles-test-case: setup-displays-toggle-restarts-compositor
+# dotfiles-test-case: setup-displays-auto-keeps-compositor
 # dotfiles-test-case: setup-displays-toggle-internal-to-external-saves-backlight
 # dotfiles-test-case: setup-displays-toggle-external-to-internal-restores-backlight
 
@@ -32,9 +35,11 @@ make_fake_path() {
     printf '#!/usr/bin/env bash\nexit 0\n' >"${bin}/sleep"
     printf '#!/usr/bin/env bash\nprintf "xset %%s\\n" "$*" >>"${DOTFILES_TEST_TMP}/xset.log"\n' >"${bin}/xset"
     printf '#!/usr/bin/env bash\nprintf "apply-wallpaper\\n" >>"${DOTFILES_TEST_TMP}/apply-wallpaper.log"\n' >"${bin}/apply-wallpaper"
+    printf '#!/usr/bin/env bash\nprintf "systemctl %%s\\n" "$*" >>"${DOTFILES_TEST_TMP}/systemctl.log"\nexit 0\n' >"${bin}/systemctl"
     chmod +x "${bin}/sleep"
     chmod +x "${bin}/xset"
     chmod +x "${bin}/apply-wallpaper"
+    chmod +x "${bin}/systemctl"
 }
 
 write_fake_xrandr() {
@@ -285,16 +290,40 @@ setup-displays-toggle-external-to-internal)
 --addmode eDP-1 1920x1080f
 --output eDP-1 --primary --mode 1920x1080f --rate 120.21 --pos 0x0 --output HDMI-1 --off"
     ;;
+setup-displays-toggle-external-to-internal-refreshes-healthy-scanout)
+    run_setup_displays external-only-stale-internal --toggle
+    assert_log_equals "--newmode 1920x1080f 285.00 1920 2028 2076 2076 1080 1090 1100 1142 -hsync -vsync
+--addmode eDP-1 1920x1080f
+--output eDP-1 --primary --mode 1920x1080f --rate 120.21 --pos 0x0 --output HDMI-1 --off
+--output eDP-1 --mode 1920x1080f --rate 60.00
+--output eDP-1 --mode 1920x1080f --rate 120.21"
+    grep -q '^xset dpms force on$' "${DOTFILES_TEST_TMP}/xset.log"
+    if grep -q 'scanout looks stale' "${DOTFILES_TEST_TMP}/stderr"; then
+        printf 'healthy scanout refresh should not report stale DRM state\n' >&2
+        exit 1
+    fi
+    ;;
 setup-displays-toggle-external-to-internal-repairs-stale-scanout)
     write_fake_stale_internal_scanout
     run_setup_displays external-only-stale-internal --toggle
-	assert_log_equals "--newmode 1920x1080f 285.00 1920 2028 2076 2076 1080 1090 1100 1142 -hsync -vsync
+    assert_log_equals "--newmode 1920x1080f 285.00 1920 2028 2076 2076 1080 1090 1100 1142 -hsync -vsync
 --addmode eDP-1 1920x1080f
 --output eDP-1 --primary --mode 1920x1080f --rate 120.21 --pos 0x0 --output HDMI-1 --off
 --output eDP-1 --mode 1920x1080f --rate 60.00
 --output eDP-1 --mode 1920x1080f --rate 120.21"
     grep -q '^xset dpms force on$' "${DOTFILES_TEST_TMP}/xset.log"
     grep -q 'eDP-1 scanout looks stale after layout toggle; refreshing mode' "${DOTFILES_TEST_TMP}/stderr"
+    ;;
+setup-displays-toggle-restarts-compositor)
+    run_setup_displays external-only --toggle
+    grep -q '^systemctl --user restart compositor.service$' "${DOTFILES_TEST_TMP}/systemctl.log"
+    ;;
+setup-displays-auto-keeps-compositor)
+    run_setup_displays internal
+    if grep -qs 'restart compositor.service' "${DOTFILES_TEST_TMP}/systemctl.log"; then
+        printf 'auto path must not restart the compositor\n' >&2
+        exit 1
+    fi
     ;;
 setup-displays-toggle-internal-to-external-saves-backlight)
     write_fake_backlight 40000
