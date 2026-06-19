@@ -229,18 +229,29 @@ local function refresh_task_cache_if_stale(cache_mtime)
   end, 10)
 end
 
+local function open_run_form(template, initial_params, callback)
+  local schema = type(template.params) == "function" and template.params() or vim.deepcopy(template.params or {})
+
+  -- run_task skips the form when all required params are present; this picker always lets the user adjust them.
+  require("overseer.form").open(template.name, schema, initial_params, function(final_params)
+    if final_params then callback(final_params) end
+  end)
+end
+
 local function run_selected_playbook_task(choice, opts)
   if not choice then return end
   opts = opts or {}
 
   local playbooks = require("overseer.template.system-tasks.TASK__run_ansible_playbook")
-  require("overseer").run_task({
-    name = playbooks.name,
-    params = { task_id = choice, pass = vim.g.pass },
-  }, function(task)
-    if not task then return end
-    utils.attach_keymaps(task)
-    utils.schedule_open_overseer_task_output(task, { winid = opts.winid })
+  open_run_form(playbooks, { task_id = choice, pass = vim.g.pass }, function(final_params)
+    require("overseer").run_task({
+      name = playbooks.name,
+      params = final_params,
+    }, function(task)
+      if not task then return end
+      utils.attach_keymaps(task)
+      utils.schedule_open_overseer_task_output(task, { winid = opts.winid })
+    end)
   end)
 end
 
