@@ -1,6 +1,6 @@
 # {{ ansible_managed }}
 [Desktop Entry]
-Name=AudioGridderServer
+Name=AudioGridderServer [FIREJAIL]
 Exec={{ ansible_facts.env.HOME }}/.local/bin/launch-audiogridder-wine
 Type=Application
 Terminal=false

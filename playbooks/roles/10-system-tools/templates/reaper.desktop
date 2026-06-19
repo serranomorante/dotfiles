@@ -1,6 +1,6 @@
 # {{ ansible_managed }}
 [Desktop Entry]
-Name=REAPER
+Name=REAPER wine [FIREJAIL]
 Exec={{ ansible_facts.env.HOME }}/.local/bin/launch-reaper-wine
 Type=Application
 Terminal=false

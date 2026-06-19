@@ -1,6 +1,6 @@
 # {{ ansible_managed }}
 [Desktop Entry]
-Name=REAPER [LINUX]
+Name=REAPER linux
 Exec={{ ansible_facts.env.HOME }}/.local/bin/launch-reaper-linux
 Type=Application
 Terminal=false

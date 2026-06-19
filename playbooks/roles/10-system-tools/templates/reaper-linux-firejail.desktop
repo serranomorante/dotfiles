@@ -1,6 +1,6 @@
 # {{ ansible_managed }}
 [Desktop Entry]
-Name=REAPER [LINUX] (Firejail)
+Name=REAPER linux [FIREJAIL]
 Exec={{ ansible_facts.env.HOME }}/.local/bin/launch-reaper-linux --firejail
 Type=Application
 Terminal=false
