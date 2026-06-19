@@ -8,6 +8,7 @@ set -euo pipefail
 # dotfiles-test-case: wwine-use-sandbox-starts-real-firejail-and-checks-profile
 # dotfiles-test-case: wwine-wine-loader-mode-starts-real-firejail-and-preserves-args
 # dotfiles-test-case: wwine-log-id-rotates-and-captures-output-before-sandbox
+# dotfiles-test-case: wwine-wine-debug-survives-sandbox-reexec
 # dotfiles-test-case: wwine-reuses-existing-named-firejail-sandbox
 # dotfiles-test-case: wwine-serializes-parallel-named-sandbox-startup
 # dotfiles-test-case: wwine-fails-closed-when-inherited-sandbox-does-not-match-profile
@@ -111,6 +112,7 @@ fi
   printf 'FIREJAIL_NAME=%s\n' "\${FIREJAIL_NAME:-}"
   printf 'WINEPREFIX=%s\n' "\${WINEPREFIX:-}"
   printf 'WINEARCH=%s\n' "\${WINEARCH:-}"
+  printf 'WINEDEBUG=%s\n' "\${WINEDEBUG:-}"
   printf 'ARGS='
   printf '<%s>' "\$@"
   printf '\n'
@@ -418,6 +420,16 @@ wwine-log-id-rotates-and-captures-output-before-sandbox)
     grep -Fxq "FAKE_WINE_STDERR=1" "$app_log"
     assert_fake_wine_ran_inside_firejail
     assert_profile_checker_ran
+    ;;
+wwine-wine-debug-survives-sandbox-reexec)
+    make_fixture
+    trap shutdown_sandbox EXIT
+
+    run_wwine --prefix reaper --no-desktop --use-sandbox --wine-debug '+seh,+file' wine debug-marker
+    assert_fake_wine_ran_inside_firejail
+    assert_profile_checker_ran
+    grep -Fxq 'WINEDEBUG=+seh,+file' "$fake_wine_log"
+    grep -Fxq 'ARGS=<debug-marker>' "$fake_wine_log"
     ;;
 wwine-wine-loader-mode-starts-real-firejail-and-preserves-args)
     make_fixture

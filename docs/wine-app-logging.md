@@ -103,6 +103,8 @@ For sandboxed launches, the outer `wwine` invocation should set up rotation and 
 
 When `--use-sandbox` is used with a raw prefix path instead of a configured alias, pass `--sandbox-profile` explicitly; `wwine` must preserve that profile across its Firejail re-exec so the inner process can validate the inherited sandbox.
 
+Use `wwine --wine-debug <WINEDEBUG-spec>` for app-scoped verbose Wine logging. The wrapper should export that value as `WINEDEBUG`, preserve it across Firejail re-exec, and include it in `prepare-env` output so loader-style integrations can inherit the same verbosity without bypassing `wwine`.
+
 ## Viewing Logs
 
 Viewing logs is a separate action from launching the app.

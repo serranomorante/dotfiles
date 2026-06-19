@@ -28,7 +28,7 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: wwine --prefix <alias-or-path> [--arch <arch>] [--desktop|--no-desktop] [--use-sandbox] [--sandbox-profile <path>] [--sandbox-check-profile <path>] [--sandbox-name <name>] [--log-id <app-id>] <tool> [tool-args...]
+usage: wwine --prefix <alias-or-path> [--arch <arch>] [--desktop|--no-desktop] [--use-sandbox] [--sandbox-profile <path>] [--sandbox-check-profile <path>] [--sandbox-name <name>] [--log-id <app-id>] [--wine-debug <spec>] <tool> [tool-args...]
 
 tools: wine, winecfg, wineserver, winetricks, wineboot, prepare-env, kill-prefix
 EOF
@@ -115,6 +115,7 @@ sandbox_profile=""
 sandbox_check_profile=""
 sandbox_name=""
 log_id=""
+wine_debug="${WWINE_WINEDEBUG:-${WINEDEBUG:-}}"
 sandbox_attempted="$(bool_arg "${WWINE_SANDBOX_ATTEMPTED:-0}")"
 desktop_name="Default"
 desktop_size=""
@@ -128,6 +129,7 @@ if [[ "$loader_mode" == 1 ]]; then
   sandbox_profile="${WWINE_SANDBOX_PROFILE:-}"
   sandbox_check_profile="${WWINE_SANDBOX_CHECK_PROFILE:-}"
   sandbox_name="${WWINE_SANDBOX_NAME:-}"
+  wine_debug="${WWINE_WINEDEBUG:-${WINEDEBUG:-}}"
   tool="wine"
 else
   while [[ $# -gt 0 ]]; do
@@ -206,6 +208,14 @@ else
         ;;
       --log-id=*)
         log_id="${1#*=}"
+        ;;
+      --wine-debug)
+        shift
+        [[ $# -gt 0 ]] || die "missing value for --wine-debug"
+        wine_debug="$1"
+        ;;
+      --wine-debug=*)
+        wine_debug="${1#*=}"
         ;;
       --help|-h)
         usage
@@ -292,6 +302,10 @@ export LD_LIBRARY_PATH="{{ wine_env_vars.LD_LIBRARY_PATH }}"
 export PATH="{{ wine_env_vars.PATH }}"
 export WINEFSYNC="{{ wine_env_vars.WINEFSYNC }}"
 export WINEPREFIX="$resolved_prefix"
+
+if [[ -n "$wine_debug" ]]; then
+  export WINEDEBUG="$wine_debug"
+fi
 
 if [[ -n "$arch" ]]; then
   export WINEARCH="$arch"
@@ -413,6 +427,9 @@ if [[ "$use_sandbox" == 1 && "$tool" != "prepare-env" ]]; then
     if [[ -n "$log_id" ]]; then
       reexec_args+=(--log-id "$log_id")
     fi
+    if [[ -n "$wine_debug" ]]; then
+      reexec_args+=(--wine-debug "$wine_debug")
+    fi
 
     if [[ -n "$sandbox_name" ]]; then
       exec_named_firejail firejail --profile="$sandbox_profile" --join-or-start="$sandbox_name" "$0" "${reexec_args[@]}" "$tool" "$@"
@@ -508,9 +525,13 @@ print_environment() {
   shell_export WWINE_SANDBOX_PROFILE "$sandbox_profile"
   shell_export WWINE_SANDBOX_CHECK_PROFILE "$sandbox_check_profile"
   shell_export WWINE_SANDBOX_NAME "$sandbox_name"
+  shell_export WWINE_WINEDEBUG "$wine_debug"
 
   if [[ -n "${WINEARCH:-}" ]]; then
     shell_export WINEARCH "$WINEARCH"
+  fi
+  if [[ -n "${WINEDEBUG:-}" ]]; then
+    shell_export WINEDEBUG "$WINEDEBUG"
   fi
 }
 
