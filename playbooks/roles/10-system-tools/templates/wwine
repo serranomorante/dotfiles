@@ -14,9 +14,12 @@
 # enabled. That keeps Windows application windows contained and predictable for
 # the music-production prefixes. Use `--no-desktop` when a command must run
 # without that registry setting, such as selected maintenance or yabridge host
-# launches. Keep the default desktop name as `Default`: Ansible wait loops
-# match Wine virtual desktop windows through `wmctrl -lx` and `explorer.exe`,
-# while the DWM Wine rule also expects Wine's virtual desktop window title.
+# launches. For app launches, `--no-desktop` also closes a still-running Wine
+# desktop shell from earlier commands so the next GUI is not captured by that
+# existing container. Keep the default desktop name as `Default`: Ansible wait
+# loops match Wine virtual desktop windows through `wmctrl -lx` and
+# `explorer.exe`, while the DWM Wine rule also expects Wine's virtual desktop
+# window title.
 #
 # Desktop launchers can pass `--log-id <app-id>` to rotate and capture stdout
 # and stderr under ~/.local/state/wine-apps without opening a terminal window.
@@ -440,6 +443,15 @@ configure_desktop() {
   fi
 }
 
+close_running_wine_desktop() {
+  run_wine_loader taskkill /F /IM explorer.exe >/dev/null 2>&1 || true
+}
+
+configure_no_desktop_app_launch() {
+  configure_desktop
+  close_running_wine_desktop
+}
+
 default_desktop_size() {
   local helper
 
@@ -463,7 +475,11 @@ configure_desktop_for_wine_args() {
       fi
       ;;
     *)
-      configure_desktop
+      if [[ "$use_desktop" == 0 ]]; then
+        configure_no_desktop_app_launch
+      else
+        configure_desktop
+      fi
       ;;
   esac
 }
@@ -501,7 +517,11 @@ case "$tool" in
     exec_wine_loader "$@"
     ;;
   winecfg)
-    configure_desktop
+    if [[ "$use_desktop" == 0 ]]; then
+      configure_no_desktop_app_launch
+    else
+      configure_desktop
+    fi
     exec_program "$WINEVERPATH/bin/winecfg" "$@"
     ;;
   wineserver)

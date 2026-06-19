@@ -11,6 +11,8 @@ set -euo pipefail
 # dotfiles-test-case: wwine-reuses-existing-named-firejail-sandbox
 # dotfiles-test-case: wwine-serializes-parallel-named-sandbox-startup
 # dotfiles-test-case: wwine-fails-closed-when-inherited-sandbox-does-not-match-profile
+# dotfiles-test-case: wwine-no-desktop-closes-running-wine-desktop-before-app
+# dotfiles-test-case: wwine-no-desktop-taskkill-is-prefix-scoped
 
 # Purpose: Fast real-Firejail tests for wwine sandbox startup, inherited sandbox verification, and loader mode.
 
@@ -55,6 +57,7 @@ make_fixture() {
     readonly="${fixture}/readonly"
     hidden="${fixture}/hidden"
     wine_prefix="${fixture}/wine-prefix"
+    other_wine_prefix="${fixture}/other-wine-prefix"
     fake_wine_log="${fixture}/fake-wine.log"
     fake_logrotate_log="${fixture}/fake-logrotate.log"
     checker_log="${fixture}/fj-profile-checker.log"
@@ -72,6 +75,7 @@ make_fixture() {
         "$readonly" \
         "$hidden" \
         "$wine_prefix" \
+        "$other_wine_prefix" \
         "${fixture}/fake-winever/bin"
 
     cat >"$sandbox_profile" <<PROFILE
@@ -111,7 +115,26 @@ fi
   printf '<%s>' "\$@"
   printf '\n'
 } >> "$fake_wine_log"
+active_wine_desktop="${fixture}/active-wine-desktop-other"
+if [ "\${WINEPREFIX:-}" = "$wine_prefix" ]; then
+  active_wine_desktop="${fixture}/active-wine-desktop-reaper"
+fi
 for arg in "\$@"; do
+  if [ "\$arg" = taskkill ]; then
+    if printf '<%s>' "\$@" | grep -Fq '<explorer.exe>'; then
+      rm -f "\$active_wine_desktop"
+    fi
+  fi
+  if [ "\$arg" = start-desktop ]; then
+    touch "\$active_wine_desktop"
+  fi
+  if [ "\$arg" = launch-after-desktop ]; then
+    if [ -e "\$active_wine_desktop" ]; then
+      printf 'OPENED_IN_DESKTOP=1\n' >> "$fake_wine_log"
+    else
+      printf 'OPENED_IN_DESKTOP=0\n' >> "$fake_wine_log"
+    fi
+  fi
   if [ "\$arg" = emit-output ]; then
     printf 'FAKE_WINE_STDOUT=1\n'
     printf 'FAKE_WINE_STDERR=1\n' >&2
@@ -473,6 +496,28 @@ wwine-fails-closed-when-inherited-sandbox-does-not-match-profile)
     assert_fake_wine_did_not_run
     grep -Fq 'sandbox exposes read-only path as writable' "$output"
     assert_profile_checker_ran
+    ;;
+wwine-no-desktop-closes-running-wine-desktop-before-app)
+    make_fixture
+
+    run_wwine --prefix reaper --desktop wine start-desktop
+    run_wwine --prefix reaper --no-desktop wine launch-after-desktop
+
+    grep -Fq 'ARGS=<reg><delete><HKEY_CURRENT_USER\Software\Wine\Explorer><' "$fake_wine_log"
+    grep -Fxq 'ARGS=<taskkill></F></IM><explorer.exe>' "$fake_wine_log"
+    grep -Fxq 'OPENED_IN_DESKTOP=0' "$fake_wine_log"
+    ;;
+wwine-no-desktop-taskkill-is-prefix-scoped)
+    make_fixture
+
+    run_wwine --prefix "$other_wine_prefix" --arch win64 --desktop wine start-desktop
+    run_wwine --prefix reaper --no-desktop wine launch-after-desktop
+
+    [ -e "${fixture}/active-wine-desktop-other" ]
+    [ ! -e "${fixture}/active-wine-desktop-reaper" ]
+    grep -Fxq "WINEPREFIX=$other_wine_prefix" "$fake_wine_log"
+    grep -Fxq "WINEPREFIX=$wine_prefix" "$fake_wine_log"
+    grep -Fxq 'OPENED_IN_DESKTOP=0' "$fake_wine_log"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2
