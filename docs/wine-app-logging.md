@@ -10,6 +10,12 @@ Do not create a second generic Wine launcher such as `wine-app-run`.
 
 If an app needs pre-launch work unrelated to Wine itself, such as connecting REAPER audio routing, keep a narrow app-specific launcher script for that setup. That script should still delegate the Wine process to `wwine`.
 
+## Prefix Cleanup
+
+Use `wwine --prefix <alias-or-path> kill-prefix` when Ansible handlers or maintenance commands need to close a Wine prefix after installers, registry changes, or stuck GUI sessions. The wrapper resolves the same prefix aliases and pinned Wine environment as normal launches, asks the matching `wineserver` to stop, then only escalates to Unix signals for remaining Wine-looking processes whose `WINEPREFIX` matches that prefix.
+
+Do not use `ps | grep wine` fallbacks in handlers or tasks. Those are process-name scoped instead of prefix scoped and can kill unrelated Wine applications from other prefixes.
+
 ## Desktop Entries
 
 Desktop files for normal Wine app launchers must use `Terminal=false` and must not launch `kitty`.

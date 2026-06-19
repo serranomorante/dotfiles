@@ -253,11 +253,8 @@
     daemon_reload: true
 
 - name: handler_kill_reaper_wineserver
-  ansible.builtin.shell: >
-    set -o pipefail &&
-    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper wineserver -k &&
-    sleep 1 &&
-    for pid in $(ps aux | grep "[w]ine" | awk '{print $2}'); do kill -9 $pid; done
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper kill-prefix
   timeout: 60
   changed_when: true
   register: var_kill_reaper_wineserver

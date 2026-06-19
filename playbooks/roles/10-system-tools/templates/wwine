@@ -30,7 +30,7 @@ usage() {
   cat >&2 <<'EOF'
 usage: wwine --prefix <alias-or-path> [--arch <arch>] [--desktop|--no-desktop] [--use-sandbox] [--sandbox-profile <path>] [--sandbox-check-profile <path>] [--sandbox-name <name>] [--log-id <app-id>] <tool> [tool-args...]
 
-tools: wine, winecfg, wineserver, winetricks, wineboot, prepare-env
+tools: wine, winecfg, wineserver, winetricks, wineboot, prepare-env, kill-prefix
 EOF
 }
 
@@ -514,6 +514,97 @@ print_environment() {
   fi
 }
 
+{% raw %}
+process_has_prefix() {
+  local pid="$1"
+  local environ="/proc/$pid/environ"
+  local process_prefix
+
+  [[ -r "$environ" ]] || return 1
+
+  process_prefix="$(tr '\0' '\n' <"$environ" 2>/dev/null | sed -n 's/^WINEPREFIX=//p' | head -n 1)" || return 1
+  [[ "$process_prefix" == "$WINEPREFIX" ]]
+}
+
+process_looks_like_wine() {
+  local pid="$1"
+  local comm=""
+  local exe=""
+  local cmdline=""
+
+  [[ -r "/proc/$pid/comm" ]] && comm="$(<"/proc/$pid/comm")"
+  exe="$(readlink "/proc/$pid/exe" 2>/dev/null || true)"
+  if [[ -r "/proc/$pid/cmdline" ]]; then
+    cmdline="$(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null || true)"
+  fi
+
+  case "$comm $exe $cmdline" in
+    *wine*|*Wine*|*wineserver*|*winedevice*|*explorer.exe*)
+      return 0
+      ;;
+  esac
+
+  if [[ -r "/proc/$pid/maps" ]] && grep -Eq '(/wine/|/wine-|libwine|ntdll\.so|kernel32\.dll)' "/proc/$pid/maps" 2>/dev/null; then
+    return 0
+  fi
+
+  return 1
+}
+
+prefix_wine_pids() {
+  local environ
+  local pid
+
+  for environ in /proc/[0-9]*/environ; do
+    [[ -e "$environ" ]] || continue
+    pid="${environ%/environ}"
+    pid="${pid##*/}"
+    [[ "$pid" != "$$" ]] || continue
+    [[ "$pid" != "${BASHPID:-}" ]] || continue
+
+    if process_has_prefix "$pid" && process_looks_like_wine "$pid"; then
+      printf '%s\n' "$pid"
+    fi
+  done
+}
+
+wait_for_prefix_wine_exit() {
+  local deadline="$1"
+  local -a pids=()
+
+  while (( SECONDS < deadline )); do
+    mapfile -t pids < <(prefix_wine_pids)
+    [[ "${#pids[@]}" -eq 0 ]] && return 0
+    sleep 0.2
+  done
+
+  return 1
+}
+
+kill_prefix() {
+  local -a pids=()
+  local deadline
+
+  "$WINESERVER" -k >/dev/null 2>&1 || true
+
+  deadline=$((SECONDS + 5))
+  wait_for_prefix_wine_exit "$deadline" && return 0
+
+  mapfile -t pids < <(prefix_wine_pids)
+  if [[ "${#pids[@]}" -gt 0 ]]; then
+    kill -TERM "${pids[@]}" 2>/dev/null || true
+  fi
+
+  deadline=$((SECONDS + 3))
+  wait_for_prefix_wine_exit "$deadline" && return 0
+
+  mapfile -t pids < <(prefix_wine_pids)
+  if [[ "${#pids[@]}" -gt 0 ]]; then
+    kill -KILL "${pids[@]}" 2>/dev/null || true
+  fi
+}
+{% endraw %}
+
 case "$tool" in
   wine)
     configure_desktop_for_wine_args "$@"
@@ -541,6 +632,9 @@ case "$tool" in
       die "prepare-env cannot be used from wwine-wine-loader"
     fi
     print_environment
+    ;;
+  kill-prefix)
+    kill_prefix
     ;;
   *)
     usage
