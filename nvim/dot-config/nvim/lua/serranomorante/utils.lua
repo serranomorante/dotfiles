@@ -300,7 +300,8 @@ end
 ---@param cwd string? Uses current if no cwd is passed
 ---@return boolean
 function M.file_inside_cwd(filename, cwd)
-  local dir = cwd or vim.fn.getcwd()
+  local dir = M.normalized_path(cwd or vim.fn.getcwd())
+  filename = M.normalized_path(filename)
   dir = dir:sub(-1) ~= "/" and dir .. "/" or dir
   return vim.startswith(filename, dir) and M.exists(filename)
 end

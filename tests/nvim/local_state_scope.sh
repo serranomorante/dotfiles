@@ -9,6 +9,7 @@ set -euo pipefail
 # dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: nvim-local-state-normal-cwd
 # dotfiles-test-case: nvim-local-state-cwd-isolation
+# dotfiles-test-case: nvim-local-state-file-inside-cwd-expands-home
 # dotfiles-test-case: nvim-local-state-broad-cwd-disabled
 # dotfiles-test-case: nvim-local-state-secret-undo-disabled
 
@@ -85,6 +86,22 @@ nvim-local-state-cwd-isolation)
         printf 'different CWDs produced identical local-state paths\n' >&2
         exit 1
     fi
+    ;;
+nvim-local-state-file-inside-cwd-expands-home)
+    project="${HOME}/project-paths"
+    mkdir -p "$project"
+    printf 'marked\n' >"${project}/marked.txt"
+    lua_file="${DOTFILES_TEST_TMP}/file-inside-cwd-expands-home.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  local utils = require("serranomorante.utils")' \
+        '  local cwd = vim.env.HOME .. "/project-paths"' \
+        '  assert(utils.file_inside_cwd("~/project-paths/marked.txt", cwd), "tilde path should be inside absolute cwd")' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua_file "$project" "$lua_file"
     ;;
 nvim-local-state-broad-cwd-disabled)
     mkdir -p "${HOME}/data/repos" "${HOME}/data/secrets"
