@@ -38,5 +38,5 @@
     force: "{{ update_diff_git_force | default(omit) }}"
     recursive: "{{ update_diff_git_recursive | default(omit) }}"
     single_branch: "{{ update_diff_git_single_branch | default(omit) }}"
-    executable: "{{ playbook_dir }}/../utilities/bin/dotfiles-github-git"
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
   register: update_diff_git_checkout

@@ -25,7 +25,7 @@
 
 - name: "[otherlinux] Dotfiles: sync stow packages from controller"
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../{{ item }}/"
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/{{ item }}/"
     dest: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item }}/"
     mode: preserve
   loop: "{{ dotfiles_otherlinux_stow_packages }}"
@@ -38,7 +38,7 @@
 
 - name: "[otherlinux] Dotfiles: install Remind agenda helper"
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../PKM/bin/remind-agenda"
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/PKM/bin/remind-agenda"
     dest: "{{ ansible_facts.env.HOME }}/dotfiles/PKM/bin/remind-agenda"
     mode: "700"
 

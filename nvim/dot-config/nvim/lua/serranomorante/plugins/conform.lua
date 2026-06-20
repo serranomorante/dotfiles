@@ -120,6 +120,8 @@ function M.config()
     prepend_args = {
       "--config-file",
       vim.fn.stdpath("config") .. "/lua/serranomorante/plugins/conform/ansible-lint-dev.yaml",
+      "--project-dir",
+      vim.fn.getcwd(),
     },
   }
 

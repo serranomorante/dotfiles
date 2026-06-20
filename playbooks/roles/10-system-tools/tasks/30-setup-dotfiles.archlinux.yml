@@ -1,6 +1,6 @@
 ---
 - name: "[archlinux] Dotfiles: ensure local AUR packages"
-  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages: downgrade
 
@@ -27,7 +27,7 @@
 - name: "[archlinux] Dotfiles: stat local private dotfiles"
   delegate_to: localhost
   ansible.builtin.stat:
-    path: "{{ playbook_dir }}/../for-my-eyes-only"
+    path: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/../for-my-eyes-only"
   register: var_arch_local_private_dotfiles
   when: inventory_hostname != 'localhost'
 
@@ -43,7 +43,7 @@
 - name: "[archlinux] Dotfiles: sync private dotfiles from controller"
   delegate_to: localhost
   ansible.posix.synchronize:
-    src: "{{ playbook_dir }}/../for-my-eyes-only/"
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/../for-my-eyes-only/"
     dest: "{{ ansible_facts.env.HOME }}/dotfiles/for-my-eyes-only/"
     delete: true
     rsync_opts:

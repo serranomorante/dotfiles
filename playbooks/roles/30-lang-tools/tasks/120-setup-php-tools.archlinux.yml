@@ -28,7 +28,7 @@
       - xdebug
 
 - name: "[archlinux] PHP language: ensure local AUR packages"
-  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages:
       - php-legacy-xdebug
@@ -89,7 +89,7 @@
     - /etc/php-legacy/conf.d/xdebug.ini
 
 - name: "[archlinux] PHP language: ensure local AUR tooling"
-  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+  ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages:
       - phpactor
