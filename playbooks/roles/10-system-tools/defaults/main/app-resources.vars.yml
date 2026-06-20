@@ -36,3 +36,12 @@ app_cgroup_profiles:
     nice: 10
     memory_high: 1G
     memory_max: 2G
+  marksman:
+    unit_prefix: app-marksman
+    description: Marksman LSP
+    cpu_quota: 150%
+    cpu_weight: 30
+    io_weight: 40
+    nice: 10
+    memory_high: 2G
+    memory_max: 4G

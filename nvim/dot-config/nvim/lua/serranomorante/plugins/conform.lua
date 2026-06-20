@@ -117,6 +117,9 @@ function M.config()
   conform.format = format_patch
 
   conform.formatters["ansible-lint"] = {
+    -- Route through the unified wrapper so conform's runs share the same
+    -- Firejail sandbox and resource caps as the LSP. See ~/bin/ansible-lint.
+    command = vim.fn.expand("~/bin/ansible-lint"),
     prepend_args = {
       "--config-file",
       vim.fn.stdpath("config") .. "/lua/serranomorante/plugins/conform/ansible-lint-dev.yaml",

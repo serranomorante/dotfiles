@@ -2,7 +2,9 @@ local constants = require("serranomorante.constants")
 
 if not constants.BINARIES.ansible_language_server then return {} end
 
-local ansible_lint_path = vim.fn.expand("~/.local/bin/ansible-lint")
+-- Unified wrapper: sandboxes ansible-lint in Firejail and applies resource caps
+-- from a single place, shared with conform. See ~/bin/ansible-lint.
+local ansible_lint_path = vim.fn.expand("~/bin/ansible-lint")
 
 ---@type vim.lsp.Config
 return {

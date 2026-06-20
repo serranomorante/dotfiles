@@ -1,0 +1,62 @@
+#!/usr/bin/env sh
+# {{ ansible_managed }}
+# Single source of truth for how ansible-lint runs. Both entry points -- the
+# Ansible language server and Neovim's conform formatter -- invoke this wrapper,
+# so the linter always runs inside one Firejail sandbox and under one set of
+# resource caps, defined here and nowhere else.
+set -eu
+
+real_bin="{{ ansible_facts.env.HOME }}/.local/share/uv/tools/ansible-lint/bin/ansible-lint"
+py_firejail="{{ python_firejail_executable }}"
+# The shared lint config lives under the Neovim config dir, but stow symlinks
+# its entries into the dotfiles checkout, so expose BOTH the symlink view and
+# the real source -- otherwise Firejail follows the symlink to an unexposed path
+# and ansible-lint reports the config as missing.
+nvim_config="{{ ansible_facts.env.HOME }}/.config/nvim
+{{ ansible_facts.env.HOME }}/dotfiles/nvim/dot-config/nvim"
+
+# Resource caps. These are best-effort and self-applied to this shell so the
+# linter (and its children) inherit them. A Firejail sandbox denies some of the
+# underlying syscalls (e.g. ioprio_set), so every cap tolerates failure: a
+# denied cap must never abort the lint.
+LINT_NICE=10
+LINT_AS_KB=$((6 * 1024 * 1024)) # 6 GiB virtual-memory ceiling (ulimit -v is KiB)
+
+apply_caps() {
+    renice -n "$LINT_NICE" -p $$ >/dev/null 2>&1 || true
+    ionice -c 2 -n 7 -p $$ >/dev/null 2>&1 || true
+    ulimit -v "$LINT_AS_KB" 2>/dev/null || true
+}
+
+is_inside_firejail() {
+    [ -d /run/firejail/profile ] && ! ls /run/firejail/profile >/dev/null 2>&1
+}
+
+# Already sandboxed (spawned by the firejailed language server or a firejailed
+# Neovim): inherit that sandbox instead of nesting Firejail, but still cap.
+if is_inside_firejail; then
+    apply_caps
+    exec "$real_bin" "$@"
+fi
+
+# Unsandboxed entry (conform from a plain Neovim, or a terminal): sandbox it
+# ourselves. Caps are applied here on the host and inherited into the sandbox,
+# so we never run the cap tools inside Firejail (where ioprio_set is denied).
+# Use the project dir conform passes via --project-dir as the Firejail work root
+# so the linted file and conform's sibling tempfile stay visible; expose the
+# Neovim config dir read-only for the shared lint config. Linting never needs
+# the network, so run offline.
+project_root=
+prev=
+for arg in "$@"; do
+    if [ "$prev" = "--project-dir" ]; then
+        project_root=$arg
+    fi
+    prev=$arg
+done
+[ -n "$project_root" ] || project_root=$(pwd -P)
+
+apply_caps
+FJ_PY_PROFILE=fj-py-ansible.profile \
+    FJ_PY_EXTRA_PATHS="$nvim_config" \
+    exec "$py_firejail" offline "$project_root" -- "$real_bin" "$@"

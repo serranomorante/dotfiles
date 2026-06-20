@@ -61,6 +61,12 @@
     not var_ansible_lint_marker.stat.exists
     or not var_ansible_lint_python_interpreter.stdout.startswith(ansible_facts.env.HOME + '/.local/share/uv/python/')
 
+- name: "[archlinux] Yaml language: install unified ansible-lint firejail wrapper"
+  ansible.builtin.template:
+    src: ansible-lint
+    dest: "{{ node_user_bin_dir }}/ansible-lint"
+    mode: "755"
+
 - name: "[archlinux] Yaml language: ensure ansible language server npm packages with diff capture"
   ansible.builtin.include_role:
     name: update-diff-capture
