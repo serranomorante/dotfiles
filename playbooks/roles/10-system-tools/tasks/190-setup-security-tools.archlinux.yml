@@ -229,7 +229,8 @@
 
 - name: "[archlinux] Setup security tools: get docker credential secretservice helper"
   ansible.builtin.get_url:
-    url: https://github.com/docker/docker-credential-helpers/releases/download/v{{ arch_docker_credential_helpers_version }}/docker-credential-secretservice-v{{ arch_docker_credential_helpers_version }}.linux-amd64
+    url: https://github.com/docker/docker-credential-helpers/releases/download/v{{ arch_docker_credential_helpers_version }}/docker-credential-secretservice-v{{
+      arch_docker_credential_helpers_version }}.linux-amd64
     dest: ~/data/apps/security-tools/docker-credential-secretservice-v{{ arch_docker_credential_helpers_version }}
     mode: "755"
 

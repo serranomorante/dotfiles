@@ -1,7 +1,8 @@
 ---
 - name: "[archlinux] Wine tools: get audiogridder server"
   ansible.builtin.unarchive:
-    src: https://github.com/apohl79/audiogridder/releases/download/release_{{ arch_audiogridder_wine_setup.version_slug | default(arch_audiogridder_wine_setup.version) }}/AudioGridder_{{ arch_audiogridder_wine_setup.version }}-Windows-Installers.zip
+    src: https://github.com/apohl79/audiogridder/releases/download/release_{{ arch_audiogridder_wine_setup.version_slug |
+      default(arch_audiogridder_wine_setup.version) }}/AudioGridder_{{ arch_audiogridder_wine_setup.version }}-Windows-Installers.zip
     dest: "{{ arch_audiogridder_wine_setup.backup_path }}/"
     remote_src: true
 
@@ -46,7 +47,8 @@
 
 - name: "[archlinux] Wine tools: get audiogridder client"
   ansible.builtin.unarchive:
-    src: https://audiogridder.com/github/releases/download/release_{{ arch_audiogridder_wine_setup.plugin_version_slug | default(arch_audiogridder_wine_setup.plugin_version) }}/AudioGridder_{{ arch_audiogridder_wine_setup.plugin_version }}-Linux.zip
+    src: https://audiogridder.com/github/releases/download/release_{{ arch_audiogridder_wine_setup.plugin_version_slug |
+      default(arch_audiogridder_wine_setup.plugin_version) }}/AudioGridder_{{ arch_audiogridder_wine_setup.plugin_version }}-Linux.zip
     dest: ~/.vst3/
     remote_src: true
   timeout: 60

@@ -37,7 +37,8 @@
     dest: ~/.local/share/applications/com.plexamp.Plexamp.desktop
     marker: "# {mark} ANSIBLE MANAGED BLOCK"
     insertafter: "^\\[Desktop Entry\\]"
-    block: Exec={{ ansible_facts.env.HOME }}/bin/app-cgroup-launch plexamp /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=startplexamp --file-forwarding com.plexamp.Plexamp @@u %U @@
+    block: Exec={{ ansible_facts.env.HOME }}/bin/app-cgroup-launch plexamp /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=startplexamp
+      --file-forwarding com.plexamp.Plexamp @@u %U @@
   when: var_plexamp_desktop_file.stat.exists
   notify: handler_update_desktop_database
 

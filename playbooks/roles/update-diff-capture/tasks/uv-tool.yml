@@ -42,12 +42,9 @@
       - "{{ item.name }}{% if item.version is defined %}=={{ item.version }}{% endif %}"
   args:
     creates: "{{ item.creates | default(omit) }}"
-  environment: "{{ update_diff_uv_environment | default({}) | combine({
-    'UV_TOOL_DIR': update_diff_uv_tool_dir,
-    'UV_TOOL_BIN_DIR': update_diff_uv_bin_dir,
-    'UV_PYTHON_INSTALL_DIR': update_diff_uv_python_install_dir | default((update_diff_uv_tool_dir | dirname) ~ '/python'),
-    'FJ_PY_WRITABLE_PATHS': update_diff_uv_writable_paths | default(update_diff_uv_bin_dir ~ '\n' ~ update_diff_uv_tool_dir ~ '\n' ~ (update_diff_uv_tool_dir | dirname))
-  }) }}"
+  environment: "{{ update_diff_uv_environment | default({}) | combine({ 'UV_TOOL_DIR': update_diff_uv_tool_dir, 'UV_TOOL_BIN_DIR': update_diff_uv_bin_dir, 'UV_PYTHON_INSTALL_DIR':
+    update_diff_uv_python_install_dir | default((update_diff_uv_tool_dir | dirname) ~ '/python'), 'FJ_PY_WRITABLE_PATHS': update_diff_uv_writable_paths | default(update_diff_uv_bin_dir
+    ~ '\n' ~ update_diff_uv_tool_dir ~ '\n' ~ (update_diff_uv_tool_dir | dirname)) }) }}"
   loop: "{{ update_diff_uv_tools }}"
   loop_control:
     extended: true

@@ -78,7 +78,8 @@
 
 - name: "[archlinux] Editor tools: add overseer result to nvim plugin lookup"
   ansible.builtin.set_fact:
-    nvim_plugin_result_by_repo: "{{ nvim_plugin_result_by_repo | combine({'stevearc/overseer.nvim': var_overseer_nvim_plugin_result | default({'changed': false})}) }}"
+    nvim_plugin_result_by_repo: "{{ nvim_plugin_result_by_repo | combine({'stevearc/overseer.nvim': var_overseer_nvim_plugin_result | default({'changed': false})})
+      }}"
 
 - name: "[archlinux] Editor tools: remove stale nvim plugins"
   ansible.builtin.file:
@@ -200,8 +201,8 @@
     dest: ~/.config/nvim/parser/{{ item.filetype }}.so
     mode: "755"
   when:
-    - (treesitter_clone_result_by_repo[item.repo] | default({})).changed | default(false)
-      or (item.filetype ~ '.so') not in (treesitter_installed_parser_files.stdout_lines | default([]))
+    - (treesitter_clone_result_by_repo[item.repo] | default({})).changed | default(false) or (item.filetype ~ '.so') not in
+      (treesitter_installed_parser_files.stdout_lines | default([]))
   loop: "{{ treesitter_parsers }}"
 
 - name: "[archlinux] Editor tools: copy nvim-treesitter runtime queries to nvim"

@@ -28,7 +28,8 @@
 
 - name: "Dotfiles: remember existing private agent context packages"
   ansible.builtin.set_fact:
-    var_dotfiles_existing_private_agent_context_packages: "{{ var_dotfiles_private_agent_context_packages.results | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir') | map(attribute='item') | list }}"
+    var_dotfiles_existing_private_agent_context_packages: "{{ var_dotfiles_private_agent_context_packages.results | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir')
+      | map(attribute='item') | list }}"
 
 - name: "Dotfiles: setup private package agent context entrypoints"
   ansible.builtin.file:

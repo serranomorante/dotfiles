@@ -138,11 +138,8 @@
   ansible.builtin.command: >
     {{ wine_path }}/bin/regsvr32 /s
     {{ wine_path }}/lib/wine/i386-unix/wineasio32.dll.so
-  environment: "{{ wine_env_vars | combine({
-    'WINEPREFIX': arch_reaper_wine_setup.wine_prefix,
-    'WINEARCH': arch_reaper_wine_setup.architecture | default('win64'),
-    'WINEFSYNC': '0'
-  }) }}"
+  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix, 'WINEARCH': arch_reaper_wine_setup.architecture | default('win64'),
+    'WINEFSYNC': '0' }) }}"
   changed_when: true
   when: >
     var_wineasio_portable_install.changed or
@@ -153,11 +150,8 @@
   ansible.builtin.command: >
     {{ wine_path }}/bin/wine64 regsvr32 /s
     {{ wine_path }}/lib/wine/x86_64-unix/wineasio64.dll.so
-  environment: "{{ wine_env_vars | combine({
-    'WINEPREFIX': arch_reaper_wine_setup.wine_prefix,
-    'WINEARCH': arch_reaper_wine_setup.architecture | default('win64'),
-    'WINEFSYNC': '0'
-  }) }}"
+  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix, 'WINEARCH': arch_reaper_wine_setup.architecture | default('win64'),
+    'WINEFSYNC': '0' }) }}"
   changed_when: true
   when: >
     var_wineasio_portable_install.changed or

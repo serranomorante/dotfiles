@@ -43,7 +43,8 @@
 
 - name: "[archlinux] Local AUR packages: report unpublished packages"
   ansible.builtin.debug:
-    msg: "Skipping unpublished local AUR packages from [{{ arch_aur_local_repo_name | default('aur-local') }}]: {{ var_aur_local_missing_packages | join(', ') }}. Review and publish them with aur-review before Ansible can install them."
+    msg: "Skipping unpublished local AUR packages from [{{ arch_aur_local_repo_name | default('aur-local') }}]: {{ var_aur_local_missing_packages | join(', ') }}.
+      Review and publish them with aur-review before Ansible can install them."
   when: var_aur_local_missing_packages | length > 0
 
 - name: "[archlinux] Local AUR packages: install published packages"

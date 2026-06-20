@@ -60,7 +60,8 @@
   when: var_native_reaper_ini.stat.exists
 
 - name: "[archlinux] Wine tools: check native reaper user VST path"
-  ansible.builtin.command: grep -Eq "^vstpath64=.*(^|;){{ ansible_facts.env.HOME | regex_escape }}/\\.vst(;|$)" "{{ ansible_facts.env.HOME }}/.config/REAPER/REAPER.ini"
+  ansible.builtin.command: grep -Eq "^vstpath64=.*(^|;){{ ansible_facts.env.HOME | regex_escape }}/\\.vst(;|$)" "{{ ansible_facts.env.HOME
+    }}/.config/REAPER/REAPER.ini"
   changed_when: false
   failed_when: false
   register: var_native_reaper_user_vst_path

@@ -358,7 +358,8 @@
     block: >
       Exec={{ ansible_facts.env.HOME }}/bin/app-cgroup-launch chromium /usr/bin/chromium
       --remote-debugging-port=9222
-      --load-extension={% for item in browser_local_extensions if (item.hide is not defined) or (not item.hide) %}{{ item.path }}{% if not loop.last %},{% endif %}{% endfor %}
+      --load-extension={% for item in browser_local_extensions if (item.hide is not defined) or (not item.hide) %}{{ item.path }}{% if not loop.last %},{% endif %}{%
+      endfor %}
       %U
   notify: handler_update_desktop_database
 

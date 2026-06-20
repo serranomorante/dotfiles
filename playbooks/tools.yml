@@ -19,7 +19,8 @@
     - name: "Setup playbook: set user_os"
       ansible.builtin.set_fact:
         user_os: "{{ ansible_facts.distribution | lower | replace(' ', '') }}"
-        ansible_managed: "Ansible managed: this file was modified on {{ '%Y-%m-%d %H:%M:%S' | strftime }} by {{ ansible_facts.user_id }} on {{ ansible_facts.hostname }}"
+        ansible_managed: "Ansible managed: this file was modified on {{ '%Y-%m-%d %H:%M:%S' | strftime }} by {{ ansible_facts.user_id }} on {{ ansible_facts.hostname
+          }}"
       when: ansible_facts.distribution is defined
       tags: always
 
