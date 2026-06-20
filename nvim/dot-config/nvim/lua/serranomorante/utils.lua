@@ -1443,7 +1443,7 @@ function M.open_adjacent_overseer_task_output(step)
   local tasks = require("overseer").list_tasks({
     include_ephemeral = true,
     sort = sort,
-    filter = function(task) return task:get_bufnr() ~= nil end,
+    filter = function(task) return task:get_bufnr() ~= nil and not task.metadata.hide_from_task_list end,
   })
   if #tasks <= 1 then return vim.notify("No other Overseer task output to show", vim.log.levels.INFO) end
 

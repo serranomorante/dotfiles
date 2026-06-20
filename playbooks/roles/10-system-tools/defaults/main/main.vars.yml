@@ -8,6 +8,7 @@ dotfiles_stow_ignore_patterns:
   - \.codex
   - \.claude
   - ^roles$
+  - ^tags$
 dotfiles_stow_wrapper_path: "{{ ansible_facts.env.HOME }}/bin/dotfiles-stow"
 dotfiles_public_stow_packages:
   - dunst

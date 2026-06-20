@@ -1,8 +1,10 @@
 ---
-- name: "[archlinux] Editor tools: ensure file watcher packages"
+- name: "[archlinux] Editor tools: ensure packages"
   become: true
   ansible.builtin.package:
-    name: inotify-tools
+    name:
+      - inotify-tools
+      - ctags
     state: present
 
 - name: "[archlinux] Editor tools: check overseer local patch marker"
@@ -88,12 +90,6 @@
   loop:
     - coc.nvim
     - plenary
-
-- name: "[archlinux] Editor tools: ensure local AUR packages"
-  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
-  vars:
-    aur_local_packages:
-      - ctags-git
 
 - name: "[archlinux] Editor tools: create treesitter tempdir"
   ansible.builtin.tempfile:

@@ -30,6 +30,7 @@ function M.run_recent_task_action(opts)
     unique = true,
     sort = task_action_sort,
     include_ephemeral = true,
+    filter = function(task) return not task.metadata.hide_from_task_list end,
   })
   if #tasks == 0 then
     vim.notify("No tasks available", vim.log.levels.WARN)

@@ -12,3 +12,6 @@ lock:*-lock.{json,yaml}
 --no-heading
 --smart-case
 --max-columns=4096
+# default iglob
+--iglob
+!tags

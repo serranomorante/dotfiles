@@ -176,7 +176,11 @@ end
 function M.config()
   init()
   keys()
-  require("overseer").setup(opts())
+  local overseer = require("overseer")
+  overseer.setup(opts())
+
+  local generate_ctags = require("overseer.template.editor-tasks.TASK__generate_ctags")
+  overseer.run_task({ name = generate_ctags.name })
 end
 
 ---Check if task is allowed to store in session
