@@ -45,9 +45,6 @@ run_scope() {
     --unit="$unit" \
     --description="$description" \
     --nice="$nice" \
-    --property=CPUAccounting=yes \
-    --property=MemoryAccounting=yes \
-    --property=IOAccounting=yes \
     --property="CPUQuota=$cpu_quota" \
     --property="CPUWeight=$cpu_weight" \
     --property="IOWeight=$io_weight" \
@@ -67,9 +64,6 @@ run_scope_on_host() {
     --unit="$unit" \
     --description="$description" \
     --nice="$nice" \
-    --property=CPUAccounting=yes \
-    --property=MemoryAccounting=yes \
-    --property=IOAccounting=yes \
     --property="CPUQuota=$cpu_quota" \
     --property="CPUWeight=$cpu_weight" \
     --property="IOWeight=$io_weight" \
