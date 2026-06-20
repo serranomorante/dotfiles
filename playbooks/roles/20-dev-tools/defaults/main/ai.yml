@@ -22,7 +22,7 @@ piper_tts_setup:
     - es_ES-sharvard-medium
 whisper_cpp_setup:
   repo_path: "{{ ansible_facts.env.HOME }}/data/repos/whisper.cpp"
-  version: v1.8.6
+  version: v1.9.0
   model_dir: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/whisper.cpp/models"
   model_name: medium
   model_file: ggml-medium.bin
@@ -53,7 +53,7 @@ node_ai_npm_packages:
     bins:
       - figma-developer-mcp
   - name: "@anthropic-ai/claude-code"
-    version: 2.1.178
+    version: 2.1.181
     bins:
       - claude
   - name: "@google/gemini-cli"
