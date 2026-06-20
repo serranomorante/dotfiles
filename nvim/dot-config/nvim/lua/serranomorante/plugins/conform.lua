@@ -12,6 +12,10 @@ local FORMAT_OPTS = {
   lsp_format = "never",
 }
 
+local FORCE_ASYNC = {
+  ["yaml.ansible"] = true,
+}
+
 ---@param opts conform.setupOpts
 local function setup_formatexpr_autocmd(opts)
   local patterns = vim.tbl_keys(opts.formatters_by_ft or {})
@@ -29,9 +33,10 @@ local function setup_formatexpr_autocmd(opts)
 end
 
 local function keys()
-  vim.keymap.set({ "n", "v" }, "<leader>lf", function() require("conform").format({}) end, {
-    desc = "Conform: Format file or range",
-  })
+  vim.keymap.set({ "n", "v" }, "<leader>lf", function()
+    local is_async = vim.tbl_get(FORCE_ASYNC, vim.api.nvim_get_option_value("filetype", { buf = 0 }))
+    require("conform").format({ async = is_async })
+  end, { desc = "Conform: Format file or range" })
 end
 
 ---@param opts? conform.FormatOpts
