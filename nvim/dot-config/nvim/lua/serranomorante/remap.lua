@@ -491,3 +491,8 @@ vim.keymap.set({ "n", "c", "i" }, "<A-.>", function()
     if choice then vim.api.nvim_paste(choice.value, false, -1) end
   end)
 end, { desc = "[registers] list and paste selected register" })
+
+for _, key in ipairs({ "j", "k" }) do
+  vim.keymap.set("", key, "g" .. key, { desc = "Use jk for display lines" })
+  vim.keymap.set("", "g" .. key, key, { desc = "Use gj/gk for virtual lines" })
+end
