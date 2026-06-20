@@ -290,13 +290,16 @@
     - "10-system-tools : handler_ensure_readline_mode_notify_service"
 
 - name: "[archlinux] Keyboard peripheral: clone mouseless"
-  ansible.builtin.git:
-    repo: https://github.com/jbensmann/mouseless
-    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
-    dest: "{{ ansible_facts.env.HOME }}/data/repos/mouseless"
-    version: 3e21e6433892f7dd552c62e23d8cde87ee9e4a34
-    single_branch: true
-    depth: 1
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: keyboard-tools
+    update_diff_git_repo: https://github.com/jbensmann/mouseless
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/mouseless"
+    update_diff_git_version: main
+    update_diff_git_single_branch: true
+    update_diff_git_depth: 1
   register: var_mouseless_clone
 
 - name: "[archlinux] Keyboard peripheral: queue mouseless handlers"
@@ -342,13 +345,17 @@
   when: not var_warpd_build_marker.stat.exists
 
 - name: "[archlinux] Keyboard peripheral: clone warpd"
-  ansible.builtin.git:
-    repo: https://github.com/rvaiya/warpd
-    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
-    dest: "{{ ansible_facts.env.HOME }}/data/repos/warpd"
-    version: "{{ var_warpd_remote_commit.stdout.split()[0] }}"
-    force: true
-    depth: 1
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: keyboard-tools
+    update_diff_git_repo: https://github.com/rvaiya/warpd
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/warpd"
+    update_diff_git_version: "{{ var_warpd_remote_commit.stdout.split()[0] }}"
+    update_diff_git_force: true
+    update_diff_git_single_branch: true
+    update_diff_git_depth: 1
   when: not var_warpd_build_marker.stat.exists
 
 - name: "[archlinux] Keyboard peripheral: patch warpd"

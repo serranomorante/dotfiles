@@ -90,7 +90,7 @@ plasma-dwm-playbook-masks-kwin-and-enables-dwm)
     assert_task_contains "$compositor_tasks" "[archlinux] Compositor: ensure dwm service" "masked: false"
     ;;
 plasma-dwm-patched-checkout-is-marker-gated)
-    assert_task_contains "$compositor_tasks" "[archlinux] Compositor: stat dwm patch marker" ".ansible-dwm-patches-{{ arch_dwm_version | regex_replace('[^A-Za-z0-9_.-]', '_') }}-patch-stack-v1"
+    assert_task_contains "$compositor_tasks" "[archlinux] Compositor: stat dwm patch marker" "dotfiles_marker_name"
     assert_task_contains "$compositor_tasks" "[archlinux] Compositor: clone latest dwm" "tasks_from: git"
     assert_task_contains "$compositor_tasks" "[archlinux] Compositor: clone latest dwm" "update_diff_git_force: true"
     assert_task_contains "$compositor_tasks" "[archlinux] Compositor: clone latest dwm" "when: not var_dwm_patch_marker.stat.exists"

@@ -397,11 +397,11 @@ launch-reaper-linux-firejail-joins-existing-wwine-reaper-sandbox)
     wait "$vienna_pid"
     ;;
 launch-reaper-linux-desktop-entries-are-terminal-free)
-    grep -Fxq "Name=REAPER [LINUX]" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
+    grep -Fxq "Name=REAPER linux" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
     grep -Fxq "Terminal=false" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
     refute grep -Fq "kitty" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
 
-    grep -Fxq "Name=REAPER [LINUX] (Firejail)" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
+    grep -Fxq "Name=REAPER linux [FIREJAIL]" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
     grep -Fxq "Terminal=false" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
     refute grep -Fq "kitty" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
 

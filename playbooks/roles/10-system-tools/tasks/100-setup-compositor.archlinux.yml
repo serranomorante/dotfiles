@@ -76,11 +76,15 @@
   when: not var_dwm_patch_marker.stat.exists
 
 - name: "[archlinux] Compositor: clone latest dwm"
-  ansible.builtin.git:
-    repo: git://git.suckless.org/dwm
-    dest: "{{ ansible_facts.env.HOME }}/data/repos/dwm"
-    version: "{{ var_dwm_remote_commit.stdout.split()[0] }}"
-    force: true
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: compositor-tools
+    update_diff_git_repo: git://git.suckless.org/dwm
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/dwm"
+    update_diff_git_version: "{{ var_dwm_remote_commit.stdout.split()[0] }}"
+    update_diff_git_force: true
   register: var_dwm_clone
   when: not var_dwm_patch_marker.stat.exists
 
