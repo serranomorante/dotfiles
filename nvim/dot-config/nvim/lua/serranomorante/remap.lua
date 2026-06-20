@@ -238,16 +238,38 @@ vim.keymap.set(
 vim.keymap.set("n", "<leader>fb", ":b <Tab><Tab>", { desc = "Open recent buffers in wildmenu" }) -- will go directly to the second most recent buffer
 
 local GREP_UNDER_CURSOR_EX_CMD = ":Grep '<C-r><C-w>\\b'" .. constants.POSITION_CURSOR_BETWEEN_QUOTES .. "\\b"
-vim.keymap.set("n", "<leader>fc", GREP_UNDER_CURSOR_EX_CMD, { desc = "Grep word under cursor" })
-vim.keymap.set("n", "<leader>gc", function()
+local FIND_UNDER_CURSOR_EX_CMD = ":Find '<C-r><C-w>\\b'" .. constants.POSITION_CURSOR_BETWEEN_QUOTES .. "\\b"
+vim.keymap.set("n", "<leader>fc", FIND_UNDER_CURSOR_EX_CMD, { desc = "Find word under cursor" })
+vim.keymap.set("n", "<leader>gc", GREP_UNDER_CURSOR_EX_CMD, { desc = "Grep word under cursor" })
+
+vim.keymap.set("n", "<leader>fC", function()
+  if utils.cwd_is_dotfiles() then return FIND_UNDER_CURSOR_EX_CMD end
+  return ":Find '<C-r><C-w>\\b' ~/dotfiles" .. constants.POSITION_CURSOR_BETWEEN_QUOTES .. "\\b"
+end, { desc = "Find word under cursor in dotfiles", expr = true })
+
+vim.keymap.set("n", "<leader>gC", function()
   if utils.cwd_is_dotfiles() then return GREP_UNDER_CURSOR_EX_CMD end
   return ":Grep '<C-r><C-w>\\b' ~/dotfiles" .. constants.POSITION_CURSOR_BETWEEN_QUOTES .. "\\b"
 end, { desc = "Grep word under cursor in dotfiles", expr = true })
-vim.keymap.set({ "x", "v" }, "<leader>fv", function()
+
+vim.keymap.set({ "x", "v" }, "<leader>gv", function()
   local start_pos, end_pos, mode = vim.fn.getpos("v"), vim.fn.getpos("."), vim.fn.mode()
   local region = vim.fn.getregion(start_pos, end_pos, { type = mode })
   return (":<C-u>Grep '%s'"):format(region[1])
-end, { desc = "Find visual selection", expr = true })
+end, { desc = "Grep in visual selection", expr = true })
+
+vim.keymap.set({ "x", "v" }, "<leader>fv", function()
+  local start_pos, end_pos, mode = vim.fn.getpos("v"), vim.fn.getpos("."), vim.fn.mode()
+  local region = vim.fn.getregion(start_pos, end_pos, { type = mode })
+  return (":<C-u>Find '%s'"):format(region[1])
+end, { desc = "Find in visual selection", expr = true })
+
+vim.keymap.set({ "x", "v" }, "<leader>gV", function()
+  local start_pos, end_pos, mode = vim.fn.getpos("v"), vim.fn.getpos("."), vim.fn.mode()
+  local region = vim.fn.getregion(start_pos, end_pos, { type = mode })
+  return (":<C-u>Grep '%s' ~/dotfiles"):format(region[1])
+end, { desc = "Grep visual selection in dotfiles", expr = true })
+
 vim.keymap.set({ "x", "v" }, "<leader>fV", function()
   local start_pos, end_pos, mode = vim.fn.getpos("v"), vim.fn.getpos("."), vim.fn.mode()
   local region = vim.fn.getregion(start_pos, end_pos, { type = mode })
