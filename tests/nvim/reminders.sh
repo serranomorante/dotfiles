@@ -88,7 +88,7 @@ reminders-agent-run-without-id-does-not-emit-run)
     run_remind_update >"${DOTFILES_TEST_TMP}/nvim.out" 2>&1
 
     rg -q "MSG \\*\\*Review sample task\\*\\*" "${HOME}/.config/remind/reminders.rem"
-    ! rg -q "RUN .*remind-run.*agent" "${HOME}/.config/remind/reminders.rem"
+    refute rg -q "RUN .*remind-run.*agent" "${HOME}/.config/remind/reminders.rem"
     ;;
 reminders-update-reports-remind-warnings)
     make_foam_note \
@@ -116,7 +116,7 @@ reminders-ignore-remind-usage-doc)
 
     run_remind_update
 
-    ! rg -q "Example documentation task" "${HOME}/.config/remind/reminders.rem"
+    refute rg -q "Example documentation task" "${HOME}/.config/remind/reminders.rem"
     ;;
 reminders-ignore-agent-run-output)
     make_foam_note_at "misc/agent-runs/2026-05/sample.md" \
@@ -130,7 +130,7 @@ reminders-ignore-agent-run-output)
 
     run_remind_update
 
-    ! rg -q "Example agent output task" "${HOME}/.config/remind/reminders.rem"
+    refute rg -q "Example agent output task" "${HOME}/.config/remind/reminders.rem"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

@@ -181,8 +181,8 @@ dotfiles-spikes-prefers-dominant-unit-over-monitor)
 
     grep -q 'Events with monitor overhead: `1`' "${foam}/system-spikes.md"
     grep -q '`gulp watch` <- `hypothesis-self-hosted.service`' "${foam}/system-spikes.md"
-    ! grep -q '`gulp watch` <- `system-spike-watch.service`' "${foam}/system-spikes.md"
-    ! grep -q 'likely related to system-spike-watch.service' "${foam}/system-spikes.md"
+    refute grep -q '`gulp watch` <- `system-spike-watch.service`' "${foam}/system-spikes.md"
+    refute grep -q 'likely related to system-spike-watch.service' "${foam}/system-spikes.md"
     grep -q 'gulp watch spiked inside active victim unit hypothesis-self-hosted.service; other burst units are concurrent context' "${foam}/system-spikes.md"
     grep -q 'monitor `20.9%` while victim `gulp watch` top unit `hypothesis-self-hosted.service`' "${foam}/system-spikes.md"
     grep -q 'top units: hypothesis-self-hosted.service 187.0%, system-spike-watch.service 20.9%' "${foam}/sources/system-spike-generic.md"
@@ -197,7 +197,7 @@ dotfiles-spikes-prefers-active-victim-unit-over-concurrent-top)
     HOME="$home" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" "$spikes_script" update
 
     grep -q '`gulp watch` <- `hypothesis-self-hosted.service`' "${foam}/system-spikes.md"
-    ! grep -q '`gulp watch` <- `kitty-5986-0.scope`' "${foam}/system-spikes.md"
+    refute grep -q '`gulp watch` <- `kitty-5986-0.scope`' "${foam}/system-spikes.md"
     grep -q 'gulp watch spiked inside active victim unit hypothesis-self-hosted.service; other burst units are concurrent context' "${foam}/system-spikes.md"
     grep -q 'context: concurrent kitty process MainThread 220.0% cwd /home/aaaa/dotfiles/playbooks cmd `python MainThread`' "${foam}/system-spikes.md"
     grep -q 'concurrent `MainThread` unit `kitty-5986-0.scope`' "${foam}/sources/system-spike-generic.md"
@@ -225,7 +225,7 @@ dotfiles-spikes-skips-sddm-xorg-suspect)
     HOME="$home" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" "$spikes_script" update
 
     grep -q '`Xorg` <- `browser-chromium-test.scope`' "${foam}/system-spikes.md"
-    ! grep -q '`Xorg` <- `sddm.service`' "${foam}/system-spikes.md"
+    refute grep -q '`Xorg` <- `sddm.service`' "${foam}/system-spikes.md"
     grep -q 'suspect `browser-chromium-test.scope` top unit `browser-chromium-test.scope`' "${foam}/system-spikes.md"
     ;;
 dotfiles-spikes-renders-specific-browser-candidates)
@@ -250,7 +250,7 @@ dotfiles-spikes-prioritizes-victim-kitty-context)
     HOME="$home" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" "$spikes_script" update
 
     grep -q 'context: kitty victim node 109.0% cwd /home/aaaa/data/apps/dev-tools/ai-tools/.npm cmd `node chrome-devtools-mcp/build/src/telemetry/watchdog/main.js`' "${foam}/system-spikes.md"
-    ! grep -q 'context: concurrent brave renderer' "${foam}/system-spikes.md"
+    refute grep -q 'context: concurrent brave renderer' "${foam}/system-spikes.md"
     grep -q 'suspect `node` unit `kitty-826606-0.scope` cwd `/home/aaaa/data/apps/dev-tools/ai-tools/.npm` cmd `node chrome-devtools-mcp/build/src/telemetry/watchdog/main.js`' "${foam}/sources/system-spike-generic.md"
     ;;
 dotfiles-spikes-renders-enriched-context)

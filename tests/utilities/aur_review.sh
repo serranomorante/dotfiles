@@ -110,7 +110,7 @@ aur-review-publish-keeps-review-checkout-clean)
         "$script_under_test" publish fake-git >"${DOTFILES_TEST_TMP}/stdout"
 
     git -C "${review_dir}/fake-git" diff --quiet -- PKGBUILD
-    ! rg -q 'mutated.by.fake.makepkg' "${review_dir}/fake-git/PKGBUILD"
+    refute rg -q 'mutated.by.fake.makepkg' "${review_dir}/fake-git/PKGBUILD"
     while IFS= read -r cwd; do
         [[ "$cwd" == "${build_dir}/fake-git/worktrees/publish."* ]]
         [[ "$cwd" != "${review_dir}/fake-git" ]]
@@ -128,7 +128,7 @@ aur-review-accept-restores-generated-pkgver-change)
 
     rg -q 'restoring generated PKGBUILD pkgver change' "${DOTFILES_TEST_TMP}/stderr"
     git -C "${review_dir}/fake-git" diff --quiet -- PKGBUILD
-    ! rg -q '1.r2.g1234567' "${review_dir}/fake-git/PKGBUILD"
+    refute rg -q '1.r2.g1234567' "${review_dir}/fake-git/PKGBUILD"
     ;;
 aur-review-accept-rejects-non-pkgver-change)
     review_dir="${DOTFILES_TEST_TMP}/review"

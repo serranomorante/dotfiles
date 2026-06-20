@@ -188,8 +188,8 @@ assert_desktop_terminal_free() {
     local desktop_file=$1
 
     grep -Fxq "Terminal=false" "$desktop_file"
-    ! grep -Fq "kitty" "$desktop_file"
-    ! grep -Fq "Name=(debug)" "$desktop_file"
+    refute grep -Fq "kitty" "$desktop_file"
+    refute grep -Fq "Name=(debug)" "$desktop_file"
 }
 
 assert_launcher_uses_log_id() {
@@ -197,16 +197,16 @@ assert_launcher_uses_log_id() {
     local log_id=$2
 
     grep -Fq -- "--log-id $log_id" "$launcher_file"
-    ! grep -Fq "exec kitty" "$launcher_file"
-    ! grep -Fq "kitty --hold" "$launcher_file"
+    refute grep -Fq "exec kitty" "$launcher_file"
+    refute grep -Fq "kitty --hold" "$launcher_file"
 }
 
 assert_launcher_is_logged_and_terminal_free() {
     local launcher_file=$1
 
     grep -Eq -- "--log-id[[:space:]]+[^[:space:]]+" "$launcher_file"
-    ! grep -Fq "exec kitty" "$launcher_file"
-    ! grep -Fq "kitty --hold" "$launcher_file"
+    refute grep -Fq "exec kitty" "$launcher_file"
+    refute grep -Fq "kitty --hold" "$launcher_file"
 }
 
 assert_private_wine_templates_are_terminal_free_and_logged() {
@@ -218,9 +218,9 @@ assert_private_wine_templates_are_terminal_free_and_logged() {
     [ -d "$templates_dir" ] || return 0
 
     while IFS= read -r -d '' desktop_file; do
-        ! grep -Fxq "Terminal=true" "$desktop_file"
-        ! grep -Fq "kitty" "$desktop_file"
-        ! grep -Fq "Name=(debug)" "$desktop_file"
+        refute grep -Fxq "Terminal=true" "$desktop_file"
+        refute grep -Fq "kitty" "$desktop_file"
+        refute grep -Fq "Name=(debug)" "$desktop_file"
 
         exec_target=$(sed -n 's#^Exec=.*/\(launch-[^[:space:]]*\).*#\1#p' "$desktop_file")
         if [ -n "$exec_target" ]; then

@@ -100,14 +100,14 @@ renovate-config-json-is-valid)
 renovate-config-is-local-only)
     [ "$(json_query dependencyDashboard)" = 'false' ]
     [ "$(json_query dependencyDashboardApproval)" = 'false' ]
-    ! rg -q '"platform"[[:space:]]*:[[:space:]]*"github"' "$config_file"
+    refute rg -q '"platform"[[:space:]]*:[[:space:]]*"github"' "$config_file"
     ;;
 renovate-config-uses-only-custom-regex-managers)
     [ "$(json_query enabledManagers)" = '["custom.regex"]' ]
-    ! rg -q '"datasourceTemplate": "aur"|"datasourceTemplate": "arch"' "$config_file"
+    refute rg -q '"datasourceTemplate": "aur"|"datasourceTemplate": "arch"' "$config_file"
     ;;
 renovate-config-has-no-inline-yaml-markers)
-    ! rg -n '#[[:space:]]*renovate:' "${DOTFILES_TEST_ROOT}/playbooks/roles"
+    refute rg -n '#[[:space:]]*renovate:' "${DOTFILES_TEST_ROOT}/playbooks/roles"
     ;;
 renovate-config-covers-managed-npm-pins)
     managed_npm_names >"${DOTFILES_TEST_TMP}/expected-npm.txt"
@@ -121,7 +121,7 @@ renovate-config-covers-runtime-major-lanes)
     rg -Fq '"allowedVersions": "/^24\\./"' "$config_file"
     rg -Fq '"matchDepTypes": ["python-ml-runtime"]' "$config_file"
     rg -Fq '"allowedVersions": "/^3\\.14\\./"' "$config_file"
-    ! rg -Fq '"matchDepTypes": ["python-piper-runtime"]' "$config_file"
+    refute rg -Fq '"matchDepTypes": ["python-piper-runtime"]' "$config_file"
     ;;
 renovate-config-covers-vscode-go-releases)
     python3 - "$config_file" <<'PY'
@@ -143,7 +143,7 @@ PY
     rg -q '^vscode_go_version: "[0-9][^"]*"$' "$lang_defaults"
     rg -Fq 'version: v{{ vscode_go_version }}' "$go_tasks"
     rg -Fq 'content: "v{{ vscode_go_version }}\n"' "$go_tasks"
-    ! rg -Fq 'release-v{{ vscode_go_version }}' "$go_tasks"
+    refute rg -Fq 'release-v{{ vscode_go_version }}' "$go_tasks"
     ;;
 renovate-config-constrains-mixed-tag-sources)
     python3 - "$config_file" <<'PY'
@@ -205,7 +205,7 @@ renovate-tool-is-installed-by-ansible)
     rg -Fq 'node_dependency_update_node_bin_dir }}:$PATH' "$dev_tasks"
     rg -Fq 'cd "{{ ansible_facts.env.HOME }}/dotfiles" || exit 1' "$dev_tasks"
     rg -q -- '--onboarding=false --require-config=required' "$dev_tasks"
-    ! rg -q 'Setup dependency update tools: symlink npm package binaries' "$dev_tasks"
+    refute rg -q 'Setup dependency update tools: symlink npm package binaries' "$dev_tasks"
     rg -q '175-setup-dependency-update-tools' "$dev_main_tasks"
     ;;
 renovate-local-apply-helper-is-installed)

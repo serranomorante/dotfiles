@@ -46,6 +46,8 @@ These contracts are intentionally visible and stable:
 - `DOTFILES_TEST_ROOT` is the absolute dotfiles repo root and is exposed read-only when Firejail is enabled.
 - `DOTFILES_TEST_TMP` is the per-case writable temp root. Passing tests remove it; failing tests keep it and print the path.
 - `test-output.log` under `DOTFILES_TEST_TMP` captures stdout and stderr for the current case. The runner prints it when a test fails, and also prints non-empty output for passing tests before the `PASS` line.
+- The runner sources `tests/lib/errtrap.bash` into every test file via `BASH_ENV`, so a command that trips `set -e` prints a `>>> FAILED command` line with its exit code, command text, and a `file:line` backtrace before the case aborts. Test files need no opt-in.
+- Write negative assertions as `refute <command>` (e.g. `refute rg -q 'forbidden' "$file"`), not `! <command>`. A bare `! <command>` is exempt from `set -e`, so it neither aborts the case nor reaches the ERR trap, meaning the assertion silently passes even when the command succeeds. `refute` (defined in `tests/lib/errtrap.bash`, available in every test file) runs the command, fails the case when it succeeds, and reports the call site like any other failing command.
 - `DOTFILES_TEST_NO_FIREJAIL=1` disables Firejail only for harness debugging.
 - `DOTFILES_TEST_ALLOW_NESTED_FIREJAIL=1` bypasses the nested-Firejail guard only for explicit experiments after investigation.
 - Exit code `0` means pass, `77` means skip, and any other non-zero code means fail.

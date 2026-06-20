@@ -384,7 +384,7 @@ update-diffs-list-plain-preserves-tab-output)
     capture_git_fixture >/dev/null
     UPDATE_DIFF_CAPTURE_STATE_DIR="$state_dir" "$viewer_helper" list --plain >"${DOTFILES_TEST_TMP}/plain.out"
     rg -q $'^git\tworktree\t[0-9a-f]+ -> [0-9a-f]+\tcaptured\t' "${DOTFILES_TEST_TMP}/plain.out"
-    ! grep -q "$(printf '\033')\\[" "${DOTFILES_TEST_TMP}/plain.out"
+    refute grep -q "$(printf '\033')\\[" "${DOTFILES_TEST_TMP}/plain.out"
     ;;
 update-diffs-list-color-can-be-forced)
     make_git_fixture
@@ -445,7 +445,7 @@ PY
     ;;
 update-diff-capture-pip-callsites-use-role)
     rg -n 'ansible\.builtin\.pip:' "${DOTFILES_TEST_ROOT}/playbooks/roles" -g '*.yml' >"${DOTFILES_TEST_TMP}/pip-callsites.out" || true
-    ! rg -q -v 'roles/update-diff-capture/tasks/pip\.yml:' "${DOTFILES_TEST_TMP}/pip-callsites.out"
+    refute rg -q -v 'roles/update-diff-capture/tasks/pip\.yml:' "${DOTFILES_TEST_TMP}/pip-callsites.out"
     rg -q 'tasks_from: pip' "${DOTFILES_TEST_ROOT}/playbooks/roles/30-lang-tools/tasks/70-setup-python-tools.archlinux.yml"
     rg -q 'tasks_from: pip' "${DOTFILES_TEST_ROOT}/playbooks/roles/30-lang-tools/tasks/100-setup-markdown-tools.archlinux.yml"
     rg -q 'update_diff_pip_state: latest' "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/tasks/150-setup-persistence-tools.archlinux.yml"
@@ -520,13 +520,13 @@ update-diff-capture-records-ok-npm-markers)
     rg -q 'archive observed package diffs' "$npm_tasks"
     rg -q 'read versions before install' "$pip_tasks"
     rg -q 'archive observed package diffs' "$pip_tasks"
-    ! rg -q 'item\.changed \| default\(false\)' "$npm_tasks" "$pip_tasks"
+    refute rg -q 'item\.changed \| default\(false\)' "$npm_tasks" "$pip_tasks"
     ;;
 update-diff-capture-does-not-install-stow-github-helpers)
     install_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/update-diff-capture/tasks/install.yml"
     git_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/update-diff-capture/tasks/git.yml"
 
-    ! rg -q 'dotfiles-github-token|dotfiles-github-askpass|dotfiles-github-git' "$install_tasks"
+    refute rg -q 'dotfiles-github-token|dotfiles-github-askpass|dotfiles-github-git' "$install_tasks"
     rg -Fq 'executable: "{{ playbook_dir }}/../utilities/bin/dotfiles-github-git"' "$git_tasks"
     rg -Fq 'remote_git "$repo_url" clone -q --mirror "$repo_url" "$cache"' "$capture_helper"
     rg -Fq 'remote_git "$repo_url" -C "$cache" fetch -q --tags --prune origin' "$capture_helper"

@@ -20,6 +20,7 @@ dotfiles_test_firejail_run() {
     local path_value=${PATH:-/usr/local/bin:/usr/bin:/bin}
     local lang_value=${LANG:-C.UTF-8}
     local term_value=${TERM:-dumb}
+    local errtrap_value="${repo_root}/tests/lib/errtrap.bash"
 
     mkdir -p "$home_dir" "$xdg_config" "$xdg_cache" "$xdg_data"
 
@@ -35,6 +36,7 @@ dotfiles_test_firejail_run() {
                 PATH="$path_value" \
                 LANG="$lang_value" \
                 TERM="$term_value" \
+                BASH_ENV="$errtrap_value" \
                 DOTFILES_TEST_ROOT="$repo_root" \
                 DOTFILES_TEST_TMP="$tmp_root" \
                 DOTFILES_TEST_CASE="$test_case" \
@@ -90,6 +92,7 @@ dotfiles_test_firejail_run() {
             PATH="$path_value" \
             LANG="$lang_value" \
             TERM="$term_value" \
+            BASH_ENV="$errtrap_value" \
             DOTFILES_TEST_ROOT="$repo_root" \
             DOTFILES_TEST_TMP="$tmp_root" \
             DOTFILES_TEST_CASE="$test_case" \

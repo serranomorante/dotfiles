@@ -132,9 +132,9 @@ remind-agenda-excludes-agent-reminders-markdown)
 
     rg -q '\*\*Plain task\*\*' "${DOTFILES_TEST_TMP}/out.md"
     rg -q '\*\*Health task\*\*' "${DOTFILES_TEST_TMP}/out.md"
-    ! rg -q '\*\*Agent task\*\*' "${DOTFILES_TEST_TMP}/out.md"
-    ! rg -q '\*\*Autotrigger task\*\*' "${DOTFILES_TEST_TMP}/out.md"
-    ! rg -q '\*\*Legacy agent task\*\*' "${DOTFILES_TEST_TMP}/out.md"
+    refute rg -q '\*\*Agent task\*\*' "${DOTFILES_TEST_TMP}/out.md"
+    refute rg -q '\*\*Autotrigger task\*\*' "${DOTFILES_TEST_TMP}/out.md"
+    refute rg -q '\*\*Legacy agent task\*\*' "${DOTFILES_TEST_TMP}/out.md"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2
