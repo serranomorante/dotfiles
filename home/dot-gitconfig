@@ -26,6 +26,7 @@ colorMoved = default
 external = bash ~/dotfiles/lazygit/dot-config/lazygit/delta-theme-external-diff
 
 [delta]
+default-language = bash
 features = settings interactive decorations
 
 [delta "settings"]

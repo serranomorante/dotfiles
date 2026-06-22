@@ -20,7 +20,7 @@ git:
   pagers:
     # Delta is provided by Git's diff.external config.
     - useExternalDiffGitConfig: true
-    - externalDiffCommand: difft --color=always
+    - externalDiffCommand: difft --color=always --override="dotfiles-stow:bash"
 os:
   edit: 'open_in_nvim lazygit_edit "$(printf %q {{filename}})"'
   editAtLine: 'open_in_nvim lazygit_edit_at_line "$(printf %q {{filename}})" "{{line}}"'
