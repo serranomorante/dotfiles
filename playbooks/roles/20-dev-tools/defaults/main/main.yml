@@ -26,7 +26,7 @@ node_package_manager_packages:
       - yarn
       - yarnpkg
   - name: pnpm
-    version: 11.7.0
+    version: 11.8.0
     bins:
       - pnpm
       - pnpx
@@ -35,7 +35,7 @@ node_dependency_update_node_bin_dir: "{{ node_volta_home }}/tools/image/node/{{ 
 node_dependency_update_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/dependency-update-tools/node-{{ node_dependency_update_node_version }}/.npm"
 node_dependency_update_npm_packages:
   - name: renovate
-    version: 43.228.1
+    version: 43.232.1
     bins:
       - renovate
 node_dependency_update_github_token_keyring:
@@ -45,7 +45,7 @@ node_dependency_update_github_token_keyring:
 volta_version: 2.0.2
 isd_tui_version: 0.6.1
 luaunit_version: LUAUNIT_V3_5
-firebase_cli_version: 15.21.0
+firebase_cli_version: 15.22.0
 typescript_npm_version: 6.0.2
 rust_version: 1.96.0
 archlinux_neovim_version: master
