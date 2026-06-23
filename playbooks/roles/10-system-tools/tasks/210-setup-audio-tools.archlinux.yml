@@ -257,35 +257,67 @@
     path: /etc/default/cpupower-service.conf
   register: var_cpupower
 
-- name: "[archlinux] Setup audio tools: check cpupower performance governor support"
+- name: "[archlinux] Setup audio tools: check cpupower idle governor support"
+  # Idle/default governor applied at boot. REAPER raises this to 'performance'
+  # on demand via cpu-governor-boost.service (see tasks below).
   ansible.builtin.command:
     argv:
       - grep
       - -qw
-      - performance
+      - schedutil
       - /sys/devices/system/cpu/cpufreq/policy0/scaling_available_governors
-  register: var_cpupower_performance_governor
+  register: var_cpupower_idle_governor
   changed_when: false
   failed_when: false
 
-- name: "[archlinux] Setup audio tools: governor performance"
+- name: "[archlinux] Setup audio tools: governor schedutil"
   become: true
   ansible.builtin.lineinfile:
     path: "{{ var_cpupower.stat.path }}"
     regexp: "^#?GOVERNOR=.*"
-    line: "GOVERNOR='performance'"
+    line: "GOVERNOR='schedutil'"
   when:
     - var_cpupower.stat.exists
-    - var_cpupower_performance_governor.rc == 0
+    - var_cpupower_idle_governor.rc == 0
 
 - name: "[archlinux] Setup audio tools: ensure cpupower service"
   become: true
   ansible.builtin.systemd_service:
     scope: system
     name: cpupower.service
-    enabled: "{{ var_cpupower_performance_governor.rc == 0 }}"
+    enabled: "{{ var_cpupower_idle_governor.rc == 0 }}"
     masked: false
-    state: "{{ (var_cpupower_performance_governor.rc == 0) | ternary('started', 'stopped') }}"
+    state: "{{ (var_cpupower_idle_governor.rc == 0) | ternary('started', 'stopped') }}"
+
+- name: "[archlinux] Setup audio tools: install cpu-governor-boost helper"
+  become: true
+  ansible.builtin.copy:
+    src: cpu-governor-boost
+    dest: /usr/local/bin/cpu-governor-boost
+    mode: "755"
+
+- name: "[archlinux] Setup audio tools: install cpu-governor-boost service unit"
+  become: true
+  ansible.builtin.copy:
+    src: cpu-governor-boost.service
+    dest: /etc/systemd/system/cpu-governor-boost.service
+    mode: "644"
+
+- name: "[archlinux] Setup audio tools: ensure cpu-governor-boost service (on-demand only)"
+  become: true
+  ansible.builtin.systemd_service:
+    scope: system
+    name: cpu-governor-boost.service
+    enabled: false
+    masked: false
+    daemon_reload: true
+
+- name: "[archlinux] Setup audio tools: allow realtime group to toggle cpu-governor-boost"
+  become: true
+  ansible.builtin.copy:
+    src: 49-cpu-governor-boost.rules
+    dest: /etc/polkit-1/rules.d/49-cpu-governor-boost.rules
+    mode: "644"
 
 - name: "[archlinux] Setup audio tools: ensure system services"
   become: true

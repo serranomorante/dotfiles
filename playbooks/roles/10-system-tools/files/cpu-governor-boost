@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Toggle the CPU frequency governor between an on-demand "idle" default and
+# "performance", used to give low-latency audio (REAPER) a boosted governor only
+# while it is running and restore the previous governor afterwards.
+#
+# Usage: cpu-governor-boost on|off
+#
+#   on   Save the current governor (unless already performance) and switch all
+#        policies to performance.
+#   off  Restore the governor saved by the previous "on", falling back to the
+#        idle governor configured for cpupower.service.
+#
+# Note: this is intentionally simple and not reference-counted; overlapping
+# REAPER instances share a single boost and the first one to close restores the
+# idle governor.
+set -euo pipefail
+
+state_file=/run/cpu-governor-boost.prev
+cpupower_conf=/etc/default/cpupower-service.conf
+
+idle_governor() {
+  local governor=""
+  if [ -r "$cpupower_conf" ]; then
+    # shellcheck source=/dev/null
+    governor=$(. "$cpupower_conf" 2>/dev/null; printf '%s' "${GOVERNOR:-}")
+  fi
+  printf '%s' "${governor:-schedutil}"
+}
+
+current_governor() {
+  cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null
+}
+
+set_governor() {
+  local governor=$1
+  local sysfs
+  for sysfs in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+    [ -w "$sysfs" ] && printf '%s\n' "$governor" >"$sysfs"
+  done
+}
+
+case "${1:-}" in
+  on)
+    current=$(current_governor)
+    if [ -n "$current" ] && [ "$current" != performance ]; then
+      printf '%s\n' "$current" >"$state_file"
+    fi
+    set_governor performance
+    ;;
+  off)
+    if [ -r "$state_file" ]; then
+      previous=$(cat "$state_file")
+      rm -f "$state_file"
+    else
+      previous=$(idle_governor)
+    fi
+    set_governor "${previous:-schedutil}"
+    ;;
+  *)
+    printf 'usage: cpu-governor-boost on|off\n' >&2
+    exit 2
+    ;;
+esac

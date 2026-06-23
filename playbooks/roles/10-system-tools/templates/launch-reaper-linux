@@ -20,6 +20,26 @@ Environment:
 EOF
 }
 
+governor_boost_started=0
+
+governor_boost_start() {
+  # Raise the CPU governor to performance for low-latency audio while REAPER
+  # runs. Authorized for the 'realtime' group via polkit; non-fatal if it fails
+  # so REAPER still launches on systems without the boost unit.
+  if systemctl start cpu-governor-boost.service 2>/dev/null; then
+    governor_boost_started=1
+  fi
+}
+
+governor_boost_stop() {
+  # Restore the previous (idle) governor once REAPER exits. Registered on EXIT so
+  # it also runs when the launcher is interrupted by a signal.
+  if [ "$governor_boost_started" -eq 1 ]; then
+    systemctl stop cpu-governor-boost.service 2>/dev/null || true
+    governor_boost_started=0
+  fi
+}
+
 use_firejail=0
 firejail_sandbox_name="${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-wwine-reaper}"
 firejail_profile="{{ ansible_facts.env.HOME }}/.config/firejail/wine-reaper.local"
@@ -97,10 +117,20 @@ export {{ env | join('=') }}
 {% endfor %}
 cd "{{ ansible_facts.env.HOME }}/data/audio-pjs"
 
+# Boost the CPU governor for the lifetime of this REAPER session and restore it
+# on exit (including signals) via the EXIT trap.
+trap governor_boost_stop EXIT
+governor_boost_start
+
 reaper_cmd=(/usr/bin/reaper "$@")
 if [ "$use_firejail" -eq 1 ]; then
   reaper_cmd=(firejail --profile="$firejail_profile" --join-or-start="$firejail_sandbox_name" "${reaper_cmd[@]}")
   exec_named_firejail "${reaper_cmd[@]}"
 fi
 
-exec "${reaper_cmd[@]}"
+# Run (not exec) so the EXIT trap restores the governor after REAPER exits.
+set +e
+"${reaper_cmd[@]}"
+status=$?
+set -e
+exit "$status"

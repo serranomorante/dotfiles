@@ -1,0 +1,13 @@
+[Unit]
+Description=Boost CPU governor to performance for low-latency audio
+Documentation=man:cpupower(1)
+ConditionVirtualization=!container
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/cpu-governor-boost on
+ExecStop=/usr/local/bin/cpu-governor-boost off
+
+[Install]
+WantedBy=multi-user.target
