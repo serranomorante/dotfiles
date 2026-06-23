@@ -102,18 +102,55 @@
         - /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev3 }}/data/backups
         - /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev4 }}/data/backups
 
-    - name: "[archlinux] Setup backup tools: init borg repos"
-      ansible.builtin.command: borg init --encryption=keyfile '{{ item.repo }}'
+    # Read each repo's passphrase from KWallet *before* attempting borg init. A
+    # missing or empty passphrase here is what leaves a half-initialized repo
+    # (config + empty data/, no keyfile, no manifest), so we gate init on it.
+    - name: "[archlinux] Setup backup tools: verify kwallet passphrase is present and non-empty"
+      ansible.builtin.command:
+        argv:
+          - kwallet-query
+          - --folder
+          - "{{ item.keyrings.folder }}"
+          - --read-password
+          - "{{ item.keyrings.passkey }}"
+          - "{{ item.keyrings.wallet }}"
+      register: var_borg_passphrase_checks
+      changed_when: false
+      failed_when: false
+      no_log: true
+      loop: "{{ archlinux_borg_repos_env }}"
+      loop_control:
+        label: "{{ item.keyrings.passkey }}"
+
+    - name: "[archlinux] Setup backup tools: warn about repos skipped due to missing kwallet passphrase"
+      ansible.builtin.debug:
+        msg: >-
+          Skipping borg init for '{{ item.0.keyrings.passkey }}' ({{ item.0.repo }}):
+          kwallet returned no usable passphrase. Store a non-empty passphrase in folder
+          '{{ item.0.keyrings.folder }}' (wallet '{{ item.0.keyrings.wallet }}') before re-running.
+      when:
+        - (item.1.rc | default(1)) != 0 or ((item.1.stdout | default('') | trim | length) == 0)
+      loop: "{{ archlinux_borg_repos_env | zip(var_borg_passphrase_checks.results) | list }}"
+      loop_control:
+        label: "{{ item.0.keyrings.passkey }}"
+
+    - name: "[archlinux] Setup backup tools: init borg repos (only with a valid kwallet passphrase)"
+      ansible.builtin.command: borg init --encryption=keyfile '{{ item.0.repo }}'
       environment:
-        BORG_PASSCOMMAND: kwallet-query --folder {{ item.keyrings.folder }} --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }}
+        BORG_PASSCOMMAND: kwallet-query --folder {{ item.0.keyrings.folder }} --read-password {{ item.0.keyrings.passkey }} {{ item.0.keyrings.wallet }}
       vars:
-        device: '{{ item.device | regex_replace("[^A-Za-z0-9]", "_") }}'
-        reponame: '{{ item.keyrings.passkey | regex_replace("[^A-Za-z0-9]", "_") }}'
-        repobasename: /run/media/{{ ansible_facts.env.USER }}/{{ item.device }}/data/backups
+        device: '{{ item.0.device | regex_replace("[^A-Za-z0-9]", "_") }}'
+        reponame: '{{ item.0.keyrings.passkey | regex_replace("[^A-Za-z0-9]", "_") }}'
+        repobasename: /run/media/{{ ansible_facts.env.USER }}/{{ item.0.device }}/data/backups
       args:
         creates: ~/.config/borg/keys/*{{ device }}_data_backups_{{ reponame }}
-      when: repobasename in available_drives and available_drives[repobasename].exists
-      loop: "{{ archlinux_borg_repos_env }}"
+      when:
+        - repobasename in available_drives and available_drives[repobasename].exists
+        - (item.1.rc | default(1)) == 0
+        - (item.1.stdout | default('') | trim | length) > 0
+      loop: "{{ archlinux_borg_repos_env | zip(var_borg_passphrase_checks.results) | list }}"
+      loop_control:
+        label: "{{ item.0.keyrings.passkey }} -> {{ item.0.repo }}"
 
     - name: "[archlinux] Setup backup tools: create backup scripts from template"
       ansible.builtin.template:
@@ -142,18 +179,21 @@
           - every-4-hours-backup@dev4-notes.timer
           - every-4-hours-backup@dev4-audio-pjs.timer
           - every-8-hours-backup@dev4-bw-backup.timer
+          - every-8-hours-backup@dev4-ai-conversations.timer
           - every-hour-backup@dev2-config-files.timer
           - every-8-hours-backup@dev2-PKM.timer
           - every-8-hours-backup@dev2-user-data.timer
           - every-4-hours-backup@dev2-notes.timer
           - every-4-hours-backup@dev2-audio-pjs.timer
           - every-8-hours-backup@dev2-bw-backup.timer
+          - every-8-hours-backup@dev2-ai-conversations.timer
           - every-hour-backup@dev3-config-files.timer
           - every-8-hours-backup@dev3-PKM.timer
           - every-8-hours-backup@dev3-user-data.timer
           - every-4-hours-backup@dev3-notes.timer
           - every-4-hours-backup@dev3-audio-pjs.timer
           - every-8-hours-backup@dev3-bw-backup.timer
+          - every-8-hours-backup@dev3-ai-conversations.timer
       changed_when: false
 
     - name: "[archlinux] Setup backup tools: ensure keyfiles backup folder"
