@@ -8,6 +8,7 @@ set -euo pipefail
 # dotfiles-test-case: kitty-tab-bar-launch-cwd
 # dotfiles-test-case: kitty-tab-bar-title-without-launch-cwd
 # dotfiles-test-case: kitty-tab-bar-title-with-launch-cwd
+# dotfiles-test-case: kitty-tab-bar-title-width
 
 # Purpose: Verify custom Kitty tab bar title and launch-cwd behavior.
 
@@ -41,7 +42,7 @@ def load_tab_bar():
     return module
 
 
-def tab(active_wd, active_exe, title="base-title", active_oldest_wd="/old/cwd", active_oldest_exe="/usr/bin/bash"):
+def tab(active_wd, active_exe, title="base-title", active_oldest_wd="/old/cwd", active_oldest_exe="/usr/bin/bash", is_active=True):
     return {
         "title": title,
         "tab": SimpleNamespace(
@@ -49,6 +50,7 @@ def tab(active_wd, active_exe, title="base-title", active_oldest_wd="/old/cwd", 
             active_exe=active_exe,
             active_oldest_wd=active_oldest_wd,
             active_oldest_exe=active_oldest_exe,
+            is_active=is_active,
         ),
         "layout_name": "tall",
         "num_windows": 1,
@@ -112,13 +114,32 @@ elif CASE == "kitty-tab-bar-title-with-launch-cwd":
     assert_equal("7. nvim", m.draw_title(tab(launch, "/usr/bin/nvim")))
     assert_equal("/src/api", m.tab_label(tab(child, "/usr/bin/nvim", active_oldest_wd=str(launch), active_oldest_exe="/usr/bin/bash")))
     assert_equal(str(outside), m.tab_label(tab(outside, "/usr/bin/bash")))
+    assert_equal("manual-title", m.tab_label(tab(launch, "/usr/bin/nvim", title="manual-title")))
+    assert_equal("manual-child", m.tab_label(tab(child, "/usr/bin/nvim", title="manual-child")))
+    assert_equal("manual-outside", m.tab_label(tab(outside, "/usr/bin/bash", title="manual-outside")))
 
     stack_data = tab(launch, "/usr/bin/nvim")
     stack_data["layout_name"] = "stack"
     stack_data["num_windows"] = 2
     assert_equal("  7. nvim", m.draw_title(stack_data))
 
-    assert_equal("manual-title", m.tab_label(tab(launch, "", title="manual-title")))
+elif CASE == "kitty-tab-bar-title-width":
+    m = load_tab_bar()
+    launch = (TMP / "project").resolve()
+    child = (launch / "vendor/app/public/modules/performance").resolve()
+    m.launch_cwd_from_argv = lambda argv_=None: str(launch)
+
+    assert_equal("/.../modules/performance", m.fit_tab_label(m.tab_label(tab(child, "/usr/bin/nvim")), 28, active=True))
+    assert_equal("/performance", m.fit_tab_label(m.tab_label(tab(child, "/usr/bin/nvim", is_active=False)), 28, active=False))
+    assert_equal("long-manual-title...", m.fit_tab_label("long-manual-title-that-is-not-a-path", 20, active=False))
+
+    m._current_max_tab_length = 34
+    assert_equal("7. /.../public/modules/performance", m.draw_title(tab(child, "/usr/bin/nvim")))
+    assert_equal("7. /performance", m.draw_title(tab(child, "/usr/bin/nvim", is_active=False)))
+    m._current_max_tab_length = None
+
+    launch_label = "~/code/work/repos/webapp.frontend.example.app"
+    assert_equal("~/.../webapp.frontend.example.app", m.fit_path_label(launch_label, 36, active=True))
 
 else:
     raise SystemExit(f"unknown DOTFILES_TEST_CASE: {CASE}")
@@ -128,7 +149,7 @@ PY
 }
 
 case "${DOTFILES_TEST_CASE:-}" in
-kitty-tab-bar-config-loads | kitty-tab-bar-launch-cwd | kitty-tab-bar-title-without-launch-cwd | kitty-tab-bar-title-with-launch-cwd)
+kitty-tab-bar-config-loads | kitty-tab-bar-launch-cwd | kitty-tab-bar-title-without-launch-cwd | kitty-tab-bar-title-with-launch-cwd | kitty-tab-bar-title-width)
     run_python_case
     ;;
 *)

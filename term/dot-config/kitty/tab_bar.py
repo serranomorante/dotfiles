@@ -19,6 +19,10 @@ from kitty.tab_bar import (
 
 
 LAUNCH_CWD_FG = 0x6F9FB5
+MIN_TAB_LABEL_WIDTH = 12
+INACTIVE_PATH_LABEL_WIDTH = 24
+LAUNCH_CWD_LABEL_WIDTH = 36
+_current_max_tab_length: int | None = None
 
 
 def draw_tab(
@@ -32,26 +36,33 @@ def draw_tab(
     extra_data: ExtraData,
 ) -> int:
     if index == 1:
-        draw_left_launch_cwd(draw_data, screen)
+        draw_left_launch_cwd(draw_data, screen, max_tab_length)
         before = screen.cursor.x
 
-    end = draw_tab_with_powerline(
-        draw_data,
-        screen,
-        tab,
-        before,
-        max_tab_length,
-        index,
-        is_last,
-        extra_data,
-    )
+    global _current_max_tab_length
+    previous_max_tab_length = _current_max_tab_length
+    _current_max_tab_length = max_tab_length
+    try:
+        end = draw_tab_with_powerline(
+            draw_data,
+            screen,
+            tab,
+            before,
+            max_tab_length,
+            index,
+            is_last,
+            extra_data,
+        )
+    finally:
+        _current_max_tab_length = previous_max_tab_length
+
     if is_last and not extra_data.for_layout:
         draw_right_datetime(draw_data, screen)
     return end
 
 
-def draw_left_launch_cwd(draw_data: DrawData, screen) -> None:
-    text = launch_cwd_label()
+def draw_left_launch_cwd(draw_data: DrawData, screen, max_tab_length: int) -> None:
+    text = fit_path_label(launch_cwd_label(), max_launch_cwd_width(screen, max_tab_length), active=True)
     if not text:
         return
 
@@ -64,13 +75,19 @@ def draw_left_launch_cwd(draw_data: DrawData, screen) -> None:
 
 def draw_title(data: dict) -> str:
     title = data["title"]
-    label = tab_label(data)
+    tab = data["tab"]
+    is_active = getattr(tab, "is_active", data.get("is_active", False))
     stack_icon = "  " if data["layout_name"] == "stack" and data["num_windows"] > 1 else ""
-    return f"{stack_icon}{data['index']}. {label or title}"
+    prefix = f"{stack_icon}{data['index']}. "
+    label = fit_tab_label(tab_label(data) or title, available_label_width(len(prefix)), active=is_active)
+    return f"{prefix}{label}"
 
 
 def tab_label(data: dict) -> str:
     title = data["title"]
+    if is_manual_title(title):
+        return title
+
     tab = data["tab"]
     tab_cwd = normalize_existing_path(getattr(tab, "active_wd", "") or "")
     if not tab_cwd:
@@ -78,7 +95,7 @@ def tab_label(data: dict) -> str:
 
     launch_cwd = launch_cwd_from_argv()
     if not launch_cwd:
-        return tab_cwd if title.startswith("base-title") else title
+        return tab_cwd
 
     relation = path_relation(tab_cwd, launch_cwd)
     if relation == ".":
@@ -90,6 +107,78 @@ def tab_label(data: dict) -> str:
 
 def process_label(exe: str) -> str:
     return Path(exe).name
+
+
+def is_manual_title(title: str) -> bool:
+    return bool(title) and not title.startswith("base-title")
+
+
+def available_label_width(prefix_width: int) -> int:
+    if _current_max_tab_length is None:
+        return 0
+    return max(MIN_TAB_LABEL_WIDTH, _current_max_tab_length - prefix_width)
+
+
+def fit_tab_label(label: str, max_width: int, active: bool) -> str:
+    if not max_width or len(label) <= max_width:
+        return label
+    if is_path_label(label):
+        path_width = max_width if active else min(max_width, INACTIVE_PATH_LABEL_WIDTH)
+        return fit_path_label(label, path_width, active=active)
+    return fit_text_label(label, max_width)
+
+
+def fit_path_label(label: str, max_width: int, active: bool) -> str:
+    if not max_width or len(label) <= max_width:
+        return label
+    if max_width <= 4:
+        return label[:max_width]
+
+    marker = path_marker(label)
+    components = [part for part in label.removeprefix(marker).split("/") if part]
+    if not components:
+        return fit_text_label(label, max_width)
+
+    compact = f"{marker}{components[-1]}"
+    if len(compact) <= max_width and not active:
+        return compact
+
+    suffix = components[-1]
+    while len(f"{marker}.../{suffix}") > max_width and len(suffix) > 1:
+        suffix = suffix[1:]
+    if len(f"{marker}.../{suffix}") > max_width:
+        return fit_text_label(compact, max_width)
+
+    selected = [components[-1]]
+    for component in reversed(components[:-1]):
+        candidate = [component, *selected]
+        text = f"{marker}.../{'/'.join(candidate)}"
+        if len(text) > max_width:
+            break
+        selected = candidate
+    return f"{marker}.../{'/'.join(selected)}"
+
+
+def fit_text_label(label: str, max_width: int) -> str:
+    if len(label) <= max_width:
+        return label
+    if max_width <= 3:
+        return label[:max_width]
+    return f"{label[: max_width - 3]}..."
+
+
+def is_path_label(label: str) -> bool:
+    return label.startswith("/") or label.startswith("~/")
+
+
+def path_marker(label: str) -> str:
+    return "~/" if label.startswith("~/") else "/"
+
+
+def max_launch_cwd_width(screen, max_tab_length: int) -> int:
+    if max_tab_length >= 48:
+        return min(72, max(LAUNCH_CWD_LABEL_WIDTH, screen.columns // 3))
+    return max(20, min(LAUNCH_CWD_LABEL_WIDTH, screen.columns // 5))
 
 
 def normalize_existing_path(path: str) -> str:
