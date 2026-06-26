@@ -120,6 +120,70 @@
       "env": {
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"
       }
+    },
+    "playwright-mcp-QA-1": {
+      "disabled": false,
+      "command": "{{ node_firejail_executable }}",
+      "args": [
+        "online",
+        "{{ node_ai_npm_prefix }}",
+        "--",
+        "{{ node_system_default_node_path }}",
+        "{{ playwright_mcp_server_setup.exe_path }}",
+        "--cdp-endpoint",
+        "http://127.0.0.1:9224"
+      ],
+      "env": {
+        "FJ_NODE_PROFILE": "fj-node-mcp.profile"
+      }
+    },
+    "playwright-mcp-QA-2": {
+      "disabled": false,
+      "command": "{{ node_firejail_executable }}",
+      "args": [
+        "online",
+        "{{ node_ai_npm_prefix }}",
+        "--",
+        "{{ node_system_default_node_path }}",
+        "{{ playwright_mcp_server_setup.exe_path }}",
+        "--cdp-endpoint",
+        "http://127.0.0.1:9225"
+      ],
+      "env": {
+        "FJ_NODE_PROFILE": "fj-node-mcp.profile"
+      }
+    },
+    "playwright-mcp-QA-3": {
+      "disabled": false,
+      "command": "{{ node_firejail_executable }}",
+      "args": [
+        "online",
+        "{{ node_ai_npm_prefix }}",
+        "--",
+        "{{ node_system_default_node_path }}",
+        "{{ playwright_mcp_server_setup.exe_path }}",
+        "--cdp-endpoint",
+        "http://127.0.0.1:9226"
+      ],
+      "env": {
+        "FJ_NODE_PROFILE": "fj-node-mcp.profile"
+      }
+    },
+    "playwright-mcp-QA-4": {
+      "disabled": false,
+      "command": "{{ node_firejail_executable }}",
+      "args": [
+        "online",
+        "{{ node_ai_npm_prefix }}",
+        "--",
+        "{{ node_system_default_node_path }}",
+        "{{ playwright_mcp_server_setup.exe_path }}",
+        "--cdp-endpoint",
+        "http://127.0.0.1:9227"
+      ],
+      "env": {
+        "FJ_NODE_PROFILE": "fj-node-mcp.profile"
+      }
     }
   }
 }
