@@ -11,7 +11,7 @@ ttl=${VIM_REGISTER_CLIPBOARD_TTL:-2592000}
 cachectl_bin=${VIM_REGISTER_CLIPBOARD_CACHECTL:-}
 # Space-separated, lowercase X11 window classes that paste with Ctrl+Shift+V
 # (terminals) instead of the Ctrl+V used by GTK/Qt clients.
-terminals=${VIM_REGISTER_CLIPBOARD_TERMINALS:-kitty alacritty foot wezterm xterm urxvt konsole st ghostty}
+terminals=${VIM_REGISTER_CLIPBOARD_TERMINALS:-kitty alacritty foot wezterm xterm urxvt konsole st ghostty kitty-lazygit kitty-nnn}
 
 die() {
     printf '%s: %s\n' "$prog" "$*" >&2
