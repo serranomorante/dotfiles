@@ -26,6 +26,12 @@ v = layer(signal_show_clipboard_history)
 v = layer(signal_show_clipboard_history)
 ```
 
+## Readline-aware behavior
+
+Keyd is the right place to remap keys, but not to make decisions based on the current readline cursor position. If a shortcut needs to behave differently at the start or end of a shell edit buffer, put the stateful part in bash/readline itself with `bind -x` and the `READLINE_LINE` / `READLINE_POINT` variables, then let keyd keep emitting the same physical chord.
+
+If a keyd-only repeat is good enough and you want to keep the modifier physically held, use an explicit `oneshotm` repeat layer and put the repeated binding in a composite layer that also includes the held modifier. Avoid `overloadi` for readline repeats: it keys off any recent non-action key, so normal typing can keep the idle window alive and make a later navigation press look like a repeat.
+
 ## MIDI mode and keyd limits
 
 MIDI controller mode should be modeled as keyd layers observed through `keyd listen`, not as a second evdev consumer. A daemon that opens `keyd virtual keyboard` through evdev and then calls `EVIOCGRAB` fights the existing keyd device owner, can fail with `resource busy`, can miss key-up/state transitions when another remapper is in the path, and can leak raw keyboard shortcuts into REAPER while MIDI learn is waiting. Keep keyd as the only physical keyboard consumer: `Tab+m` toggles the persistent `[midi]` layer, keyd emits `+midi_*` and `-midi_*` layer events, and `keyboard-midi-controller` translates those layer events to MIDI.
