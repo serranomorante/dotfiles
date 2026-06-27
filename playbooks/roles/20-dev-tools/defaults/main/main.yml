@@ -1,7 +1,7 @@
 ---
 plantuml_compiled_jar_version: 1.2026.6
-node_system_default_version: 22.23.0
-node_ansible_language_server_version: 24.17.0
+node_system_default_version: 22.23.1
+node_ansible_language_server_version: 24.18.0
 node_managed_versions:
   - "{{ node_system_default_version }}"
   - "{{ node_ansible_language_server_version }}"
@@ -26,7 +26,7 @@ node_package_manager_packages:
       - yarn
       - yarnpkg
   - name: pnpm
-    version: 11.8.0
+    version: 11.9.0
     bins:
       - pnpm
       - pnpx
@@ -35,7 +35,7 @@ node_dependency_update_node_bin_dir: "{{ node_volta_home }}/tools/image/node/{{ 
 node_dependency_update_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/dependency-update-tools/node-{{ node_dependency_update_node_version }}/.npm"
 node_dependency_update_npm_packages:
   - name: renovate
-    version: 43.232.1
+    version: 43.242.0
     bins:
       - renovate
 node_dependency_update_github_token_keyring:
@@ -45,7 +45,7 @@ node_dependency_update_github_token_keyring:
 volta_version: 2.0.2
 isd_tui_version: 0.6.1
 luaunit_version: LUAUNIT_V3_5
-firebase_cli_version: 15.22.0
+firebase_cli_version: 15.22.1
 typescript_npm_version: 6.0.2
 rust_version: 1.96.0
 archlinux_neovim_version: master
