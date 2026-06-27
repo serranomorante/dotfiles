@@ -36,7 +36,7 @@ const (
 )
 
 var watchedThresholds = map[string]threshold{
-	"Xorg":           {cpuPct: 40, consecutive: 1, kind: "xorg"},
+	"Xorg":           {cpuPct: 60, consecutive: 1, kind: "xorg"},
 	"picom":          {cpuPct: 50, consecutive: 1, kind: "compositor"},
 	"plasmashell":    {cpuPct: 60, consecutive: 2, kind: "compositor"},
 	"pipewire":       {cpuPct: 30, consecutive: 1, kind: "audio"},
