@@ -5,6 +5,8 @@
       default(arch_audiogridder_wine_setup.version) }}/AudioGridder_{{ arch_audiogridder_wine_setup.version }}-Windows-Installers.zip
     dest: "{{ arch_audiogridder_wine_setup.backup_path }}/"
     remote_src: true
+  ignore_errors: true
+  register: var_get_audiogridder_server
 
 - name: "[archlinux] Wine tools: install audiogridder server"
   ansible.builtin.command: >
@@ -13,7 +15,9 @@
   timeout: 60
   args:
     creates: "{{ arch_audiogridder_wine_setup.wine_prefix }}/drive_c/Program Files/AudioGridderServer/AudioGridderServer.exe"
-  when: is_x_display_session
+  when:
+    - is_x_display_session
+    - var_get_audiogridder_server is success
   register: var_install_audiogridder
 
 - block:
@@ -33,7 +37,7 @@
   vars:
     window_query: explorer.exe
     # Defaults
-    should_wait: "{{ var_install_audiogridder.changed }}"
+    should_wait: "{{ var_install_audiogridder is defined and var_install_audiogridder.changed }}"
     delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
     retries_n: "{{ arch_ansible_long_retries_config.retries_n }}"
 
