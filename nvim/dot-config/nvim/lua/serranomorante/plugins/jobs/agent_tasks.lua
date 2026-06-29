@@ -13,6 +13,11 @@ local M = {}
 
 local PROVIDER_KEY = "agent_provider"
 local SESSION_ID_KEY = "agent_session_id"
+local PROMPT_MARKERS = {
+  codex = "›",
+  claude = "❯",
+  gemini = "❯",
+}
 
 local DEFAULT_READ_LINES = 80
 
@@ -65,6 +70,13 @@ local function task_session_id(t)
   return md[SESSION_ID_KEY]
 end
 
+---@param provider string?
+---@return string?
+local function prompt_marker_for_provider(provider)
+  if type(provider) ~= "string" then return nil end
+  return PROMPT_MARKERS[provider] or nil
+end
+
 ---@param t overseer.Task
 ---@return integer?
 local function task_job_id(t)
@@ -82,14 +94,16 @@ local function task_buffer_lines(t)
 end
 
 ---Best-effort agent state from a terminal tail.
+---@param provider string?
 ---@param lines string[]?
 ---@return string
-local function detect_state(lines)
+local function detect_state(provider, lines)
   if type(lines) ~= "table" or #lines == 0 then return "unknown" end
   local from = math.max(1, #lines - 25)
   local tail = table.concat(vim.list_slice(lines, from, #lines), "\n")
   if tail:find("esc to interrupt", 1, true) then return "busy" end
-  if tail:find("❯", 1, true) then return "idle" end
+  local marker = prompt_marker_for_provider(provider)
+  if marker and tail:find(marker, 1, true) then return "idle" end
   if tail:find("> ", 1, true) then return "idle" end
   return "unknown"
 end
@@ -142,7 +156,7 @@ local function task_summary(t)
     provider = task_provider(t),
     session_id = task_session_id(t),
     name = t.name,
-    state = detect_state(lines),
+    state = detect_state(task_provider(t), lines),
   }
 end
 
@@ -179,7 +193,7 @@ function M.read(ref, n)
     tostring(t.id),
     tostring(task_session_id(t)),
     tostring(task_provider(t)),
-    detect_state(lines),
+    detect_state(task_provider(t), lines),
     tostring(t.status),
     start,
     total,

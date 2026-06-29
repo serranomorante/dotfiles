@@ -3,6 +3,21 @@ local tools = require("serranomorante.tools")
 
 local M = {}
 
+local AGENT_TASK_METADATA = "agent_session"
+local AGENT_PROVIDER_METADATA = "agent_provider"
+local AGENT_TASK_PROMPT_MARKERS = {
+  codex = "›",
+  claude = "❯",
+  gemini = "❯",
+}
+
+---@param provider_name string?
+---@return string?
+local function agent_task_prompt_marker(provider_name)
+  if type(provider_name) ~= "string" then return nil end
+  return AGENT_TASK_PROMPT_MARKERS[provider_name] or nil
+end
+
 ---Writes a Grep/Find command into vim's command-line with
 ---nnn's hovered dir prepopulated
 ---@param search_type 'Grep'|'Find'
@@ -1470,6 +1485,35 @@ local function terminal_task_output_navigation_rhs(step)
   )
 end
 
+local function agent_task_output_searchable(task)
+  local metadata = task and task.metadata or nil
+  if type(metadata) ~= "table" or metadata[AGENT_TASK_METADATA] ~= true then return false end
+
+  local provider_name = metadata[AGENT_PROVIDER_METADATA]
+  return agent_task_prompt_marker(provider_name) ~= nil
+end
+
+---@param step integer
+function M.search_agent_task_prompt(step)
+  step = step or 1
+  local task = overseer_task_for_buf()
+  if not agent_task_output_searchable(task) then return end
+
+  stop_terminal_mode()
+  local pattern = agent_task_prompt_marker(task.metadata and task.metadata[AGENT_PROVIDER_METADATA] or nil)
+  if not pattern then return end
+  vim.fn.setreg("/", pattern)
+  local flags = step < 0 and "b" or ""
+  for _ = 1, math.max(vim.v.count, 1) do
+    if vim.fn.search(pattern, flags) == 0 then break end
+  end
+end
+
+---@param step integer
+local function terminal_agent_task_prompt_search_rhs(step)
+  return ("<C-\\><C-n><Cmd>lua require('serranomorante.utils').search_agent_task_prompt(%d)<CR>"):format(step)
+end
+
 ---@param bufnr? integer
 function M.attach_overseer_task_output_navigation(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
@@ -1511,6 +1555,24 @@ function M.attach_overseer_task_output_navigation(bufnr)
     buffer = bufnr,
     desc = "Overseer: previous task output",
   })
+  if agent_task_output_searchable(task) then
+    vim.keymap.set("n", "<A-n>", function() M.search_agent_task_prompt(1) end, {
+      buffer = bufnr,
+      desc = "Overseer: next agent prompt",
+    })
+    vim.keymap.set("n", "<A-p>", function() M.search_agent_task_prompt(-1) end, {
+      buffer = bufnr,
+      desc = "Overseer: previous agent prompt",
+    })
+    vim.keymap.set("t", "<A-n>", terminal_agent_task_prompt_search_rhs(1), {
+      buffer = bufnr,
+      desc = "Overseer: next agent prompt",
+    })
+    vim.keymap.set("t", "<A-p>", terminal_agent_task_prompt_search_rhs(-1), {
+      buffer = bufnr,
+      desc = "Overseer: previous agent prompt",
+    })
+  end
   vim.keymap.set("t", "<C-g>", "<C-\\><C-n><Cmd>stopinsert<CR>", {
     buffer = bufnr,
     desc = "Exit terminal mode",
