@@ -202,6 +202,15 @@
   changed_when: "'compiled' in var_system_spike_watch_compile_cache.stdout_lines"
   notify: "10-system-tools : handler_restart_system_spike_watch_service"
 
+- name: "[archlinux] Dotfiles: compile system spike notifier"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/system-spike-notify"
+      - --compile-cache
+  register: var_system_spike_notify_compile_cache
+  changed_when: "'compiled' in var_system_spike_notify_compile_cache.stdout_lines"
+  notify: "10-system-tools : handler_restart_system_spike_notify_service"
+
 - name: "[archlinux] Dotfiles: compile browser task snapshot receiver"
   ansible.builtin.command:
     argv:
