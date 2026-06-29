@@ -225,9 +225,24 @@ function M.send(ref, b64_text, with_newline)
     text = decoded
   end
 
-  local ok_text = pcall(vim.api.nvim_chan_send, job, text)
   local newline = with_newline == true or with_newline == "true" or with_newline == "1" or with_newline == 1
-  if newline then pcall(vim.api.nvim_chan_send, job, "\r") end
+  local ok_text
+  if newline and text ~= "" then
+    -- Submit GUARANTEE: a multi-line paste must reach the TUI atomically — a raw
+    -- '\r' embedded mid-text submits early or gets swallowed (the recurring
+    -- "prompt never got sent" bug). So wrap the text in a bracketed paste
+    -- (\27[200~ … \27[201~) and fire the submit '\r' SEPARATELY and DEFERRED,
+    -- once the TUI has ingested the paste. vim.defer_fn SCHEDULES the Enter
+    -- without blocking the editor (no vim.wait → your Neovim stays interactive).
+    ok_text = pcall(vim.api.nvim_chan_send, job, "\27[200~" .. text .. "\27[201~")
+    vim.defer_fn(function() pcall(vim.api.nvim_chan_send, job, "\r") end, 250)
+  elseif newline then
+    -- bare Enter: submit whatever is already in the input box (e.g. a leftover paste)
+    ok_text = pcall(vim.api.nvim_chan_send, job, "\r")
+  else
+    -- type only, no submit
+    ok_text = pcall(vim.api.nvim_chan_send, job, text)
+  end
 
   return vim.json.encode({
     ok = ok_text,
@@ -236,6 +251,7 @@ function M.send(ref, b64_text, with_newline)
     job = job,
     bytes = #text,
     newline = newline,
+    bracketed_paste = (newline and text ~= "") or nil,
   })
 end
 
@@ -251,6 +267,132 @@ function M.status(ref)
     return vim.json.encode(summary)
   end
   return M.list_json()
+end
+
+---Classify what a TUI agent is doing from its terminal tail. Pure + instant
+---(no blocking) so `state`/`wait` never freeze Neovim.
+---@param lines string[]?
+---@return string state  -- "running"|"awaiting_choice"|"idle"|"unknown"
+---@return table options -- [{n=integer,label=string}] when awaiting_choice
+local function classify_state(lines)
+  if type(lines) ~= "table" or #lines == 0 then return "unknown", {} end
+  local from = math.max(1, #lines - 30)
+  local tail_lines = vim.list_slice(lines, from, #lines)
+  local tail = table.concat(tail_lines, "\n")
+
+  -- BUSY: the agent is working (spinner shows the interrupt hint).
+  if tail:find("esc to interrupt", 1, true) then return "running", {} end
+
+  -- AWAITING A CHOICE: a numbered selection menu is open. Parse the options so
+  -- the caller knows exactly what to pick (→ `choose <n>`).
+  local is_choice = tail:find("Enter to select", 1, true) ~= nil
+    or tail:find("to navigate", 1, true) ~= nil
+    or tail:find("to select", 1, true) ~= nil
+  local options = {}
+  for _, ln in ipairs(tail_lines) do
+    -- strip leading box-drawing/marker decoration ("│", "❯", ">", spaces), then "N. label"
+    local num, label = ln:match("^[%s│>❯·*]*(%d+)%.%s+(.+)$")
+    if num and label then
+      label = label:gsub("%s+$", "")
+      table.insert(options, { n = tonumber(num), label = label })
+    end
+  end
+  if #options >= 2 and (is_choice or tail:find("❯%s*%d+%.")) then
+    return "awaiting_choice", options
+  end
+
+  -- IDLE: a prompt marker is present and nothing is running → ready for input
+  -- (a free-text question from the agent also lands here; read `tail` to see it).
+  if tail:find("❯", 1, true) or tail:find("│ >", 1, true) or tail:find("> ", 1, true) then
+    return "idle", {}
+  end
+  return "unknown", {}
+end
+
+---Instant, non-blocking classification of an agent's current state + the tail
+---of its output (and parsed menu options when it's awaiting a choice). This is
+---the ONLY nvim-facing call `wait` uses; the wait LOOP lives in the shell so
+---Neovim is never blocked.
+---@param ref string
+---@return string json
+function M.state(ref)
+  local t, err = resolve_task(ref)
+  if not t then return vim.json.encode({ ok = false, error = err }) end
+  local lines = task_buffer_lines(t)
+  local state, options = classify_state(lines)
+  local tail = ""
+  if type(lines) == "table" then
+    local trimmed = vim.deepcopy(lines)
+    while #trimmed > 0 and trimmed[#trimmed]:match("^%s*$") do
+      table.remove(trimmed)
+    end
+    tail = table.concat(vim.list_slice(trimmed, math.max(1, #trimmed - 8), #trimmed), "\n")
+  end
+  return vim.json.encode({
+    ok = true,
+    id = t.id,
+    session_id = task_session_id(t),
+    provider = task_provider(t),
+    state = state,
+    options = options,
+    tail = tail,
+  })
+end
+
+---Select option <n> in an agent's numbered selection menu. Types the digit then
+---submits with a DEFERRED Enter (non-blocking). Fixes "I sent a choice but it
+---never registered".
+---@param ref string
+---@param n integer|string
+---@return string json
+function M.choose(ref, n)
+  local t, err = resolve_task(ref)
+  if not t then return vim.json.encode({ ok = false, error = err }) end
+  local job = task_job_id(t)
+  if not job then return vim.json.encode({ ok = false, error = "task has no job/channel id" }) end
+  local num = tonumber(n)
+  if not num then return vim.json.encode({ ok = false, error = "choice must be a number" }) end
+  pcall(vim.api.nvim_chan_send, job, tostring(num))
+  vim.defer_fn(function() pcall(vim.api.nvim_chan_send, job, "\r") end, 200)
+  return vim.json.encode({ ok = true, id = t.id, session_id = task_session_id(t), chose = num })
+end
+
+---Classify an agent task DIRECTLY (no ref resolution). Used by the task_list
+---render function and the agent_watch component. Cheap + non-blocking.
+---@param task overseer.Task
+---@return string state  -- "running"|"awaiting_choice"|"idle"|"unknown"
+function M.task_state(task)
+  if type(task) ~= "table" then return "unknown" end
+  local state = classify_state(task_buffer_lines(task))
+  return state
+end
+
+local AGENT_WATCH_COMPONENT = "serranomorante.agent_watch"
+
+---Attach the agent_watch component (live state in the task list) to one agent task.
+---@param ref string
+---@return string json
+function M.attach_watch(ref)
+  local t, err = resolve_task(ref)
+  if not t then return vim.json.encode({ ok = false, error = err }) end
+  if not t:has_component(AGENT_WATCH_COMPONENT) then
+    pcall(function() t:add_component(AGENT_WATCH_COMPONENT) end)
+  end
+  return vim.json.encode({ ok = true, id = t.id, session_id = task_session_id(t), attached = AGENT_WATCH_COMPONENT })
+end
+
+---Attach agent_watch to ALL current agent tasks (retrofit already-running children
+---so the task list reflects their live state without recreating them).
+---@return string json
+function M.attach_watch_all()
+  local n = 0
+  for _, t in ipairs(list_tasks()) do
+    if task_provider(t) and not t:has_component(AGENT_WATCH_COMPONENT) then
+      local ok = pcall(function() t:add_component(AGENT_WATCH_COMPONENT) end)
+      if ok then n = n + 1 end
+    end
+  end
+  return vim.json.encode({ ok = true, attached = n })
 end
 
 ---Resolve agent-session-store in the same order used by agent_sessions.lua.

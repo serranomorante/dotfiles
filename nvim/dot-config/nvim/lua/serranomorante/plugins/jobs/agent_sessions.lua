@@ -1282,7 +1282,7 @@ local function resume_session(provider, session, prompt, start_win)
       [AGENT_SESSION_PATH_METADATA] = session.path,
       [AGENT_SESSION_UPDATED_AT_METADATA] = session.updated_at,
     },
-    components = { "defaults_without_notification" },
+    components = { "defaults_without_notification", "serranomorante.agent_watch" },
   })
 
   open_task(provider, task, prompt, { wait_for_ready = true, start_win = start_win, open_output = false })
@@ -1481,7 +1481,7 @@ function M.open_new(provider_name, opts)
       args = provider.start_args(preallocated_session_id),
       cwd = cwd,
       metadata = metadata,
-      components = { "defaults_without_notification" },
+      components = { "defaults_without_notification", "serranomorante.agent_watch" },
     })
 
     open_task(provider, task, prompt, { wait_for_ready = true, start_win = start_win, open_output = false })

@@ -25,7 +25,10 @@ local function keys()
   local overseer = require("overseer")
   local open_markdown_preview = require("overseer.template.editor-tasks.TASK__open_markdown_preview")
 
-  vim.keymap.set("n", "<leader>oo", "<cmd>OverseerToggle<CR>", { desc = "Overseer: Toggle the overseer window" })
+  vim.keymap.set("n", "<leader>oo", function()
+    if vim.api.nvim_get_option_value("filetype", { buf = 0 }) == "" then return "OverseerToggle" end
+    return "<cmd>enew | OverseerToggle<CR>"
+  end, { desc = "Overseer: Toggle the overseer window", expr = true })
   vim.keymap.set("n", "<leader>or", "<cmd>OverseerRun<CR>", { desc = "Overseer: Run a task from a template" })
   vim.keymap.set("n", "<leader>oc", "<cmd>OverseerRunCmd<CR>", { desc = "Overseer: Run a raw shell command" })
   require("serranomorante.plugins.jobs.agent_sessions").keys()
@@ -125,6 +128,44 @@ local function opts()
     },
     task_list = {
       direction = "left",
+      -- Custom rendering ONLY for agent-tasks sessions: long-lived agent
+      -- terminals are perpetually "RUNNING" to overseer, so show the real
+      -- watch-detected state instead (running / awaiting_choice / idle). The
+      -- state is kept live by the `serranomorante.agent_watch` component; for
+      -- tasks without it we fall back to an instant on-demand classification.
+      ---@param task overseer.Task
+      render = function(task)
+        local r = require("overseer.render")
+        local lines = r.format_standard(task)
+        local is_agent = task.metadata and task.metadata.agent_provider ~= nil
+        if not is_agent then return lines end
+
+        local ok, agent_tasks = pcall(require, "serranomorante.plugins.jobs.agent_tasks")
+        local state = (task.metadata and task.metadata.agent_state)
+          or (ok and agent_tasks.task_state(task))
+          or "unknown"
+        local badge = ({
+          running = "WORKING",
+          awaiting_choice = "NEEDS INPUT",
+          idle = "idle",
+          unknown = "?",
+        })[state] or state
+        local hl = ({
+          running = "OverseerRUNNING",
+          awaiting_choice = "DiagnosticWarn",
+          idle = "OverseerSUCCESS",
+          unknown = "Comment",
+        })[state] or "Comment"
+
+        -- Replace the perpetual RUNNING status chunk (line 1, chunk 1) with the
+        -- agent state badge; keep the name + the rest of the standard layout.
+        if lines[1] and lines[1][1] then
+          lines[1][1] = { badge, hl }
+        else
+          table.insert(lines, 1, { { badge, hl } })
+        end
+        return lines
+      end,
     },
     task_win = {
       padding = 0,

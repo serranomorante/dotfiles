@@ -5,6 +5,11 @@
 #        agent-tasks read <ref> [lines]
 #        agent-tasks send <ref> <text...>        # types text into the input box (no submit)
 #        agent-tasks send-nl <ref> <text...>     # same, then a '\r' to the terminal input
+#        agent-tasks state <ref>                  # instant: classify state (running|awaiting_choice|idle) + parsed menu options + tail
+#        agent-tasks answer <ref> <text...>       # submit a free-text reply (guaranteed submit: bracketed paste + deferred Enter)
+#        agent-tasks choose <ref> <n>             # select option N in the child's numbered menu (then Enter)
+#        agent-tasks wait <ref> [--until any|idle|choice|commit] [--worktree P] [--timeout s] [--interval s]
+#                                                 # shell-side poll of `state` (never blocks Neovim); prints state JSON on fire
 #        agent-tasks open [--all|-a] <session-id...>  # open session(s) by id (--all bypasses the cwd filter)
 #        agent-tasks new <provider> [task...]    # spawn a new agent session; provider: codex, claude, gemini
 # Notes: <ref> = session-id, session-id prefix, overseer numeric id, or unique name substring.
@@ -83,10 +88,78 @@ new)
     [ $# -ge 1 ] && enc=$(b64 "$*")
     remote "new('$provider', '$enc')"
     ;;
+state)
+    [ $# -ge 1 ] || die "usage: $prog state <ref>"
+    remote "state('$1')"
+    ;;
+choose)
+    [ $# -ge 2 ] || die "usage: $prog choose <ref> <n>"
+    remote "choose('$1', $2)"
+    ;;
+answer)
+    [ $# -ge 2 ] || die "usage: $prog answer <ref> <text...>"
+    ref=$1
+    shift
+    enc=$(b64 "$*")
+    remote "send('$ref', '$enc', true)"
+    ;;
+wait)
+    # Shell-side wait loop: polls the INSTANT, non-blocking `state` RPC. Never
+    # calls vim.wait → your Neovim and the agents stay fully interactive. Fires
+    # (prints the state JSON and exits 0) when the child reaches a notable state.
+    ref=""
+    until_cond="any" # any | idle | choice | commit
+    timeout=2400
+    interval=8
+    worktree=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --until) until_cond=$2; shift 2 ;;
+        --timeout) timeout=$2; shift 2 ;;
+        --interval) interval=$2; shift 2 ;;
+        --worktree) worktree=$2; shift 2 ;;
+        *) [ -z "$ref" ] && ref=$1; shift ;;
+        esac
+    done
+    [ -n "$ref" ] || die "usage: $prog wait <ref> [--until any|idle|choice|commit] [--worktree PATH] [--timeout secs] [--interval secs]"
+    base=""
+    [ -n "$worktree" ] && base=$(git -C "$worktree" rev-parse HEAD 2>/dev/null)
+    elapsed=0
+    while [ "$elapsed" -lt "$timeout" ]; do
+        st=$(remote "state('$ref')" 2>/dev/null)
+        state=$(printf '%s' "$st" | sed -n 's/.*"state":"\([^"]*\)".*/\1/p')
+        if [ -n "$worktree" ]; then
+            h=$(git -C "$worktree" rev-parse HEAD 2>/dev/null)
+            if [ -n "$h" ] && [ "$h" != "$base" ]; then
+                printf '{"fired":"commit","head":"%s","state":"%s"}\n' "$h" "$state"
+                exit 0
+            fi
+        fi
+        case "$until_cond" in
+        any) case "$state" in idle | awaiting_choice | awaiting_text) printf '%s\n' "$st"; exit 0 ;; esac ;;
+        idle) [ "$state" = "idle" ] && { printf '%s\n' "$st"; exit 0; } ;;
+        choice) [ "$state" = "awaiting_choice" ] && { printf '%s\n' "$st"; exit 0; } ;;
+        commit) : ;; # handled above via --worktree
+        esac
+        sleep "$interval"
+        elapsed=$((elapsed + interval))
+    done
+    printf '{"fired":"timeout","state":"%s"}\n' "$state"
+    ;;
+watch)
+    # Attach the agent_watch component so the task list shows live agent state.
+    # `--all` retrofits every current agent session (new ones get it automatically).
+    if [ "${1:-}" = "--all" ] || [ "${1:-}" = "-a" ]; then
+        remote "attach_watch_all()"
+    else
+        [ $# -ge 1 ] || die "usage: $prog watch <ref> | watch --all"
+        remote "attach_watch('$1')"
+    fi
+    ;;
 -h | --help | help)
-    sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
     ;;
 *)
-    die "unknown subcommand: $cmd (list|status|read|send|send-nl|open|new)"
+    die "unknown subcommand: $cmd (list|status|read|state|send|send-nl|answer|choose|wait|watch|open|new)"
     ;;
 esac
