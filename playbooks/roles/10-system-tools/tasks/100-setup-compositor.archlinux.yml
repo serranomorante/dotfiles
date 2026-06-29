@@ -58,7 +58,7 @@
 
 - name: "[archlinux] Compositor: set dwm patch marker fact"
   ansible.builtin.set_fact:
-    dwm_patch_marker: "dwm-{{ var_dwm_remote_commit.stdout.split()[0] }}-patch-stack-v1"
+    dwm_patch_marker: "dwm-{{ var_dwm_remote_commit.stdout.split()[0] }}-patch-stack-v6"
 
 - name: "[archlinux] Compositor: stat dwm patch marker"
   ansible.builtin.include_role:
@@ -173,13 +173,23 @@
     - custom.patch
   when: not var_dwm_patch_marker.stat.exists
 
+- name: "[archlinux] Compositor: validate dwm FULLMON rules support"
+  ansible.builtin.command:
+    argv:
+      - grep
+      - -q
+      - "r->floatx == FULLMON"
+      - "{{ ansible_facts.env.HOME }}/data/repos/dwm/dwm.c"
+  changed_when: false
+  when: not var_dwm_patch_marker.stat.exists
+
 - name: "[archlinux] Compositor: record dwm patch marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
   vars:
     dotfiles_marker_name: "{{ dwm_patch_marker }}"
-    dotfiles_marker_content: "{{ var_dwm_remote_commit.stdout.split()[0] }}:patch-stack-v1\n"
+    dotfiles_marker_content: "{{ var_dwm_remote_commit.stdout.split()[0] }}:patch-stack-v6\n"
   when: not var_dwm_patch_marker.stat.exists
 
 - name: "[archlinux] Compositor: stat installed dwm"
