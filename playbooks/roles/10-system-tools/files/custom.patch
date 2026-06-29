@@ -1,5 +1,5 @@
 diff --git a/config.h b/config.h
-index 56ee471..7232cb5 100644
+index 56ee471..b306005 100644
 --- a/config.h
 +++ b/config.h
 @@ -1,10 +1,11 @@
@@ -16,38 +16,54 @@ index 56ee471..7232cb5 100644
  static const char *fonts[]          = { "monospace:size=10" };
  static const char dmenufont[]       = "monospace:size=10";
  static const char col_gray1[]       = "#222222";
-@@ -28,9 +29,28 @@ static const Rule rules[] = {
+@@ -28,9 +29,43 @@ static const Rule rules[] = {
  	 *	WM_CLASS(STRING) = instance, class
  	 *	WM_NAME(STRING) = title
  	 */
 -	/* class      instance    title       tags mask     isfloating   monitor */
 -	{ "Gimp",     NULL,       NULL,       0,            1,           -1 },
 -	{ "Firefox",  NULL,       NULL,       1 << 8,       0,           -1 },
-+	/* class                  instance                title                      tags mask     isfloating   monitor    float x,y,w,h    floatborderpx       unmanaged    skipfocushistory */
-+	{ "Plasma",               NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1,                  1,             }, // make plasma windows unmanaged
-+	{ "plasma-desktop",       NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1,                  1,             }, // make plasma windows unmanaged
-+	{ "plasmashell",          NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1,                  1,             }, // make plasma windows unmanaged
-+	{ "plasmashell",          "plasmashell",          "Desktop @ QRect",         1 << 8,       0,           -1,        -1,-1,800,800,   -1,                  0,             }, // send plasma desktop to tag 9
-+	{ "kitty-dmenu",          "kitty-dmenu",          NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,                  0,           1 }, // float and size kitty-dmenu window
-+	{ "kitty-lazygit",        "kitty-lazygit",        NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,                  0,           1 }, // float and size lazygit quick-access window
-+	{ "kitty-nnn",            "kitty-nnn",            NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,                  0,           1 }, // float and size nnn quick-access window
-+	{ "jdownloader",          "jdownloader",          "JDownloader 2",           1 << 8,       0,           -1,        -1,-1,-1,-1,     -1                                  }, // send jdownloader to tag 9
-+	{ NULL,                   NULL,                   "is sharing your screen.", 1 << 8,       1,           -1,        -1,-1,-1,-1,     -1                                  }, // send screen-sharing popup to tag 9
-+	{ "kcalc",                "kcalc",                NULL,                      0,            1,           -1,        -1,-1,-1,-1,     -1                                  }, // make calculator floating by default
-+	{ "plasmawindowed",       "plasmawindowed",       "Clipboard Popup",         0,            1,           -1,        -1,-1,-1,-1,     -1                                  }, // make clipboard popup floating by default
-+	{ "kronometer",           "kronometer",           NULL,                      0,            1,           -1,        -1,-1,1800,800,  -1                                  }, // make nnn picker floating by default
-+	{ "Bitwarden",            "bitwarden",            "Bitwarden",               1 << 8,       0,           -1,        -1,-1,-1,-1,     -1                                  }, // use tag 9 for bitwarden
-+	{ NULL,                   NULL,                   "NoiseTorch",              1 << 8,       0,           -1,        -1,-1,-1,-1,     -1                                  }, // use tag 3 for noisetorch
-+	{ "MyPaint",              "mypaint",              NULL,                      1 << 5,       0,           -1,        -1,-1,-1,-1,     -1                                  }, // use tag 6 for mypaint
-+	{ "SimpleScreenRecorder", "simplescreenrecorder", "SimpleScreenRecorder",    0,            1,           -1,        -1,-1,-1,-1,     -1                                  },
-+	{ NULL,                   NULL,                   "KRunner",                 0,            1,           -1,        -1,-1,-1,-1,     -1                                  },
-+	{ NULL,                   NULL,                   "Event Tester",            0,            1,           -1,        -1,-1,-1,-1,     -1                                  },
-+	{ "explorer.exe",         "explorer.exe",         "Wine Desktop",            1 << 7,       0,           -1,        -1,-1,-1,-1,     -1                                  }, // use tag 7 for wine explorer.exe
-+	{ "guvcview",             "guvcview",             "Guvcview",                0,            1,           -1,        -1,-1,400,300,   -1                                  }, // float and set dimensions on guvcview
++	/* class                  instance                title                      tags mask     isfloating   monitor    float x,y,w,h               floatborderpx     unmanaged     skipfocushistory       */
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ "krunner",              "krunner",              NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ "Plasma",               NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1,              1,             }, // make plasma windows unmanaged
++	{ "plasma-desktop",       NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1,              1,             }, // make plasma windows unmanaged
++	{ "plasmashell",          NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1,              1,             }, // make plasma windows unmanaged
++	{ "plasmashell",          "plasmashell",          "Desktop @ QRect",         1 << 8,       0,           -1,        -1,-1,800,800,                   -1,              0,             }, // send plasma desktop to tag 9
++	{ "kitty-dmenu",          "kitty-dmenu",          NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,              0,           1 }, // float and size kitty-dmenu window
++	{ "kitty-lazygit",        "kitty-lazygit",        NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,              0,           1 }, // float and size lazygit quick-access window
++	{ "kitty-nnn",            "kitty-nnn",            NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,              0,           1 }, // float and size nnn quick-access window
++	{ "jdownloader",          "jdownloader",          "JDownloader 2",           1 << 8,       0,           -1,        -1,-1,-1,-1,                     -1                              }, // send jdownloader to tag 9
++	{ NULL,                   NULL,                   "is sharing your screen.", 1 << 8,       1,           -1,        -1,-1,-1,-1,                     -1                              }, // send screen-sharing popup to tag 9
++	{ "kcalc",                "kcalc",                NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1                              }, // make calculator floating by default
++	{ "plasmawindowed",       "plasmawindowed",       "Clipboard Popup",         0,            1,           -1,        -1,-1,-1,-1,                     -1                              }, // make clipboard popup floating by default
++	{ "kronometer",           "kronometer",           NULL,                      0,            1,           -1,        -1,-1,1800,800,                  -1                              }, // make nnn picker floating by default
++	{ "Bitwarden",            "bitwarden",            "Bitwarden",               1 << 8,       0,           -1,        -1,-1,-1,-1,                     -1                              }, // use tag 9 for bitwarden
++	{ NULL,                   NULL,                   "NoiseTorch",              1 << 8,       0,           -1,        -1,-1,-1,-1,                     -1                              }, // use tag 3 for noisetorch
++	{ "MyPaint",              "mypaint",              NULL,                      1 << 5,       0,           -1,        -1,-1,-1,-1,                     -1                              }, // use tag 6 for mypaint
++	{ "SimpleScreenRecorder", "simplescreenrecorder", "SimpleScreenRecorder",    0,            1,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   "KRunner",                 0,            1,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   "Event Tester",            0,            1,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ "explorer.exe",         "explorer.exe",         "Wine Desktop",            1 << 7,       0,           -1,        -1,-1,-1,-1,                     -1                              }, // use tag 7 for wine explorer.exe
++	{ "guvcview",             "guvcview",             "Guvcview",                0,            1,           -1,        -1,-1,400,300,                   -1                              }, // float and set dimensions on guvcview
  };
  
  /* layout(s) */
-@@ -48,7 +68,7 @@ static const Layout layouts[] = {
+@@ -48,7 +83,7 @@ static const Layout layouts[] = {
  };
  
  /* key definitions */
@@ -56,7 +72,7 @@ index 56ee471..7232cb5 100644
  #define TAGKEYS(KEY,TAG) \
  	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
  	{ MODKEY|ControlMask,           KEY,      toggleview,     {.ui = 1 << TAG} }, \
-@@ -61,12 +81,11 @@ static const Layout layouts[] = {
+@@ -61,12 +96,11 @@ static const Layout layouts[] = {
  /* commands */
  static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
  static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
@@ -70,7 +86,7 @@ index 56ee471..7232cb5 100644
  	{ MODKEY,                       XK_b,      togglebar,      {0} },
  	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
  	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
-@@ -82,7 +101,8 @@ static const Key keys[] = {
+@@ -82,7 +116,8 @@ static const Key keys[] = {
  	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} },
  	{ MODKEY,                       XK_space,  setlayout,      {0} },
  	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
@@ -80,7 +96,7 @@ index 56ee471..7232cb5 100644
  	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
  	{ MODKEY|ShiftMask,             XK_0,      tag,            {.ui = ~0 } },
  	{ MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },
-@@ -118,4 +138,3 @@ static const Button buttons[] = {
+@@ -118,4 +153,3 @@ static const Button buttons[] = {
  	{ ClkTagBar,            MODKEY,         Button1,        tag,            {0} },
  	{ ClkTagBar,            MODKEY,         Button3,        toggletag,      {0} },
  };

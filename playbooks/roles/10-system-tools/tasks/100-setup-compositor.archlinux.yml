@@ -58,7 +58,7 @@
 
 - name: "[archlinux] Compositor: set dwm patch marker fact"
   ansible.builtin.set_fact:
-    dwm_patch_marker: "dwm-{{ var_dwm_remote_commit.stdout.split()[0] }}-patch-stack-v6"
+    dwm_patch_marker: "dwm-{{ var_dwm_remote_commit.stdout.split()[0] }}-patch-stack-v13"
 
 - name: "[archlinux] Compositor: stat dwm patch marker"
   ansible.builtin.include_role:
@@ -189,7 +189,7 @@
     tasks_from: record
   vars:
     dotfiles_marker_name: "{{ dwm_patch_marker }}"
-    dotfiles_marker_content: "{{ var_dwm_remote_commit.stdout.split()[0] }}:patch-stack-v6\n"
+    dotfiles_marker_content: "{{ var_dwm_remote_commit.stdout.split()[0] }}:patch-stack-v13\n"
   when: not var_dwm_patch_marker.stat.exists
 
 - name: "[archlinux] Compositor: stat installed dwm"
