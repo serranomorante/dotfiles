@@ -309,11 +309,23 @@ local function resolve_session_ref(ref, known)
 end
 
 ---Open existing sessions as Overseer tasks by id or unique id prefix.
----@param ids string
+---By default the ids are validated against the sessions known for the CURRENT
+---cwd. Pass all=true to BYPASS that cwd filter (mirrors the `<leader>{p}L`
+---"resume any session" picker): each id is resumed directly via AgentResumeById,
+---which scans every provider's full session cache regardless of cwd. Use it to
+---open child sessions that belong to another working directory (e.g. the
+---frontend git worktrees), whose ids the cwd-scoped store would report as
+---not_found.
+---@param ids string comma/space separated session ids (unique prefixes allowed when cwd-scoped)
+---@param all? boolean|string true / "true" / "1" → bypass the cwd filter
 ---@return string json
-function M.open(ids)
+function M.open(ids, all)
+  local bypass_cwd = all == true or all == "true" or all == "1" or all == 1
   local requested, opened, not_found, ambiguous = {}, {}, {}, {}
-  local known = known_session_ids()
+  -- known == nil drives the "resume by id directly, no cwd validation" branch:
+  -- it happens either when the session store is unavailable OR when the caller
+  -- explicitly asked to bypass the cwd filter (all=true).
+  local known = (not bypass_cwd) and known_session_ids() or nil
 
   for id in tostring(ids):gmatch("[^,%s]+") do
     table.insert(requested, id)
@@ -340,7 +352,11 @@ function M.open(ids)
   local result = { ok = ok, requested = requested, opened = opened }
   if #not_found > 0 then result.not_found = not_found end
   if #ambiguous > 0 then result.ambiguous = ambiguous end
-  if known == nil then result.warning = "session store unavailable; ids not validated" end
+  if bypass_cwd then
+    result.cwd_filter = "bypassed"
+  elseif known == nil then
+    result.warning = "session store unavailable; ids not validated"
+  end
   if not ok then result.error = ("could not resolve %d of %d id(s)"):format(#not_found + #ambiguous, #requested) end
   return vim.json.encode(result)
 end
@@ -455,8 +471,8 @@ function M.setup_commands()
 
   vim.api.nvim_create_user_command(
     "AgentTaskOpen",
-    function(a) vim.api.nvim_echo({ { M.open(table.concat(a.fargs, ",")) } }, false, {}) end,
-    { nargs = "+", desc = "Agent tasks: open existing agent session(s) by id" }
+    function(a) vim.api.nvim_echo({ { M.open(table.concat(a.fargs, ","), a.bang) } }, false, {}) end,
+    { nargs = "+", bang = true, desc = "Agent tasks: open existing agent session(s) by id (! = bypass cwd filter)" }
   )
 
   vim.api.nvim_create_user_command("AgentTaskNew", function(a)

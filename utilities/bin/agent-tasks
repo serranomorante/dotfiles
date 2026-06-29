@@ -5,7 +5,7 @@
 #        agent-tasks read <ref> [lines]
 #        agent-tasks send <ref> <text...>        # types text into the input box (no submit)
 #        agent-tasks send-nl <ref> <text...>     # same, then a '\r' to the terminal input
-#        agent-tasks open <session-id...>        # open existing session(s) as overseer task(s) by id
+#        agent-tasks open [--all|-a] <session-id...>  # open session(s) by id (--all bypasses the cwd filter)
 #        agent-tasks new <provider> [task...]    # spawn a new agent session; provider: codex, claude, gemini
 # Notes: <ref> = session-id, session-id prefix, overseer numeric id, or unique name substring.
 #        The Neovim server socket is read from $AGENT_TASKS_NVIM, else $NVIM (set by Neovim
@@ -64,9 +64,16 @@ send | send-nl)
     remote "send('$ref', '$enc', $nl)"
     ;;
 open)
-    [ $# -ge 1 ] || die "usage: $prog open <session-id> [session-id...]"
+    all=false
+    case "${1:-}" in
+    --all | -a)
+        all=true
+        shift
+        ;;
+    esac
+    [ $# -ge 1 ] || die "usage: $prog open [--all|-a] <session-id> [session-id...]"
     ids=$(printf '%s,' "$@" | sed 's/,$//')
-    remote "open('$ids')"
+    remote "open('$ids', $all)"
     ;;
 new)
     [ $# -ge 1 ] || die "usage: $prog new <provider> [task...]"
