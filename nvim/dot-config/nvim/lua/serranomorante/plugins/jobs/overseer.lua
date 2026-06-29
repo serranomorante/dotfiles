@@ -26,9 +26,13 @@ local function keys()
   local open_markdown_preview = require("overseer.template.editor-tasks.TASK__open_markdown_preview")
 
   vim.keymap.set("n", "<leader>oo", function()
-    if vim.api.nvim_get_option_value("filetype", { buf = 0 }) == "" then return "OverseerToggle" end
-    return "<cmd>enew | OverseerToggle<CR>"
-  end, { desc = "Overseer: Toggle the overseer window", expr = true })
+    for _, winid in ipairs(vim.api.nvim_list_wins()) do
+      local filetype = vim.api.nvim_get_option_value("filetype", { buf = vim.api.nvim_win_get_buf(winid) })
+      if filetype == "OverseerList" then return pcall(overseer.close, { winid = winid }) end
+    end
+    vim.cmd.tabedit()
+    pcall(overseer.open, { winid = 0 })
+  end, { desc = "Overseer: Toggle the overseer window" })
   vim.keymap.set("n", "<leader>or", "<cmd>OverseerRun<CR>", { desc = "Overseer: Run a task from a template" })
   vim.keymap.set("n", "<leader>oc", "<cmd>OverseerRunCmd<CR>", { desc = "Overseer: Run a raw shell command" })
   require("serranomorante.plugins.jobs.agent_sessions").keys()
