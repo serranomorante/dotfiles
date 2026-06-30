@@ -53,11 +53,11 @@ node_ai_npm_packages:
     bins:
       - figma-developer-mcp
   - name: "@anthropic-ai/claude-code"
-    version: 2.1.191
+    version: 2.1.195
     bins:
       - claude
   - name: "@google/gemini-cli"
-    version: 0.47.0
+    version: 0.49.0
     bins:
       - gemini
   - name: chrome-devtools-mcp

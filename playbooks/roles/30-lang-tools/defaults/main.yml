@@ -14,7 +14,7 @@ node_ansible_language_server_npm_packages:
     version: 26.6.0
 node_javascript_npm_packages:
   - name: eslint
-    version: 10.5.0
+    version: 10.6.0
     bins:
       - eslint
   - name: eslint_d
