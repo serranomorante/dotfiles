@@ -195,15 +195,6 @@ local function opts()
           vim.api.nvim_win_close(vim.api.nvim_get_current_win(), false)
         end,
       },
-      ["Restart playbook"] = {
-        desc = "Restart playbook",
-        condition = function(task) return task.name:match("^run%-ansible%-playbook") end,
-        run = function(task)
-          require("overseer").run_action(task, "restart")
-          utils.attach_keymaps(task)
-          utils.schedule_open_overseer_task_output(task)
-        end,
-      },
     }, record_screen_actions.actions()),
     component_aliases = {
       defaults_without_dispose = {
