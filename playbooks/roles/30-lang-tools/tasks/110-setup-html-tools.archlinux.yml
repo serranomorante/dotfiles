@@ -1,8 +1,21 @@
 ---
-- name: "[archlinux] HTML language: ensure local AUR LSP"
-  ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
+- name: "[archlinux] HTML language: ensure npm packages with diff capture"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: npm
   vars:
-    aur_local_packages: vscode-langservers-extracted
+    update_diff_capture_scope: html-language
+    update_diff_npm_prefix: "{{ node_html_npm_prefix }}"
+    update_diff_npm_packages: "{{ node_html_npm_packages }}"
+    update_diff_npm_node_version: "{{ node_system_default_version }}"
+    update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
+
+- name: "[archlinux] HTML language: symlink npm binaries"
+  ansible.builtin.file:
+    src: "{{ node_html_npm_prefix }}/bin/{{ item.1 }}"
+    dest: "{{ node_user_bin_dir }}/{{ item.1 }}"
+    state: link
+  loop: "{{ node_html_npm_packages | subelements('bins') }}"
 
 - name: "[archlinux] HTML language: ensure superhtml download directory"
   ansible.builtin.file:

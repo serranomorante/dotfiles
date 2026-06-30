@@ -44,6 +44,22 @@ node_javascript_npm_packages:
     version: 3.3.5
     bins:
       - vue-language-server
+node_vim_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/vim-tools/.npm"
+node_vim_npm_packages:
+  - name: vim-language-server
+    version: 2.3.1
+    bins:
+      - vim-language-server
+node_html_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/html-tools/.npm"
+node_html_npm_packages:
+  - name: vscode-langservers-extracted
+    version: 4.10.0
+    bins:
+      - vscode-css-language-server
+      - vscode-eslint-language-server
+      - vscode-html-language-server
+      - vscode-json-language-server
+      - vscode-markdown-language-server
 node_markdown_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/note-taking-tools/utilities/.npm"
 node_markdown_npm_packages:
   - name: "@mermaid-js/mermaid-cli"
