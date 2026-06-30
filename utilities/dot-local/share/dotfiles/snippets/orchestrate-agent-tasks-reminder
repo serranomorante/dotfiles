@@ -1,0 +1,41 @@
+# snippet-title: Delegate agent tasks
+# snippet-summary: Remind the model to delegate implementation work to child agents, keep listening for follow-up prompts, parallelize with copy-* worktrees, and reuse Chromium/Playwright instances for tests.
+
+Recuerda que tu trabajo es orquestar a los agentes hijos (agent-tasks) de esta sesión, las implementaciones debes delegarlas de modo que quedes libre para seguir recibiendo prompts. Cuando delegues, recuerda quedarte escuchando el state de los agentes hijos de modo que puedas enviar prompts adicionales, o bien responder preguntas y seleccionar acciones que estos agentes estén esperando (lee ejemplos más abajo).
+
+Recuerda que puedes paralelizar el trabajo usando los agentes hijos que están en worktrees de frontend (copy-*) que ya hemos creado con anticipación. En backend no hace falta hacer esto, vamos a usar el worktree base de backend siempre.
+
+Recuerda que tenemos varias instancias de chromium abiertas en puertos específicos para que puedas paralelizar también los tests y/o interacción con el navegador usando alguno de los mcps de playwright que hemos preparado para esas instancias/perfiles de chromium.
+
+Ejemplos de cómo interactuar con agentes hijos:
+
+```
+# Despachar trabajo a un hijo (entra como texto + submit garantizado)
+agent-tasks send <ref> "<prompt con [task:<id>]>"   # escribe el prompt (sin enviar)
+agent-tasks send-nl <ref> ""                         # dispara el turno (Enter diferido)
+
+# Ver estado / leer
+agent-tasks list                                     # roster: id, provider, state(running/idle/awaiting_choice)
+agent-tasks state <ref>                              # estado instantáneo de UNO (lee el buffer vivo)
+agent-tasks read <ref> [N]                           # últimas N líneas del terminal del hijo
+
+# Observer en background (me re-invoca al disparar) — lo lanzo con run_in_background
+agent-tasks wait <ref> --until commit --worktree <path> --timeout 1500 --interval 25   # espera commit nuevo
+agent-tasks wait <ref> --until idle  --timeout 1500 --interval 25                       # espera que termine (QA)
+
+# Cuando un hijo me pregunta (menú numerado)
+agent-tasks choose <ref> 3                           # elige opción 3 del menú del hijo
+agent-tasks answer <ref> "<texto>"                   # respuesta de texto libre (con submit)
+
+# Abrir hijos / spawnear
+agent-tasks open --all <uuid> [<uuid>...]            # abre sesiones existentes por UUID (--all salta filtro cwd)
+agent-tasks new claude "<tarea>"                     # spawnea un hijo nuevo y le inyecta la tarea
+
+# Monitoreo en el task list de overseer
+agent-tasks watch --all                              # retrofitea el badge de estado vivo a los hijos existentes
+
+<ref> = prefijo de session-id (165a), id de overseer, o substring del nombre. open exige UUID completo.
+
+Flujo típico que repito: send + send-nl "" (delego con [task:<id>]) → state a los segundos (confirmo que arrancó) → wait --until commit --worktree <repo> en
+background (me despierta al commit) → reconcilio a development y marco el check.
+```

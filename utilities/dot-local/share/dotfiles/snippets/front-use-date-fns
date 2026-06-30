@@ -1,0 +1,4 @@
+# snippet-title: Always use date-fns
+# snippet-summary: Remind it to not use native javascript operations like .split or .replace to deal with dates
+
+Si vamos a trabajar sobre fechas, evita usar apis nativas de javascript como .split o .replace, siempre intenta usar date-fns si está disponible. Si no está disponible sugiere su instalación.

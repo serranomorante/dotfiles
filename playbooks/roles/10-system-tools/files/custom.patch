@@ -38,7 +38,7 @@ index 56ee471..b306005 100644
 +	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
 +	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
 +	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
-+	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ "kitty-snippets",       "kitty-snippets",       NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,              0,           1 },
 +	{ "krunner",              "krunner",              NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1                              },
 +	{ "Plasma",               NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1,              1,             }, // make plasma windows unmanaged
 +	{ "plasma-desktop",       NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1,              1,             }, // make plasma windows unmanaged

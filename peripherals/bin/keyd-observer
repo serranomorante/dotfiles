@@ -25,6 +25,7 @@ keyboard_midi_controller="$HOME/bin/keyboard-midi-controller"
 display_health_check="$HOME/bin/display-health-check"
 setup_displays="$HOME/bin/setup-displays.sh"
 present_window="$HOME/bin/present-window"
+snippets_picker="$HOME/bin/snippets"
 
 # Reopening warpd must be fast: keep the exact worker PID and kill it directly
 # on the next tab+f instead of scanning processes. The generation file prevents
@@ -130,6 +131,20 @@ run_open_present_window() {
         notify_keyd_action "Present window" "Error: $output" critical
     elif [ -n "$output" ]; then
         logger -t keyd-observer "present-window open: $output"
+    fi
+
+    return "$rc"
+}
+
+run_open_snippets_picker() {
+    output="$("$snippets_picker" 2>&1)"
+    rc="$?"
+
+    if [ "$rc" -ne 0 ]; then
+        logger -t keyd-observer "snippets picker failed with rc=$rc: $output"
+        notify_keyd_action "Snippets" "Error: $output" critical
+    elif [ -n "$output" ]; then
+        logger -t keyd-observer "snippets picker: $output"
     fi
 
     return "$rc"
@@ -292,6 +307,10 @@ keyd listen | while read x; do
 
     +signal_open_kitty_dmenu_recents)
         systemd-run --user ~/bin/kitty-dmenu-currently-opened
+        ;;
+
+    +signal_open_snippets)
+        run_open_snippets_picker >/dev/null 2>&1 &
         ;;
     esac
 done

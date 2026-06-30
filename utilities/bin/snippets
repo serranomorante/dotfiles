@@ -1,0 +1,369 @@
+#!/usr/bin/env sh
+# Purpose: Open a shared snippet picker and paste the selected text.
+# Usage: snippets
+# Notes: Snippets are stored as plain files under utilities/dot-local/share/dotfiles/snippets/ and, when present, for-my-eyes-only/dot-local/share/dotfiles/snippets/. Snippet files can add optional leading `# snippet-title:` and `# snippet-summary:` metadata lines that the picker shows but does not paste. When launched from Kitty, the parent process waits for the quick-access picker to close before copying and pasting, so terminal detection never sees the picker itself.
+
+set -eu
+
+prog=${0##*/}
+script_path=$0
+if [ -n "${DOTFILES_SNIPPETS_DIR:-}" ]; then
+    snippet_dir_explicit=1
+else
+    snippet_dir_explicit=0
+fi
+snippet_dir=${DOTFILES_SNIPPETS_DIR:-"$HOME/dotfiles/utilities/dot-local/share/dotfiles/snippets"}
+snippet_context=${DOTFILES_SNIPPETS_CONTEXT:-terminal}
+snippet_app_id=${DOTFILES_SNIPPETS_APP_ID:-kitty-snippets}
+snippet_instance_group_prefix=${DOTFILES_SNIPPETS_INSTANCE_GROUP_PREFIX:-kitty-snippets}
+snippet_payload_out=${DOTFILES_SNIPPETS_PAYLOAD_OUT:-}
+snippet_paste_wait_attempts=${DOTFILES_SNIPPETS_PASTE_WAIT_ATTEMPTS:-40}
+snippet_paste_wait_interval=${DOTFILES_SNIPPETS_PASTE_WAIT_INTERVAL:-0.05}
+snippet_paste_settle_delay=${DOTFILES_SNIPPETS_PASTE_SETTLE_DELAY:-0.12}
+terminal_classes='kitty alacritty foot wezterm xterm urxvt konsole st ghostty kitty-lazygit kitty-nnn kitty-dmenu'
+
+die() {
+    printf '%s: %s\n' "$prog" "$*" >&2
+    exit 2
+}
+
+usage() {
+    cat <<EOF
+Usage:
+  $prog
+
+Open the shared snippet picker and paste the selected text into the previously focused window.
+EOF
+}
+
+need_command() {
+    command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+resolve_script_path() {
+    case $script_path in
+    /*) ;;
+    *)
+        resolved_script_path=$(command -v "$script_path" 2>/dev/null || true)
+        if [ -n "$resolved_script_path" ]; then
+            script_path=$resolved_script_path
+        fi
+        ;;
+    esac
+}
+
+ensure_snippet_dir() {
+    [ -d "$snippet_dir" ] || die "missing snippet directory: $snippet_dir"
+}
+
+snippets_panel_group() {
+    printf '%s-%s\n' "$snippet_instance_group_prefix" "${KITTY_OS_INSTANCE_ID:-default}"
+}
+
+snippet_source_dirs() {
+    if [ -n "${DOTFILES_SNIPPETS_DIR:-}" ]; then
+        printf '%s\t%s\n' "$snippet_dir" custom
+        return 0
+    fi
+
+    printf '%s\t%s\n' "$HOME/dotfiles/utilities/dot-local/share/dotfiles/snippets" public
+
+    private_snippet_dir="$HOME/dotfiles/for-my-eyes-only/dot-local/share/dotfiles/snippets"
+    [ -d "$private_snippet_dir" ] && printf '%s\t%s\n' "$private_snippet_dir" private
+}
+
+snippet_entry() {
+    source_label=$1
+    snippet_path=$2
+    snippet_name=${snippet_path##*/}
+
+    awk -v source_label="$source_label" -v snippet_name="$snippet_name" -v snippet_path="$snippet_path" '
+        function clean(value) {
+            gsub(/\r/, "", value)
+            gsub(/\t/, " ", value)
+            sub(/^[[:space:]]+/, "", value)
+            sub(/[[:space:]]+$/, "", value)
+            return value
+        }
+
+        BEGIN {
+            title = ""
+            summary = ""
+            content_index = 0
+        }
+
+        {
+            line = $0
+
+            if (line ~ /^# snippet-title:[[:space:]]*/) {
+                sub(/^# snippet-title:[[:space:]]*/, "", line)
+                title = clean(line)
+                next
+            }
+
+            if (line ~ /^# snippet-summary:[[:space:]]*/) {
+                sub(/^# snippet-summary:[[:space:]]*/, "", line)
+                summary = clean(line)
+                next
+            }
+
+            if (line ~ /^# snippet-origin:[[:space:]]*/) {
+                next
+            }
+
+            if (line ~ /^[[:space:]]*$/) {
+                next
+            }
+
+            content_index += 1
+            if (content_index == 1 && title == "") {
+                first_content = clean(line)
+            } else if (content_index == 2 && summary == "") {
+                second_content = clean(line)
+            }
+        }
+
+        END {
+            if (title == "") {
+                title = first_content
+            }
+            if (summary == "") {
+                summary = second_content
+            }
+            if (title == "") {
+                title = snippet_name
+            }
+
+            printf "%s\t%s\t%s\t%s\t%s\n", source_label, title, summary, snippet_name, snippet_path
+        }
+    ' "$snippet_path"
+}
+
+snippet_entries() {
+    tab=$(printf '\t')
+    snippet_source_dirs | while IFS="$tab" read -r source_dir source_label; do
+        [ -d "$source_dir" ] || continue
+        find "$source_dir" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' 2>/dev/null | sort | while IFS= read -r snippet_name; do
+            [ -n "$snippet_name" ] || continue
+            snippet_entry "$source_label" "$source_dir/$snippet_name"
+        done
+    done | LC_ALL=C sort -t "$tab" -k2,2f -k1,1 -k4,4
+}
+
+cleanup_snippets_tmpdir() {
+    if [ "${snippets_handoff:-0}" -eq 0 ] && [ -n "${snippets_tmpdir:-}" ] && [ -d "$snippets_tmpdir" ]; then
+        rm -rf "$snippets_tmpdir"
+    fi
+}
+
+normalize_window_class() {
+    printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+active_window_id() {
+    xdotool getactivewindow 2>/dev/null
+}
+
+window_class() {
+    xdotool getwindowclassname "$1" 2>/dev/null
+}
+
+is_picker_class() {
+    class=$(normalize_window_class "$1")
+    picker_class=$(normalize_window_class "$snippet_app_id")
+    [ "$class" = "$picker_class" ]
+}
+
+wait_for_paste_target() {
+    attempt=0
+    last_window_id=
+
+    while [ "$attempt" -lt "$snippet_paste_wait_attempts" ]; do
+        window_id=$(active_window_id) || {
+            attempt=$((attempt + 1))
+            sleep "$snippet_paste_wait_interval"
+            continue
+        }
+        class=$(window_class "$window_id") || {
+            attempt=$((attempt + 1))
+            sleep "$snippet_paste_wait_interval"
+            continue
+        }
+
+        if ! is_picker_class "$class"; then
+            if [ "$window_id" = "$last_window_id" ]; then
+                sleep "$snippet_paste_settle_delay"
+                return 0
+            fi
+            last_window_id=$window_id
+        else
+            last_window_id=
+        fi
+
+        attempt=$((attempt + 1))
+        sleep "$snippet_paste_wait_interval"
+    done
+
+    return 1
+}
+
+focused_is_terminal() {
+    window_id=$(active_window_id) || return 1
+    class=$(window_class "$window_id") || return 1
+    is_picker_class "$class" && return 1
+    class=$(printf '%s' "$class" | tr '[:upper:]' '[:lower:]')
+    for terminal_class in $terminal_classes; do
+        [ "$class" = "$terminal_class" ] && return 0
+    done
+    return 1
+}
+
+paste_clipboard() {
+    wait_for_paste_target || true
+
+    if focused_is_terminal; then
+        xdotool key --clearmodifiers ctrl+shift+v >/dev/null 2>&1
+    else
+        xdotool key --clearmodifiers ctrl+v >/dev/null 2>&1
+    fi
+}
+
+paste_payload() {
+    payload_path=$1
+    xclip -selection clipboard <"$payload_path"
+    paste_clipboard
+}
+
+pick_snippet() {
+    selected_snippet=
+    tab=$(printf '\t')
+    selected_snippet=$(snippet_entries | fzf --prompt="Snippet> " --delimiter="$tab" --with-nth=1,2,3) || exit 0
+    [ -n "$selected_snippet" ] || exit 0
+
+    IFS="$tab" read -r _snippet_source _snippet_title _snippet_summary _snippet_name snippet_path <<EOF
+$selected_snippet
+EOF
+
+    [ -r "$snippet_path" ] || die "missing snippet: $selected_snippet"
+
+    tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/snippets.XXXXXX") || exit 1
+    snippets_tmpdir=$tmpdir
+    snippets_handoff=0
+    trap cleanup_snippets_tmpdir EXIT INT HUP TERM
+    payload_path=$tmpdir/payload
+    awk '
+        BEGIN { stripping = 1; saw_metadata = 0 }
+        {
+            if (stripping && $0 ~ /^# snippet-(title|summary|origin):[[:space:]]*/) {
+                saw_metadata = 1
+                next
+            }
+
+            if (stripping && saw_metadata && $0 ~ /^[[:space:]]*$/) {
+                next
+            }
+
+            stripping = 0
+            print
+        }
+    ' "$snippet_path" >"$payload_path" || exit 1
+
+    if [ "$snippet_context" = panel ]; then
+        [ -n "$snippet_payload_out" ] || die "missing panel payload output path"
+        cp "$payload_path" "$snippet_payload_out"
+        exit 0
+    fi
+
+    paste_payload "$payload_path"
+    snippets_handoff=1
+    rm -rf "$tmpdir"
+}
+
+launch_picker() {
+    resolve_script_path
+    ensure_snippet_dir
+
+    if command -v kitten >/dev/null 2>&1; then
+        tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/snippets.XXXXXX") || exit 1
+        snippets_tmpdir=$tmpdir
+        snippets_handoff=0
+        trap cleanup_snippets_tmpdir EXIT INT HUP TERM
+        payload_path=$tmpdir/payload
+
+        if [ "$snippet_dir_explicit" -eq 1 ]; then
+            set -- "DOTFILES_SNIPPETS_DIR=$snippet_dir"
+        else
+            set --
+        fi
+
+        kitten quick-access-terminal \
+            --instance-group="$(snippets_panel_group)" \
+            --detach=no \
+            --override app_id="$snippet_app_id" \
+            --override edge=none \
+            --override background_opacity=0.8 \
+            env \
+            DOTFILES_SNIPPETS_ACTION=pick \
+            DOTFILES_SNIPPETS_APP_ID="$snippet_app_id" \
+            DOTFILES_SNIPPETS_CONTEXT=panel \
+            DOTFILES_SNIPPETS_INSTANCE_GROUP_PREFIX="$snippet_instance_group_prefix" \
+            DOTFILES_SNIPPETS_PAYLOAD_OUT="$payload_path" \
+            "$@" \
+            "$script_path"
+        status=$?
+
+        if [ "$status" -ne 0 ]; then
+            exit "$status"
+        fi
+
+        [ -s "$payload_path" ] || exit 0
+        paste_payload "$payload_path"
+        snippets_handoff=1
+        rm -rf "$tmpdir"
+        exit 0
+    fi
+
+    if [ "$snippet_dir_explicit" -eq 1 ]; then
+        set -- "DOTFILES_SNIPPETS_DIR=$snippet_dir"
+    else
+        set --
+    fi
+
+    exec env \
+        DOTFILES_SNIPPETS_ACTION=pick \
+        DOTFILES_SNIPPETS_APP_ID="$snippet_app_id" \
+        DOTFILES_SNIPPETS_CONTEXT=terminal \
+        DOTFILES_SNIPPETS_INSTANCE_GROUP_PREFIX="$snippet_instance_group_prefix" \
+        "$@" \
+        "$script_path"
+}
+
+case ${DOTFILES_SNIPPETS_ACTION:-launch} in
+launch)
+    if [ "$#" -gt 0 ]; then
+        case $1 in
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "unexpected arguments: $*"
+            ;;
+        esac
+    fi
+    need_command fzf
+    need_command xclip
+    need_command xdotool
+    launch_picker
+    ;;
+pick)
+    need_command fzf
+    need_command xclip
+    need_command xdotool
+    ensure_snippet_dir
+    pick_snippet
+    ;;
+*)
+    die "unsupported action: ${DOTFILES_SNIPPETS_ACTION:-}"
+    ;;
+esac
