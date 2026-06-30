@@ -6,6 +6,7 @@
     name:
       - perl # needed to build xdotool
       - ydotool
+      - xdotool
 
 - name: "[archlinux] Automation utilities: ensure ydotoold service"
   ansible.builtin.systemd_service:
@@ -13,8 +14,3 @@
     name: ydotool.service
     enabled: true
     masked: false
-
-- name: "[archlinux] Automation utilities: ensure xdotool"
-  ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
-  vars:
-    aur_local_packages: xdotool-git
