@@ -12,6 +12,7 @@
       - kitty-terminfo
       - gawk
       - jq
+      - bat # markdown-highlighted previews for the shared snippet picker
       - bash-completion
     state: present
 

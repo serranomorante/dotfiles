@@ -32,6 +32,8 @@ Keyd is the right place to remap keys, but not to make decisions based on the cu
 
 If a keyd-only repeat is good enough and you want to keep the modifier physically held, use an explicit `oneshotm` repeat layer and put the repeated binding in a composite layer that also includes the held modifier. Avoid `overloadi` for readline repeats: it keys off any recent non-action key, so normal typing can keep the idle window alive and make a later navigation press look like a repeat.
 
+Ctrl+Alt+P opens the shared snippets picker through `signal_open_snippets`; the picker reads the public `utilities/dot-local/share/dotfiles/snippets/` tree and, when present, the optional private `for-my-eyes-only/dot-local/share/dotfiles/snippets/` tree.
+
 ## MIDI mode and keyd limits
 
 MIDI controller mode should be modeled as keyd layers observed through `keyd listen`, not as a second evdev consumer. A daemon that opens `keyd virtual keyboard` through evdev and then calls `EVIOCGRAB` fights the existing keyd device owner, can fail with `resource busy`, can miss key-up/state transitions when another remapper is in the path, and can leak raw keyboard shortcuts into REAPER while MIDI learn is waiting. Keep keyd as the only physical keyboard consumer: `Tab+m` toggles the persistent `[midi]` layer, keyd emits `+midi_*` and `-midi_*` layer events, and `keyboard-midi-controller` translates those layer events to MIDI.

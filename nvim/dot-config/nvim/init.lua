@@ -33,7 +33,8 @@ vim.filetype.add({
     [".*/keyd/.*%.conf"] = "gitignore",
     [".*keyd.*%.conf"] = "gitignore",
     [".*%.inc"] = "gitignore",
-    [".*/bash%-completion/completions/.*"] = "sh"
+    [".*/bash%-completion/completions/.*"] = "sh",
+    [".*/share/dotfiles/snippets/.*"] = "markdown"
   },
 })
 
