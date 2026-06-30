@@ -38,8 +38,8 @@ index 56ee471..b306005 100644
 +	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
 +	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
 +	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
 +	{ "kitty-snippets",       "kitty-snippets",       NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,              0,           1 },
-+	{ "krunner",              "krunner",              NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1                              },
 +	{ "Plasma",               NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1,              1,             }, // make plasma windows unmanaged
 +	{ "plasma-desktop",       NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1,              1,             }, // make plasma windows unmanaged
 +	{ "plasmashell",          NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1,              1,             }, // make plasma windows unmanaged
@@ -56,7 +56,7 @@ index 56ee471..b306005 100644
 +	{ NULL,                   NULL,                   "NoiseTorch",              1 << 8,       0,           -1,        -1,-1,-1,-1,                     -1                              }, // use tag 3 for noisetorch
 +	{ "MyPaint",              "mypaint",              NULL,                      1 << 5,       0,           -1,        -1,-1,-1,-1,                     -1                              }, // use tag 6 for mypaint
 +	{ "SimpleScreenRecorder", "simplescreenrecorder", "SimpleScreenRecorder",    0,            1,           -1,        -1,-1,-1,-1,                     -1                              },
-+	{ NULL,                   NULL,                   "KRunner",                 0,            1,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ "krunner",              "krunner",              NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1,               1             },
 +	{ NULL,                   NULL,                   "Event Tester",            0,            1,           -1,        -1,-1,-1,-1,                     -1                              },
 +	{ "explorer.exe",         "explorer.exe",         "Wine Desktop",            1 << 7,       0,           -1,        -1,-1,-1,-1,                     -1                              }, // use tag 7 for wine explorer.exe
 +	{ "guvcview",             "guvcview",             "Guvcview",                0,            1,           -1,        -1,-1,400,300,                   -1                              }, // float and set dimensions on guvcview
