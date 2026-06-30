@@ -20,6 +20,7 @@ return {
         "--exclude=*.min.js",
         "--exclude=*.esm.js",
         "--exclude=*.bundle.js",
+        "--exclude=tags",
       },
       metadata = {
         hide_from_task_list = true,
