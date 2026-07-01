@@ -229,7 +229,7 @@ PY
     [ -x "${DOTFILES_TEST_ROOT}/utilities/bin/dotfiles-github-token" ]
     rg -Fq 'validationUrlTemplates' "$local_apply_helper"
     rg -Fq 'git", "worktree", "add", "-b"' "$local_apply_helper"
-    rg -Fq 'fontawesome-free-{{ arch_font_awesome_font_version }}-desktop.zip' "$font_defaults"
+    rg -Fq 'fontawesome-free' "$font_defaults"
     ;;
 renovate-local-apply-helper-is-exposed-in-lazygit)
     rg -Fq 'key: "<c-r>"' "$lazygit_config"

@@ -527,7 +527,7 @@ update-diff-capture-does-not-install-stow-github-helpers)
     git_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/update-diff-capture/tasks/git.yml"
 
     refute rg -q 'dotfiles-github-token|dotfiles-github-askpass|dotfiles-github-git' "$install_tasks"
-    rg -Fq 'executable: "{{ playbook_dir }}/../utilities/bin/dotfiles-github-git"' "$git_tasks"
+    rg -Fq 'executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"' "$git_tasks"
     rg -Fq 'remote_git "$repo_url" clone -q --mirror "$repo_url" "$cache"' "$capture_helper"
     rg -Fq 'remote_git "$repo_url" -C "$cache" fetch -q --tags --prune origin' "$capture_helper"
     ;;
