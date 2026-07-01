@@ -229,6 +229,12 @@ end
 local function source_label(source_pos)
   local bufname = current_buffer_name()
   if bufname == "[No Name]" then return nil end
+  if
+    vim.b[vim.api.nvim_get_current_buf()].persistent_scratch
+    or vim.api.nvim_get_option_value("buftype", { buf = 0 }) == "acwrite"
+  then
+    return nil
+  end
   return ("%s:%s"):format(vim.fn.fnamemodify(bufname, ":~:."), source_pos[2])
 end
 
@@ -242,8 +248,18 @@ local function selection_source(start_pos, end_pos) return source_reference(earl
 ---@return string?
 local function selection_label(start_pos, end_pos) return source_label(earlier_position(start_pos, end_pos)) end
 
+---@param bufnr integer?
+---@return boolean
+local function should_include_selection_source(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  if vim.b[bufnr].persistent_scratch then return false end
+  if vim.api.nvim_get_option_value("buftype", { buf = bufnr }) == "acwrite" then return false end
+  return true
+end
+
 ---@return string?
 local function current_source_label()
+  if not should_include_selection_source() then return nil end
   local bufname = current_buffer_name()
   if bufname == "[No Name]" then return nil end
 
@@ -913,6 +929,14 @@ end
 
 ---@param preferred_win integer?
 local function restore_regular_win(preferred_win)
+  if
+    preferred_win
+    and vim.api.nvim_win_is_valid(preferred_win)
+    and vim.api.nvim_win_get_config(preferred_win).relative ~= ""
+  then
+    preferred_win = utils.close_floating_window(preferred_win)
+  end
+
   local winid = regular_win(preferred_win)
   if winid then pcall(vim.api.nvim_set_current_win, winid) end
 end
@@ -1025,8 +1049,10 @@ local function prompt_from_visual_selection(opts)
   local filetype = vim.bo.filetype ~= "" and vim.bo.filetype or "text"
   filetype = filetype:gsub("[^%w_.+-]", "")
   local fence = markdown_fence(selected_text)
-  return ("%s\n\n%s%s\n%s\n%s\n\n"):format(selection_source(start_pos, end_pos), fence, filetype, selected_text, fence),
-    selection_label(start_pos, end_pos)
+  local source = should_include_selection_source() and selection_source(start_pos, end_pos) or nil
+  local prompt = source and ("%s\n\n%s%s\n%s\n%s\n\n"):format(source, fence, filetype, selected_text, fence)
+    or ("%s%s\n%s\n%s\n\n"):format(fence, filetype, selected_text, fence)
+  return prompt, selection_label(start_pos, end_pos)
 end
 
 ---@return overseer.Task?
@@ -1176,7 +1202,8 @@ local function open_task(provider, task, prompt, opts)
   task.metadata.wait_for_agent_ready = opts.wait_for_ready == true
   utils.attach_keymaps(task)
   if opts.open_output ~= false then
-    utils.schedule_open_overseer_task_output(task, { winid = opts.start_win })
+    local start_win = utils.close_floating_window(opts.start_win or vim.api.nvim_get_current_win())
+    utils.schedule_open_overseer_task_output(task, { winid = start_win })
     require("serranomorante.remote_kitty_focus").focus_current_window()
   end
   paste_prompt(provider, task, prompt)

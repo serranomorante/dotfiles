@@ -18,6 +18,7 @@ end
 function M.should_enable(bufnr)
   local enable = false
   if M.has_lsp_server_available(bufnr) then enable = true end
+  if vim.b[bufnr].persistent_scratch_disable_lsp then enable = false end
   if vim.api.nvim_get_option_value("diff", { scope = "local" }) then
     enable = false -- prevent conflict with diffview
   end

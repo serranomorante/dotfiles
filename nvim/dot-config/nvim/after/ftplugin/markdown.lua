@@ -55,7 +55,7 @@ if vim.fn.empty(select(1, unpack(vim.api.nvim_buf_get_lines(bufnr, 0, 1, false))
   end
 end
 
-lsp_utils.enable("marksman", bufnr)
+if not vim.b[bufnr].persistent_scratch_disable_lsp then lsp_utils.enable("marksman", bufnr) end
 
 markdown_images.attach(bufnr)
 

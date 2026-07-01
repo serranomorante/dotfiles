@@ -1210,6 +1210,41 @@ function M.is_terminal_buffer(bufnr)
   return vim.api.nvim_get_option_value("buftype", { buf = bufnr or 0 }) == "terminal"
 end
 
+local function regular_win_in_tab(tabid, preferred_win)
+  tabid = tabid or vim.api.nvim_get_current_tabpage()
+  if
+    preferred_win
+    and vim.api.nvim_win_is_valid(preferred_win)
+    and vim.api.nvim_win_get_tabpage(preferred_win) == tabid
+    and vim.api.nvim_win_get_config(preferred_win).relative == ""
+  then
+    return preferred_win
+  end
+
+  for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(tabid)) do
+    if vim.api.nvim_win_is_valid(winid) and vim.api.nvim_win_get_config(winid).relative == "" then return winid end
+  end
+end
+
+---@param winid integer?
+---@return integer
+function M.close_floating_window(winid)
+  winid = winid or vim.api.nvim_get_current_win()
+  if not vim.api.nvim_win_is_valid(winid) then return vim.api.nvim_get_current_win() end
+  if vim.api.nvim_win_get_config(winid).relative == "" then return winid end
+
+  local tabid = vim.api.nvim_win_get_tabpage(winid)
+  local current_before = vim.api.nvim_get_current_win()
+  pcall(vim.api.nvim_win_close, winid, true)
+
+  local current_after = vim.api.nvim_get_current_win()
+  if vim.api.nvim_win_is_valid(current_after) and vim.api.nvim_win_get_config(current_after).relative == "" then
+    return current_after
+  end
+
+  return regular_win_in_tab(tabid, current_after) or regular_win_in_tab(tabid) or current_after or current_before
+end
+
 local overseer_output_dispose_cleanup_attached = setmetatable({}, { __mode = "k" })
 
 local function is_replacement_buffer(bufnr, disposed_bufnr)
@@ -1600,7 +1635,7 @@ function M.open_started_overseer_task_output(task, opts)
   if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then return false end
 
   stop_terminal_mode()
-  local winid = opts.winid or vim.api.nvim_get_current_win()
+  local winid = M.close_floating_window(opts.winid or vim.api.nvim_get_current_win())
   if vim.api.nvim_win_is_valid(winid) then pcall(vim.api.nvim_set_current_win, winid) end
   restore_remembered_buffer_before_opening_output(winid, bufnr)
   remember_overseer_output_previous_buffer(winid, bufnr)

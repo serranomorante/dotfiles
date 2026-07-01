@@ -7,6 +7,7 @@ Some reasoning behind my current plugin list.
 1. I want my plugin list as minimal as possible (not more than 35 plugins?). I don't want the burden of maintainability of having too much plugins
 1. Also, I prefer not choosing plugins that extremely "reinvent" what nvim already has (there are some exceptions to this though).
 1. I don't like plugins that forces you to install tons of other plugins just to being able to work (examples below)
+1. When a plugin only behaves correctly from a normal window, bind it through a wrapper that moves the active buffer out of a floating scratch window into a regular tab before launching it.
 1. Even if I have to do some extra work, I will prefer plugins with really go extensibility (heirline.nvim). Maybe because it gives me more control over my setup
 
 ## Current plugin list and motives

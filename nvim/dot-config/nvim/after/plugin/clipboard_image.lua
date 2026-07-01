@@ -10,7 +10,8 @@ local function paste_clipboard_image()
   local bufnr = vim.api.nvim_get_current_buf()
   local buftype = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
   local modifiable = vim.api.nvim_get_option_value("modifiable", { buf = bufnr })
-  if buftype ~= "" or not modifiable then
+  local is_persistent_scratch = vim.b[bufnr].persistent_scratch == true
+  if (buftype ~= "" and not (buftype == "acwrite" and is_persistent_scratch)) or not modifiable then
     vim.api.nvim_echo({ { "Cannot paste clipboard image into this buffer", "DiagnosticWarn" } }, false, {})
     return
   end
