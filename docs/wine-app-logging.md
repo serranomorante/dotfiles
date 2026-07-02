@@ -38,6 +38,8 @@ Type=Application
 
 Do not keep a separate live-terminal debug launcher by default. If temporary live debugging is needed, run the launcher or the underlying `wwine` command manually from a terminal instead of making the regular desktop launcher open a terminal.
 
+When `--no-desktop` is used for a GUI launch and an earlier Wine desktop shell is still running, `wwine` should close that shell and retry the same launch once so callers do not have to start the app twice.
+
 ## App Ids
 
 App ids are lowercase kebab-case identifiers passed through `wwine --log-id <app-id>`.

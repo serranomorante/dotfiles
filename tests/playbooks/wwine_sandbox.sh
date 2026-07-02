@@ -13,6 +13,7 @@ set -euo pipefail
 # dotfiles-test-case: wwine-serializes-parallel-named-sandbox-startup
 # dotfiles-test-case: wwine-fails-closed-when-inherited-sandbox-does-not-match-profile
 # dotfiles-test-case: wwine-no-desktop-closes-running-wine-desktop-before-app
+# dotfiles-test-case: wwine-no-desktop-retries-once-after-closing-running-wine-desktop
 # dotfiles-test-case: wwine-no-desktop-taskkill-is-prefix-scoped
 
 # Purpose: Fast real-Firejail tests for wwine sandbox startup, inherited sandbox verification, and loader mode.
@@ -53,6 +54,7 @@ make_fixture() {
     require_tools
 
     fixture="${DOTFILES_TEST_TMP}/fixture"
+    rm -rf "$fixture"
     home="${fixture}/home"
     runtime="${fixture}/runtime"
     readonly="${fixture}/readonly"
@@ -113,22 +115,36 @@ fi
   printf 'WINEPREFIX=%s\n' "\${WINEPREFIX:-}"
   printf 'WINEARCH=%s\n' "\${WINEARCH:-}"
   printf 'WINEDEBUG=%s\n' "\${WINEDEBUG:-}"
+  printf 'WWINE_NO_DESKTOP_REEXEC_ATTEMPTED=%s\n' "\${WWINE_NO_DESKTOP_REEXEC_ATTEMPTED:-}"
   printf 'ARGS='
   printf '<%s>' "\$@"
   printf '\n'
 } >> "$fake_wine_log"
 active_wine_desktop="${fixture}/active-wine-desktop-other"
+active_wine_desktop_pid="${fixture}/active-wine-desktop-other.pid"
 if [ "\${WINEPREFIX:-}" = "$wine_prefix" ]; then
   active_wine_desktop="${fixture}/active-wine-desktop-reaper"
+  active_wine_desktop_pid="${fixture}/active-wine-desktop-reaper.pid"
 fi
 for arg in "\$@"; do
   if [ "\$arg" = taskkill ]; then
     if printf '<%s>' "\$@" | grep -Fq '<explorer.exe>'; then
+      if [ -e "\$active_wine_desktop_pid" ]; then
+        read -r desktop_pid < "\$active_wine_desktop_pid" || desktop_pid=""
+        if [ -n "\$desktop_pid" ]; then
+          kill "\$desktop_pid" 2>/dev/null || true
+        fi
+        rm -f "\$active_wine_desktop_pid"
+      fi
       rm -f "\$active_wine_desktop"
     fi
   fi
   if [ "\$arg" = start-desktop ]; then
     touch "\$active_wine_desktop"
+    if [ ! -e "\$active_wine_desktop_pid" ]; then
+      bash -c 'exec -a explorer.exe sleep 1000' >/dev/null 2>&1 &
+      printf '%s\n' "\$!" > "\$active_wine_desktop_pid"
+    fi
   fi
   if [ "\$arg" = launch-after-desktop ]; then
     if [ -e "\$active_wine_desktop" ]; then
@@ -518,6 +534,18 @@ wwine-no-desktop-closes-running-wine-desktop-before-app)
     grep -Fq 'ARGS=<reg><delete><HKEY_CURRENT_USER\Software\Wine\Explorer><' "$fake_wine_log"
     grep -Fxq 'ARGS=<taskkill></F></IM><explorer.exe>' "$fake_wine_log"
     grep -Fxq 'OPENED_IN_DESKTOP=0' "$fake_wine_log"
+    ;;
+wwine-no-desktop-retries-once-after-closing-running-wine-desktop)
+    make_fixture
+
+    run_wwine --prefix reaper --desktop wine start-desktop
+    run_wwine --prefix reaper --no-desktop wine launch-after-desktop
+
+    grep -Fq 'ARGS=<reg><delete><HKEY_CURRENT_USER\Software\Wine\Explorer><' "$fake_wine_log"
+    grep -Fxq 'ARGS=<taskkill></F></IM><explorer.exe>' "$fake_wine_log"
+    grep -Fxq 'WWINE_NO_DESKTOP_REEXEC_ATTEMPTED=1' "$fake_wine_log"
+    grep -Fxq 'OPENED_IN_DESKTOP=0' "$fake_wine_log"
+    [ "$(grep -Fc 'ARGS=<launch-after-desktop>' "$fake_wine_log")" -eq 1 ]
     ;;
 wwine-no-desktop-taskkill-is-prefix-scoped)
     make_fixture

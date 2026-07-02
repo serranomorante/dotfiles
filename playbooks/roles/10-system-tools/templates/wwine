@@ -14,12 +14,12 @@
 # enabled. That keeps Windows application windows contained and predictable for
 # the music-production prefixes. Use `--no-desktop` when a command must run
 # without that registry setting, such as selected maintenance or yabridge host
-# launches. For app launches, `--no-desktop` also closes a still-running Wine
-# desktop shell from earlier commands so the next GUI is not captured by that
-# existing container. Keep the default desktop name as `Default`: Ansible wait
-# loops match Wine virtual desktop windows through `wmctrl -lx` and
-# `explorer.exe`, while the DWM Wine rule also expects Wine's virtual desktop
-# window title.
+# launches. For app launches, `--no-desktop` closes a still-running Wine
+# desktop shell from earlier commands and retries the same launch once so the
+# caller does not have to open the app twice. Keep the default desktop name as
+# `Default`: Ansible wait loops match Wine virtual desktop windows through
+# `wmctrl -lx` and `explorer.exe`, while the DWM Wine rule also expects Wine's
+# virtual desktop window title.
 #
 # Desktop launchers can pass `--log-id <app-id>` to rotate and capture stdout
 # and stderr under ~/.local/state/wine-apps without opening a terminal window.
@@ -120,6 +120,7 @@ sandbox_attempted="$(bool_arg "${WWINE_SANDBOX_ATTEMPTED:-0}")"
 desktop_name="Default"
 desktop_size=""
 fallback_desktop_size="1920x1080"
+desktop_shell_was_running=0
 
 if [[ "$loader_mode" == 1 ]]; then
   prefix="${WWINE_PREFIX_ALIAS:-}"
@@ -464,12 +465,23 @@ configure_desktop() {
 }
 
 close_running_wine_desktop() {
+  local -a pids=()
+  local deadline
+
+  mapfile -t pids < <(prefix_wine_desktop_shell_pids)
+  [[ -n "${pids[*]}" ]] || return 1
+
+  desktop_shell_was_running=1
   run_wine_loader taskkill /F /IM explorer.exe >/dev/null 2>&1 || true
+
+  deadline=$((SECONDS + 5))
+  wait_for_prefix_wine_desktop_exit "$deadline" || true
 }
 
 configure_no_desktop_app_launch() {
+  desktop_shell_was_running=0
   configure_desktop
-  close_running_wine_desktop
+  close_running_wine_desktop || true
 }
 
 default_desktop_size() {
@@ -543,7 +555,7 @@ process_has_prefix() {
 
   [[ -r "$environ" ]] || return 1
 
-  process_prefix="$(tr '\0' '\n' <"$environ" 2>/dev/null | sed -n 's/^WINEPREFIX=//p' | head -n 1)" || return 1
+  process_prefix="$(cat "$environ" 2>/dev/null | tr '\0' '\n' | sed -n 's/^WINEPREFIX=//p' | head -n 1)" || return 1
   [[ "$process_prefix" == "$WINEPREFIX" ]]
 }
 
@@ -589,12 +601,46 @@ prefix_wine_pids() {
   done
 }
 
+prefix_wine_desktop_shell_pids() {
+  local pid
+  local comm=""
+  local cmdline=""
+
+  for pid in $(prefix_wine_pids); do
+    [[ -r "/proc/$pid/comm" ]] && comm="$(<"/proc/$pid/comm")" || comm=""
+    if [[ -r "/proc/$pid/cmdline" ]]; then
+      cmdline="$(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null || true)"
+    else
+      cmdline=""
+    fi
+
+    case "$comm $cmdline" in
+      *explorer.exe*)
+        printf '%s\n' "$pid"
+        ;;
+    esac
+  done
+}
+
 wait_for_prefix_wine_exit() {
   local deadline="$1"
   local -a pids=()
 
   while (( SECONDS < deadline )); do
     mapfile -t pids < <(prefix_wine_pids)
+    [[ "${#pids[@]}" -eq 0 ]] && return 0
+    sleep 0.2
+  done
+
+  return 1
+}
+
+wait_for_prefix_wine_desktop_exit() {
+  local deadline="$1"
+  local -a pids=()
+
+  while (( SECONDS < deadline )); do
+    mapfile -t pids < <(prefix_wine_desktop_shell_pids)
     [[ "${#pids[@]}" -eq 0 ]] && return 0
     sleep 0.2
   done
@@ -629,11 +675,79 @@ kill_prefix() {
 case "$tool" in
   wine)
     configure_desktop_for_wine_args "$@"
+    if [[ "$desktop_shell_was_running" == 1 && "${WWINE_NO_DESKTOP_REEXEC_ATTEMPTED:-0}" != 1 ]]; then
+      export WWINE_NO_DESKTOP_REEXEC_ATTEMPTED=1
+      if [[ "$loader_mode" == 1 ]]; then
+        exec "$0" "$@"
+      fi
+
+      reexec_args=()
+      reexec_args=(--prefix "$prefix")
+      if [[ -n "$arch" ]]; then
+        reexec_args+=(--arch "$arch")
+      fi
+      if [[ "$use_sandbox" == 1 ]]; then
+        reexec_args+=(--use-sandbox)
+      fi
+      if [[ -n "$sandbox_profile" ]]; then
+        reexec_args+=(--sandbox-profile "$sandbox_profile")
+      fi
+      if [[ -n "$sandbox_check_profile" ]]; then
+        reexec_args+=(--sandbox-check-profile "$sandbox_check_profile")
+      fi
+      reexec_args+=(--no-desktop)
+      if [[ "$desktop_name" != "Default" ]]; then
+        reexec_args+=(--desktop-name "$desktop_name")
+      fi
+      if [[ -n "$sandbox_name" ]]; then
+        reexec_args+=(--sandbox-name "$sandbox_name")
+      fi
+      if [[ -n "$log_id" ]]; then
+        reexec_args+=(--log-id "$log_id")
+      fi
+      if [[ -n "$wine_debug" ]]; then
+        reexec_args+=(--wine-debug "$wine_debug")
+      fi
+
+      exec "$0" "${reexec_args[@]}" "$tool" "$@"
+    fi
     exec_wine_loader "$@"
     ;;
   winecfg)
     if [[ "$use_desktop" == 0 ]]; then
       configure_no_desktop_app_launch
+      if [[ "$desktop_shell_was_running" == 1 && "${WWINE_NO_DESKTOP_REEXEC_ATTEMPTED:-0}" != 1 ]]; then
+        export WWINE_NO_DESKTOP_REEXEC_ATTEMPTED=1
+        reexec_args=()
+        reexec_args=(--prefix "$prefix")
+        if [[ -n "$arch" ]]; then
+          reexec_args+=(--arch "$arch")
+        fi
+        if [[ "$use_sandbox" == 1 ]]; then
+          reexec_args+=(--use-sandbox)
+        fi
+        if [[ -n "$sandbox_profile" ]]; then
+          reexec_args+=(--sandbox-profile "$sandbox_profile")
+        fi
+        if [[ -n "$sandbox_check_profile" ]]; then
+          reexec_args+=(--sandbox-check-profile "$sandbox_check_profile")
+        fi
+        reexec_args+=(--no-desktop)
+        if [[ "$desktop_name" != "Default" ]]; then
+          reexec_args+=(--desktop-name "$desktop_name")
+        fi
+        if [[ -n "$sandbox_name" ]]; then
+          reexec_args+=(--sandbox-name "$sandbox_name")
+        fi
+        if [[ -n "$log_id" ]]; then
+          reexec_args+=(--log-id "$log_id")
+        fi
+        if [[ -n "$wine_debug" ]]; then
+          reexec_args+=(--wine-debug "$wine_debug")
+        fi
+
+        exec "$0" "${reexec_args[@]}" "$tool" "$@"
+      fi
     else
       configure_desktop
     fi
