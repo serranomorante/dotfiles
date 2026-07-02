@@ -7,6 +7,8 @@ Exclusivamente para tareas de frontend, backend o QA, no uses tu sistema nativo 
 
 Recuerda que tu trabajo es orquestar a los sub-agentes de esta sesión, las implementaciones debes delegarlas de modo que quedes libre para seguir recibiendo prompts. Cuando delegues, recuerda quedarte escuchando el state de estos sub-agentes (ver agent-tasks state) de modo que puedas atender preguntas o seleccionar acciones que estos agentes estén esperando.
 
+Tú eres el agente MASTER/root (el orquestador). SIEMPRE que spawnees un hijo con `agent-tasks new`, márcalo como sub-agente con `--sub` para que su rol quede en la metadata de la task. Con eso el hijo se distingue como `SUB` en `agent-tasks list`/`state` (campo `role`), lleva el prefijo `[SUB]` en el task list de Overseer y `SUB-` en el título del tabpage de Neovim; cualquier task sin ese flag se muestra como `MASTER`/root por defecto (tú y las que no spawneaste tú). Si abres una sesión ya existente con `agent-tasks open` y quieres etiquetarla como hijo, usa `agent-tasks role <ref> sub` (y `role <ref> master` para revertir); `open` no propaga el rol porque no se persiste en el store de sesiones.
+
 Recuerda que puedes paralelizar el trabajo usando estos sub-agentes que están en worktrees de frontend (copy-\*) que ya hemos creado con anticipación. En backend no hace falta hacer esto, vamos a usar el worktree base de backend siempre.
 
 Recuerda que tenemos varias instancias de chromium abiertas en puertos específicos para que puedas paralelizar también los tests y/o interacción con el navegador usando alguno de los mcps de playwright que hemos preparado para esas instancias/perfiles de chromium.
@@ -21,8 +23,8 @@ agent-tasks send <ref> "<prompt con [task:<id>]>"   # escribe el prompt (sin env
 agent-tasks send-nl <ref> ""                         # dispara el turno (Enter diferido)
 
 # Ver estado / leer
-agent-tasks list                                     # roster: id, provider, state(running/idle/awaiting_choice)
-agent-tasks state <ref>                              # estado instantáneo de UNO (lee el buffer vivo)
+agent-tasks list                                     # roster: id, provider, state(running/idle/awaiting_choice), role(sub/master)
+agent-tasks state <ref>                              # estado instantáneo de UNO (lee el buffer vivo) + role
 agent-tasks read <ref> [N]                           # últimas N líneas del terminal del hijo
 
 # Observer en background (me re-invoca al disparar) — lo lanzo con run_in_background
@@ -35,13 +37,14 @@ agent-tasks answer <ref> "<texto>"                   # respuesta de texto libre 
 
 # Abrir hijos / spawnear
 agent-tasks open --all <uuid> [<uuid>...]            # abre sesiones existentes por UUID (--all salta filtro cwd)
-agent-tasks new claude "<tarea>"                     # spawnea un hijo nuevo y le inyecta la tarea
+agent-tasks new claude --sub "<tarea>"              # spawnea un hijo nuevo (marcado SUB) y le inyecta la tarea
+agent-tasks role <ref> sub                           # (re)etiqueta una task ya abierta como sub-agente (master para revertir)
 
 # Monitoreo en el task list de overseer
 agent-tasks watch --all                              # retrofitea el badge de estado vivo a los hijos existentes
 
 <ref> = prefijo de session-id (165a), id de overseer, o substring del nombre. open exige UUID completo.
 
-Flujo típico que repito: send + send-nl "" (delego con [task:<id>]) → state a los segundos (confirmo que arrancó) → wait --until commit --worktree <repo> en
-background (me despierta al commit) → reconcilio a development y marco el check.
+Flujo típico que repito: new claude --sub "<tarea>" (o reuso un hijo existente) → send + send-nl "" (delego con [task:<id>]) → state a los segundos
+(confirmo que arrancó y que role=sub) → wait --until commit --worktree <repo> en background (me despierta al commit) → reconcilio a development y marco el check.
 ```

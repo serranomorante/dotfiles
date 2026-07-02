@@ -13,6 +13,13 @@ local M = {}
 
 local PROVIDER_KEY = "agent_provider"
 local SESSION_ID_KEY = "agent_session_id"
+-- Orchestration role metadata. Only "sub" is ever stored; the ABSENCE of the key
+-- means the task is a top-level ("master"/root) agent. This is the single source
+-- of truth the render, the roster JSON and the tabpage buffer name all consult so
+-- a sub-agent is recognizable everywhere its task title/name shows up.
+local ROLE_KEY = "agent_role"
+local ROLE_SUB = "sub"
+local ROLE_MASTER = "master"
 local PROMPT_MARKERS = {
   codex = "›",
   claude = "❯",
@@ -69,6 +76,20 @@ local function task_session_id(t)
   local md = t.metadata or {}
   return md[SESSION_ID_KEY]
 end
+
+---Orchestration role of a task. Defaults to "master" when unmarked so every
+---pre-existing / top-level agent reads as master/root without needing a stamp.
+---@param t overseer.Task
+---@return string  -- "sub" | "master"
+local function task_role(t)
+  local md = t.metadata or {}
+  return md[ROLE_KEY] == ROLE_SUB and ROLE_SUB or ROLE_MASTER
+end
+
+---Short uppercase badge for a role, for name/title listings.
+---@param role string
+---@return string
+local function role_badge(role) return role == ROLE_SUB and "SUB" or "MASTER" end
 
 ---@param provider string?
 ---@return string?
@@ -156,6 +177,7 @@ local function task_summary(t)
     provider = task_provider(t),
     session_id = task_session_id(t),
     name = t.name,
+    role = task_role(t),
     state = detect_state(task_provider(t), lines),
   }
 end
@@ -189,10 +211,11 @@ function M.read(ref, n)
   end
   local total = #lines
   local start = math.max(1, total - n + 1)
-  local header = ("# task id=%s session=%s provider=%s state=%s status=%s\n# lines %d-%d of %d"):format(
+  local header = ("# task id=%s session=%s provider=%s role=%s state=%s status=%s\n# lines %d-%d of %d"):format(
     tostring(t.id),
     tostring(task_session_id(t)),
     tostring(task_provider(t)),
+    task_role(t),
     detect_state(task_provider(t), lines),
     tostring(t.status),
     start,
@@ -333,6 +356,7 @@ function M.state(ref)
     id = t.id,
     session_id = task_session_id(t),
     provider = task_provider(t),
+    role = task_role(t),
     state = state,
     options = options,
     tail = tail,
@@ -365,6 +389,15 @@ function M.task_state(task)
   if type(task) ~= "table" then return "unknown" end
   local state = classify_state(task_buffer_lines(task))
   return state
+end
+
+---Orchestration role of a task DIRECTLY (no ref resolution). Used by the
+---task_list render to badge master vs sub agents. Defaults to "master".
+---@param task overseer.Task
+---@return string  -- "sub" | "master"
+function M.task_role(task)
+  if type(task) ~= "table" then return ROLE_MASTER end
+  return task_role(task)
 end
 
 local AGENT_WATCH_COMPONENT = "serranomorante.agent_watch"
@@ -522,13 +555,15 @@ end
 ---paste the prompt into it using bracketed paste followed by '\r'.
 ---@param provider_name string
 ---@param b64_prompt? string optional base64-encoded initial prompt
+---@param role? string "sub" to mark the spawned task as a sub-agent (default master)
 ---@return string json
-function M.new(provider_name, b64_prompt)
+function M.new(provider_name, b64_prompt, role)
   if type(provider_name) ~= "string" or provider_name == "" then
     return vim.json.encode({ ok = false, error = "missing provider" })
   end
   local provider = provider_by_name(provider_name)
   if not provider then return vim.json.encode({ ok = false, error = "unknown provider: " .. provider_name }) end
+  local as_sub = role == ROLE_SUB
 
   local ok_as, agent_sessions = pcall(require, "serranomorante.plugins.jobs.agent_sessions")
   if not ok_as or type(agent_sessions.open_new) ~= "function" then
@@ -547,7 +582,7 @@ function M.new(provider_name, b64_prompt)
     if dok then prompt = decoded end
   end
 
-  vim.schedule(function() agent_sessions.open_new(provider.name) end)
+  vim.schedule(function() agent_sessions.open_new(provider.name, as_sub and { role = ROLE_SUB } or nil) end)
 
   if prompt then
     local tries = 0
@@ -572,7 +607,93 @@ function M.new(provider_name, b64_prompt)
     vim.defer_fn(step, 1000)
   end
 
-  return vim.json.encode({ ok = true, provider = provider.name, spawning = true, with_prompt = prompt ~= nil })
+  return vim.json.encode({
+    ok = true,
+    provider = provider.name,
+    spawning = true,
+    with_prompt = prompt ~= nil,
+    role = as_sub and ROLE_SUB or ROLE_MASTER,
+  })
+end
+
+---Re-tag an existing task's orchestration role. Setting "sub" marks it as a
+---sub-agent; "master"/"root"/"" clears the mark. Renames the terminal buffer so
+---the change shows in the Neovim tabpage title and refreshes the task list badge.
+---@param ref string
+---@param role string  -- "sub" | "master" | "root" | ""
+---@return string json
+function M.set_role(ref, role)
+  local t, err = resolve_task(ref)
+  if not t then return vim.json.encode({ ok = false, error = err }) end
+  t.metadata = t.metadata or {}
+  if role == ROLE_SUB then
+    t.metadata[ROLE_KEY] = ROLE_SUB
+  elseif role == ROLE_MASTER or role == "root" or role == "" or role == nil then
+    t.metadata[ROLE_KEY] = nil
+  else
+    return vim.json.encode({ ok = false, error = "invalid role: " .. tostring(role) .. " (use sub|master)" })
+  end
+
+  -- Refresh the tabpage title (buffer name) + the task_list render badge. We only
+  -- ever RENAME the task's own output buffer here; we never delete buffers (a stray
+  -- bwipeout in this shared session can dispose live agent tasks). nvim_buf_set_name
+  -- leaves the previous name behind as an unlisted, unloaded, empty alternate buffer
+  -- — harmless and invisible in the tabline/buffer list.
+  pcall(function()
+    local bufnr = t:get_bufnr()
+    if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+      require("serranomorante.utils").name_overseer_task_output(t, bufnr)
+    end
+  end)
+  pcall(function() require("overseer.task_list").touch(t) end)
+
+  return vim.json.encode({
+    ok = true,
+    id = t.id,
+    session_id = task_session_id(t),
+    role = task_role(t),
+  })
+end
+
+---Dispose (stop + REMOVE from the Overseer task list) a single agent task by ref.
+---Uses overseer's Task:dispose(force=true) so it disappears from the list even if
+---the terminal is still attached. Idempotent-ish: a missing ref is a clean error.
+---@param ref string
+---@return string json
+function M.dispose(ref)
+  local t, err = resolve_task(ref)
+  if not t then return vim.json.encode({ ok = false, error = err }) end
+  local sid, id = task_session_id(t), t.id
+  local ok = pcall(function() t:dispose(true) end)
+  return vim.json.encode({ ok = ok, id = id, session_id = sid, disposed = ok })
+end
+
+---Dispose ALL provider-backed agent tasks whose current state is "idle" (a prompt
+---marker present and nothing running) — they vanish from the task list. Tasks that
+---are running/awaiting_choice/unknown are left untouched. Pass exclude_sid (a full
+---session id) to protect one session (e.g. the orchestrator or an in-flight child).
+---@param exclude_sid? string
+---@return string json
+function M.dispose_idle(exclude_sid)
+  if type(exclude_sid) ~= "string" or exclude_sid == "" then exclude_sid = nil end
+  local disposed, skipped = {}, {}
+  for _, t in ipairs(list_tasks()) do
+    if task_provider(t) then
+      local sid = task_session_id(t)
+      local state = classify_state(task_buffer_lines(t))
+      if state == "idle" and sid ~= exclude_sid then
+        local ok = pcall(function() t:dispose(true) end)
+        if ok then
+          table.insert(disposed, sid or tostring(t.id))
+        else
+          table.insert(skipped, { session_id = sid, reason = "dispose-failed" })
+        end
+      else
+        table.insert(skipped, { session_id = sid, reason = (sid == exclude_sid) and "excluded" or state })
+      end
+    end
+  end
+  return vim.json.encode({ ok = true, disposed = disposed, disposed_count = #disposed, skipped = skipped })
 end
 
 -- ---------------------------------------------------------------------------

@@ -1442,7 +1442,7 @@ end
 
 ---@param task overseer.Task
 ---@param bufnr integer
-local function name_overseer_task_output(task, bufnr)
+function M.name_overseer_task_output(task, bufnr)
   local current_name = vim.api.nvim_buf_get_name(bufnr)
   local managed_name = vim.b[bufnr].overseer_output_name
   local old_task_name = vim.trim((task.name or ""):gsub("%s+", " "))
@@ -1464,6 +1464,16 @@ local function name_overseer_task_output(task, bufnr)
   end
   if type(task_name) ~= "string" or task_name == "" then task_name = compact_overseer_task_output_label(task.name) end
   if type(task_name) ~= "string" or task_name == "" then task_name = ("overseer-%s"):format(task.id or bufnr) end
+  -- Orchestration role prefix so the Neovim tabpage title (derived from the
+  -- terminal buffer name) tells a sub-agent apart from a master/root at a glance.
+  -- Keep the marker separator NON-slash: the default tabline shows fnamemodify
+  -- :t of the name, so a "/" would hide everything before it. Only agent tasks
+  -- (agent_provider stamped) get a role marker; other overseer outputs are left
+  -- untouched.
+  if type(metadata.agent_provider) == "string" then
+    local role_marker = metadata.agent_role == "sub" and "SUB-" or "MASTER-"
+    task_name = role_marker .. task_name
+  end
   task_name = "task://" .. task_name
 
   local existing = vim.fn.bufnr(task_name)
@@ -1474,6 +1484,9 @@ local function name_overseer_task_output(task, bufnr)
   end
   vim.b[bufnr].overseer_output_name = task_name
 end
+
+---Backward-compatible local alias (call sites inside this module).
+local name_overseer_task_output = M.name_overseer_task_output
 
 ---@param bufnr? integer
 ---@param action_name? string

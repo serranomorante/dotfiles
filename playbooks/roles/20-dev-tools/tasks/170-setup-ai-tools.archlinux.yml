@@ -371,3 +371,31 @@
     mode: "644"
     marker: "# {mark} ANSIBLE MANAGED MCP SERVERS (mcphub -> codex)"
     block: "{{ lookup('template', 'codex_mcp_servers.toml.j2') }}"
+
+# Codex treats [permissions.<name>] as a named permission profile and refuses to
+# start unless the root-level `default_permissions` key selects one. TOML requires
+# all root-level keys to precede any table header, and Codex writes its own root
+# keys (model, ...) at the top of the file, so the `default_permissions` key is
+# injected at BOF while the profile table is appended at EOF.
+- name: "[archlinux] Setup ai tools: select codex default permissions profile in config.toml"
+  ansible.builtin.blockinfile:
+    path: ~/.codex/config.toml
+    create: true
+    mode: "644"
+    insertbefore: BOF
+    marker: "# {mark} ANSIBLE MANAGED DEFAULT PERMISSIONS (codex)"
+    block: |
+      default_permissions = "workspace-all-unix-sockets"
+
+- name: "[archlinux] Setup ai tools: write codex workspace network permissions profile into config.toml"
+  ansible.builtin.blockinfile:
+    path: ~/.codex/config.toml
+    create: true
+    mode: "644"
+    marker: "# {mark} ANSIBLE MANAGED WORKSPACE NETWORK PERMISSIONS (codex)"
+    block: |
+      [permissions.workspace-all-unix-sockets]
+      extends = ":workspace"
+
+      [permissions.workspace-all-unix-sockets.network]
+      dangerously_allow_all_unix_sockets = true

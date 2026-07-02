@@ -168,6 +168,13 @@ local function opts()
         else
           table.insert(lines, 1, { { badge, hl } })
         end
+
+        -- Prepend an orchestration-role tag so a sub-agent is recognizable in the
+        -- task list. Tasks without the agent_role metadata read as MASTER (root).
+        local role = (ok and agent_tasks.task_role(task)) or "master"
+        local role_badge = role == "sub" and "[SUB] " or "[MASTER] "
+        local role_hl = role == "sub" and "DiagnosticWarn" or "Comment"
+        if lines[1] then table.insert(lines[1], 1, { role_badge, role_hl }) end
         return lines
       end,
     },

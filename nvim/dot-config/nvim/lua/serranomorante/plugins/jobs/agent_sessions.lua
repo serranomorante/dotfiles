@@ -7,6 +7,10 @@ local AGENT_PROVIDER_METADATA = "agent_provider"
 local AGENT_SESSION_ID_METADATA = "agent_session_id"
 local AGENT_SESSION_PATH_METADATA = "agent_session_path"
 local AGENT_SESSION_UPDATED_AT_METADATA = "agent_session_updated_at"
+-- Orchestration role. Only "sub" is ever stored; the ABSENCE of this key means
+-- the task is a top-level ("master"/"root") agent. Kept as a plain string so it
+-- round-trips over the agent-tasks RPC bridge like the other metadata keys.
+local AGENT_ROLE_METADATA = "agent_role"
 local SESSION_CACHE_VERSION = 1
 local SESSION_CACHE_NAMESPACE = "nvim"
 local SESSION_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
@@ -1026,6 +1030,7 @@ end
 ---@field open_output? boolean
 ---@field all? boolean
 ---@field start_win? integer
+---@field role? string  -- "sub" to spawn as a sub-agent; nil/other = master/root
 
 ---@param opts? AgentSessionOpts
 ---@return string? prompt
@@ -1501,6 +1506,9 @@ function M.open_new(provider_name, opts)
       [AGENT_PROVIDER_METADATA] = provider.name,
     }
     if preallocated_session_id then metadata[AGENT_SESSION_ID_METADATA] = preallocated_session_id end
+    -- Orchestration role: only stamp when explicitly spawned as a sub-agent.
+    -- Anything without this key renders as a "master"/root agent by default.
+    if type(opts) == "table" and opts.role == "sub" then metadata[AGENT_ROLE_METADATA] = "sub" end
 
     local task = require("overseer").new_task({
       name = task_name(provider, cwd, label_or_source),

@@ -11,7 +11,11 @@
 #        agent-tasks wait <ref> [--until any|idle|choice|commit] [--worktree P] [--timeout s] [--interval s]
 #                                                 # shell-side poll of `state` (never blocks Neovim); prints state JSON on fire
 #        agent-tasks open [--all|-a] <session-id...>  # open session(s) by id (--all bypasses the cwd filter)
-#        agent-tasks new <provider> [task...]    # spawn a new agent session; provider: codex, claude, gemini
+#        agent-tasks new <provider> [--sub|--role <role>] [task...]  # spawn a new agent session; provider: codex, claude, gemini
+#                                                 # --sub marks it as a sub-agent; default = master/root
+#        agent-tasks role <ref> <sub|master>      # (re)tag an existing task's role (master|root clears the sub mark)
+#        agent-tasks dispose <ref>                # stop + REMOVE one task from the Overseer list
+#        agent-tasks dispose --idle [exclude-sid] # dispose ALL idle tasks (optionally excluding one session id)
 # Notes: <ref> = session-id, session-id prefix, overseer numeric id, or unique name substring.
 #        The Neovim server socket is read from $AGENT_TASKS_NVIM, else $NVIM (set by Neovim
 #        inside every terminal it owns). Output of `list`/`status`/`send` is JSON; `read` is text.
@@ -81,12 +85,48 @@ open)
     remote "open('$ids', $all)"
     ;;
 new)
-    [ $# -ge 1 ] || die "usage: $prog new <provider> [task...]"
+    [ $# -ge 1 ] || die "usage: $prog new <provider> [--sub|--role <role>] [task...]"
     provider=$1
     shift
+    role=""
+    # Optional role flag right after the provider: --sub (shorthand for sub-agent)
+    # or --role <sub|master>. Anything else is the task prompt. A task with no role
+    # flag stays a master/root agent (the default everywhere).
+    case "${1:-}" in
+    --sub | -s)
+        role="sub"
+        shift
+        ;;
+    --role)
+        [ $# -ge 2 ] || die "usage: $prog new <provider> --role <sub|master> [task...]"
+        role=$2
+        shift 2
+        ;;
+    esac
     enc=""
     [ $# -ge 1 ] && enc=$(b64 "$*")
-    remote "new('$provider', '$enc')"
+    remote "new('$provider', '$enc', '$role')"
+    ;;
+role)
+    # role <ref> <sub|master>  → (re)tag an existing task's orchestration role.
+    # master|root|"" clears the mark; the change shows in the tabpage title + list.
+    [ $# -ge 2 ] || die "usage: $prog role <ref> <sub|master>"
+    remote "set_role('$1', '$2')"
+    ;;
+dispose)
+    # dispose <ref>            → stop + REMOVE one task from the Overseer list
+    # dispose --idle [sid]     → dispose ALL idle tasks; optional sid to EXCLUDE
+    case "${1:-}" in
+    --idle | -i)
+        remote "dispose_idle('${2:-}')"
+        ;;
+    "")
+        die "usage: $prog dispose <ref> | dispose --idle [exclude-session-id]"
+        ;;
+    *)
+        remote "dispose('$1')"
+        ;;
+    esac
     ;;
 state)
     [ $# -ge 1 ] || die "usage: $prog state <ref>"
@@ -157,9 +197,9 @@ watch)
     fi
     ;;
 -h | --help | help)
-    sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
     ;;
 *)
-    die "unknown subcommand: $cmd (list|status|read|state|send|send-nl|answer|choose|wait|watch|open|new)"
+    die "unknown subcommand: $cmd (list|status|read|state|send|send-nl|answer|choose|wait|watch|open|new|role|dispose)"
     ;;
 esac
