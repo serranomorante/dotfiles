@@ -104,8 +104,7 @@
   ansible.builtin.systemd_service:
     scope: user
     name: system-spike-notify.service
-    state: restarted
-    enabled: true
+    enabled: false
     masked: false
     daemon_reload: true
 
