@@ -1,5 +1,5 @@
 layout stack
 
-launch --title base-title
+launch --title ""
 
 focus_tab 0
