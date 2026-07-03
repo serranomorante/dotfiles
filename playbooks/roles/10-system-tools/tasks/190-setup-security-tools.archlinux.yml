@@ -198,7 +198,7 @@
 - name: "[archlinux] Setup security tools: prompt for new kwallet passwords"
   ansible.builtin.command:
     argv:
-      - "{{ ansible_user_dir }}/bin/setup-kwallet"
+      - "{{ ansible_facts.user_dir }}/bin/setup-kwallet"
   register: var_setup_kwallet_prompt
   changed_when: "'Saved [' in var_setup_kwallet_prompt.stdout"
   failed_when: false

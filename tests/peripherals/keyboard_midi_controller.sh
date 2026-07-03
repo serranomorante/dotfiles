@@ -146,7 +146,7 @@ keyboard-midi-controller-keyd-template-check)
     }
     rendered="${DOTFILES_TEST_TMP}/keyd-default.conf"
     keyd_binary="$(keyd_check_binary)"
-    ansible localhost -m ansible.builtin.template -a "src=${keyd_template} dest=${rendered} mode=0644" -e "@${peripherals_vars}" -e '{"ansible_user_uid":1000,"ansible_facts":{"env":{"USER":"aaaa","HOME":"/home/aaaa"}}}' >/dev/null
+    ansible localhost -m ansible.builtin.template -a "src=${keyd_template} dest=${rendered} mode=0644" -e "@${peripherals_vars}" -e '{"ansible_facts":{"user_uid":1000,"env":{"USER":"aaaa","HOME":"/home/aaaa"}}}' >/dev/null
     "$keyd_binary" check "$rendered"
     ;;
 vim-register-clipboard-keyd-template-contract)
