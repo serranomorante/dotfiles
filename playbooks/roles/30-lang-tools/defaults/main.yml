@@ -63,7 +63,7 @@ node_html_npm_packages:
 node_markdown_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/note-taking-tools/utilities/.npm"
 node_markdown_npm_packages:
   - name: "@mermaid-js/mermaid-cli"
-    version: 11.15.0
+    version: 11.16.0
     bins:
       - mmdc
   - name: mermaid-filter
