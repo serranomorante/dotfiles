@@ -35,7 +35,7 @@ node_dependency_update_node_bin_dir: "{{ node_volta_home }}/tools/image/node/{{ 
 node_dependency_update_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/dependency-update-tools/node-{{ node_dependency_update_node_version }}/.npm"
 node_dependency_update_npm_packages:
   - name: renovate
-    version: 43.249.0
+    version: 43.249.3
     bins:
       - renovate
 node_dependency_update_github_token_keyring:
