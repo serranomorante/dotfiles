@@ -1944,7 +1944,7 @@ local function start_shell_fence_task(overseer, command_lines, lang, first_line,
 
   local components = {
     "on_exit_set_status",
-    "on_complete_notify",
+    { "on_complete_notify", system = "always" },
     { "on_complete_dispose", timeout = 1, statuses = { require("overseer.constants").STATUS.SUCCESS } },
   }
   if ansible_password ~= nil then
