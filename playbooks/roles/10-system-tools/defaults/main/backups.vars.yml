@@ -20,6 +20,7 @@ config_files_backup_env: # home folder only
   - ~/.config/REAPER
   - ~/data/work/cf/.gitconfig
   - ~/dotfiles/.gitconfig
+  - ~/.config/nnn/sessions
 pkm_backup_env:
   - ~/data/PKM
   - ~/.local/share/promnesia

@@ -62,4 +62,6 @@ if [ -z "${NNN_PREVIEWIMGPROG+x}" ] && [ "${TERM:-}" = "xterm-kitty" ] && comman
     export NNN_PREVIEWIMGPROG="chafa -f kitty --scale max --animate=off --clear"
 fi
 
-exec nnn -GJRHdaAog -Tt "$@"
+session_name="$PWD-${KITTY_NNN_INSTANCE_ROLE:-session}"
+
+exec nnn -SGJRHdaAog -s "$(systemd-escape -p $session_name)" -Tt "$@"

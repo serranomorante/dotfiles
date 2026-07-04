@@ -115,7 +115,7 @@ if [ "$#" -gt 0 ]; then
         --override app_id=kitty-nnn \
         --override kitty_override=allow_remote_control=socket-only \
         --override kitty_override="listen_on=unix:$socket_path" \
-        env KITTY_NNN_QUICK_ACCESS=1 KITTY_NNN_INSTANCE_GROUP="$instance_group" NNN_QUICK_ACCESS_TARGET="$target_file" nnn-with-defaults --open-in-nvim "$1"
+        env KITTY_NNN_INSTANCE_ROLE="$instance_role" KITTY_NNN_QUICK_ACCESS=1 KITTY_NNN_INSTANCE_GROUP="$instance_group" NNN_QUICK_ACCESS_TARGET="$target_file" nnn-with-defaults --open-in-nvim "$1"
     status=$?
     exit "$status"
 else
@@ -124,5 +124,5 @@ else
         --override app_id=kitty-nnn \
         --override kitty_override=allow_remote_control=socket-only \
         --override kitty_override="listen_on=unix:$socket_path" \
-        env KITTY_NNN_QUICK_ACCESS=1 KITTY_NNN_INSTANCE_GROUP="$instance_group" NNN_QUICK_ACCESS_TARGET="$target_file" nnn-with-defaults --open-in-nvim
+        env KITTY_NNN_INSTANCE_ROLE="$instance_role" KITTY_NNN_QUICK_ACCESS=1 KITTY_NNN_INSTANCE_GROUP="$instance_group" NNN_QUICK_ACCESS_TARGET="$target_file" nnn-with-defaults --open-in-nvim
 fi
