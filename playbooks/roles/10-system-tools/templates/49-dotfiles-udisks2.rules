@@ -1,0 +1,26 @@
+// {{ ansible_managed }}
+// Let the local, active desktop user mount, unmount, eject and power off
+// filesystems through udisks2 without a password prompt. This includes
+// unmounting volumes mounted by another tool (e.g. pmount under /media), so
+// nnn's nmount plugin can toggle them the same way the desktop file manager
+// does. Scoped to the filesystem/eject/power actions rather than the whole
+// udisks2 namespace, and only for local active sessions of this user.
+polkit.addRule(function(action, subject) {
+    var allowed = {
+        "org.freedesktop.udisks2.filesystem-mount": true,
+        "org.freedesktop.udisks2.filesystem-mount-system": true,
+        "org.freedesktop.udisks2.filesystem-mount-other-seat": true,
+        "org.freedesktop.udisks2.filesystem-unmount-others": true,
+        "org.freedesktop.udisks2.encrypted-unlock": true,
+        "org.freedesktop.udisks2.encrypted-unlock-system": true,
+        "org.freedesktop.udisks2.encrypted-unlock-other-seat": true,
+        "org.freedesktop.udisks2.encrypted-lock-others": true,
+        "org.freedesktop.udisks2.eject-media": true,
+        "org.freedesktop.udisks2.power-off-drive": true,
+    };
+    if (allowed[action.id] &&
+        subject.user == "{{ ansible_facts.env.USER }}" &&
+        subject.local && subject.active) {
+        return polkit.Result.YES;
+    }
+});

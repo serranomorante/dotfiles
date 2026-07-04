@@ -31,8 +31,17 @@ fi
 script_path=$(readlink -f -- "$0" 2>/dev/null || printf '%s\n' "$0")
 script_dir=$(CDPATH= cd -- "$(dirname -- "$script_path")" && pwd)
 
-default_nnn_plug="s:!bash -i*;p:preview-tui;l:cdto;f:!open_in_nvim nnn_search Find*;g:!open_in_nvim nnn_search Grep*"
-quick_access_cd_plug="c:!$script_dir/nnn-quick-access-cd*"
+NNN_PLUG_PREVIEW_TUI='p:preview-tui'                     # Opens a multimedia preview for the currently hovered file in nnn
+NNN_PLUG_FIND_IN_NVIM='f:!open_in_nvim nnn_search Find*' # Integrates with neovim to find files into the path that's currently hover in nnn
+NNN_PLUG_GREP_IN_NVIM='g:!open_in_nvim nnn_search Grep*' # Integrates with neovim to grep into the path that's currently hover in nnn
+# nnn only sets NNNLVL around its built-in spawn-shell, never for plugin-run
+# commands, so we export it ourselves (arithmetic treats unset as 0, and stays
+# nesting-aware when nnn is launched from within one of these subshells).
+NNN_PLUG_SYNC_SUBSHELL_PWD='s:!NNNLVL=$((NNNLVL+1)) bash -i*'                  # Opens a subshell inside nnn and syncs the pwd when you exit
+NNN_PLUG_CD_TO='l:cdto'                                                        # Directly change the pwd by pasting a path into the cdto input
+NNN_PLUG_QUICK_ACCESS_TERMINAL_PATH_SYNC='c:!$script_dir/nnn-quick-access-cd*' # Integrates with neovim to change the nnn pwd based on the current open file
+NNN_PLUG_NMOUNT='t:nmount'
+default_nnn_plug="$NNN_PLUG_SYNC_SUBSHELL_PWD;$NNN_PLUG_PREVIEW_TUI;$NNN_PLUG_CD_TO;$NNN_PLUG_FIND_IN_NVIM;$NNN_PLUG_GREP_IN_NVIM;$NNN_PLUG_NMOUNT"
 
 if [ -z "${NNN_PLUG+x}" ]; then
     export NNN_PLUG=$default_nnn_plug
@@ -41,7 +50,7 @@ fi
 if [ -n "${NNN_QUICK_ACCESS_TARGET:-}" ]; then
     case ";$NNN_PLUG;" in
     *";c:"*) ;;
-    *) export NNN_PLUG="$NNN_PLUG;$quick_access_cd_plug" ;;
+    *) export NNN_PLUG="$NNN_PLUG;$NNN_PLUG_QUICK_ACCESS_TERMINAL_PATH_SYNC" ;;
     esac
 fi
 

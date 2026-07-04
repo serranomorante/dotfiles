@@ -32,6 +32,8 @@
       - sshfs
       - poppler
       - udisks2
+      - e2fsprogs
+      - ntfs-3g
       - ueberzug
       - lowdown
       - fuse2
@@ -80,7 +82,7 @@
   loop:
     - src: ~/data/repos/nnn/plugins/preview-tui
       dest: ~/.config/nnn/plugins/preview-tui
-    - src: ~/data/repos/nnn/plugins/nmount
+    - src: ~/dotfiles/assets/scripts/nnn/nmount
       dest: ~/.config/nnn/plugins/nmount
     - src: ~/data/repos/nnn/plugins/umounttree
       dest: ~/.config/nnn/plugins/umounttree
@@ -103,3 +105,65 @@
       read -r dir
       printf "%s" "0c$dir" > "$NNN_PIPE"
     mode: "755"
+
+# Enforce persistent filesystem labels on connect. A udev rule matches the
+# configured UUIDs and hands off to dotfiles-fs-label@<uuid>.service, which
+# unmounts (if needed) and relabels the volume when its label drifted.
+- name: "[archlinux] Setup file manager: install fs-label helper"
+  become: true
+  ansible.builtin.copy:
+    src: ~/dotfiles/assets/scripts/storage/dotfiles-set-fs-label
+    dest: /usr/local/bin/dotfiles-set-fs-label
+    owner: root
+    mode: "755"
+
+- name: "[archlinux] Setup file manager: ensure fs-label config dir"
+  become: true
+  ansible.builtin.file:
+    path: /etc/dotfiles
+    state: directory
+    owner: root
+    mode: "755"
+
+- name: "[archlinux] Setup file manager: write fs-label config"
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/dotfiles/fs-labels.conf
+    owner: root
+    mode: "644"
+    content: |
+      # {{ ansible_managed }}
+      # Managed by 10-200 (arch_filesystem_autolabels). "<uuid> <label>" per line.
+      {% for entry in arch_filesystem_autolabels %}
+      {{ entry.uuid }} {{ entry.label }}
+      {% endfor %}
+
+- name: "[archlinux] Setup file manager: install fs-label service unit"
+  become: true
+  ansible.builtin.template:
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/services/dotfiles-fs-label@.service"
+    dest: /etc/systemd/system/dotfiles-fs-label@.service
+    owner: root
+    mode: "644"
+  notify: "10-system-tools : handler_reload_systemd"
+
+- name: "[archlinux] Setup file manager: install fs-label udev rule"
+  become: true
+  ansible.builtin.template:
+    src: 70-dotfiles-fs-label.rules
+    dest: /etc/udev/rules.d/70-dotfiles-fs-label.rules
+    owner: root
+    mode: "644"
+  notify: "10-system-tools : handler_reload_udev_rules"
+
+# Allow the local user to mount/unmount/eject via udisks2 without a password,
+# so the nmount plugin can toggle volumes (including pmount-created /media
+# mounts) the same way the desktop file manager does. polkitd auto-reloads
+# rules.d, so the rule takes effect on the next authorization check.
+- name: "[archlinux] Setup file manager: install udisks2 polkit rule"
+  become: true
+  ansible.builtin.template:
+    src: 49-dotfiles-udisks2.rules
+    dest: /etc/polkit-1/rules.d/49-dotfiles-udisks2.rules
+    owner: root
+    mode: "644"

@@ -121,7 +121,13 @@ if command -v nnn-with-defaults &>/dev/null; then
 fi
 
 PS1='[\u@\h \W]\$ '
-[ -n "$NNNLVL" ] && PS1="N$NNNLVL $PS1"
+if [ -n "$NNNLVL" ]; then
+    PS1="N$NNNLVL $PS1"
+    if command -v kitten &>/dev/null; then
+        kitten @ set-colors background='#111827' 2>/dev/null
+        trap 'kitten @ set-colors --reset 2>/dev/null' EXIT
+    fi
+fi
 
 export PATH="$PATH:$HOME/.local/share/yabridge"
 

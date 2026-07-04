@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+# On connect, hand off to dotfiles-fs-label@<uuid>.service so the configured
+# filesystem label is ensured (see assets/scripts/storage/dotfiles-set-fs-label).
+{% for entry in arch_filesystem_autolabels %}
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_FS_UUID}=="{{ entry.uuid }}", TAG+="systemd", ENV{SYSTEMD_WANTS}+="dotfiles-fs-label@{{ entry.uuid }}.service"
+{% endfor %}

@@ -1,0 +1,65 @@
+#!/usr/bin/env sh
+#
+# Purpose: Ensure the filesystem identified by a UUID carries its configured
+#          label. Idempotent: if the label already matches, it does nothing.
+#          ext* volumes must be unmounted to be relabeled, so any current
+#          mountpoints are unmounted first; a busy volume is left untouched.
+# Usage:   dotfiles-set-fs-label <fs-uuid>
+# Notes:   Runs as root from the udev-triggered dotfiles-fs-label@.service.
+#          The UUID -> label map is read from /etc/dotfiles/fs-labels.conf,
+#          one "<uuid> <label>" pair per line, installed by Ansible.
+
+set -eu
+
+uuid="${1:?usage: dotfiles-set-fs-label <fs-uuid>}"
+conf="${DOTFILES_FS_LABELS_CONF:-/etc/dotfiles/fs-labels.conf}"
+
+[ -r "$conf" ] || exit 0
+
+# Look up the desired label for this UUID.
+want=""
+while read -r conf_uuid conf_label _rest; do
+    case "$conf_uuid" in
+        ''|'#'*) continue ;;
+    esac
+    if [ "$conf_uuid" = "$uuid" ]; then
+        want="$conf_label"
+        break
+    fi
+done < "$conf"
+
+# UUID not configured: nothing to do.
+[ -n "$want" ] || exit 0
+
+# Resolve the current device node for the UUID.
+dev="$(blkid -U "$uuid" 2>/dev/null || true)"
+[ -n "$dev" ] || exit 0
+
+# Already labeled as desired: idempotent no-op.
+cur="$(blkid -o value -s LABEL "$dev" 2>/dev/null || true)"
+[ "$cur" = "$want" ] && exit 0
+
+fstype="$(blkid -o value -s TYPE "$dev" 2>/dev/null || true)"
+
+# Unmount every mountpoint before relabeling. Do not force: if the volume is
+# busy the umount fails, we detect it below and retry on the next connect
+# rather than risk data loss.
+lsblk -nro MOUNTPOINTS "$dev" 2>/dev/null | sed "/^$/d" | while read -r mp; do
+    umount "$mp" 2>/dev/null || true
+done
+
+if lsblk -nro MOUNTPOINTS "$dev" 2>/dev/null | grep -q '[^[:space:]]'; then
+    echo "dotfiles-set-fs-label: $dev still mounted, skipping relabel" >&2
+    exit 0
+fi
+
+case "$fstype" in
+    ext2|ext3|ext4)
+        e2label "$dev" "$want"
+        echo "dotfiles-set-fs-label: set label '$want' on $dev ($fstype)" >&2
+        ;;
+    *)
+        echo "dotfiles-set-fs-label: unsupported fstype '$fstype' on $dev, skipping" >&2
+        exit 0
+        ;;
+esac

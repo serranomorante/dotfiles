@@ -86,6 +86,12 @@ arch_wine_prefixes:
     architecture: win64
   - "{{ arch_gather_wine_setup }}"
 
+# Filesystems whose label is enforced on connect by dotfiles-fs-label@.service.
+# Match is by UUID; the volume is unmounted (if needed) before relabeling.
+arch_filesystem_autolabels:
+  - uuid: 3dc52ee3-d7b3-4eb0-86aa-8237ca5c0ad7
+    label: dev4
+
 arch_ansible_long_retries_config:
   delay_n: 5
   retries_n: 10000

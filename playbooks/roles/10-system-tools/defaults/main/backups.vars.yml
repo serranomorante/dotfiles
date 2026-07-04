@@ -1,7 +1,7 @@
 ---
 arch_external_dev2: Data
 arch_external_dev3: TOSHIBA EXT
-arch_external_dev4: 3dc52ee3-d7b3-4eb0-86aa-8237ca5c0ad7
+arch_external_dev4: dev4
 # backup files
 config_files_backup_env: # home folder only
   - ~/.local/share/nvim/trailblazer

@@ -55,6 +55,11 @@
   ansible.builtin.command: systemctl --user daemon-reload
   changed_when: false
 
+- name: handler_reload_systemd
+  become: true
+  ansible.builtin.command: systemctl daemon-reload
+  changed_when: false
+
 - name: handler_sync_yabridge_plugins
   ansible.builtin.command: yabridgectl sync --prune
   changed_when: true

@@ -23,7 +23,7 @@ try:
 except Exception:
     pass
 
-GOOGLE_TAKEOUT_PATH = Path("/run/media/aaaa/3dc52ee3-d7b3-4eb0-86aa-8237ca5c0ad7/data/PKM/takeouts")
+GOOGLE_TAKEOUT_PATH = Path("/run/media/aaaa/dev4/data/PKM/takeouts")
 
 
 class browser:
