@@ -39,10 +39,6 @@
       "toolbar_pin": "force_pinned",
       "toolbar_state": "force_shown"
     },
-    "{{ extension_monolith }}": {
-      "toolbar_pin": "force_pinned",
-      "toolbar_state": "force_shown"
-    },
     "{{ local_hypothesis_extension }}": {
       "toolbar_pin": "force_pinned",
       "toolbar_state": "force_shown",

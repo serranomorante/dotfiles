@@ -305,8 +305,6 @@
         done
       - sh
       - "{{ extension_floccus }}"
-      - "{{ extension_chrome_regex_search }}"
-      - "{{ extension_monolith }}"
   changed_when: false
 
 - name: "[archlinux] Setup browser tools: copy brave desktop file to user directory"
