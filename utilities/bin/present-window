@@ -1,7 +1,9 @@
 #!/usr/bin/env sh
 # Purpose: Mirror selected existing X11 windows through x11vnc and noVNC.
-# Usage: present-window [toggle|start|stop|open|status|add|remove|toggle-window|clear|select] [WINDOWID]
+# Usage: present-window [toggle|start|stop|open|status|add|remove|toggle-window|clear|select|desktop] [WINDOWID]
 # Notes: The noVNC tab follows the focused window only when that window is in the selected set.
+#        "desktop" bypasses the window filter and mirrors the whole screen (all
+#        windows), reusing the same quality knobs (profile/scale/wait/defer).
 
 set -eu
 
@@ -79,7 +81,7 @@ die() {
 }
 
 usage() {
-    printf '%s\n' 'usage: present-window [toggle|start|stop|open|status|add|remove|toggle-window|clear|select] [WINDOWID]'
+    printf '%s\n' 'usage: present-window [toggle|start|stop|open|status|add|remove|toggle-window|clear|select|desktop] [WINDOWID]'
 }
 
 need_command() {
@@ -435,6 +437,25 @@ stop_server() {
     rm -f "$pid_file" "$current_target_file"
 }
 
+server_capture_mode() {
+    # A server running in desktop mode records "desktop" as its current target;
+    # window mode records a window id or "none" (or leaves the file absent).
+    if [ "$(cat "$current_target_file" 2>/dev/null || printf '')" = desktop ]; then
+        printf '%s\n' desktop
+    else
+        printf '%s\n' window
+    fi
+}
+
+ensure_capture_mode() {
+    # x11vnc is spawned with the capture mode fixed at server start, so switching
+    # between "window" and "desktop" requires restarting the server.
+    desired="$1"
+    if running && [ "$(server_capture_mode)" != "$desired" ]; then
+        stop_server
+    fi
+}
+
 unmark_window_id() {
     mkdir -p "$state_dir"
     touch "$windows_file"
@@ -446,6 +467,8 @@ unmark_window_id() {
 add_window() {
     window_id="$(resolve_window_id "${1:-active}")"
     validate_window "$window_id"
+    capture_mode=window
+    ensure_capture_mode window
     mkdir -p "$state_dir"
     touch "$windows_file"
     already_marked=0
@@ -491,10 +514,22 @@ clear_windows() {
     printf 'cleared\n'
 }
 
+present_desktop() {
+    should_open="${1:-1}"
+    # Bypass the window filter: mirror the whole screen (all windows). Quality
+    # knobs (profile/scale/wait/defer) still apply via start_x11vnc.
+    capture_mode=desktop
+    ensure_capture_mode desktop
+    if ! start_server "$should_open"; then
+        die "desktop mirror did not start"
+    fi
+    printf 'desktop url=%s\n' "$url"
+}
+
 status_server() {
     if running; then
         target="$(cat "$current_target_file" 2>/dev/null || printf 'none')"
-        printf 'running url=%s target=%s bind=%s web_port=%s vnc_port=%s profile=%s mode=%s\n' "$url" "$target" "$bind_host" "$port" "$vnc_port" "$profile" "$capture_mode"
+        printf 'running url=%s target=%s bind=%s web_port=%s vnc_port=%s profile=%s mode=%s\n' "$url" "$target" "$bind_host" "$port" "$vnc_port" "$profile" "$(server_capture_mode)"
     else
         printf 'stopped url=%s\n' "$url"
     fi
@@ -538,6 +573,9 @@ clear)
     ;;
 select)
     add_window select
+    ;;
+desktop)
+    present_desktop 1
     ;;
 server)
     server_main
