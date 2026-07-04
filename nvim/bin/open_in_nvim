@@ -82,6 +82,7 @@ fi
 
 nvim_center_view='vim.cmd.normal({ "zz", bang = true })'
 nvim_close_term_win="if vim.bo.buftype == 'terminal' then pcall(vim.api.nvim_win_close, 0, false) end"
+nvim_force_newtab="if vim.list_contains({'nofile', 'nowrite'}, vim.bo.buftype) then pcall(vim.cmd.tabedit) end"
 nvim_edit="vim.cmd.edit({ [[$1]], mods = { emsg_silent = true }})" # don't use `nvr --remote` because it doesn't respect shortmess
 
 ex_command_arg() {
@@ -99,7 +100,7 @@ nnn_search)
     nvr --servername "$servername" --nostart -c "NNNSearch $1 $PWD/$nnn"
     ;;
 nnn_explorer)
-    nvr --servername "$servername" --nostart -c "lua $nvim_close_term_win; $nvim_edit"
+    nvr --servername "$servername" --nostart -c "lua $nvim_force_newtab; $nvim_close_term_win; $nvim_edit"
     ;;
 git_editor)
     nvr --servername "$servername" --nostart --remote-tab-wait-silent "$@"
@@ -107,18 +108,18 @@ git_editor)
 lazygit_edit)
     # exec >~/open-in-nvim.out 2>&1
     # echo "$1"
-    nvr --servername "$servername" --nostart -c "lua $nvim_close_term_win; $nvim_edit"
+    nvr --servername "$servername" --nostart -c "lua $nvim_force_newtab; $nvim_close_term_win; $nvim_edit"
     ;;
 lazygit_edit_at_line)
     # exec >~/open-in-nvim.out 2>&1
     # echo "$1"
-    nvr --servername "$servername" --nostart -cc "lua $nvim_close_term_win; $nvim_edit; $nvim_center_view" -c "$2"
+    nvr --servername "$servername" --nostart -cc "lua $nvim_force_newtab; $nvim_close_term_win; $nvim_edit; $nvim_center_view" -c "$2"
     ;;
 lazygit_edit_at_line_and_wait)
     nvr --servername "$servername" --nostart --remote-wait "$1" -c "$2"
     ;;
 lazygit_open)
-    nvr --servername "$servername" --nostart -c "lua $nvim_close_term_win; $nvim_edit"
+    nvr --servername "$servername" --nostart -c "lua $nvim_force_newtab; $nvim_close_term_win; $nvim_edit"
     ;;
 lazygit_open_dir_in_editor)
     nvr --servername "$servername" --nostart "$1"
@@ -127,28 +128,28 @@ lazygit_compare_branch)
     nvr --servername "$servername" --nostart -c "DiffviewFileHistory --range=HEAD...$1 --right-only --no-merges"
     ;;
 lazygit_open_merge_tool)
-    nvr --servername "$servername" --nostart -cc "lua $nvim_close_term_win; $nvim_edit" -c "DiffviewOpen"
+    nvr --servername "$servername" --nostart -cc "lua $nvim_force_newtab; $nvim_close_term_win; $nvim_edit" -c "DiffviewOpen"
     ;;
 lazygit_open_difftool)
-    nvr --servername "$servername" --nostart -cc "lua $nvim_close_term_win; $nvim_edit" -c "DiffviewOpen"
+    nvr --servername "$servername" --nostart -cc "lua $nvim_force_newtab; $nvim_close_term_win; $nvim_edit" -c "DiffviewOpen"
     ;;
 lazygit_diff_against_parent)
     nvr --servername "$servername" --nostart -c "DiffviewOpen $1^!"
     ;;
 lazygit_diff_with_local_copy)
-    nvr --servername "$servername" --nostart -cc "lua $nvim_close_term_win" -c "DiffviewOpen $2 -- %"
+    nvr --servername "$servername" --nostart -cc "lua $nvim_force_newtab; $nvim_close_term_win" -c "DiffviewOpen $2 -- %"
     ;;
 kitty_edit)
-    nvr --servername "$servername" --nostart -cc "lua $nvim_edit"
+    nvr --servername "$servername" --nostart -cc "lua $nvim_force_newtab; $nvim_edit"
     ;;
 kitty_edit_at_line)
-    nvr --servername "$servername" --nostart -cc "lua $nvim_edit; $nvim_center_view" -c "$2"
+    nvr --servername "$servername" --nostart -cc "lua $nvim_force_newtab; $nvim_edit; $nvim_center_view" -c "$2"
     ;;
 kitty_simple_edit)
-    nvr --servername "$servername" --nostart -cc "lua $nvim_edit"
+    nvr --servername "$servername" --nostart -cc "lua $nvim_force_newtab; $nvim_edit"
     ;;
 kitty_simple_edit_at_line)
-    nvr --servername "$servername" --nostart -cc "lua $nvim_edit; $nvim_center_view" -c "$2"
+    nvr --servername "$servername" --nostart -cc "lua $nvim_force_newtab; $nvim_edit; $nvim_center_view" -c "$2"
     ;;
 agent_conversation)
     agent_id=$(ex_command_arg "$1")
@@ -156,7 +157,7 @@ agent_conversation)
     ;;
 goto_foam_block_by_id)
     block_id=$(ex_command_arg "$1")
-    nvr --servername "$servername" --nostart -c "lua $nvim_close_term_win" -c "GoToFoamBlockById $block_id"
+    nvr --servername "$servername" --nostart -c "lua $nvim_force_newtab; $nvim_close_term_win" -c "GoToFoamBlockById $block_id"
     ;;
 *)
     if [ -n "$app" ]; then
