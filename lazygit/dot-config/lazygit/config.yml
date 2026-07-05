@@ -5,6 +5,7 @@ gui:
   expandedSidePanelWeight: 5
   skipRewordInEditorWarning: true
   showDivergenceFromBaseBranch: "arrowAndNumber"
+  commitAuthorLongLength: 2
   filterMode: "fuzzy"
   # setting next option to false helps with redraw issues inside neovim builtin terminal
   showBottomLine: false
