@@ -39,7 +39,7 @@ NNN_PLUG_GREP_IN_NVIM='g:!open_in_nvim nnn_search Grep*' # Integrates with neovi
 # nesting-aware when nnn is launched from within one of these subshells).
 NNN_PLUG_SYNC_SUBSHELL_PWD='s:!NNNLVL=$((NNNLVL+1)) bash -i*'                  # Opens a subshell inside nnn and syncs the pwd when you exit
 NNN_PLUG_CD_TO='l:cdto'                                                        # Directly change the pwd by pasting a path into the cdto input
-NNN_PLUG_QUICK_ACCESS_TERMINAL_PATH_SYNC='c:!$script_dir/nnn-quick-access-cd*' # Integrates with neovim to change the nnn pwd based on the current open file
+NNN_PLUG_QUICK_ACCESS_TERMINAL_PATH_SYNC="c:!$script_dir/nnn-quick-access-cd*" # Integrates with neovim to change the nnn pwd based on the current open file
 NNN_PLUG_NMOUNT='t:nmount'
 default_nnn_plug="$NNN_PLUG_SYNC_SUBSHELL_PWD;$NNN_PLUG_PREVIEW_TUI;$NNN_PLUG_CD_TO;$NNN_PLUG_FIND_IN_NVIM;$NNN_PLUG_GREP_IN_NVIM;$NNN_PLUG_NMOUNT"
 
