@@ -11,7 +11,7 @@ local AGENT_SESSION_UPDATED_AT_METADATA = "agent_session_updated_at"
 -- the task is a top-level ("master"/"root") agent. Kept as a plain string so it
 -- round-trips over the agent-tasks RPC bridge like the other metadata keys.
 local AGENT_ROLE_METADATA = "agent_role"
-local SESSION_CACHE_VERSION = 1
+local SESSION_CACHE_VERSION = 2
 local SESSION_CACHE_NAMESPACE = "nvim"
 local SESSION_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
 local SESSION_CACHE_GC_PAYLOAD_BYTES = 1024 * 1024
@@ -356,6 +356,7 @@ end
 ---@field title string?
 ---@field path string
 ---@field originator string?
+---@field thread_source string?
 
 ---@param sessions any
 ---@return AgentStoredSession[]
@@ -375,6 +376,7 @@ local function valid_sessions(sessions)
       and type(session.timestamp) == "string"
       and type(session.path) == "string"
       and (session.originator == nil or type(session.originator) == "string")
+      and (session.thread_source == nil or session.thread_source == "user")
       and (session.title == nil or type(session.title) == "string")
     then
       session.title = normalized_session_title(session.title)

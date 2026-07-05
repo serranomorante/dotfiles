@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	version          = 1
+	version          = 2
 	sessionReadBytes = 512 * 1024
 	titleMaxRunes    = 200
 )
@@ -59,14 +59,15 @@ type providerDefaults struct {
 }
 
 type session struct {
-	Provider   string `json:"provider"`
-	Path       string `json:"path"`
-	ID         string `json:"id,omitempty"`
-	CWD        string `json:"cwd,omitempty"`
-	Timestamp  string `json:"timestamp,omitempty"`
-	Originator string `json:"originator,omitempty"`
-	Title      string `json:"title,omitempty"`
-	UpdatedAt  string `json:"updated_at,omitempty"`
+	Provider     string `json:"provider"`
+	Path         string `json:"path"`
+	ID           string `json:"id,omitempty"`
+	CWD          string `json:"cwd,omitempty"`
+	Timestamp    string `json:"timestamp,omitempty"`
+	Originator   string `json:"originator,omitempty"`
+	ThreadSource string `json:"thread_source,omitempty"`
+	Title        string `json:"title,omitempty"`
+	UpdatedAt    string `json:"updated_at,omitempty"`
 }
 
 type refreshPayload struct {
@@ -521,6 +522,9 @@ func parseCodexSession(path string, cwd string) *session {
 			}
 			if originator, ok := stringValue(payload["originator"]); ok {
 				result.Originator = originator
+			}
+			if threadSource, ok := stringValue(payload["thread_source"]); ok {
+				result.ThreadSource = threadSource
 			}
 		}
 
