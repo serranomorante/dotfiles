@@ -10,12 +10,16 @@
 #        agent-tasks choose <ref> <n>             # select option N in the child's numbered menu (then Enter)
 #        agent-tasks wait <ref> [--until any|idle|choice|commit] [--worktree P] [--timeout s] [--interval s]
 #                                                 # shell-side poll of `state` (never blocks Neovim); prints state JSON on fire
+#        agent-tasks reconcile                    # reopen missing Overseer tasks for live tmux agent sessions
+#        agent-tasks resize-tmux                  # resize all tmux agent sessions to the current Neovim geometry
 #        agent-tasks open [--all|-a] <session-id...>  # open session(s) by id (--all bypasses the cwd filter)
 #        agent-tasks new <provider> [--sub|--role <role>] [task...]  # spawn a new agent session; provider: codex, claude, gemini
 #                                                 # --sub marks it as a sub-agent; default = master/root
 #        agent-tasks role <ref> <sub|master>      # (re)tag an existing task's role (master|root clears the sub mark)
 #        agent-tasks dispose <ref>                # stop + REMOVE one task from the Overseer list
 #        agent-tasks dispose --idle [exclude-sid] # dispose ALL idle tasks (optionally excluding one session id)
+#        agent-tasks dispose-kill <ref>           # stop + REMOVE one task and kill its tmux session
+#        agent-tasks dispose-pending              # kill tmux sessions that still have only a pending id
 # Notes: <ref> = session-id, session-id prefix, overseer numeric id, or unique name substring.
 #        The Neovim server socket is read from $AGENT_TASKS_NVIM, else $NVIM (set by Neovim
 #        inside every terminal it owns). Output of `list`/`status`/`send` is JSON; `read` is text.
@@ -40,7 +44,7 @@ command -v nvim >/dev/null 2>&1 || die "nvim not found in PATH"
 # loader index yet (file added after startup), reset the loader once and retry.
 remote() {
     expr="(function() package.loaded['$mod']=nil local ok,m=pcall(require,'$mod') if not ok then pcall(function() if vim.loader then vim.loader.reset() end end) m=require('$mod') end return m.$1 end)()"
-    nvim --server "$sock" --remote-expr "luaeval(\"$expr\")"
+    env -u BASH_FUNC_nvim%% nvim --server "$sock" --remote-expr "luaeval(\"$expr\")"
 }
 
 b64() {
@@ -83,6 +87,12 @@ open)
     [ $# -ge 1 ] || die "usage: $prog open [--all|-a] <session-id> [session-id...]"
     ids=$(printf '%s,' "$@" | sed 's/,$//')
     remote "open('$ids', $all)"
+    ;;
+reconcile)
+    remote "reconcile()"
+    ;;
+resize-tmux)
+    remote "resize_tmux_sessions()"
     ;;
 new)
     [ $# -ge 1 ] || die "usage: $prog new <provider> [--sub|--role <role>] [task...]"
@@ -127,6 +137,13 @@ dispose)
         remote "dispose('$1')"
         ;;
     esac
+    ;;
+dispose-kill)
+    [ $# -ge 1 ] || die "usage: $prog dispose-kill <ref>"
+    remote "dispose_and_kill_tmux('$1')"
+    ;;
+dispose-pending)
+    remote "dispose_pending_tmux()"
     ;;
 state)
     [ $# -ge 1 ] || die "usage: $prog state <ref>"
@@ -197,9 +214,9 @@ watch)
     fi
     ;;
 -h | --help | help)
-    sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
     ;;
 *)
-    die "unknown subcommand: $cmd (list|status|read|state|send|send-nl|answer|choose|wait|watch|open|new|role|dispose)"
+    die "unknown subcommand: $cmd (list|status|read|state|send|send-nl|answer|choose|wait|watch|open|reconcile|resize-tmux|new|role|dispose|dispose-kill|dispose-pending)"
     ;;
 esac

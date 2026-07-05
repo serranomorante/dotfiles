@@ -22,6 +22,11 @@ set -euo pipefail
 # dotfiles-test-case: overseer-output-repair-first-alternate-toggle
 # dotfiles-test-case: overseer-chained-picker-open-output-keeps-alternate-buffer
 # dotfiles-test-case: codex-new-visual-selection-pastes-snippet
+# dotfiles-test-case: codex-new-renames-pending-tmux-session-after-session-id
+# dotfiles-test-case: codex-resume-ignores-cached-pending-tmux-session
+# dotfiles-test-case: agent-tasks-dispose-kills-tmux-session
+# dotfiles-test-case: overseer-actions-include-dispose-and-kill-tmux
+# dotfiles-test-case: agent-tasks-reconcile-opens-missing-tmux-sessions
 
 # Purpose: Guard the agent-session terminal behavior debugged around Overseer output buffers.
 
@@ -881,6 +886,420 @@ SH
         '  for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
         '    pcall(function() task:dispose(true) end)' \
         '  end' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua_file "$lua_file"
+    ;;
+codex-new-renames-pending-tmux-session-after-session-id)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    mkdir -p "$fake_bin"
+    cat >"${fake_bin}/cachectl" <<'SH'
+#!/bin/sh
+set -eu
+
+case "$1" in
+get)
+    exit 1
+    ;;
+set)
+    cat >/dev/null
+    exit 0
+    ;;
+*)
+    exit 0
+    ;;
+esac
+SH
+    cat >"${fake_bin}/agent-session-store" <<'SH'
+#!/bin/sh
+set -eu
+
+provider=
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --provider)
+        provider=$2
+        shift 2
+        ;;
+    ids)
+        printf '{"version":2,"provider":"%s","ids":[]}\n' "${provider:-codex}"
+        exit 0
+        ;;
+    watch-new)
+        printf '{"version":2,"provider":"%s","event":"session","session":{"provider":"%s","path":"%s/session.jsonl","id":"renamed-session","cwd":"%s","timestamp":"2026-07-07T10:34:15Z","updated_at":"2026-07-07T10:35:00Z","title":"renamed session"}}\n' "${provider:-codex}" "${provider:-codex}" "${DOTFILES_TEST_TMP}" "${DOTFILES_TEST_TMP}"
+        exit 0
+        ;;
+    *)
+        shift
+        ;;
+    esac
+done
+
+printf '{"version":2,"provider":"%s","sessions":[]}\n' "${provider:-codex}"
+SH
+    cat >"${fake_bin}/tmux" <<'SH'
+#!/bin/sh
+set -eu
+
+printf '%s\n' "$*" >>"${DOTFILES_TEST_TMP}/tmux-calls"
+
+case "$*" in
+*" new-session "*)
+    printf 'OpenAI Codex\n'
+    printf 'model: fake\n'
+    printf 'directory: %s\n' "$PWD"
+    sleep 10
+    ;;
+*)
+    exit 0
+    ;;
+esac
+SH
+    cat >"${fake_bin}/codex" <<'SH'
+#!/bin/sh
+set -eu
+
+printf 'OpenAI Codex\n'
+printf 'model: fake\n'
+printf 'directory: %s\n' "$PWD"
+sleep 10
+SH
+    chmod +x "${fake_bin}/cachectl" "${fake_bin}/agent-session-store" "${fake_bin}/tmux" "${fake_bin}/codex"
+
+    lua_file="${DOTFILES_TEST_TMP}/codex-new-renames-pending-tmux-session-after-session-id.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  local session_id = "renamed-session"' \
+        '  vim.env.PATH = vim.env.DOTFILES_TEST_TMP .. "/bin:" .. vim.env.PATH' \
+        '  vim.env.CACHECTL_BIN = vim.env.DOTFILES_TEST_TMP .. "/bin/cachectl"' \
+        '  vim.env.AGENT_SESSION_STORE_BIN = vim.env.DOTFILES_TEST_TMP .. "/bin/agent-session-store"' \
+        '  vim.opt.packpath:prepend("/home/aaaa/.local/share/nvim/site")' \
+        '  vim.cmd.packloadall()' \
+        '  require("overseer").setup({' \
+        '    component_aliases = { defaults_without_notification = { "on_exit_set_status" } },' \
+        '  })' \
+        '  require("serranomorante.plugins.jobs.agent_sessions").open_new("codex")' \
+        '  local matching_task' \
+        '  local linked = vim.wait(5000, function()' \
+        '    for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
+        '      local metadata = task.metadata or {}' \
+        '      if metadata.agent_session_id == session_id then' \
+        '        matching_task = task' \
+        '        return metadata.agent_tmux_session_name == "codex-" .. session_id' \
+        '      end' \
+        '    end' \
+        '    return false' \
+        '  end, 20)' \
+        '  assert(linked and matching_task, "new Codex task did not link to the real session id")' \
+        '  local tmux_calls = table.concat(vim.fn.readfile(vim.env.DOTFILES_TEST_TMP .. "/tmux-calls"), "\n")' \
+        '  assert(tmux_calls:find("new%-session.*%-s codex%-pending%-"), tmux_calls)' \
+        '  assert(tmux_calls:find("rename-session -t codex-pending-", 1, true), tmux_calls)' \
+        '  assert(tmux_calls:find(" codex-" .. session_id, 1, true), tmux_calls)' \
+        '  for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
+        '    pcall(function() task:dispose(true) end)' \
+        '  end' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua_file "$lua_file"
+    ;;
+codex-resume-ignores-cached-pending-tmux-session)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    mkdir -p "$fake_bin"
+    cat >"${fake_bin}/cachectl" <<'SH'
+#!/bin/sh
+set -eu
+
+case "$*" in
+*" get nvim agent-tmux-session-name-v1:codex:resume-pending-cache-session"*)
+    printf 'codex-pending-stale-placeholder\n'
+    ;;
+*)
+    exit 1
+    ;;
+esac
+SH
+    cat >"${fake_bin}/agent-session-store" <<'SH'
+#!/bin/sh
+set -eu
+
+provider=
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --provider)
+        provider=$2
+        shift 2
+        ;;
+    *)
+        shift
+        ;;
+    esac
+done
+
+case " ${provider} $* " in
+*" codex "*)
+    printf '{"version":2,"provider":"codex","sessions":[{"provider":"codex","path":"%s/session.jsonl","id":"resume-pending-cache-session","cwd":"%s","timestamp":"2026-07-07T10:34:15Z","updated_at":"2026-07-07T10:35:00Z","title":"pending cache session"}]}\n' "${DOTFILES_TEST_TMP}" "${DOTFILES_TEST_TMP}"
+    ;;
+*)
+    printf '{"version":2,"provider":"%s","sessions":[]}\n' "${provider:-claude}"
+    ;;
+esac
+SH
+    cat >"${fake_bin}/tmux" <<'SH'
+#!/bin/sh
+set -eu
+
+printf '%s\n' "$*" >>"${DOTFILES_TEST_TMP}/tmux-calls"
+
+case "$*" in
+*" has-session "*"codex-pending-stale-placeholder"*)
+    exit 0
+    ;;
+*" has-session "*)
+    exit 1
+    ;;
+*" new-session "*)
+    printf 'OpenAI Codex\n'
+    printf 'model: fake\n'
+    printf 'directory: %s\n' "$PWD"
+    sleep 10
+    ;;
+*)
+    exit 0
+    ;;
+esac
+SH
+    cat >"${fake_bin}/codex" <<'SH'
+#!/bin/sh
+set -eu
+
+printf 'OpenAI Codex\n'
+printf 'model: fake\n'
+printf 'directory: %s\n' "$PWD"
+sleep 10
+SH
+    chmod +x "${fake_bin}/cachectl" "${fake_bin}/agent-session-store" "${fake_bin}/tmux" "${fake_bin}/codex"
+
+    lua_file="${DOTFILES_TEST_TMP}/codex-resume-ignores-cached-pending-tmux-session.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  local session_id = "resume-pending-cache-session"' \
+        '  vim.env.PATH = vim.env.DOTFILES_TEST_TMP .. "/bin:" .. vim.env.PATH' \
+        '  vim.env.CACHECTL_BIN = vim.env.DOTFILES_TEST_TMP .. "/bin/cachectl"' \
+        '  vim.env.AGENT_SESSION_STORE_BIN = vim.env.DOTFILES_TEST_TMP .. "/bin/agent-session-store"' \
+        '  vim.opt.packpath:prepend("/home/aaaa/.local/share/nvim/site")' \
+        '  vim.cmd.packloadall()' \
+        '  require("overseer").setup({' \
+        '    component_aliases = { defaults_without_notification = { "on_exit_set_status" } },' \
+        '  })' \
+        '  require("serranomorante.plugins.jobs.agent_sessions").keys()' \
+        '  vim.cmd("AgentResumeById " .. session_id)' \
+        '  local matching_task' \
+        '  local running = vim.wait(5000, function()' \
+        '    for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
+        '      local metadata = task.metadata or {}' \
+        '      if metadata.agent_session_id == session_id then' \
+        '        matching_task = task' \
+        '        if task.status == require("overseer.constants").STATUS.RUNNING then return true end' \
+        '      end' \
+        '    end' \
+        '    return false' \
+        '  end, 20)' \
+        '  assert(running and matching_task, "resumed task did not start")' \
+        '  assert(matching_task.metadata.agent_tmux_session_name == "codex-" .. session_id, vim.inspect(matching_task.metadata))' \
+        '  local tmux_calls = table.concat(vim.fn.readfile(vim.env.DOTFILES_TEST_TMP .. "/tmux-calls"), "\n")' \
+        '  assert(tmux_calls:find("-s codex-" .. session_id, 1, true), tmux_calls)' \
+        '  assert(not tmux_calls:find("new-session.*codex%-pending%-stale%-placeholder"), tmux_calls)' \
+        '  for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
+        '    pcall(function() task:dispose(true) end)' \
+        '  end' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua_file "$lua_file"
+    ;;
+agent-tasks-dispose-kills-tmux-session)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    mkdir -p "$fake_bin"
+    cat >"${fake_bin}/tmux" <<'SH'
+#!/bin/sh
+set -eu
+
+printf '%s\n' "$*" >>"${DOTFILES_TEST_TMP}/dispose-tmux-calls"
+exit 0
+SH
+    chmod +x "${fake_bin}/tmux"
+
+    lua_file="${DOTFILES_TEST_TMP}/agent-tasks-dispose-kills-tmux-session.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  vim.env.PATH = vim.env.DOTFILES_TEST_TMP .. "/bin:" .. vim.env.PATH' \
+        '  local calls_path = vim.env.DOTFILES_TEST_TMP .. "/dispose-tmux-calls"' \
+        '  local wrapper = table.concat(vim.fn.readfile(vim.env.DOTFILES_TEST_ROOT .. "/utilities/bin/agent-tasks"), "\n")' \
+        '  assert(wrapper:find("dispose-kill", 1, true) ~= nil, "agent-tasks wrapper is missing dispose-kill")' \
+        '  assert(wrapper:find("dispose_and_kill_tmux", 1, true) ~= nil, "agent-tasks wrapper is missing dispose_and_kill_tmux")' \
+        '  local task = {' \
+        '    id = 44,' \
+        '    name = "codex disposable",' \
+        '    metadata = {' \
+        '      agent_provider = "codex",' \
+        '      agent_session_id = "close-session",' \
+        '      agent_tmux_session_name = "codex-close-session",' \
+        '    },' \
+        '    dispose = function()' \
+        '      local f = assert(io.open(calls_path, "a"))' \
+        '      f:write("dispose\n")' \
+        '      f:close()' \
+        '    end,' \
+        '  }' \
+        '  package.loaded["overseer"] = nil' \
+        '  package.preload["overseer"] = function()' \
+        '    return { list_tasks = function() return { task } end }' \
+        '  end' \
+        '  local agent_tasks = require("serranomorante.plugins.jobs.agent_tasks")' \
+        '  agent_tasks.setup_commands()' \
+        '  assert(vim.api.nvim_get_commands({}).AgentTaskDisposeAndKillTmux ~= nil, "AgentTaskDisposeAndKillTmux was not registered")' \
+        '  local result = vim.json.decode(agent_tasks.dispose_and_kill_tmux("close-session"))' \
+        '  assert(result.ok == true, vim.inspect(result))' \
+        '  assert(result.disposed == true, vim.inspect(result))' \
+        '  assert(result.tmux_killed == true, vim.inspect(result))' \
+        '  assert(result.tmux_session_name == "codex-close-session", vim.inspect(result))' \
+        '  local calls = table.concat(vim.fn.readfile(calls_path), "\n")' \
+        '  assert(calls == "dispose\n-L overseer kill-session -t codex-close-session", calls)' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua_file "$lua_file"
+    ;;
+overseer-actions-include-dispose-and-kill-tmux)
+    lua_file="${DOTFILES_TEST_TMP}/overseer-actions-include-dispose-and-kill-tmux.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  local captured' \
+        '  local run_ref' \
+        '  package.loaded["overseer"] = nil' \
+        '  package.preload["overseer"] = function()' \
+        '    return {' \
+        '      setup = function(cfg) captured = cfg end,' \
+        '      close = function() end,' \
+        '      open = function() end,' \
+        '      run_task = function() end,' \
+        '    }' \
+        '  end' \
+        '  package.loaded["overseer.constants"] = nil' \
+        '  package.preload["overseer.constants"] = function() return { STATUS = { RUNNING = "RUNNING", SUCCESS = "SUCCESS", FAILURE = "FAILURE" } } end' \
+        '  package.loaded["overseer.template.editor-tasks.TASK__open_markdown_preview"] = nil' \
+        '  package.preload["overseer.template.editor-tasks.TASK__open_markdown_preview"] = function() return { name = "open_markdown_preview" } end' \
+        '  package.loaded["serranomorante.utils"] = nil' \
+        '  package.preload["serranomorante.utils"] = function()' \
+        '    return {' \
+        '      attach_overseer_task_output_navigation = function() end,' \
+        '      close_window_on_exit_0 = function() end,' \
+        '      is_kitty_cwd_servername = function() return false end,' \
+        '    }' \
+        '  end' \
+        '  package.loaded["serranomorante.plugins.jobs.agent_sessions"] = nil' \
+        '  package.preload["serranomorante.plugins.jobs.agent_sessions"] = function() return { keys = function() end } end' \
+        '  package.loaded["serranomorante.plugins.jobs.agent_tasks"] = nil' \
+        '  package.preload["serranomorante.plugins.jobs.agent_tasks"] = function()' \
+        '    return {' \
+        '      setup_commands = function() end,' \
+        '      dispose_and_kill_tmux = function(ref) run_ref = ref end,' \
+        '      task_state = function() return "unknown" end,' \
+        '      task_role = function() return "master" end,' \
+        '    }' \
+        '  end' \
+        '  package.loaded["serranomorante.plugins.jobs.record_screen_actions"] = nil' \
+        '  package.preload["serranomorante.plugins.jobs.record_screen_actions"] = function()' \
+        '    return { is_record_screen_task = function() return false end, stop = function() end, actions = function() return {} end }' \
+        '  end' \
+        '  require("serranomorante.plugins.jobs.overseer").config()' \
+        '  assert(captured and captured.actions and captured.actions["dispose and kill tmux"], "dispose and kill tmux action was not registered")' \
+        '  local action = captured.actions["dispose and kill tmux"]' \
+        '  assert(action.desc == "Dispose the task and kill its tmux session", vim.inspect(action))' \
+        '  assert(action.condition({ metadata = {} }) == false, "action should be hidden without tmux metadata")' \
+        '  assert(action.condition({ metadata = { agent_tmux_session_name = "codex-close-session" } }) == true, "action should be visible for tmux-backed agent tasks")' \
+        '  action.run({ id = 44, metadata = { agent_tmux_session_name = "codex-close-session" } })' \
+        '  assert(run_ref == "44", tostring(run_ref))' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua_file "$lua_file"
+    ;;
+agent-tasks-reconcile-opens-missing-tmux-sessions)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    mkdir -p "$fake_bin"
+    cat >"${fake_bin}/tmux" <<'SH'
+#!/bin/sh
+set -eu
+
+case "$*" in
+*list-sessions*)
+    printf '%s\n' \
+        'codex-open-session' \
+        'claude-missing-session' \
+        'codex-pending-not-ready' \
+        'notes-not-an-agent'
+    ;;
+*)
+    exit 0
+    ;;
+esac
+SH
+    chmod +x "${fake_bin}/tmux"
+
+    lua_file="${DOTFILES_TEST_TMP}/agent-tasks-reconcile-opens-missing-tmux-sessions.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  vim.env.PATH = vim.env.DOTFILES_TEST_TMP .. "/bin:" .. vim.env.PATH' \
+        '  local existing_task = {' \
+        '    id = 11,' \
+        '    name = "codex existing",' \
+        '    metadata = {' \
+        '      agent_provider = "codex",' \
+        '      agent_session_id = "open-session",' \
+        '      agent_tmux_session_name = "codex-open-session",' \
+        '    },' \
+        '  }' \
+        '  package.loaded["overseer"] = nil' \
+        '  package.preload["overseer"] = function()' \
+        '    return { list_tasks = function() return { existing_task } end }' \
+        '  end' \
+        '  package.loaded["serranomorante.plugins.jobs.agent_sessions"] = nil' \
+        '  package.preload["serranomorante.plugins.jobs.agent_sessions"] = function()' \
+        '    return {' \
+        '      providers = {' \
+        '        codex = { name = "codex", sessions_dir = "/tmp/codex" },' \
+        '        claude = { name = "claude", sessions_dir = "/tmp/claude" },' \
+        '      },' \
+        '    }' \
+        '  end' \
+        '  local resumed = {}' \
+        '  vim.api.nvim_create_user_command("AgentResumeById", function(args)' \
+        '    table.insert(resumed, args.args)' \
+        '  end, { nargs = 1, force = true })' \
+        '  local agent_tasks = require("serranomorante.plugins.jobs.agent_tasks")' \
+        '  agent_tasks.setup_commands()' \
+        '  assert(vim.api.nvim_get_commands({}).AgentTasksReconcile ~= nil, "AgentTasksReconcile was not registered")' \
+        '  vim.cmd("AgentTasksReconcile")' \
+        '  assert(vim.wait(1000, function() return #resumed == 1 end, 10), "missing session was not resumed")' \
+        '  assert(resumed[1] == "missing-session", vim.inspect(resumed))' \
+        '  resumed = {}' \
+        '  local result = vim.json.decode(agent_tasks.reconcile())' \
+        '  assert(result.ok == true, vim.inspect(result))' \
+        '  assert(result.tmux_sessions == 2, vim.inspect(result))' \
+        '  assert(result.existing_count == 1, vim.inspect(result))' \
+        '  assert(result.opened_count == 1, vim.inspect(result))' \
+        '  assert(result.opened[1].provider == "claude", vim.inspect(result.opened))' \
+        '  assert(result.opened[1].session_id == "missing-session", vim.inspect(result.opened))' \
+        '  assert(vim.wait(1000, function() return #resumed == 1 end, 10), "missing session was not resumed")' \
+        '  assert(resumed[1] == "missing-session", vim.inspect(resumed))' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
         'local ok, err = xpcall(main, debug.traceback)' \

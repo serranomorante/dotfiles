@@ -5,6 +5,8 @@ local M = {}
 
 local AGENT_TASK_METADATA = "agent_session"
 local AGENT_PROVIDER_METADATA = "agent_provider"
+local AGENT_TMUX_SESSION_NAME_METADATA = "agent_tmux_session_name"
+local AGENT_TMUX_SERVER_NAME_FALLBACK = "overseer"
 local AGENT_TASK_PROMPT_MARKERS = {
   codex = "›",
   claude = "❯",
@@ -16,6 +18,34 @@ local AGENT_TASK_PROMPT_MARKERS = {
 local function agent_task_prompt_marker(provider_name)
   if type(provider_name) ~= "string" then return nil end
   return AGENT_TASK_PROMPT_MARKERS[provider_name] or nil
+end
+
+---@return string
+function M.agent_tmux_server_name()
+  if type(vim.v.servername) == "string" and vim.v.servername ~= "" then return vim.v.servername end
+  return AGENT_TMUX_SERVER_NAME_FALLBACK
+end
+
+---@param server_name string?
+function M.ensure_agent_tmux_socket_dirs(server_name)
+  server_name = server_name or M.agent_tmux_server_name()
+  if type(server_name) ~= "string" or server_name == "" then return end
+
+  local passwd = vim.uv.os_get_passwd and vim.uv.os_get_passwd(vim.env.USER or "")
+  local uid = passwd and passwd.uid or nil
+  if not uid then return end
+
+  local tmux_tmpdir = vim.env.TMUX_TMPDIR
+  if type(tmux_tmpdir) ~= "string" or tmux_tmpdir == "" then tmux_tmpdir = "/tmp" end
+
+  local socket_root = M.join_paths(tmux_tmpdir, ("tmux-%d"):format(uid))
+  local relative_name = server_name:gsub("^/", "")
+  if relative_name == "" then return end
+
+  local relative_dir = vim.fn.fnamemodify(relative_name, ":h")
+  if relative_dir == "." or relative_dir == "" then return end
+
+  vim.fn.mkdir(M.join_paths(socket_root, relative_dir), "p")
 end
 
 ---Writes a Grep/Find command into vim's command-line with
@@ -491,9 +521,11 @@ function M.wrap_overseer_args_with_tmux(cmd, opts)
   opts = opts or {}
   local cmd_is_shell = type(cmd) == "string"
   if cmd_is_shell then cmd = { cmd } end
+  local tmux_server_name = M.agent_tmux_server_name()
+  M.ensure_agent_tmux_socket_dirs(tmux_server_name)
   local args = {
-    "-L", -- use different tmux server for overseer tasks
-    "overseer",
+    "-L", -- use a tmux server namespaced by the current Neovim socket
+    tmux_server_name,
     "-f", -- use tmux config that disables statusbar
     vim.env.HOME .. "/.config/tmux/tmuxnvim.conf",
     "new-session",
@@ -502,7 +534,7 @@ function M.wrap_overseer_args_with_tmux(cmd, opts)
   if opts.include_binary then table.insert(args, 1, "tmux") end
   if opts.cwd then vim.list_extend(args, { "-c", M.wrap_in_single_quotes(opts.cwd) }) end
   if opts.session_name then
-    vim.list_extend(args, { "-s", M.wrap_in_single_quotes(opts.session_name .. vim.fn.fnameescape(vim.v.servername)) })
+    vim.list_extend(args, { "-s", M.wrap_in_single_quotes(opts.session_name .. vim.fn.fnameescape(tmux_server_name)) })
   end
   ---Delimite the command part (and add wait-for if required)
   table.insert(args, '"')
@@ -1423,8 +1455,15 @@ end
 local function overseer_task_for_buf(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   local task_id = vim.b[bufnr].overseer_task
-  if not task_id then return end
-  return require("overseer.task_list").get(task_id)
+  if task_id then return require("overseer.task_list").get(task_id) end
+
+  local ok, overseer = pcall(require, "overseer")
+  if not ok then return nil end
+  local tasks = overseer.list_tasks({
+    recent_first = true,
+    filter = function(task) return task:get_bufnr() == bufnr end,
+  })
+  return tasks[1]
 end
 
 local OVERSEER_TASK_OUTPUT_LABEL_MAX = 44
@@ -1541,6 +1580,140 @@ local function agent_task_output_searchable(task)
   return agent_task_prompt_marker(provider_name) ~= nil
 end
 
+---@param listchars string
+---@return string
+local function agent_task_output_listchars(listchars)
+  if type(listchars) ~= "string" or listchars == "" then return listchars end
+  if listchars:find("trail:[^,]*") then return listchars:gsub("trail:[^,]*", "trail: ") end
+  return listchars .. ",trail: "
+end
+
+---@param bufnr integer
+local function apply_agent_task_output_listchars(bufnr)
+  local task = overseer_task_for_buf(bufnr)
+  local metadata = task and task.metadata or nil
+  if type(metadata) ~= "table" or metadata[AGENT_TASK_METADATA] ~= true then return end
+
+  for _, winid in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_get_buf(winid) == bufnr then
+      vim.wo[winid].listchars = agent_task_output_listchars(vim.wo[winid].listchars)
+    end
+  end
+end
+
+---@param task overseer.Task?
+---@return string?
+function M.agent_task_tmux_target(task)
+  if not task then return nil end
+
+  local cmd_text = type(task.cmd) == "string" and task.cmd or ""
+  local tmux_server_name = M.agent_tmux_server_name()
+  local cmd_is_tmux = task.cmd == "tmux"
+    or (
+      cmd_text:find("tmux", 1, true) ~= nil
+      and (
+        cmd_text:find("-L " .. tmux_server_name, 1, true) ~= nil
+        or cmd_text:find('-L "' .. tmux_server_name .. '"', 1, true) ~= nil
+        or cmd_text:find("-L '" .. tmux_server_name .. "'", 1, true) ~= nil
+      )
+    )
+  if not cmd_is_tmux then return nil end
+
+  local metadata = task and task.metadata or nil
+  local target = type(metadata) == "table" and metadata[AGENT_TMUX_SESSION_NAME_METADATA] or nil
+  if type(target) == "string" and target ~= "" then return target end
+
+  if type(task.args) == "table" then
+    for index, arg in ipairs(task.args) do
+      if arg == "-s" then
+        local session_name = task.args[index + 1]
+        if type(session_name) == "string" and session_name ~= "" then return session_name end
+      end
+    end
+  end
+
+  return cmd_text:match("%s%-s%s+([^%s]+)")
+end
+
+---@param server_name string?
+---@param args string[]
+---@return string[]
+local function tmux_command(server_name, args)
+  local cmd = { "tmux" }
+  if type(server_name) == "string" and server_name ~= "" then vim.list_extend(cmd, { "-L", server_name }) end
+  vim.list_extend(cmd, args)
+  return cmd
+end
+
+---@param server_name string?
+---@param args string[]
+---@return boolean
+function M.run_tmux_command(server_name, args)
+  if vim.fn.executable("tmux") ~= 1 then return false end
+  vim.fn.system(tmux_command(server_name, args))
+  return vim.v.shell_error == 0
+end
+
+---@param args string[]
+---@return boolean
+local function run_agent_tmux_command(args) return M.run_tmux_command(M.agent_tmux_server_name(), args) end
+
+---@param target string
+---@return boolean
+local function enter_agent_tmux_copy_mode(target) return run_agent_tmux_command({ "copy-mode", "-t", target }) end
+
+---@param server_name string?
+---@param target string?
+---@return boolean?
+function M.tmux_pane_in_mode(server_name, target)
+  if type(target) ~= "string" or target == "" then return nil end
+  if vim.fn.executable("tmux") ~= 1 then return nil end
+
+  local result = vim.fn.system(tmux_command(server_name, { "display-message", "-p", "-t", target, "#{pane_in_mode}" }))
+  if vim.v.shell_error ~= 0 then return nil end
+  return vim.trim(result) == "1"
+end
+
+---@param task overseer.Task?
+---@return boolean
+function M.enter_agent_task_tmux_copy_mode(task)
+  task = task or overseer_task_for_buf()
+  local target = M.agent_task_tmux_target(task)
+  if not target then return false end
+  return enter_agent_tmux_copy_mode(target)
+end
+
+---@param task overseer.Task?
+---@return boolean
+function M.toggle_agent_task_tmux_copy_mode_or_terminal_normal(task)
+  task = task or overseer_task_for_buf()
+  local target = M.agent_task_tmux_target(task)
+  if not target then return false end
+
+  if M.tmux_pane_in_mode(M.agent_tmux_server_name(), target) then
+    stop_terminal_mode()
+    return true
+  end
+
+  return enter_agent_tmux_copy_mode(target)
+end
+
+---@param step integer
+---@return boolean
+function M.search_agent_task_tmux_prompt(step)
+  step = step or -1
+  local task = overseer_task_for_buf()
+  local target = M.agent_task_tmux_target(task)
+  if not target then return false end
+
+  local marker = agent_task_prompt_marker(task.metadata and task.metadata[AGENT_PROVIDER_METADATA] or nil)
+  if not marker then return false end
+
+  enter_agent_tmux_copy_mode(target)
+  local command = step < 0 and "search-backward" or "search-forward"
+  return run_agent_tmux_command({ "send-keys", "-t", target, "-X", command, marker })
+end
+
 ---@param step integer
 function M.search_agent_task_prompt(step)
   step = step or 1
@@ -1562,6 +1735,15 @@ local function terminal_agent_task_prompt_search_rhs(step)
   return ("<C-\\><C-n><Cmd>lua require('serranomorante.utils').search_agent_task_prompt(%d)<CR>"):format(step)
 end
 
+---@param step integer
+local function terminal_agent_task_tmux_prompt_search_rhs(step)
+  return ("<Cmd>lua require('serranomorante.utils').search_agent_task_tmux_prompt(%d)<CR>"):format(step)
+end
+
+local function terminal_agent_task_tmux_copy_mode_rhs()
+  return "<Cmd>lua require('serranomorante.utils').toggle_agent_task_tmux_copy_mode_or_terminal_normal()<CR>"
+end
+
 ---@param bufnr? integer
 function M.attach_overseer_task_output_navigation(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
@@ -1573,6 +1755,15 @@ function M.attach_overseer_task_output_navigation(bufnr)
     attach_overseer_task_output_dispose_cleanup(task)
   end
   vim.b[bufnr].overseer_output_navigation_attached = true
+  if task and not vim.b[bufnr].overseer_output_agent_listchars_attached then
+    apply_agent_task_output_listchars(bufnr)
+    vim.b[bufnr].overseer_output_agent_listchars_attached = true
+    vim.api.nvim_create_autocmd("BufWinEnter", {
+      desc = "Keep trail hidden in agent task outputs",
+      buffer = bufnr,
+      callback = function() apply_agent_task_output_listchars(bufnr) end,
+    })
+  end
 
   vim.keymap.set("n", "]o", function() M.open_adjacent_overseer_task_output(1) end, {
     buffer = bufnr,
@@ -1604,29 +1795,42 @@ function M.attach_overseer_task_output_navigation(bufnr)
     desc = "Overseer: previous task output",
   })
   if agent_task_output_searchable(task) then
-    vim.keymap.set("n", "<A-n>", function() M.search_agent_task_prompt(1) end, {
-      buffer = bufnr,
-      desc = "Overseer: next agent prompt",
-    })
-    vim.keymap.set("n", "<A-p>", function() M.search_agent_task_prompt(-1) end, {
-      buffer = bufnr,
-      desc = "Overseer: previous agent prompt",
-    })
-    vim.keymap.set("t", "<A-n>", terminal_agent_task_prompt_search_rhs(1), {
-      buffer = bufnr,
-      desc = "Overseer: next agent prompt",
-    })
-    vim.keymap.set("t", "<A-p>", terminal_agent_task_prompt_search_rhs(-1), {
-      buffer = bufnr,
-      desc = "Overseer: previous agent prompt",
-    })
+    if M.agent_task_tmux_target(task) then
+      vim.keymap.set("n", "<A-n>", function() M.search_agent_task_tmux_prompt(1) end, {
+        buffer = bufnr,
+        desc = "Overseer: next agent prompt in tmux",
+      })
+      vim.keymap.set("n", "<A-p>", function() M.search_agent_task_tmux_prompt(-1) end, {
+        buffer = bufnr,
+        desc = "Overseer: previous agent prompt in tmux",
+      })
+      vim.keymap.set("t", "<A-n>", terminal_agent_task_tmux_prompt_search_rhs(1), {
+        buffer = bufnr,
+        desc = "Overseer: next agent prompt in tmux",
+      })
+      vim.keymap.set("t", "<A-p>", terminal_agent_task_tmux_prompt_search_rhs(-1), {
+        buffer = bufnr,
+        desc = "Overseer: previous agent prompt in tmux",
+      })
+    else
+      vim.keymap.set("n", "<A-n>", function() M.search_agent_task_prompt(1) end, {
+        buffer = bufnr,
+        desc = "Overseer: next agent prompt",
+      })
+      vim.keymap.set("n", "<A-p>", function() M.search_agent_task_prompt(-1) end, {
+        buffer = bufnr,
+        desc = "Overseer: previous agent prompt",
+      })
+      vim.keymap.set("t", "<A-n>", terminal_agent_task_prompt_search_rhs(1), {
+        buffer = bufnr,
+        desc = "Overseer: next agent prompt",
+      })
+      vim.keymap.set("t", "<A-p>", terminal_agent_task_prompt_search_rhs(-1), {
+        buffer = bufnr,
+        desc = "Overseer: previous agent prompt",
+      })
+    end
   end
-  vim.keymap.set("t", "<C-g>", "<C-\\><C-n><Cmd>stopinsert<CR>", {
-    buffer = bufnr,
-    desc = "Exit terminal mode",
-    nowait = true,
-    silent = true,
-  })
   vim.keymap.set("t", "<A-j>", terminal_task_output_navigation_rhs(1), {
     buffer = bufnr,
     desc = "Overseer: next task output",

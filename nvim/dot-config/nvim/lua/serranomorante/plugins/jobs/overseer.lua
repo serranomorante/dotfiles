@@ -193,6 +193,17 @@ local function opts()
           end
         end,
       },
+      ["dispose and kill tmux"] = {
+        desc = "Dispose the task and kill its tmux session",
+        condition = function(task)
+          return type(task.metadata) == "table"
+            and type(task.metadata.agent_tmux_session_name) == "string"
+            and task.metadata.agent_tmux_session_name ~= ""
+        end,
+        run = function(task)
+          require("serranomorante.plugins.jobs.agent_tasks").dispose_and_kill_tmux(tostring(task.id))
+        end,
+      },
       ["close term window"] = {
         desc = "Close terminal window without killing process",
         condition = function(task) return task:get_bufnr() end,

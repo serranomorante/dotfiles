@@ -7,6 +7,7 @@ local AGENT_PROVIDER_METADATA = "agent_provider"
 local AGENT_SESSION_ID_METADATA = "agent_session_id"
 local AGENT_SESSION_PATH_METADATA = "agent_session_path"
 local AGENT_SESSION_UPDATED_AT_METADATA = "agent_session_updated_at"
+local AGENT_TMUX_SESSION_NAME_METADATA = "agent_tmux_session_name"
 -- Orchestration role. Only "sub" is ever stored; the ABSENCE of this key means
 -- the task is a top-level ("master"/"root") agent. Kept as a plain string so it
 -- round-trips over the agent-tasks RPC bridge like the other metadata keys.
@@ -14,6 +15,8 @@ local AGENT_ROLE_METADATA = "agent_role"
 local SESSION_CACHE_VERSION = 2
 local SESSION_CACHE_NAMESPACE = "nvim"
 local SESSION_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
+local TMUX_SESSION_CACHE_PREFIX = "agent-tmux-session-name-v1"
+local TMUX_SESSION_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60
 local SESSION_CACHE_GC_PAYLOAD_BYTES = 1024 * 1024
 local SESSION_TITLE_MAX_BYTES = 240
 local SESSION_LINK_POLL_INTERVAL_MS = 500
@@ -23,9 +26,20 @@ local SESSION_LINK_RETRY_INTERVAL_MS = 2 * 1000
 local SESSION_ORPHAN_MATCH_WINDOW_SECONDS = 5 * 60
 
 local CODEX_AUTO_REVIEW_ARGS = { "-a", "on-request", "-c", 'approvals_reviewer="auto_review"' }
+local TMUX_CONFIG_PATH = vim.env.HOME .. "/.config/tmux/tmuxnvim.conf"
 
 local session_caches = {}
 local session_link_retry_tasks = setmetatable({}, { __mode = "k" })
+
+---@return table<string, string>
+local function agent_task_env()
+  local env = { TERM = "xterm-256color" }
+  if type(vim.v.servername) == "string" and vim.v.servername ~= "" then env.NVIM = vim.v.servername end
+  return env
+end
+
+---@return string
+local function agent_tmux_server_name() return utils.agent_tmux_server_name() end
 
 ---@param output string
 ---@return string
@@ -153,6 +167,20 @@ local function provider_by_name(name)
   return provider
 end
 
+---@param provider table
+---@param task overseer.Task
+---@return boolean
+local function task_matches_provider_command(provider, task)
+  if task.cmd == provider.executable then return true end
+  if task.cmd ~= "tmux" or type(task.args) ~= "table" then return false end
+
+  for _, arg in ipairs(task.args) do
+    if arg == provider.executable then return true end
+  end
+
+  return false
+end
+
 ---@param task overseer.Task
 ---@return table?
 local function provider_for_task(task)
@@ -163,7 +191,7 @@ local function provider_for_task(task)
   if type(provider_name) == "string" and PROVIDERS[provider_name] then return PROVIDERS[provider_name] end
 
   for _, provider in pairs(PROVIDERS) do
-    if task.cmd == provider.executable then return provider end
+    if task_matches_provider_command(provider, task) then return provider end
   end
 end
 
@@ -326,6 +354,156 @@ local function cachectl_cmd(...)
   if not bin then return end
 
   return vim.list_extend({ bin }, { ... })
+end
+
+---@param provider table
+---@param session_id string
+---@return string
+local function tmux_session_cache_key(provider, session_id)
+  return ("%s:%s:%s"):format(TMUX_SESSION_CACHE_PREFIX, provider.name, session_id)
+end
+
+---@param provider table
+---@param session_id string?
+---@return string?
+local function read_tmux_session_name(provider, session_id)
+  if type(session_id) ~= "string" or session_id == "" then return nil end
+
+  local cmd = cachectl_cmd("get", SESSION_CACHE_NAMESPACE, tmux_session_cache_key(provider, session_id))
+  if not cmd then return nil end
+
+  local result = vim.fn.system(cmd)
+  if vim.v.shell_error ~= 0 then return nil end
+
+  result = result:gsub("%s+$", "")
+  if result == "" then return nil end
+  return result
+end
+
+---@param provider table
+---@param session_id string
+---@param session_name string
+local function write_tmux_session_name(provider, session_id, session_name)
+  if type(session_id) ~= "string" or session_id == "" then return end
+  if type(session_name) ~= "string" or session_name == "" then return end
+
+  local cmd = cachectl_cmd(
+    "set",
+    SESSION_CACHE_NAMESPACE,
+    tmux_session_cache_key(provider, session_id),
+    tostring(TMUX_SESSION_CACHE_TTL_SECONDS)
+  )
+  if not cmd then return end
+
+  pcall(vim.fn.system, cmd, session_name)
+end
+
+---@param session_name string?
+---@return boolean
+local function tmux_session_exists(session_name)
+  if type(session_name) ~= "string" or session_name == "" then return false end
+
+  return utils.run_tmux_command(agent_tmux_server_name(), { "has-session", "-t", session_name })
+end
+
+---@param provider table
+---@param session_id string?
+---@return string
+local function tmux_session_name_for_task(provider, session_id)
+  -- Codex does not expose a session id up front, so give it a unique tmux
+  -- placeholder and rename it later once the real conversation id lands.
+  if type(session_id) == "string" and session_id ~= "" then return ("%s-%s"):format(provider.name, session_id) end
+  return ("%s-pending-%s"):format(provider.name, generated_uuid())
+end
+
+---@param provider table
+---@param session_name string?
+---@return boolean
+local function is_pending_tmux_session_name(provider, session_name)
+  if type(session_name) ~= "string" then return false end
+  local prefix = ("%s-pending-"):format(provider.name)
+  return session_name:sub(1, #prefix) == prefix
+end
+
+---@param provider table
+---@param session_id string
+---@return string
+local function tmux_session_name_for_session(provider, session_id)
+  local final = ("%s-%s"):format(provider.name, session_id)
+  local cached = read_tmux_session_name(provider, session_id)
+  if cached and cached ~= final and is_pending_tmux_session_name(provider, cached) then return final end
+  if cached and tmux_session_exists(cached) then return cached end
+
+  if cached and cached ~= final and tmux_session_exists(final) then return final end
+  return final
+end
+
+---@param provider table
+---@param provider_args string[]
+---@param tmux_session_name string
+---@param cwd string?
+---@param size? { width: integer, height: integer }
+---@return string
+---@return string[]
+local function tmux_wrap_provider_command(provider, provider_args, tmux_session_name, cwd, size)
+  local tmux_server_name = agent_tmux_server_name()
+  utils.ensure_agent_tmux_socket_dirs(tmux_server_name)
+  local args = {
+    "-L",
+    tmux_server_name,
+    "-f",
+    TMUX_CONFIG_PATH,
+    "new-session",
+    "-A",
+  }
+  if type(cwd) == "string" and cwd ~= "" then vim.list_extend(args, { "-c", cwd }) end
+  if size and size.width > 0 and size.height > 0 then
+    vim.list_extend(args, { "-x", tostring(size.width), "-y", tostring(size.height) })
+  end
+  vim.list_extend(args, { "-s", tmux_session_name, provider.executable })
+  vim.list_extend(args, provider_args or {})
+  return "tmux", args
+end
+
+---@param winid integer?
+---@return { width: integer, height: integer }
+local function tmux_session_size(winid)
+  if winid and vim.api.nvim_win_is_valid(winid) then
+    return {
+      width = vim.api.nvim_win_get_width(winid),
+      height = vim.api.nvim_win_get_height(winid),
+    }
+  end
+
+  return {
+    width = vim.o.columns,
+    height = math.max(vim.o.lines - vim.o.cmdheight - 1, 1),
+  }
+end
+
+---@param session_name string
+---@param size { width: integer, height: integer }
+local function resize_tmux_window(session_name, size)
+  if not tmux_session_exists(session_name) then return end
+  if not size or size.width <= 0 or size.height <= 0 then return end
+
+  utils.run_tmux_command(agent_tmux_server_name(), {
+    "resize-window",
+    "-t",
+    session_name,
+    "-x",
+    tostring(size.width),
+    "-y",
+    tostring(size.height),
+  })
+end
+
+---@param task overseer.Task
+local function leave_tmux_copy_mode_before_paste(task)
+  local target = utils.agent_task_tmux_target(task)
+  if not target or not utils.tmux_pane_in_mode(agent_tmux_server_name(), target) then return end
+
+  utils.run_tmux_command(agent_tmux_server_name(), { "send-keys", "-t", target, "-X", "cancel" })
 end
 
 ---@return string?
@@ -753,15 +931,54 @@ local function async_watch_new_session(provider, task, cwd, known_session_ids)
   return watch_new_session_job(provider, task, cmd)
 end
 
+---@param old_name string
+---@param new_name string
+---@return boolean
+local function rename_tmux_session(old_name, new_name)
+  if type(old_name) ~= "string" or old_name == "" then return false end
+  if type(new_name) ~= "string" or new_name == "" then return false end
+  if old_name == new_name then return true end
+
+  return utils.run_tmux_command(agent_tmux_server_name(), { "rename-session", "-t", old_name, new_name })
+end
+
+---@param provider table
+---@param task overseer.Task
+---@param session AgentStoredSession
+local function persist_tmux_session_name(provider, task, session)
+  task.metadata = task.metadata or {}
+  local current = task.metadata[AGENT_TMUX_SESSION_NAME_METADATA]
+  local final = tmux_session_name_for_session(provider, session.id)
+
+  if type(current) ~= "string" or current == "" then
+    current = final
+  elseif current ~= final then
+    if rename_tmux_session(current, final) then
+      current = final
+    elseif not tmux_session_exists(current) and tmux_session_exists(final) then
+      current = final
+    end
+  end
+
+  task.metadata[AGENT_TMUX_SESSION_NAME_METADATA] = current
+  write_tmux_session_name(provider, session.id, current)
+end
+
 ---@param provider table
 ---@param task overseer.Task
 ---@return boolean
 local function is_unlinked_plain_agent_task(provider, task)
   if task.status ~= require("overseer.constants").STATUS.RUNNING then return false end
   if task.metadata and task.metadata[AGENT_SESSION_PATH_METADATA] then return false end
-  if task.cmd ~= provider.executable then return false end
-  if provider.name == "codex" then return type(task.args) ~= "table" or #task.args == 0 end
-  return false
+  if
+    task.metadata
+    and task.metadata[AGENT_PROVIDER_METADATA]
+    and task.metadata[AGENT_PROVIDER_METADATA] ~= provider.name
+  then
+    return false
+  end
+  if provider.name ~= "codex" then return false end
+  return task_matches_provider_command(provider, task)
 end
 
 ---@param provider table
@@ -972,6 +1189,8 @@ function link_task_to_session(task, session)
   task.metadata[AGENT_SESSION_ID_METADATA] = session.id
   task.metadata[AGENT_SESSION_PATH_METADATA] = session.path
   task.metadata[AGENT_SESSION_UPDATED_AT_METADATA] = session.updated_at
+  local provider = PROVIDERS[session.provider]
+  if provider then persist_tmux_session_name(provider, task, session) end
   update_task_title(task, session)
   local ok, bufnr = pcall(function() return task:get_bufnr() end)
   if ok and bufnr and vim.api.nvim_buf_is_valid(bufnr) then utils.attach_overseer_task_output_navigation(bufnr) end
@@ -999,7 +1218,7 @@ local function running_task_for_session(provider, session)
       link_task_to_session(task, session)
       return task
     end
-    if task.cmd == provider.executable and task_references_session_id(task, session.id) then
+    if task_matches_provider_command(provider, task) and task_references_session_id(task, session.id) then
       link_task_to_session(task, session)
       return task
     end
@@ -1021,7 +1240,8 @@ local function dispose_pending_task_for_session(provider, session)
     local metadata = task.metadata or {}
     local matches_metadata = metadata[AGENT_PROVIDER_METADATA] == provider.name
       and metadata[AGENT_SESSION_ID_METADATA] == session.id
-    local matches_command = task.cmd == provider.executable and task_references_session_id(task, session.id)
+    local matches_command = task_matches_provider_command(provider, task)
+      and task_references_session_id(task, session.id)
     if matches_metadata or matches_command then task:dispose(true) end
   end
 end
@@ -1159,6 +1379,7 @@ local function paste_prompt(provider, task, prompt)
     local job_id = task_job_id(task)
     if not job_id then return false end
 
+    leave_tmux_copy_mode_before_paste(task)
     local ok, err = pcall(vim.api.nvim_chan_send, job_id, "\27[200~" .. prompt .. "\27[201~")
     if not ok then
       vim.notify(("Could not paste selection into %s: %s"):format(provider.display_name, err), vim.log.levels.ERROR)
@@ -1296,6 +1517,11 @@ end
 local function resume_session(provider, session, prompt, start_win)
   restore_regular_win(start_win)
   session = session_with_resolved_cwd(provider, session)
+  local tmux_session_name = tmux_session_name_for_session(provider, session.id)
+  local size = tmux_session_size(start_win)
+  resize_tmux_window(tmux_session_name, size)
+  local tmux_cmd, tmux_args =
+    tmux_wrap_provider_command(provider, provider.resume_args(session), tmux_session_name, session.cwd, size)
 
   local existing_task = running_task_for_session(provider, session)
   if existing_task then
@@ -1306,15 +1532,23 @@ local function resume_session(provider, session, prompt, start_win)
 
   local task = require("overseer").new_task({
     name = ("%s resume: %s"):format(provider.name, session_display_title(session)),
-    cmd = provider.executable,
-    args = provider.resume_args(session),
+    cmd = tmux_cmd,
+    args = tmux_args,
     cwd = session.cwd,
+    -- Overseer's jobstart strategy spawns with pty=true but not term=true, so
+    -- Neovim would hand the child tmux client TERM=ansi (8 colors, no bce),
+    -- which garbles truecolor backgrounds into gray/white boxes. Pin a capable
+    -- TERM so the tmux client attaches with full color (RGB enabled in tmuxnvim.conf).
+    -- Also pin NVIM so the agent inherits the parent Neovim socket instead of a
+    -- nested one created by the agent/TUI process itself.
+    env = agent_task_env(),
     metadata = {
       [AGENT_TASK_METADATA] = true,
       [AGENT_PROVIDER_METADATA] = provider.name,
       [AGENT_SESSION_ID_METADATA] = session.id,
       [AGENT_SESSION_PATH_METADATA] = session.path,
       [AGENT_SESSION_UPDATED_AT_METADATA] = session.updated_at,
+      [AGENT_TMUX_SESSION_NAME_METADATA] = tmux_session_name,
     },
     components = { "defaults_without_notification", "serranomorante.agent_watch" },
   })
@@ -1499,13 +1733,18 @@ function M.open_new(provider_name, opts)
   local cwd = vim.fn.getcwd()
   local label_or_source = label or current_source_label()
   local preallocated_session_id = provider.preallocate_session_id and generated_uuid() or nil
+  local tmux_session_name = tmux_session_name_for_task(provider, preallocated_session_id)
   local start_win = vim.api.nvim_get_current_win()
 
   require("async")(function()
     local known_session_ids = await(async_session_ids(provider, cwd))
+    local size = tmux_session_size(start_win)
+    local tmux_cmd, tmux_args =
+      tmux_wrap_provider_command(provider, provider.start_args(preallocated_session_id), tmux_session_name, cwd, size)
     local metadata = {
       [AGENT_TASK_METADATA] = true,
       [AGENT_PROVIDER_METADATA] = provider.name,
+      [AGENT_TMUX_SESSION_NAME_METADATA] = tmux_session_name,
     }
     if preallocated_session_id then metadata[AGENT_SESSION_ID_METADATA] = preallocated_session_id end
     -- Orchestration role: only stamp when explicitly spawned as a sub-agent.
@@ -1514,9 +1753,12 @@ function M.open_new(provider_name, opts)
 
     local task = require("overseer").new_task({
       name = task_name(provider, cwd, label_or_source),
-      cmd = provider.executable,
-      args = provider.start_args(preallocated_session_id),
+      cmd = tmux_cmd,
+      args = tmux_args,
       cwd = cwd,
+      -- See resume path above: pin TERM and NVIM so the tmux client and agent
+      -- both stay attached to the original Neovim socket.
+      env = agent_task_env(),
       metadata = metadata,
       components = { "defaults_without_notification", "serranomorante.agent_watch" },
     })

@@ -25,14 +25,26 @@ local PROMPT_MARKERS = {
   claude = "❯",
   gemini = "❯",
 }
+local TMUX_SESSION_NAME_METADATA = "agent_tmux_session_name"
 
 local DEFAULT_READ_LINES = 80
+local resize_autocmd_generation = 0
 
 ---@return table<string, table>
 local function providers()
   local ok, agent_sessions = pcall(require, "serranomorante.plugins.jobs.agent_sessions")
   if not ok or type(agent_sessions.providers) ~= "table" then return {} end
   return agent_sessions.providers
+end
+
+---@return string[]
+local function provider_names()
+  local names = {}
+  for name in pairs(providers()) do
+    table.insert(names, name)
+  end
+  table.sort(names, function(a, b) return #a > #b end)
+  return names
 end
 
 ---@param name string
@@ -75,6 +87,18 @@ end
 local function task_session_id(t)
   local md = t.metadata or {}
   return md[SESSION_ID_KEY]
+end
+
+---@param t overseer.Task
+---@return string?
+local function task_tmux_session_name(t)
+  local md = t.metadata or {}
+  if type(md[TMUX_SESSION_NAME_METADATA]) == "string" and md[TMUX_SESSION_NAME_METADATA] ~= "" then
+    return md[TMUX_SESSION_NAME_METADATA]
+  end
+
+  local ok, target = pcall(function() return require("serranomorante.utils").agent_task_tmux_target(t) end)
+  if ok and type(target) == "string" and target ~= "" then return target end
 end
 
 ---Orchestration role of a task. Defaults to "master" when unmarked so every
@@ -238,6 +262,19 @@ function M.send(ref, b64_text, with_newline)
   local job = task_job_id(t)
   if not job then return vim.json.encode({ ok = false, error = "task has no job/channel id" }) end
 
+  -- Tmux copy-mode guard: for tmux-backed agent tasks the terminal channel points at
+  -- the tmux client, so if the pane is in copy-mode (e.g. after scrollback navigation)
+  -- a bracketed paste is intercepted by tmux and never reaches the agent TUI. Cancel
+  -- copy-mode first so the paste lands. Mirrors leave_tmux_copy_mode_before_paste from
+  -- the visual-paste path (commit 7176ef8ce). No-op for non-tmux tasks / when not in mode.
+  do
+    local u = require("serranomorante.utils")
+    local target = u.agent_task_tmux_target(t)
+    if target and u.tmux_pane_in_mode(u.agent_tmux_server_name(), target) then
+      u.run_tmux_command(u.agent_tmux_server_name(), { "send-keys", "-t", target, "-X", "cancel" })
+    end
+  end
+
   local text = ""
   if type(b64_text) == "string" and b64_text ~= "" then
     if type(vim.base64) ~= "table" then
@@ -320,15 +357,11 @@ local function classify_state(lines)
       table.insert(options, { n = tonumber(num), label = label })
     end
   end
-  if #options >= 2 and (is_choice or tail:find("❯%s*%d+%.")) then
-    return "awaiting_choice", options
-  end
+  if #options >= 2 and (is_choice or tail:find("❯%s*%d+%.")) then return "awaiting_choice", options end
 
   -- IDLE: a prompt marker is present and nothing is running → ready for input
   -- (a free-text question from the agent also lands here; read `tail` to see it).
-  if tail:find("❯", 1, true) or tail:find("│ >", 1, true) or tail:find("> ", 1, true) then
-    return "idle", {}
-  end
+  if tail:find("❯", 1, true) or tail:find("│ >", 1, true) or tail:find("> ", 1, true) then return "idle", {} end
   return "unknown", {}
 end
 
@@ -408,9 +441,7 @@ local AGENT_WATCH_COMPONENT = "serranomorante.agent_watch"
 function M.attach_watch(ref)
   local t, err = resolve_task(ref)
   if not t then return vim.json.encode({ ok = false, error = err }) end
-  if not t:has_component(AGENT_WATCH_COMPONENT) then
-    pcall(function() t:add_component(AGENT_WATCH_COMPONENT) end)
-  end
+  if not t:has_component(AGENT_WATCH_COMPONENT) then pcall(function() t:add_component(AGENT_WATCH_COMPONENT) end) end
   return vim.json.encode({ ok = true, id = t.id, session_id = task_session_id(t), attached = AGENT_WATCH_COMPONENT })
 end
 
@@ -483,6 +514,100 @@ local function resolve_session_ref(ref, known)
   return nil, "not_found"
 end
 
+---@return table[]?
+---@return string?
+local function tmux_agent_sessions()
+  if vim.fn.executable("tmux") ~= 1 then return nil, "tmux executable not found" end
+
+  local ok_utils, utils = pcall(require, "serranomorante.utils")
+  if not ok_utils then return nil, "serranomorante.utils unavailable" end
+
+  local server_name = utils.agent_tmux_server_name()
+  utils.ensure_agent_tmux_socket_dirs(server_name)
+  local out = vim.fn.system({ "tmux", "-L", server_name, "list-sessions", "-F", "#{session_name}" })
+  if vim.v.shell_error ~= 0 then
+    local message = vim.trim(out or "")
+    if message == "" then message = "tmux server has no sessions" end
+    return {}, message
+  end
+
+  local sessions = {}
+  for line in tostring(out):gmatch("[^\r\n]+") do
+    local name = vim.trim(line)
+    for _, provider in ipairs(provider_names()) do
+      local prefix = provider .. "-"
+      if name:sub(1, #prefix) == prefix then
+        local session_id = name:sub(#prefix + 1)
+        if session_id ~= "" and not session_id:match("^pending%-") then
+          table.insert(sessions, { provider = provider, session_id = session_id, tmux_session_name = name })
+        end
+        break
+      end
+    end
+  end
+
+  table.sort(sessions, function(a, b) return a.tmux_session_name < b.tmux_session_name end)
+  return sessions
+end
+
+---@return string[]?
+---@return string?
+local function tmux_agent_session_names()
+  if vim.fn.executable("tmux") ~= 1 then return nil, "tmux executable not found" end
+
+  local ok_utils, utils = pcall(require, "serranomorante.utils")
+  if not ok_utils then return nil, "serranomorante.utils unavailable" end
+
+  local server_name = utils.agent_tmux_server_name()
+  utils.ensure_agent_tmux_socket_dirs(server_name)
+  local out = vim.fn.system({ "tmux", "-L", server_name, "list-sessions", "-F", "#{session_name}" })
+  if vim.v.shell_error ~= 0 then
+    local message = vim.trim(out or "")
+    if message == "" then message = "tmux server has no sessions" end
+    return {}, message
+  end
+
+  local names = {}
+  for line in tostring(out):gmatch("[^\r\n]+") do
+    local name = vim.trim(line)
+    for _, provider in ipairs(provider_names()) do
+      if name:sub(1, #provider + 1) == provider .. "-" then
+        table.insert(names, name)
+        break
+      end
+    end
+  end
+  table.sort(names)
+  return names
+end
+
+---@param name string
+---@return boolean
+local function is_pending_tmux_session_name(name)
+  for _, provider in ipairs(provider_names()) do
+    if name:sub(1, #provider + 9) == provider .. "-pending-" then return true end
+  end
+  return false
+end
+
+---@return { width: integer, height: integer }
+local function current_tmux_size()
+  return {
+    width = vim.o.columns,
+    height = math.max(vim.o.lines - vim.o.cmdheight - 1, 1),
+  }
+end
+
+---@param tmux_session table
+---@return boolean
+local function task_exists_for_tmux_session(tmux_session)
+  for _, t in ipairs(list_tasks()) do
+    if task_provider(t) == tmux_session.provider and task_session_id(t) == tmux_session.session_id then return true end
+    if task_tmux_session_name(t) == tmux_session.tmux_session_name then return true end
+  end
+  return false
+end
+
 ---Open existing sessions as Overseer tasks by id or unique id prefix.
 ---By default the ids are validated against the sessions known for the CURRENT
 ---cwd. Pass all=true to BYPASS that cwd filter (mirrors the `<leader>{p}L`
@@ -534,6 +659,74 @@ function M.open(ids, all)
   end
   if not ok then result.error = ("could not resolve %d of %d id(s)"):format(#not_found + #ambiguous, #requested) end
   return vim.json.encode(result)
+end
+
+---Reconcile persistent tmux-backed agent sessions with the current Overseer list.
+---Live tmux sessions are authoritative for long-running terminals; missing
+---Overseer tasks are reopened through AgentResumeById so the resume path stays
+---shared with `agent-tasks open` and the provider pickers.
+---@return string json
+function M.reconcile()
+  local tmux_sessions, warning = tmux_agent_sessions()
+  if not tmux_sessions then return vim.json.encode({ ok = false, error = warning }) end
+
+  local opened, existing = {}, {}
+  for _, session in ipairs(tmux_sessions) do
+    if task_exists_for_tmux_session(session) then
+      table.insert(existing, session)
+    else
+      table.insert(opened, session)
+      local session_id = session.session_id
+      vim.schedule(function() pcall(vim.cmd, "AgentResumeById " .. session_id) end)
+    end
+  end
+
+  return vim.json.encode({
+    ok = true,
+    tmux_sessions = #tmux_sessions,
+    existing_count = #existing,
+    opened_count = #opened,
+    existing = existing,
+    opened = opened,
+    warning = warning,
+  })
+end
+
+---Resize all agent tmux sessions in the current Neovim-scoped tmux server to
+---the current editor terminal geometry. Useful after moving Neovim between
+---monitors or changing the terminal size.
+---@return string json
+function M.resize_tmux_sessions()
+  local names, warning = tmux_agent_session_names()
+  if not names then return vim.json.encode({ ok = false, error = warning }) end
+
+  local ok_utils, utils = pcall(require, "serranomorante.utils")
+  if not ok_utils then return vim.json.encode({ ok = false, error = "serranomorante.utils unavailable" }) end
+
+  local size = current_tmux_size()
+  local resized, failed = {}, {}
+  for _, name in ipairs(names) do
+    local ok = utils.run_tmux_command(utils.agent_tmux_server_name(), {
+      "resize-window",
+      "-t",
+      name,
+      "-x",
+      tostring(size.width),
+      "-y",
+      tostring(size.height),
+    })
+    table.insert(ok and resized or failed, name)
+  end
+
+  return vim.json.encode({
+    ok = #failed == 0,
+    width = size.width,
+    height = size.height,
+    resized = resized,
+    resized_count = #resized,
+    failed = failed,
+    warning = warning,
+  })
 end
 
 ---@param provider_name string
@@ -668,6 +861,65 @@ function M.dispose(ref)
   return vim.json.encode({ ok = ok, id = id, session_id = sid, disposed = ok })
 end
 
+---Dispose a task and also kill its tmux session if one is known.
+---This is for manual session teardown, not for the normal "remove from list" flow.
+---@param ref string
+---@return string json
+function M.dispose_and_kill_tmux(ref)
+  local t, err = resolve_task(ref)
+  if not t then return vim.json.encode({ ok = false, error = err }) end
+
+  local sid, id = task_session_id(t), t.id
+  local tmux_session_name = task_tmux_session_name(t)
+  local disposed = pcall(function() t:dispose(true) end)
+  local tmux_killed = false
+
+  if type(tmux_session_name) == "string" and tmux_session_name ~= "" then
+    local u = require("serranomorante.utils")
+    tmux_killed = u.run_tmux_command(u.agent_tmux_server_name(), { "kill-session", "-t", tmux_session_name })
+  end
+
+  return vim.json.encode({
+    ok = disposed and (tmux_session_name == nil or tmux_killed),
+    id = id,
+    session_id = sid,
+    disposed = disposed,
+    tmux_killed = tmux_killed,
+    tmux_session_name = tmux_session_name,
+  })
+end
+
+---Kill pending tmux sessions in the current Neovim-scoped tmux server. Pending
+---Codex sessions do not yet have a real session id, so they cannot reliably be
+---resolved through normal task refs.
+---@return string json
+function M.dispose_pending_tmux()
+  local names, warning = tmux_agent_session_names()
+  if not names then return vim.json.encode({ ok = false, error = warning }) end
+
+  local ok_utils, utils = pcall(require, "serranomorante.utils")
+  if not ok_utils then return vim.json.encode({ ok = false, error = "serranomorante.utils unavailable" }) end
+
+  local killed, failed, skipped = {}, {}, {}
+  for _, name in ipairs(names) do
+    if is_pending_tmux_session_name(name) then
+      local ok = utils.run_tmux_command(utils.agent_tmux_server_name(), { "kill-session", "-t", name })
+      table.insert(ok and killed or failed, name)
+    else
+      table.insert(skipped, name)
+    end
+  end
+
+  return vim.json.encode({
+    ok = #failed == 0,
+    killed = killed,
+    killed_count = #killed,
+    failed = failed,
+    skipped_count = #skipped,
+    warning = warning,
+  })
+end
+
 ---Dispose ALL provider-backed agent tasks whose current state is "idle" (a prompt
 ---marker present and nothing running) — they vanish from the task list. Tasks that
 ---are running/awaiting_choice/unknown are left untouched. Pass exclude_sid (a full
@@ -701,6 +953,22 @@ end
 -- ---------------------------------------------------------------------------
 
 function M.setup_commands()
+  local resize_group = vim.api.nvim_create_augroup("DotfilesAgentTasksTmuxResize", { clear = true })
+  vim.api.nvim_create_autocmd("VimResized", {
+    group = resize_group,
+    desc = "Agent tasks: resize current Neovim-scoped tmux agent sessions",
+    callback = function()
+      resize_autocmd_generation = resize_autocmd_generation + 1
+      local generation = resize_autocmd_generation
+      vim.defer_fn(function()
+        if generation ~= resize_autocmd_generation then return end
+        pcall(M.resize_tmux_sessions)
+        local ok_utils, utils = pcall(require, "serranomorante.utils")
+        if ok_utils then pcall(utils.refresh_terminal_window) end
+      end, 100)
+    end,
+  })
+
   vim.api.nvim_create_user_command("AgentTasks", function()
     local data = vim.json.decode(M.list_json())
     local lines = { ("Agent tasks (%d):"):format(data.count) }
@@ -720,9 +988,33 @@ function M.setup_commands()
   end, { desc = "Agent tasks: list sibling agent tasks and state" })
 
   vim.api.nvim_create_user_command(
+    "AgentTasksReconcile",
+    function() vim.api.nvim_echo({ { M.reconcile() } }, false, {}) end,
+    { desc = "Agent tasks: reconcile live tmux agent sessions with Overseer tasks" }
+  )
+
+  vim.api.nvim_create_user_command(
+    "AgentTasksResizeTmux",
+    function() vim.api.nvim_echo({ { M.resize_tmux_sessions() } }, false, {}) end,
+    { desc = "Agent tasks: resize all current Neovim-scoped tmux agent sessions" }
+  )
+
+  vim.api.nvim_create_user_command(
+    "AgentTasksDisposePendingTmux",
+    function() vim.api.nvim_echo({ { M.dispose_pending_tmux() } }, false, {}) end,
+    { desc = "Agent tasks: kill pending tmux agent sessions in the current Neovim server" }
+  )
+
+  vim.api.nvim_create_user_command(
     "AgentTaskRead",
     function(a) vim.api.nvim_echo({ { M.read(a.fargs[1], a.fargs[2]) } }, false, {}) end,
     { nargs = "+", desc = "Agent tasks: read tail of an agent task buffer (<ref> [lines])" }
+  )
+
+  vim.api.nvim_create_user_command(
+    "AgentTaskDisposeAndKillTmux",
+    function(a) vim.api.nvim_echo({ { M.dispose_and_kill_tmux(a.fargs[1]) } }, false, {}) end,
+    { nargs = 1, desc = "Agent tasks: dispose a task and kill its tmux session (<ref>)" }
   )
 
   vim.api.nvim_create_user_command("AgentTaskSend", function(a)

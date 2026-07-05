@@ -315,6 +315,41 @@ vim.keymap.set("t", "<A-r>", function() utils.refresh_terminal_window() end, {
   silent = true,
 })
 
+-- Neovim's built-in terminal collapses Shift+Enter to a bare <CR> when forwarding to
+-- the child pty, so nested TUIs (tmux -> claude) only see a plain Enter and submit
+-- instead of inserting a newline. Kitty reports Shift+Enter to Neovim as <S-CR> via
+-- the keyboard protocol; send a bare LF (Ctrl-J) down the terminal channel instead,
+-- which claude (and most line editors) insert as a newline while CR submits. LF is a
+-- plain control byte, so it passes through tmux untouched -- no extended-keys / CSI u
+-- / tmux key-binding dance required.
+--
+-- The channel is NOT vim.b.terminal_job_id for Overseer-managed agent terminals (they
+-- run under the `jobstart` strategy, which leaves that buffer var unset); the live
+-- channel lives on the owning task's strategy.job_id, exactly as agent_tasks.lua
+-- resolves it. Try the plain terminal var first, then fall back to the Overseer task
+-- whose strategy owns the current buffer.
+local function terminal_channel_for_current_buf()
+  local buf = vim.api.nvim_get_current_buf()
+  local job = vim.b[buf].terminal_job_id
+  if job then return job end
+  local ok, overseer = pcall(require, "overseer")
+  if not ok then return nil end
+  for _, task in ipairs(overseer.list_tasks({})) do
+    local strategy = task.strategy
+    if strategy and strategy.bufnr == buf then return strategy.job_id or task.job_id end
+  end
+  return nil
+end
+
+vim.keymap.set("t", "<S-CR>", function()
+  local job = terminal_channel_for_current_buf()
+  if job then vim.api.nvim_chan_send(job, "\n") end
+end, {
+  desc = "Shift+Enter -> newline (LF) for nested TUIs",
+  nowait = true,
+  silent = true,
+})
+
 ---Quickfix keymaps
 vim.keymap.set("n", "<leader>qf", function()
   if vim.fn.getcmdwintype() ~= "" then
