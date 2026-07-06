@@ -1,4 +1,3 @@
-# systemd ExecStartPre will replace these with their /dev/input/<id>
 devices:
   - "keyd virtual keyboard"
   - "PFU Limited HHKB-Hybrid Keyboard"
