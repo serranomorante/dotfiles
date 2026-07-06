@@ -313,7 +313,7 @@
 
 - name: "[archlinux] Setup HPI - inspect docker credential config"
   ansible.builtin.shell: |
-    source ~/.bashrc
+    source "{{ ansible_facts.env.HOME }}/dotfiles/home/lib/session-env.bash"
     export DOCKER_CONFIG="{{ ansible_facts.env.HOME }}/.config/ansible-docker"
     export PATH="{{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH"
     printf 'HOME=%s\n' "$HOME"
@@ -334,7 +334,7 @@
 
 - name: "[archlinux] Setup HPI - inspect docker credential config in docker group"
   ansible.builtin.shell: |
-    sg docker -c 'source ~/.bashrc
+    sg docker -c 'source "{{ ansible_facts.env.HOME }}/dotfiles/home/lib/session-env.bash"
     export DOCKER_CONFIG="{{ ansible_facts.env.HOME }}/.config/ansible-docker"
     export PATH="{{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH"
     printf "HOME=%s\n" "$HOME"

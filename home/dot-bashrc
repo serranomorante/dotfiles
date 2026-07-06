@@ -1,21 +1,21 @@
-[[ $- == *i* && -r /usr/share/blesh/ble.sh ]] && source -- /usr/share/blesh/ble.sh --attach=none
 #
 # ~/.bashrc
 #
 
-# If not running interactively, don't do anything
-# Prefer not using next line some programs might stop working
-# [[ $- != *i* ]] && return
+dotfiles_session_env="$HOME/dotfiles/home/lib/session-env.bash"
+[ -r "$dotfiles_session_env" ] && . "$dotfiles_session_env"
+unset dotfiles_session_env
 
-# alias ls='ls --color=auto'
-#
-brew_ubuntu_path=/home/linuxbrew/.linuxbrew/bin/brew
+[[ $- == *i* && -r /usr/share/blesh/ble.sh ]] && source -- /usr/share/blesh/ble.sh --attach=none
 
-if [ -x "$brew_ubuntu_path" ]; then
-    eval "$($brew_ubuntu_path shellenv)"
+if [[ $- != *i* ]]; then
+    return
 fi
 
-if [ -x "$(command -v eza)" ]; then
+shopt -s expand_aliases
+
+# alias ls='ls --color=auto'
+if command -v eza &>/dev/null; then
     alias ls='eza -1 -a -h --git --sort modified -l --icons always --color always'
 fi
 
@@ -37,45 +37,10 @@ shopt -s lithist
 # Clear a terminal screen for real
 # https://askubuntu.com/a/684887
 alias cls='clear && echo -en "\e[3J"'
-
-# path env variables
-# This fixes poetry not being found
-export PATH="$HOME/.local/bin:$PATH"
-export PATH="$HOME/.local/share/yabridge:$PATH"
-# Add pynvim to path
-export PATH="/usr/lib/python3.11/site-packages:$PATH"
-export FONTCONFIG_PATH=/etc/fonts
-export COLORTERM=truecolor
-export EDITOR=nvim
-# For go packages
-if [ -x "$(command -v go)" ]; then
-    export PATH="$PATH:$(go env GOBIN):$(go env GOPATH)/bin"
-fi
-
 alias dd='pkexec --user root pkill -u $USER' # logout to sddm
 
-# system env variables
-export SYSTEMD_PAGER=""
-# https://wiki.archlinux.org/title/Neovim#Use_as_a_pager
-# export PAGER="nvimpager"
-
-# fzf use df instead of find
-export FZF_DEFAULT_COMMAND="fd --type f"
-export FZF_DEFAULT_OPTS="--layout=reverse --border"
-
-export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
-
-# Wireplumber logging
-# 0. critical warnings and fatal errors (C & E in the log)
-# 1. warnings (W)
-# 2. normal messages (M)
-# 3. informational messages (I)
-# 4. debug messages (D)
-# 5. trace messages (T)
-export WIREPLUMBER_DEBUG=0
-
 if [[ ! ${BLE_VERSION-} ]] && command -v fzf &>/dev/null; then
-    # Set up fzf key bindings and fuzzy completion when ble.sh is unavailable
+    # Set up fzf key bindings and fuzzy completion when ble.sh is unavailable.
     eval "$(fzf --bash)"
 fi
 
@@ -83,34 +48,11 @@ nvim() {
     "$HOME/bin/nvim" "$@"
 }
 
-# https://github.com/mfussenegger/nvim-dap/blob/e64ebf3309154b578a03c76229ebf51c37898118/doc/dap.txt#L960
-# Available log levels:
-# TRACE
-# DEBUG
-# INFO
-# WARN
-# ERROR
-export DAP_LOG_LEVEL=INFO
-export LSP_LOG_LEVEL=INFO
-export CONFORM_LOG_LEVEL=INFO
-export NEOTEST_LOG_LEVEL=INFO
+alias agent-tasks='env -u BASH_FUNC_nvim%% "$HOME/bin/agent-tasks"'
 
-## BEGIN ANSIBLE MANAGED BLOCK - SETUP NODE
-export VOLTA_HOME="$HOME/.volta"
-export PATH="$VOLTA_HOME/bin:$PATH"
-export PATH="$VOLTA_HOME/tools/image/node/22.23.1/bin:$PATH" # version is replaced by ansible
-## END ANSIBLE MANAGED BLOCK - SETUP NODE
-## BEGIN ANSIBLE MANAGED BLOCK - SETUP PYTHON
-export PYENV_ROOT="$HOME/.pyenv"
-export PATH="/usr/bin/pyenv:$PATH"
-eval "$(pyenv init - bash)"
-## END ANSIBLE MANAGED BLOCK - SETUP PYTHON
-## BEGIN ANSIBLE MANAGED BLOCK - SETUP ENCRYPTION
-export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
-## END ANSIBLE MANAGED BLOCK - SETUP ENCRYPTION
-
-# Make ~/bin take priority over ~/.local/bin
-export PATH="$HOME/bin:$PATH"
+if command -v pyenv &>/dev/null; then
+    eval "$(pyenv init - bash)"
+fi
 
 if command -v zoxide &>/dev/null; then
     eval "$(zoxide init bash)"
@@ -129,8 +71,6 @@ if [ -n "$NNNLVL" ]; then
     fi
 fi
 
-export PATH="$PATH:$HOME/.local/share/yabridge"
-
 if [[ -n ${NNN_PIPE-} ]]; then
     # https://github.com/jarun/nnn/wiki/Basic-use-cases#sync-subshell-pwd
     nnn_cd() {
@@ -141,9 +81,7 @@ if [[ -n ${NNN_PIPE-} ]]; then
     trap nnn_cd EXIT
 fi
 
-export DJANGO_READ_DOT_ENV_FILE=True
-
-# Have less display colours
+# Have less display colours.
 # from: https://wiki.archlinux.org/index.php/Color_output_in_console#man
 export LESS_TERMCAP_mb=$'\e[1;31m'     # begin bold
 export LESS_TERMCAP_md=$'\e[1;33m'     # begin blink
@@ -169,8 +107,6 @@ _edit_wo_executing() {
     rm "$tmpf"
 }
 
-if [[ $- = *i* ]]; then
-    bind -x '"\C-x\C-e":_edit_wo_executing'
-fi
+bind -x '"\C-x\C-e":_edit_wo_executing'
 
 [[ ! ${BLE_VERSION-} ]] || ble-attach

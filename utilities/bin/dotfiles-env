@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+prog=${0##*/}
+env_file="${DOTFILES_SESSION_ENV_FILE:-${HOME:?}/dotfiles/home/lib/session-env.bash}"
+
+usage() {
+    cat <<EOF
+Usage:
+  $prog print
+  $prog refresh
+  $prog restart-services [service...]
+  $prog show-manager
+EOF
+}
+
+load_env() {
+    [ -r "$env_file" ] || {
+        printf '%s: missing environment file: %s\n' "$prog" "$env_file" >&2
+        exit 1
+    }
+
+    # shellcheck source=/home/aaaa/dotfiles/home/lib/session-env.bash
+    . "$env_file"
+}
+
+print_env() {
+    local key
+
+    for key in $DOTFILES_SESSION_ENV_KEYS; do
+        if [[ -v $key ]]; then
+            printf '%s=%s\n' "$key" "${!key}"
+        fi
+    done
+}
+
+refresh_systemd_user() {
+    local key
+    local -a batch
+    local batch_size=0
+
+    for key in $DOTFILES_SESSION_ENV_KEYS; do
+        if [[ -v $key ]]; then
+            batch+=("$key=${!key}")
+            batch_size=$((batch_size + 1))
+        fi
+
+        if [ "$batch_size" -ge 4 ]; then
+            /usr/bin/systemctl --user set-environment "${batch[@]}"
+            batch=()
+            batch_size=0
+        fi
+    done
+
+    if [ "$batch_size" -gt 0 ]; then
+        /usr/bin/systemctl --user set-environment "${batch[@]}"
+    fi
+
+    if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+        local dbus_rc
+
+        # Keep D-Bus activated applications aligned with the user manager.
+        set +e
+        dbus-update-activation-environment --systemd $DOTFILES_SESSION_ENV_KEYS >/dev/null
+        dbus_rc=$?
+        set -e
+        if [ "$dbus_rc" -ne 0 ]; then
+            printf '%s: warning: failed to update D-Bus activation environment\n' "$prog" >&2
+        fi
+    fi
+}
+
+restart_services() {
+    local -a services
+
+    if [ "$#" -gt 0 ]; then
+        services=("$@")
+    else
+        services=(
+            keyd-observer.service
+            mouseless.service
+        )
+    fi
+
+    /usr/bin/systemctl --user try-restart "${services[@]}"
+}
+
+case "${1:-}" in
+print)
+    load_env
+    print_env
+    ;;
+refresh)
+    load_env
+    refresh_systemd_user
+    ;;
+restart-services)
+    shift
+    restart_services "$@"
+    ;;
+show-manager)
+    /usr/bin/systemctl --user show-environment
+    ;;
+-h | --help | "")
+    usage
+    ;;
+*)
+    usage >&2
+    exit 2
+    ;;
+esac

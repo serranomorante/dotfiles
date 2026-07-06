@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+env_file="${DOTFILES_SESSION_ENV_FILE:-${HOME:?}/dotfiles/home/lib/session-env.bash}"
+[ -r "$env_file" ] || exit 0
+
+# shellcheck source=/home/aaaa/dotfiles/home/lib/session-env.bash
+. "$env_file"
+
+for key in $DOTFILES_SESSION_ENV_KEYS; do
+    if [[ -v $key ]]; then
+        printf '%s=%s\n' "$key" "${!key}"
+    fi
+done
