@@ -51,7 +51,14 @@ nvim() {
 alias agent-tasks='env -u BASH_FUNC_nvim%% "$HOME/bin/agent-tasks"'
 
 if command -v pyenv &>/dev/null; then
-    eval "$(pyenv init - bash)"
+    pyenv() {
+        local pyenv_init
+
+        unset -f pyenv
+        pyenv_init="$(command pyenv init --no-rehash - bash)" || return
+        eval "$pyenv_init"
+        pyenv "$@"
+    }
 fi
 
 if command -v zoxide &>/dev/null; then
