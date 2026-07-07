@@ -242,17 +242,6 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": ["/^playbooks\\/roles\\/30-lang-tools\\/defaults\\/main\\.yml$/"],
-      "matchStrings": ["(?:^|\\n)mdcat_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
-      "depNameTemplate": "mdcat",
-      "packageNameTemplate": "swsnr/mdcat",
-      "datasourceTemplate": "github-releases",
-      "versioningTemplate": "semver-coerced",
-      "extractVersionTemplate": "^mdcat-(?<version>.*)$",
-      "depTypeTemplate": "github-release-asset"
-    },
-    {
-      "customType": "regex",
       "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/main\\.vars\\.yml$/"],
       "matchStrings": ["(?:^|\\n)chrome_session_dump_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
       "depNameTemplate": "chrome-session-dump",

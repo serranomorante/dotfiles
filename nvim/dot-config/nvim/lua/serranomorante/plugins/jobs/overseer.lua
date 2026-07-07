@@ -23,7 +23,6 @@ end
 
 local function keys()
   local overseer = require("overseer")
-  local open_markdown_preview = require("overseer.template.editor-tasks.TASK__open_markdown_preview")
 
   vim.keymap.set("n", "<leader>oo", function()
     for _, winid in ipairs(vim.api.nvim_list_wins()) do
@@ -73,13 +72,6 @@ local function keys()
     function() require("serranomorante.plugins.jobs.overseer_task_actions").open_recent_task({ visual = true }) end,
     { desc = "Overseer: open task output sorted by recent activity" }
   )
-
-  vim.keymap.set("n", "<leader>lm", function()
-    overseer.run_task({ name = open_markdown_preview.name }, function(task)
-      if not task then return end
-      task:subscribe("on_complete", utils.close_window_on_exit_0)
-    end)
-  end, { desc = "Open markdown preview" })
 
   vim.keymap.set("n", "<leader>e", function()
     if vim.fn.executable("kitty-nnn-quick-access") ~= 1 then

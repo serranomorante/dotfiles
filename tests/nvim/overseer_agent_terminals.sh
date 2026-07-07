@@ -1193,8 +1193,6 @@ overseer-actions-include-dispose-and-kill-tmux)
         '  end' \
         '  package.loaded["overseer.constants"] = nil' \
         '  package.preload["overseer.constants"] = function() return { STATUS = { RUNNING = "RUNNING", SUCCESS = "SUCCESS", FAILURE = "FAILURE" } } end' \
-        '  package.loaded["overseer.template.editor-tasks.TASK__open_markdown_preview"] = nil' \
-        '  package.preload["overseer.template.editor-tasks.TASK__open_markdown_preview"] = function() return { name = "open_markdown_preview" } end' \
         '  package.loaded["serranomorante.utils"] = nil' \
         '  package.preload["serranomorante.utils"] = function()' \
         '    return {' \
