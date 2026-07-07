@@ -192,6 +192,14 @@
     state: started
     daemon_reload: true
 
+- name: "[archlinux] Dotfiles: compile system spike report generator"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/dotfiles-spikes"
+      - --compile-cache
+  register: var_dotfiles_spikes_compile_cache
+  changed_when: "'compiled' in var_dotfiles_spikes_compile_cache.stdout_lines"
+
 - name: "[archlinux] Dotfiles: compile system spike watcher"
   ansible.builtin.command:
     argv:
