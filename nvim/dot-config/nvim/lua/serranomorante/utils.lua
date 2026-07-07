@@ -999,6 +999,7 @@ end
 ---@class FzfOpts
 ---@field source string|table
 ---@field options? string[]
+---@field filter_options? string[]
 ---@field prompt? string
 ---@field sink? fun(entry: string)
 ---@field sinklist? fun(entry:string[])
@@ -1122,6 +1123,7 @@ function M.fzf(opts)
   vim.wo[term_winnr].cursorbind = false
   vim.api.nvim_set_option_value("winhl", "", { win = term_winnr })
 
+  local source_is_file = type(opts.source) ~= "string"
   local source = (function()
     if type(opts.source) == "string" then
       return opts.source
@@ -1132,6 +1134,19 @@ function M.fzf(opts)
   end)()
 
   local fzf_options = vim.deepcopy(opts.options)
+  if opts.filter_options and source_is_file then
+    local filter_options = table.concat(opts.filter_options, " ")
+    local filter_script = ([[query=$1; if [ -z "$query" ]; then cat %s; else fzf --filter "$query" %s < %s; fi]]):format(
+      shell_quote(source_temp),
+      filter_options,
+      shell_quote(source_temp)
+    )
+    table.insert(fzf_options, "--disabled")
+    table.insert(
+      fzf_options,
+      "--bind=" .. shell_quote("change:reload(sh -c " .. shell_quote(filter_script) .. " sh {q})")
+    )
+  end
   if fzf_sock then
     vim.fn.delete(fzf_sock)
     table.insert(fzf_options, "--listen=" .. shell_quote(fzf_sock))

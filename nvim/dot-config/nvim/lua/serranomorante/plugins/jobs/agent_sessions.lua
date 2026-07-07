@@ -535,6 +535,7 @@ end
 ---@field path string
 ---@field originator string?
 ---@field thread_source string?
+---@field search_text string?
 
 ---@param sessions any
 ---@return AgentStoredSession[]
@@ -556,6 +557,7 @@ local function valid_sessions(sessions)
       and (session.originator == nil or type(session.originator) == "string")
       and (session.thread_source == nil or session.thread_source == "user")
       and (session.title == nil or type(session.title) == "string")
+      and (session.search_text == nil or type(session.search_text) == "string")
     then
       session.title = normalized_session_title(session.title)
       session.updated_at = updated_at
@@ -1473,6 +1475,10 @@ end
 ---@return string
 local function fzf_field(value) return value:gsub("\t", " "):gsub("\n", " ") end
 
+---@param session AgentStoredSession
+---@return string
+local function session_fzf_search_text(session) return fzf_field(session.search_text or "") end
+
 ---@param provider table
 ---@param sessions AgentStoredSession[]
 ---@param opts AgentSessionOpts
@@ -1488,7 +1494,10 @@ local function session_fzf_entries(provider, sessions, opts, loading)
 
   local entries = {}
   for _, session in ipairs(sessions) do
-    table.insert(entries, ("%s\t%s"):format(session.id, fzf_field(format_session(session, opts.all))))
+    table.insert(
+      entries,
+      ("%s\t%s\t%s"):format(session.id, fzf_field(format_session(session, opts.all)), session_fzf_search_text(session))
+    )
   end
   return entries
 end
@@ -1697,6 +1706,10 @@ function M.select(provider_name, opts)
     prompt = opts.all and ("%s sessions (all cwd)"):format(provider.display_name)
       or ("%s sessions"):format(provider.display_name),
     options = {
+      "--delimiter='\t'",
+      "--with-nth=2",
+    },
+    filter_options = {
       "--delimiter='\t'",
       "--with-nth=2..",
     },

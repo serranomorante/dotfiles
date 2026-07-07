@@ -18,9 +18,11 @@ import (
 )
 
 const (
-	version          = 2
-	sessionReadBytes = 512 * 1024
-	titleMaxRunes    = 200
+	version            = 2
+	sessionReadBytes   = 512 * 1024
+	titleMaxRunes      = 200
+	searchTextMaxBytes = 64 * 1024
+	searchPromptLines  = 6
 )
 
 var providers = map[string]providerDefaults{
@@ -67,6 +69,7 @@ type session struct {
 	Originator   string `json:"originator,omitempty"`
 	ThreadSource string `json:"thread_source,omitempty"`
 	Title        string `json:"title,omitempty"`
+	SearchText   string `json:"search_text,omitempty"`
 	UpdatedAt    string `json:"updated_at,omitempty"`
 }
 
@@ -388,6 +391,78 @@ func normalizeTitle(value string) string {
 	return text
 }
 
+type sessionSearchBuilder struct {
+	builder strings.Builder
+	full    bool
+}
+
+func (search *sessionSearchBuilder) add(value string) {
+	if search.full {
+		return
+	}
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return
+	}
+	if search.builder.Len() > 0 {
+		search.builder.WriteByte('\n')
+	}
+	remaining := searchTextMaxBytes - search.builder.Len()
+	if remaining <= 0 {
+		search.full = true
+		return
+	}
+	if len(value) > remaining {
+		value = value[:remaining]
+		search.full = true
+	}
+	search.builder.WriteString(value)
+}
+
+func (search *sessionSearchBuilder) addPrompt(value string) {
+	if snippet := promptSearchSnippet(value); snippet != "" {
+		search.add(snippet)
+	}
+}
+
+func (search *sessionSearchBuilder) text() string {
+	return search.builder.String()
+}
+
+func promptSearchSnippet(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" || isGeneratedContextMessage(value) {
+		return ""
+	}
+
+	lines := strings.Split(strings.ReplaceAll(value, "\r\n", "\n"), "\n")
+	snippets := []string{}
+	for _, line := range lines {
+		line = normalizeTitle(line)
+		if line == "" {
+			continue
+		}
+		snippets = append(snippets, line)
+		if len(snippets) >= searchPromptLines {
+			break
+		}
+	}
+	return strings.Join(snippets, " / ")
+}
+
+func finishSessionSearchText(result *session, prompts string) {
+	var search sessionSearchBuilder
+	search.add(result.Provider)
+	search.add(result.ID)
+	search.add(result.Title)
+	search.add(result.CWD)
+	search.add(result.Timestamp)
+	search.add(result.UpdatedAt)
+	search.add(result.Path)
+	search.add(prompts)
+	result.SearchText = search.text()
+}
+
 func contentText(content any) string {
 	switch value := content.(type) {
 	case string:
@@ -419,23 +494,34 @@ func contentText(content any) string {
 }
 
 func codexUserMessageTitle(payload map[string]any) string {
+	if text := codexUserMessageText(payload); text != "" {
+		return normalizeTitle(text)
+	}
+	return ""
+}
+
+func codexUserMessageText(payload map[string]any) string {
 	payloadType, _ := stringValue(payload["type"])
 	if payloadType == "user_message" {
 		if message, ok := stringValue(payload["message"]); ok {
-			return normalizeTitle(message)
+			return message
 		}
 		return ""
 	}
 	if payloadType == "message" {
 		role, _ := stringValue(payload["role"])
 		if role == "user" {
-			return normalizeTitle(contentText(payload["content"]))
+			return contentText(payload["content"])
 		}
 	}
 	return ""
 }
 
 func claudeUserMessageTitle(item map[string]any) string {
+	return normalizeTitle(claudeUserMessageText(item))
+}
+
+func claudeUserMessageText(item map[string]any) string {
 	itemType, _ := stringValue(item["type"])
 	if itemType != "user" {
 		return ""
@@ -452,18 +538,22 @@ func claudeUserMessageTitle(item map[string]any) string {
 	if role != "user" {
 		return ""
 	}
-	return normalizeTitle(contentText(message["content"]))
+	return contentText(message["content"])
 }
 
 func geminiUserMessageTitle(item map[string]any) string {
+	return normalizeTitle(geminiUserMessageText(item))
+}
+
+func geminiUserMessageText(item map[string]any) string {
 	if messages, ok := item["messages"].([]any); ok {
 		for _, raw := range messages {
 			message, ok := raw.(map[string]any)
 			if !ok {
 				continue
 			}
-			if title := geminiUserMessageTitle(message); title != "" {
-				return title
+			if text := geminiUserMessageText(message); text != "" {
+				return text
 			}
 		}
 	}
@@ -473,14 +563,14 @@ func geminiUserMessageTitle(item map[string]any) string {
 	if role != "user" && itemType != "user" {
 		return ""
 	}
-	if title := normalizeTitle(contentText(item["content"])); title != "" {
-		return title
+	if text := contentText(item["content"]); text != "" {
+		return text
 	}
-	if title := normalizeTitle(contentText(item["parts"])); title != "" {
-		return title
+	if text := contentText(item["parts"]); text != "" {
+		return text
 	}
-	if title := normalizeTitle(contentText(item["text"])); title != "" {
-		return title
+	if text := contentText(item["text"]); text != "" {
+		return text
 	}
 	return ""
 }
@@ -503,6 +593,7 @@ func millisTimestamp(value any) string {
 
 func parseCodexSession(path string, cwd string) *session {
 	result := session{Provider: "codex", Path: path}
+	var promptSearch sessionSearchBuilder
 	err := readSessionLines(path, func(item map[string]any) bool {
 		payload, ok := item["payload"].(map[string]any)
 		if !ok {
@@ -531,8 +622,9 @@ func parseCodexSession(path string, cwd string) *session {
 		if result.Title == "" {
 			result.Title = codexUserMessageTitle(payload)
 		}
+		promptSearch.addPrompt(codexUserMessageText(payload))
 
-		return !(result.ID != "" && result.CWD != "" && result.Timestamp != "" && result.Title != "")
+		return !(result.ID != "" && result.CWD != "" && result.Timestamp != "" && result.Title != "" && promptSearch.full)
 	})
 	if err != nil {
 		return nil
@@ -545,6 +637,7 @@ func parseCodexSession(path string, cwd string) *session {
 	if result.UpdatedAt == "" {
 		result.UpdatedAt = result.Timestamp
 	}
+	finishSessionSearchText(&result, promptSearch.text())
 	return &result
 }
 
@@ -552,6 +645,7 @@ func parseClaudeSession(path string, cwd string) *session {
 	result := session{Provider: "claude", Path: path}
 	var titleFromPrompt string
 	var fallbackTitle string
+	var promptSearch sessionSearchBuilder
 
 	err := readSessionLines(path, func(item map[string]any) bool {
 		if result.ID == "" {
@@ -585,8 +679,9 @@ func parseClaudeSession(path string, cwd string) *session {
 		if titleFromPrompt == "" {
 			titleFromPrompt = claudeUserMessageTitle(item)
 		}
+		promptSearch.addPrompt(claudeUserMessageText(item))
 
-		return !(result.ID != "" && result.CWD != "" && result.Timestamp != "" && result.Title != "")
+		return !(result.ID != "" && result.CWD != "" && result.Timestamp != "" && result.Title != "" && promptSearch.full)
 	})
 	if err != nil {
 		return nil
@@ -612,6 +707,10 @@ func parseClaudeSession(path string, cwd string) *session {
 	if result.UpdatedAt == "" {
 		result.UpdatedAt = result.Timestamp
 	}
+	if promptSearch.text() == "" {
+		promptSearch.addPrompt(fallbackTitle)
+	}
+	finishSessionSearchText(&result, promptSearch.text())
 	return &result
 }
 
@@ -625,7 +724,7 @@ func projectRootForGeminiSession(path string) string {
 	return strings.TrimSpace(string(data))
 }
 
-func applyGeminiSessionItem(result *session, item map[string]any) {
+func applyGeminiSessionItem(result *session, item map[string]any, promptSearch *sessionSearchBuilder) {
 	if result.ID == "" {
 		if id, ok := stringValue(item["sessionId"]); ok {
 			result.ID = id
@@ -648,6 +747,9 @@ func applyGeminiSessionItem(result *session, item map[string]any) {
 	if result.Title == "" {
 		result.Title = geminiUserMessageTitle(item)
 	}
+	if promptSearch != nil {
+		promptSearch.addPrompt(geminiUserMessageText(item))
+	}
 }
 
 func parseGeminiJSONObject(path string, cwd string) *session {
@@ -663,8 +765,9 @@ func parseGeminiJSONObject(path string, cwd string) *session {
 	}
 
 	result := session{Provider: "gemini", Path: path, CWD: projectRootForGeminiSession(path)}
-	applyGeminiSessionItem(&result, item)
-	return finishGeminiSession(result, cwd)
+	var promptSearch sessionSearchBuilder
+	applyGeminiSessionItem(&result, item, &promptSearch)
+	return finishGeminiSession(result, cwd, promptSearch.text())
 }
 
 func parseGeminiSession(path string, cwd string) *session {
@@ -673,17 +776,18 @@ func parseGeminiSession(path string, cwd string) *session {
 	}
 
 	result := session{Provider: "gemini", Path: path, CWD: projectRootForGeminiSession(path)}
+	var promptSearch sessionSearchBuilder
 	err := readSessionLines(path, func(item map[string]any) bool {
-		applyGeminiSessionItem(&result, item)
-		return !(result.ID != "" && result.CWD != "" && result.Timestamp != "" && result.Title != "" && result.UpdatedAt != "")
+		applyGeminiSessionItem(&result, item, &promptSearch)
+		return !(result.ID != "" && result.CWD != "" && result.Timestamp != "" && result.Title != "" && result.UpdatedAt != "" && promptSearch.full)
 	})
 	if err != nil {
 		return nil
 	}
-	return finishGeminiSession(result, cwd)
+	return finishGeminiSession(result, cwd, promptSearch.text())
 }
 
-func finishGeminiSession(result session, cwd string) *session {
+func finishGeminiSession(result session, cwd string, promptSearch string) *session {
 	if result.ID == "" {
 		filename := filepath.Base(result.Path)
 		if strings.HasPrefix(filename, "session-") {
@@ -703,6 +807,7 @@ func finishGeminiSession(result session, cwd string) *session {
 	if result.UpdatedAt == "" {
 		result.UpdatedAt = result.Timestamp
 	}
+	finishSessionSearchText(&result, promptSearch)
 	return &result
 }
 
