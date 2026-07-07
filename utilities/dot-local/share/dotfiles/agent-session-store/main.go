@@ -629,6 +629,9 @@ func parseCodexSession(path string, cwd string) *session {
 	if err != nil {
 		return nil
 	}
+	if result.ThreadSource == "subagent" {
+		return nil
+	}
 	if (cwd != "" && result.CWD != cwd) || result.ID == "" || result.Timestamp == "" || result.Originator != "codex-tui" {
 		return nil
 	}

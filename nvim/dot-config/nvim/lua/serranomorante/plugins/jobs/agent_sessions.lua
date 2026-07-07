@@ -172,6 +172,10 @@ end
 ---@return boolean
 local function task_matches_provider_command(provider, task)
   if task.cmd == provider.executable then return true end
+  if type(task.cmd) == "string" and task.cmd ~= "" then
+    local escaped_executable = provider.executable:gsub("([^%w])", "%%%1")
+    if (" " .. task.cmd .. " "):find("%s" .. escaped_executable .. "%s") then return true end
+  end
   if task.cmd ~= "tmux" or type(task.args) ~= "table" then return false end
 
   for _, arg in ipairs(task.args) do
