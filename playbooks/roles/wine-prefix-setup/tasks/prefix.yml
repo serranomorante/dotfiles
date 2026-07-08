@@ -15,6 +15,62 @@
     creates: "{{ wine_prefix_setup.path }}/system.reg"
   timeout: 60
 
+- name: "[wine-prefix-setup] Check {{ wine_prefix_setup.name }} Wine Mono registration"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    wine uninstaller --list
+  changed_when: false
+  failed_when: false
+  register: wine_prefix_setup_mono_registration
+  when: wine_prefix_setup.ensure_mono | default(false) | bool
+
+- name: "[wine-prefix-setup] Find system Wine Mono support MSI"
+  ansible.builtin.find:
+    paths: /usr/share/wine/mono
+    patterns:
+      - winemono-support.msi
+    recurse: true
+    file_type: file
+  register: wine_prefix_setup_mono_support_msi
+  when: wine_prefix_setup.ensure_mono | default(false) | bool
+
+- name: "[wine-prefix-setup] Install {{ wine_prefix_setup.name }} Wine Mono support"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    --arch '{{ wine_prefix_setup.architecture | default('win64') }}'
+    wine msiexec /i '{{ (wine_prefix_setup_mono_support_msi.files | sort(attribute="path") | map(attribute="path") | list | first) }}' /qn
+  changed_when: true
+  register: wine_prefix_setup_install_mono_support
+  timeout: 120
+  when:
+    - wine_prefix_setup.ensure_mono | default(false) | bool
+    - "'Wine Mono' not in (wine_prefix_setup_mono_registration.stdout | default(''))"
+    - wine_prefix_setup_mono_support_msi.files | default([]) | length > 0
+
+- name: "[wine-prefix-setup] Ensure {{ wine_prefix_setup.name }} Wine Mono is registered"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    --arch '{{ wine_prefix_setup.architecture | default('win64') }}'
+    --no-desktop wineboot -u
+  changed_when: true
+  register: wine_prefix_setup_ensure_mono
+  timeout: 120
+  when:
+    - wine_prefix_setup.ensure_mono | default(false) | bool
+    - "'Wine Mono' not in (wine_prefix_setup_mono_registration.stdout | default(''))"
+    - >
+      (wine_prefix_setup_install_mono_support.changed | default(false))
+      or (wine_prefix_setup_mono_support_msi.files | default([]) | length == 0)
+
+- name: "[wine-prefix-setup] Stop {{ wine_prefix_setup.name }} wineserver after Wine Mono registration"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    kill-prefix
+  changed_when: true
+  failed_when: false
+  timeout: 60
+  when: wine_prefix_setup_ensure_mono.changed | default(false)
+
 - name: "[wine-prefix-setup] Stat {{ wine_prefix_setup.name }} LogPixels marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
@@ -183,3 +239,19 @@
   failed_when: false
   timeout: 60
   when: wine_prefix_setup_force_winver.changed | default(false)
+
+- name: "[wine-prefix-setup] Stop {{ wine_prefix_setup.name }} wineserver after prefix preparation"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    kill-prefix
+  changed_when: true
+  failed_when: false
+  timeout: 60
+  when: >
+    (wine_prefix_setup_install_mono_support.changed | default(false))
+    or (wine_prefix_setup_ensure_mono.changed | default(false))
+    or (wine_prefix_setup_configure_dpi.changed | default(false))
+    or (wine_prefix_setup_reg_virtual_desktop is failed)
+    or (wine_prefix_setup_force_winver.changed | default(false))
+    or ((wine_prefix_setup_reg_native_dll_overrides.results | default([])) | selectattr('failed', 'defined') | selectattr('failed') | list | length > 0)
+    or ((wine_prefix_setup_reg_disabled_dll_overrides.results | default([])) | selectattr('failed', 'defined') | selectattr('failed') | list | length > 0)

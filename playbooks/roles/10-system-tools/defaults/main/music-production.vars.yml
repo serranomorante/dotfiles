@@ -41,13 +41,15 @@ wwine_prefix_aliases:
     path: "{{ arch_synthv_wine_prefix }}"
     architecture: win64
 
+arch_reaper_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-reaper"
+arch_reaper_wine_drive_c: "{{ arch_reaper_wine_prefix }}/drive_c"
 arch_synthv_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-synthv2"
 arch_musicproduction_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-musicproduction"
 
 arch_reaper_wine_setup:
   version: "766"
   backup_path: ~/data/Downloads/music-production
-  wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-reaper"
+  wine_prefix: "{{ arch_reaper_wine_prefix }}"
   architecture: win64 # wow64 will fail for some plugins
 
 arch_audiogridder_wine_setup:

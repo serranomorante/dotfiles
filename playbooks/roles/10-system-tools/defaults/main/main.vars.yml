@@ -85,6 +85,7 @@ arch_wine_prefix_setups:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}"
     architecture: "{{ arch_reaper_wine_setup.architecture | default('win64') }}"
     winver: win10
+    ensure_mono: true
     dpi: "{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
     virtual_desktop: true
     show_dot_files: true
