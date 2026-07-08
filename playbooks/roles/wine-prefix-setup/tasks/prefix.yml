@@ -1,0 +1,183 @@
+---
+- name: "[wine-prefix-setup] Validate Wine prefix variables"
+  ansible.builtin.assert:
+    that:
+      - wine_prefix_setup.name is defined
+      - wine_prefix_setup.path is defined
+    quiet: true
+
+- name: "[wine-prefix-setup] Initialize {{ wine_prefix_setup.name }} prefix"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    --arch '{{ wine_prefix_setup.architecture | default('win64') }}'
+    winecfg -v {{ wine_prefix_setup.winver | default('win10') }}
+  args:
+    creates: "{{ wine_prefix_setup.path }}/system.reg"
+  timeout: 60
+
+- name: "[wine-prefix-setup] Stat {{ wine_prefix_setup.name }} LogPixels marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "wine-{{ wine_prefix_setup.name }}-logpixels-{{ wine_prefix_setup.dpi }}"
+    dotfiles_marker_register: wine_prefix_setup_dpi_marker
+  when: wine_prefix_setup.dpi is defined
+
+- name: "[wine-prefix-setup] Test {{ wine_prefix_setup.name }} LogPixels"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    wine reg query 'HKEY_CURRENT_USER\Control Panel\Desktop' /v 'LogPixels'
+  changed_when: false
+  ignore_errors: true
+  register: wine_prefix_setup_reg_log_pixels
+  when:
+    - wine_prefix_setup.dpi is defined
+    - not wine_prefix_setup_dpi_marker.stat.exists
+
+- name: "[wine-prefix-setup] Configure {{ wine_prefix_setup.name }} DPI"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    wine reg add "HKEY_CURRENT_USER\Control Panel\Desktop" /v LogPixels /t REG_DWORD /d {{ wine_prefix_setup.dpi }} /f
+  changed_when: true
+  register: wine_prefix_setup_configure_dpi
+  timeout: 60
+  when:
+    - wine_prefix_setup.dpi is defined
+    - not wine_prefix_setup_dpi_marker.stat.exists
+    - wine_prefix_setup_reg_log_pixels is failed
+
+- name: "[wine-prefix-setup] Record {{ wine_prefix_setup.name }} LogPixels marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "wine-{{ wine_prefix_setup.name }}-logpixels-{{ wine_prefix_setup.dpi }}"
+    dotfiles_marker_content: "{{ wine_prefix_setup.dpi }}\n"
+  when:
+    - wine_prefix_setup.dpi is defined
+    - not wine_prefix_setup_dpi_marker.stat.exists
+    - wine_prefix_setup_reg_log_pixels is succeeded or ((wine_prefix_setup_configure_dpi | default({})).changed | default(false))
+
+- name: "[wine-prefix-setup] Test {{ wine_prefix_setup.name }} virtual desktop"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    wine reg query 'HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops' /v 'Default'
+  changed_when: false
+  ignore_errors: true
+  register: wine_prefix_setup_reg_virtual_desktop
+  when: wine_prefix_setup.virtual_desktop | default(false) | bool
+
+- name: "[wine-prefix-setup] Configure {{ wine_prefix_setup.name }} virtual desktop"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}' --desktop wineboot -u
+  changed_when: true
+  timeout: 60
+  when:
+    - wine_prefix_setup.virtual_desktop | default(false) | bool
+    - wine_prefix_setup_reg_virtual_desktop is failed
+
+- name: "[wine-prefix-setup] Show {{ wine_prefix_setup.name }} dot files"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    wine reg add "HKEY_CURRENT_USER\Software\Wine" /v ShowDotFiles /d Y /f
+  changed_when: true
+  timeout: 60
+  when: wine_prefix_setup.show_dot_files | default(true) | bool
+
+- name: "[wine-prefix-setup] Ensure {{ wine_prefix_setup.name }} folders"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  loop: "{{ wine_prefix_setup.folders | default([]) }}"
+
+- name: "[wine-prefix-setup] Ensure {{ wine_prefix_setup.name }} DXVK archive parent"
+  ansible.builtin.file:
+    state: directory
+    path: "{{ wine_prefix_setup.dxvk.archive_parent | default(ansible_facts.env.HOME ~ '/data/apps/virt-tools') }}"
+    mode: "755"
+  when: wine_prefix_setup.dxvk is defined
+
+- name: "[wine-prefix-setup] Download {{ wine_prefix_setup.name }} DXVK"
+  ansible.builtin.unarchive:
+    src: https://github.com/doitsujin/dxvk/releases/download/v{{ wine_prefix_setup.dxvk.version }}/dxvk-{{ wine_prefix_setup.dxvk.version }}.tar.gz
+    dest: "{{ wine_prefix_setup.dxvk.archive_parent | default(ansible_facts.env.HOME ~ '/data/apps/virt-tools') }}"
+    remote_src: true
+  ignore_errors: true
+  when: wine_prefix_setup.dxvk is defined
+
+- name: "[wine-prefix-setup] Install {{ wine_prefix_setup.name }} DXVK"
+  ansible.builtin.copy:
+    src: "{{ wine_prefix_setup.dxvk.archive_parent | default(ansible_facts.env.HOME ~ '/data/apps/virt-tools') }}/dxvk-{{ wine_prefix_setup.dxvk.version }}/{{ item.src }}/"
+    dest: "{{ wine_prefix_setup.path }}/drive_c/windows/{{ item.dest }}"
+    mode: "644"
+  loop:
+    - src: x64
+      dest: system32
+    - src: x32
+      dest: syswow64
+  when: wine_prefix_setup.dxvk is defined
+
+- name: "[wine-prefix-setup] Test {{ wine_prefix_setup.name }} native DLL overrides"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    wine reg query 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v '{{ item.name }}'
+  changed_when: false
+  ignore_errors: true
+  register: wine_prefix_setup_reg_native_dll_overrides
+  loop: "{{ wine_prefix_setup.dxvk.native_overrides | default([]) }}"
+  when: wine_prefix_setup.dxvk is defined
+
+- name: "[wine-prefix-setup] Ensure {{ wine_prefix_setup.name }} native DLL overrides"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v {{ item.item.name }} /d native /f
+  changed_when: true
+  loop: "{{ wine_prefix_setup_reg_native_dll_overrides.results | default([]) }}"
+  when: item is failed
+
+- name: "[wine-prefix-setup] Test {{ wine_prefix_setup.name }} disabled DLL overrides"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    wine reg query 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v '{{ item.name }}'
+  changed_when: false
+  ignore_errors: true
+  register: wine_prefix_setup_reg_disabled_dll_overrides
+  loop: "{{ wine_prefix_setup.dxvk.disabled_overrides | default([]) }}"
+  when: wine_prefix_setup.dxvk is defined
+
+- name: "[wine-prefix-setup] Ensure {{ wine_prefix_setup.name }} disabled DLL overrides"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v {{ item.item.name }} /d disabled /f
+  changed_when: true
+  loop: "{{ wine_prefix_setup_reg_disabled_dll_overrides.results | default([]) }}"
+  when: item is failed or ('disabled' not in (item.stdout | default('')))
+
+- name: "[wine-prefix-setup] Test {{ wine_prefix_setup.name }} Windows version"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    wine reg query 'HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion' /v 'ProductName'
+  changed_when: false
+  ignore_errors: true
+  register: wine_prefix_setup_reg_win_version
+  when: wine_prefix_setup.enforce_winver | default(false) | bool
+
+- name: "[wine-prefix-setup] Force {{ wine_prefix_setup.name }} Windows version"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    --arch '{{ wine_prefix_setup.architecture | default('win64') }}'
+    winetricks -q --force {{ wine_prefix_setup.winver | default('win10') }}
+  changed_when: true
+  register: wine_prefix_setup_force_winver
+  when:
+    - wine_prefix_setup.enforce_winver | default(false) | bool
+    - wine_prefix_setup.winver_product_name | default(wine_prefix_setup.winver | default('win10')) not in (wine_prefix_setup_reg_win_version.stdout | default(''))
+
+- name: "[wine-prefix-setup] Stop {{ wine_prefix_setup.name }} wineserver after Windows version change"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
+    wineserver -k
+  changed_when: true
+  when: wine_prefix_setup_force_winver.changed | default(false)

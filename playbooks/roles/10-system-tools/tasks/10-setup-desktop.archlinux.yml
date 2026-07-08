@@ -226,8 +226,8 @@
     insertafter: "^\\[options\\]"
     marker: "## {mark} ANSIBLE MANAGED BLOCK - IGNORE PACKAGES"
     block: |
-      # IgnorePkg = wine-staging davinci-resolve
-      IgnorePkg = wine-staging davinci-resolve
+      # IgnorePkg = davinci-resolve
+      IgnorePkg = davinci-resolve
 
 - name: "[archlinux] Setup desktop: disable baloo indexing"
   # https://wiki.archlinux.org/title/Baloo#Disabling_the_indexer

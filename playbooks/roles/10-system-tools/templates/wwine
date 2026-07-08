@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 #
 # Wrapper installed as ~/bin/wwine for running Wine tools against managed
-# prefixes with a pinned Wine build.
+# prefixes with a default pinned Wine build and optional per-prefix Wine
+# profiles.
 #
-# The Ansible role renders the Wine executable/library environment, prefix
-# aliases, and optional sandbox profiles into this template. Callers can use
-# stable names such as `--prefix reaper` instead of repeating full WINEPREFIX
-# paths and Wine build variables. The same template is also installed as
+# The Ansible role renders Wine executable/library environments, prefix aliases,
+# and optional sandbox profiles into this template. Callers can use stable names
+# such as `--prefix reaper` instead of repeating full WINEPREFIX paths and Wine
+# build variables. The same template is also installed as
 # `wwine-wine-loader`, a WINELOADER-compatible entrypoint for tools such as
 # yabridge that can only execute a single Wine loader path without arguments.
 #
@@ -28,7 +29,7 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: wwine --prefix <alias-or-path> [--arch <arch>] [--desktop|--no-desktop] [--use-sandbox] [--sandbox-profile <path>] [--sandbox-check-profile <path>] [--sandbox-name <name>] [--log-id <app-id>] [--wine-debug <spec>] <tool> [tool-args...]
+usage: wwine --prefix <alias-or-path> [--arch <arch>] [--wine-profile <profile>] [--desktop|--no-desktop] [--use-sandbox] [--sandbox-profile <path>] [--sandbox-check-profile <path>] [--sandbox-name <name>] [--log-id <app-id>] [--wine-debug <spec>] <tool> [tool-args...]
 
 tools: wine, winecfg, wineserver, winetricks, wineboot, prepare-env, kill-prefix
 EOF
@@ -109,6 +110,7 @@ fi
 
 prefix=""
 arch=""
+wine_profile=""
 use_desktop=1
 use_sandbox=0
 sandbox_profile=""
@@ -125,6 +127,7 @@ desktop_shell_was_running=0
 if [[ "$loader_mode" == 1 ]]; then
   prefix="${WWINE_PREFIX_ALIAS:-}"
   arch="${WINEARCH:-}"
+  wine_profile="${WWINE_WINE_PROFILE:-}"
   use_desktop="$(bool_arg "${WWINE_USE_DESKTOP:-0}")"
   use_sandbox="$(bool_arg "${WWINE_USE_SANDBOX:-0}")"
   sandbox_profile="${WWINE_SANDBOX_PROFILE:-}"
@@ -150,6 +153,14 @@ else
         ;;
       --arch=*)
         arch="${1#*=}"
+        ;;
+      --wine-profile)
+        shift
+        [[ $# -gt 0 ]] || die "missing value for --wine-profile"
+        wine_profile="$1"
+        ;;
+      --wine-profile=*)
+        wine_profile="${1#*=}"
         ;;
       --desktop)
         use_desktop=1
@@ -275,6 +286,9 @@ case "$prefix" in
     {% if config.architecture is defined %}
     [[ -n "$arch" ]] || arch="{{ config.architecture }}"
     {% endif %}
+    {% if config.wine_profile is defined %}
+    [[ -n "$wine_profile" ]] || wine_profile="{{ config.wine_profile }}"
+    {% endif %}
     {% if config.sandbox_profile is defined %}
     [[ -n "$sandbox_profile" ]] || sandbox_profile="{{ config.sandbox_profile }}"
     {% endif %}
@@ -291,17 +305,37 @@ case "$prefix" in
     ;;
 esac
 
-real_wine_loader="{{ wine_env_vars.WINELOADER }}"
+[[ -n "$wine_profile" ]] || wine_profile="legacy"
+
+{% set wwine_wine_env_profiles = wine_env_profiles | default({'legacy': wine_env_vars}) %}
+case "$wine_profile" in
+{% for name, env_vars in wwine_wine_env_profiles.items() %}
+  "{{ name }}")
+    wine_env_WINEVERPATH="{{ env_vars.WINEVERPATH }}"
+    wine_env_WINELOADER="{{ env_vars.WINELOADER }}"
+    wine_env_WINESERVER="{{ env_vars.WINESERVER }}"
+    wine_env_WINEDLLPATH="{{ env_vars.WINEDLLPATH }}"
+    wine_env_LD_LIBRARY_PATH="{{ env_vars.LD_LIBRARY_PATH }}"
+    wine_env_PATH="{{ env_vars.PATH }}"
+    wine_env_WINEFSYNC="{{ env_vars.WINEFSYNC }}"
+    ;;
+{% endfor %}
+  *)
+    die "unknown Wine profile: $wine_profile"
+    ;;
+esac
+
+real_wine_loader="$wine_env_WINELOADER"
 wwine_loader="{{ ansible_facts.env.HOME }}/bin/wwine-wine-loader"
 profile_checker="{{ ansible_facts.env.HOME }}/bin/fj-profile-checker"
 
-export WINEVERPATH="{{ wine_env_vars.WINEVERPATH }}"
+export WINEVERPATH="$wine_env_WINEVERPATH"
 export WINELOADER="$real_wine_loader"
-export WINESERVER="{{ wine_env_vars.WINESERVER }}"
-export WINEDLLPATH="{{ wine_env_vars.WINEDLLPATH }}"
-export LD_LIBRARY_PATH="{{ wine_env_vars.LD_LIBRARY_PATH }}"
-export PATH="{{ wine_env_vars.PATH }}"
-export WINEFSYNC="{{ wine_env_vars.WINEFSYNC }}"
+export WINESERVER="$wine_env_WINESERVER"
+export WINEDLLPATH="$wine_env_WINEDLLPATH"
+export LD_LIBRARY_PATH="$wine_env_LD_LIBRARY_PATH"
+export PATH="$wine_env_PATH"
+export WINEFSYNC="$wine_env_WINEFSYNC"
 export WINEPREFIX="$resolved_prefix"
 
 if [[ -n "$wine_debug" ]]; then
@@ -410,6 +444,7 @@ if [[ "$use_sandbox" == 1 && "$tool" != "prepare-env" ]]; then
     if [[ -n "$arch" ]]; then
       reexec_args+=(--arch "$arch")
     fi
+    reexec_args+=(--wine-profile "$wine_profile")
     if [[ "$use_desktop" == 1 ]]; then
       if [[ -n "$desktop_size" ]]; then
         reexec_args+=(--desktop="$desktop_size")
@@ -532,6 +567,7 @@ print_environment() {
   shell_export WINEFSYNC "$WINEFSYNC"
   shell_export WINEPREFIX "$WINEPREFIX"
   shell_export WWINE_PREFIX_ALIAS "$prefix_alias"
+  shell_export WWINE_WINE_PROFILE "$wine_profile"
   shell_export WWINE_USE_DESKTOP "$use_desktop"
   shell_export WWINE_USE_SANDBOX "$use_sandbox"
   shell_export WWINE_SANDBOX_PROFILE "$sandbox_profile"
@@ -686,6 +722,7 @@ case "$tool" in
       if [[ -n "$arch" ]]; then
         reexec_args+=(--arch "$arch")
       fi
+      reexec_args+=(--wine-profile "$wine_profile")
       if [[ "$use_sandbox" == 1 ]]; then
         reexec_args+=(--use-sandbox)
       fi
@@ -723,6 +760,7 @@ case "$tool" in
         if [[ -n "$arch" ]]; then
           reexec_args+=(--arch "$arch")
         fi
+        reexec_args+=(--wine-profile "$wine_profile")
         if [[ "$use_sandbox" == 1 ]]; then
           reexec_args+=(--use-sandbox)
         fi

@@ -16,6 +16,16 @@ Use `wwine --prefix <alias-or-path> kill-prefix` when Ansible handlers or mainte
 
 Do not use `ps | grep wine` fallbacks in handlers or tasks. Those are process-name scoped instead of prefix scoped and can kill unrelated Wine applications from other prefixes.
 
+## Wine Profiles
+
+`wwine` defaults to the `legacy` Wine profile, which points at the portable Kron4ek Wine staging build declared by `arch_wine_staging_version`. Keep this as the default for existing prefixes unless a prefix explicitly needs a different runtime.
+
+Per-prefix Wine selection is owned by `wwine_prefix_aliases` in `playbooks/roles/10-system-tools/defaults/main/music-production.vars.yml`. Add `wine_profile: <profile>` to an alias when every command for that prefix should use a non-default Wine environment.
+
+Wine executable environments are owned by `wine_env_profiles` in `playbooks/roles/10-system-tools/defaults/main/main.vars.yml`. The `system` profile uses the pacman-managed `/usr/bin/wine` and `/usr/bin/wineserver`, while `legacy` uses the portable pinned build. `wine-staging` must not be listed in the desktop `IgnorePkg` block because the system profile is expected to track the current pacman package.
+
+The `musicproduction` prefix is mapped to the `system` profile, so `wwine --prefix musicproduction ...` runs with the current pacman-managed Wine staging build. Existing aliases without a `wine_profile` continue to use `legacy`.
+
 ## Desktop Entries
 
 Desktop files for normal Wine app launchers must use `Terminal=false` and must not launch `kitty`.

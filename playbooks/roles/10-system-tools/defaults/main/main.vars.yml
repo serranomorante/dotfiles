@@ -80,11 +80,28 @@ arch_ytmdesktop_wine_setup:
   backup_path: ~/Downloads
   wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-ytmdesktop"
 
-arch_wine_prefixes:
-  - "{{ arch_reaper_wine_setup }}"
-  - wine_prefix: "{{ arch_synthv_wine_prefix }}"
+arch_wine_prefix_setups:
+  - name: reaper
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}"
+    architecture: "{{ arch_reaper_wine_setup.architecture | default('win64') }}"
+    winver: win10
+    dpi: "{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
+    virtual_desktop: true
+    show_dot_files: true
+  - name: musicproduction
+    path: "{{ arch_musicproduction_wine_prefix }}"
     architecture: win64
-  - "{{ arch_gather_wine_setup }}"
+    winver: win10
+  - name: synthv
+    path: "{{ arch_synthv_wine_prefix }}"
+    architecture: win64
+    winver: win10
+    dpi: "{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
+    show_dot_files: true
+  - name: "{{ arch_gather_wine_setup.wine_prefix }}"
+    path: "{{ arch_gather_wine_setup.wine_prefix }}"
+    architecture: "{{ arch_gather_wine_setup.architecture | default('win64') }}"
+    winver: "{{ arch_gather_wine_setup.winver | default('win10') }}"
 
 # Filesystems whose label is enforced on connect by dotfiles-fs-label@.service.
 # Match is by UUID; the volume is unmounted (if needed) before relabeling.
@@ -104,3 +121,21 @@ wine_env_vars:
   LD_LIBRARY_PATH: "{{ wine_path }}/lib/wine/x86_64-unix:{{ wine_path }}/lib/wine/i386-unix"
   PATH: "{{ wine_path }}/bin/:{{ ansible_facts.env.PATH }}"
   WINEFSYNC: 1
+
+wine_env_profiles:
+  legacy:
+    WINEVERPATH: "{{ wine_path }}"
+    WINELOADER: "{{ wine_path }}/bin/wine"
+    WINESERVER: "{{ wine_path }}/bin/wineserver"
+    WINEDLLPATH: "{{ wine_path }}/lib/wine/x86_64-windows:{{ wine_path }}/lib/wine/i386-windows"
+    LD_LIBRARY_PATH: "{{ wine_path }}/lib/wine/x86_64-unix:{{ wine_path }}/lib/wine/i386-unix"
+    PATH: "{{ wine_path }}/bin/:{{ ansible_facts.env.PATH }}"
+    WINEFSYNC: 1
+  system:
+    WINEVERPATH: /usr
+    WINELOADER: /usr/bin/wine
+    WINESERVER: /usr/bin/wineserver
+    WINEDLLPATH: ""
+    LD_LIBRARY_PATH: ""
+    PATH: "{{ ansible_facts.env.PATH }}"
+    WINEFSYNC: 1

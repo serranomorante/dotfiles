@@ -1,0 +1,13 @@
+---
+- name: "[wine-prefix-setup] Validate prefix setup list"
+  ansible.builtin.assert:
+    that:
+      - wine_prefix_setup_prefixes is iterable
+    quiet: true
+
+- name: "[wine-prefix-setup] Setup Wine prefix"
+  ansible.builtin.include_tasks: prefix.yml
+  loop: "{{ wine_prefix_setup_prefixes }}"
+  loop_control:
+    loop_var: wine_prefix_setup
+    label: "{{ wine_prefix_setup.name }}"

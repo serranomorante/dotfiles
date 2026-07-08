@@ -27,6 +27,10 @@ arch_helgobox_setup:
 arch_yabridge_version: 5.1.1
 
 wwine_prefix_aliases:
+  musicproduction:
+    path: "{{ arch_musicproduction_wine_prefix }}"
+    architecture: win64
+    wine_profile: system
   reaper:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}"
     architecture: "{{ arch_reaper_wine_setup.architecture | default('win64') }}"
@@ -38,6 +42,7 @@ wwine_prefix_aliases:
     architecture: win64
 
 arch_synthv_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-synthv2"
+arch_musicproduction_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-musicproduction"
 
 arch_reaper_wine_setup:
   version: "766"
@@ -51,8 +56,8 @@ arch_audiogridder_wine_setup:
   plugin_version: 1.1.1
   plugin_version_slug: "1_1_1"
   backup_path: ~/data/Downloads/music-production
-  config_path: "{{ ansible_facts.env.HOME }}/data/.wine-win64-reaper/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/AudioGridder"
-  wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-reaper"
+  config_path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/AudioGridder"
+  wine_prefix: "{{ arch_reaper_wine_setup.wine_prefix }}"
 
 arch_bonjour_setup:
   backup_path: ~/data/Downloads/music-production

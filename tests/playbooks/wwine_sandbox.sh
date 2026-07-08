@@ -5,6 +5,7 @@ set -euo pipefail
 # dotfiles-test-tags: playbooks wine firejail wwine shell fast
 # dotfiles-test-firejail: disabled
 # dotfiles-test-case: wwine-prepare-env-exports-sandbox-loader
+# dotfiles-test-case: wwine-prefix-can-select-system-wine-profile
 # dotfiles-test-case: wwine-use-sandbox-starts-real-firejail-and-checks-profile
 # dotfiles-test-case: wwine-wine-loader-mode-starts-real-firejail-and-preserves-args
 # dotfiles-test-case: wwine-log-id-rotates-and-captures-output-before-sandbox
@@ -79,7 +80,8 @@ make_fixture() {
         "$hidden" \
         "$wine_prefix" \
         "$other_wine_prefix" \
-        "${fixture}/fake-winever/bin"
+        "${fixture}/fake-winever/bin" \
+        "${fixture}/fake-system-wine/bin"
 
     cat >"$sandbox_profile" <<PROFILE
 quiet
@@ -175,6 +177,30 @@ printf '\n' >> "$fake_wine_log"
 SH
     chmod +x "${fixture}/fake-wineserver"
 
+    cat >"${fixture}/fake-system-wine/bin/wine" <<SH
+#!/usr/bin/env sh
+{
+  printf 'SYSTEM_WINE=1\n'
+  printf 'WINEVERPATH=%s\n' "\${WINEVERPATH:-}"
+  printf 'WINELOADER=%s\n' "\${WINELOADER:-}"
+  printf 'WINESERVER=%s\n' "\${WINESERVER:-}"
+  printf 'PATH=%s\n' "\${PATH:-}"
+  printf 'WINEPREFIX=%s\n' "\${WINEPREFIX:-}"
+  printf 'ARGS='
+  printf '<%s>' "\$@"
+  printf '\n'
+} >> "$fake_wine_log"
+SH
+    chmod +x "${fixture}/fake-system-wine/bin/wine"
+
+    cat >"${fixture}/fake-system-wine/bin/wineserver" <<SH
+#!/usr/bin/env sh
+printf 'SYSTEM_WINESERVER_ARGS=' >> "$fake_wine_log"
+printf '<%s>' "\$@" >> "$fake_wine_log"
+printf '\n' >> "$fake_wine_log"
+SH
+    chmod +x "${fixture}/fake-system-wine/bin/wineserver"
+
     cat >"${fixture}/logrotate" <<SH
 #!/usr/bin/env sh
 printf 'LOGROTATE_ARGS=' >> "$fake_logrotate_log"
@@ -222,6 +248,26 @@ rendered = template.render(
         "PATH": f"{fixture}:/usr/bin:/bin",
         "WINEFSYNC": "0",
     },
+    wine_env_profiles={
+        "legacy": {
+            "WINEVERPATH": str(fixture / "fake-winever"),
+            "WINELOADER": str(fixture / "fake-wine"),
+            "WINESERVER": str(fixture / "fake-wineserver"),
+            "WINEDLLPATH": "",
+            "LD_LIBRARY_PATH": "",
+            "PATH": f"{fixture}:/usr/bin:/bin",
+            "WINEFSYNC": "0",
+        },
+        "system": {
+            "WINEVERPATH": str(fixture / "fake-system-wine"),
+            "WINELOADER": str(fixture / "fake-system-wine/bin/wine"),
+            "WINESERVER": str(fixture / "fake-system-wine/bin/wineserver"),
+            "WINEDLLPATH": "",
+            "LD_LIBRARY_PATH": "",
+            "PATH": f"{fixture / 'fake-system-wine/bin'}:/usr/bin:/bin",
+            "WINEFSYNC": "1",
+        },
+    },
     wwine_prefix_aliases={
         "reaper": {
             "path": str(fixture / "wine-prefix"),
@@ -229,6 +275,11 @@ rendered = template.render(
             "sandbox_profile": str(home / ".config/firejail/wine-reaper.local"),
             "sandbox_check_profile": str(home / ".local/share/wwine/firejail-profiles/wine-reaper.local"),
             "sandbox_name": os.environ["WWINE_TEST_SANDBOX_NAME"],
+        },
+        "musicproduction": {
+            "path": str(fixture / "musicproduction-prefix"),
+            "architecture": "win64",
+            "wine_profile": "system",
         },
     },
 )
@@ -405,10 +456,29 @@ wwine-prepare-env-exports-sandbox-loader)
     run_wwine --prefix reaper --no-desktop --use-sandbox prepare-env >"$output"
     grep -Fxq "export WINEPREFIX=$wine_prefix" "$output"
     grep -Fxq "export WINELOADER=$wwine_loader" "$output"
+    grep -Fxq "export WWINE_WINE_PROFILE=legacy" "$output"
     grep -Fxq "export WWINE_USE_SANDBOX=1" "$output"
     grep -Fxq "export WWINE_SANDBOX_PROFILE=$sandbox_profile" "$output"
     grep -Fxq "export WWINE_SANDBOX_CHECK_PROFILE=$sandbox_check_profile" "$output"
     grep -Fxq "export WWINE_SANDBOX_NAME=$sandbox_name" "$output"
+    ;;
+wwine-prefix-can-select-system-wine-profile)
+    make_fixture
+
+    run_wwine --prefix musicproduction --no-desktop prepare-env >"$output"
+    grep -Fxq "export WINEVERPATH=${fixture}/fake-system-wine" "$output"
+    grep -Fxq "export WINELOADER=${fixture}/fake-system-wine/bin/wine" "$output"
+    grep -Fxq "export WINESERVER=${fixture}/fake-system-wine/bin/wineserver" "$output"
+    grep -Fxq "export WINEPREFIX=${fixture}/musicproduction-prefix" "$output"
+    grep -Fxq "export WWINE_WINE_PROFILE=system" "$output"
+
+    run_wwine --prefix musicproduction --no-desktop wine profile-marker
+    grep -Fxq 'SYSTEM_WINE=1' "$fake_wine_log"
+    grep -Fxq "WINEVERPATH=${fixture}/fake-system-wine" "$fake_wine_log"
+    grep -Fxq "WINELOADER=${fixture}/fake-system-wine/bin/wine" "$fake_wine_log"
+    grep -Fxq "WINESERVER=${fixture}/fake-system-wine/bin/wineserver" "$fake_wine_log"
+    grep -Fxq "WINEPREFIX=${fixture}/musicproduction-prefix" "$fake_wine_log"
+    grep -Fxq 'ARGS=<profile-marker>' "$fake_wine_log"
     ;;
 wwine-use-sandbox-starts-real-firejail-and-checks-profile)
     make_fixture
