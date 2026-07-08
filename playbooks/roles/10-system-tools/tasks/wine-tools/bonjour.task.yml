@@ -13,30 +13,19 @@
 - name: "[archlinux] Wine tools: install bonjour"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
-    wine start /unix '{{ arch_bonjour_setup.backup_path }}/{{ arch_bonjour_setup.installer_name }}'
-  timeout: 60
+    wine start /wait /unix '{{ arch_bonjour_setup.backup_path }}/{{ arch_bonjour_setup.installer_name }}'
+  timeout: 300
   changed_when: true
   args:
     creates: "{{ arch_bonjour_setup.wine_prefix }}/drive_c/Program Files/Bonjour/mDNSResponder.exe"
   register: var_install_bonjour
   when: is_x_display_session
 
-- block:
-    - name: "[archlinux] Wine tools: wait until window closes: {{ window_query }}"
-      ansible.builtin.shell: set -o pipefail && sleep {{ delay_n }} && wmctrl -lx | grep -oE {{ window_query }} | wc -l
-      changed_when: true
-      register: var_host_windows
-      until: var_host_windows.stdout | int == 0
-      delay: "{{ delay_n }}"
-      retries: "{{ retries_n }}"
-      failed_when: false
-      notify: handler_kill_reaper_wineserver
-      when: is_x_display_session and should_wait
-
-    - name: flush_handlers
-      ansible.builtin.meta: flush_handlers
-  vars:
-    window_query: explorer.exe
-    should_wait: "{{ var_install_bonjour is defined and var_install_bonjour.changed }}"
-    delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
-    retries_n: "{{ arch_ansible_long_retries_config.retries_n }}"
+- name: "[archlinux] Wine tools: close stale Bonjour Wine processes"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper kill-prefix
+  timeout: 60
+  changed_when: true
+  failed_when: false
+  no_log: true
+  when: var_install_bonjour is defined and var_install_bonjour.changed

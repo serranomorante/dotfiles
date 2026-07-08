@@ -136,33 +136,21 @@
 - name: "[archlinux] Wine tools: install sws extension"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
-    wine start /unix
+    wine start /wait /unix
     '{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe'
-  timeout: 60
+  timeout: 300
   changed_when: true
   when: var_new_sws_extension_version_downloaded.changed and is_x_display_session
   register: var_sws_install
 
-- block:
-    - name: "[archlinux] Wine tools: wait until window closes: {{ window_query }}"
-      ansible.builtin.shell: set -o pipefail && sleep {{ delay_n }} && wmctrl -lx | grep -oE {{ window_query }} | wc -l
-      changed_when: true
-      register: var_host_windows
-      until: var_host_windows.stdout | int == 0
-      delay: "{{ delay_n }}"
-      retries: "{{ retries_n }}"
-      failed_when: false
-      notify: handler_kill_reaper_wineserver
-      when: is_x_display_session and should_wait
-
-    - name: flush_handlers
-      ansible.builtin.meta: flush_handlers
-  vars:
-    window_query: explorer.exe
-    # Defaults
-    should_wait: "{{ var_sws_install.changed }}"
-    delay_n: "{{ arch_ansible_long_retries_config.delay_n }}"
-    retries_n: "{{ arch_ansible_long_retries_config.retries_n }}"
+- name: "[archlinux] Wine tools: close stale SWS installer Wine processes"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper kill-prefix
+  timeout: 60
+  changed_when: true
+  failed_when: false
+  no_log: true
+  when: var_sws_install.changed | default(false)
 
 - name: "[archlinux] Wine tools: ensure custom script folder"
   ansible.builtin.file:
