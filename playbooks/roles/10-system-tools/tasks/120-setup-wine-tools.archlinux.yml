@@ -125,13 +125,13 @@
     dest: ~/.config/logrotate/wine-apps.conf
     mode: "644"
 
-- name: force handler
-  ansible.builtin.command: echo
+- name: "[archlinux] Wine tools: close stale Reaper Wine processes before setup"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper kill-prefix
+  timeout: 60
   changed_when: true
-  notify: handler_kill_reaper_wineserver
-
-- name: flush_handlers
-  ansible.builtin.meta: flush_handlers
+  failed_when: false
+  no_log: true
 
 - name: "[archlinux] Wine tools: setup prefixes"
   ansible.builtin.include_role:

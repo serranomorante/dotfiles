@@ -178,6 +178,8 @@
 - name: "[wine-prefix-setup] Stop {{ wine_prefix_setup.name }} wineserver after Windows version change"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
-    wineserver -k
+    kill-prefix
   changed_when: true
+  failed_when: false
+  timeout: 60
   when: wine_prefix_setup_force_winver.changed | default(false)
