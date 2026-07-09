@@ -16,6 +16,9 @@ set -euo pipefail
 # dotfiles-test-case: wwine-no-desktop-closes-running-wine-desktop-before-app
 # dotfiles-test-case: wwine-no-desktop-retries-once-after-closing-running-wine-desktop
 # dotfiles-test-case: wwine-no-desktop-taskkill-is-prefix-scoped
+# dotfiles-test-case: wwine-desktop-closes-running-no-desktop-shell-before-app
+# dotfiles-test-case: wwine-desktop-retry-does-not-enable-sandbox-implicitly
+# dotfiles-test-case: wwine-desktop-close-falls-back-when-taskkill-leaves-explorer-running
 
 # Purpose: Fast real-Firejail tests for wwine sandbox startup, inherited sandbox verification, and loader mode.
 
@@ -118,6 +121,7 @@ fi
   printf 'WINEARCH=%s\n' "\${WINEARCH:-}"
   printf 'WINEDEBUG=%s\n' "\${WINEDEBUG:-}"
   printf 'WWINE_NO_DESKTOP_REEXEC_ATTEMPTED=%s\n' "\${WWINE_NO_DESKTOP_REEXEC_ATTEMPTED:-}"
+  printf 'WWINE_DESKTOP_REEXEC_ATTEMPTED=%s\n' "\${WWINE_DESKTOP_REEXEC_ATTEMPTED:-}"
   printf 'ARGS='
   printf '<%s>' "\$@"
   printf '\n'
@@ -131,14 +135,16 @@ fi
 for arg in "\$@"; do
   if [ "\$arg" = taskkill ]; then
     if printf '<%s>' "\$@" | grep -Fq '<explorer.exe>'; then
-      if [ -e "\$active_wine_desktop_pid" ]; then
-        read -r desktop_pid < "\$active_wine_desktop_pid" || desktop_pid=""
-        if [ -n "\$desktop_pid" ]; then
-          kill "\$desktop_pid" 2>/dev/null || true
+      if [ ! -e "${fixture}/ignore-taskkill" ]; then
+        if [ -e "\$active_wine_desktop_pid" ]; then
+          read -r desktop_pid < "\$active_wine_desktop_pid" || desktop_pid=""
+          if [ -n "\$desktop_pid" ]; then
+            kill "\$desktop_pid" 2>/dev/null || true
+          fi
+          rm -f "\$active_wine_desktop_pid"
         fi
-        rm -f "\$active_wine_desktop_pid"
+        rm -f "\$active_wine_desktop"
       fi
-      rm -f "\$active_wine_desktop"
     fi
   fi
   if [ "\$arg" = start-desktop ]; then
@@ -149,7 +155,16 @@ for arg in "\$@"; do
     fi
   fi
   if [ "\$arg" = launch-after-desktop ]; then
-    if [ -e "\$active_wine_desktop" ]; then
+    desktop_running=0
+    if [ -e "\$active_wine_desktop_pid" ]; then
+      read -r desktop_pid < "\$active_wine_desktop_pid" || desktop_pid=""
+      if [ -n "\$desktop_pid" ] && kill -0 "\$desktop_pid" 2>/dev/null; then
+        desktop_running=1
+      fi
+    elif [ -e "\$active_wine_desktop" ]; then
+      desktop_running=1
+    fi
+    if [ "\$desktop_running" = 1 ]; then
       printf 'OPENED_IN_DESKTOP=1\n' >> "$fake_wine_log"
     else
       printf 'OPENED_IN_DESKTOP=0\n' >> "$fake_wine_log"
@@ -233,6 +248,7 @@ rendered_path = home / "bin/wwine"
 env = jinja2.Environment(undefined=jinja2.StrictUndefined, keep_trailing_newline=True)
 template = env.from_string(template_path.read_text())
 rendered = template.render(
+    ansible_managed="Ansible managed: test fixture",
     ansible_facts={
         "env": {
             "HOME": str(home),
@@ -614,6 +630,7 @@ wwine-no-desktop-retries-once-after-closing-running-wine-desktop)
     grep -Fq 'ARGS=<reg><delete><HKEY_CURRENT_USER\Software\Wine\Explorer><' "$fake_wine_log"
     grep -Fxq 'ARGS=<taskkill></F></IM><explorer.exe>' "$fake_wine_log"
     grep -Fxq 'WWINE_NO_DESKTOP_REEXEC_ATTEMPTED=1' "$fake_wine_log"
+    grep -Fxq 'WWINE_DESKTOP_REEXEC_ATTEMPTED=1' "$fake_wine_log"
     grep -Fxq 'OPENED_IN_DESKTOP=0' "$fake_wine_log"
     [ "$(grep -Fc 'ARGS=<launch-after-desktop>' "$fake_wine_log")" -eq 1 ]
     ;;
@@ -628,6 +645,53 @@ wwine-no-desktop-taskkill-is-prefix-scoped)
     grep -Fxq "WINEPREFIX=$other_wine_prefix" "$fake_wine_log"
     grep -Fxq "WINEPREFIX=$wine_prefix" "$fake_wine_log"
     grep -Fxq 'OPENED_IN_DESKTOP=0' "$fake_wine_log"
+    ;;
+wwine-desktop-closes-running-no-desktop-shell-before-app)
+    make_fixture
+
+    run_wwine --prefix reaper --desktop wine start-desktop
+    run_wwine --prefix reaper --no-desktop wine start-desktop
+    run_wwine --prefix reaper --desktop wine launch-after-desktop
+
+    grep -Fq 'ARGS=<reg><add><HKEY_CURRENT_USER\Software\Wine\Explorer><' "$fake_wine_log"
+    grep -Fxq 'WWINE_DESKTOP_REEXEC_ATTEMPTED=1' "$fake_wine_log"
+    [ "$(grep -Fc 'ARGS=<taskkill></F></IM><explorer.exe>' "$fake_wine_log")" -ge 2 ]
+    tail -n 20 "$fake_wine_log" | grep -Fxq 'OPENED_IN_DESKTOP=0'
+    ;;
+wwine-desktop-retry-does-not-enable-sandbox-implicitly)
+    make_fixture
+
+    run_wwine --prefix reaper --desktop wine start-desktop
+    run_wwine --prefix reaper --no-desktop wine launch-after-desktop
+
+    grep -Fxq 'WWINE_DESKTOP_REEXEC_ATTEMPTED=1' "$fake_wine_log"
+    if grep -Fxq 'INSIDE_FIREJAIL=1' "$fake_wine_log"; then
+        printf 'wwine retry unexpectedly entered Firejail without --use-sandbox:\n' >&2
+        cat "$fake_wine_log" >&2
+        exit 1
+    fi
+    ;;
+wwine-desktop-close-falls-back-when-taskkill-leaves-explorer-running)
+    make_fixture
+
+    run_wwine --prefix reaper --desktop wine start-desktop
+    touch "${fixture}/ignore-taskkill"
+    run_wwine --prefix reaper --no-desktop wine launch-after-desktop
+
+    grep -Fxq 'ARGS=<taskkill></F></IM><explorer.exe>' "$fake_wine_log"
+    grep -Fxq 'WINESERVER_ARGS=<-w>' "$fake_wine_log"
+    grep -Fxq 'WWINE_DESKTOP_REEXEC_ATTEMPTED=1' "$fake_wine_log"
+    grep -Fxq 'OPENED_IN_DESKTOP=0' "$fake_wine_log"
+    if [ -e "${fixture}/active-wine-desktop-reaper.pid" ]; then
+        read -r desktop_pid < "${fixture}/active-wine-desktop-reaper.pid" || desktop_pid=""
+    else
+        desktop_pid=""
+    fi
+    if [ -n "${desktop_pid:-}" ] && kill -0 "$desktop_pid" 2>/dev/null; then
+        printf 'stubborn fake explorer.exe survived wwine desktop cleanup\n' >&2
+        ps -fp "$desktop_pid" >&2 || true
+        exit 1
+    fi
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

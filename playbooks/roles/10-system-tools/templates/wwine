@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 #
+# {{ ansible_managed }}
+#
 # Wrapper installed as ~/bin/wwine for running Wine tools against managed
 # prefixes with a default pinned Wine build and optional per-prefix Wine
 # profiles.
@@ -15,10 +17,10 @@
 # enabled. That keeps Windows application windows contained and predictable for
 # the music-production prefixes. Use `--no-desktop` when a command must run
 # without that registry setting, such as selected maintenance or yabridge host
-# launches. For app launches, `--no-desktop` closes a still-running Wine
-# desktop shell from earlier commands and retries the same launch once so the
-# caller does not have to open the app twice. Keep the default desktop name as
-# `Default`: Ansible wait loops match Wine virtual desktop windows through
+# launches. App launches that change the desktop mode close a still-running
+# Wine explorer shell from earlier commands and retry the same launch once so
+# the caller does not have to open the app twice. Keep the default desktop name
+# as `Default`: Ansible wait loops match Wine virtual desktop windows through
 # `wmctrl -lx` and `explorer.exe`, while the DWM Wine rule also expects Wine's
 # virtual desktop window title.
 #
@@ -510,10 +512,35 @@ close_running_wine_desktop() {
   run_wine_loader taskkill /F /IM explorer.exe >/dev/null 2>&1 || true
 
   deadline=$((SECONDS + 5))
-  wait_for_prefix_wine_desktop_exit "$deadline" || true
+  wait_for_prefix_wine_desktop_exit "$deadline" || {
+    mapfile -t pids < <(prefix_wine_desktop_shell_pids)
+    if [[ -n "${pids[*]}" ]]; then
+      kill -TERM "${pids[@]}" 2>/dev/null || true
+    fi
+
+    deadline=$((SECONDS + 3))
+    wait_for_prefix_wine_desktop_exit "$deadline" || {
+      mapfile -t pids < <(prefix_wine_desktop_shell_pids)
+      if [[ -n "${pids[*]}" ]]; then
+        kill -KILL "${pids[@]}" 2>/dev/null || true
+      fi
+    }
+  }
+
+  if command -v timeout >/dev/null 2>&1; then
+    timeout 5s "$WINESERVER" -w >/dev/null 2>&1 || true
+  else
+    "$WINESERVER" -w >/dev/null 2>&1 || true
+  fi
 }
 
 configure_no_desktop_app_launch() {
+  desktop_shell_was_running=0
+  configure_desktop
+  close_running_wine_desktop || true
+}
+
+configure_desktop_app_launch() {
   desktop_shell_was_running=0
   configure_desktop
   close_running_wine_desktop || true
@@ -545,7 +572,7 @@ configure_desktop_for_wine_args() {
       if [[ "$use_desktop" == 0 ]]; then
         configure_no_desktop_app_launch
       else
-        configure_desktop
+        configure_desktop_app_launch
       fi
       ;;
   esac
@@ -711,7 +738,8 @@ kill_prefix() {
 case "$tool" in
   wine)
     configure_desktop_for_wine_args "$@"
-    if [[ "$desktop_shell_was_running" == 1 && "${WWINE_NO_DESKTOP_REEXEC_ATTEMPTED:-0}" != 1 ]]; then
+    if [[ "$desktop_shell_was_running" == 1 && "${WWINE_DESKTOP_REEXEC_ATTEMPTED:-${WWINE_NO_DESKTOP_REEXEC_ATTEMPTED:-0}}" != 1 ]]; then
+      export WWINE_DESKTOP_REEXEC_ATTEMPTED=1
       export WWINE_NO_DESKTOP_REEXEC_ATTEMPTED=1
       if [[ "$loader_mode" == 1 ]]; then
         exec "$0" "$@"
@@ -725,14 +753,22 @@ case "$tool" in
       reexec_args+=(--wine-profile "$wine_profile")
       if [[ "$use_sandbox" == 1 ]]; then
         reexec_args+=(--use-sandbox)
+        if [[ -n "$sandbox_profile" ]]; then
+          reexec_args+=(--sandbox-profile "$sandbox_profile")
+        fi
+        if [[ -n "$sandbox_check_profile" ]]; then
+          reexec_args+=(--sandbox-check-profile "$sandbox_check_profile")
+        fi
       fi
-      if [[ -n "$sandbox_profile" ]]; then
-        reexec_args+=(--sandbox-profile "$sandbox_profile")
+      if [[ "$use_desktop" == 1 ]]; then
+        if [[ -n "$desktop_size" ]]; then
+          reexec_args+=(--desktop="$desktop_size")
+        else
+          reexec_args+=(--desktop)
+        fi
+      else
+        reexec_args+=(--no-desktop)
       fi
-      if [[ -n "$sandbox_check_profile" ]]; then
-        reexec_args+=(--sandbox-check-profile "$sandbox_check_profile")
-      fi
-      reexec_args+=(--no-desktop)
       if [[ "$desktop_name" != "Default" ]]; then
         reexec_args+=(--desktop-name "$desktop_name")
       fi
@@ -753,23 +789,24 @@ case "$tool" in
   winecfg)
     if [[ "$use_desktop" == 0 ]]; then
       configure_no_desktop_app_launch
-      if [[ "$desktop_shell_was_running" == 1 && "${WWINE_NO_DESKTOP_REEXEC_ATTEMPTED:-0}" != 1 ]]; then
+      if [[ "$desktop_shell_was_running" == 1 && "${WWINE_DESKTOP_REEXEC_ATTEMPTED:-${WWINE_NO_DESKTOP_REEXEC_ATTEMPTED:-0}}" != 1 ]]; then
+        export WWINE_DESKTOP_REEXEC_ATTEMPTED=1
         export WWINE_NO_DESKTOP_REEXEC_ATTEMPTED=1
         reexec_args=()
         reexec_args=(--prefix "$prefix")
         if [[ -n "$arch" ]]; then
           reexec_args+=(--arch "$arch")
         fi
-        reexec_args+=(--wine-profile "$wine_profile")
-        if [[ "$use_sandbox" == 1 ]]; then
-          reexec_args+=(--use-sandbox)
-        fi
+      reexec_args+=(--wine-profile "$wine_profile")
+      if [[ "$use_sandbox" == 1 ]]; then
+        reexec_args+=(--use-sandbox)
         if [[ -n "$sandbox_profile" ]]; then
           reexec_args+=(--sandbox-profile "$sandbox_profile")
         fi
         if [[ -n "$sandbox_check_profile" ]]; then
           reexec_args+=(--sandbox-check-profile "$sandbox_check_profile")
         fi
+      fi
         reexec_args+=(--no-desktop)
         if [[ "$desktop_name" != "Default" ]]; then
           reexec_args+=(--desktop-name "$desktop_name")

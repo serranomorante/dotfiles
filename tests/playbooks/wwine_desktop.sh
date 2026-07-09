@@ -53,6 +53,7 @@ rendered_path = test_tmp / "bin/wwine"
 env = jinja2.Environment(undefined=jinja2.StrictUndefined, keep_trailing_newline=True)
 template = env.from_string(template_path.read_text())
 rendered = template.render(
+    ansible_managed="Ansible managed: test fixture",
     ansible_facts={
         "env": {
             "HOME": os.environ["HOME"],
