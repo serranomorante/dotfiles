@@ -205,7 +205,7 @@ end
 local function register_buffer_autocmds(entry)
   local bufnr = entry.bufnr
   local buffer_group = vim.api.nvim_create_augroup(("persistent_scratch_%d"):format(bufnr), { clear = true })
-  vim.api.nvim_create_autocmd({ "BufLeave", "WinLeave", "BufHidden", "TextChanged", "TextChangedI" }, {
+  vim.api.nvim_create_autocmd({ "BufLeave", "WinLeave", "BufHidden" }, {
     desc = "Persist scratch buffer content",
     group = buffer_group,
     buffer = bufnr,
