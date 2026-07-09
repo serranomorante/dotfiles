@@ -29,18 +29,19 @@ increase_volume=none,Volume Up,Increase Volume
 increase_volume_small=none,Shift+Volume Up,Increase Volume by 1%
 mic_mute=none,Microphone Mute\tMeta+Volume Mute,Mute Microphone
 mute=none,Volume Mute,Mute
+push_to_talk=none,none,Push to talk
 toggle-mute-Mic@HD 720P webcam=none,none,Mute Mic on HD 720P webcam
 toggle-mute-PCM@USB Audio CODEC=none,none,Mute PCM on USB Audio CODEC
 
 [ksmserver]
-Halt Without Confirmation=none,,Shut Down Without Confirmation
-Lock Session=none,Meta+L\tScreensaver,Lock Session
+Halt Without Confirmation=none,none,Shut Down Without Confirmation
+Lock Session=none,Screensaver\tMeta+L,Lock Session
 Log Out=Ctrl+Alt+Del,Ctrl+Alt+Del,Show Logout Screen
-Log Out Without Confirmation=none,,Log Out Without Confirmation
-LogOut=none,,Log Out
-Reboot=none,,Reboot
-Reboot Without Confirmation=none,,Reboot Without Confirmation
-Shut Down=none,,Shut Down
+Log Out Without Confirmation=none,none,Log Out Without Confirmation
+LogOut=none,none,Log Out
+Reboot=none,none,Reboot
+Reboot Without Confirmation=none,none,Reboot Without Confirmation
+Shut Down=none,none,Shut Down
 _k_friendly_name=Session Management
 
 [kwin]
@@ -200,17 +201,17 @@ view_zoom_out=Meta+-,Meta+-,Zoom Out
 
 [mediacontrol]
 _k_friendly_name=Media Controller
-mediavolumedown=none,,Media volume down
-mediavolumeup=none,,Media volume up
+mediavolumedown=none,none,Media volume down
+mediavolumeup=none,none,Media volume up
 nextmedia=none,Media Next,Media playback next
 pausemedia=none,Media Pause,Pause media playback
-playmedia=none,,Play media playback
+playmedia=none,none,Play media playback
 playpausemedia=none,Media Play,Play/Pause media playback
 previousmedia=none,Media Previous,Media playback previous
 seekbackwardmedia=Media Rewind,Media Rewind,Media playback seek backward 5s
-seekbackwardmedialong=,,Media playback seek backward 30s
+seekbackwardmedialong=none,none,Media playback seek backward 30s
 seekforwardmedia=Media Fast Forward,Media Fast Forward,Media playback seek forward 5s
-seekforwardmedialong=,,Media playback seek forward 30s
+seekforwardmedialong=none,none,Media playback seek forward 30s
 stopmedia=none,Media Stop,Stop media playback
 
 [org_kde_powerdevil]
@@ -230,11 +231,11 @@ _k_friendly_name=Power Management
 powerProfile=none,Battery\tMeta+B,Switch Power Profile
 
 [plasmashell]
-Slideshow Wallpaper Next Image=none,,Next Wallpaper Image
+Slideshow Wallpaper Next Image=none,none,Next Wallpaper Image
 _k_friendly_name=plasmashell
 activate application launcher=Meta\tAlt+F1,Meta\tAlt+F1,Activate Application Launcher
 activate task manager entry 1=none,Meta+1,Activate Task Manager Entry 1
-activate task manager entry 10=none,,Activate Task Manager Entry 10
+activate task manager entry 10=none,none,Activate Task Manager Entry 10
 activate task manager entry 2=none,Meta+2,Activate Task Manager Entry 2
 activate task manager entry 3=none,Meta+3,Activate Task Manager Entry 3
 activate task manager entry 4=none,Meta+4,Activate Task Manager Entry 4
@@ -251,32 +252,32 @@ activate widget 33=none,none,Activate Application Launcher Widget
 activate widget 53=none,none,Activate Application Launcher Widget
 activate widget 74=none,none,Activate Application Launcher Widget
 activate widget 97=none,none,Activate Application Launcher Widget
-clear-history=none,,Clear Clipboard History
+clear-history=none,none,Clear Clipboard History
 clipboard_action=none,Meta+Ctrl+X,Automatic Action Popup Menu
 cycle-panels=none,Meta+Alt+P,Move keyboard focus between panels
-cycleNextAction=none,,Next History Item
-cyclePrevAction=none,,Previous History Item
-edit_clipboard=none,,Edit Contents…
+cycleNextAction=none,none,Next History Item
+cyclePrevAction=none,none,Previous History Item
+edit_clipboard=none,none,Edit Contents…
 manage activities=none,Meta+Q,Show Activity Switcher
 next activity=none,none,Walk through activities
 previous activity=none,none,Walk through activities (Reverse)
-repeat_action=none,,Manually Invoke Action on Current Clipboard
+repeat_action=none,none,Manually Invoke Action on Current Clipboard
 show dashboard=none,Ctrl+F12,Show Desktop
-show-barcode=none,,Show Barcode…
+show-barcode=none,none,Show Barcode…
 show-on-mouse-pos=none,Ctrl+Alt+V,Show Clipboard Items at Mouse Position
-switch to next activity=none,,Switch to Next Activity
-switch to previous activity=none,,Switch to Previous Activity
-toggle do not disturb=none,,Toggle do not disturb
+switch to next activity=none,none,Switch to Next Activity
+switch to previous activity=none,none,Switch to Previous Activity
+toggle do not disturb=none,none,Toggle do not disturb
 
 [plasmawindowed]
 _k_friendly_name=plasmawindowed
-clear-history=,,Clear Clipboard History
+clear-history=none,none,Clear Clipboard History
 clipboard_action=Meta+Ctrl+X,Meta+Ctrl+X,Automatic Action Popup Menu
-cycleNextAction=,,Next History Item
-cyclePrevAction=,,Previous History Item
-edit_clipboard=,,Edit Contents…
-repeat_action=,,Manually Invoke Action on Current Clipboard
-show-barcode=,,Show Barcode…
+cycleNextAction=none,none,Next History Item
+cyclePrevAction=none,none,Previous History Item
+edit_clipboard=none,none,Edit Contents…
+repeat_action=none,none,Manually Invoke Action on Current Clipboard
+show-barcode=none,none,Show Barcode…
 show-on-mouse-pos=none,Meta+V,Show Clipboard Items at Mouse Position
 
 [services][org.kde.kcalc.desktop]
@@ -297,10 +298,6 @@ _launch=none
 
 [services][org.kde.plasma.emojier.desktop]
 _launch=none
-
-[services][org.kde.spectacle.desktop]
-CurrentMonitorScreenShot=
-OpenWithoutScreenshot=
 
 [services][org.kde.touchpadshortcuts.desktop]
 ToggleTouchpad=Touchpad Toggle\tMeta+Ctrl+Zenkaku Hankaku
