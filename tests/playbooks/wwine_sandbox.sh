@@ -311,22 +311,22 @@ PY
 
 run_wwine() {
     HOME="$home" \
-    XDG_RUNTIME_DIR="$runtime" \
-    PATH="${fixture}:/usr/bin:/bin" \
-    "$rendered" "$@"
+        XDG_RUNTIME_DIR="$runtime" \
+        PATH="${fixture}:/usr/bin:/bin" \
+        "$rendered" "$@"
 }
 
 run_loader() {
     HOME="$home" \
-    XDG_RUNTIME_DIR="$runtime" \
-    PATH="${fixture}:/usr/bin:/bin" \
-    WWINE_PREFIX_ALIAS=reaper \
-    WWINE_USE_SANDBOX=1 \
-    WWINE_USE_DESKTOP=0 \
-    WWINE_SANDBOX_PROFILE="$sandbox_profile" \
-    WWINE_SANDBOX_CHECK_PROFILE="$sandbox_check_profile" \
-    WWINE_SANDBOX_NAME="$sandbox_name" \
-    "$wwine_loader" "$@"
+        XDG_RUNTIME_DIR="$runtime" \
+        PATH="${fixture}:/usr/bin:/bin" \
+        WWINE_PREFIX_ALIAS=reaper \
+        WWINE_USE_SANDBOX=1 \
+        WWINE_USE_DESKTOP=0 \
+        WWINE_SANDBOX_PROFILE="$sandbox_profile" \
+        WWINE_SANDBOX_CHECK_PROFILE="$sandbox_check_profile" \
+        WWINE_SANDBOX_NAME="$sandbox_name" \
+        "$wwine_loader" "$@"
 }
 
 shutdown_sandbox() {
@@ -683,7 +683,7 @@ wwine-desktop-close-falls-back-when-taskkill-leaves-explorer-running)
     grep -Fxq 'WWINE_DESKTOP_REEXEC_ATTEMPTED=1' "$fake_wine_log"
     grep -Fxq 'OPENED_IN_DESKTOP=0' "$fake_wine_log"
     if [ -e "${fixture}/active-wine-desktop-reaper.pid" ]; then
-        read -r desktop_pid < "${fixture}/active-wine-desktop-reaper.pid" || desktop_pid=""
+        read -r desktop_pid <"${fixture}/active-wine-desktop-reaper.pid" || desktop_pid=""
     else
         desktop_pid=""
     fi
