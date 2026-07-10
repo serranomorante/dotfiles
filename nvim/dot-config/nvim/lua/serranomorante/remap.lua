@@ -34,6 +34,12 @@ local function open_directory_mark_with_overseer(dir)
   end)
 end
 
+local function insert_datetime()
+  local timestamp = os.date("%Y-%m-%d %H:%M")
+  if vim.fn.mode():sub(1, 1) == "i" then return timestamp end
+  return "i" .. timestamp .. vim.api.nvim_replace_termcodes("<Esc>", true, false, true)
+end
+
 -- Toggle wrap
 vim.keymap.set("n", "<leader>uw", function()
   vim.wo.wrap = not vim.wo.wrap
@@ -47,6 +53,7 @@ end, { desc = "Toggle wrap" })
 -- New file
 vim.keymap.set("n", "<leader>nb", "<cmd>enew<CR>", { desc = "New buffer" })
 vim.keymap.set("n", "<leader>p", "<cmd>PasteClipboardImage<CR>", { desc = "Paste clipboard image" })
+vim.keymap.set("n", "<leader>dt", insert_datetime, { expr = true, desc = "Insert date and time" })
 vim.keymap.set("n", "<leader>mr", utils.run_shell_fence, { desc = "Run shell fence" })
 vim.keymap.set(
   "x",
