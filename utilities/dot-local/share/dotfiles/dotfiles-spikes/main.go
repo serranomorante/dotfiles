@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -186,6 +187,31 @@ func formatCPU(value any) string {
 
 func formatFloat(value any) string {
 	return fmt.Sprintf("%.1f", cpuValue(value))
+}
+
+func formatID(value any) string {
+	switch v := value.(type) {
+	case float64:
+		if v == math.Trunc(v) {
+			return strconv.FormatInt(int64(v), 10)
+		}
+	case float32:
+		f := float64(v)
+		if f == math.Trunc(f) {
+			return strconv.FormatInt(int64(f), 10)
+		}
+	case int:
+		return strconv.Itoa(v)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case json.Number:
+		if out, err := v.Int64(); err == nil {
+			return strconv.FormatInt(out, 10)
+		}
+	case string:
+		return v
+	}
+	return fmt.Sprint(orEmpty(value))
 }
 
 func cpuValue(value any) float64 {
@@ -1528,10 +1554,10 @@ func browserTabEvidenceLabel(tab rawMap) string {
 	if tab["browser_task_cpu_pct"] != nil && cpuValue(tab["browser_task_cpu_pct"]) != 0 {
 		pieces = append(pieces, "browser cpu "+inlineCode(formatFloat(tab["browser_task_cpu_pct"])+"%", 20))
 		if tab["browser_task_process_id"] != nil {
-			pieces = append(pieces, "browser-process-id "+inlineCode(tab["browser_task_process_id"], 20))
+			pieces = append(pieces, "browser-process-id "+inlineCode(formatID(tab["browser_task_process_id"]), 20))
 		}
 		if tab["browser_task_os_pid"] != nil {
-			pieces = append(pieces, "os-pid "+inlineCode(tab["browser_task_os_pid"], 20))
+			pieces = append(pieces, "os-pid "+inlineCode(formatID(tab["browser_task_os_pid"]), 20))
 		}
 		if tab["browser_task_source"] != nil {
 			pieces = append(pieces, "source "+inlineCode(tab["browser_task_source"], 40))

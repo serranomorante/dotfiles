@@ -1,7 +1,9 @@
-.PHONY: test test-nvim test-shell test-systemd test-scripts test-file test-name test-list
+.PHONY: test tests test-nvim test-shell test-systemd test-scripts test-file test-name test-list
 
 test:
 	@tests/run $(if $(UNIT),--unit $(UNIT),) $(if $(FILE),--file $(FILE),) $(if $(NAME),--name $(NAME),) $(if $(TAGS),--tags $(TAGS),)
+
+tests: test
 
 test-nvim:
 	@tests/run --unit nvim $(if $(NAME),--name $(NAME),) $(if $(TAGS),--tags $(TAGS),)

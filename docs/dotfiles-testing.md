@@ -4,7 +4,9 @@ Persistent tests live under `tests/` and are executed through the root `Makefile
 
 Each declared test case is isolated. The runner creates a fresh temporary environment for every case, sets temporary XDG paths and `HOME`, and runs the case through Firejail by default. A test must not rely on mutable state left by another test. If a group of tests needs shared preparation, express that as setup/teardown in the owning framework or test file.
 
-Test files declare required read-only host paths with `# dotfiles-test-readonly:` metadata. Keep these allowlists narrow: expose the exact binary, runtime directory, fixture root, or managed data path needed by that unit instead of exposing broad home-directory state.
+Skipped tests fail the run by default because missing dependencies should not produce a green suite. Use `tests/run --allow-skips` or `DOTFILES_TEST_ALLOW_SKIPS=1` only for intentional local diagnostics where skipped coverage is acceptable.
+
+Test files declare required read-only host paths with `# dotfiles-test-readonly:` metadata. Keep these allowlists narrow: expose the exact binary, runtime directory, fixture root, or managed data path needed by that unit instead of exposing broad home-directory state. This metadata is valid only for Firejail-backed tests; tests marked `# dotfiles-test-firejail: disabled` must not declare `# dotfiles-test-readonly:` because the runner cannot enforce host read-only allowlists outside Firejail.
 
 The runner's core per-test contract is environment-based. For every `# dotfiles-test-case:` declaration, `tests/run` invokes the owning file once with `DOTFILES_TEST_CASE` set to that case name, `DOTFILES_TEST_ROOT` set to the absolute repository root, and `DOTFILES_TEST_TMP` set to that case's isolated writable temp directory. A shell test file should dispatch on `DOTFILES_TEST_CASE`; other frameworks can adapt the same contract by using a small shell wrapper that maps the selected case into the framework's native test selector.
 
@@ -22,8 +24,9 @@ The other stable runner contracts are:
 - `test-output.log` under `DOTFILES_TEST_TMP` captures stdout and stderr for each individual case. The runner prints this log on failure so `make` output includes the underlying assertion or tool error instead of only the final Make error.
 - `DOTFILES_TEST_NO_FIREJAIL=1` disables Firejail only for debugging the harness.
 - `DOTFILES_TEST_ALLOW_NESTED_FIREJAIL=1` bypasses the nested-Firejail guard only for explicit experiments; do not depend on it without first investigating nested Firejail behavior.
+- `DOTFILES_TEST_ALLOW_SKIPS=1` lets a run with skipped cases exit successfully; leave it unset for normal verification so missing dependencies are visible failures.
 - Exit code `0` means pass, exit code `77` means skip, and any other non-zero exit code means fail.
-- Discovery currently targets shell files named `*.sh` one directory below `tests/`; deeper or non-shell test frameworks should be wrapped by a shell file that exposes the same metadata contract.
+- Discovery currently targets executable shell files named `*.sh` one directory below `tests/`; deeper or non-shell test frameworks should be wrapped by an executable shell file that exposes the same metadata contract.
 
 Neovim has two useful test layers. Isolated behavior tests should use `nvim --headless -u NONE` and add only the repo runtimepath they need. Integrated Neovim tests should load the active configuration through temporary XDG directories and read-only host allowlists: symlink `/home/aaaa/.config/nvim` into the temporary `XDG_CONFIG_HOME`, symlink plugin data such as `/home/aaaa/.local/share/nvim/site` into the temporary `XDG_DATA_HOME`, and keep state/cache writes inside `DOTFILES_TEST_TMP`. This catches plugin, parser, LSP, ftplugin, keymap, and runtimepath conflicts without writing to the host configuration.
 

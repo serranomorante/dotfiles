@@ -227,6 +227,7 @@ home = fixture / "home"
 env = jinja2.Environment(undefined=jinja2.StrictUndefined, keep_trailing_newline=True)
 
 common_context = {
+    "ansible_managed": "dotfiles test fixture",
     "ansible_facts": {
         "env": {
             "HOME": str(home),
@@ -261,7 +262,6 @@ wwine_rendered = wwine_template.render(
 launch_template = env.from_string((test_root / "playbooks/roles/10-system-tools/templates/launch-reaper-linux").read_text())
 launch_rendered = launch_template.render(
     **common_context,
-    ansible_managed="dotfiles test fixture",
     pipewire_latency_vars={
         "PIPEWIRE_LATENCY": "512/48000",
         "PIPEWIRE_QUANTUM": "512/48000",

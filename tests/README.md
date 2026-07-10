@@ -6,6 +6,8 @@ Each individual test must be isolated. A test that changes state must not affect
 
 By default tests run through Firejail with a temporary `HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, `XDG_DATA_HOME`, and `TMPDIR`. The repository is exposed read-only and the test temp directory is writable. The runner uses Firejail's deterministic shutdown and deterministic exit-code modes so the sandbox is shut down when the test process exits and the reported status comes from that test process rather than an arbitrary remaining child. `DOTFILES_TEST_NO_FIREJAIL=1` exists only for debugging the harness itself.
 
+Skipped tests make the run fail by default because a green suite with missing tools is misleading. Use `--allow-skips` or `DOTFILES_TEST_ALLOW_SKIPS=1` only for an intentional local diagnostic run where skipped coverage is acceptable.
+
 The runner refuses to intentionally run nested Firejail unless `DOTFILES_TEST_ALLOW_NESTED_FIREJAIL=1` is set for an explicit experiment. Before depending on nested Firejail for real tests, investigate whether it is possible and whether it preserves the expected isolation guarantees.
 
 Examples:
@@ -40,7 +42,7 @@ These contracts are intentionally visible and stable:
 - `# dotfiles-test-unit:` declares the logical unit. When omitted, the first directory under `tests/` is used as the unit.
 - `# dotfiles-test-tags:` declares space-separated or comma-separated tags used by `--tags`; every requested tag must be present.
 - `# dotfiles-test-firejail: disabled` runs a test file outside Firejail while keeping temporary HOME/XDG/TMPDIR isolation; use it only when Firejail blocks the behavior under test.
-- `# dotfiles-test-readonly:` declares one absolute host path to expose read-only inside Firejail. Repeat it for multiple paths. Paths must exist.
+- `# dotfiles-test-readonly:` declares one absolute host path to expose read-only inside Firejail. Repeat it for multiple paths. Paths must exist, and this metadata is invalid when `# dotfiles-test-firejail: disabled` is set because the runner cannot enforce a read-only host allowlist without Firejail.
 - `# dotfiles-test-case:` declares one stable individual test name. Repeat it for multiple cases in one file.
 - `DOTFILES_TEST_CASE` is the selected case for the current invocation. It is set by the runner, not by normal users.
 - `DOTFILES_TEST_ROOT` is the absolute dotfiles repo root and is exposed read-only when Firejail is enabled.
@@ -50,6 +52,7 @@ These contracts are intentionally visible and stable:
 - Write negative assertions as `refute <command>` (e.g. `refute rg -q 'forbidden' "$file"`), not `! <command>`. A bare `! <command>` is exempt from `set -e`, so it neither aborts the case nor reaches the ERR trap, meaning the assertion silently passes even when the command succeeds. `refute` (defined in `tests/lib/errtrap.bash`, available in every test file) runs the command, fails the case when it succeeds, and reports the call site like any other failing command.
 - `DOTFILES_TEST_NO_FIREJAIL=1` disables Firejail only for harness debugging.
 - `DOTFILES_TEST_ALLOW_NESTED_FIREJAIL=1` bypasses the nested-Firejail guard only for explicit experiments after investigation.
+- `DOTFILES_TEST_ALLOW_SKIPS=1` permits an otherwise successful run to exit successfully when tests skip; leave it unset for normal verification.
 - Exit code `0` means pass, `77` means skip, and any other non-zero code means fail.
 - The runner executes each test with cwd set to `DOTFILES_TEST_ROOT`.
 - Discovery currently scans shell files named `*.sh` one directory below `tests/`, such as `tests/nvim/example.sh`.

@@ -21,13 +21,14 @@ set -euo pipefail
 spikes_script="${DOTFILES_TEST_ROOT}/utilities/bin/dotfiles-spikes"
 watch_script="${DOTFILES_TEST_ROOT}/utilities/bin/system-spike-watch"
 health_script="${DOTFILES_TEST_ROOT}/utilities/bin/dotfiles-health"
+spikes_source_dir="${DOTFILES_TEST_ROOT}/utilities/dot-local/share/dotfiles/dotfiles-spikes"
 
 write_fake_xorg_event() {
     local state_dir=$1
     local today offset started ended
 
     today=$(date '+%Y-%m-%d')
-    offset=$(date '+%z')
+    offset=$(date '+%:z')
     started="${today}T12:00:00${offset}"
     ended="${today}T12:00:03${offset}"
     mkdir -p "${state_dir}/events"
@@ -41,7 +42,7 @@ write_fake_generic_monitor_event() {
     local today offset started ended
 
     today=$(date '+%Y-%m-%d')
-    offset=$(date '+%z')
+    offset=$(date '+%:z')
     started="${today}T12:05:00${offset}"
     ended="${today}T12:05:03${offset}"
     mkdir -p "${state_dir}/events"
@@ -55,7 +56,7 @@ write_fake_enriched_events() {
     local today offset xorg_started xorg_ended chromium_started chromium_ended docker_started docker_ended audio_started audio_ended
 
     today=$(date '+%Y-%m-%d')
-    offset=$(date '+%z')
+    offset=$(date '+%:z')
     xorg_started="${today}T12:10:00${offset}"
     xorg_ended="${today}T12:10:03${offset}"
     chromium_started="${today}T12:15:00${offset}"
@@ -78,7 +79,7 @@ write_fake_concurrent_top_event() {
     local today offset started ended
 
     today=$(date '+%Y-%m-%d')
-    offset=$(date '+%z')
+    offset=$(date '+%:z')
     started="${today}T12:25:00${offset}"
     ended="${today}T12:25:03${offset}"
     mkdir -p "${state_dir}/events"
@@ -92,7 +93,7 @@ write_fake_xorg_incident_events() {
     local today offset first second third ended_first ended_second ended_third
 
     today=$(date '+%Y-%m-%d')
-    offset=$(date '+%z')
+    offset=$(date '+%:z')
     first="${today}T12:40:00${offset}"
     second="${today}T12:41:10${offset}"
     third="${today}T12:42:20${offset}"
@@ -112,7 +113,7 @@ write_fake_sddm_suspect_event() {
     local today offset started ended
 
     today=$(date '+%Y-%m-%d')
-    offset=$(date '+%z')
+    offset=$(date '+%:z')
     started="${today}T12:45:00${offset}"
     ended="${today}T12:45:03${offset}"
     mkdir -p "${state_dir}/events"
@@ -126,7 +127,7 @@ write_fake_browser_candidate_event() {
     local today offset started ended
 
     today=$(date '+%Y-%m-%d')
-    offset=$(date '+%z')
+    offset=$(date '+%:z')
     started="${today}T12:50:00${offset}"
     ended="${today}T12:50:03${offset}"
     mkdir -p "${state_dir}/events"
@@ -140,13 +141,21 @@ write_fake_node_kitty_browser_event() {
     local today offset started ended
 
     today=$(date '+%Y-%m-%d')
-    offset=$(date '+%z')
+    offset=$(date '+%:z')
     started="${today}T12:55:00${offset}"
     ended="${today}T12:55:03${offset}"
     mkdir -p "${state_dir}/events"
     cat >"${state_dir}/events/${today}.jsonl" <<JSON
 {"schema_version":1,"event_id":"test-node-kitty-browser-context","started_at":"${started}","ended_at":"${ended}","duration_s":3.0,"trigger_process":{"pid":1155015,"comm":"node","unit":"kitty-826606-0.scope"},"trigger_cpu_pct":109.0,"victim":{"pid":1155015,"comm":"node","cmdline":"node chrome-devtools-mcp/build/src/telemetry/watchdog/main.js","cwd":"/home/aaaa/data/apps/dev-tools/ai-tools/.npm","unit":"kitty-826606-0.scope"},"victim_kind":"generic","top_processes":[{"pid":1155015,"comm":"node","cmdline":"node chrome-devtools-mcp/build/src/telemetry/watchdog/main.js","cwd":"/home/aaaa/data/apps/dev-tools/ai-tools/.npm","unit":"kitty-826606-0.scope","cpu_pct":82.0,"first_seen":0.0,"last_seen":3.0},{"pid":670212,"comm":"brave","cmdline":"/opt/brave-bin/brave --type=renderer --renderer-client-id=671","unit":"browser-brave-test.scope","cpu_pct":2.6,"first_seen":0.0,"last_seen":3.0},{"pid":11601,"comm":"chromium","cmdline":"/usr/lib/chromium/chromium --type=renderer --renderer-client-id=21","unit":"browser-chromium-test.scope","cpu_pct":4.9,"first_seen":0.0,"last_seen":3.0}],"top_units":[{"unit":"kitty-826606-0.scope","cpu_pct":82.0},{"unit":"browser-chromium-test.scope","cpu_pct":4.9},{"unit":"browser-brave-test.scope","cpu_pct":2.6}],"suspects":[{"pid":1155015,"comm":"node","cmdline":"node chrome-devtools-mcp/build/src/telemetry/watchdog/main.js","cwd":"/home/aaaa/data/apps/dev-tools/ai-tools/.npm","unit":"kitty-826606-0.scope","cpu_pct":82.0,"first_seen":0.0,"last_seen":3.0,"role":"victim-unit","reason":"victim process belongs to the dominant burst unit; unit total 82.0% CPU"}],"context":{"kitty":[{"unit":"kitty-826606-0.scope","status":"unit-processes-only","unit_processes":[{"pid":1155015,"comm":"node","cmdline":"node chrome-devtools-mcp/build/src/telemetry/watchdog/main.js","cwd":"/home/aaaa/data/apps/dev-tools/ai-tools/.npm","unit":"kitty-826606-0.scope","cpu_pct":82.0}]}],"browsers":[{"browser":"brave","unit":"browser-brave-test.scope","debug_port":9223,"status":"ok","processes":[{"pid":670212,"comm":"brave","cmdline":"/opt/brave-bin/brave --type=renderer --renderer-client-id=671","unit":"browser-brave-test.scope","cpu_pct":2.6,"kind":"renderer","renderer_client_id":"671"}],"tabs":[{"id":"A","type":"page","title":"Low CPU tab","url":"https://example.test/low","probable":true,"browser_task_cpu_pct":2.0,"visibility_state":"hidden"}]},{"browser":"chromium","unit":"browser-chromium-test.scope","debug_port":9222,"status":"ok","processes":[{"pid":11601,"comm":"chromium","cmdline":"/usr/lib/chromium/chromium --type=renderer --renderer-client-id=21","unit":"browser-chromium-test.scope","cpu_pct":4.9,"kind":"renderer","renderer_client_id":"21"}],"tabs":[{"id":"B","type":"page","title":"Gather","url":"https://example.test/gather","probable":true,"browser_task_cpu_pct":5.0,"visibility_state":"hidden"}]}]},"confidence":"medium","classification":"background suspicious","notes":"node spiked; likely related to kitty-826606-0.scope"}
 JSON
+}
+
+run_dotfiles_spikes() {
+    HOME="$home" \
+    DOTFILES_SPIKES_STATE_DIR="$state" \
+    DOTFILES_SPIKES_DIR="$foam" \
+    DOTFILES_SPIKES_SOURCE_DIR="$spikes_source_dir" \
+    "$spikes_script" "$@"
 }
 
 case "${DOTFILES_TEST_CASE:-}" in
@@ -157,7 +166,7 @@ dotfiles-spikes-generates-xorg-suspect-report)
     mkdir -p "$home"
     write_fake_xorg_event "$state"
 
-    HOME="$home" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" "$spikes_script" update
+    run_dotfiles_spikes update
 
     grep -q 'Spikes today: `1`' "${foam}/system-spikes.md"
     grep -q 'High-confidence events: `1`' "${foam}/system-spikes.md"
@@ -177,7 +186,7 @@ dotfiles-spikes-prefers-dominant-unit-over-monitor)
     mkdir -p "$home"
     write_fake_generic_monitor_event "$state"
 
-    HOME="$home" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" "$spikes_script" update
+    run_dotfiles_spikes update
 
     grep -q 'Events with monitor overhead: `1`' "${foam}/system-spikes.md"
     grep -q '`gulp watch` <- `hypothesis-self-hosted.service`' "${foam}/system-spikes.md"
@@ -194,7 +203,7 @@ dotfiles-spikes-prefers-active-victim-unit-over-concurrent-top)
     mkdir -p "$home"
     write_fake_concurrent_top_event "$state"
 
-    HOME="$home" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" "$spikes_script" update
+    run_dotfiles_spikes update
 
     grep -q '`gulp watch` <- `hypothesis-self-hosted.service`' "${foam}/system-spikes.md"
     refute grep -q '`gulp watch` <- `kitty-5986-0.scope`' "${foam}/system-spikes.md"
@@ -209,7 +218,7 @@ dotfiles-spikes-groups-recent-incidents)
     mkdir -p "$home"
     write_fake_xorg_incident_events "$state"
 
-    HOME="$home" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" "$spikes_script" update
+    run_dotfiles_spikes update
 
     grep -q 'Recorded spikes: `3`' "${foam}/system-spikes.md"
     grep -q 'Unique incidents: `1`' "${foam}/system-spikes.md"
@@ -222,7 +231,7 @@ dotfiles-spikes-skips-sddm-xorg-suspect)
     mkdir -p "$home"
     write_fake_sddm_suspect_event "$state"
 
-    HOME="$home" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" "$spikes_script" update
+    run_dotfiles_spikes update
 
     grep -q '`Xorg` <- `browser-chromium-test.scope`' "${foam}/system-spikes.md"
     refute grep -q '`Xorg` <- `sddm.service`' "${foam}/system-spikes.md"
@@ -235,7 +244,7 @@ dotfiles-spikes-renders-specific-browser-candidates)
     mkdir -p "$home"
     write_fake_browser_candidate_event "$state"
 
-    HOME="$home" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" "$spikes_script" update
+    run_dotfiles_spikes update
 
     grep -q 'context brave renderer 79.3% renderer-client-id 753; probable tabs Music Queue cpu 16.0% hidden https://example.test/music; Long Notes Document score 18.5 task 12.0ms visible https://example.test/notes; Chat score 2.0 task 2.0ms hidden https://example.test/chat' "${foam}/system-spikes.md"
     grep -q 'brave candidate tabs via DevTools/task sampler `9223`: probable `Music Queue` `https://example.test/music` browser cpu `16.0%` browser-process-id `10` os-pid `1361246` source `chrome.processes` age `1.1s` reason `task 35.0ms; script 8.0ms; visibility hidden` visibility `hidden`; probable `Long Notes Document` `https://example.test/notes` score `18.5` reason `task 12.0ms; visibility visible` visibility `visible`; `Chat` `https://example.test/chat` score `2.0` task `2.0ms` visibility `hidden`' "${foam}/sources/system-spike-generic.md"
@@ -247,7 +256,7 @@ dotfiles-spikes-prioritizes-victim-kitty-context)
     mkdir -p "$home"
     write_fake_node_kitty_browser_event "$state"
 
-    HOME="$home" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" "$spikes_script" update
+    run_dotfiles_spikes update
 
     grep -q 'context: kitty victim node 109.0% cwd /home/aaaa/data/apps/dev-tools/ai-tools/.npm cmd `node chrome-devtools-mcp/build/src/telemetry/watchdog/main.js`' "${foam}/system-spikes.md"
     refute grep -q 'context: concurrent brave renderer' "${foam}/system-spikes.md"
@@ -260,7 +269,7 @@ dotfiles-spikes-renders-enriched-context)
     mkdir -p "$home"
     write_fake_enriched_events "$state"
 
-    HOME="$home" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" "$spikes_script" update
+    run_dotfiles_spikes update
 
     grep -q 'context: chromium renderer 121.0% renderer-client-id 7; active tab Docs https://example.test/docs' "${foam}/system-spikes.md"
     grep -q 'context: kitty process compile 98.0% cwd /home/aaaa/project cmd `compile project`' "${foam}/system-spikes.md"
@@ -283,7 +292,7 @@ dotfiles-spikes-check)
     mkdir -p "$home"
     write_fake_xorg_event "$state"
 
-    HOME="$home" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" "$spikes_script" check >"${DOTFILES_TEST_TMP}/check.out"
+    run_dotfiles_spikes check >"${DOTFILES_TEST_TMP}/check.out"
 
     grep -q '^events=1$' "${DOTFILES_TEST_TMP}/check.out"
     grep -q "^state_dir=${state}$" "${DOTFILES_TEST_TMP}/check.out"

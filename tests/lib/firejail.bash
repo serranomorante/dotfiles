@@ -24,6 +24,11 @@ dotfiles_test_firejail_run() {
 
     mkdir -p "$home_dir" "$xdg_config" "$xdg_cache" "$xdg_data"
 
+    if [[ "$firejail_mode" == "disabled" && -n "$readonly_paths" ]]; then
+        printf 'dotfiles-test-readonly cannot be enforced when dotfiles-test-firejail is disabled\n' >&2
+        return 2
+    fi
+
     if [[ "${DOTFILES_TEST_NO_FIREJAIL:-0}" == "1" || "$firejail_mode" == "disabled" ]]; then
         (
             cd "$repo_root" || return

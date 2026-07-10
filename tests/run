@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Purpose: Discover and run dotfiles tests with per-test isolation.
-# Usage: tests/run [--unit nvim] [--file path] [--name test-name] [--tags a,b] [--list]
+# Usage: tests/run [--unit nvim] [--file path] [--name test-name] [--tags a,b] [--allow-skips] [--list]
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
 repo_root=$(cd "${script_dir}/.." >/dev/null 2>&1 && pwd -P)
@@ -15,6 +15,7 @@ file_filter=
 name_filter=
 tags_filter=
 list_only=0
+allow_skips=${DOTFILES_TEST_ALLOW_SKIPS:-0}
 
 usage() {
     cat <<'USAGE'
@@ -25,6 +26,7 @@ Options:
   --file PATH      Run one test file.
   --name NAME      Run one declared test case.
   --tags TAGS      Run tests whose file tags include every comma-separated tag.
+  --allow-skips    Exit successfully when matching tests skip.
   --list           List matching tests without running them.
   -h, --help       Show this help.
 
@@ -34,6 +36,7 @@ Environment:
   DOTFILES_TEST_TMP         Set by the runner to the isolated writable temp root.
   DOTFILES_TEST_NO_FIREJAIL=1  Run without Firejail, for harness debugging only.
   DOTFILES_TEST_ALLOW_NESTED_FIREJAIL=1  Allow explicit nested Firejail experiments.
+  DOTFILES_TEST_ALLOW_SKIPS=1  Exit successfully when matching tests skip.
 
 Test file metadata:
   # dotfiles-test-unit: UNIT
@@ -80,6 +83,10 @@ while [[ $# -gt 0 ]]; do
         ;;
     --list)
         list_only=1
+        shift
+        ;;
+    --allow-skips)
+        allow_skips=1
         shift
         ;;
     -h | --help)
@@ -150,11 +157,11 @@ discover_files() {
     fi
 
     if [[ -n "$unit_filter" ]]; then
-        find "${repo_root}/tests/${unit_filter}" -maxdepth 1 -type f -name '*.sh' 2>/dev/null | sort
+        find "${repo_root}/tests/${unit_filter}" -maxdepth 1 -type f -name '*.sh' -perm -111 2>/dev/null | sort
         return
     fi
 
-    find "${repo_root}/tests" -mindepth 2 -maxdepth 2 -type f -name '*.sh' | sort
+    find "${repo_root}/tests" -mindepth 2 -maxdepth 2 -type f -name '*.sh' -perm -111 | sort
 }
 
 cases_for_file() {
@@ -238,6 +245,11 @@ while IFS= read -r file; do
         continue
         ;;
     esac
+    if [[ "$firejail_mode" == disabled && -n "$readonly_paths" ]]; then
+        printf 'invalid metadata in %s: dotfiles-test-readonly cannot be enforced when dotfiles-test-firejail is disabled\n' "$file" >&2
+        failed=$((failed + 1))
+        continue
+    fi
     if [[ "${#cases[@]}" -eq 0 ]]; then
         cases=("$(basename "$file" .sh)")
     fi
@@ -272,4 +284,8 @@ printf 'Summary: %s passed, %s skipped, %s failed, %s total\n' "$passed" "$skipp
     printf 'No tests matched\n' >&2
     exit 2
 }
+if [[ "$skipped" -gt 0 && "$allow_skips" != 1 ]]; then
+    printf 'Skipped tests are failures by default; rerun with --allow-skips or DOTFILES_TEST_ALLOW_SKIPS=1 only when intentional\n' >&2
+    failed=$((failed + skipped))
+fi
 [[ "$failed" -eq 0 ]]

@@ -4,9 +4,6 @@ set -euo pipefail
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim headless quickfix local-state
 # dotfiles-test-firejail: disabled
-# dotfiles-test-readonly: /home/aaaa/.local/bin/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/lib/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: nvim-quickfix-history-restores-stack
 
 # Purpose: Check CWD-scoped quickfix stack persistence.

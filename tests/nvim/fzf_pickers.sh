@@ -4,9 +4,6 @@ set -euo pipefail
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim headless tui fzf terminal
 # dotfiles-test-firejail: disabled
-# dotfiles-test-readonly: /home/aaaa/.local/bin/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/lib/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: fzf-pickers-enter-insert-mode-in-sequence
 # dotfiles-test-case: fzf-overseer-task-action-picker-enters-insert-mode
 # dotfiles-test-case: fzf-overseer-task-action-picker-tui-receives-terminal-input

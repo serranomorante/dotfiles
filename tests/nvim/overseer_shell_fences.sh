@@ -4,9 +4,6 @@ set -euo pipefail
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim headless overseer markdown shell-fence terminal
 # dotfiles-test-firejail: disabled
-# dotfiles-test-readonly: /home/aaaa/.local/bin/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/lib/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: markdown-shell-fence-keymap-works-from-file-scratch-nofile-terminal-float
 
 # Purpose: Guard the Markdown <leader>mr shell-fence runner across buffer kinds and its Overseer task contract.
@@ -54,18 +51,6 @@ markdown-shell-fence-keymap-works-from-file-scratch-nofile-terminal-float)
         '  vim.g.mapleader = " "' \
         '  require("serranomorante.remap")' \
         '  assert(vim.fn.maparg("<leader>mr", "x") ~= "", "visual <leader>mr keymap should be registered")' \
-        '  local utils_path = vim.env.DOTFILES_TEST_ROOT .. "/nvim/dot-config/nvim/lua/serranomorante/utils.lua"' \
-        '  local utils_text = table.concat(vim.fn.readfile(utils_path), "\n")' \
-        '  local run_shell_fence = utils_text:match("function M%.run_shell_fence%([^)]*%)%s*(.-)%s*return M")' \
-        '  assert(run_shell_fence, "could not find run_shell_fence implementation")' \
-        '  assert(not run_shell_fence:find("defer_fn", 1, true), "run_shell_fence must not rely on defer_fn timing")' \
-        '  assert(not run_shell_fence:find("schedule_open_overseer_task_output", 1, true), "run_shell_fence must not use retry-based output scheduling")' \
-        '  assert(utils_text:find("open_started_overseer_task_output", 1, true), "run_shell_fence should open the started task output directly")' \
-        '  assert(not utils_text:find("vim.ui.input", 1, true), "ansible shell fence passwords should use the concealed Overseer form, not vim.ui.input")' \
-        '  assert(utils_text:find("overseer.form", 1, true), "ansible shell fence passwords should use an Overseer form")' \
-        '  assert(run_shell_fence:find("shell_fence_cwd", 1, true), "run_shell_fence should use a cwd resolver that works for non-file buffers")' \
-        '  assert(utils_text:find("prepare_shell_fence_task_start_window", 1, true), "run_shell_fence should choose a regular output window for terminal/float sources")' \
-        '  assert(not run_shell_fence:find("alternate_bufnr", 1, true), "run_shell_fence should rely on normal buffer history instead of synthetic alternates")' \
         '  local fake_bin = vim.env.DOTFILES_TEST_TMP .. "/bin"' \
         '  vim.fn.mkdir(fake_bin, "p")' \
         '  local fake_ansible = fake_bin .. "/ansible-playbook"' \

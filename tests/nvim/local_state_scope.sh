@@ -4,9 +4,6 @@ set -euo pipefail
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim headless local-state
 # dotfiles-test-firejail: disabled
-# dotfiles-test-readonly: /home/aaaa/.local/bin/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/lib/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: nvim-local-state-normal-cwd
 # dotfiles-test-case: nvim-local-state-cwd-isolation
 # dotfiles-test-case: nvim-local-state-file-inside-cwd-expands-home

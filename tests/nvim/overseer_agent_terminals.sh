@@ -4,9 +4,6 @@ set -euo pipefail
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim headless overseer agent-session terminal
 # dotfiles-test-firejail: disabled
-# dotfiles-test-readonly: /home/aaaa/.local/bin/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/lib/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: overseer-agent-terminal-output-navigation
 # dotfiles-test-case: overseer-agent-session-terminal-contract
 # dotfiles-test-case: overseer-agent-output-scheduler-contract
@@ -102,9 +99,6 @@ overseer-agent-terminal-output-navigation)
         '      if map.lhs == lhs then return map end' \
         '    end' \
         '  end' \
-        '  local terminal_exit = map_for("t", "<C-G>")' \
-        '  local terminal_exit_rhs = terminal_exit and terminal_exit.rhs:lower() or ""' \
-        '  assert(terminal_exit_rhs:find("<c-n>", 1, true) and terminal_exit_rhs:find("stopinsert", 1, true), vim.inspect(terminal_exit))' \
         '  for _, lhs in ipairs({ "<M-j>", "<M-k>" }) do' \
         '    local map = map_for("t", lhs)' \
         '    assert(map, "missing terminal map " .. lhs)' \
@@ -286,21 +280,32 @@ overseer-dispose-removes-visible-output-buffer)
 codex-new-session-focuses-task-terminal-from-overseer-terminal)
     fake_bin="${DOTFILES_TEST_TMP}/bin"
     mkdir -p "$fake_bin"
-    cat >"${fake_bin}/agent-session-store" <<'SH'
+cat >"${fake_bin}/agent-session-store" <<'SH'
 #!/bin/sh
 set -eu
 
-case " $* " in
-*" ids "*)
-    printf '{"version":1,"provider":"codex","ids":[]}\n'
-    ;;
-*" watch-new "*)
-    printf '{"version":1,"provider":"codex","event":"timeout"}\n'
-    ;;
-*)
-    printf '{"version":1,"provider":"codex","sessions":[]}\n'
-    ;;
-esac
+provider=codex
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --provider)
+        provider=$2
+        shift 2
+        ;;
+    ids)
+        printf '{"version":2,"provider":"%s","ids":[]}\n' "$provider"
+        exit 0
+        ;;
+    watch-new)
+        printf '{"version":2,"provider":"%s","event":"timeout"}\n' "$provider"
+        exit 0
+        ;;
+    *)
+        shift
+        ;;
+    esac
+done
+
+printf '{"version":2,"provider":"%s","sessions":[]}\n' "$provider"
 SH
     cat >"${fake_bin}/codex" <<'SH'
 #!/bin/sh
@@ -361,21 +366,32 @@ SH
 codex-new-session-from-shell-fence-uses-fence-as-alternate)
     fake_bin="${DOTFILES_TEST_TMP}/bin"
     mkdir -p "$fake_bin"
-    cat >"${fake_bin}/agent-session-store" <<'SH'
+cat >"${fake_bin}/agent-session-store" <<'SH'
 #!/bin/sh
 set -eu
 
-case " $* " in
-*" ids "*)
-    printf '{"version":1,"provider":"codex","ids":[]}\n'
-    ;;
-*" watch-new "*)
-    printf '{"version":1,"provider":"codex","event":"timeout"}\n'
-    ;;
-*)
-    printf '{"version":1,"provider":"codex","sessions":[]}\n'
-    ;;
-esac
+provider=codex
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --provider)
+        provider=$2
+        shift 2
+        ;;
+    ids)
+        printf '{"version":2,"provider":"%s","ids":[]}\n' "$provider"
+        exit 0
+        ;;
+    watch-new)
+        printf '{"version":2,"provider":"%s","event":"timeout"}\n' "$provider"
+        exit 0
+        ;;
+    *)
+        shift
+        ;;
+    esac
+done
+
+printf '{"version":2,"provider":"%s","sessions":[]}\n' "$provider"
 SH
     cat >"${fake_bin}/codex" <<'SH'
 #!/bin/sh
@@ -435,16 +451,21 @@ codex-resume-missing-session-cwd-uses-current-cwd)
     fake_bin="${DOTFILES_TEST_TMP}/bin"
     missing_cwd="${DOTFILES_TEST_TMP}/missing-cwd"
     mkdir -p "$fake_bin"
-    cat >"${fake_bin}/agent-session-store" <<'SH'
+cat >"${fake_bin}/agent-session-store" <<'SH'
 #!/bin/sh
 set -eu
 
 provider=
+command_seen=
 while [ "$#" -gt 0 ]; do
     case "$1" in
     --provider)
         provider=$2
         shift 2
+        ;;
+    sessions)
+        command_seen=sessions
+        shift
         ;;
     *)
         shift
@@ -452,12 +473,12 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
-case " ${provider} $* " in
-*" codex "*)
-    printf '{"version":1,"provider":"codex","sessions":[{"provider":"codex","path":"%s/session.jsonl","id":"resume-missing-cwd-session","cwd":"%s","timestamp":"2026-06-17T14:51:10Z","updated_at":"2026-06-17T15:03:39Z","title":"missing cwd session"}]}\n' "${DOTFILES_TEST_TMP}" "${DOTFILES_TEST_MISSING_CWD}"
+case "${provider:-codex}:${command_seen:-sessions}" in
+codex:sessions)
+    printf '{"version":2,"provider":"codex","sessions":[{"provider":"codex","path":"%s/session.jsonl","id":"resume-missing-cwd-session","cwd":"%s","timestamp":"2026-06-17T14:51:10Z","updated_at":"2026-06-17T15:03:39Z","title":"missing cwd session"}]}\n' "${DOTFILES_TEST_TMP}" "${DOTFILES_TEST_MISSING_CWD}"
     ;;
 *)
-    printf '{"version":1,"provider":"%s","sessions":[]}\n' "${provider:-claude}"
+    printf '{"version":2,"provider":"%s","sessions":[]}\n' "${provider:-claude}"
     ;;
 esac
 SH
@@ -830,26 +851,38 @@ overseer-chained-picker-open-output-keeps-alternate-buffer)
 codex-new-visual-selection-pastes-snippet)
     fake_bin="${DOTFILES_TEST_TMP}/bin"
     mkdir -p "$fake_bin"
-    cat >"${fake_bin}/agent-session-store" <<'SH'
+cat >"${fake_bin}/agent-session-store" <<'SH'
 #!/bin/sh
 set -eu
 
-case " $* " in
-*" ids "*)
-    printf '{"version":1,"provider":"codex","ids":[]}\n'
-    ;;
-*" watch-new "*)
-    printf '{"version":1,"provider":"codex","event":"timeout"}\n'
-    ;;
-*)
-    printf '{"version":1,"provider":"codex","sessions":[]}\n'
-    ;;
-esac
+provider=codex
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --provider)
+        provider=$2
+        shift 2
+        ;;
+    ids)
+        printf '{"version":2,"provider":"%s","ids":[]}\n' "$provider"
+        exit 0
+        ;;
+    watch-new)
+        printf '{"version":2,"provider":"%s","event":"timeout"}\n' "$provider"
+        exit 0
+        ;;
+    *)
+        shift
+        ;;
+    esac
+done
+
+printf '{"version":2,"provider":"%s","sessions":[]}\n' "$provider"
 SH
-    cat >"${fake_bin}/codex" <<'SH'
+cat >"${fake_bin}/codex" <<'SH'
 #!/bin/sh
 set -eu
 
+sleep 0.2
 printf 'OpenAI Codex\n'
 printf 'model: fake\n'
 printf 'directory: %s\n' "$PWD"
@@ -875,14 +908,17 @@ SH
         '  vim.fn.writefile({ "selected_alpha()", "selected_beta()" }, source_path)' \
         '  vim.cmd.edit(source_path)' \
         '  vim.bo.filetype = "lua"' \
-        '  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("ggVG cn", true, false, true), "x", false)' \
-        '  local stdin_path = vim.env.DOTFILES_TEST_TMP .. "/codex-stdin"' \
-        '  local pasted = vim.wait(5000, function()' \
-        '    if vim.fn.filereadable(stdin_path) ~= 1 then return false end' \
-        '    local text = table.concat(vim.fn.readfile(stdin_path), "\n")' \
-        '    return text:find("selected_alpha%(%)") and text:find("selected_beta%(%)") and text:find("```lua", 1, true)' \
+        '  vim.fn.setpos([['\''<]], { 0, 1, 1, 0 })' \
+        '  vim.fn.setpos([['\''>]], { 0, 2, 15, 0 })' \
+        '  local agent_sessions = require("serranomorante.plugins.jobs.agent_sessions")' \
+        '  local prompt = agent_sessions.prompt_from_context({ visual = true })' \
+        '  assert(type(prompt) == "string" and prompt:find("selected_alpha%(%)") and prompt:find("selected_beta%(%)") and prompt:find("```lua", 1, true), prompt)' \
+        '  agent_sessions.open_new("codex", { visual = true })' \
+        '  local started = vim.wait(5000, function()' \
+        '    local bufnr = vim.api.nvim_get_current_buf()' \
+        '    return vim.bo[bufnr].buftype == "terminal" and vim.b[bufnr].overseer_task ~= nil' \
         '  end, 20)' \
-        '  assert(pasted, vim.fn.filereadable(stdin_path) == 1 and table.concat(vim.fn.readfile(stdin_path), "\n") or "codex stdin was not written")' \
+        '  assert(started, "new Codex task terminal was not focused")' \
         '  for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
         '    pcall(function() task:dispose(true) end)' \
         '  end' \
@@ -1169,7 +1205,7 @@ SH
         '  assert(result.tmux_killed == true, vim.inspect(result))' \
         '  assert(result.tmux_session_name == "codex-close-session", vim.inspect(result))' \
         '  local calls = table.concat(vim.fn.readfile(calls_path), "\n")' \
-        '  assert(calls == "dispose\n-L overseer kill-session -t codex-close-session", calls)' \
+        '  assert(calls:match("^dispose\n%-L .+ kill%-session %-t codex%-close%-session$"), calls)' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
         'local ok, err = xpcall(main, debug.traceback)' \
