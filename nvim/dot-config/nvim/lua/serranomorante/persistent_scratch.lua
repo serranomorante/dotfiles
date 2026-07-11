@@ -231,6 +231,7 @@ local function create_buffer(entry)
   vim.b[bufnr].persistent_scratch = true
   vim.b[bufnr].persistent_scratch_disable_lsp = true
   pcall(vim.fn.bufload, bufnr)
+  vim.bo[bufnr].undofile = true
   vim.bo[bufnr].filetype = "markdown"
   vim.bo[bufnr].modifiable = true
   vim.bo[bufnr].readonly = false

@@ -16,7 +16,7 @@ rtp="${DOTFILES_TEST_ROOT}/nvim/dot-config/nvim"
 
 run_nvim_lua() {
     local lua=$1
-    "$nvim_bin" --headless --noplugin -u NONE -i NONE -c "set rtp^=${rtp}" -c "lua ${lua}"
+    "$nvim_bin" --headless --noplugin -u NONE -i NONE -c "set rtp^=${rtp}" -c "lua local ok, err = xpcall(function() ${lua} end, debug.traceback); if not ok then vim.api.nvim_err_writeln(err); vim.cmd.cquit({ args = '1' }) end" -c 'qa!'
 }
 
 case "${DOTFILES_TEST_CASE:-}" in
