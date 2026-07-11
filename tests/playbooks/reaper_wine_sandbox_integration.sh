@@ -370,7 +370,7 @@ launch-reaper-linux-firejail-sandbox-is-joinable-by-wwine)
     launch_pid=$!
     wait_for_sandbox
 
-    run_wwine --prefix reaper --no-desktop --use-sandbox wine joined-from-external-host
+    run_wwine --prefix reaper --use-sandbox wine joined-from-external-host
     grep -Fxq "INSIDE_FIREJAIL=1" "$fake_wine_log"
     grep -Fxq "ARGS=<joined-from-external-host>" "$fake_wine_log"
     grep -Fq "$sandbox_check_profile" "$checker_log"
@@ -383,7 +383,7 @@ launch-reaper-linux-firejail-joins-existing-wwine-reaper-sandbox)
     make_fixture
     trap 'touch "${fixture}/stop-fake-wine" 2>/dev/null || true; shutdown_reaper_sandbox; [ -n "${vienna_pid:-}" ] && wait "$vienna_pid" 2>/dev/null || true' EXIT
 
-    run_wwine --prefix reaper --no-desktop --use-sandbox wine hold-sandbox >"$output" 2>&1 &
+    run_wwine --prefix reaper --use-sandbox wine hold-sandbox >"$output" 2>&1 &
     vienna_pid=$!
     wait_for_sandbox
     wait_for_file "${fixture}/fake-wine-ready" "held wwine sandbox payload"

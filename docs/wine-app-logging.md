@@ -6,7 +6,7 @@ Wine desktop launchers should use `wwine` as the shared launcher and should keep
 
 Do not create a second generic Wine launcher such as `wine-app-run`.
 
-`~/bin/wwine` already owns managed Wine launching: prefix aliases, pinned Wine environment, virtual desktop behavior, sandbox setup, and `wwine-wine-loader` compatibility. Launcher logging and log rotation should be an optional launcher-scoped feature of `wwine`, not a parallel wrapper that repeats those responsibilities.
+`~/bin/wwine` already owns managed Wine launching: prefix aliases, pinned Wine environment, standalone virtual desktop forcing, sandbox setup, and `wwine-wine-loader` compatibility. Launcher logging and log rotation should be an optional launcher-scoped feature of `wwine`, not a parallel wrapper that repeats those responsibilities.
 
 If an app needs pre-launch work unrelated to Wine itself, such as connecting REAPER audio routing, keep a narrow app-specific launcher script for that setup. That script should still delegate the Wine process to `wwine`.
 
@@ -48,7 +48,7 @@ Type=Application
 
 Do not keep a separate live-terminal debug launcher by default. If temporary live debugging is needed, run the launcher or the underlying `wwine` command manually from a terminal instead of making the regular desktop launcher open a terminal.
 
-When `--no-desktop` is used for a GUI launch and an earlier Wine desktop shell is still running, `wwine` should close that shell and retry the same launch once so callers do not have to start the app twice.
+Do not make app launchers select, clear, or retry Wine virtual desktop mode. Use `wwine --prefix <alias-or-path> force-desktop [WxH]` as a separate manual or Ansible action when a prefix should be forced to Wine's virtual desktop registry setting.
 
 ## App Ids
 

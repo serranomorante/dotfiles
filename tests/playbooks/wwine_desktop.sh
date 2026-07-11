@@ -5,10 +5,10 @@ set -euo pipefail
 # dotfiles-test-tags: playbooks wine shell xvfb
 # dotfiles-test-firejail: disabled
 # dotfiles-test-case: wwine-template-renders-and-has-shell-syntax
-# dotfiles-test-case: wwine-opens-light-wine-window-with-and-without-desktop
+# dotfiles-test-case: wwine-force-desktop-writes-virtual-desktop-registry
 # dotfiles-test-case: wine-desktop-launchers-are-terminal-free-and-logged
 
-# Purpose: Verify wwine's virtual-desktop toggle with a temporary Wine prefix.
+# Purpose: Verify wwine's standalone virtual desktop action with a temporary Wine prefix.
 
 skip_missing_commands() {
     local missing=0
@@ -92,53 +92,6 @@ run_wwine() {
     WINEDEBUG=-all WINEDLLOVERRIDES=mscoree,mshtml= timeout 60s "$wwine" --prefix dotfiles-test "$@"
 }
 
-wait_for_notepad_window() {
-    local tree_log=$1
-    local i
-
-    for ((i = 0; i < 40; i++)); do
-        xwininfo -root -tree >"$tree_log" 2>/dev/null || true
-        if grep -Eq 'Untitled - Notepad|Notepad|notepad\.exe' "$tree_log"; then
-            return 0
-        fi
-        sleep 0.25
-    done
-
-    return 1
-}
-
-open_notepad_and_assert_window() {
-    local wwine=$1
-    local tree_log=$2
-    shift 2
-    local attempt
-    local wine_pid
-
-    for ((attempt = 1; attempt <= 3; attempt++)); do
-        : >"${DOTFILES_TEST_TMP}/notepad.stdout"
-        : >"${DOTFILES_TEST_TMP}/notepad.stderr"
-        WINEDEBUG=-all WINEDLLOVERRIDES=mscoree,mshtml= "$wwine" --prefix dotfiles-test "$@" wine notepad >"${DOTFILES_TEST_TMP}/notepad.stdout" 2>"${DOTFILES_TEST_TMP}/notepad.stderr" &
-        wine_pid=$!
-
-        wait_for_notepad_window "$tree_log" || true
-        kill "$wine_pid" 2>/dev/null || true
-        wait "$wine_pid" 2>/dev/null || true
-        run_wwine "$wwine" wineserver -k >/dev/null 2>&1 || true
-
-        if grep -Eq 'Untitled - Notepad|Notepad|notepad\.exe' "$tree_log"; then
-            return 0
-        fi
-
-        sleep 1
-    done
-
-    printf 'Notepad did not open after retries. Last window tree:\n' >&2
-    sed -n '1,120p' "$tree_log" >&2
-    printf 'Last stderr:\n' >&2
-    sed -n '1,120p' "${DOTFILES_TEST_TMP}/notepad.stderr" >&2
-    return 1
-}
-
 assert_registry_has_desktop() {
     local wwine=$1
     local expected_name=$2
@@ -151,19 +104,7 @@ assert_registry_has_desktop() {
     grep -Eq "${expected_name}[[:space:]]+REG_SZ[[:space:]]+${expected_size}[[:space:]]*$" "${DOTFILES_TEST_TMP}/desktop-size.reg"
 }
 
-assert_registry_has_no_active_desktop() {
-    local wwine=$1
-
-    if run_wwine "$wwine" wine reg query 'HKEY_CURRENT_USER\Software\Wine\Explorer' /v Desktop >"${DOTFILES_TEST_TMP}/desktop-after-no-desktop.reg" 2>&1; then
-        printf 'Expected wwine --no-desktop to remove the active Wine desktop value, but it remains:\n' >&2
-        cat "${DOTFILES_TEST_TMP}/desktop-after-no-desktop.reg" >&2
-        return 1
-    fi
-
-    grep -q 'Unable to find the specified registry value' "${DOTFILES_TEST_TMP}/desktop-after-no-desktop.reg"
-}
-
-run_desktop_toggle_test() {
+run_force_desktop_test() {
     mkdir -p "${DOTFILES_TEST_TMP}/wine-prefix"
     # shellcheck disable=SC2016
     xvfb-run -a --server-args="-screen 0 1024x768x24" bash -c '
@@ -173,16 +114,13 @@ run_desktop_toggle_test() {
         run_wwine "$WWINE_UNDER_TEST" wine reg query "HKEY_CURRENT_USER\\Software\\Wine" >/dev/null 2>&1 || true
         run_wwine "$WWINE_UNDER_TEST" wineserver -w >/dev/null 2>&1 || true
 
-        open_notepad_and_assert_window "$WWINE_UNDER_TEST" "$DOTFILES_TEST_TMP/with-desktop.tree" --desktop=640x480 --desktop-name DotfilesTest
-        assert_registry_has_desktop "$WWINE_UNDER_TEST" DotfilesTest 640x480
-
-        open_notepad_and_assert_window "$WWINE_UNDER_TEST" "$DOTFILES_TEST_TMP/without-desktop.tree" --no-desktop
-        assert_registry_has_no_active_desktop "$WWINE_UNDER_TEST"
+        run_wwine "$WWINE_UNDER_TEST" force-desktop 640x480
+        assert_registry_has_desktop "$WWINE_UNDER_TEST" Default 640x480
     '
 }
 
 write_function_exports() {
-    declare -f run_wwine wait_for_notepad_window open_notepad_and_assert_window assert_registry_has_desktop assert_registry_has_no_active_desktop >"${DOTFILES_TEST_TMP}/test-functions.bash"
+    declare -f run_wwine assert_registry_has_desktop >"${DOTFILES_TEST_TMP}/test-functions.bash"
 }
 
 assert_desktop_terminal_free() {
@@ -241,14 +179,14 @@ wwine-template-renders-and-has-shell-syntax)
     rendered=$(render_wwine)
     bash -n "$rendered"
     ;;
-wwine-opens-light-wine-window-with-and-without-desktop)
-    skip_missing_commands bash grep python3 sed sleep timeout wine wineserver xvfb-run xwininfo
+wwine-force-desktop-writes-virtual-desktop-registry)
+    skip_missing_commands bash grep python3 timeout wine wineserver xvfb-run
     skip_missing_jinja2
     rendered=$(render_wwine)
     bash -n "$rendered"
     write_function_exports
     export WWINE_UNDER_TEST="$rendered"
-    run_desktop_toggle_test
+    run_force_desktop_test
     ;;
 wine-desktop-launchers-are-terminal-free-and-logged)
     assert_desktop_terminal_free "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper.desktop"

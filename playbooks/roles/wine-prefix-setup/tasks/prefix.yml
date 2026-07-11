@@ -51,7 +51,7 @@
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
     --arch '{{ wine_prefix_setup.architecture | default('win64') }}'
-    --no-desktop wineboot -u
+    wineboot -u
   changed_when: true
   register: wine_prefix_setup_ensure_mono
   timeout: 120
@@ -126,7 +126,7 @@
 
 - name: "[wine-prefix-setup] Configure {{ wine_prefix_setup.name }} virtual desktop"
   ansible.builtin.command: >
-    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}' --desktop wineboot -u
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}' force-desktop
   changed_when: true
   timeout: 60
   when:

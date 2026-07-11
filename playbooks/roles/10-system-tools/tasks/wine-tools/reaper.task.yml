@@ -9,7 +9,7 @@
 
 - name: "[archlinux] Wine tools: ensure gecko in reaper prefix"
   ansible.builtin.command: >
-    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper --no-desktop
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
     wineboot -u
   changed_when: true
   timeout: 60
