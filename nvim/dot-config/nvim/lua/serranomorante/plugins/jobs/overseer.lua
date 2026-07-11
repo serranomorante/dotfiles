@@ -207,6 +207,12 @@ local function opts()
       },
     }, record_screen_actions.actions()),
     component_aliases = {
+      default = {
+        "on_exit_set_status",
+        "on_complete_notify",
+        { "on_complete_dispose", require_view = { "SUCCESS", "FAILURE" } },
+        "serranomorante.open_make_test_output",
+      },
       defaults_without_dispose = {
         "on_exit_set_status",
         "on_complete_notify",
