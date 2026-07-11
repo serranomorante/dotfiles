@@ -430,12 +430,13 @@ container_signal_count() {
 }
 
 sync_signal_lines() {
-    journal_today --user -u syncthing.service |
+    journal_today --user -u syncthing.service -u foam-crypt-auto.service |
         awk '
             {
                 line = tolower($0)
             }
-            line ~ /(failed|failure|error|timeout|out of sync|folder marker|conflict|connection refused|no such host)/ {
+            line ~ /(failed|failure|error|timeout|out of sync|folder marker|conflict|connection refused|no such host)/ ||
+            (line ~ /(foam-crypt|rclone|bisync)/ && line ~ /(critical error|aborted|must run --resync|cannot find prior|path1|path2|failed|failure|error|exit-code)/) {
                 print
             }
         ' |
@@ -574,6 +575,7 @@ unclassified_warning_lines() {
             (line ~ /(docker|containerd|podman)/ && line ~ /(level=(warning|error)|failed|failure|panic|exited \([1-9][0-9]*\)|unhealthy|restarting)/) {next}
             line ~ /(container .*exited \([1-9][0-9]*\)|unhealthy|restarting)/ {next}
             (line ~ /syncthing/ && line ~ /(failed|failure|error|timeout|out of sync|folder marker|conflict|connection refused|no such host)/) {next}
+            (line ~ /(foam-crypt|rclone|bisync)/ && line ~ /(critical error|aborted|must run --resync|cannot find prior|path1|path2|failed|failure|error|exit-code)/) {next}
             (line ~ /(nvim|marksman|lua_ls|overseer)/ && line ~ /(error|warn|failed|failure|traceback|panic|exception)/) {next}
             (line ~ /(reaper|yabridge|wineasio|wine)/ && line ~ /(failed|failure|error|timeout|crash)/) {next}
             line ~ /(authentication failure|failed password|pam_.*(failure|error)|polkit.*(error|failed|denied)|audit.*(denied|apparmor|selinux|avc)|permission denied)/ {next}
@@ -763,6 +765,7 @@ These should be reviewed during the daily or weekly workflow.
 - Storage, NVMe, ATA, or filesystem kernel warnings.
 - Docker, containerd, Podman, unhealthy containers, or non-zero container exits.
 - Syncthing sync, conflict, folder marker, or connection failures.
+- Foam rclone-crypt bisync failures, including missing bisync listings that require `--resync`.
 - Neovim LSP or Overseer warnings from local state logs.
 - REAPER, yabridge, WineASIO, or audio-production session failures.
 - Authentication, sshd, auditd, or polkit warnings visible without sudo.
@@ -1096,11 +1099,11 @@ write_sync_page() {
     commands=$(
         cat <<'EOF'
 ```sh
-SYSTEMD_PAGER='less -R +G' journalctl --user -u syncthing.service --since today -n 300 --pager-end
+SYSTEMD_PAGER='less -R +G' journalctl --user -u syncthing.service -u foam-crypt-auto.service --since today -n 300 --pager-end
 ```
 
 ```sh
-journalctl --user -u syncthing.service --since today -n 1000 --no-pager | rg -i 'failed|failure|error|timeout|out of sync|folder marker|conflict|connection refused|no such host' | sed -n '1,300p'
+journalctl --user -u syncthing.service -u foam-crypt-auto.service --since today -n 1000 --no-pager | rg -i 'failed|failure|error|timeout|out of sync|folder marker|conflict|connection refused|no such host|foam-crypt|rclone|bisync|must run --resync|cannot find prior' | sed -n '1,300p'
 ```
 EOF
     )
