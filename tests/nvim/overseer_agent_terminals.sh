@@ -21,6 +21,7 @@ set -euo pipefail
 # dotfiles-test-case: codex-new-visual-selection-pastes-snippet
 # dotfiles-test-case: codex-new-renames-pending-tmux-session-after-session-id
 # dotfiles-test-case: codex-resume-ignores-cached-pending-tmux-session
+# dotfiles-test-case: agent-tmux-socket-dirs-are-private
 # dotfiles-test-case: agent-tasks-dispose-kills-tmux-session
 # dotfiles-test-case: overseer-actions-include-dispose-and-kill-tmux
 # dotfiles-test-case: agent-tasks-reconcile-opens-missing-tmux-sessions
@@ -139,6 +140,37 @@ overseer-agent-session-terminal-contract)
         '  assert(text:find("open_task(provider, task, prompt, { wait_for_ready = true, start_win = start_win, open_output = false })", 1, true) ~= nil, "new/resumed tasks should delay output focus until after start")' \
         '  assert(text:find("if not start_and_open_task_output(provider, task, start_win) then return end", 1, true) ~= nil, "new task flow should open only after a successful start")' \
         '  assert(text:find("vim%.cmd%.stopinsert") ~= nil, "terminal cleanup must use stopinsert")' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua_file "$lua_file"
+    ;;
+agent-tmux-socket-dirs-are-private)
+    lua_file="${DOTFILES_TEST_TMP}/agent-tmux-socket-dirs-are-private.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  local utils = require("serranomorante.utils")' \
+        '  local tmpdir = vim.env.DOTFILES_TEST_TMP .. "/agent-tmux-socket-dirs-are-private"' \
+        '  vim.fn.delete(tmpdir, "rf")' \
+        '  vim.fn.mkdir(tmpdir, "p", 448)' \
+        '  vim.env.TMUX_TMPDIR = tmpdir' \
+        '  local passwd = assert(vim.uv.os_get_passwd(vim.env.USER or ""), "missing passwd entry")' \
+        '  local socket_root = tmpdir .. "/tmux-" .. tostring(passwd.uid)' \
+        '  utils.ensure_agent_tmux_socket_dirs("/run/user/" .. tostring(passwd.uid) .. "/nvim.test.sock")' \
+        '  for _, path in ipairs({' \
+        '    socket_root,' \
+        '    socket_root .. "/run",' \
+        '    socket_root .. "/run/user",' \
+        '    socket_root .. "/run/user/" .. tostring(passwd.uid),' \
+        '  }) do' \
+        '    assert(vim.fn.isdirectory(path) == 1, "missing tmux socket directory: " .. path)' \
+        '    assert(vim.fn.getfperm(path) == "rwx------", path .. " has " .. vim.fn.getfperm(path))' \
+        '  end' \
+        '  vim.fn.setfperm(socket_root, "rwxr-xr-x")' \
+        '  utils.ensure_agent_tmux_socket_dirs("overseer")' \
+        '  assert(vim.fn.getfperm(socket_root) == "rwx------", "existing socket root was not repaired")' \
+        '  vim.fn.delete(tmpdir, "rf")' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
         'local ok, err = xpcall(main, debug.traceback)' \

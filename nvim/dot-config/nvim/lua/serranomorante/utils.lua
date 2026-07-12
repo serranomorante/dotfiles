@@ -39,13 +39,24 @@ function M.ensure_agent_tmux_socket_dirs(server_name)
   if type(tmux_tmpdir) ~= "string" or tmux_tmpdir == "" then tmux_tmpdir = "/tmp" end
 
   local socket_root = M.join_paths(tmux_tmpdir, ("tmux-%d"):format(uid))
+  local function ensure_private_dir(path)
+    vim.fn.mkdir(path, "p", 448)
+    vim.fn.setfperm(path, "rwx------")
+  end
+
+  ensure_private_dir(socket_root)
+
   local relative_name = server_name:gsub("^/", "")
   if relative_name == "" then return end
 
   local relative_dir = vim.fn.fnamemodify(relative_name, ":h")
   if relative_dir == "." or relative_dir == "" then return end
 
-  vim.fn.mkdir(M.join_paths(socket_root, relative_dir), "p")
+  local current_dir = socket_root
+  for component in relative_dir:gmatch("[^/]+") do
+    current_dir = M.join_paths(current_dir, component)
+    ensure_private_dir(current_dir)
+  end
 end
 
 ---Writes a Grep/Find command into vim's command-line with
