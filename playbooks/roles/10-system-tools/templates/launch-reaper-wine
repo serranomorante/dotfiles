@@ -1,13 +1,133 @@
 #!/usr/bin/env bash
 # {{ ansible_managed }}
-# Purpose: Launch Windows REAPER through wwine without opening a terminal, while capturing launcher logs.
+# Purpose: Launch Windows REAPER through wwine with the same audio-production environment as the native Linux setup.
+# Usage: launch-reaper-wine [--firejail|--no-firejail] [-- REAPER_ARGS...]
 set -euo pipefail
 
+usage() {
+  cat <<'EOF'
+Usage: launch-reaper-wine [--firejail|--no-firejail] [-- REAPER_ARGS...]
+
+Launch Windows REAPER through wwine with Firejail enabled by default.
+
+Options:
+  --firejail     Run REAPER through the configured Wine Firejail profile. This is the default.
+  --no-firejail  Run REAPER directly through wwine without Firejail.
+  -h, --help     Show this help.
+
+Environment:
+  DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME  Override the Firejail sandbox name.
+  WWINE_WINEDEBUG or WINEDEBUG           Override the Wine debug channel spec.
+EOF
+}
+
+governor_boost_started=0
+platform_profile_boost_started=0
+
+platform_profile_boost_start() {
+  # Raise the platform firmware profile while REAPER runs. This controls the
+  # laptop-level power/thermal policy, separate from the CPU governor below.
+  if command -v powerprofilesctl >/dev/null 2>&1 && powerprofilesctl set performance 2>/dev/null; then
+    platform_profile_boost_started=1
+  fi
+}
+
+platform_profile_boost_stop() {
+  if [ "$platform_profile_boost_started" -eq 1 ]; then
+    powerprofilesctl set balanced 2>/dev/null || true
+    platform_profile_boost_started=0
+  fi
+}
+
+governor_boost_start() {
+  # Raise the CPU governor to performance for low-latency audio while REAPER
+  # runs. Authorized for the 'realtime' group via polkit; non-fatal if it fails
+  # so REAPER still launches on systems without the boost unit.
+  if systemctl start cpu-governor-boost.service 2>/dev/null; then
+    governor_boost_started=1
+  fi
+}
+
+governor_boost_stop() {
+  # Restore the previous (idle) governor once REAPER exits. Registered on EXIT so
+  # it also runs when the launcher is interrupted by a signal.
+  if [ "$governor_boost_started" -eq 1 ]; then
+    systemctl stop cpu-governor-boost.service 2>/dev/null || true
+    governor_boost_started=0
+  fi
+}
+
+reaper_boost_start() {
+  platform_profile_boost_start
+  governor_boost_start
+}
+
+reaper_boost_stop() {
+  governor_boost_stop
+  platform_profile_boost_stop
+}
+
+use_firejail=1
+firejail_sandbox_name="${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-wwine-reaper}"
+wine_debug="${WWINE_WINEDEBUG:-${WINEDEBUG:--all,+err}}"
+
+case "${1:-}" in
+  --firejail)
+    shift
+    ;;
+  --no-firejail)
+    use_firejail=0
+    shift
+    ;;
+  -h|--help)
+    usage
+    exit 0
+    ;;
+esac
+
+if [ "${1:-}" = "--" ]; then
+  shift
+fi
+
 "{{ ansible_facts.env.HOME }}/.local/bin/connect-reaper-to-music-production" &
+
 export LC_ALL=C
+export WINEDEBUG="$wine_debug"
 {% for name, value in pipewire_latency_vars.items() %}
 export {{ name }}={{ value | quote }}
 {% endfor %}
 
-cd "{{ arch_reaper_wine_setup.wine_prefix }}/dosdevices/c:/Program Files/REAPER (x64)"
-exec "{{ ansible_facts.env.HOME }}/bin/wwine" --prefix reaper --use-sandbox --log-id reaper wine "C:/Program Files/REAPER (x64)/REAPER.exe"
+wwine_prepare_args=(--prefix reaper --wine-debug "$wine_debug")
+wwine_cmd=(
+  "{{ ansible_facts.env.HOME }}/bin/wwine"
+  --prefix reaper
+  --log-id reaper
+  --wine-debug "$wine_debug"
+)
+
+if [ "$use_firejail" -eq 1 ]; then
+  wwine_prepare_args+=(--use-sandbox)
+  wwine_cmd+=(--use-sandbox)
+  if [ -n "${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-}" ]; then
+    wwine_prepare_args+=(--sandbox-name "$firejail_sandbox_name")
+    wwine_cmd+=(--sandbox-name "$firejail_sandbox_name")
+  fi
+fi
+
+eval "$("{{ ansible_facts.env.HOME }}/bin/wwine" "${wwine_prepare_args[@]}" prepare-env)"
+
+cd "{{ ansible_facts.env.HOME }}/data/audio-pjs"
+
+# Boost the laptop platform profile and CPU governor for the lifetime of this
+# REAPER session and restore them on exit (including signals) via the EXIT trap.
+trap reaper_boost_stop EXIT
+reaper_boost_start
+
+wwine_cmd+=(wine "C:/Program Files/REAPER (x64)/REAPER.exe" "$@")
+
+# Run (not exec) so the EXIT trap restores the boosted settings after REAPER exits.
+set +e
+"${wwine_cmd[@]}"
+status=$?
+set -e
+exit "$status"
