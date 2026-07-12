@@ -21,6 +21,22 @@ EOF
 }
 
 governor_boost_started=0
+platform_profile_boost_started=0
+
+platform_profile_boost_start() {
+  # Raise the platform firmware profile while REAPER runs. This controls the
+  # laptop-level power/thermal policy, separate from the CPU governor below.
+  if command -v powerprofilesctl >/dev/null 2>&1 && powerprofilesctl set performance 2>/dev/null; then
+    platform_profile_boost_started=1
+  fi
+}
+
+platform_profile_boost_stop() {
+  if [ "$platform_profile_boost_started" -eq 1 ]; then
+    powerprofilesctl set balanced 2>/dev/null || true
+    platform_profile_boost_started=0
+  fi
+}
 
 governor_boost_start() {
   # Raise the CPU governor to performance for low-latency audio while REAPER
@@ -38,6 +54,16 @@ governor_boost_stop() {
     systemctl stop cpu-governor-boost.service 2>/dev/null || true
     governor_boost_started=0
   fi
+}
+
+reaper_boost_start() {
+  platform_profile_boost_start
+  governor_boost_start
+}
+
+reaper_boost_stop() {
+  governor_boost_stop
+  platform_profile_boost_stop
 }
 
 use_firejail=0
@@ -117,10 +143,10 @@ export {{ env | join('=') }}
 {% endfor %}
 cd "{{ ansible_facts.env.HOME }}/data/audio-pjs"
 
-# Boost the CPU governor for the lifetime of this REAPER session and restore it
-# on exit (including signals) via the EXIT trap.
-trap governor_boost_stop EXIT
-governor_boost_start
+# Boost the laptop platform profile and CPU governor for the lifetime of this
+# REAPER session and restore them on exit (including signals) via the EXIT trap.
+trap reaper_boost_stop EXIT
+reaper_boost_start
 
 reaper_cmd=(/usr/bin/reaper "$@")
 if [ "$use_firejail" -eq 1 ]; then
@@ -128,7 +154,7 @@ if [ "$use_firejail" -eq 1 ]; then
   exec_named_firejail "${reaper_cmd[@]}"
 fi
 
-# Run (not exec) so the EXIT trap restores the governor after REAPER exits.
+# Run (not exec) so the EXIT trap restores the boosted settings after REAPER exits.
 set +e
 "${reaper_cmd[@]}"
 status=$?

@@ -8,6 +8,7 @@ set -euo pipefail
 # dotfiles-test-case: launch-reaper-linux-firejail-uses-wwine-reaper-sandbox
 # dotfiles-test-case: launch-reaper-linux-firejail-sandbox-is-joinable-by-wwine
 # dotfiles-test-case: launch-reaper-linux-firejail-joins-existing-wwine-reaper-sandbox
+# dotfiles-test-case: launch-reaper-linux-boosts-platform-profile-while-running
 # dotfiles-test-case: launch-reaper-linux-desktop-entries-are-terminal-free
 
 # Purpose: Integration tests for launch-reaper-linux, wwine, fj-profile-checker, and real Firejail.
@@ -55,6 +56,7 @@ make_fixture() {
     sandbox_check_profile="${home}/.local/share/wwine/firejail-profiles/wine-reaper.local"
     fake_wine_log="${fixture}/fake-wine.log"
     fake_reaper_log="${fixture}/fake-reaper.log"
+    power_profile_log="${fixture}/powerprofilesctl.log"
     checker_log="${fixture}/fj-profile-checker.log"
     kitty_log="${fixture}/kitty.log"
     output="${fixture}/output.log"
@@ -122,6 +124,14 @@ printf '<%s>' "\$@" >> "$fake_wine_log"
 printf '\n' >> "$fake_wine_log"
 SH
     chmod +x "${fixture}/fake-wineserver"
+
+    cat >"${fixture}/bin/powerprofilesctl" <<SH
+#!/usr/bin/env sh
+printf 'powerprofilesctl' >> "$power_profile_log"
+printf ' <%s>' "\$@" >> "$power_profile_log"
+printf '\n' >> "$power_profile_log"
+SH
+    chmod +x "${fixture}/bin/powerprofilesctl"
 
     cat >"${fixture}/fake-reaper" <<SH
 #!/usr/bin/env sh
@@ -395,6 +405,15 @@ launch-reaper-linux-firejail-joins-existing-wwine-reaper-sandbox)
 
     touch "${fixture}/stop-fake-wine"
     wait "$vienna_pid"
+    ;;
+launch-reaper-linux-boosts-platform-profile-while-running)
+    make_fixture
+
+    run_launch --no-firejail -- --empty-project
+    grep -Fxq "powerprofilesctl <set> <performance>" "$power_profile_log"
+    grep -Fxq "powerprofilesctl <set> <balanced>" "$power_profile_log"
+    [ "$(sed -n '1p' "$power_profile_log")" = "powerprofilesctl <set> <performance>" ]
+    [ "$(sed -n '2p' "$power_profile_log")" = "powerprofilesctl <set> <balanced>" ]
     ;;
 launch-reaper-linux-desktop-entries-are-terminal-free)
     grep -Fxq "Name=REAPER linux" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
