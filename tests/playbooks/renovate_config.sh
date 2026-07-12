@@ -12,6 +12,7 @@ set -euo pipefail
 # dotfiles-test-case: renovate-config-covers-vscode-go-releases
 # dotfiles-test-case: renovate-config-constrains-mixed-tag-sources
 # dotfiles-test-case: renovate-config-covers-reaper-download-page
+# dotfiles-test-case: renovate-config-covers-music-production-release-assets
 # dotfiles-test-case: renovate-config-keeps-vscode-js-debug-install-scripts-disabled
 # dotfiles-test-case: renovate-tool-is-installed-by-ansible
 # dotfiles-test-case: renovate-local-apply-helper-is-installed
@@ -207,6 +208,45 @@ PY
     rg -q 'version: "[0-9][0-9][0-9]"' "$music_defaults"
     rg -Fq '"custom."' "$local_apply_helper"
     rg -Fq 'LinkParser' "$local_apply_helper"
+    ;;
+renovate-config-covers-music-production-release-assets)
+    python3 - "$config_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    config = json.load(handle)
+
+sws_datasource = config["customDatasources"]["sws-pre-release-downloads"]
+assert sws_datasource["defaultRegistryUrlTemplate"] == "https://www.sws-extension.org/download/pre-release/"
+assert sws_datasource["format"] == "html"
+
+for manager in config["customManagers"]:
+    if manager.get("depNameTemplate") == "sws-extension-windows-x64":
+        assert manager["datasourceTemplate"] == "custom.sws-pre-release-downloads"
+        assert manager["extractVersionTemplate"] == "^sws-(?<version>\\d+\\.\\d+\\.\\d+\\.\\d+)-Windows-x64-[0-9a-f]+\\.exe$"
+        assert manager["validationUrlTemplates"] == [
+            "https://www.sws-extension.org/download/featured/sws-{{ newValue }}-Windows-x64.exe"
+        ]
+        break
+else:
+    raise SystemExit("missing SWS manager")
+
+for manager in config["customManagers"]:
+    if manager.get("depNameTemplate") == "helgobox":
+        assert manager["datasourceTemplate"] == "github-releases"
+        assert manager["validationUrlTemplates"] == [
+            "https://github.com/helgoboss/helgobox/releases/download/v{{ newValue }}/helgobox-linux-x86_64.so",
+            "https://github.com/helgoboss/helgobox/releases/download/v{{ newValue }}/reaper_helgobox-linux-x86_64.so",
+            "https://github.com/helgoboss/helgobox/releases/download/v{{ newValue }}/helgobox-windows-x86_64.dll",
+            "https://github.com/helgoboss/helgobox/releases/download/v{{ newValue }}/reaper_helgobox-windows-x86_64.dll",
+        ]
+        break
+else:
+    raise SystemExit("missing Helgobox manager")
+PY
+    rg -q 'arch_reaper_sws_extension_setup:' "$music_defaults"
+    rg -q 'arch_helgobox_setup:' "$music_defaults"
     ;;
 renovate-config-keeps-vscode-js-debug-install-scripts-disabled)
     python3 - "$javascript_tasks" <<'PY'

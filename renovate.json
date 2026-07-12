@@ -333,7 +333,25 @@
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "semver-coerced",
       "extractVersionTemplate": "^v(?<version>.*)$",
-      "depTypeTemplate": "github-release-asset"
+      "depTypeTemplate": "github-release-asset",
+      "validationUrlTemplates": [
+        "https://github.com/helgoboss/helgobox/releases/download/v{{ newValue }}/helgobox-linux-x86_64.so",
+        "https://github.com/helgoboss/helgobox/releases/download/v{{ newValue }}/reaper_helgobox-linux-x86_64.so",
+        "https://github.com/helgoboss/helgobox/releases/download/v{{ newValue }}/helgobox-windows-x86_64.dll",
+        "https://github.com/helgoboss/helgobox/releases/download/v{{ newValue }}/reaper_helgobox-windows-x86_64.dll"
+      ]
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/music-production\\.vars\\.yml$/"],
+      "matchStrings": ["arch_reaper_sws_extension_setup:\\n(?:\\s+[^\\n]+\\n)*?\\s+version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "sws-extension-windows-x64",
+      "packageNameTemplate": "sws-extension-windows-x64",
+      "datasourceTemplate": "custom.sws-pre-release-downloads",
+      "versioningTemplate": "semver-coerced",
+      "extractVersionTemplate": "^sws-(?<version>\\d+\\.\\d+\\.\\d+\\.\\d+)-Windows-x64-[0-9a-f]+\\.exe$",
+      "depTypeTemplate": "vendor-html-release-asset",
+      "validationUrlTemplates": ["https://www.sws-extension.org/download/featured/sws-{{ newValue }}-Windows-x64.exe"]
     },
     {
       "customType": "regex",
@@ -362,6 +380,10 @@
   "customDatasources": {
     "reaper-downloads": {
       "defaultRegistryUrlTemplate": "https://www.reaper.fm/download.php",
+      "format": "html"
+    },
+    "sws-pre-release-downloads": {
+      "defaultRegistryUrlTemplate": "https://www.sws-extension.org/download/pre-release/",
       "format": "html"
     }
   },
