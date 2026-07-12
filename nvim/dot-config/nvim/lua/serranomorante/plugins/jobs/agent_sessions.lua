@@ -1050,7 +1050,7 @@ end
 ---@param provider table
 ---@param task overseer.Task
 ---@param cwd string
----@param known_session_ids table<string, true>
+---@param known_session_ids? table<string, true>
 ---@return Promise
 local function async_link_task_to_recent_session(provider, task, cwd, known_session_ids)
   return async_sessions(provider, cwd):thenCall(function(sessions)
@@ -1079,7 +1079,7 @@ end
 ---@param provider table
 ---@param task overseer.Task
 ---@param cwd string
----@param known_session_ids table<string, true>
+---@param known_session_ids? table<string, true>
 local function retry_link_task_until_session_path(provider, task, cwd, known_session_ids)
   if not should_retry_session_link(task) then
     session_link_retry_tasks[task] = nil
@@ -1411,8 +1411,13 @@ end
 ---@param provider table
 ---@param task overseer.Task
 ---@param cwd string
----@param known_session_ids table<string, true>
+---@param known_session_ids? table<string, true>
 local function link_new_task_to_session_id(provider, task, cwd, known_session_ids)
+  if not known_session_ids then
+    retry_link_task_until_session_path(provider, task, cwd, known_session_ids)
+    return
+  end
+
   async_watch_new_session(provider, task, cwd, known_session_ids)
     :thenCall(function()
       if task_has_session_path(task) then return end
@@ -1754,7 +1759,8 @@ function M.open_new(provider_name, opts)
   local start_win = vim.api.nvim_get_current_win()
 
   require("async")(function()
-    local known_session_ids = await(async_session_ids(provider, cwd))
+    local known_session_ids
+    if provider.name ~= "codex" then known_session_ids = await(async_session_ids(provider, cwd)) end
     local size = tmux_session_size(start_win)
     local tmux_cmd, tmux_args =
       tmux_wrap_provider_command(provider, provider.start_args(preallocated_session_id), tmux_session_name, cwd, size)

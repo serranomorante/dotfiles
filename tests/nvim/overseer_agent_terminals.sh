@@ -10,6 +10,7 @@ set -euo pipefail
 # dotfiles-test-case: ansible-task-picker-preserves-source-window-for-output
 # dotfiles-test-case: overseer-dispose-removes-visible-output-buffer
 # dotfiles-test-case: codex-new-session-focuses-task-terminal-from-overseer-terminal
+# dotfiles-test-case: codex-new-session-does-not-wait-for-session-id-scan
 # dotfiles-test-case: codex-new-session-from-shell-fence-uses-fence-as-alternate
 # dotfiles-test-case: codex-resume-missing-session-cwd-uses-current-cwd
 # dotfiles-test-case: overseer-open-recent-same-agent-task-pastes-visual
@@ -386,6 +387,75 @@ SH
         '  assert(vim.wait(1000, function() return vim.api.nvim_get_current_buf() == new_bufnr end, 10), "<C-6> did not return to the new Overseer terminal")' \
         '  assert(vim.fn.bufnr("#") == old_bufnr, ("expected previous task as alternate buffer %d, got %d"):format(old_bufnr, vim.fn.bufnr("#")))' \
         '  pcall(vim.fn.jobstop, old_job)' \
+        '  for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
+        '    pcall(function() task:dispose(true) end)' \
+        '  end' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua_file "$lua_file"
+    ;;
+codex-new-session-does-not-wait-for-session-id-scan)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    mkdir -p "$fake_bin"
+cat >"${fake_bin}/agent-session-store" <<'SH'
+#!/bin/sh
+set -eu
+
+provider=codex
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --provider)
+        provider=$2
+        shift 2
+        ;;
+    ids)
+        printf 'ids-called\n' >"${DOTFILES_TEST_TMP}/ids-called"
+        sleep 5
+        printf '{"version":2,"provider":"%s","ids":[]}\n' "$provider"
+        exit 0
+        ;;
+    watch-new)
+        printf '{"version":2,"provider":"%s","event":"timeout"}\n' "$provider"
+        exit 0
+        ;;
+    *)
+        shift
+        ;;
+    esac
+done
+
+printf '{"version":2,"provider":"%s","sessions":[]}\n' "$provider"
+SH
+    cat >"${fake_bin}/codex" <<'SH'
+#!/bin/sh
+set -eu
+
+printf 'OpenAI Codex\n'
+printf 'model: fake\n'
+printf 'directory: %s\n' "$PWD"
+sleep 10
+SH
+    chmod +x "${fake_bin}/agent-session-store" "${fake_bin}/codex"
+
+    lua_file="${DOTFILES_TEST_TMP}/codex-new-session-does-not-wait-for-session-id-scan.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  vim.env.PATH = vim.env.DOTFILES_TEST_TMP .. "/bin:" .. vim.env.PATH' \
+        '  vim.env.AGENT_SESSION_STORE_BIN = vim.env.DOTFILES_TEST_TMP .. "/bin/agent-session-store"' \
+        '  vim.opt.packpath:prepend("/home/aaaa/.local/share/nvim/site")' \
+        '  vim.cmd.packloadall()' \
+        '  require("overseer").setup({' \
+        '    component_aliases = { defaults_without_notification = { "on_exit_set_status" } },' \
+        '  })' \
+        '  require("serranomorante.plugins.jobs.agent_sessions").open_new("codex")' \
+        '  local focused = vim.wait(1000, function()' \
+        '    local bufnr = vim.api.nvim_get_current_buf()' \
+        '    return vim.bo[bufnr].buftype == "terminal" and vim.b[bufnr].overseer_task ~= nil' \
+        '  end, 20)' \
+        '  assert(focused, "new Codex task terminal waited for session id scan")' \
+        '  assert(vim.fn.filereadable(vim.env.DOTFILES_TEST_TMP .. "/ids-called") == 0, "Codex new session should not call the blocking ids scan")' \
         '  for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
         '    pcall(function() task:dispose(true) end)' \
         '  end' \
