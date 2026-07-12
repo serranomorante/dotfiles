@@ -37,6 +37,7 @@ mode_osd_unit="${DOTFILES_TEST_ROOT}/peripherals/dot-config/systemd/user/mode-os
 led_firmware="${DOTFILES_TEST_ROOT}/assets/firmware/keyboard-midi-led-matrix/keyboard-midi-led-matrix.ino"
 tft_firmware="${DOTFILES_TEST_ROOT}/assets/firmware/keyboard-midi-tft-display/keyboard-midi-tft-display.ino"
 reaper_startup_script="${DOTFILES_TEST_ROOT}/assets/scripts/reaper/__startup.lua"
+realearn_beatstep_preset="${DOTFILES_TEST_ROOT}/assets/reaper/realearn/presets/main/aaaa/beatstep.json"
 midi_editor_state_feedback="${DOTFILES_TEST_ROOT}/assets/scripts/reaper/midi_editor_state_feedback.lua"
 item_state_feedback="${DOTFILES_TEST_ROOT}/assets/scripts/reaper/item_state_feedback.lua"
 project_transport_state_feedback="${DOTFILES_TEST_ROOT}/assets/scripts/reaper/project_transport_state_feedback.lua"
@@ -365,6 +366,7 @@ keyboard-midi-controller-dotfiles-contract)
     rg -q '1/512' "$tft_firmware"
     rg -q 'drawBadge\(5, "PLAY"' "$tft_firmware"
     [[ -s "$reaper_startup_script" ]]
+    [[ -s "$realearn_beatstep_preset" ]]
     [[ -s "$midi_editor_state_feedback" ]]
     [[ -s "$item_state_feedback" ]]
     [[ -s "$project_transport_state_feedback" ]]
@@ -408,6 +410,28 @@ keyboard-midi-controller-dotfiles-contract)
     rg -q 'midi_editor_state_feedback\.lua' "$sws_task"
     rg -q 'item_state_feedback\.lua' "$sws_task"
     rg -q 'project_transport_state_feedback\.lua' "$sws_task"
+    rg -Fq 'assets/reaper/realearn/presets/main/{{ ansible_facts.env.USER }}' "$sws_task"
+    rg -Fq 'Data/helgoboss/realearn/presets/main/{{ ansible_facts.env.USER }}' "$sws_task"
+    rg -q 'migrate existing ReaLearn main preset folders' "$sws_task"
+    rg -q 'cp' "$sws_task"
+    rg -q -- '-u' "$sws_task"
+    rg -q 'ensure ReaLearn main preset folders' "$sws_task"
+    rg -q 'hardlink ReaLearn main preset files' "$sws_task"
+    rg -q 'state: hard' "$sws_task"
+    refute rg -q 'copy (native|wine) ReaLearn main presets' "$sws_task"
+    rg -q 'Scripts/__startup\.lua' "$sws_task"
+    python3 - "$sws_task" <<'PY'
+import sys
+
+text = open(sys.argv[1], encoding="utf-8").read()
+start = text.index('- name: "[archlinux] Wine tools: copy wine reaper startup script"')
+end = text.index('- name: "[archlinux] Wine tools: copy wine reaper custom scripts"', start)
+block = text[start:end]
+assert "project_transport_state_feedback.lua" in block
+assert "midi_editor_state_feedback.lua" in block
+assert "item_state_feedback.lua" in block
+assert "yabridge_focus_repair.lua" not in block
+PY
     refute rg -q 'allow REAPER sandbox to publish keyboard MIDI feedback|keyboard-midi-controller' "$sws_task"
     rg -q 'whitelist \$\{HOME\}/\.cache/dotfiles/keyboard-midi-controller' "$wine_reaper_firejail_template"
     rg -q 'keyboard MIDI LED matrix firmware' "$embedded_task"

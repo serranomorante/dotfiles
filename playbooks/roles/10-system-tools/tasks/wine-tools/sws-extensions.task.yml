@@ -14,6 +14,7 @@
     - ~/.config/REAPER/UserPlugins
     - ~/.config/REAPER/Scripts
     - ~/.config/REAPER/Scripts/custom
+    - ~/.config/REAPER/Data/helgoboss/realearn/presets/main
     - ~/.vst
 
 - name: "[archlinux] Wine tools: get native Helgobox/ReaLearn"
@@ -201,6 +202,95 @@
     - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/"
     - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts"
     - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts/custom"
+    - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Data/helgoboss/realearn/presets/main"
+
+- name: "[archlinux] Wine tools: ensure canonical ReaLearn main preset folder"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/dotfiles/assets/reaper/realearn/presets/main/{{ ansible_facts.env.USER }}"
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Wine tools: stat ReaLearn main preset folders"
+  ansible.builtin.stat:
+    path: "{{ item.path }}"
+    follow: false
+  loop:
+    - name: native
+      path: "{{ ansible_facts.env.HOME }}/.config/REAPER/Data/helgoboss/realearn/presets/main/{{ ansible_facts.env.USER }}"
+    - name: wine
+      path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Data/helgoboss/realearn/presets/main/{{ ansible_facts.env.USER }}"
+  register: var_reaper_reallearn_main_preset_folders
+
+- name: "[archlinux] Wine tools: migrate existing ReaLearn main preset folders"
+  ansible.builtin.command:
+    argv:
+      - cp
+      - -a
+      - -u
+      - "{{ item.item.path }}/."
+      - "{{ ansible_facts.env.HOME }}/dotfiles/assets/reaper/realearn/presets/main/{{ ansible_facts.env.USER }}/"
+  changed_when: true
+  loop: "{{ var_reaper_reallearn_main_preset_folders.results }}"
+  when:
+    - item.stat.exists
+    - item.stat.isdir | default(false)
+    - not (item.stat.islnk | default(false))
+
+- name: "[archlinux] Wine tools: remove migrated ReaLearn main preset folders"
+  ansible.builtin.file:
+    path: "{{ item.item.path }}"
+    state: absent
+  loop: "{{ var_reaper_reallearn_main_preset_folders.results }}"
+  when:
+    - item.stat.exists
+    - item.stat.islnk | default(false) or item.stat.isdir | default(false)
+
+- name: "[archlinux] Wine tools: ensure ReaLearn main preset folders"
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "755"
+  loop:
+    - name: native
+      path: "{{ ansible_facts.env.HOME }}/.config/REAPER/Data/helgoboss/realearn/presets/main/{{ ansible_facts.env.USER }}"
+    - name: wine
+      path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Data/helgoboss/realearn/presets/main/{{ ansible_facts.env.USER }}"
+
+- name: "[archlinux] Wine tools: hardlink ReaLearn main preset files"
+  ansible.builtin.file:
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/reaper/realearn/presets/main/{{ ansible_facts.env.USER }}/{{ item.file }}"
+    dest: "{{ item.dest }}/{{ item.file }}"
+    state: hard
+    force: true
+  loop:
+    - file: beatstep.json
+      dest: "{{ ansible_facts.env.HOME }}/.config/REAPER/Data/helgoboss/realearn/presets/main/{{ ansible_facts.env.USER }}"
+    - file: beatstep.json
+      dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Data/helgoboss/realearn/presets/main/{{ ansible_facts.env.USER }}"
+
+- name: "[archlinux] Wine tools: copy wine reaper startup script"
+  ansible.builtin.copy:
+    dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts/__startup.lua"
+    mode: "644"
+    content: |
+      local resource_path = reaper.GetResourcePath()
+      local startup_scripts = {
+          resource_path .. "/Scripts/custom/project_transport_state_feedback.lua",
+          resource_path .. "/Scripts/custom/midi_editor_state_feedback.lua",
+          resource_path .. "/Scripts/custom/item_state_feedback.lua",
+      }
+
+      for _, script in ipairs(startup_scripts) do
+          local chunk, err = loadfile(script)
+          if chunk then
+              local ok, runtime_err = pcall(chunk)
+              if not ok then
+                  reaper.ShowConsoleMsg(("Startup script failed: %s\n%s\n"):format(script, runtime_err))
+              end
+          else
+              reaper.ShowConsoleMsg(("Startup script missing or invalid: %s\n%s\n"):format(script, err))
+          end
+      end
 
 - name: "[archlinux] Wine tools: copy wine reaper custom scripts"
   ansible.builtin.copy:
