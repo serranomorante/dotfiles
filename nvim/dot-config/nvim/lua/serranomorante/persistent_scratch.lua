@@ -6,6 +6,7 @@ local AUGROUP = vim.api.nvim_create_augroup("persistent_scratch", { clear = true
 local COLOR_GROUP = vim.api.nvim_create_augroup("persistent_scratch_colors", { clear = true })
 local entries_by_cwd = {}
 local SCRATCH_TITLE = "Scratch buffer"
+local SCRATCH_FILETYPE = "markdown.scratch"
 local SCRATCH_EOB_HL = "PersistentScratchEndOfBuffer"
 local PADDING_NS = vim.api.nvim_create_namespace("persistent_scratch_padding")
 local WINDOW_PADDING = { top = 0, bottom = 0 }
@@ -16,6 +17,10 @@ local function current_tabpage() return vim.api.nvim_get_current_tabpage() end
 local function scratch_path(cwd)
   local scratch_dir = utils.join_paths(vim.fn.stdpath("state"), "persistent-scratch")
   return utils.join_paths(scratch_dir, utils.local_state_cwd_key(cwd) .. ".md")
+end
+
+local function scratch_dir()
+  return vim.fs.normalize(utils.join_paths(vim.fn.stdpath("state"), "persistent-scratch"))
 end
 
 local function ensure_parent_dir(path) vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p") end
@@ -219,6 +224,12 @@ local function register_buffer_autocmds(entry)
   })
 end
 
+local function mark_scratch_buffer(bufnr)
+  vim.b[bufnr].persistent_scratch = true
+  vim.b[bufnr].persistent_scratch_disable_lsp = true
+  vim.api.nvim_set_option_value("filetype", SCRATCH_FILETYPE, { buf = bufnr })
+end
+
 local function create_buffer(entry)
   ensure_parent_dir(entry.path)
   local bufnr = vim.fn.bufadd(entry.path)
@@ -232,7 +243,6 @@ local function create_buffer(entry)
   vim.b[bufnr].persistent_scratch_disable_lsp = true
   pcall(vim.fn.bufload, bufnr)
   vim.bo[bufnr].undofile = true
-  vim.bo[bufnr].filetype = "markdown"
   vim.bo[bufnr].modifiable = true
   vim.bo[bufnr].readonly = false
   vim.bo[bufnr].modified = false
@@ -335,6 +345,7 @@ local function create_window(entry, state)
   config.title = SCRATCH_TITLE
   config.title_pos = "center"
   local winid = vim.api.nvim_open_win(entry.bufnr, true, config)
+  mark_scratch_buffer(entry.bufnr)
   state.winid = winid
   state.hidden = false
   apply_window_options(winid)
@@ -358,6 +369,7 @@ local function show_entry(entry)
     apply_window_options(state.winid)
     refresh_padding(vim.api.nvim_win_get_buf(state.winid))
     if not vim.api.nvim_win_get_config(state.winid).hide then
+      mark_scratch_buffer(vim.api.nvim_win_get_buf(state.winid))
       vim.api.nvim_set_current_win(state.winid)
       return
     end
@@ -368,6 +380,7 @@ local function show_entry(entry)
     config.title_pos = "center"
     refresh_padding(vim.api.nvim_win_get_buf(state.winid))
     vim.api.nvim_win_set_config(state.winid, config)
+    mark_scratch_buffer(vim.api.nvim_win_get_buf(state.winid))
     apply_window_options(state.winid)
     vim.api.nvim_set_current_win(state.winid)
     restore_state_view(state.winid, state)
@@ -443,6 +456,12 @@ end
 
 function M.setup()
   define_scratch_end_of_buffer_hl()
+
+  vim.filetype.add({
+    pattern = {
+      [vim.pesc(scratch_dir()) .. "/.*%.md"] = SCRATCH_FILETYPE,
+    },
+  })
 
   vim.api.nvim_create_autocmd("ColorScheme", {
     desc = "Restore scratch highlight groups after colorscheme reloads",
