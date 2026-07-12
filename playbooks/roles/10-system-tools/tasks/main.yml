@@ -101,6 +101,17 @@
   tags: ["10-60"]
 
 - block:
+    - name: Setup nvidia display profile is configured
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 65-setup-nvidia-display-profile.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["10-60", "10-60-nvidia-profile"]
+
+- block:
     - name: Setup automation tools
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:

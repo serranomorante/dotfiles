@@ -211,6 +211,14 @@ EndSection
 
 For this laptop's HDMI path, Xorg must expose the NVIDIA GPU screen so `xrandr --listproviders` includes `NVIDIA-G0`; otherwise XRandR has no HDMI output to enable. The SDDM `Xsetup` command resolves the actual NVIDIA provider name dynamically because the Reverse PRIME provider is commonly `NVIDIA-G0`, not `NVIDIA-0`.
 
+### Display profiles
+
+The default managed profile is `arch_nvidia_display_profile: offload_only`. Normal setup runs that include `10-system-tools` should leave the internal panel on AMD, keep NVIDIA available for `prime-run`, stop and disable `nvidia-persistenced.service`, remove `/etc/X11/xorg.conf.d/80-igpu-primary-egpu-offload.conf`, and render an SDDM `Xsetup` that does not initialize NVIDIA.
+
+Use `arch_nvidia_display_profile=reverse_prime` only when HDMI or USB-C DisplayPort outputs need to be available in the X session. On this Legion, those external display outputs are wired through the NVIDIA GPU, so Reverse PRIME exposes `NVIDIA-G0` and keeps the NVIDIA driver initialized; this trades runtime `D3cold` residency for external display support.
+
+Switch profiles with the `10-60-nvidia-profile` tag. The tag is intentionally not `never` because the default `offload_only` profile must also be enforced during normal `10-system-tools` setup runs.
+
 ### Historical monitor hotplug approach
 
 This `udev` approach is historical and is no longer installed by the dotfiles. External monitor layout changes are handled manually by `setup-displays.sh --toggle` through the `Tab+Shift+M` keyd action, and stale laptop-panel scanout recovery remains a manual `Tab+Shift+R` keyd action so routine XRandR queries do not spike Xorg.

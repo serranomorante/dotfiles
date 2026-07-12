@@ -3,7 +3,7 @@
 # Xsetup - run as root before the login dialog appears
 # This file should be copied into /usr/share/sddm/scripts/Xsetup
 
-{% if arch_has_nvidia_gpu | default(false) | bool %}
+{% if arch_has_nvidia_gpu | default(false) | bool and arch_nvidia_display_profile | default('offload_only') == 'reverse_prime' %}
 if command -v xrandr >/dev/null 2>&1; then
     nvidia_provider="$(xrandr --listproviders | awk -F'name:' '/name:NVIDIA/ { print $2; exit }')"
     if [ -n "$nvidia_provider" ]; then
