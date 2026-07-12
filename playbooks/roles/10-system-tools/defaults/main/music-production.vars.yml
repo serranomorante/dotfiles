@@ -23,6 +23,10 @@ arch_helgobox_setup:
   linux_vst_checksum: sha256:b23e9a8b6471551a073327bac2f045d6ad296bb593b7157cc944fc4b4e8a5a6e
   linux_reaper_extension_name: reaper_helgobox-linux-x86_64.so
   linux_reaper_extension_checksum: sha256:bd2e44616f3ffd64a3c0f349b4276e17abf214012486a5f49277c632d40f068f
+  windows_vst_name: helgobox-windows-x86_64.dll
+  windows_vst_checksum: sha256:54b6a207e66da17fec8c10675fb6df62047f0ebd77255c432391c5e906c76ed7
+  windows_reaper_extension_name: reaper_helgobox-windows-x86_64.dll
+  windows_reaper_extension_checksum: sha256:cac64a684321737e3baa73b297faf179a29588f1d9bdf9e8ce7f7cad021c8e79
 
 arch_yabridge_version: 5.1.1
 
