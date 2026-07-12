@@ -11,6 +11,7 @@ set -euo pipefail
 # dotfiles-test-case: renovate-config-covers-runtime-major-lanes
 # dotfiles-test-case: renovate-config-covers-vscode-go-releases
 # dotfiles-test-case: renovate-config-constrains-mixed-tag-sources
+# dotfiles-test-case: renovate-config-covers-reaper-download-page
 # dotfiles-test-case: renovate-config-keeps-vscode-js-debug-install-scripts-disabled
 # dotfiles-test-case: renovate-tool-is-installed-by-ansible
 # dotfiles-test-case: renovate-local-apply-helper-is-installed
@@ -25,6 +26,7 @@ lang_defaults="${DOTFILES_TEST_ROOT}/playbooks/roles/30-lang-tools/defaults/main
 go_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/30-lang-tools/tasks/140-setup-go-tools.archlinux.yml"
 javascript_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/30-lang-tools/tasks/30-setup-javascript-tools.archlinux.yml"
 font_defaults="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/defaults/main/fonts.vars.yml"
+music_defaults="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/defaults/main/music-production.vars.yml"
 dev_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/20-dev-tools/tasks/175-setup-dependency-update-tools.archlinux.yml"
 dev_main_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/20-dev-tools/tasks/main.yml"
 local_apply_helper="${DOTFILES_TEST_ROOT}/playbooks/roles/20-dev-tools/files/dotfiles-renovate-apply"
@@ -176,6 +178,35 @@ for manager in config["customManagers"]:
 else:
     raise SystemExit("missing superhtml validation URL")
 PY
+    ;;
+renovate-config-covers-reaper-download-page)
+    python3 - "$config_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    config = json.load(handle)
+
+datasource = config["customDatasources"]["reaper-downloads"]
+assert datasource["defaultRegistryUrlTemplate"] == "https://www.reaper.fm/download.php"
+assert datasource["format"] == "html"
+
+for manager in config["customManagers"]:
+    if manager.get("depNameTemplate") == "reaper-windows-x64":
+        assert manager["datasourceTemplate"] == "custom.reaper-downloads"
+        assert manager["extractVersionTemplate"] == "^files\\/7\\.x\\/reaper(?<version>\\d+)_x64-install\\.exe$"
+        assert manager["validationUrlTemplates"] == [
+            "https://www.reaper.fm/files/7.x/reaper{{ newValue }}_x64-install.exe"
+        ]
+        assert manager["depTypeTemplate"] == "vendor-html-release-asset"
+        break
+else:
+    raise SystemExit("missing REAPER manager")
+PY
+    rg -q 'arch_reaper_wine_setup:' "$music_defaults"
+    rg -q 'version: "[0-9][0-9][0-9]"' "$music_defaults"
+    rg -Fq '"custom."' "$local_apply_helper"
+    rg -Fq 'LinkParser' "$local_apply_helper"
     ;;
 renovate-config-keeps-vscode-js-debug-install-scripts-disabled)
     python3 - "$javascript_tasks" <<'PY'

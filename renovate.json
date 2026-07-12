@@ -337,6 +337,18 @@
     },
     {
       "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/music-production\\.vars\\.yml$/"],
+      "matchStrings": ["arch_reaper_wine_setup:\\n(?:\\s+[^\\n]+\\n)*?\\s+version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "reaper-windows-x64",
+      "packageNameTemplate": "reaper-windows-x64",
+      "datasourceTemplate": "custom.reaper-downloads",
+      "versioningTemplate": "regex:^(?<major>\\d)(?<minor>\\d{2})$",
+      "extractVersionTemplate": "^files\\/7\\.x\\/reaper(?<version>\\d+)_x64-install\\.exe$",
+      "depTypeTemplate": "vendor-html-release-asset",
+      "validationUrlTemplates": ["https://www.reaper.fm/files/7.x/reaper{{ newValue }}_x64-install.exe"]
+    },
+    {
+      "customType": "regex",
       "managerFilePatterns": ["/^playbooks\\/roles\\/40-PKM\\/defaults\\/main\\.yml$/"],
       "matchStrings": ["(?:^|\\n)hypothesis_browser_extension_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
       "depNameTemplate": "hypothesis-browser-extension",
@@ -347,6 +359,12 @@
       "depTypeTemplate": "github-tag"
     }
   ],
+  "customDatasources": {
+    "reaper-downloads": {
+      "defaultRegistryUrlTemplate": "https://www.reaper.fm/download.php",
+      "format": "html"
+    }
+  },
   "packageRules": [
     {
       "matchDatasources": ["npm"],
@@ -384,6 +402,10 @@
     {
       "matchDepTypes": ["github-tag"],
       "groupName": "github tagged tools"
+    },
+    {
+      "matchDepTypes": ["vendor-html-release-asset"],
+      "groupName": "vendor download assets"
     },
     {
       "matchPackageNames": ["microsoft/vscode-js-debug"],
