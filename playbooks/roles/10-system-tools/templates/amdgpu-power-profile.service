@@ -1,0 +1,13 @@
+[Unit]
+Description=Apply AMDGPU power profile
+Documentation=https://docs.kernel.org/gpu/amdgpu/thermal.html
+ConditionVirtualization=!container
+
+[Service]
+Type=oneshot
+Environment=AMDGPU_POWER_DPM_STATE={{ arch_amdgpu_power_dpm_state }}
+Environment=AMDGPU_FORCE_PERFORMANCE_LEVEL={{ arch_amdgpu_force_performance_level }}
+ExecStart=/usr/local/bin/amdgpu-power-profile ${AMDGPU_POWER_DPM_STATE} ${AMDGPU_FORCE_PERFORMANCE_LEVEL}
+
+[Install]
+WantedBy=multi-user.target

@@ -219,6 +219,12 @@ Use `arch_nvidia_display_profile=reverse_prime` only when HDMI or USB-C DisplayP
 
 Switch profiles with the `10-60-nvidia-profile` tag. The tag is intentionally not `never` because the default `offload_only` profile must also be enforced during normal `10-system-tools` setup runs.
 
+### AMDGPU power profile
+
+The managed boot policy for the AMD iGPU is `arch_amdgpu_power_dpm_state: balanced` with `arch_amdgpu_force_performance_level: auto`. The `amdgpu-power-profile.service` unit applies those values at boot through `/usr/local/bin/amdgpu-power-profile`, detecting AMD DRM devices by vendor id instead of relying on unstable `card0`/`card1` numbering.
+
+This is separate from `powerprofilesctl` and `/sys/firmware/acpi/platform_profile`: those control the platform/firmware performance profile, while `power_dpm_state` and `power_dpm_force_performance_level` are AMDGPU driver controls. Normal setup runs that include `10-system-tools` apply the default profile, and the focused tag is `10-60-amdgpu-power-profile`.
+
 ### Historical monitor hotplug approach
 
 This `udev` approach is historical and is no longer installed by the dotfiles. External monitor layout changes are handled manually by `setup-displays.sh --toggle` through the `Tab+Shift+M` keyd action, and stale laptop-panel scanout recovery remains a manual `Tab+Shift+R` keyd action so routine XRandR queries do not spike Xorg.

@@ -34,6 +34,8 @@ nvidia-default-profile-is-offload-only)
 nvidia-profile-tag-runs-in-normal-setup)
     grep -q 'tags: \["10-60", "10-60-nvidia-profile"\]' "$main_tasks"
     grep -q '65-setup-nvidia-display-profile.{{ user_os }}.yml' "$main_tasks"
+    grep -A7 'Setup nvidia display profile is configured' "$main_tasks" | grep -q 'apply:'
+    grep -A7 'Setup nvidia display profile is configured' "$main_tasks" | grep -q '10-60-nvidia-profile'
     if grep -A3 '10-60-nvidia-profile' "$main_tasks" | grep -q 'never'; then
         printf '10-60-nvidia-profile must run during normal 10-system-tools setup\n' >&2
         exit 1

@@ -1,0 +1,42 @@
+#!/bin/sh
+# Purpose: Apply the managed AMDGPU runtime power policy to DRM devices.
+# Usage: amdgpu-power-profile [power_dpm_state] [force_performance_level]
+
+set -eu
+
+sysfs_root="${AMDGPU_POWER_PROFILE_SYSFS_ROOT:-/sys}"
+power_dpm_state="${1:-balanced}"
+force_performance_level="${2:-auto}"
+changed=0
+matched=0
+
+for card in "$sysfs_root"/class/drm/card*; do
+    [ -d "$card/device" ] || continue
+    [ -r "$card/device/vendor" ] || continue
+    [ "$(cat "$card/device/vendor" 2>/dev/null || true)" = "0x1002" ] || continue
+    [ -w "$card/device/power_dpm_state" ] || continue
+
+    matched=1
+    current="$(cat "$card/device/power_dpm_state" 2>/dev/null || true)"
+    if [ "$current" != "$power_dpm_state" ]; then
+        printf '%s\n' "$power_dpm_state" >"$card/device/power_dpm_state"
+        changed=1
+    fi
+
+    if [ -w "$card/device/power_dpm_force_performance_level" ]; then
+        current_force="$(cat "$card/device/power_dpm_force_performance_level" 2>/dev/null || true)"
+        if [ "$current_force" != "$force_performance_level" ]; then
+            printf '%s\n' "$force_performance_level" >"$card/device/power_dpm_force_performance_level"
+            changed=1
+        fi
+    fi
+done
+
+if [ "$matched" -eq 0 ]; then
+    printf '%s\n' "amdgpu-power-profile: no writable AMDGPU power_dpm_state found" >&2
+    exit 0
+fi
+
+if [ "$changed" -eq 1 ]; then
+    printf '%s\n' changed
+fi
