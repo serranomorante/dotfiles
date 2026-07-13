@@ -150,27 +150,48 @@
       dest: syswow64/wineasio32.dll
   when: var_wineasio_registration_required | bool
 
-- name: "[archlinux] Wine tools: register 32bit wineasio in reaper prefix"
-  ansible.builtin.command:
-    argv:
-      - wine
-      - regsvr32
-      - /s
-      - /reg:32
-      - wineasio32.dll
-  environment: "{{ var_wineasio_registration_env }}"
-  changed_when: true
-  when: var_wineasio_registration_required | bool
-
 - name: "[archlinux] Wine tools: register 64bit wineasio in reaper prefix"
   ansible.builtin.command:
     argv:
       - wine
       - regsvr32
       - /s
-      - wineasio64.dll
+      - "{{ var_wineasio_reaper_wineasio_lib }}/x86_64-unix/wineasio64.dll.so"
   environment: "{{ var_wineasio_registration_env }}"
   changed_when: true
+  when: var_wineasio_registration_required | bool
+
+- name: "[archlinux] Wine tools: register optional 32bit wineasio in reaper prefix"
+  ansible.builtin.command:
+    argv:
+      - wine
+      - regsvr32
+      - /s
+      - "{{ var_wineasio_reaper_wineasio_lib }}/i386-unix/wineasio32.dll.so"
+  environment: "{{ var_wineasio_registration_env }}"
+  changed_when: var_wineasio_register_32bit.rc == 0
+  failed_when: false
+  register: var_wineasio_register_32bit
+  when: var_wineasio_registration_required | bool
+
+- name: "[archlinux] Wine tools: flush wineasio registration in reaper prefix"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper kill-prefix
+  changed_when: true
+  failed_when: false
+  timeout: 60
+  when: var_wineasio_registration_required | bool
+
+- name: "[archlinux] Wine tools: verify wineasio registration in reaper prefix"
+  ansible.builtin.command:
+    argv:
+      - wine
+      - reg
+      - query
+      - HKLM\Software\ASIO\WineASIO
+  environment: "{{ var_wineasio_registration_env }}"
+  changed_when: false
+  register: var_wineasio_registration_query
   when: var_wineasio_registration_required | bool
 
 - name: "[archlinux] Wine tools: mark wineasio registered"
@@ -180,38 +201,6 @@
   vars:
     dotfiles_marker_name: wineasio-registered-reaper
     dotfiles_marker_content: "{{ var_wineasio_registration_marker_content }}"
-  when: var_wineasio_registration_required | bool
-
-- name: "[archlinux] Wine tools: stat wine reaper ini for wineasio"
-  ansible.builtin.stat:
-    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
-  register: var_wineasio_reaper_ini
-
-- name: "[archlinux] Wine tools: configure wine reaper for wineasio"
-  ansible.builtin.lineinfile:
-    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
-    regexp: "^{{ item.key }}=.*"
-    line: "{{ item.key }}={{ item.value }}"
-    insertafter: "^\\[audioconfig\\]"
-  loop:
-    - key: mode
-      value: "{{ arch_wineasio_setup.reaper_audio_mode }}"
-    - key: asio_driver_name
-      value: '"WineASIO Driver"'
-    - key: asio_input0
-      value: "0"
-    - key: asio_input1
-      value: "1"
-    - key: asio_output0
-      value: "0"
-    - key: asio_output1
-      value: "1"
-    - key: asio_srate
-      value: "{{ arch_wineasio_setup.reaper_sample_rate }}"
-    - key: asio_srate_use
-      value: "1"
-    - key: asio_bsize
-      value: "{{ arch_wineasio_setup.reaper_block_size }}"
-    - key: asio_bsize_use
-      value: "1"
-  when: var_wineasio_reaper_ini.stat.exists
+  when:
+    - var_wineasio_registration_required | bool
+    - var_wineasio_registration_query.rc == 0
