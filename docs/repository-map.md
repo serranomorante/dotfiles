@@ -101,7 +101,7 @@ Python remains acceptable for bounded generators, report writers, one-shot maint
 
 ## Notification Actions
 
-Clickable notification behavior is routed through `utilities/bin/notification-action`. Producers should send a versioned JSON payload with `schema: dotfiles.notification-action.v1`, `action`, and action-specific metadata such as `cwd` and `foam-section-id`; the helper encodes that payload into a Dunst notification action name and dispatches the selected action after the click. Keep action implementations allowlisted in that helper and delegate editor work through `nvim/bin/open_in_nvim` so CWD-derived Kitty and Neovim socket naming remains centralized in `term/bin/kitty-window-utils.sh`.
+Clickable notification behavior is routed through `utilities/bin/notification-action`. Producers should send a versioned JSON payload with `schema: dotfiles.notification-action.v1`, `action`, and action-specific metadata such as `cwd` and `foam-section-id` for Foam sections or `servername` and `session-id` for agent Overseer tasks; the helper encodes that payload into a Dunst notification action name and dispatches the selected action after the click. Keep action implementations allowlisted in that helper and delegate editor work through `nvim/bin/open_in_nvim` so CWD-derived Kitty and Neovim socket naming remains centralized in `term/bin/kitty-window-utils.sh`.
 
 ## System Health Notes
 

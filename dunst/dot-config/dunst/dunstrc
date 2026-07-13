@@ -100,7 +100,7 @@
 
     # Defines width in pixels of frame around the notification window.
     # Set to 0 to disable.
-    frame_width = 3
+    frame_width = 0
 
     # Defines color of the frame around the notification window.
     frame_color = "#aaaaaa"
@@ -399,6 +399,16 @@
     body = "^Memex"
     skip_display = true
     history_ignore = true
+
+[agent_master_task]
+    category = "dev.agent.master"
+    background = "#18212b"
+    foreground = "#f3f7fb"
+    frame_color = "#7dd3fc"
+    format = "<b>%s</b>\n<span foreground='#a7f3d0'>%b</span>"
+    timeout = 12
+    word_wrap = true
+    override_pause_level = 45
 
 # Shell-like globbing will get expanded.
 #

@@ -15,9 +15,11 @@ import sys
 
 SCHEMA = "dotfiles.notification-action.v1"
 ACTION_KEY_PREFIX = "dotfiles-action-v1:"
-MAX_VISIBLE_TIMEOUT_MS = 7000
-SUPPORTED_ACTIONS = {"open-foam-block-section"}
+DEFAULT_TIMEOUT_MS = 7000
+MAX_VISIBLE_TIMEOUT_MS = 15000
+SUPPORTED_ACTIONS = {"open-agent-task", "open-foam-block-section"}
 BLOCK_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]{0,127}$")
+SESSION_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$")
 
 
 def die(message, code=2):
@@ -94,8 +96,30 @@ def dispatch_open_foam_block_section(payload):
     return result.returncode
 
 
+def dispatch_open_agent_task(payload):
+    session_id = field(payload, "session-id")
+    if not session_id or not SESSION_ID_RE.match(session_id):
+        die(f"invalid session-id: {session_id!r}")
+
+    servername = field(payload, "servername")
+    if not isinstance(servername, str) or not servername:
+        die("servername is required for open-agent-task")
+
+    open_in_nvim = os.path.abspath(os.path.expanduser(field(payload, "open-in-nvim") or "~/bin/open_in_nvim"))
+    try:
+        result = subprocess.run(
+            [open_in_nvim, "--servername", servername, "agent_conversation", session_id],
+            check=False,
+        )
+    except FileNotFoundError:
+        die(f"open_in_nvim not found: {open_in_nvim}", code=127)
+    return result.returncode
+
+
 def dispatch(value):
     payload = validated_payload(value)
+    if payload["action"] == "open-agent-task":
+        return dispatch_open_agent_task(payload)
     if payload["action"] == "open-foam-block-section":
         return dispatch_open_foam_block_section(payload)
     die(f"unsupported action: {payload['action']!r}")
@@ -147,8 +171,12 @@ def notify_with_action(args, action_key):
                 args.app_name,
                 "-c",
                 args.category,
+                "-u",
+                args.urgency,
                 "-t",
                 str(timeout_ms),
+                "-i",
+                args.icon,
                 "-A",
                 f"{action_key},{label}",
                 args.summary,
@@ -171,8 +199,12 @@ def notify_with_action(args, action_key):
             args.app_name,
             "-c",
             args.category,
+            "-u",
+            args.urgency,
             "-t",
             str(timeout_ms),
+            "-i",
+            args.icon,
             "-A",
             f"{action_key}={args.label}",
             args.summary,
@@ -216,9 +248,11 @@ def main():
     send_parser.add_argument("--summary", required=True)
     send_parser.add_argument("--body", default="")
     send_parser.add_argument("--label", default="Open")
-    send_parser.add_argument("--timeout-ms", type=int, default=MAX_VISIBLE_TIMEOUT_MS)
+    send_parser.add_argument("--timeout-ms", type=int, default=DEFAULT_TIMEOUT_MS)
     send_parser.add_argument("--app-name", default="dotfiles-notification-action")
     send_parser.add_argument("--category", default="dotfiles.action")
+    send_parser.add_argument("--urgency", choices=("low", "normal", "critical"), default="normal")
+    send_parser.add_argument("--icon", default="dialog-information")
     send_parser.add_argument("payload")
 
     args = parser.parse_args()
