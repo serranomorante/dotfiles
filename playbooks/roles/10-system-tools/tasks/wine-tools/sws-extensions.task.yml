@@ -179,6 +179,7 @@
     '{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe'
   timeout: 300
   changed_when: true
+  failed_when: false
   when: var_new_sws_extension_version_downloaded.changed and is_x_display_session
   register: var_sws_install
 

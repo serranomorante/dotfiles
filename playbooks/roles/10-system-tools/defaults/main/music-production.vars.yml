@@ -74,8 +74,3 @@ arch_audiogridder_wine_setup:
   backup_path: ~/data/Downloads/music-production
   config_path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/AudioGridder"
   wine_prefix: "{{ arch_reaper_wine_setup.wine_prefix }}"
-
-arch_bonjour_setup:
-  backup_path: ~/data/Downloads/music-production
-  installer_name: BonjourPSSetup.exe
-  wine_prefix: "{{ arch_reaper_wine_setup.wine_prefix }}"

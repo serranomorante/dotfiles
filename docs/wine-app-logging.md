@@ -16,6 +16,10 @@ Use `wwine --prefix <alias-or-path> kill-prefix` when Ansible handlers or mainte
 
 Do not use `ps | grep wine` fallbacks in handlers or tasks. Those are process-name scoped instead of prefix scoped and can kill unrelated Wine applications from other prefixes.
 
+## Installer Tasks
+
+Ansible tasks that run GUI Wine installers through `wine start /wait` must not treat the command return code as an install result. Wine and the Windows launcher can return noisy nonzero statuses after the installer has already completed, so these tasks should set `failed_when: false` and rely on `creates`, a follow-up `stat`/`assert`, a marker, or another concrete installed artifact to decide whether the installer still needs to run or whether the expected state exists.
+
 ## Wine Profiles
 
 `wwine` defaults to the `legacy` Wine profile, which points at the portable Kron4ek Wine staging build declared by `arch_wine_staging_version`. Keep this as the default for existing prefixes unless a prefix explicitly needs a different runtime.

@@ -33,6 +33,7 @@
     wine start /wait /unix '{{ arch_reaper_wine_setup.backup_path }}/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe'
   timeout: 300
   changed_when: true
+  failed_when: false
   register: var_install_reaper
   when: var_new_reaper_version_downloaded.changed and is_x_display_session
 

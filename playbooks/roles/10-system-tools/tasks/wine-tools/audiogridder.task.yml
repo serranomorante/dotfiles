@@ -13,6 +13,7 @@
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
     wine start /wait /unix '{{ arch_audiogridder_wine_setup.backup_path }}/AudioGridderServer_{{ arch_audiogridder_wine_setup.version }}.exe'
   timeout: 300
+  failed_when: false
   args:
     creates: "{{ arch_audiogridder_wine_setup.wine_prefix }}/drive_c/Program Files/AudioGridderServer/AudioGridderServer.exe"
   when:
