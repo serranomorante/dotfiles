@@ -134,6 +134,46 @@
     mode: "755"
     remote_src: true
 
+- name: "[archlinux] Wine tools: stat wine reaper ini for Helgobox/ReaLearn"
+  ansible.builtin.stat:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
+  register: var_wine_reaper_helgobox_ini
+
+- name: "[archlinux] Wine tools: check wine reaper VST path key"
+  ansible.builtin.command: grep -Eq "^vstpath64=" "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
+  changed_when: false
+  failed_when: false
+  register: var_wine_reaper_vstpath64_key
+  when: var_wine_reaper_helgobox_ini.stat.exists
+
+- name: "[archlinux] Wine tools: check wine reaper Helgobox/ReaLearn VST path"
+  ansible.builtin.command: grep -Eq "^vstpath64=.*(%PROGRAMFILES%\\\\\\\\VSTPlugins|C:\\\\\\\\Program Files\\\\\\\\VSTPlugins)(;|$)" "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
+  changed_when: false
+  failed_when: false
+  register: var_wine_reaper_helgobox_vst_path
+  when: var_wine_reaper_helgobox_ini.stat.exists
+
+- name: "[archlinux] Wine tools: add wine reaper Helgobox/ReaLearn VST path key"
+  ansible.builtin.lineinfile:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
+    insertafter: "^\\[reaper\\]"
+    line: "vstpath64=%PROGRAMFILES%\\\\VSTPlugins"
+    mode: "644"
+  when:
+    - var_wine_reaper_helgobox_ini.stat.exists
+    - var_wine_reaper_vstpath64_key.rc != 0
+
+- name: "[archlinux] Wine tools: prepend wine reaper Helgobox/ReaLearn VST path"
+  ansible.builtin.lineinfile:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
+    regexp: "^vstpath64=(.*)$"
+    line: "vstpath64=%PROGRAMFILES%\\\\VSTPlugins;\\1"
+    backrefs: true
+  when:
+    - var_wine_reaper_helgobox_ini.stat.exists
+    - var_wine_reaper_vstpath64_key.rc == 0
+    - var_wine_reaper_helgobox_vst_path.rc != 0
+
 - name: "[archlinux] Wine tools: symlink native reaper sws extension"
   ansible.builtin.file:
     src: "{{ item.src }}"
@@ -172,6 +212,16 @@
   ignore_errors: true
   register: var_new_sws_extension_version_downloaded
 
+- name: "[archlinux] Wine tools: stat sws extension installer"
+  ansible.builtin.stat:
+    path: "{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe"
+  register: var_sws_extension_installer
+
+- name: "[archlinux] Wine tools: stat installed sws extension"
+  ansible.builtin.stat:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/UserPlugins/reaper_sws-x64.dll"
+  register: var_sws_extension_installed
+
 - name: "[archlinux] Wine tools: install sws extension"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
@@ -180,7 +230,10 @@
   timeout: 300
   changed_when: true
   failed_when: false
-  when: var_new_sws_extension_version_downloaded.changed and is_x_display_session
+  when:
+    - is_x_display_session
+    - var_sws_extension_installer.stat.exists
+    - (var_new_sws_extension_version_downloaded.changed | default(false)) or (not var_sws_extension_installed.stat.exists)
   register: var_sws_install
 
 - name: "[archlinux] Wine tools: close stale SWS installer Wine processes"

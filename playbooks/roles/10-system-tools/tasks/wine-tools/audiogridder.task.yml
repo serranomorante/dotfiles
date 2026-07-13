@@ -10,7 +10,7 @@
 
 - name: "[archlinux] Wine tools: install audiogridder server"
   ansible.builtin.command: >
-    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix musicplugins
     wine start /wait /unix '{{ arch_audiogridder_wine_setup.backup_path }}/AudioGridderServer_{{ arch_audiogridder_wine_setup.version }}.exe'
   timeout: 300
   failed_when: false
@@ -23,7 +23,7 @@
 
 - name: "[archlinux] Wine tools: close stale AudioGridder installer Wine processes"
   ansible.builtin.command: >
-    {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper kill-prefix
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix musicplugins kill-prefix
   timeout: 60
   changed_when: true
   failed_when: false

@@ -153,6 +153,27 @@
   timeout: 60
   when: wine_prefix_setup.show_dot_files | default(true) | bool
 
+- name: "[wine-prefix-setup] Stat {{ wine_prefix_setup.name }} real folders"
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    follow: false
+  loop: "{{ wine_prefix_setup.real_folders | default([]) }}"
+  register: wine_prefix_setup_real_folder_stats
+
+- name: "[wine-prefix-setup] Remove {{ wine_prefix_setup.name }} symlinked real folders"
+  ansible.builtin.file:
+    path: "{{ item.stat.path }}"
+    state: absent
+  loop: "{{ wine_prefix_setup_real_folder_stats.results | default([]) }}"
+  when: item.stat.islnk | default(false)
+
+- name: "[wine-prefix-setup] Ensure {{ wine_prefix_setup.name }} real folders"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  loop: "{{ wine_prefix_setup.real_folders | default([]) }}"
+
 - name: "[wine-prefix-setup] Ensure {{ wine_prefix_setup.name }} folders"
   ansible.builtin.file:
     path: "{{ item }}"

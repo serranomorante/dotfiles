@@ -69,7 +69,7 @@ reaper_boost_stop() {
 use_firejail=0
 firejail_sandbox_name="${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-wwine-reaper}"
 firejail_profile="{{ ansible_facts.env.HOME }}/.config/firejail/wine-reaper.local"
-wwine_prepare_args=(--prefix reaper --use-sandbox)
+wwine_prepare_args=(--prefix musicplugins --use-sandbox)
 if [ -n "${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-}" ]; then
   wwine_prepare_args+=(--sandbox-name "$firejail_sandbox_name")
 fi

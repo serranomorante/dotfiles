@@ -90,8 +90,33 @@ arch_wine_prefix_setups:
     winver: win10
     ensure_mono: true
     dpi: "{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
+    show_dot_files: true
+    real_folders:
+      - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Desktop"
+    folders:
+      - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Desktop"
+      - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Documents"
+      - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Downloads"
+      - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Music"
+      - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Pictures"
+      - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Videos"
+  - name: musicplugins
+    path: "{{ arch_music_plugins_wine_prefix }}"
+    architecture: win64
+    winver: win10
+    ensure_mono: true
+    dpi: "{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
     virtual_desktop: true
     show_dot_files: true
+    real_folders:
+      - "{{ arch_music_plugins_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Desktop"
+    folders:
+      - "{{ arch_music_plugins_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Desktop"
+      - "{{ arch_music_plugins_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Documents"
+      - "{{ arch_music_plugins_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Downloads"
+      - "{{ arch_music_plugins_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Music"
+      - "{{ arch_music_plugins_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Pictures"
+      - "{{ arch_music_plugins_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Videos"
   - name: musicproduction
     path: "{{ arch_musicproduction_wine_prefix }}"
     architecture: win64

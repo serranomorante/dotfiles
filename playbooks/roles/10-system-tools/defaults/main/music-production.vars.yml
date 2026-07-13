@@ -51,12 +51,21 @@ wwine_prefix_aliases:
     sandbox_check_profile: "{{ ansible_facts.env.HOME }}/.local/share/wwine/firejail-profiles/wine-reaper.local"
     sandbox_name: wwine-reaper
     wine_profile: system
+  musicplugins:
+    path: "{{ arch_music_plugins_wine_prefix }}"
+    architecture: win64
+    sandbox_profile: "{{ ansible_facts.env.HOME }}/.config/firejail/wine-reaper.local"
+    sandbox_check_profile: "{{ ansible_facts.env.HOME }}/.local/share/wwine/firejail-profiles/wine-reaper.local"
+    sandbox_name: wwine-reaper
+    wine_profile: system
   synthv:
     path: "{{ arch_synthv_wine_prefix }}"
     architecture: win64
 
-arch_reaper_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-copy-reaper"
+arch_reaper_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-windows-reaper"
 arch_reaper_wine_drive_c: "{{ arch_reaper_wine_prefix }}/drive_c"
+arch_music_plugins_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-copy-reaper"
+arch_music_plugins_wine_drive_c: "{{ arch_music_plugins_wine_prefix }}/drive_c"
 arch_synthv_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-synthv2"
 arch_musicproduction_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-musicproduction"
 
@@ -72,5 +81,5 @@ arch_audiogridder_wine_setup:
   plugin_version: 1.1.1
   plugin_version_slug: "1_1_1"
   backup_path: ~/data/Downloads/music-production
-  config_path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/AudioGridder"
-  wine_prefix: "{{ arch_reaper_wine_setup.wine_prefix }}"
+  config_path: "{{ arch_music_plugins_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/AudioGridder"
+  wine_prefix: "{{ arch_music_plugins_wine_prefix }}"

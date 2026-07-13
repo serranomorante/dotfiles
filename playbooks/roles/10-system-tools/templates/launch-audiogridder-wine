@@ -9,4 +9,4 @@ export {{ name }}={{ value | quote }}
 {% endfor %}
 
 cd "{{ arch_reaper_wine_setup.wine_prefix }}/dosdevices/c:/ProgramData/Microsoft/Windows/Start Menu/Programs"
-exec "{{ ansible_facts.env.HOME }}/bin/wwine" --prefix reaper --use-sandbox --log-id audiogridder wine "C:/ProgramData/Microsoft/Windows/Start Menu/Programs/AudioGridderServer.lnk"
+exec "{{ ansible_facts.env.HOME }}/bin/wwine" --prefix musicplugins --use-sandbox --log-id audiogridder wine "C:/ProgramData/Microsoft/Windows/Start Menu/Programs/AudioGridderServer.lnk"

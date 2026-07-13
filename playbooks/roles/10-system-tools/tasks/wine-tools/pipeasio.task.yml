@@ -112,7 +112,7 @@
     var_pipeasio_reaper_register_enabled: "{{ (wwine_prefix_aliases.reaper.wine_profile | default('legacy')) != 'legacy' or (arch_pipeasio_setup.register_reaper_portable | default(false)) }}"
     var_pipeasio_reaper_pipeasio_prefix: "{{ '/usr' if (wwine_prefix_aliases.reaper.wine_profile | default('legacy')) == 'system' else wine_path }}"
     var_pipeasio_reaper_pipeasio_lib: "{{ ('/usr' if (wwine_prefix_aliases.reaper.wine_profile | default('legacy')) == 'system' else wine_path) }}/lib/wine"
-    var_pipeasio_registration_marker_content: "{{ var_pipeasio_package.stdout }} reaper {{ wwine_prefix_aliases.reaper.wine_profile | default('legacy') }} {{ arch_pipeasio_setup.version }} pipeasio-prefix {{ '/usr' if (wwine_prefix_aliases.reaper.wine_profile | default('legacy')) == 'system' else wine_path }}\n"
+    var_pipeasio_registration_marker_content: "{{ var_pipeasio_package.stdout }} reaper {{ arch_reaper_wine_setup.wine_prefix }} profile {{ wwine_prefix_aliases.reaper.wine_profile | default('legacy') }} {{ arch_pipeasio_setup.version }} pipeasio-prefix {{ '/usr' if (wwine_prefix_aliases.reaper.wine_profile | default('legacy')) == 'system' else wine_path }}\n"
   when: var_pipeasio_package.rc == 0
 
 - name: "[archlinux] Wine tools: skip pipeasio registration for unsupported portable wine"
