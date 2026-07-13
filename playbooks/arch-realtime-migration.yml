@@ -7,6 +7,8 @@
       - linux-lts-headers
       - linux-rt-lts
       - linux-rt-lts-headers
+      - linux-rt
+      - linux-rt-headers
     realtime_nvidia_lts_module_packages:
       - nvidia-open-lts
       - nvidia-lts
@@ -26,10 +28,14 @@
         pkgbase: linux-lts
       - path: /etc/mkinitcpio.d/linux-rt-lts.preset
         pkgbase: linux-rt-lts
+      - path: /etc/mkinitcpio.d/linux-rt.preset
+        pkgbase: linux-rt
     realtime_saved_uki_files:
       - /boot/EFI/Linux/arch-linux-lts.efi
       - /boot/EFI/Linux/arch-linux-rt-lts.efi
-    realtime_default_boot_entry: arch-linux-rt-lts.efi
+      - /boot/EFI/Linux/arch-linux-rt.efi
+    realtime_default_boot_entry: arch-linux-rt.efi
+    realtime_ntsync_load_unit: /etc/systemd/system/ntsync-load.service
 
   tasks:
     - name: "[archlinux] Realtime migration: assert Arch Linux"
@@ -57,6 +63,47 @@
       ansible.builtin.package:
         name: "{{ realtime_kernel_packages }}"
         state: present
+
+    - name: "[archlinux] Realtime migration: check linux-rt ntsync module"
+      become: true
+      ansible.builtin.command:
+        argv:
+          - find
+          - /usr/lib/modules
+          - -path
+          - "*-rt/kernel/drivers/misc/ntsync.ko*"
+          - -print
+      register: var_realtime_linux_rt_ntsync_modules
+      changed_when: false
+
+    - name: "[archlinux] Realtime migration: fail when linux-rt has no ntsync module"
+      ansible.builtin.assert:
+        that:
+          - var_realtime_linux_rt_ntsync_modules.stdout_lines | length > 0
+        fail_msg: "Installed linux-rt packages did not provide drivers/misc/ntsync.ko; do not switch Wine sync assumptions to ntsync."
+
+    - name: "[archlinux] Realtime migration: install ntsync module loader"
+      become: true
+      ansible.builtin.copy:
+        dest: "{{ realtime_ntsync_load_unit }}"
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Load Wine ntsync kernel module when available
+
+          [Service]
+          Type=oneshot
+          ExecStart=/bin/sh -c 'modinfo ntsync >/dev/null 2>&1 && exec modprobe ntsync || exit 0'
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: "[archlinux] Realtime migration: enable ntsync module loader"
+      become: true
+      ansible.builtin.systemd_service:
+        name: ntsync-load.service
+        enabled: true
+        daemon_reload: true
 
     - name: "[archlinux] Realtime migration: point mkinitcpio UKIs at /boot"
       become: true
@@ -201,7 +248,9 @@
     - name: "[archlinux] Realtime migration: show post-migration checks"
       ansible.builtin.debug:
         msg:
-          - "Reboot into the default linux-rt-lts UKI from systemd-boot."
+          - "Reboot into the default linux-rt UKI from systemd-boot."
           - "Keep linux-lts installed and select it from the boot menu if NVIDIA, display, or audio tests fail."
+          - "linux-rt-lts remains installed as the conservative RT fallback, but linux-rt is the default because it provides ntsync for current Wine."
+          - "After booting linux-rt, verify Wine ntsync with: test -e /dev/ntsync && echo ntsync-ready"
           - "VirtualBox host modules are installed for fallback use, but their boot autoload is masked because vboxdrv is not clean on PREEMPT_RT."
           - "{{ var_realtime_final_dkms_status.stdout_lines }}"
