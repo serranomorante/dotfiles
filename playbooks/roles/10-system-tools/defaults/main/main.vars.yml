@@ -142,4 +142,3 @@ wine_env_profiles:
     WINEDLLPATH: ""
     LD_LIBRARY_PATH: ""
     PATH: "{{ ansible_facts.env.PATH }}"
-    WINEFSYNC: 1

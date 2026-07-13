@@ -376,7 +376,7 @@ case "$wine_profile" in
     wine_env_WINEDLLPATH="{{ env_vars.WINEDLLPATH }}"
     wine_env_LD_LIBRARY_PATH="{{ env_vars.LD_LIBRARY_PATH }}"
     wine_env_PATH="{{ env_vars.PATH }}"
-    wine_env_WINEFSYNC="{{ env_vars.WINEFSYNC }}"
+    wine_env_WINEFSYNC="{{ env_vars.WINEFSYNC | default('') }}"
     ;;
 {% endfor %}
   *)
@@ -394,7 +394,11 @@ export WINESERVER="$wine_env_WINESERVER"
 export WINEDLLPATH="$wine_env_WINEDLLPATH"
 export LD_LIBRARY_PATH="$wine_env_LD_LIBRARY_PATH"
 export PATH="$wine_env_PATH"
-export WINEFSYNC="$wine_env_WINEFSYNC"
+if [[ -n "$wine_env_WINEFSYNC" ]]; then
+  export WINEFSYNC="$wine_env_WINEFSYNC"
+else
+  unset WINEFSYNC
+fi
 export WINEPREFIX="$resolved_prefix"
 
 if [[ -n "$wine_debug" ]]; then
@@ -581,7 +585,11 @@ print_environment() {
   shell_export WINEDLLPATH "$WINEDLLPATH"
   shell_export LD_LIBRARY_PATH "$LD_LIBRARY_PATH"
   shell_export PATH "$PATH"
-  shell_export WINEFSYNC "$WINEFSYNC"
+  if [[ -n "${WINEFSYNC:-}" ]]; then
+    shell_export WINEFSYNC "$WINEFSYNC"
+  else
+    printf 'unset WINEFSYNC\n'
+  fi
   shell_export WINEPREFIX "$WINEPREFIX"
   shell_export WWINE_PREFIX_ALIAS "$prefix_alias"
   shell_export WWINE_WINE_PROFILE "$wine_profile"
