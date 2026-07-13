@@ -13,15 +13,26 @@ set -euo pipefail
 # dotfiles-test-case: dotfiles-spikes-renders-enriched-context
 # dotfiles-test-case: dotfiles-spikes-check
 # dotfiles-test-case: dotfiles-health-links-spike-count
-# dotfiles-test-case: system-spike-watch-compile-cache
+# dotfiles-test-case: system-spike-go-tests
 # dotfiles-test-case: system-spike-watch-check
 
 # Purpose: Verify lightweight system spike events are reported into Foam with suspect attribution.
 
-spikes_script="${DOTFILES_TEST_ROOT}/utilities/bin/dotfiles-spikes"
-watch_script="${DOTFILES_TEST_ROOT}/utilities/bin/system-spike-watch"
 health_script="${DOTFILES_TEST_ROOT}/utilities/bin/dotfiles-health"
 spikes_source_dir="${DOTFILES_TEST_ROOT}/utilities/dot-local/share/dotfiles/dotfiles-spikes"
+watch_source_dir="${DOTFILES_TEST_ROOT}/utilities/dot-local/share/dotfiles/system-spike-watch"
+
+build_go_binary() {
+    local source_dir=$1
+    local name=$2
+    local out="${DOTFILES_TEST_TMP}/bin/${name}"
+    mkdir -p "${DOTFILES_TEST_TMP}/bin" "${DOTFILES_TEST_TMP}/gocache" "${DOTFILES_TEST_TMP}/gotmp"
+    (
+        cd "$source_dir"
+        GOWORK=off GOCACHE="${DOTFILES_TEST_TMP}/gocache" GOTMPDIR="${DOTFILES_TEST_TMP}/gotmp" go build -buildvcs=false -trimpath -ldflags="-s -w" -o "$out" .
+    )
+    printf '%s\n' "$out"
+}
 
 write_fake_xorg_event() {
     local state_dir=$1
@@ -151,11 +162,12 @@ JSON
 }
 
 run_dotfiles_spikes() {
+    local spikes_binary
+    spikes_binary=$(build_go_binary "$spikes_source_dir" dotfiles-spikes)
     HOME="$home" \
     DOTFILES_SPIKES_STATE_DIR="$state" \
     DOTFILES_SPIKES_DIR="$foam" \
-    DOTFILES_SPIKES_SOURCE_DIR="$spikes_source_dir" \
-    "$spikes_script" "$@"
+    "$spikes_binary" "$@"
 }
 
 case "${DOTFILES_TEST_CASE:-}" in
@@ -315,38 +327,24 @@ dotfiles-health-links-spike-count)
 system-spike-watch-check)
     state="${DOTFILES_TEST_TMP}/state"
     home="${DOTFILES_TEST_TMP}/home"
-    cache="${DOTFILES_TEST_TMP}/cache"
+    watch_binary=$(build_go_binary "$watch_source_dir" system-spike-watch)
     mkdir -p "$home"
 
-    HOME="$home" XDG_CACHE_HOME="$cache" DOTFILES_SYSTEM_SPIKE_WATCH_SOURCE_DIR="${DOTFILES_TEST_ROOT}/utilities/dot-local/share/dotfiles/system-spike-watch" "$watch_script" check --state-dir "$state" >"${DOTFILES_TEST_TMP}/watch-check.out"
+    HOME="$home" "$watch_binary" check --state-dir "$state" >"${DOTFILES_TEST_TMP}/watch-check.out"
 
     grep -q "^state_dir=${state}$" "${DOTFILES_TEST_TMP}/watch-check.out"
     grep -q "^events_dir=${state}/events$" "${DOTFILES_TEST_TMP}/watch-check.out"
     grep -q '^hz=' "${DOTFILES_TEST_TMP}/watch-check.out"
     grep -q '^cpu_count=' "${DOTFILES_TEST_TMP}/watch-check.out"
     ;;
-system-spike-watch-compile-cache)
-    home="${DOTFILES_TEST_TMP}/home"
-    cache="${DOTFILES_TEST_TMP}/cache"
-    linked_source="${DOTFILES_TEST_TMP}/linked-source"
-    linked_cache="${DOTFILES_TEST_TMP}/linked-cache"
-    mkdir -p "$home"
-    mkdir -p "$linked_source"
-    ln -s "${DOTFILES_TEST_ROOT}/utilities/dot-local/share/dotfiles/system-spike-watch/go.mod" "$linked_source/go.mod"
-    ln -s "${DOTFILES_TEST_ROOT}/utilities/dot-local/share/dotfiles/system-spike-watch/main.go" "$linked_source/main.go"
-    ln -s "${DOTFILES_TEST_ROOT}/utilities/dot-local/share/dotfiles/system-spike-watch/main_test.go" "$linked_source/main_test.go"
-
-    HOME="$home" XDG_CACHE_HOME="$cache" DOTFILES_SYSTEM_SPIKE_WATCH_SOURCE_DIR="${DOTFILES_TEST_ROOT}/utilities/dot-local/share/dotfiles/system-spike-watch" "$watch_script" --compile-cache >"${DOTFILES_TEST_TMP}/compile-1.out"
-    HOME="$home" XDG_CACHE_HOME="$cache" DOTFILES_SYSTEM_SPIKE_WATCH_SOURCE_DIR="${DOTFILES_TEST_ROOT}/utilities/dot-local/share/dotfiles/system-spike-watch" "$watch_script" --compile-cache >"${DOTFILES_TEST_TMP}/compile-2.out"
-    HOME="$home" XDG_CACHE_HOME="$linked_cache" DOTFILES_SYSTEM_SPIKE_WATCH_SOURCE_DIR="$linked_source" "$watch_script" --compile-cache >"${DOTFILES_TEST_TMP}/compile-symlink.out"
-
-    grep -q '^compiled$' "${DOTFILES_TEST_TMP}/compile-1.out"
-    grep -q '^compiled$' "${DOTFILES_TEST_TMP}/compile-symlink.out"
-    [[ -x "${cache}/dotfiles/system-spike-watch/system-spike-watch" ]]
-    [[ -x "${linked_cache}/dotfiles/system-spike-watch/system-spike-watch" ]]
-    [[ ! -s "${DOTFILES_TEST_TMP}/compile-2.out" ]]
-    "${cache}/dotfiles/system-spike-watch/system-spike-watch" check --state-dir "${DOTFILES_TEST_TMP}/state" >"${DOTFILES_TEST_TMP}/compiled-check.out"
-    grep -q "^state_dir=${DOTFILES_TEST_TMP}/state$" "${DOTFILES_TEST_TMP}/compiled-check.out"
+system-spike-go-tests)
+    mkdir -p "${DOTFILES_TEST_TMP}/gocache" "${DOTFILES_TEST_TMP}/gotmp"
+    for source_dir in "$spikes_source_dir" "$watch_source_dir"; do
+        (
+            cd "$source_dir"
+            GOWORK=off GOCACHE="${DOTFILES_TEST_TMP}/gocache" GOTMPDIR="${DOTFILES_TEST_TMP}/gotmp" go test ./...
+        )
+    done
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

@@ -193,29 +193,56 @@
     daemon_reload: true
 
 - name: "[archlinux] Dotfiles: compile system spike report generator"
-  ansible.builtin.command:
-    argv:
-      - "{{ ansible_facts.env.HOME }}/bin/dotfiles-spikes"
-      - --compile-cache
-  register: var_dotfiles_spikes_compile_cache
-  changed_when: "'compiled' in var_dotfiles_spikes_compile_cache.stdout_lines"
+  ansible.builtin.shell: |
+    set -eu
+    tmp=$(mktemp)
+    trap 'rm -f "$tmp"' EXIT HUP INT TERM
+    GOWORK=off go build -buildvcs=false -trimpath -ldflags="-s -w" -o "$tmp" .
+    if [ -x "{{ ansible_facts.env.HOME }}/bin/dotfiles-spikes" ] && cmp -s "$tmp" "{{ ansible_facts.env.HOME }}/bin/dotfiles-spikes"; then
+      printf 'unchanged\n'
+    else
+      install -m 755 "$tmp" "{{ ansible_facts.env.HOME }}/bin/dotfiles-spikes"
+      printf 'installed\n'
+    fi
+  args:
+    chdir: "{{ ansible_facts.env.HOME }}/.local/share/dotfiles/dotfiles-spikes"
+  register: var_dotfiles_spikes_build
+  changed_when: "'installed' in var_dotfiles_spikes_build.stdout_lines"
 
 - name: "[archlinux] Dotfiles: compile system spike watcher"
-  ansible.builtin.command:
-    argv:
-      - "{{ ansible_facts.env.HOME }}/bin/system-spike-watch"
-      - --compile-cache
-  register: var_system_spike_watch_compile_cache
-  changed_when: "'compiled' in var_system_spike_watch_compile_cache.stdout_lines"
+  ansible.builtin.shell: |
+    set -eu
+    tmp=$(mktemp)
+    trap 'rm -f "$tmp"' EXIT HUP INT TERM
+    GOWORK=off go build -buildvcs=false -trimpath -ldflags="-s -w" -o "$tmp" .
+    if [ -x "{{ ansible_facts.env.HOME }}/bin/system-spike-watch" ] && cmp -s "$tmp" "{{ ansible_facts.env.HOME }}/bin/system-spike-watch"; then
+      printf 'unchanged\n'
+    else
+      install -m 755 "$tmp" "{{ ansible_facts.env.HOME }}/bin/system-spike-watch"
+      printf 'installed\n'
+    fi
+  args:
+    chdir: "{{ ansible_facts.env.HOME }}/.local/share/dotfiles/system-spike-watch"
+  register: var_system_spike_watch_build
+  changed_when: "'installed' in var_system_spike_watch_build.stdout_lines"
   notify: "10-system-tools : handler_restart_system_spike_watch_service"
 
 - name: "[archlinux] Dotfiles: compile system spike notifier"
-  ansible.builtin.command:
-    argv:
-      - "{{ ansible_facts.env.HOME }}/bin/system-spike-notify"
-      - --compile-cache
-  register: var_system_spike_notify_compile_cache
-  changed_when: "'compiled' in var_system_spike_notify_compile_cache.stdout_lines"
+  ansible.builtin.shell: |
+    set -eu
+    tmp=$(mktemp)
+    trap 'rm -f "$tmp"' EXIT HUP INT TERM
+    GOWORK=off go build -buildvcs=false -trimpath -ldflags="-s -w" -o "$tmp" .
+    if [ -x "{{ ansible_facts.env.HOME }}/bin/system-spike-notify" ] && cmp -s "$tmp" "{{ ansible_facts.env.HOME }}/bin/system-spike-notify"; then
+      printf 'unchanged\n'
+    else
+      install -m 755 "$tmp" "{{ ansible_facts.env.HOME }}/bin/system-spike-notify"
+      printf 'installed\n'
+    fi
+  args:
+    chdir: "{{ ansible_facts.env.HOME }}/.local/share/dotfiles/system-spike-notify"
+  register: var_system_spike_notify_build
+  changed_when: "'installed' in var_system_spike_notify_build.stdout_lines"
   notify: "10-system-tools : handler_restart_system_spike_notify_service"
 
 - name: "[archlinux] Dotfiles: compile browser task snapshot receiver"
@@ -245,6 +272,23 @@
     state: started
     daemon_reload: true
 
+- name: "[archlinux] Dotfiles: stat system spike watcher service"
+  ansible.builtin.stat:
+    path: ~/dotfiles/utilities/dot-config/systemd/user/system-spike-watch.service
+    checksum_algorithm: sha256
+  register: var_system_spike_watch_service
+
+- name: "[archlinux] Dotfiles: record applied system spike watcher service checksum"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: system-spike-watch-service-sha256
+    dotfiles_marker_content: "{{ var_system_spike_watch_service.stat.checksum }}\n"
+    dotfiles_marker_notify:
+      - "10-system-tools : handler_restart_system_spike_watch_service"
+  when: var_system_spike_watch_service.stat.exists
+
 - name: "[archlinux] Dotfiles: ensure system spike report timer"
   ansible.builtin.systemd_service:
     scope: user
@@ -253,12 +297,6 @@
     masked: false
     state: started
     daemon_reload: true
-
-- name: "[archlinux] Dotfiles: stat system spike notifier script"
-  ansible.builtin.stat:
-    path: ~/dotfiles/utilities/bin/system-spike-notify
-    checksum_algorithm: sha256
-  register: var_system_spike_notify_script
 
 - name: "[archlinux] Dotfiles: stat system spike notifier service"
   ansible.builtin.stat:
@@ -281,12 +319,10 @@
     tasks_from: record
   vars:
     dotfiles_marker_name: system-spike-notify-sha256
-    dotfiles_marker_content: "{{ var_system_spike_notify_script.stat.checksum }}\n{{ var_system_spike_notify_service.stat.checksum }}\n"
+    dotfiles_marker_content: "{{ var_system_spike_notify_service.stat.checksum }}\n"
     dotfiles_marker_notify:
       - "10-system-tools : handler_restart_system_spike_notify_service"
-  when:
-    - var_system_spike_notify_script.stat.exists
-    - var_system_spike_notify_service.stat.exists
+  when: var_system_spike_notify_service.stat.exists
 
 - name: "[archlinux] Dotfiles: install laptop LAN NetworkManager dispatcher"
   become: true

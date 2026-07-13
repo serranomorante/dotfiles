@@ -1,5 +1,5 @@
 [Unit]
-Description=Notify after updated Xorg spike reports
+Description=Notify about new Xorg spike events
 After=graphical-session.target system-spike-watch.service
 Wants=system-spike-watch.service
 

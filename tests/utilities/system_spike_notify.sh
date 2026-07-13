@@ -2,16 +2,24 @@
 set -euo pipefail
 
 # dotfiles-test-unit: utilities
-# dotfiles-test-tags: utilities system-health performance notifications shell
-# dotfiles-test-case: system-spike-notify-syntax
-# dotfiles-test-case: system-spike-notify-compile-cache
-# dotfiles-test-case: system-spike-notify-updates-report-before-xorg-notification
+# dotfiles-test-tags: utilities system-health performance notifications go shell
+# dotfiles-test-case: system-spike-notify-go-test
+# dotfiles-test-case: system-spike-notify-does-not-refresh-report-before-xorg-notification
 # dotfiles-test-case: system-spike-notify-ignores-non-xorg-events
 
-# Purpose: Verify Xorg spike notifications are sent only after report refresh.
+# Purpose: Verify Xorg spike notifications are sent without regenerating spike reports.
 
-script_under_test="${DOTFILES_TEST_ROOT}/utilities/bin/system-spike-notify"
 notify_source="${DOTFILES_TEST_ROOT}/utilities/dot-local/share/dotfiles/system-spike-notify"
+
+build_notify_binary() {
+    local out="${DOTFILES_TEST_TMP}/bin/system-spike-notify"
+    mkdir -p "${DOTFILES_TEST_TMP}/bin" "${DOTFILES_TEST_TMP}/gocache" "${DOTFILES_TEST_TMP}/gotmp"
+    (
+        cd "$notify_source"
+        GOWORK=off GOCACHE="${DOTFILES_TEST_TMP}/gocache" GOTMPDIR="${DOTFILES_TEST_TMP}/gotmp" go build -buildvcs=false -trimpath -ldflags="-s -w" -o "$out" .
+    )
+    printf '%s\n' "$out"
+}
 
 write_fake_tools() {
     local bin="${DOTFILES_TEST_TMP}/bin"
@@ -21,8 +29,6 @@ write_fake_tools() {
 set -euo pipefail
 
 printf '%s\n' "$*" >>"${DOTFILES_TEST_TMP}/dotfiles-spikes.calls"
-mkdir -p "${DOTFILES_SPIKES_DIR}"
-printf '%s\n' '# System Spikes' '' 'This generated report is current.' '@id system-spikes-report' >"${DOTFILES_SPIKES_DIR}/system-spikes.md"
 BASH
     chmod +x "${bin}/dotfiles-spikes"
     cat >"${bin}/notification-action" <<'BASH'
@@ -47,30 +53,15 @@ JSON
 }
 
 case "${DOTFILES_TEST_CASE:-}" in
-system-spike-notify-syntax)
-    bash -n "$script_under_test"
+system-spike-notify-go-test)
+    mkdir -p "${DOTFILES_TEST_TMP}/gocache" "${DOTFILES_TEST_TMP}/gotmp"
+    (
+        cd "$notify_source"
+        GOWORK=off GOCACHE="${DOTFILES_TEST_TMP}/gocache" GOTMPDIR="${DOTFILES_TEST_TMP}/gotmp" go test ./...
+    )
     ;;
-system-spike-notify-compile-cache)
-    home="${DOTFILES_TEST_TMP}/home"
-    cache="${DOTFILES_TEST_TMP}/cache"
-    linked_source="${DOTFILES_TEST_TMP}/linked-source"
-    linked_cache="${DOTFILES_TEST_TMP}/linked-cache"
-    mkdir -p "$home" "$linked_source"
-    ln -s "${notify_source}/go.mod" "$linked_source/go.mod"
-    ln -s "${notify_source}/main.go" "$linked_source/main.go"
-    ln -s "${notify_source}/main_test.go" "$linked_source/main_test.go"
-
-    HOME="$home" XDG_CACHE_HOME="$cache" DOTFILES_SPIKE_NOTIFY_SOURCE_DIR="$notify_source" "$script_under_test" --compile-cache >"${DOTFILES_TEST_TMP}/compile-1.out"
-    HOME="$home" XDG_CACHE_HOME="$cache" DOTFILES_SPIKE_NOTIFY_SOURCE_DIR="$notify_source" "$script_under_test" --compile-cache >"${DOTFILES_TEST_TMP}/compile-2.out"
-    HOME="$home" XDG_CACHE_HOME="$linked_cache" DOTFILES_SPIKE_NOTIFY_SOURCE_DIR="$linked_source" "$script_under_test" --compile-cache >"${DOTFILES_TEST_TMP}/compile-symlink.out"
-
-    grep -q '^compiled$' "${DOTFILES_TEST_TMP}/compile-1.out"
-    grep -q '^compiled$' "${DOTFILES_TEST_TMP}/compile-symlink.out"
-    [[ -x "${cache}/dotfiles/system-spike-notify/system-spike-notify" ]]
-    [[ -x "${linked_cache}/dotfiles/system-spike-notify/system-spike-notify" ]]
-    [[ ! -s "${DOTFILES_TEST_TMP}/compile-2.out" ]]
-    ;;
-system-spike-notify-updates-report-before-xorg-notification)
+system-spike-notify-does-not-refresh-report-before-xorg-notification)
+    script_under_test=$(build_notify_binary)
     bin=$(write_fake_tools)
     home="${DOTFILES_TEST_TMP}/home"
     state="${DOTFILES_TEST_TMP}/state"
@@ -78,14 +69,14 @@ system-spike-notify-updates-report-before-xorg-notification)
     mkdir -p "$home"
     append_event "$state" old-xorg xorg Xorg
 
-    HOME="$home" PATH="${bin}:/usr/bin:/bin" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" DOTFILES_SPIKE_NOTIFY_FOAM_CWD="${DOTFILES_TEST_TMP}/foam" DOTFILES_SPIKE_NOTIFY_SOURCE_DIR="$notify_source" "$script_under_test" once
+    HOME="$home" PATH="${bin}:/usr/bin:/bin" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" DOTFILES_SPIKE_NOTIFY_FOAM_CWD="${DOTFILES_TEST_TMP}/foam" "$script_under_test" once
     [[ ! -e "${DOTFILES_TEST_TMP}/notification-action.args" ]]
-    rg -q '^update$' "${DOTFILES_TEST_TMP}/dotfiles-spikes.calls"
+    [[ ! -e "${DOTFILES_TEST_TMP}/dotfiles-spikes.calls" ]]
 
     append_event "$state" new-xorg xorg Xorg
-    HOME="$home" PATH="${bin}:/usr/bin:/bin" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" DOTFILES_SPIKE_NOTIFY_FOAM_CWD="${DOTFILES_TEST_TMP}/foam" DOTFILES_SPIKE_NOTIFY_SOURCE_DIR="$notify_source" "$script_under_test" once
+    HOME="$home" PATH="${bin}:/usr/bin:/bin" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" DOTFILES_SPIKE_NOTIFY_FOAM_CWD="${DOTFILES_TEST_TMP}/foam" "$script_under_test" once
 
-    [[ "$(wc -l <"${DOTFILES_TEST_TMP}/dotfiles-spikes.calls")" -eq 2 ]]
+    [[ ! -e "${DOTFILES_TEST_TMP}/dotfiles-spikes.calls" ]]
     rg -q '^send$' "${DOTFILES_TEST_TMP}/notification-action.args"
     rg -q '^Xorg CPU spike$' "${DOTFILES_TEST_TMP}/notification-action.args"
     rg -q '^Open report$' "${DOTFILES_TEST_TMP}/notification-action.args"
@@ -101,10 +92,11 @@ assert payload["action"] == "open-foam-block-section"
 assert payload["cwd"] == sys.argv[2]
 assert payload["foam-section-id"] == "system-spikes-report"
 PY
-    rg -q '@id system-spikes-report' "${foam}/system-spikes.md"
+    [[ ! -e "${foam}/system-spikes.md" ]]
     rg -q '^new-xorg$' "${state}/notify/xorg-notified-events"
     ;;
 system-spike-notify-ignores-non-xorg-events)
+    script_under_test=$(build_notify_binary)
     bin=$(write_fake_tools)
     home="${DOTFILES_TEST_TMP}/home"
     state="${DOTFILES_TEST_TMP}/state"
@@ -112,7 +104,7 @@ system-spike-notify-ignores-non-xorg-events)
     mkdir -p "$home"
     append_event "$state" brave-event generic brave
 
-    HOME="$home" PATH="${bin}:/usr/bin:/bin" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" DOTFILES_SPIKE_NOTIFY_FOAM_CWD="${DOTFILES_TEST_TMP}/foam" DOTFILES_SPIKE_NOTIFY_SOURCE_DIR="$notify_source" "$script_under_test" once
+    HOME="$home" PATH="${bin}:/usr/bin:/bin" DOTFILES_SPIKES_STATE_DIR="$state" DOTFILES_SPIKES_DIR="$foam" DOTFILES_SPIKE_NOTIFY_FOAM_CWD="${DOTFILES_TEST_TMP}/foam" "$script_under_test" once
 
     [[ ! -e "${DOTFILES_TEST_TMP}/notification-action.args" ]]
     [[ ! -s "${state}/notify/xorg-notified-events" ]]

@@ -15,14 +15,13 @@ import (
 	"time"
 )
 
-const defaultPollInterval = 2 * time.Second
+const defaultPollInterval = 6 * time.Second
 
 type config struct {
 	stateDir           string
 	eventsDir          string
 	notifyStateDir     string
 	notifiedFile       string
-	spikesCmd          string
 	notificationAction string
 	notesRoot          string
 	sectionID          string
@@ -103,11 +102,10 @@ func loadConfig() config {
 		eventsDir:          eventsDir,
 		notifyStateDir:     notifyStateDir,
 		notifiedFile:       filepath.Join(notifyStateDir, "xorg-notified-events"),
-		spikesCmd:          getenv("DOTFILES_SPIKE_NOTIFY_DOTFILES_SPIKES", "dotfiles-spikes"),
 		notificationAction: getenv("DOTFILES_SPIKE_NOTIFY_NOTIFICATION_ACTION", "notification-action"),
 		notesRoot:          getenv("DOTFILES_SPIKE_NOTIFY_FOAM_CWD", filepath.Join(home, "data/notes/foam")),
 		sectionID:          getenv("DOTFILES_SPIKE_NOTIFY_SECTION_ID", "system-spikes-report"),
-		pollInterval:       parsePollInterval(getenv("DOTFILES_SPIKE_NOTIFY_POLL_INTERVAL", "2")),
+		pollInterval:       parsePollInterval(getenv("DOTFILES_SPIKE_NOTIFY_POLL_INTERVAL", "6")),
 	}
 }
 
@@ -143,9 +141,6 @@ func processOnce(cfg config, mode string) error {
 		return err
 	}
 	if err := os.MkdirAll(cfg.notifyStateDir, 0o755); err != nil {
-		return err
-	}
-	if err := runUpdate(cfg.spikesCmd); err != nil {
 		return err
 	}
 
@@ -206,16 +201,8 @@ func printCheck(cfg config) error {
 	fmt.Printf("state_dir=%s\n", cfg.stateDir)
 	fmt.Printf("events_dir=%s\n", cfg.eventsDir)
 	fmt.Printf("notify_state_dir=%s\n", cfg.notifyStateDir)
-	fmt.Printf("spikes_cmd=%s\n", cfg.spikesCmd)
 	fmt.Printf("notification_action=%s\n", cfg.notificationAction)
 	return nil
-}
-
-func runUpdate(spikesCmd string) error {
-	cmd := exec.Command(spikesCmd, "update")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
 }
 
 func readEvents(eventsDir string) ([]event, error) {
