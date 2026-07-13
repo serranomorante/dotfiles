@@ -10,7 +10,7 @@ This map describes where changes usually belong. It is intentionally practical: 
 - `term/`: terminal wrappers, Kitty-related tooling, and tmux configuration.
 - `systemd/`: user-level systemd units that are not tied to a narrower package.
 - `audio/`: audio production and routing configuration/scripts.
-- `utilities/`: general user scripts and utility configs.
+- `utilities/`: general user scripts and utility configs, including `btop` under `utilities/dot-config/btop/`.
 - `dunst/`: notification daemon configuration.
 - `lazygit/`: lazygit configuration. See [lazygit.md](./lazygit.md) for pager and diff setup.
 - `home/`: generic home-directory dotfiles.
