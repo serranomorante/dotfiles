@@ -230,7 +230,16 @@
       - -u
       - "{{ item.item.path }}/."
       - "{{ ansible_facts.env.HOME }}/dotfiles/assets/reaper/realearn/presets/main/{{ ansible_facts.env.USER }}/"
+  register: var_reaper_reallearn_main_preset_migration
   changed_when: true
+  failed_when: >
+    var_reaper_reallearn_main_preset_migration.rc != 0 and
+    (
+      var_reaper_reallearn_main_preset_migration.stderr_lines
+      | reject('search', 'are the same file')
+      | list
+      | length
+    ) > 0
   loop: "{{ var_reaper_reallearn_main_preset_folders.results }}"
   when:
     - item.stat.exists

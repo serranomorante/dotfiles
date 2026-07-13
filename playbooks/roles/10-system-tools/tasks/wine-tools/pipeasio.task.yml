@@ -144,6 +144,20 @@
     - var_pipeasio_register_result is defined
     - var_pipeasio_register_result.rc | default(0) != 0
 
+- name: "[archlinux] Wine tools: set pipeasio registration state"
+  ansible.builtin.set_fact:
+    var_pipeasio_registration_active: >-
+      {{
+        (var_pipeasio_register_result.rc | default(-1) == 0)
+        or
+        (
+          var_pipeasio_registration_marker.stat.exists
+          and
+          ((var_pipeasio_registration_marker.content | default('') | b64decode) == (var_pipeasio_package.stdout ~ ' portable ' ~ arch_pipeasio_setup.version ~ ' wine ' ~ arch_wine_staging_version ~ '\n'))
+        )
+      }}
+  when: var_pipeasio_package.rc == 0
+
 - name: "[archlinux] Wine tools: mark pipeasio registered"
   ansible.builtin.include_role:
     name: dotfiles-markers
@@ -154,7 +168,7 @@
   when:
     - var_pipeasio_package.rc == 0
     - var_pipeasio_register_result is defined
-    - var_pipeasio_register_result.rc == 0
+    - var_pipeasio_register_result.rc | default(-1) == 0
     - >
       (not var_pipeasio_registration_marker.stat.exists) or
       ((var_pipeasio_registration_marker.content | default('') | b64decode) != (var_pipeasio_package.stdout ~ ' portable ' ~ arch_pipeasio_setup.version ~ ' wine ' ~ arch_wine_staging_version ~ '\n'))
@@ -165,8 +179,7 @@
   register: var_pipeasio_reaper_ini
   when:
     - var_pipeasio_package.rc == 0
-    - var_pipeasio_register_result is defined
-    - var_pipeasio_register_result.rc == 0
+    - var_pipeasio_registration_active | default(false)
 
 - name: "[archlinux] Wine tools: configure wine reaper for pipeasio"
   ansible.builtin.lineinfile:
@@ -197,6 +210,5 @@
       value: "1"
   when:
     - var_pipeasio_package.rc == 0
-    - var_pipeasio_register_result is defined
-    - var_pipeasio_register_result.rc == 0
+    - var_pipeasio_registration_active | default(false)
     - var_pipeasio_reaper_ini.stat.exists
