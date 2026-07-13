@@ -78,6 +78,18 @@
   vars:
     dotfiles_marker_name: "wine-{{ wine_prefix_setup.name }}-logpixels-{{ wine_prefix_setup.dpi }}"
     dotfiles_marker_register: wine_prefix_setup_dpi_marker
+    dotfiles_marker_read: true
+  when: wine_prefix_setup.dpi is defined
+
+- name: "[wine-prefix-setup] Set {{ wine_prefix_setup.name }} LogPixels marker state"
+  ansible.builtin.set_fact:
+    wine_prefix_setup_dpi_marker_content: "prefix {{ wine_prefix_setup.path }} dpi {{ wine_prefix_setup.dpi }}\n"
+    wine_prefix_setup_dpi_required: >-
+      {{
+        (not wine_prefix_setup_dpi_marker.stat.exists)
+        or
+        ((wine_prefix_setup_dpi_marker.content | default('') | b64decode) != ("prefix " ~ wine_prefix_setup.path ~ " dpi " ~ wine_prefix_setup.dpi ~ "\n"))
+      }}
   when: wine_prefix_setup.dpi is defined
 
 - name: "[wine-prefix-setup] Test {{ wine_prefix_setup.name }} LogPixels"
@@ -89,7 +101,7 @@
   register: wine_prefix_setup_reg_log_pixels
   when:
     - wine_prefix_setup.dpi is defined
-    - not wine_prefix_setup_dpi_marker.stat.exists
+    - wine_prefix_setup_dpi_required | bool
 
 - name: "[wine-prefix-setup] Configure {{ wine_prefix_setup.name }} DPI"
   ansible.builtin.command: >
@@ -100,7 +112,7 @@
   timeout: 60
   when:
     - wine_prefix_setup.dpi is defined
-    - not wine_prefix_setup_dpi_marker.stat.exists
+    - wine_prefix_setup_dpi_required | bool
     - wine_prefix_setup_reg_log_pixels is failed
 
 - name: "[wine-prefix-setup] Record {{ wine_prefix_setup.name }} LogPixels marker"
@@ -109,10 +121,10 @@
     tasks_from: record
   vars:
     dotfiles_marker_name: "wine-{{ wine_prefix_setup.name }}-logpixels-{{ wine_prefix_setup.dpi }}"
-    dotfiles_marker_content: "{{ wine_prefix_setup.dpi }}\n"
+    dotfiles_marker_content: "{{ wine_prefix_setup_dpi_marker_content }}"
   when:
     - wine_prefix_setup.dpi is defined
-    - not wine_prefix_setup_dpi_marker.stat.exists
+    - wine_prefix_setup_dpi_required | bool
     - wine_prefix_setup_reg_log_pixels is succeeded or ((wine_prefix_setup_configure_dpi | default({})).changed | default(false))
 
 - name: "[wine-prefix-setup] Test {{ wine_prefix_setup.name }} virtual desktop"

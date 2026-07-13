@@ -104,6 +104,28 @@
   vars:
     dotfiles_marker_name: wineasio-registered-reaper
     dotfiles_marker_register: var_wineasio_registration_marker
+    dotfiles_marker_read: true
+
+- name: "[archlinux] Wine tools: set wineasio registration profile"
+  ansible.builtin.set_fact:
+    var_wineasio_reaper_wine_profile: "{{ wwine_prefix_aliases.reaper.wine_profile | default('legacy') }}"
+    var_wineasio_reaper_wineasio_prefix: "{{ '/usr' if (wwine_prefix_aliases.reaper.wine_profile | default('legacy')) == 'system' else wine_path }}"
+    var_wineasio_reaper_wineasio_lib: "{{ ('/usr' if (wwine_prefix_aliases.reaper.wine_profile | default('legacy')) == 'system' else wine_path) }}/lib/wine"
+    var_wineasio_registration_marker_content: "wineasio reaper {{ arch_reaper_wine_setup.wine_prefix }} profile {{ wwine_prefix_aliases.reaper.wine_profile | default('legacy') }} install-prefix {{ '/usr' if (wwine_prefix_aliases.reaper.wine_profile | default('legacy')) == 'system' else wine_path }} version {{ arch_wineasio_setup.version }}\n"
+
+- name: "[archlinux] Wine tools: set wineasio registration state"
+  ansible.builtin.set_fact:
+    var_wineasio_registration_required: >-
+      {{
+        var_wineasio_portable_install.changed
+        or
+        var_wineasio_system_install.changed
+        or
+        (not var_wineasio_registration_marker.stat.exists)
+        or
+        ((var_wineasio_registration_marker.content | default('') | b64decode) != var_wineasio_registration_marker_content)
+      }}
+    var_wineasio_registration_env: "{{ wine_env_profiles.get(var_wineasio_reaper_wine_profile, wine_env_vars) | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix, 'WINEARCH': arch_reaper_wine_setup.architecture | default('win64'), 'WINEDLLPATH': var_wineasio_reaper_wineasio_lib ~ (((wine_env_profiles.get(var_wineasio_reaper_wine_profile, wine_env_vars).WINEDLLPATH | default('')) | length > 0) | ternary(':' ~ wine_env_profiles.get(var_wineasio_reaper_wine_profile, wine_env_vars).WINEDLLPATH, '')) }) }}"
 
 - name: "[archlinux] Wine tools: ensure wineasio dll dirs in reaper prefix"
   ansible.builtin.file:
@@ -113,14 +135,11 @@
   loop:
     - system32
     - syswow64
-  when: >
-    var_wineasio_portable_install.changed or
-    var_wineasio_system_install.changed or
-    not var_wineasio_registration_marker.stat.exists
+  when: var_wineasio_registration_required | bool
 
 - name: "[archlinux] Wine tools: install wineasio fake dlls into reaper prefix"
   ansible.builtin.copy:
-    src: "{{ wine_path }}/lib/wine/{{ item.src }}"
+    src: "{{ var_wineasio_reaper_wineasio_lib }}/{{ item.src }}"
     dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/windows/{{ item.dest }}"
     remote_src: true
     mode: "0644"
@@ -129,34 +148,30 @@
       dest: system32/wineasio64.dll
     - src: i386-windows/wineasio32.dll
       dest: syswow64/wineasio32.dll
-  when: >
-    var_wineasio_portable_install.changed or
-    var_wineasio_system_install.changed or
-    not var_wineasio_registration_marker.stat.exists
+  when: var_wineasio_registration_required | bool
 
 - name: "[archlinux] Wine tools: register 32bit wineasio in reaper prefix"
-  ansible.builtin.command: >
-    {{ wine_path }}/bin/regsvr32 /s
-    {{ wine_path }}/lib/wine/i386-unix/wineasio32.dll.so
-  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix, 'WINEARCH': arch_reaper_wine_setup.architecture | default('win64'),
-    'WINEFSYNC': '0' }) }}"
+  ansible.builtin.command:
+    argv:
+      - wine
+      - regsvr32
+      - /s
+      - /reg:32
+      - wineasio32.dll
+  environment: "{{ var_wineasio_registration_env }}"
   changed_when: true
-  when: >
-    var_wineasio_portable_install.changed or
-    var_wineasio_system_install.changed or
-    not var_wineasio_registration_marker.stat.exists
+  when: var_wineasio_registration_required | bool
 
 - name: "[archlinux] Wine tools: register 64bit wineasio in reaper prefix"
-  ansible.builtin.command: >
-    {{ wine_path }}/bin/wine64 regsvr32 /s
-    {{ wine_path }}/lib/wine/x86_64-unix/wineasio64.dll.so
-  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix, 'WINEARCH': arch_reaper_wine_setup.architecture | default('win64'),
-    'WINEFSYNC': '0' }) }}"
+  ansible.builtin.command:
+    argv:
+      - wine
+      - regsvr32
+      - /s
+      - wineasio64.dll
+  environment: "{{ var_wineasio_registration_env }}"
   changed_when: true
-  when: >
-    var_wineasio_portable_install.changed or
-    var_wineasio_system_install.changed or
-    not var_wineasio_registration_marker.stat.exists
+  when: var_wineasio_registration_required | bool
 
 - name: "[archlinux] Wine tools: mark wineasio registered"
   ansible.builtin.include_role:
@@ -164,11 +179,8 @@
     tasks_from: record
   vars:
     dotfiles_marker_name: wineasio-registered-reaper
-    dotfiles_marker_content: "registered\n"
-  when: >
-    var_wineasio_portable_install.changed or
-    var_wineasio_system_install.changed or
-    not var_wineasio_registration_marker.stat.exists
+    dotfiles_marker_content: "{{ var_wineasio_registration_marker_content }}"
+  when: var_wineasio_registration_required | bool
 
 - name: "[archlinux] Wine tools: stat wine reaper ini for wineasio"
   ansible.builtin.stat:

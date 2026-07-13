@@ -27,6 +27,11 @@
   ignore_errors: true
   register: var_new_reaper_version_downloaded
 
+- name: "[archlinux] Wine tools: stat reaper executable"
+  ansible.builtin.stat:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/Program Files/REAPER (x64)/reaper.exe"
+  register: var_reaper_executable
+
 - name: "[archlinux] Wine tools: install reaper"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
@@ -35,14 +40,20 @@
   changed_when: true
   failed_when: false
   register: var_install_reaper
-  when: var_new_reaper_version_downloaded.changed and is_x_display_session
+  when:
+    - is_x_display_session
+    - var_new_reaper_version_downloaded is success
+    - var_new_reaper_version_downloaded.changed or not var_reaper_executable.stat.exists
 
 - name: "[archlinux] Wine tools: ensure config folder"
   ansible.builtin.file:
     path: ~/.config/REAPER
     state: directory
     mode: "755"
-  when: var_new_reaper_version_downloaded.changed and is_x_display_session
+  when:
+    - is_x_display_session
+    - var_new_reaper_version_downloaded is success
+    - var_new_reaper_version_downloaded.changed or not var_reaper_executable.stat.exists
 
 - name: "[archlinux] Wine tools: close stale Reaper installer Wine processes"
   ansible.builtin.command: >
