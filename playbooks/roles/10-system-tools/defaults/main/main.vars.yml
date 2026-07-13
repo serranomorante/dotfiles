@@ -121,7 +121,7 @@ wine_env_vars:
   WINEVERPATH: "{{ wine_path }}"
   WINELOADER: "{{ wine_path }}/bin/wine"
   WINESERVER: "{{ wine_path }}/bin/wineserver"
-  WINEDLLPATH: "{{ wine_path }}/lib/wine/x86_64-windows:{{ wine_path }}/lib/wine/i386-windows"
+  WINEDLLPATH: "{{ wine_path }}/lib/wine:{{ wine_path }}/lib/wine/x86_64-windows:{{ wine_path }}/lib/wine/i386-windows"
   LD_LIBRARY_PATH: "{{ wine_path }}/lib/wine/x86_64-unix:{{ wine_path }}/lib/wine/i386-unix"
   PATH: "{{ wine_path }}/bin/:{{ ansible_facts.env.PATH }}"
   WINEFSYNC: 1
@@ -131,7 +131,7 @@ wine_env_profiles:
     WINEVERPATH: "{{ wine_path }}"
     WINELOADER: "{{ wine_path }}/bin/wine"
     WINESERVER: "{{ wine_path }}/bin/wineserver"
-    WINEDLLPATH: "{{ wine_path }}/lib/wine/x86_64-windows:{{ wine_path }}/lib/wine/i386-windows"
+    WINEDLLPATH: "{{ wine_path }}/lib/wine:{{ wine_path }}/lib/wine/x86_64-windows:{{ wine_path }}/lib/wine/i386-windows"
     LD_LIBRARY_PATH: "{{ wine_path }}/lib/wine/x86_64-unix:{{ wine_path }}/lib/wine/i386-unix"
     PATH: "{{ wine_path }}/bin/:{{ ansible_facts.env.PATH }}"
     WINEFSYNC: 1

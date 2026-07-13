@@ -1,0 +1,202 @@
+---
+- name: "[archlinux] Wine tools: check pipeasio package"
+  ansible.builtin.command:
+    argv:
+      - pacman
+      - -Q
+      - pipeasio
+  changed_when: false
+  failed_when: false
+  register: var_pipeasio_package
+
+- name: "[archlinux] Wine tools: ensure pipeasio portable build dependencies"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - base-devel
+      - cmake
+      - ninja
+      - lld
+
+- name: "[archlinux] Wine tools: download pipeasio source for portable wine"
+  ansible.builtin.get_url:
+    url: "{{ arch_pipeasio_setup.archive_url }}"
+    dest: "{{ arch_pipeasio_setup.archive_path }}"
+    checksum: "{{ arch_pipeasio_setup.archive_checksum }}"
+    mode: "0644"
+
+- name: "[archlinux] Wine tools: ensure pipeasio portable source path"
+  ansible.builtin.file:
+    path: "{{ arch_pipeasio_setup.source_path }}"
+    state: directory
+    mode: "0755"
+
+- name: "[archlinux] Wine tools: unarchive pipeasio source for portable wine"
+  ansible.builtin.unarchive:
+    src: "{{ arch_pipeasio_setup.archive_path }}"
+    dest: "{{ arch_pipeasio_setup.source_path }}"
+    remote_src: true
+    extra_opts:
+      - --strip-components=1
+    creates: "{{ arch_pipeasio_setup.source_path }}/CMakeLists.txt"
+
+- name: "[archlinux] Wine tools: check portable pipeasio install marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "pipeasio-portable-{{ arch_pipeasio_setup.version }}-wine-{{ arch_wine_staging_version }}"
+    dotfiles_marker_register: var_pipeasio_portable_install_marker
+
+- name: "[archlinux] Wine tools: configure pipeasio for portable wine"
+  ansible.builtin.command:
+    argv:
+      - cmake
+      - -S
+      - "{{ arch_pipeasio_setup.source_path }}"
+      - -B
+      - "{{ arch_pipeasio_setup.build_path }}"
+      - -G
+      - Ninja
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_SETTINGS_PANEL=OFF
+      - -DBUILD_TESTS=OFF
+      - "-DCMAKE_INSTALL_PREFIX={{ wine_path }}"
+  environment: "{{ wine_env_vars }}"
+  changed_when: true
+  when: not var_pipeasio_portable_install_marker.stat.exists
+
+- name: "[archlinux] Wine tools: build pipeasio for portable wine"
+  ansible.builtin.command:
+    argv:
+      - cmake
+      - --build
+      - "{{ arch_pipeasio_setup.build_path }}"
+  environment: "{{ wine_env_vars }}"
+  changed_when: true
+  when: not var_pipeasio_portable_install_marker.stat.exists
+
+- name: "[archlinux] Wine tools: install pipeasio into portable wine"
+  ansible.builtin.command:
+    argv:
+      - cmake
+      - --install
+      - "{{ arch_pipeasio_setup.build_path }}"
+  environment: "{{ wine_env_vars }}"
+  changed_when: true
+  when: not var_pipeasio_portable_install_marker.stat.exists
+
+- name: "[archlinux] Wine tools: record portable pipeasio install marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "pipeasio-portable-{{ arch_pipeasio_setup.version }}-wine-{{ arch_wine_staging_version }}"
+    dotfiles_marker_content: "pipeasio {{ arch_pipeasio_setup.version }} wine {{ arch_wine_staging_version }}\n"
+  when: not var_pipeasio_portable_install_marker.stat.exists
+
+- name: "[archlinux] Wine tools: check pipeasio registration marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: pipeasio-registered-reaper
+    dotfiles_marker_register: var_pipeasio_registration_marker
+    dotfiles_marker_read: true
+  when: var_pipeasio_package.rc == 0
+
+- name: "[archlinux] Wine tools: skip pipeasio registration for unsupported portable wine"
+  ansible.builtin.debug:
+    msg: "Skipping PipeASIO registration in the REAPER Wine {{ arch_wine_staging_version }} prefix because local validation shows this portable Wine build fails to load the PipeASIO builtin DLL before DllMain. REAPER remains on WineASIO."
+  when:
+    - var_pipeasio_package.rc == 0
+    - not arch_pipeasio_setup.register_reaper_portable | default(false)
+
+- name: "[archlinux] Wine tools: clear pipeasio registration marker for unsupported portable wine"
+  ansible.builtin.file:
+    path: "{{ var_pipeasio_registration_marker.path }}"
+    state: absent
+  when:
+    - var_pipeasio_package.rc == 0
+    - not arch_pipeasio_setup.register_reaper_portable | default(false)
+    - var_pipeasio_registration_marker.stat.exists
+
+- name: "[archlinux] Wine tools: register pipeasio in reaper prefix"
+  ansible.builtin.command:
+    argv:
+      - pipeasio-register
+  environment: "{{ wine_env_vars | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix, 'WINEARCH': arch_reaper_wine_setup.architecture | default('win64'), 'PIPEASIO_PREFIX': wine_path, 'WINEFSYNC': '0' }) }}"
+  changed_when: var_pipeasio_register_result.rc == 0
+  failed_when: var_pipeasio_register_result.rc not in [0, 3]
+  register: var_pipeasio_register_result
+  when:
+    - var_pipeasio_package.rc == 0
+    - arch_pipeasio_setup.register_reaper_portable | default(false)
+    - >
+      (not var_pipeasio_registration_marker.stat.exists) or
+      ((var_pipeasio_registration_marker.content | default('') | b64decode) != (var_pipeasio_package.stdout ~ ' portable ' ~ arch_pipeasio_setup.version ~ ' wine ' ~ arch_wine_staging_version ~ '\n'))
+
+- name: "[archlinux] Wine tools: report unsupported pipeasio portable wine registration"
+  ansible.builtin.debug:
+    msg: "PipeASIO {{ arch_pipeasio_setup.version }} is installed for system Wine, but Wine {{ arch_wine_staging_version }} failed to load the builtin DLL in the REAPER prefix (regsvr32 status {{ var_pipeasio_register_result.rc }}). Leave REAPER on WineASIO or use a newer Wine build for PipeASIO."
+  when:
+    - var_pipeasio_register_result is defined
+    - var_pipeasio_register_result.rc | default(0) != 0
+
+- name: "[archlinux] Wine tools: mark pipeasio registered"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: pipeasio-registered-reaper
+    dotfiles_marker_content: "{{ var_pipeasio_package.stdout }} portable {{ arch_pipeasio_setup.version }} wine {{ arch_wine_staging_version }}\n"
+  when:
+    - var_pipeasio_package.rc == 0
+    - var_pipeasio_register_result is defined
+    - var_pipeasio_register_result.rc == 0
+    - >
+      (not var_pipeasio_registration_marker.stat.exists) or
+      ((var_pipeasio_registration_marker.content | default('') | b64decode) != (var_pipeasio_package.stdout ~ ' portable ' ~ arch_pipeasio_setup.version ~ ' wine ' ~ arch_wine_staging_version ~ '\n'))
+
+- name: "[archlinux] Wine tools: stat wine reaper ini for pipeasio"
+  ansible.builtin.stat:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
+  register: var_pipeasio_reaper_ini
+  when:
+    - var_pipeasio_package.rc == 0
+    - var_pipeasio_register_result is defined
+    - var_pipeasio_register_result.rc == 0
+
+- name: "[archlinux] Wine tools: configure wine reaper for pipeasio"
+  ansible.builtin.lineinfile:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
+    regexp: "^{{ item.key }}=.*"
+    line: "{{ item.key }}={{ item.value }}"
+    insertafter: "^\\[audioconfig\\]"
+  loop:
+    - key: mode
+      value: "{{ arch_wineasio_setup.reaper_audio_mode }}"
+    - key: asio_driver_name
+      value: '"PipeASIO Driver"'
+    - key: asio_input0
+      value: "0"
+    - key: asio_input1
+      value: "1"
+    - key: asio_output0
+      value: "0"
+    - key: asio_output1
+      value: "1"
+    - key: asio_srate
+      value: "{{ arch_wineasio_setup.reaper_sample_rate }}"
+    - key: asio_srate_use
+      value: "1"
+    - key: asio_bsize
+      value: "{{ arch_wineasio_setup.reaper_block_size }}"
+    - key: asio_bsize_use
+      value: "1"
+  when:
+    - var_pipeasio_package.rc == 0
+    - var_pipeasio_register_result is defined
+    - var_pipeasio_register_result.rc == 0
+    - var_pipeasio_reaper_ini.stat.exists
