@@ -78,6 +78,7 @@
       - ~/.config/kdedefaults/ksplashrc
       - ~/.config/kglobalshortcutsrc
       - ~/.config/plasma-org.kde.plasma.desktop-appletsrc
+      - ~/.config/pipeasio/config.ini
       - ~/.config/qBittorrent/categories.json
       - ~/.bash_profile
       - ~/.bashrc
