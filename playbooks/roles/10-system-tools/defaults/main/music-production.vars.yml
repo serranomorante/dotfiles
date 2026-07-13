@@ -75,6 +75,38 @@ arch_reaper_wine_setup:
   wine_prefix: "{{ arch_reaper_wine_prefix }}"
   architecture: win64 # wow64 will fail for some plugins
 
+arch_reaper_wine_vepro_bridge_path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/reaper-vst-bridge/vepro"
+
+arch_reaper_wine_vepro_plugin_links:
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST2/Vienna Ensemble Pro Audio Input x64.dll"
+    dest: "{{ arch_reaper_wine_vepro_bridge_path }}/VST2/Vienna Ensemble Pro Audio Input x64.dll"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST2/Vienna Ensemble Pro Event Input x64.dll"
+    dest: "{{ arch_reaper_wine_vepro_bridge_path }}/VST2/Vienna Ensemble Pro Event Input x64.dll"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST2/Vienna Ensemble Pro Surround x64.dll"
+    dest: "{{ arch_reaper_wine_vepro_bridge_path }}/VST2/Vienna Ensemble Pro Surround x64.dll"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST2/Vienna Ensemble Pro x64.dll"
+    dest: "{{ arch_reaper_wine_vepro_bridge_path }}/VST2/Vienna Ensemble Pro x64.dll"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST3/Vienna Ensemble Pro Audio Input x64.vst3"
+    dest: "{{ arch_reaper_wine_vepro_bridge_path }}/VST3/Vienna Ensemble Pro Audio Input x64.vst3"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST3/Vienna Ensemble Pro Event Input x64.vst3"
+    dest: "{{ arch_reaper_wine_vepro_bridge_path }}/VST3/Vienna Ensemble Pro Event Input x64.vst3"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST3/Vienna Ensemble Pro Surround x64.vst3"
+    dest: "{{ arch_reaper_wine_vepro_bridge_path }}/VST3/Vienna Ensemble Pro Surround x64.vst3"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST3/Vienna Ensemble Pro x64.vst3"
+    dest: "{{ arch_reaper_wine_vepro_bridge_path }}/VST3/Vienna Ensemble Pro x64.vst3"
+
+arch_reaper_wine_vepro_runtime_dlls:
+  - DNSVEP.dll
+  - Servus.dll
+  - veplugin_shared.dll
+
+arch_reaper_wine_vepro_vst_paths:
+  - 'C:\reaper-vst-bridge\vepro\VST2'
+  - 'C:\reaper-vst-bridge\vepro\VST3'
+
+arch_reaper_wine_obsolete_vst_path_regexes:
+  - '(^|[\\/])\.wine-win64-reaper([\\/]|$)'
+
 arch_audiogridder_wine_setup:
   version: 1.1.1
   version_slug: "1_1_1"
