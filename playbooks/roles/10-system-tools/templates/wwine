@@ -339,7 +339,7 @@ prefix_alias=""
 
 case "$prefix" in
 {% for name, config in wwine_prefix_aliases.items() %}
-  {{ name }})
+  {{ name }}|"{{ config.path }}")
     prefix_alias="{{ name }}"
     resolved_prefix="{{ config.path }}"
     {% if config.architecture is defined %}
