@@ -8,12 +8,18 @@ arch_wineasio_setup:
   repo: https://github.com/wineasio/wineasio
   repo_path: "{{ ansible_facts.env.HOME }}/data/repos/wineasio"
   version: master
-  reaper_audio_mode: 2
+  number_inputs: 16
+  number_outputs: 16
+  autostart_server: 0
+  connect_to_hardware: 1
+  fixed_buffersize: 0
+  reaper_audio_mode: 3
   reaper_block_size: 512
   reaper_sample_rate: 48000
 
 arch_pipeasio_setup:
   version: 1.2.1
+  configure_reaper: false
   archive_url: https://github.com/M0n7y5/pipeasio/archive/refs/tags/v1.2.1.tar.gz
   archive_checksum: sha256:90ec9dd5d6d1170107f397a309c794b55c8f98e20e9bc1b35599ceddbbe3fcc9
   archive_path: "{{ ansible_facts.env.HOME }}/data/Downloads/music-production/pipeasio-1.2.1.tar.gz"

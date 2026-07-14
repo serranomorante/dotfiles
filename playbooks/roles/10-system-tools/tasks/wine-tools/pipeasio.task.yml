@@ -209,6 +209,7 @@
   when:
     - var_pipeasio_package.rc == 0
     - var_pipeasio_registration_active | default(false)
+    - arch_pipeasio_setup.configure_reaper | default(false) | bool
 
 - name: "[archlinux] Wine tools: configure wine reaper for pipeasio"
   ansible.builtin.lineinfile:
@@ -240,4 +241,5 @@
   when:
     - var_pipeasio_package.rc == 0
     - var_pipeasio_registration_active | default(false)
+    - arch_pipeasio_setup.configure_reaper | default(false) | bool
     - var_pipeasio_reaper_ini.stat.exists

@@ -96,6 +96,12 @@ export WINEDEBUG="$wine_debug"
 {% for name, value in pipewire_latency_vars.items() %}
 export {{ name }}={{ value | quote }}
 {% endfor %}
+export WINEASIO_NUMBER_INPUTS={{ arch_wineasio_setup.number_inputs | string | quote }}
+export WINEASIO_NUMBER_OUTPUTS={{ arch_wineasio_setup.number_outputs | string | quote }}
+export WINEASIO_AUTOSTART_SERVER={{ (arch_wineasio_setup.autostart_server | int == 1) | ternary('on', 'off') | quote }}
+export WINEASIO_CONNECT_TO_HARDWARE={{ (arch_wineasio_setup.connect_to_hardware | int == 1) | ternary('on', 'off') | quote }}
+export WINEASIO_FIXED_BUFFERSIZE={{ (arch_wineasio_setup.fixed_buffersize | int == 1) | ternary('on', 'off') | quote }}
+export WINEASIO_PREFERRED_BUFFERSIZE={{ (arch_wineasio_setup.preferred_buffersize | default(arch_wineasio_setup.reaper_block_size)) | string | quote }}
 
 wwine_prepare_args=(--prefix reaper --wine-debug "$wine_debug")
 wwine_cmd=(
