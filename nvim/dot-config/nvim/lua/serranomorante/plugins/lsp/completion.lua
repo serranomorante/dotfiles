@@ -83,7 +83,9 @@ function M.enable(client, bufnr)
       if pumvisible() then
         trigger_timer:stop()
         utils.feedkeys(keys)
-        trigger_timer:start(trigger_debounce_ms, 0, vim.schedule_wrap(vim.lsp.completion.trigger))
+        trigger_timer:start(trigger_debounce_ms, 0, vim.schedule_wrap(function()
+          if vim.lsp.completion.trigger then vim.lsp.completion.trigger() end
+        end))
         return
       end
       utils.feedkeys(keys)
