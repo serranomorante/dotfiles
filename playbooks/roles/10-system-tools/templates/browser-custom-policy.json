@@ -19,6 +19,11 @@
   ],
   "ExtensionDeveloperModeSettings": 0,
   "RemoteDebuggingAllowed": true,
+{% if browser_enable_aggressive_memory_saver | default(false) == true %}
+  "HighEfficiencyModeEnabled": true,
+  "MemorySaverModeSavings": 2,
+  "TotalMemoryLimitMb": 1024,
+{% endif %}
   "ForcedLanguages": ["en-US"],
   "ExtensionSettings": {
     "{{ local_extension_show_tab_numbers }}": {

@@ -244,13 +244,18 @@
   become: true
   ansible.builtin.template:
     src: browser-custom-policy.json
-    dest: "{{ item }}"
+    dest: "{{ item.dest }}"
     owner: root
     mode: "644"
   loop:
-    - /etc/brave/policies/managed/browser-custom-policy.json
-    - /etc/chromium/policies/managed/browser-custom-policy.json
-    - /etc/opt/edge/policies/managed/browser-custom-policy.json
+    - dest: /etc/brave/policies/managed/browser-custom-policy.json
+      browser_enable_aggressive_memory_saver: true
+    - dest: /etc/chromium/policies/managed/browser-custom-policy.json
+      browser_enable_aggressive_memory_saver: true
+    - dest: /etc/opt/edge/policies/managed/browser-custom-policy.json
+      browser_enable_aggressive_memory_saver: false
+  vars:
+    browser_enable_aggressive_memory_saver: "{{ item.browser_enable_aggressive_memory_saver }}"
 
 - name: "[archlinux] Setup browser tools: create browser initial preferences"
   become: true
