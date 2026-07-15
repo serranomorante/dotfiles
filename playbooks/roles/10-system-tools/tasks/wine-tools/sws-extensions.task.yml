@@ -204,6 +204,11 @@
     - project_transport_state_feedback.lua
     - yabridge_focus_repair.lua
 
+- name: "[archlinux] Wine tools: stat sws extension installer"
+  ansible.builtin.stat:
+    path: "{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe"
+  register: var_sws_extension_installer
+
 - name: "[archlinux] Wine tools: get sws extension"
   ansible.builtin.get_url:
     url: https://www.sws-extension.org/download/featured/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe
@@ -211,11 +216,7 @@
     mode: "755"
   ignore_errors: true
   register: var_new_sws_extension_version_downloaded
-
-- name: "[archlinux] Wine tools: stat sws extension installer"
-  ansible.builtin.stat:
-    path: "{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe"
-  register: var_sws_extension_installer
+  when: not var_sws_extension_installer.stat.exists
 
 - name: "[archlinux] Wine tools: stat installed sws extension"
   ansible.builtin.stat:
@@ -232,8 +233,11 @@
   failed_when: false
   when:
     - is_x_display_session
-    - var_sws_extension_installer.stat.exists
-    - (var_new_sws_extension_version_downloaded.changed | default(false)) or (not var_sws_extension_installed.stat.exists)
+    - not var_sws_extension_installed.stat.exists
+    - >
+      var_sws_extension_installer.stat.exists
+      or
+      (var_new_sws_extension_version_downloaded.changed | default(false))
   register: var_sws_install
 
 - name: "[archlinux] Wine tools: close stale SWS installer Wine processes"
