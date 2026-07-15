@@ -1,34 +1,28 @@
 local task_name = "editor-tasks-refresh-ctags"
+local utils = require("serranomorante.utils")
 
 ---@type overseer.TemplateDefinition
 return {
   name = task_name,
   desc = "Refresh ctags",
   builder = function()
+    local project_root = utils.git_root_or_cwd()
+    local refresh_ctags_cmd = vim.env.HOME .. "/bin/dotfiles-refresh-ctags"
+    if vim.fn.executable(refresh_ctags_cmd) == 0 then
+      refresh_ctags_cmd = vim.env.HOME .. "/dotfiles/nvim/bin/dotfiles-refresh-ctags"
+    end
+
     return {
       name = task_name,
-      cmd = { "ctags" },
-      args = {
-        "--recurse",
-        "--exclude=.git",
-        "--exclude=node_modules",
-        "--exclude=.mypy_cache",
-        "--exclude=**/dist/**",
-        "--exclude=**/assets/**",
-        "--exclude=**/public/**",
-        "--exclude=**/js/**",
-        "--exclude=*.min.js",
-        "--exclude=*.esm.js",
-        "--exclude=*.bundle.js",
-        "--exclude=tags",
-      },
+      cmd = { refresh_ctags_cmd },
+      cwd = project_root,
       metadata = {
         hide_from_task_list = true,
       },
       components = {
         {
           "restart_on_save",
-          paths = { vim.fn.getcwd() },
+          paths = { project_root },
         },
         "defaults_without_notification",
       },

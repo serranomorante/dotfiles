@@ -84,6 +84,8 @@ Runtime code on interactive Neovim paths must not block the main event loop with
 
 Neovim search keymaps keep cwd-scoped and project-scoped behavior separate: plain `:Find`/`:Grep` mappings search from the current working directory, while the project variants in `nvim/dot-config/nvim/lua/serranomorante/remap.lua` append `utils.git_root_or_cwd()` so worktrees opened from subdirectories still search the repository root and non-Git directories fall back to cwd. `utils.git_root_or_cwd()` prefers a Git superproject before the immediate repository root so searches launched from submodules such as `for-my-eyes-only` still scope to the containing dotfiles checkout.
 
+Neovim ctags refreshes are owned by `nvim/bin/dotfiles-refresh-ctags` and `nvim/dot-config/nvim/lua/overseer/template/editor-tasks/TASK__generate_ctags.lua`. The wrapper keeps Universal Ctags as the source of the main `tags` file, adds YAML top-level variable tags, appends synthetic Ansible role tags, and supports manual `ctags-link` comments for aliases that should jump through native tag commands instead of `quicksearch`. See [neovim-ctags-links.md](./neovim-ctags-links.md).
+
 ## Shared Runtime Cache
 
 Use Valkey for small cross-process runtime caches that need to be shared by Neovim, Kitty helpers, shell scripts, or Python scripts. `utilities/bin/cachectl` wraps `valkey-cli` with the repository key namespace `dotfiles:cache:v1:<namespace>:<key>` and requires TTLs for stored values. Values should be cheap to rebuild and should not be committed.

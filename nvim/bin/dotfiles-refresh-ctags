@@ -1,0 +1,260 @@
+#!/usr/bin/env python3
+"""Refresh Universal Ctags plus repository-specific navigation links.
+
+Purpose:
+  Generate the normal `tags` file for the current project and append synthetic
+  tags for links that are structural in this dotfiles workflow but not emitted
+  by Universal Ctags' built-in parsers.
+Usage:
+  dotfiles-refresh-ctags [--tagfile TAGS] [PATH ...]
+Notes:
+  Run from the project root you want Neovim to navigate. The generated file is
+  sorted after synthetic tags are merged so Vim's tagbsearch can use it.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+
+
+EXCLUDES = (
+    ".git",
+    "node_modules",
+    ".mypy_cache",
+    "dist",
+    "assets",
+    "public",
+    "js",
+)
+
+EXCLUDE_FILE_PATTERNS = (
+    "*.min.js",
+    "*.esm.js",
+    "*.bundle.js",
+    "tags",
+)
+
+CTAGS_ARGS = (
+    "--recurse",
+    "--quiet=yes",
+    "--exclude=.git",
+    "--exclude=node_modules",
+    "--exclude=.mypy_cache",
+    "--exclude=**/dist/**",
+    "--exclude=**/assets/**",
+    "--exclude=**/public/**",
+    "--exclude=**/js/**",
+    "--exclude=*.min.js",
+    "--exclude=*.esm.js",
+    "--exclude=*.bundle.js",
+    "--exclude=tags",
+    "--kinddef-Yaml=v,var,YAML variables",
+    r"--regex-Yaml=/^([A-Za-z_][A-Za-z0-9_]*):/\1/v/",
+)
+
+COMMENT_LINK_RE = re.compile(r"^\s*(?:#|//|--|;)\s*ctags-link:\s*(?P<names>.+?)\s*$")
+COMMENT_RE = re.compile(r"^\s*(?:#|//|--|;)")
+TAG_NAME_RE = re.compile(r"^[^\s,]+$")
+TAG_LINE_RE = re.compile(
+    rb"^(?P<name>[^\t]+)\t(?P<path>[^\t]+)\t(?P<address>.+);\"\t(?P<kind>[^\t]+)(?:\t|$)"
+)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Refresh ctags with dotfiles navigation links")
+    parser.add_argument("--tagfile", default="tags", help="tag file to write, relative to cwd by default")
+    parser.add_argument("paths", nargs="*", default=["."], help="paths passed to ctags")
+    return parser.parse_args()
+
+
+def is_excluded_dir(path: Path) -> bool:
+    return any(part in EXCLUDES for part in path.parts)
+
+
+def is_excluded_file(path: Path) -> bool:
+    return any(path.match(pattern) for pattern in EXCLUDE_FILE_PATTERNS)
+
+
+def relpath(path: Path, root: Path) -> str:
+    return path.resolve().relative_to(root.resolve()).as_posix()
+
+
+def tag_path(path: Path, root: Path, absolute_paths: bool) -> str:
+    if absolute_paths:
+        return path.resolve().as_posix()
+    return relpath(path, root)
+
+
+def tag_line(name: str, path: Path, line: int, kind: str, root: Path, absolute_paths: bool) -> str:
+    return f"{name}\t{tag_path(path, root, absolute_paths)}\t{line};\"\t{kind}\tline:{line}\n"
+
+
+def role_target(role_dir: Path) -> Path | None:
+    candidates = (
+        role_dir / "tasks" / "main.yml",
+        role_dir / "tasks" / "main.yaml",
+        role_dir / "defaults" / "main.yml",
+        role_dir / "defaults" / "main.yaml",
+        role_dir / "meta" / "main.yml",
+        role_dir / "meta" / "main.yaml",
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+
+    task_dir = role_dir / "tasks"
+    if task_dir.is_dir():
+        for candidate in sorted(task_dir.glob("*.yml")) + sorted(task_dir.glob("*.yaml")):
+            if candidate.is_file():
+                return candidate
+
+    return None
+
+
+def collect_role_tags(root: Path, absolute_paths: bool) -> list[str]:
+    tags: list[str] = []
+    seen: set[tuple[str, str]] = set()
+
+    for dirpath, dirnames, _ in os.walk(root):
+        current = Path(dirpath)
+        dirnames[:] = [dirname for dirname in dirnames if not is_excluded_dir(current / dirname)]
+        if current.parent.name != "roles":
+            continue
+
+        target = role_target(current)
+        if not target:
+            continue
+
+        name = current.name
+        key = (name, relpath(target, root))
+        if key in seen:
+            continue
+        seen.add(key)
+        tags.append(tag_line(name, target, 1, "r", root, absolute_paths))
+
+    return tags
+
+
+def next_target_line(lines: list[str], start_index: int) -> int:
+    for index in range(start_index + 1, len(lines)):
+        line = lines[index]
+        if line.strip() and not COMMENT_RE.match(line):
+            return index + 1
+    return start_index + 1
+
+
+def parse_link_names(raw: str) -> list[str]:
+    names = [name.strip() for name in raw.split(",")]
+    return [name for name in names if name and TAG_NAME_RE.match(name)]
+
+
+def collect_manual_link_tags(root: Path, absolute_paths: bool) -> list[str]:
+    tags: list[str] = []
+    seen: set[tuple[str, str, int]] = set()
+
+    for dirpath, dirnames, filenames in os.walk(root):
+        current = Path(dirpath)
+        dirnames[:] = [dirname for dirname in dirnames if not is_excluded_dir(current / dirname)]
+
+        for filename in filenames:
+            path = current / filename
+            if is_excluded_file(path):
+                continue
+            try:
+                if path.stat().st_size > 1_000_000:
+                    continue
+                lines = path.read_text(encoding="utf-8").splitlines()
+            except (OSError, UnicodeDecodeError):
+                continue
+
+            for index, line in enumerate(lines):
+                match = COMMENT_LINK_RE.match(line)
+                if not match:
+                    continue
+                target_line = next_target_line(lines, index)
+                for name in parse_link_names(match.group("names")):
+                    key = (name, relpath(path, root), target_line)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    tags.append(tag_line(name, path, target_line, "l", root, absolute_paths))
+
+    return tags
+
+
+def ctags_link_names(synthetic_tags: list[str]) -> set[bytes]:
+    names: set[bytes] = set()
+    for tag in synthetic_tags:
+        parts = tag.split("\t")
+        if len(parts) >= 4 and parts[3] == "l":
+            names.add(parts[0].encode("utf-8"))
+    return names
+
+
+def is_autogenerated_yaml_key_tag(line: bytes, linked_names: set[bytes]) -> bool:
+    match = TAG_LINE_RE.match(line)
+    if not match:
+        return False
+    if match.group("kind") != b"v" or match.group("name") not in linked_names:
+        return False
+
+    name = re.escape(match.group("name"))
+    return re.match(rb"^/\^" + name + rb":(?: .*)?\$/$", match.group("address")) is not None
+
+
+def run_ctags(root: Path, paths: list[str], output_path: Path, absolute_paths: bool) -> None:
+    ctags = shutil.which("ctags")
+    if not ctags:
+        raise SystemExit("ctags not found in PATH")
+
+    path_args = ["--tag-relative=never"] if absolute_paths else []
+    command = [ctags, "-f", str(output_path), *CTAGS_ARGS, *path_args, *paths]
+    subprocess.run(command, cwd=root, check=True)
+
+
+def sorted_tags(ctags_output: bytes, synthetic_tags: list[str]) -> bytes:
+    pseudo_tags: list[bytes] = []
+    entries: list[bytes] = []
+    linked_names = ctags_link_names(synthetic_tags)
+
+    for line in ctags_output.splitlines():
+        if line.startswith(b"!_TAG_"):
+            pseudo_tags.append(line)
+        elif line and not is_autogenerated_yaml_key_tag(line, linked_names):
+            entries.append(line)
+
+    entries.extend(tag.encode("utf-8").rstrip(b"\n") for tag in synthetic_tags)
+    lines = sorted(pseudo_tags) + sorted(entries)
+    return b"\n".join(lines) + b"\n"
+
+
+def main() -> int:
+    args = parse_args()
+    root = Path.cwd()
+    tagfile = Path(args.tagfile)
+    if not tagfile.is_absolute():
+        tagfile = root / tagfile
+    absolute_paths = tagfile.parent.resolve() != root.resolve()
+
+    with tempfile.TemporaryDirectory(prefix="dotfiles-ctags.", dir=os.environ.get("TMPDIR")) as tmpdir:
+        tmp_tags = Path(tmpdir) / "tags"
+        run_ctags(root, args.paths, tmp_tags, absolute_paths)
+        extras = collect_role_tags(root, absolute_paths) + collect_manual_link_tags(root, absolute_paths)
+
+        with tagfile.open("wb") as output:
+            output.write(sorted_tags(tmp_tags.read_bytes(), extras))
+
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit(exc.returncode)

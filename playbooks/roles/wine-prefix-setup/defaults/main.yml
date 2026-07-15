@@ -1,3 +1,2 @@
 ---
-# quicksearch: ^arch_wine_prefix_setups:$
 wine_prefix_setup_prefixes: []
