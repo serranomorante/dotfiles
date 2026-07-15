@@ -31,7 +31,7 @@ usage() {
   cat >&2 <<'EOF'
 usage: wwine --prefix <alias-or-path> [--arch <arch>] [--wine-profile <profile>] [--use-sandbox] [--sandbox-profile <path>] [--sandbox-check-profile <path>] [--sandbox-name <name>] [--inspect-network] [--network-inspector-command <command>] [--log-id <app-id>] [--wine-debug <spec>] <tool> [tool-args...]
 
-tools: wine, winecfg, wineserver, winetricks, wineboot, prepare-env, kill-prefix, force-desktop [WxH]
+tools: wine, winecfg, wineserver, winetricks, wineboot, prepare-env, kill-prefix, kill-server, force-desktop [WxH]
 EOF
 }
 
@@ -479,7 +479,7 @@ setup_launcher_log() {
 
 setup_launcher_log
 
-if [[ "$use_sandbox" == 1 && "$tool" != "prepare-env" ]]; then
+if [[ "$use_sandbox" == 1 && "$tool" != "prepare-env" && "$tool" != "kill-server" ]]; then
   if is_inside_firejail; then
     verify_inherited_sandbox
     launch_network_inspector
@@ -698,6 +698,15 @@ kill_prefix() {
     kill -KILL "${pids[@]}" 2>/dev/null || true
   fi
 }
+
+kill_server() {
+  kill_prefix
+
+  [[ -n "$sandbox_name" ]] || return 0
+  command -v firejail >/dev/null 2>&1 || return 0
+
+  firejail --shutdown="$sandbox_name" >/dev/null 2>&1 || true
+}
 {% endraw %}
 
 case "$tool" in
@@ -724,6 +733,9 @@ case "$tool" in
     ;;
   kill-prefix)
     kill_prefix
+    ;;
+  kill-server)
+    kill_server
     ;;
   force-desktop)
     if [[ "$loader_mode" == 1 ]]; then

@@ -1,2 +1,7 @@
 ---
+# Type annotations
+# name: string Name of the prefix like reaper, musicplugins
+# path: string Path to the wine prefix
+# ensure_mono?: boolean Whether we should register wine-mono for this prefix
+# virtual_desktop?: boolean Whether this installation should use virtual desktop
 wine_prefix_setup_prefixes: []

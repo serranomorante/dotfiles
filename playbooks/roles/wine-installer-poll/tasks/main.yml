@@ -1,0 +1,242 @@
+---
+- name: "[wine-installer-poll] Validate installer variables"
+  ansible.builtin.assert:
+    that:
+      - wine_installer_name is defined
+      - wine_installer_prefix is defined
+      - wine_installer_argv is defined
+      - wine_installer_argv | length > 0
+      - "'wine' in wine_installer_argv or wine_installer_force_desktop_argv is defined"
+    quiet: true
+
+- name: "[wine-installer-poll] Check {{ wine_installer_name }} installed artifact"
+  ansible.builtin.stat:
+    path: "{{ wine_installer_creates }}"
+  register: wine_installer_creates_stat
+  when: wine_installer_creates is defined
+
+- name: "[wine-installer-poll] Set {{ wine_installer_name }} run state"
+  ansible.builtin.set_fact:
+    wine_installer_should_run: "{{ wine_installer_creates is not defined or not wine_installer_creates_stat.stat.exists }}"
+
+- name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine server before installer setup"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/wwine"
+      - --prefix
+      - "{{ wine_installer_prefix }}"
+      - kill-server
+  changed_when: true
+  failed_when: false
+  no_log: true
+  timeout: 60
+  when: wine_installer_should_run | bool
+
+- name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine prefix before installer setup"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/wwine"
+      - --prefix
+      - "{{ wine_installer_prefix }}"
+      - kill-prefix
+  changed_when: true
+  failed_when: false
+  no_log: true
+  timeout: 60
+  when: wine_installer_should_run | bool
+
+- name: "[wine-installer-poll] Force {{ wine_installer_name }} Wine virtual desktop"
+  ansible.builtin.command:
+    argv: "{{ wine_installer_force_desktop_argv | default((wine_installer_argv[: wine_installer_argv.index('wine')] + ['force-desktop'] + ([wine_installer_virtual_desktop_size] if wine_installer_virtual_desktop_size is defined else []))) }}"
+  changed_when: true
+  failed_when: false
+  timeout: 60
+  when:
+    - wine_installer_should_run | bool
+    - wine_installer_virtual_desktop | default(true) | bool
+
+- name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine prefix after virtual desktop setup"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/wwine"
+      - --prefix
+      - "{{ wine_installer_prefix }}"
+      - kill-prefix
+  changed_when: true
+  failed_when: false
+  no_log: true
+  timeout: 60
+  when:
+    - wine_installer_should_run | bool
+    - wine_installer_virtual_desktop | default(true) | bool
+
+- name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine server after virtual desktop setup"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/wwine"
+      - --prefix
+      - "{{ wine_installer_prefix }}"
+      - kill-server
+  changed_when: true
+  failed_when: false
+  no_log: true
+  timeout: 60
+  when:
+    - wine_installer_should_run | bool
+    - wine_installer_virtual_desktop | default(true) | bool
+
+- name: "[wine-installer-poll] Launch {{ wine_installer_name }}"
+  ansible.builtin.command:
+    argv: "{{ wine_installer_argv }}"
+  changed_when: true
+  failed_when: false
+  register: wine_installer_result
+  timeout: "{{ wine_installer_launch_timeout | default(120) }}"
+  when: wine_installer_should_run | bool
+
+- name: "[wine-installer-poll] Classify {{ wine_installer_name }} launch status"
+  ansible.builtin.set_fact:
+    wine_installer_launch_blocked: >-
+      {{
+        wine_installer_result is defined
+        and (
+          'fj-profile-checker' in (wine_installer_result.stderr | default(''))
+          or 'sandbox does not expose required path' in (wine_installer_result.stderr | default(''))
+          or 'IP address' in (wine_installer_result.stderr | default('')) and 'already in use' in (wine_installer_result.stderr | default(''))
+          or 'Firejail re-executed wwine without entering the expected sandbox' in (wine_installer_result.stderr | default(''))
+          or 'cannot start a verifiable Firejail sandbox' in (wine_installer_result.stderr | default(''))
+        )
+      }}
+  when: wine_installer_should_run | bool
+
+- name: "[wine-installer-poll] Report {{ wine_installer_name }} launch diagnostics"
+  ansible.builtin.debug:
+    msg:
+      rc: "{{ wine_installer_result.rc | default('unknown') }}"
+      stdout: "{{ wine_installer_result.stdout_lines | default([]) }}"
+      stderr: "{{ wine_installer_result.stderr_lines | default([]) }}"
+  when:
+    - wine_installer_should_run | bool
+    - wine_installer_result is defined
+    - (wine_installer_result.rc | default(0) | int) != 0 or (wine_installer_result.stdout | default('') | length) > 0 or (wine_installer_result.stderr | default('') | length) > 0
+
+- name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine prefix after blocked launch"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/wwine"
+      - --prefix
+      - "{{ wine_installer_prefix }}"
+      - kill-prefix
+  changed_when: true
+  failed_when: false
+  no_log: true
+  timeout: 60
+  when:
+    - wine_installer_should_run | bool
+    - wine_installer_result.changed | default(false)
+    - wine_installer_launch_blocked | default(false) | bool
+
+- name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine server after blocked launch"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/wwine"
+      - --prefix
+      - "{{ wine_installer_prefix }}"
+      - kill-server
+  changed_when: true
+  failed_when: false
+  no_log: true
+  timeout: 60
+  when:
+    - wine_installer_should_run | bool
+    - wine_installer_result.changed | default(false)
+    - wine_installer_launch_blocked | default(false) | bool
+
+- name: "[wine-installer-poll] Poll {{ wine_installer_name }} Wine desktop until opened"
+  ansible.builtin.shell: >
+    set -o pipefail &&
+    sleep {{ wine_installer_poll_initial_delay | default(2) }} &&
+    wmctrl -lx | grep -oE -- {{ wine_installer_window_query | default('explorer.exe') | quote }} | wc -l
+  args:
+    executable: /bin/bash
+  changed_when: true
+  failed_when: false
+  register: wine_installer_open_poll_result
+  until: wine_installer_open_poll_result.stdout | int > 0
+  delay: "{{ wine_installer_open_poll_delay | default(2) }}"
+  retries: "{{ wine_installer_open_poll_retries | default(30) }}"
+  when:
+    - is_x_display_session
+    - wine_installer_should_run | bool
+    - wine_installer_result.changed | default(false)
+    - not (wine_installer_launch_blocked | default(false) | bool)
+    - wine_installer_poll | default(true) | bool
+
+- name: "[wine-installer-poll] Report {{ wine_installer_name }} Wine desktop open timeout"
+  ansible.builtin.debug:
+    msg: "No Wine desktop window matching {{ wine_installer_window_query | default('explorer.exe') }} was detected for {{ wine_installer_name }}; continuing and stopping the prefix."
+  when:
+    - is_x_display_session
+    - wine_installer_should_run | bool
+    - wine_installer_result.changed | default(false)
+    - not (wine_installer_launch_blocked | default(false) | bool)
+    - wine_installer_poll | default(true) | bool
+    - wine_installer_open_poll_result is defined
+    - wine_installer_open_poll_result.stdout | default(0) | int == 0
+
+- name: "[wine-installer-poll] Poll {{ wine_installer_name }} Wine desktop until closed"
+  ansible.builtin.shell: >
+    set -o pipefail &&
+    wmctrl -lx | grep -oE -- {{ wine_installer_window_query | default('explorer.exe') | quote }} | wc -l
+  args:
+    executable: /bin/bash
+  changed_when: true
+  failed_when: false
+  register: wine_installer_poll_result
+  until: wine_installer_poll_result.stdout | int == 0
+  delay: "{{ wine_installer_poll_delay | default(arch_ansible_long_retries_config.delay_n | default(5)) }}"
+  retries: "{{ wine_installer_poll_retries | default(arch_ansible_long_retries_config.retries_n | default(120)) }}"
+  when:
+    - is_x_display_session
+    - wine_installer_should_run | bool
+    - wine_installer_result.changed | default(false)
+    - not (wine_installer_launch_blocked | default(false) | bool)
+    - wine_installer_poll | default(true) | bool
+    - wine_installer_open_poll_result.stdout | default(0) | int > 0
+
+- name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine prefix after polling"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/wwine"
+      - --prefix
+      - "{{ wine_installer_prefix }}"
+      - kill-prefix
+  changed_when: true
+  failed_when: false
+  no_log: true
+  timeout: 60
+  when:
+    - wine_installer_should_run | bool
+    - wine_installer_result.changed | default(false)
+    - not (wine_installer_launch_blocked | default(false) | bool)
+
+- name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine server after polling"
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/bin/wwine"
+      - --prefix
+      - "{{ wine_installer_prefix }}"
+      - kill-server
+  changed_when: true
+  failed_when: false
+  no_log: true
+  timeout: 60
+  when:
+    - wine_installer_should_run | bool
+    - wine_installer_result.changed | default(false)
+    - not (wine_installer_launch_blocked | default(false) | bool)
+
+- name: "[wine-installer-poll] Export {{ wine_installer_name }} result"
+  ansible.builtin.set_fact:
+    "{{ wine_installer_register }}": "{{ wine_installer_result | default({'changed': false, 'skipped': true}) }}"
+  when: wine_installer_register is defined
