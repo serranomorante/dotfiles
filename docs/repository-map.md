@@ -82,6 +82,8 @@ Task-runner and job-management modules belong under `nvim/dot-config/nvim/lua/se
 
 Runtime code on interactive Neovim paths must not block the main event loop with recursive scans, large file reads, JSON parsing over many files, shell waits, or polling loops. `vim.defer_fn()` delays synchronous work but still runs it on the main loop. Prefer `vim.uv` async APIs and the `promise-async` plugin (`require("promise")` / `require("async")`), using background jobs for expensive parsing or discovery. See [neovim-runtime-performance.md](./neovim-runtime-performance.md).
 
+Neovim search keymaps keep cwd-scoped and project-scoped behavior separate: plain `:Find`/`:Grep` mappings search from the current working directory, while the project variants in `nvim/dot-config/nvim/lua/serranomorante/remap.lua` append `utils.git_root_or_cwd()` so worktrees opened from subdirectories still search the repository root and non-Git directories fall back to cwd. `utils.git_root_or_cwd()` prefers a Git superproject before the immediate repository root so searches launched from submodules such as `for-my-eyes-only` still scope to the containing dotfiles checkout.
+
 ## Shared Runtime Cache
 
 Use Valkey for small cross-process runtime caches that need to be shared by Neovim, Kitty helpers, shell scripts, or Python scripts. `utilities/bin/cachectl` wraps `valkey-cli` with the repository key namespace `dotfiles:cache:v1:<namespace>:<key>` and requires TTLs for stored values. Values should be cheap to rebuild and should not be committed.

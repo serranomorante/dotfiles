@@ -490,8 +490,17 @@ function M.get_cursor_position()
 end
 
 local function rg_command(search, opts)
-  local grep_cmd = "rg -e " .. search:gsub("\\'", "\\x27") -- escape single quotes
-  if opts.json then grep_cmd = string.format("%s %s", grep_cmd, "--json") end
+  opts = opts or {}
+  local rg_args = { "rg" }
+  if opts.json then table.insert(rg_args, "--json") end
+  for _, arg in ipairs(opts.rg_args or {}) do
+    table.insert(rg_args, vim.fn.shellescape(arg))
+  end
+
+  local grep_cmd = table.concat(rg_args, " ") .. " -e " .. search:gsub("\\'", "\\x27") -- escape single quotes
+  for _, path in ipairs(opts.search_paths or {}) do
+    grep_cmd = grep_cmd .. " " .. vim.fn.shellescape(path)
+  end
   return grep_cmd
 end
 
@@ -590,6 +599,28 @@ function M.cwd_is_dwm() return vim.fn.getcwd() == vim.env.HOME .. "/data/repos/d
 function M.cwd_is_dotfiles() return vim.fn.getcwd() == vim.env.HOME .. "/dotfiles" end
 
 function M.cwd_is_notes() return vim.fn.getcwd() == vim.env.HOME .. "/data/notes/foam" end
+
+---@param cwd? string
+---@return string?
+function M.git_root(cwd)
+  cwd = cwd or vim.fn.getcwd()
+  local root = vim.fn.systemlist({ "git", "-C", cwd, "rev-parse", "--show-toplevel" })[1]
+  if vim.v.shell_error == 0 and type(root) == "string" and root ~= "" then return root end
+  return nil
+end
+
+---@param cwd? string
+---@return string?
+function M.git_superproject_root(cwd)
+  cwd = cwd or vim.fn.getcwd()
+  local root = vim.fn.systemlist({ "git", "-C", cwd, "rev-parse", "--show-superproject-working-tree" })[1]
+  if vim.v.shell_error == 0 and type(root) == "string" and root ~= "" then return root end
+  return nil
+end
+
+---@param cwd? string
+---@return string
+function M.git_root_or_cwd(cwd) return M.git_superproject_root(cwd) or M.git_root(cwd) or cwd or vim.fn.getcwd() end
 
 ---@class OpenQfList
 ---@field loclist? boolean
@@ -772,6 +803,8 @@ end
 ---@field parse_batch_size? integer
 ---@field pattern_limit? integer|false
 ---@field pattern_line_max? integer
+---@field rg_args? string[]
+---@field search_paths? string[]
 ---@field title_prefix? string
 
 ---@param search string
@@ -913,7 +946,7 @@ function M.grep_with_rg_to_qflist(search, opts)
     vim.list_extend(state.errors, vim.tbl_filter(function(line) return line ~= "" end, data))
   end
 
-  state.job_id = vim.fn.jobstart(rg_command(search, { json = true }), {
+  state.job_id = vim.fn.jobstart(rg_command(search, vim.tbl_extend("force", opts, { json = true })), {
     on_exit = function(_, code)
       if state.stdout_tail ~= "" then
         table.insert(state.lines, state.stdout_tail)
@@ -947,6 +980,185 @@ function M.grep_with_rg_to_qflist(search, opts)
       update_title(("[%s] cancelled: %s"):format(title_prefix, search))
     end,
   }
+end
+
+local function quicksearch_rg_search_arg(pattern) return "'" .. pattern:gsub("'", "\\x27") .. "'" end
+
+local QUICKSEARCH_RG_VALUE_ARGS = {
+  ["--glob"] = true,
+  ["--iglob"] = true,
+  ["--max-depth"] = true,
+  ["--type"] = true,
+  ["--type-not"] = true,
+  ["-T"] = true,
+  ["-g"] = true,
+  ["-t"] = true,
+}
+
+local QUICKSEARCH_RG_FLAG_ARGS = {
+  ["--follow"] = true,
+  ["--hidden"] = true,
+  ["--no-hidden"] = true,
+  ["--no-ignore"] = true,
+  ["--no-ignore-dot"] = true,
+  ["--no-ignore-exclude"] = true,
+  ["--no-ignore-files"] = true,
+  ["--no-ignore-global"] = true,
+  ["--no-ignore-parent"] = true,
+  ["--no-ignore-vcs"] = true,
+  ["--one-file-system"] = true,
+  ["-L"] = true,
+}
+
+---@param text string
+---@return string[]?
+---@return string?
+local function quicksearch_shell_words(text)
+  local words = {}
+  local current = {}
+  local quote = nil
+  local escaped = false
+  local in_word = false
+
+  for i = 1, #text do
+    local char = text:sub(i, i)
+    if escaped then
+      table.insert(current, char)
+      escaped = false
+      in_word = true
+    elseif char == "\\" and quote ~= "'" then
+      escaped = true
+      in_word = true
+    elseif quote then
+      if char == quote then
+        quote = nil
+      else
+        table.insert(current, char)
+      end
+      in_word = true
+    elseif char == "'" or char == '"' then
+      quote = char
+      in_word = true
+    elseif char:match("%s") then
+      if in_word then
+        table.insert(words, table.concat(current))
+        current = {}
+        in_word = false
+      end
+    else
+      table.insert(current, char)
+      in_word = true
+    end
+  end
+
+  if escaped then table.insert(current, "\\") end
+  if quote then return nil, "Unterminated quote in quicksearch filters" end
+  if in_word then table.insert(words, table.concat(current)) end
+
+  return words, nil
+end
+
+---@param payload string
+---@return string filter_text
+---@return string pattern
+---@return string?
+local function quicksearch_split_payload(payload)
+  payload = vim.trim(payload or "")
+  local quote = nil
+  local escaped = false
+
+  for i = 1, #payload do
+    local char = payload:sub(i, i)
+    if escaped then
+      escaped = false
+    elseif char == "\\" and quote ~= "'" then
+      escaped = true
+    elseif quote then
+      if char == quote then quote = nil end
+    elseif char == "'" or char == '"' then
+      quote = char
+    elseif char == ":" then
+      local filter_text = vim.trim(payload:sub(1, i - 1))
+      if filter_text == "" or filter_text:match("^%-") then return filter_text, vim.trim(payload:sub(i + 1)), nil end
+    end
+  end
+
+  if quote then return "", "", "Unterminated quote in quicksearch filters" end
+  if payload:match("^%-") then return "", "", "Quicksearch filters must be followed by ':' and a pattern" end
+  return "", payload, nil
+end
+
+---@param words string[]
+---@return string[]?
+---@return string?
+local function quicksearch_filter_args(words)
+  local args = {}
+  local i = 1
+
+  while i <= #words do
+    local word = words[i]
+    local option, value = word:match("^(%-%-[%w-]+)=(.+)$")
+
+    if option and QUICKSEARCH_RG_VALUE_ARGS[option] then
+      vim.list_extend(args, { option, value })
+    elseif QUICKSEARCH_RG_VALUE_ARGS[word] then
+      i = i + 1
+      if not words[i] then return nil, ("Missing value for quicksearch filter %s"):format(word) end
+      vim.list_extend(args, { word, words[i] })
+    elseif QUICKSEARCH_RG_FLAG_ARGS[word] then
+      table.insert(args, word)
+    else
+      return nil, ("Unsupported quicksearch filter: %s"):format(word)
+    end
+
+    i = i + 1
+  end
+
+  return args, nil
+end
+
+---@param payload string
+function M.quicksearch(payload)
+  local filter_text, pattern, split_error = quicksearch_split_payload(payload)
+  if split_error then
+    vim.api.nvim_echo({ { split_error } }, false, { err = true })
+    return
+  end
+
+  if pattern == "" then
+    vim.api.nvim_echo({ { "Empty quicksearch pattern" } }, false, { err = true })
+    return
+  end
+
+  local words, words_error = quicksearch_shell_words(filter_text)
+  if words_error then
+    vim.api.nvim_echo({ { words_error } }, false, { err = true })
+    return
+  end
+
+  local rg_args, filter_error = quicksearch_filter_args(words or {})
+  if filter_error then
+    vim.api.nvim_echo({ { filter_error } }, false, { err = true })
+    return
+  end
+
+  M.grep_with_rg_to_qflist(quicksearch_rg_search_arg(pattern), {
+    context = { name = "user.quicksearch" },
+    rg_args = rg_args,
+    search_paths = { M.git_root_or_cwd() },
+    title_prefix = "Quicksearch",
+  })
+end
+
+---@param path string
+function M.quicksearch_from_file(path)
+  local pattern = M.read_file(path)
+  pcall((vim.uv or vim.loop).fs_unlink, path)
+  if not pattern then
+    vim.api.nvim_echo({ { ("Quicksearch pattern file not found: %s"):format(path) } }, false, { err = true })
+    return
+  end
+  M.quicksearch(pattern)
 end
 
 ---Treesitter compatible filetypes

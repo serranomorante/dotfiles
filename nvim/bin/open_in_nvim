@@ -89,8 +89,46 @@ ex_command_arg() {
     printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/|/\\|/g'
 }
 
+quicksearch_pattern_file() {
+    quicksearch_dir=${XDG_RUNTIME_DIR:-/tmp}/open-in-nvim
+    mkdir -p "$quicksearch_dir" || exit 1
+    umask 077
+    quicksearch_file=$(mktemp "$quicksearch_dir/quicksearch.XXXXXX") || exit 1
+    printf '%s' "$1" >"$quicksearch_file" || exit 1
+    printf '%s\n' "$quicksearch_file"
+}
+
+quicksearch_payload() {
+    filters=
+    pattern=
+
+    if [ "$#" -eq 1 ]; then
+        case $1 in
+        filters=* | pattern=*) ;;
+        *)
+            printf '%s' "$1"
+            return 0
+            ;;
+        esac
+    fi
+
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+        filters=*) filters=${1#filters=} ;;
+        pattern=*) pattern=${1#pattern=} ;;
+        esac
+        shift
+    done
+
+    if [ -n "$filters" ]; then
+        printf '%s: %s' "$filters" "$pattern"
+    else
+        printf '%s' "$pattern"
+    fi
+}
+
 case $app in
-nnn_search | nnn_explorer | git_editor | lazygit_edit | lazygit_edit_at_line | lazygit_edit_at_line_and_wait | lazygit_open | lazygit_open_dir_in_editor | lazygit_compare_branch | lazygit_open_merge_tool | lazygit_open_difftool | lazygit_diff_against_parent | lazygit_diff_with_local_copy | kitty_edit | kitty_edit_at_line | kitty_simple_edit | kitty_simple_edit_at_line | agent_conversation | goto_foam_block_by_id)
+nnn_search | nnn_explorer | git_editor | lazygit_edit | lazygit_edit_at_line | lazygit_edit_at_line_and_wait | lazygit_open | lazygit_open_dir_in_editor | lazygit_compare_branch | lazygit_open_merge_tool | lazygit_open_difftool | lazygit_diff_against_parent | lazygit_diff_with_local_copy | kitty_edit | kitty_edit_at_line | kitty_simple_edit | kitty_simple_edit_at_line | agent_conversation | goto_foam_block_by_id | quicksearch)
     require_servername
     ;;
 esac
@@ -158,6 +196,10 @@ agent_conversation)
 goto_foam_block_by_id)
     block_id=$(ex_command_arg "$1")
     nvr --servername "$servername" --nostart -c "lua $nvim_force_newtab; $nvim_close_term_win" -c "GoToFoamBlockById $block_id"
+    ;;
+quicksearch)
+    pattern_file=$(quicksearch_pattern_file "$(quicksearch_payload "$@")")
+    nvr --servername "$servername" --nostart -c "lua $nvim_force_newtab; $nvim_close_term_win; require('serranomorante.utils').quicksearch_from_file([[$pattern_file]])"
     ;;
 *)
     if [ -n "$app" ]; then
