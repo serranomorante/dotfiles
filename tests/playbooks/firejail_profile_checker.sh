@@ -44,13 +44,13 @@ make_fixture() {
     home="${fixture}/home"
     profile_dir="${home}/.config/firejail"
     visible="${fixture}/visible"
-    readonly="${fixture}/readonly"
-    hidden="${fixture}/hidden"
+    readonly="${DOTFILES_TEST_TMP}/readonly"
+    hidden="${DOTFILES_TEST_TMP}/hidden"
     command_marker="${fixture}/command-ran"
     output="${fixture}/checker.out"
     sandbox_profile="${profile_dir}/sandbox.profile"
 
-    mkdir -p "$profile_dir" "$visible" "$readonly" "$home/from-home" "$home/from-tilde" "$home/readonly-home"
+    mkdir -p "$profile_dir" "$visible" "$readonly" "$hidden" "$home/from-home" "$home/from-tilde" "$home/readonly-home"
 
     cat >"$sandbox_profile" <<PROFILE
 quiet
@@ -333,6 +333,7 @@ PROFILE
 fj-profile-checker-fails-on-visible-blacklist)
     make_fixture
     write_command
+    hidden="${fixture}/visible-hidden"
     mkdir -p "$hidden"
     cat >"${fixture}/main.profile" <<PROFILE
 blacklist ${hidden}

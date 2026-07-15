@@ -79,7 +79,7 @@ dotfiles_agent_context_symlink_names: []
 dotfiles_private_agent_context_doc_paths: []
 YAML
 
-    ansible localhost -m ansible.builtin.template -a "src=${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/dotfiles-stow dest=${dest} mode=0755" -e "@${vars_file}" >/dev/null
+    ansible -c local localhost -m ansible.builtin.template -a "src=${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/dotfiles-stow dest=${dest} mode=0755" -e "@${vars_file}" >/dev/null
 }
 
 make_stow_package() {

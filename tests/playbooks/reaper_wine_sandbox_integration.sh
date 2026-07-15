@@ -49,6 +49,7 @@ make_fixture() {
     runtime="${fixture}/runtime"
     readonly="${fixture}/readonly"
     hidden="${fixture}/hidden"
+    musicplugins_prefix="${fixture}/musicplugins-prefix"
     wine_prefix="${fixture}/wine-prefix"
     tmp_id="${DOTFILES_TEST_TMP##*/}"
     sandbox_name="${tmp_id//[^A-Za-z0-9_.-]/_}-wwine-reaper"
@@ -72,6 +73,7 @@ make_fixture() {
         "$runtime" \
         "$readonly" \
         "$hidden" \
+        "$musicplugins_prefix" \
         "$wine_prefix"
 
     cat >"$sandbox_profile" <<PROFILE
@@ -259,6 +261,14 @@ wwine_rendered = wwine_template.render(
         "WINEFSYNC": "0",
     },
     wwine_prefix_aliases={
+        "musicplugins": {
+            "path": str(fixture / "musicplugins-prefix"),
+            "architecture": "win64",
+            "sandbox_profile": str(home / ".config/firejail/wine-reaper.local"),
+            "sandbox_check_profile": str(home / ".local/share/wwine/firejail-profiles/wine-reaper.local"),
+            "sandbox_name": os.environ["REAPER_TEST_SANDBOX_NAME"],
+            "wine_profile": "legacy",
+        },
         "reaper": {
             "path": str(fixture / "wine-prefix"),
             "architecture": "win64",
@@ -349,7 +359,7 @@ launch-reaper-linux-no-firejail-prepares-sandboxed-yabridge-env)
 
     run_launch --no-firejail -- --empty-project
     grep -Fxq "INSIDE_FIREJAIL=0" "$fake_reaper_log"
-    grep -Fxq "WINEPREFIX=$wine_prefix" "$fake_reaper_log"
+    grep -Fxq "WINEPREFIX=$musicplugins_prefix" "$fake_reaper_log"
     grep -Fxq "WINELOADER=$wwine_loader" "$fake_reaper_log"
     grep -Fxq "WWINE_SANDBOX_NAME=$sandbox_name" "$fake_reaper_log"
     grep -Fxq "WWINE_USE_SANDBOX=1" "$fake_reaper_log"
@@ -364,7 +374,7 @@ launch-reaper-linux-firejail-uses-wwine-reaper-sandbox)
 
     run_launch --firejail -- --new-project
     grep -Fxq "INSIDE_FIREJAIL=1" "$fake_reaper_log"
-    grep -Fxq "WINEPREFIX=$wine_prefix" "$fake_reaper_log"
+    grep -Fxq "WINEPREFIX=$musicplugins_prefix" "$fake_reaper_log"
     grep -Fxq "WINELOADER=$wwine_loader" "$fake_reaper_log"
     grep -Fxq "WWINE_SANDBOX_NAME=$sandbox_name" "$fake_reaper_log"
     grep -Fxq "WWINE_USE_SANDBOX=1" "$fake_reaper_log"

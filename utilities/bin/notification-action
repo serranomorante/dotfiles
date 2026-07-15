@@ -16,7 +16,7 @@ import sys
 SCHEMA = "dotfiles.notification-action.v1"
 ACTION_KEY_PREFIX = "dotfiles-action-v1:"
 DEFAULT_TIMEOUT_MS = 7000
-MAX_VISIBLE_TIMEOUT_MS = 15000
+MAX_VISIBLE_TIMEOUT_MS = 7000
 SUPPORTED_ACTIONS = {"open-agent-task", "open-foam-block-section"}
 BLOCK_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9-]{0,127}$")
 SESSION_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$")

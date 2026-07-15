@@ -553,6 +553,23 @@ codex-resume-missing-session-cwd-uses-current-cwd)
     fake_bin="${DOTFILES_TEST_TMP}/bin"
     missing_cwd="${DOTFILES_TEST_TMP}/missing-cwd"
     mkdir -p "$fake_bin"
+    cat >"${fake_bin}/cachectl" <<'SH'
+#!/bin/sh
+set -eu
+
+case "$1" in
+get)
+    exit 1
+    ;;
+set)
+    cat >/dev/null
+    exit 0
+    ;;
+*)
+    exit 0
+    ;;
+esac
+SH
 cat >"${fake_bin}/agent-session-store" <<'SH'
 #!/bin/sh
 set -eu
@@ -565,6 +582,10 @@ while [ "$#" -gt 0 ]; do
         provider=$2
         shift 2
         ;;
+    refresh)
+        command_seen=refresh
+        shift
+        ;;
     sessions)
         command_seen=sessions
         shift
@@ -575,14 +596,17 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
-case "${provider:-codex}:${command_seen:-sessions}" in
-codex:sessions)
-    printf '{"version":2,"provider":"codex","sessions":[{"provider":"codex","path":"%s/session.jsonl","id":"resume-missing-cwd-session","cwd":"%s","timestamp":"2026-06-17T14:51:10Z","updated_at":"2026-06-17T15:03:39Z","title":"missing cwd session"}]}\n' "${DOTFILES_TEST_TMP}" "${DOTFILES_TEST_MISSING_CWD}"
-    ;;
-*)
-    printf '{"version":2,"provider":"%s","sessions":[]}\n' "${provider:-claude}"
-    ;;
-esac
+    case "${provider:-codex}:${command_seen:-sessions}" in
+    codex:sessions)
+        printf '{"version":2,"provider":"codex","sessions":[{"provider":"codex","path":"%s/session.jsonl","id":"resume-missing-cwd-session","cwd":"%s","timestamp":"2026-06-17T14:51:10Z","updated_at":"2026-06-17T15:03:39Z","title":"missing cwd session"}]}\n' "${DOTFILES_TEST_TMP}" "${DOTFILES_TEST_MISSING_CWD}"
+        ;;
+    codex:refresh)
+        printf '{"version":2,"provider":"codex","sessions":[{"provider":"codex","path":"%s/session.jsonl","id":"resume-missing-cwd-session","cwd":"%s","timestamp":"2026-06-17T14:51:10Z","updated_at":"2026-06-17T15:03:39Z","title":"missing cwd session"}]}\n' "${DOTFILES_TEST_TMP}" "${DOTFILES_TEST_MISSING_CWD}"
+        ;;
+    *)
+        printf '{"version":2,"provider":"%s","sessions":[]}\n' "${provider:-claude}"
+        ;;
+    esac
 SH
     cat >"${fake_bin}/codex" <<'SH'
 #!/bin/sh
@@ -607,6 +631,7 @@ SH
         '  assert(vim.fn.isdirectory(missing_cwd) == 0, "test fixture cwd should not exist: " .. missing_cwd)' \
         '  vim.cmd.cd(vim.fn.fnameescape(valid_cwd))' \
         '  vim.env.PATH = vim.env.DOTFILES_TEST_TMP .. "/bin:" .. vim.env.PATH' \
+        '  vim.env.CACHECTL_BIN = vim.env.DOTFILES_TEST_TMP .. "/bin/cachectl"' \
         '  vim.env.AGENT_SESSION_STORE_BIN = vim.env.DOTFILES_TEST_TMP .. "/bin/agent-session-store"' \
         '  vim.opt.packpath:prepend("/home/aaaa/.local/share/nvim/site")' \
         '  vim.cmd.packloadall()' \

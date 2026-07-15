@@ -1413,10 +1413,7 @@ end
 ---@param cwd string
 ---@param known_session_ids? table<string, true>
 local function link_new_task_to_session_id(provider, task, cwd, known_session_ids)
-  if not known_session_ids then
-    retry_link_task_until_session_path(provider, task, cwd, known_session_ids)
-    return
-  end
+  known_session_ids = known_session_ids or {}
 
   async_watch_new_session(provider, task, cwd, known_session_ids)
     :thenCall(function()
