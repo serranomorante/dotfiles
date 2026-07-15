@@ -280,7 +280,7 @@ end, { desc = "Grep visual selection in dotfiles", expr = true })
 vim.keymap.set({ "x", "v" }, "<leader>fV", function()
   local start_pos, end_pos, mode = vim.fn.getpos("v"), vim.fn.getpos("."), vim.fn.mode()
   local region = vim.fn.getregion(start_pos, end_pos, { type = mode })
-  return (":<C-u>Grep '%s' ~/dotfiles"):format(region[1])
+  return (":<C-u>Find '%s' ~/dotfiles"):format(region[1])
 end, { desc = "Find visual selection in dotfiles", expr = true })
 
 local function redir_cmd()
