@@ -1072,6 +1072,18 @@ func latestHistorySessionID(provider string, historyPath string, cwd string) str
 	return ""
 }
 
+func sessionIDBelongsToCWD(provider string, root string, cwd string, sessionID string) bool {
+	if cwd == "" || sessionID == "" {
+		return false
+	}
+	for _, item := range sessions(provider, root, cwd) {
+		if item.ID == sessionID {
+			return true
+		}
+	}
+	return false
+}
+
 func resolveCurrentID(provider string, root string, cwd string, historyPath string) string {
 	defaults := providers[provider]
 	for _, key := range defaults.envSessionKeys {
@@ -1080,15 +1092,18 @@ func resolveCurrentID(provider string, root string, cwd string, historyPath stri
 		}
 	}
 
+	historySessionID := latestHistorySessionID(provider, historyPath, cwd)
+	if historySessionID != "" {
+		if cwd == "" || sessionIDBelongsToCWD(provider, root, cwd, historySessionID) {
+			return historySessionID
+		}
+	}
+
 	if cwd != "" {
 		scoped := sessions(provider, root, cwd)
 		if len(scoped) > 0 {
 			return scoped[0].ID
 		}
-	}
-
-	if sessionID := latestHistorySessionID(provider, historyPath, cwd); sessionID != "" {
-		return sessionID
 	}
 
 	allSessions := sessions(provider, root, "")
