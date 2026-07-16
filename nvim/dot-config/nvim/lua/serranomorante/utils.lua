@@ -775,7 +775,7 @@ local function rg_json_match_to_qfitems(item, opts, entries_count)
     if should_add_rg_qf_pattern(line_text, entries_count + #entries, opts) then
       qfitem.pattern = qf_exact_line_pattern(line_text, col, line_offset == end_line_offset and end_col or #line_text)
     end
-    table.insert(entries, qfitem)
+    if not opts.qf_item_filter or opts.qf_item_filter(qfitem) then table.insert(entries, qfitem) end
   end
 
   return entries
@@ -803,6 +803,7 @@ end
 ---@field parse_batch_size? integer
 ---@field pattern_limit? integer|false
 ---@field pattern_line_max? integer
+---@field qf_item_filter? fun(item: vim.quickfix.entry): boolean
 ---@field rg_args? string[]
 ---@field search_paths? string[]
 ---@field title_prefix? string

@@ -8,6 +8,7 @@ set -euo pipefail
 # dotfiles-test-case: nvim-ctags-links-native-tag-navigation
 # dotfiles-test-case: nvim-ctags-links-ctrl-bracket-register
 # dotfiles-test-case: nvim-ctags-links-ctrl-bracket-set-fact
+# dotfiles-test-case: nvim-ctags-links-tag-references-qf
 # dotfiles-test-case: nvim-ctags-links-ctrl-bracket-manual-priority
 # dotfiles-test-case: nvim-ctags-links-ctrl-bracket-hyphen-role
 
@@ -206,6 +207,75 @@ nvim-ctags-links-ctrl-bracket-set-fact)
         '  assert(vim.fn.line(".") == 15, vim.fn.line("."))' \
         '  assert(vim.fn.col(".") == 5, vim.fn.col("."))' \
         '  assert(vim.fn.getline("."):match("^    dwm_patch_marker:"), vim.fn.getline("."))' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua "$project" "$lua_file"
+    ;;
+nvim-ctags-links-tag-references-qf)
+    require_tool ctags
+    require_tool rg
+    [[ -x "$nvim_bin" ]] || {
+        printf 'missing nvim binary: %s\n' "$nvim_bin" >&2
+        exit 77
+    }
+    project=$(make_project)
+    run_refresh_ctags "$project"
+
+    lua_file="${DOTFILES_TEST_TMP}/ctags-tag-references-qf.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  vim.cmd.runtime({ "after/plugin/ctags.lua", bang = true })' \
+        '  vim.cmd.edit("tasks/main.yml")' \
+        '  vim.bo.tagfunc = "v:lua.vim.lsp.tagfunc"' \
+        '  vim.cmd.normal({ "15G5|", bang = true })' \
+        '  assert(vim.fn.expand("<cword>") == "dwm_patch_marker", vim.fn.expand("<cword>"))' \
+        '  local mapping = vim.fn.maparg("<leader>cr", "n", false, true)' \
+        '  assert(mapping.desc == "Find ctags references", vim.inspect(mapping))' \
+        '  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<leader>cr", true, false, true), "x", false)' \
+        '  assert(vim.wait(3000, function() return vim.fn.getqflist({ size = 0 }).size >= 2 end), "quickfix was not populated")' \
+        '  local qf = vim.fn.getqflist({ items = 0, size = 0, winid = 0, title = 0 })' \
+        '  assert(qf.winid and qf.winid > 0, "quickfix window was not opened")' \
+        '  assert(qf.title:match("^%[Tag references%] %d+ results:"), qf.title)' \
+        '  local context = vim.fn.getqflist({ context = 0 }).context' \
+        '  assert(context.tag.name == "dwm_patch_marker", vim.inspect(context))' \
+        '  assert(context.tag.filename:match("tasks/main%.yml$"), vim.inspect(context.tag))' \
+        '  assert(context.tag.kind == "f", vim.inspect(context.tag))' \
+        '  local found_definition, found_usage, found_tags_file = false, false, false' \
+        '  for _, item in ipairs(qf.items) do' \
+        '    local filename = vim.fn.bufname(item.bufnr)' \
+        '    if filename:match("tasks/main%.yml$") and item.lnum == 15 and item.col == 5 then found_definition = true end' \
+        '    if filename:match("tasks/main%.yml$") and item.lnum == 21 and item.col == 31 then found_usage = true end' \
+        '    if filename:match("/tags$") then found_tags_file = true end' \
+        '  end' \
+        '  assert(found_definition, "missing set_fact definition reference")' \
+        '  assert(found_usage, "missing later fact usage reference")' \
+        '  assert(not found_tags_file, "tags file should be excluded from references")' \
+        '  vim.cmd.edit("group_vars/main.yml")' \
+        '  vim.cmd.normal({ "4G1|", bang = true })' \
+        '  assert(vim.fn.expand("<cword>") == "wine_prefix_setup_prefixes", vim.fn.expand("<cword>"))' \
+        '  vim.cmd.TagReferences()' \
+        '  assert(vim.wait(3000, function() return vim.fn.getqflist({ size = 0 }).size == 2 end), vim.inspect(vim.fn.getqflist({ size = 0 })))' \
+        '  local alias_context = vim.fn.getqflist({ context = 0 }).context' \
+        '  assert(vim.deep_equal(alias_context.reference_names, { "wine_prefix_setup_prefixes", "arch_wine_prefix_setups" }), vim.inspect(alias_context))' \
+        '  local alias_qf = vim.fn.getqflist({ items = 0 })' \
+        '  local found_alias_target, found_alias_reference, found_ctags_link = false, false, false' \
+        '  for _, item in ipairs(alias_qf.items) do' \
+        '    local filename = vim.fn.bufname(item.bufnr)' \
+        '    if filename:match("group_vars/main%.yml$") and item.lnum == 2 and item.col == 1 then found_alias_target = true end' \
+        '    if filename:match("group_vars/main%.yml$") and item.lnum == 4 and item.col == 1 then found_alias_reference = true end' \
+        '    if item.text:match("ctags%-link:") then found_ctags_link = true end' \
+        '  end' \
+        '  assert(found_alias_target, "missing ctags-link target symbol reference")' \
+        '  assert(found_alias_reference, "missing ctags-link alias reference")' \
+        '  assert(not found_ctags_link, "ctags-link metadata should be excluded from references")' \
+        '  vim.cmd("TagReferences not_a_tag")' \
+        '  local missing = vim.fn.getqflist({ context = 0, size = 0, title = 0 })' \
+        '  assert(missing.size == 0, vim.inspect(missing))' \
+        '  assert(missing.context.tag == "not_a_tag", vim.inspect(missing.context))' \
+        '  assert(missing.context.tag_resolved == false, vim.inspect(missing.context))' \
+        '  assert(missing.title == "[Tag references] no ctags entry: not_a_tag", missing.title)' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
         'local ok, err = xpcall(main, debug.traceback)' \
