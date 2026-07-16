@@ -30,7 +30,6 @@ node_javascript_npm_packages:
     version: 7.0.2
     bins:
       - tsc
-      - tsserver
   - name: "@vtsls/language-server"
     version: 0.3.0
     bins:

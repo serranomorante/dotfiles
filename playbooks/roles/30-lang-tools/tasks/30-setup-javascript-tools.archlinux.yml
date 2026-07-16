@@ -17,6 +17,20 @@
     state: link
   loop: "{{ node_javascript_npm_packages | subelements('bins') }}"
 
+- name: "[archlinux] Javascript language: stat obsolete tsserver symlink"
+  ansible.builtin.stat:
+    path: "{{ node_user_bin_dir }}/tsserver"
+    follow: false
+  register: var_stat_obsolete_tsserver_symlink
+
+- name: "[archlinux] Javascript language: remove obsolete tsserver symlink"
+  ansible.builtin.file:
+    path: "{{ node_user_bin_dir }}/tsserver"
+    state: absent
+  when:
+    - var_stat_obsolete_tsserver_symlink.stat.islnk | default(false)
+    - (var_stat_obsolete_tsserver_symlink.stat.lnk_source | default("")) == node_javascript_npm_prefix ~ "/bin/tsserver"
+
 - name: "[archlinux] Javascript language: ensure unpinned npm packages with diff capture"
   ansible.builtin.include_role:
     name: update-diff-capture
