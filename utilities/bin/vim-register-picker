@@ -1,0 +1,307 @@
+#!/usr/bin/env sh
+# Purpose: Open a global Vim register picker and paste the selected register.
+# Usage: vim-register-picker
+# Notes: Register values are read from the same cachectl namespace populated by Neovim's TextYankPost hook. When launched from Kitty, the parent process waits for the picker to close before copying and pasting, so terminal detection never sees the picker itself.
+
+set -eu
+
+prog=${0##*/}
+script_path=$0
+namespace=${VIM_REGISTER_PICKER_NAMESPACE:-${VIM_REGISTER_CLIPBOARD_NAMESPACE:-vim-registers}}
+cachectl_bin=${VIM_REGISTER_PICKER_CACHECTL:-${VIM_REGISTER_CLIPBOARD_CACHECTL:-}}
+register_app_id=${VIM_REGISTER_PICKER_APP_ID:-kitty-vim-registers}
+register_instance_group_prefix=${VIM_REGISTER_PICKER_INSTANCE_GROUP_PREFIX:-kitty-vim-registers}
+register_payload_out=${VIM_REGISTER_PICKER_PAYLOAD_OUT:-}
+register_paste_wait_attempts=${VIM_REGISTER_PICKER_PASTE_WAIT_ATTEMPTS:-40}
+register_paste_wait_interval=${VIM_REGISTER_PICKER_PASTE_WAIT_INTERVAL:-0.05}
+register_paste_settle_delay=${VIM_REGISTER_PICKER_PASTE_SETTLE_DELAY:-0.12}
+terminal_classes=${VIM_REGISTER_PICKER_TERMINALS:-${VIM_REGISTER_CLIPBOARD_TERMINALS:-kitty alacritty foot wezterm xterm urxvt konsole st ghostty kitty-lazygit kitty-nnn kitty-dmenu}}
+
+die() {
+    printf '%s: %s\n' "$prog" "$*" >&2
+    exit 2
+}
+
+usage() {
+    cat <<EOF
+Usage:
+  $prog
+
+Open the global Vim register picker and paste the selected register into the previously focused window.
+EOF
+}
+
+need_command() {
+    command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+find_cachectl() {
+    if [ -n "$cachectl_bin" ]; then
+        printf '%s\n' "$cachectl_bin"
+    elif [ -x "$HOME/dotfiles/utilities/bin/cachectl" ]; then
+        printf '%s\n' "$HOME/dotfiles/utilities/bin/cachectl"
+    else
+        command -v cachectl 2>/dev/null || die "cachectl not found"
+    fi
+}
+
+resolve_script_path() {
+    case $script_path in
+    /*) ;;
+    *)
+        resolved_script_path=$(command -v "$script_path" 2>/dev/null || true)
+        if [ -n "$resolved_script_path" ]; then
+            script_path=$resolved_script_path
+        fi
+        ;;
+    esac
+}
+
+register_panel_group() {
+    printf '%s-%s\n' "$register_instance_group_prefix" "${KITTY_OS_INSTANCE_ID:-default}"
+}
+
+register_specs() {
+    printf 'unnamed\t"\tunnamed\n'
+    printf 'small-delete\t-\tsmall delete\n'
+    printf 'plus\t+\tclipboard\n'
+    printf 'star\t*\tselection\n'
+    for reg in a b c d e f g h i j k l m n o p q r s t u v w x y z 0 1 2 3 4 5 6 7 8 9; do
+        printf '%s\t%s\tnamed\n' "$reg" "$reg"
+    done
+}
+
+one_line_preview() {
+    awk '
+        BEGIN { max = 160 }
+        {
+            gsub(/\r/, "")
+            gsub(/\t/, " ")
+            if (text != "") {
+                text = text " / " $0
+            } else {
+                text = $0
+            }
+            if (length(text) >= max) {
+                text = substr(text, 1, max - 1) "..."
+                print text
+                exit
+            }
+        }
+        END {
+            if (text != "") {
+                print text
+            }
+        }
+    '
+}
+
+register_entries() {
+    cachectl=$(find_cachectl)
+    tab=$(printf '\t')
+    register_specs | while IFS="$tab" read -r cache_key display_name register_kind; do
+        value=$("$cachectl" get "$namespace" "$cache_key" 2>/dev/null || true)
+        [ -n "$value" ] || continue
+        preview=$(printf '%s' "$value" | one_line_preview)
+        printf '%s\t%s\t%s\t%s\n' "$display_name" "$register_kind" "$preview" "$cache_key"
+    done
+}
+
+cleanup_register_tmpdir() {
+    if [ "${register_handoff:-0}" -eq 0 ] && [ -n "${register_tmpdir:-}" ] && [ -d "$register_tmpdir" ]; then
+        rm -rf "$register_tmpdir"
+    fi
+}
+
+normalize_window_class() {
+    printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+active_window_id() {
+    xdotool getactivewindow 2>/dev/null
+}
+
+window_class() {
+    xdotool getwindowclassname "$1" 2>/dev/null
+}
+
+is_picker_class() {
+    class=$(normalize_window_class "$1")
+    picker_class=$(normalize_window_class "$register_app_id")
+    [ "$class" = "$picker_class" ]
+}
+
+wait_for_paste_target() {
+    attempt=0
+    last_window_id=
+
+    while [ "$attempt" -lt "$register_paste_wait_attempts" ]; do
+        window_id=$(active_window_id) || {
+            attempt=$((attempt + 1))
+            sleep "$register_paste_wait_interval"
+            continue
+        }
+        class=$(window_class "$window_id") || {
+            attempt=$((attempt + 1))
+            sleep "$register_paste_wait_interval"
+            continue
+        }
+
+        if ! is_picker_class "$class"; then
+            if [ "$window_id" = "$last_window_id" ]; then
+                sleep "$register_paste_settle_delay"
+                return 0
+            fi
+            last_window_id=$window_id
+        else
+            last_window_id=
+        fi
+
+        attempt=$((attempt + 1))
+        sleep "$register_paste_wait_interval"
+    done
+
+    return 1
+}
+
+focused_is_terminal() {
+    window_id=$(active_window_id) || return 1
+    class=$(window_class "$window_id") || return 1
+    is_picker_class "$class" && return 1
+    class=$(printf '%s' "$class" | tr '[:upper:]' '[:lower:]')
+    for terminal_class in $terminal_classes; do
+        [ "$class" = "$terminal_class" ] && return 0
+    done
+    return 1
+}
+
+paste_clipboard() {
+    wait_for_paste_target || true
+
+    if focused_is_terminal; then
+        xdotool key --clearmodifiers ctrl+shift+v >/dev/null 2>&1
+    else
+        xdotool key --clearmodifiers ctrl+v >/dev/null 2>&1
+    fi
+}
+
+paste_payload() {
+    payload_path=$1
+    xclip -selection clipboard <"$payload_path"
+    paste_clipboard
+}
+
+pick_register() {
+    selected_register=
+    tab=$(printf '\t')
+    selected_register=$(register_entries | fzf \
+        --prompt="Register> " \
+        --delimiter="$tab" \
+        --with-nth=1,2,3 \
+        --wrap \
+        --gap=1 \
+        --preview-window='right:50%:wrap' \
+        --preview-label=' register ' \
+        --preview="DOTFILES_VIM_REGISTER_PICKER_ACTION=preview \"$script_path\" {4}") || exit 0
+    [ -n "$selected_register" ] || exit 0
+
+    IFS="$tab" read -r _display_name _register_kind _preview cache_key <<EOF
+$selected_register
+EOF
+
+    tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/vim-registers.XXXXXX") || exit 1
+    register_tmpdir=$tmpdir
+    register_handoff=0
+    trap cleanup_register_tmpdir EXIT INT HUP TERM
+    payload_path=$tmpdir/payload
+    "$(find_cachectl)" get "$namespace" "$cache_key" >"$payload_path" || die "register $cache_key is empty"
+
+    if [ "${VIM_REGISTER_PICKER_CONTEXT:-terminal}" = panel ]; then
+        [ -n "$register_payload_out" ] || die "missing panel payload output path"
+        cp "$payload_path" "$register_payload_out"
+        exit 0
+    fi
+
+    paste_payload "$payload_path"
+    register_handoff=1
+    rm -rf "$tmpdir"
+}
+
+launch_picker() {
+    resolve_script_path
+
+    if command -v kitten >/dev/null 2>&1; then
+        tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/vim-registers.XXXXXX") || exit 1
+        register_tmpdir=$tmpdir
+        register_handoff=0
+        trap cleanup_register_tmpdir EXIT INT HUP TERM
+        payload_path=$tmpdir/payload
+
+        kitten quick-access-terminal \
+            --instance-group="$(register_panel_group)" \
+            --detach=no \
+            --override app_id="$register_app_id" \
+            --override edge=none \
+            --override background_opacity=0.8 \
+            env \
+            DOTFILES_VIM_REGISTER_PICKER_ACTION=pick \
+            VIM_REGISTER_PICKER_APP_ID="$register_app_id" \
+            VIM_REGISTER_PICKER_CONTEXT=panel \
+            VIM_REGISTER_PICKER_INSTANCE_GROUP_PREFIX="$register_instance_group_prefix" \
+            VIM_REGISTER_PICKER_PAYLOAD_OUT="$payload_path" \
+            VIM_REGISTER_PICKER_NAMESPACE="$namespace" \
+            "$script_path"
+        status=$?
+
+        if [ "$status" -ne 0 ]; then
+            exit "$status"
+        fi
+
+        [ -s "$payload_path" ] || exit 0
+        paste_payload "$payload_path"
+        register_handoff=1
+        rm -rf "$tmpdir"
+        exit 0
+    fi
+
+    exec env \
+        DOTFILES_VIM_REGISTER_PICKER_ACTION=pick \
+        VIM_REGISTER_PICKER_APP_ID="$register_app_id" \
+        VIM_REGISTER_PICKER_CONTEXT=terminal \
+        VIM_REGISTER_PICKER_INSTANCE_GROUP_PREFIX="$register_instance_group_prefix" \
+        VIM_REGISTER_PICKER_NAMESPACE="$namespace" \
+        "$script_path"
+}
+
+case ${DOTFILES_VIM_REGISTER_PICKER_ACTION:-launch} in
+launch)
+    if [ "$#" -gt 0 ]; then
+        case $1 in
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "unexpected arguments: $*"
+            ;;
+        esac
+    fi
+    need_command fzf
+    need_command xclip
+    need_command xdotool
+    launch_picker
+    ;;
+pick)
+    need_command fzf
+    need_command xclip
+    need_command xdotool
+    pick_register
+    ;;
+preview)
+    [ "$#" -eq 1 ] || die "missing register cache key for preview"
+    "$(find_cachectl)" get "$namespace" "$1" || true
+    ;;
+*)
+    die "unsupported action: ${DOTFILES_VIM_REGISTER_PICKER_ACTION:-}"
+    ;;
+esac

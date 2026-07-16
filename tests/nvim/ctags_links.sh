@@ -6,6 +6,7 @@ set -euo pipefail
 # dotfiles-test-firejail: disabled
 # dotfiles-test-case: nvim-ctags-links-generate-structural-tags
 # dotfiles-test-case: nvim-ctags-links-native-tag-navigation
+# dotfiles-test-case: nvim-ctags-links-ctrl-bracket-register
 # dotfiles-test-case: nvim-ctags-links-ctrl-bracket-manual-priority
 # dotfiles-test-case: nvim-ctags-links-ctrl-bracket-hyphen-role
 
@@ -42,6 +43,18 @@ YAML
 - name: call role
   ansible.builtin.include_role:
     name: wine-installer-poll
+- name: inspect remote commit
+  ansible.builtin.command:
+    argv:
+      - git
+      - ls-remote
+      - git://git.example.org/project
+      - HEAD
+  register: var_remote_commit
+  changed_when: false
+- name: set marker
+  ansible.builtin.set_fact:
+    patch_marker: "project-{{ var_remote_commit.stdout.split()[0] }}-patch-stack-v1"
 YAML
     printf '%s\n' "$project"
 }
@@ -89,6 +102,7 @@ nvim-ctags-links-generate-structural-tags)
     ! rg -q $'^wine_prefix_setup_prefixes\tgroup_vars/main.yml\t/\\^wine_prefix_setup_prefixes:' "${project}/tags"
     rg -q $'^arch_music_plugins_wine_prefix\tgroup_vars/main.yml\t' "${project}/tags"
     rg -q $'^wine-installer-poll\troles/wine-installer-poll/tasks/main.yml\t1;"\tr\tline:1$' "${project}/tags"
+    rg -q $'^var_remote_commit\ttasks/main.yml\t11;"\ta\tline:11$' "${project}/tags"
     rg -q $'^manual_alias\tgroup_vars/main.yml\t2;"\tl\tline:2$' "${project}/tags"
     rg -q $'^second_alias\tgroup_vars/main.yml\t2;"\tl\tline:2$' "${project}/tags"
     LC_ALL=C sort -c "${project}/tags"
@@ -116,9 +130,38 @@ nvim-ctags-links-native-tag-navigation)
         '  vim.cmd("tag wine-installer-poll")' \
         '  assert(vim.api.nvim_buf_get_name(0):match("roles/wine%-installer%-poll/tasks/main%.yml$"), vim.api.nvim_buf_get_name(0))' \
         '  assert(vim.fn.line(".") == 1, vim.fn.line("."))' \
+        '  vim.cmd("tag var_remote_commit")' \
+        '  assert(vim.api.nvim_buf_get_name(0):match("tasks/main%.yml$"), vim.api.nvim_buf_get_name(0))' \
+        '  assert(vim.fn.line(".") == 11, vim.fn.line("."))' \
         '  vim.cmd("tag manual_alias")' \
         '  assert(vim.api.nvim_buf_get_name(0):match("group_vars/main%.yml$"), vim.api.nvim_buf_get_name(0))' \
         '  assert(vim.fn.line(".") == 2, vim.fn.line("."))' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua "$project" "$lua_file"
+    ;;
+nvim-ctags-links-ctrl-bracket-register)
+    require_tool ctags
+    [[ -x "$nvim_bin" ]] || {
+        printf 'missing nvim binary: %s\n' "$nvim_bin" >&2
+        exit 77
+    }
+    project=$(make_project)
+    run_refresh_ctags "$project"
+
+    lua_file="${DOTFILES_TEST_TMP}/ctags-ctrl-bracket-register.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  vim.o.tags = "tags"' \
+        '  vim.cmd.edit("tasks/main.yml")' \
+        '  vim.cmd.normal({ "15G31|", bang = true })' \
+        '  assert(vim.fn.expand("<cword>") == "var_remote_commit", vim.fn.expand("<cword>"))' \
+        '  vim.cmd.normal({ "\029", bang = true })' \
+        '  assert(vim.api.nvim_buf_get_name(0):match("tasks/main%.yml$"), vim.api.nvim_buf_get_name(0))' \
+        '  assert(vim.fn.line(".") == 11, vim.fn.line("."))' \
+        '  assert(vim.fn.getline("."):match("^  register: var_remote_commit"), vim.fn.getline("."))' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
         'local ok, err = xpcall(main, debug.traceback)' \
