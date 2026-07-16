@@ -61,6 +61,8 @@ CTAGS_ARGS = (
 COMMENT_LINK_RE = re.compile(r"^\s*(?:#|//|--|;)\s*ctags-link:\s*(?P<names>.+?)\s*$")
 COMMENT_RE = re.compile(r"^\s*(?:#|//|--|;)")
 ANSIBLE_REGISTER_RE = re.compile(r"^\s*register:\s*(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*(?:#.*)?$")
+ANSIBLE_SET_FACT_RE = re.compile(r"^(?P<indent>\s*)(?:ansible\.builtin\.)?set_fact:\s*(?:#.*)?$")
+YAML_IDENTIFIER_KEY_RE = re.compile(r"^(?P<indent>\s*)(?P<name>[A-Za-z_][A-Za-z0-9_]*):(?:\s|$)")
 TAG_NAME_RE = re.compile(r"^[^\s,]+$")
 TAG_LINE_RE = re.compile(
     rb"^(?P<name>[^\t]+)\t(?P<path>[^\t]+)\t(?P<address>.+);\"\t(?P<kind>[^\t]+)(?:\t|$)"
@@ -223,6 +225,68 @@ def collect_ansible_register_tags(root: Path, absolute_paths: bool) -> list[str]
     return tags
 
 
+def direct_set_fact_names(lines: list[str], start_index: int) -> list[tuple[str, int]]:
+    match = ANSIBLE_SET_FACT_RE.match(lines[start_index])
+    if not match:
+        return []
+
+    module_indent = len(match.group("indent"))
+    fact_indent: int | None = None
+    names: list[tuple[str, int]] = []
+
+    for index in range(start_index + 1, len(lines)):
+        line = lines[index]
+        if not line.strip() or COMMENT_RE.match(line):
+            continue
+
+        key_match = YAML_IDENTIFIER_KEY_RE.match(line)
+        line_indent = len(line) - len(line.lstrip(" "))
+        if line_indent <= module_indent:
+            break
+        if not key_match:
+            continue
+
+        key_indent = len(key_match.group("indent"))
+        if fact_indent is None:
+            fact_indent = key_indent
+        if key_indent < fact_indent:
+            break
+        if key_indent == fact_indent:
+            names.append((key_match.group("name"), index + 1))
+
+    return names
+
+
+def collect_ansible_set_fact_tags(root: Path, absolute_paths: bool) -> list[str]:
+    tags: list[str] = []
+    seen: set[tuple[str, str, int]] = set()
+
+    for dirpath, dirnames, filenames in os.walk(root):
+        current = Path(dirpath)
+        dirnames[:] = [dirname for dirname in dirnames if not is_excluded_dir(current / dirname)]
+
+        for filename in filenames:
+            path = current / filename
+            if path.suffix not in {".yml", ".yaml"} or is_excluded_file(path):
+                continue
+            try:
+                if path.stat().st_size > 1_000_000:
+                    continue
+                lines = path.read_text(encoding="utf-8").splitlines()
+            except (OSError, UnicodeDecodeError):
+                continue
+
+            for index in range(len(lines)):
+                for name, line_number in direct_set_fact_names(lines, index):
+                    key = (name, relpath(path, root), line_number)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    tags.append(tag_line(name, path, line_number, "f", root, absolute_paths))
+
+    return tags
+
+
 def ctags_link_names(synthetic_tags: list[str]) -> set[bytes]:
     names: set[bytes] = set()
     for tag in synthetic_tags:
@@ -284,6 +348,7 @@ def main() -> int:
             collect_role_tags(root, absolute_paths)
             + collect_manual_link_tags(root, absolute_paths)
             + collect_ansible_register_tags(root, absolute_paths)
+            + collect_ansible_set_fact_tags(root, absolute_paths)
         )
 
         with tagfile.open("wb") as output:
