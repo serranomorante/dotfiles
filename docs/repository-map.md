@@ -15,7 +15,7 @@ This map describes where changes usually belong. It is intentionally practical: 
 - `lazygit/`: lazygit configuration. See [lazygit.md](./lazygit.md) for pager and diff setup.
 - `home/`: generic home-directory dotfiles.
 - `PKM/`: personal knowledge management tooling.
-- HPI user config is owned by `PKM/dot-config/my/my/config/__init__.py`; Promnesia indexing sources are owned by `PKM/dot-config/promnesia/config.py`, with the runtime service and index timer under `PKM/dot-config/systemd/user/`.
+- HPI user config is owned by `PKM/dot-config/my/my/config/__init__.py`; Promnesia indexing sources are owned by `PKM/dot-config/promnesia/config.py`, with the runtime service and index timer under `PKM/dot-config/systemd/user/`. Self-hosted Hypothesis Docker services are prepared by `playbooks/roles/40-PKM/tasks/20-setup-HPI.archlinux.yml`; local patches to its `docker-compose.yml`, including Elasticsearch JVM sizing, live in `playbooks/roles/40-PKM/templates/hypothesis_h.patch`.
 - `termux/`: Termux-only dotfiles, including add-on integrations such as Termux:Widget shortcuts.
 - `tests/`: persistent dotfiles test runner, unit-specific test files, and test helpers. See [dotfiles-testing.md](./dotfiles-testing.md).
 - `assets/`: static assets, patches, scripts, services, udev rules, and media.

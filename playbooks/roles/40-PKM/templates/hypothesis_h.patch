@@ -14,6 +14,7 @@ index 3391c7b..a7690e0 100644
          start_period: 1m
      environment:
        - discovery.type=single-node
+       - ES_JAVA_OPTS=-Xms512m -Xmx512m
 +    restart: always
    rabbit:
      image: rabbitmq:3.12-management-alpine

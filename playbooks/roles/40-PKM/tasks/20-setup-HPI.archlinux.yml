@@ -68,12 +68,12 @@
 
 - name: "[archlinux] Setup HPI - set h setup marker facts"
   ansible.builtin.set_fact:
-    h_setup_marker: "main:h-patches-v1"
+    h_setup_marker: "main:h-patches-v2"
     h_setup_refresh_required: >-
       {{
         not h_setup_marker_result.stat.exists
         or not h_bouncer_checkout_result.stat.exists
-        or ((h_setup_marker_result.content | default('') | b64decode | trim) != 'main:h-patches-v1')
+        or ((h_setup_marker_result.content | default('') | b64decode | trim) != 'main:h-patches-v2')
       }}
 
 - name: "[archlinux] Setup HPI - clone h"
