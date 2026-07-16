@@ -233,7 +233,9 @@ function M.config()
 
   if utils.is_kitty_cwd_servername(vim.v.servername) then
     local generate_ctags = require("overseer.template.editor-tasks.TASK__generate_ctags")
-    overseer.run_task({ name = generate_ctags.name })
+    if not generate_ctags.is_home_project_root(utils.git_root_or_cwd()) then
+      overseer.run_task({ name = generate_ctags.name })
+    end
   end
 end
 
