@@ -237,16 +237,42 @@
   changed_when: false
   failed_when: false
 
-- name: "[archlinux] Lenovo Legion tools: fail when boot files are unsigned"
+- name: "[archlinux] Lenovo Legion tools: collect unsigned boot files"
+  ansible.builtin.set_fact:
+    var_legion_unsigned_boot_files: "{{ (var_legion_unsigned_boot_files | default([])) + [item | regex_replace('^[^/]*(/boot/.*) is not signed$', '\\1')] }}"
+  when:
+    - "'/boot/' in item"
+    - "' is not signed' in item"
+  loop: "{{ var_legion_sbctl_verify.stdout_lines }}"
+
+- name: "[archlinux] Lenovo Legion tools: save unsigned boot files in sbctl database"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - sbctl
+      - sign
+      - -s
+      - "{{ item }}"
+  changed_when: true
+  loop: "{{ var_legion_unsigned_boot_files | default([]) }}"
+
+- name: "[archlinux] Lenovo Legion tools: verify final Secure Boot signatures"
+  become: true
+  ansible.builtin.command: sbctl verify
+  register: var_legion_final_sbctl_verify
+  changed_when: false
+  failed_when: false
+
+- name: "[archlinux] Lenovo Legion tools: fail when boot files remain unsigned"
   ansible.builtin.assert:
     that:
       - >-
-        (var_legion_sbctl_verify.stdout_lines
+        (var_legion_final_sbctl_verify.stdout_lines
           | select('search', '/boot/')
           | select('search', ' is not signed')
           | list
           | length) == 0
-    fail_msg: "{{ var_legion_sbctl_verify.stdout_lines | select('search', '/boot/') | select('search', ' is not signed') | list }}"
+    fail_msg: "{{ var_legion_final_sbctl_verify.stdout_lines | select('search', '/boot/') | select('search', ' is not signed') | list }}"
 
 - name: "[archlinux] Lenovo Legion tools: seed upstream config"
   become: true
