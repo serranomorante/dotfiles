@@ -232,6 +232,9 @@ upstream_commit_from_version() {
     if [ -z "$commit" ]; then
         commit=$(printf '%s\n' "$version" | sed -n 's/.*\.r[0-9][0-9]*\.\([0-9A-Fa-f]\{7,\}\)$/\1/p')
     fi
+    if [ -z "$commit" ]; then
+        commit=$(printf '%s\n' "$version" | sed -n 's/^r[0-9][0-9]*\.\([0-9A-Fa-f]\{7,\}\)$/\1/p')
+    fi
     [ -n "$commit" ] || return 1
     printf '%s\n' "$commit"
 }
