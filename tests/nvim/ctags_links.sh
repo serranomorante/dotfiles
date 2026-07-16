@@ -110,8 +110,8 @@ nvim-ctags-links-generate-structural-tags)
     ! rg -q $'^wine_prefix_setup_prefixes\tgroup_vars/main.yml\t/\\^wine_prefix_setup_prefixes:' "${project}/tags"
     rg -q $'^arch_music_plugins_wine_prefix\tgroup_vars/main.yml\t' "${project}/tags"
     rg -q $'^wine-installer-poll\troles/wine-installer-poll/tasks/main.yml\t1;"\tr\tline:1$' "${project}/tags"
-    rg -q $'^var_remote_commit\ttasks/main.yml\t11;"\ta\tline:11$' "${project}/tags"
-    rg -q $'^dwm_patch_marker\ttasks/main.yml\t15;"\tf\tline:15$' "${project}/tags"
+    rg -q $'^var_remote_commit\ttasks/main.yml\t/var_remote_commit/;"\ta\tline:11$' "${project}/tags"
+    rg -q $'^dwm_patch_marker\ttasks/main.yml\t/dwm_patch_marker:/;"\tf\tline:15$' "${project}/tags"
     rg -q $'^manual_alias\tgroup_vars/main.yml\t2;"\tl\tline:2$' "${project}/tags"
     rg -q $'^second_alias\tgroup_vars/main.yml\t2;"\tl\tline:2$' "${project}/tags"
     LC_ALL=C sort -c "${project}/tags"
@@ -142,9 +142,11 @@ nvim-ctags-links-native-tag-navigation)
         '  vim.cmd("tag var_remote_commit")' \
         '  assert(vim.api.nvim_buf_get_name(0):match("tasks/main%.yml$"), vim.api.nvim_buf_get_name(0))' \
         '  assert(vim.fn.line(".") == 11, vim.fn.line("."))' \
+        '  assert(vim.fn.col(".") == 13, vim.fn.col("."))' \
         '  vim.cmd("tag dwm_patch_marker")' \
         '  assert(vim.api.nvim_buf_get_name(0):match("tasks/main%.yml$"), vim.api.nvim_buf_get_name(0))' \
         '  assert(vim.fn.line(".") == 15, vim.fn.line("."))' \
+        '  assert(vim.fn.col(".") == 5, vim.fn.col("."))' \
         '  vim.cmd("tag manual_alias")' \
         '  assert(vim.api.nvim_buf_get_name(0):match("group_vars/main%.yml$"), vim.api.nvim_buf_get_name(0))' \
         '  assert(vim.fn.line(".") == 2, vim.fn.line("."))' \
@@ -174,6 +176,7 @@ nvim-ctags-links-ctrl-bracket-register)
         '  vim.cmd.normal({ "\029", bang = true })' \
         '  assert(vim.api.nvim_buf_get_name(0):match("tasks/main%.yml$"), vim.api.nvim_buf_get_name(0))' \
         '  assert(vim.fn.line(".") == 11, vim.fn.line("."))' \
+        '  assert(vim.fn.col(".") == 13, vim.fn.col("."))' \
         '  assert(vim.fn.getline("."):match("^  register: var_remote_commit"), vim.fn.getline("."))' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
@@ -201,6 +204,7 @@ nvim-ctags-links-ctrl-bracket-set-fact)
         '  vim.cmd.normal({ "\029", bang = true })' \
         '  assert(vim.api.nvim_buf_get_name(0):match("tasks/main%.yml$"), vim.api.nvim_buf_get_name(0))' \
         '  assert(vim.fn.line(".") == 15, vim.fn.line("."))' \
+        '  assert(vim.fn.col(".") == 5, vim.fn.col("."))' \
         '  assert(vim.fn.getline("."):match("^    dwm_patch_marker:"), vim.fn.getline("."))' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \

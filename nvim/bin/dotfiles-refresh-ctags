@@ -98,6 +98,19 @@ def tag_line(name: str, path: Path, line: int, kind: str, root: Path, absolute_p
     return f"{name}\t{tag_path(path, root, absolute_paths)}\t{line};\"\t{kind}\tline:{line}\n"
 
 
+def tag_search_line(
+    name: str,
+    path: Path,
+    line: int,
+    pattern: str,
+    kind: str,
+    root: Path,
+    absolute_paths: bool,
+) -> str:
+    pattern = pattern.replace("\\", "\\\\").replace("/", "\\/")
+    return f"{name}\t{tag_path(path, root, absolute_paths)}\t/{pattern}/;\"\t{kind}\tline:{line}\n"
+
+
 def role_target(role_dir: Path) -> Path | None:
     candidates = (
         role_dir / "tasks" / "main.yml",
@@ -220,7 +233,7 @@ def collect_ansible_register_tags(root: Path, absolute_paths: bool) -> list[str]
                 if key in seen:
                     continue
                 seen.add(key)
-                tags.append(tag_line(name, path, line_number, "a", root, absolute_paths))
+                tags.append(tag_search_line(name, path, line_number, name, "a", root, absolute_paths))
 
     return tags
 
@@ -282,7 +295,7 @@ def collect_ansible_set_fact_tags(root: Path, absolute_paths: bool) -> list[str]
                     if key in seen:
                         continue
                     seen.add(key)
-                    tags.append(tag_line(name, path, line_number, "f", root, absolute_paths))
+                    tags.append(tag_search_line(name, path, line_number, f"{name}:", "f", root, absolute_paths))
 
     return tags
 
