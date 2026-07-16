@@ -222,6 +222,18 @@ assert sws_datasource["defaultRegistryUrlTemplate"] == "https://www.sws-extensio
 assert sws_datasource["format"] == "html"
 
 for manager in config["customManagers"]:
+    if manager.get("depNameTemplate") == "pipeasio":
+        assert manager["datasourceTemplate"] == "github-tags"
+        assert manager["packageNameTemplate"] == "M0n7y5/pipeasio"
+        assert manager["extractVersionTemplate"] == "^v(?<version>.*)$"
+        assert manager["validationUrlTemplates"] == [
+            "https://github.com/M0n7y5/pipeasio/archive/refs/tags/v{{ newValue }}.tar.gz"
+        ]
+        break
+else:
+    raise SystemExit("missing PipeASIO manager")
+
+for manager in config["customManagers"]:
     if manager.get("depNameTemplate") == "sws-extension-windows-x64":
         assert manager["datasourceTemplate"] == "custom.sws-pre-release-downloads"
         assert manager["extractVersionTemplate"] == "^sws-(?<version>\\d+\\.\\d+\\.\\d+\\.\\d+)-Windows-x64-[0-9a-f]+\\.exe$"
@@ -245,6 +257,9 @@ for manager in config["customManagers"]:
 else:
     raise SystemExit("missing Helgobox manager")
 PY
+    rg -q 'arch_pipeasio_setup:' "$music_defaults"
+    rg -Fq 'archive_url: "https://github.com/M0n7y5/pipeasio/archive/refs/tags/v{{ arch_pipeasio_setup.version }}.tar.gz"' "$music_defaults"
+    refute rg -q 'pipeasio-[0-9][.0-9]*' "$music_defaults"
     rg -q 'arch_reaper_sws_extension_setup:' "$music_defaults"
     rg -q 'arch_helgobox_setup:' "$music_defaults"
     ;;

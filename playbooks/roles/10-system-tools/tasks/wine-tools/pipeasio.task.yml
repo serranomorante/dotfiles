@@ -23,7 +23,7 @@
   ansible.builtin.get_url:
     url: "{{ arch_pipeasio_setup.archive_url }}"
     dest: "{{ arch_pipeasio_setup.archive_path }}"
-    checksum: "{{ arch_pipeasio_setup.archive_checksum }}"
+    checksum: "{{ arch_pipeasio_setup.archive_checksum | default(omit) }}"
     mode: "0644"
 
 - name: "[archlinux] Wine tools: ensure pipeasio portable source path"
