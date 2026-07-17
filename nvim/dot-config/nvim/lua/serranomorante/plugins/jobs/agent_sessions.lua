@@ -1783,9 +1783,19 @@ function M.open_new(provider_name, opts)
       components = { "defaults_without_notification", "serranomorante.agent_watch" },
     })
 
-    open_task(provider, task, prompt, { wait_for_ready = true, start_win = start_win, open_output = false })
+    local prompt_after_session_watch = provider.name == "codex" and prompt or nil
+    local prompt_before_session_watch = prompt_after_session_watch and nil or prompt
+
+    open_task(
+      provider,
+      task,
+      prompt_before_session_watch,
+      { wait_for_ready = true, start_win = start_win, open_output = false }
+    )
     if not start_and_open_task_output(provider, task, start_win) then return end
+    if provider.name == "codex" then known_session_ids = await(async_session_ids(provider, cwd)) end
     link_new_task_to_session_id(provider, task, cwd, known_session_ids)
+    if prompt_after_session_watch then paste_prompt(provider, task, prompt_after_session_watch) end
   end):catch(function(err) vim.notify(tostring(err), vim.log.levels.ERROR) end)
 end
 

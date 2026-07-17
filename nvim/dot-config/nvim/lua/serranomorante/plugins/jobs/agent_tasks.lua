@@ -25,6 +25,8 @@ local PROMPT_MARKERS = {
   claude = "❯",
   gemini = "❯",
 }
+local LEGACY_ASCII_PROMPT_MARKER = "> "
+local PROMPT_DECORATION_CHARS = "│>❯›·*"
 local TMUX_SESSION_NAME_METADATA = "agent_tmux_session_name"
 
 local DEFAULT_READ_LINES = 80
@@ -116,10 +118,30 @@ end
 local function role_badge(role) return role == ROLE_SUB and "SUB" or "MASTER" end
 
 ---@param provider string?
----@return string?
-local function prompt_marker_for_provider(provider)
-  if type(provider) ~= "string" then return nil end
-  return PROMPT_MARKERS[provider] or nil
+---@return string[]
+local function prompt_markers_for_provider(provider)
+  local marker = type(provider) == "string" and PROMPT_MARKERS[provider] or nil
+  if marker then return { marker } end
+
+  local markers = { LEGACY_ASCII_PROMPT_MARKER }
+  local seen = { [LEGACY_ASCII_PROMPT_MARKER] = true }
+  for _, value in pairs(PROMPT_MARKERS) do
+    if not seen[value] then
+      table.insert(markers, value)
+      seen[value] = true
+    end
+  end
+  return markers
+end
+
+---@param provider string?
+---@param line string
+---@return boolean
+local function line_has_prompt_marker(provider, line)
+  for _, marker in ipairs(prompt_markers_for_provider(provider)) do
+    if line:find(marker, 1, true) then return true end
+  end
+  return false
 end
 
 ---@param t overseer.Task
@@ -147,9 +169,9 @@ local function detect_state(provider, lines)
   local from = math.max(1, #lines - 25)
   local tail = table.concat(vim.list_slice(lines, from, #lines), "\n")
   if tail:find("esc to interrupt", 1, true) then return "busy" end
-  local marker = prompt_marker_for_provider(provider)
-  if marker and tail:find(marker, 1, true) then return "idle" end
-  if tail:find("> ", 1, true) then return "idle" end
+  for _, marker in ipairs(prompt_markers_for_provider(provider)) do
+    if tail:find(marker, 1, true) then return "idle" end
+  end
   return "unknown"
 end
 
@@ -331,17 +353,19 @@ end
 
 ---Classify what a TUI agent is doing from its terminal tail. Pure + instant
 ---(no blocking) so `state`/`wait` never freeze Neovim.
+---@param provider string?
 ---@param lines string[]?
 ---@return string state  -- "running"|"awaiting_choice"|"idle"|"unknown"
 ---@return table options -- [{n=integer,label=string}] when awaiting_choice
-local function classify_state(lines)
+local function classify_state(provider, lines)
   if type(lines) ~= "table" or #lines == 0 then return "unknown", {} end
   local from = math.max(1, #lines - 30)
   local tail_lines = vim.list_slice(lines, from, #lines)
   local tail = table.concat(tail_lines, "\n")
 
-  -- BUSY: the agent is working (spinner shows the interrupt hint).
-  if tail:find("esc to interrupt", 1, true) then return "running", {} end
+  local latest_busy = nil
+  local latest_prompt = nil
+  local latest_choice = nil
 
   -- AWAITING A CHOICE: a numbered selection menu is open. Parse the options so
   -- the caller knows exactly what to pick (→ `choose <n>`).
@@ -349,19 +373,40 @@ local function classify_state(lines)
     or tail:find("to navigate", 1, true) ~= nil
     or tail:find("to select", 1, true) ~= nil
   local options = {}
-  for _, ln in ipairs(tail_lines) do
-    -- strip leading box-drawing/marker decoration ("│", "❯", ">", spaces), then "N. label"
-    local num, label = ln:match("^[%s│>❯·*]*(%d+)%.%s+(.+)$")
+  for idx, ln in ipairs(tail_lines) do
+    if ln:find("esc to interrupt", 1, true) then latest_busy = idx end
+    if line_has_prompt_marker(provider, ln) then latest_prompt = idx end
+    if ln:find("Enter to select", 1, true) or ln:find("to navigate", 1, true) or ln:find("to select", 1, true) then
+      latest_choice = idx
+    end
+    -- Strip leading box-drawing/marker decoration, then parse "N. label".
+    local num, label = ln:match(("^[%%s%s]*(%%d+)%%.%%s+(.+)$"):format(PROMPT_DECORATION_CHARS))
     if num and label then
       label = label:gsub("%s+$", "")
       table.insert(options, { n = tonumber(num), label = label })
+      latest_choice = idx
     end
   end
-  if #options >= 2 and (is_choice or tail:find("❯%s*%d+%.")) then return "awaiting_choice", options end
+  if
+    #options >= 2
+    and latest_choice
+    and latest_choice >= (latest_prompt or 0)
+    and latest_choice >= (latest_busy or 0)
+    and (is_choice or latest_prompt)
+  then
+    return "awaiting_choice", options
+  end
+
+  -- BUSY: the agent is working (spinner shows the interrupt hint). The tail may
+  -- still contain an older busy hint after the TUI has returned to the prompt, so
+  -- only trust it when it is newer than the last prompt/choice signal.
+  if latest_busy and latest_busy > (latest_prompt or 0) and latest_busy > (latest_choice or 0) then
+    return "running", {}
+  end
 
   -- IDLE: a prompt marker is present and nothing is running → ready for input
   -- (a free-text question from the agent also lands here; read `tail` to see it).
-  if tail:find("❯", 1, true) or tail:find("│ >", 1, true) or tail:find("> ", 1, true) then return "idle", {} end
+  if latest_prompt then return "idle", {} end
   return "unknown", {}
 end
 
@@ -375,7 +420,8 @@ function M.state(ref)
   local t, err = resolve_task(ref)
   if not t then return vim.json.encode({ ok = false, error = err }) end
   local lines = task_buffer_lines(t)
-  local state, options = classify_state(lines)
+  local provider = task_provider(t)
+  local state, options = classify_state(provider, lines)
   local tail = ""
   if type(lines) == "table" then
     local trimmed = vim.deepcopy(lines)
@@ -388,7 +434,7 @@ function M.state(ref)
     ok = true,
     id = t.id,
     session_id = task_session_id(t),
-    provider = task_provider(t),
+    provider = provider,
     role = task_role(t),
     state = state,
     options = options,
@@ -420,7 +466,7 @@ end
 ---@return string state  -- "running"|"awaiting_choice"|"idle"|"unknown"
 function M.task_state(task)
   if type(task) ~= "table" then return "unknown" end
-  local state = classify_state(task_buffer_lines(task))
+  local state = classify_state(task_provider(task), task_buffer_lines(task))
   return state
 end
 

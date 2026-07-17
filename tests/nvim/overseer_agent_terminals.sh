@@ -411,8 +411,8 @@ while [ "$#" -gt 0 ]; do
         shift 2
         ;;
     ids)
-        printf 'ids-called\n' >"${DOTFILES_TEST_TMP}/ids-called"
         sleep 5
+        printf 'ids-finished\n' >"${DOTFILES_TEST_TMP}/ids-finished"
         printf '{"version":2,"provider":"%s","ids":[]}\n' "$provider"
         exit 0
         ;;
@@ -455,7 +455,7 @@ SH
         '    return vim.bo[bufnr].buftype == "terminal" and vim.b[bufnr].overseer_task ~= nil' \
         '  end, 20)' \
         '  assert(focused, "new Codex task terminal waited for session id scan")' \
-        '  assert(vim.fn.filereadable(vim.env.DOTFILES_TEST_TMP .. "/ids-called") == 0, "Codex new session should not call the blocking ids scan")' \
+        '  assert(vim.fn.filereadable(vim.env.DOTFILES_TEST_TMP .. "/ids-finished") == 0, "Codex new session focus should not wait for the ids scan to finish")' \
         '  for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
         '    pcall(function() task:dispose(true) end)' \
         '  end' \
@@ -1087,10 +1087,18 @@ while [ "$#" -gt 0 ]; do
         shift 2
         ;;
     ids)
-        printf '{"version":2,"provider":"%s","ids":[]}\n' "${provider:-codex}"
+        printf '{"version":2,"provider":"%s","ids":["existing-elasticsearch-session"]}\n' "${provider:-codex}"
         exit 0
         ;;
     watch-new)
+        known_ids=${3:-}
+        case "$known_ids" in
+        *existing-elasticsearch-session*) ;;
+        *)
+            printf '{"version":2,"provider":"%s","event":"timeout"}\n' "${provider:-codex}"
+            exit 0
+            ;;
+        esac
         printf '{"version":2,"provider":"%s","event":"session","session":{"provider":"%s","path":"%s/session.jsonl","id":"renamed-session","cwd":"%s","timestamp":"2026-07-07T10:34:15Z","updated_at":"2026-07-07T10:35:00Z","title":"renamed session"}}\n' "${provider:-codex}" "${provider:-codex}" "${DOTFILES_TEST_TMP}" "${DOTFILES_TEST_TMP}"
         exit 0
         ;;
