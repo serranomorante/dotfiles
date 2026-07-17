@@ -32,6 +32,34 @@
     group: wheel
     mode: "2775"
 
+- name: "[archlinux] AUR: check makepkg PGP keys"
+  ansible.builtin.command:
+    argv:
+      - gpg
+      - --list-keys
+      - --with-colons
+      - "{{ item.fingerprint }}"
+  changed_when: false
+  failed_when: false
+  register: var_arch_aur_makepkg_pgp_key_checks
+  loop: "{{ arch_aur_makepkg_pgp_keys }}"
+  loop_control:
+    label: "{{ item.fingerprint }} ({{ item.packages | join(', ') }})"
+
+- name: "[archlinux] AUR: import missing makepkg PGP keys"
+  ansible.builtin.command:
+    argv:
+      - gpg
+      - --keyserver
+      - "{{ item.item.keyserver }}"
+      - --recv-keys
+      - "{{ item.item.fingerprint }}"
+  changed_when: true
+  loop: "{{ var_arch_aur_makepkg_pgp_key_checks.results }}"
+  loop_control:
+    label: "{{ item.item.fingerprint }} ({{ item.item.packages | join(', ') }})"
+  when: item.rc != 0
+
 - name: "[archlinux] AUR: check local package repository database"
   ansible.builtin.stat:
     path: "{{ arch_aur_local_repo_path }}/{{ arch_aur_local_repo_name }}.db.tar.gz"

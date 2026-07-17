@@ -48,6 +48,12 @@ davinci_resolve_blackmagic_password_keyring:
 arch_aur_local_repo_name: aur-local
 arch_aur_local_repo_path: /var/cache/pacman/aur-local
 arch_aur_local_chroot_path: /var/lib/aurbuild
+arch_aur_makepkg_pgp_keys:
+  - fingerprint: 8048643BA2C840F4F92A195FF54984BFA16C640F
+    keyserver: hkps://keyserver.ubuntu.com
+    owner: Glenn Randers-Pehrson
+    packages:
+      - libpng12
 arch_nvidia_libs_version: 0.8.5
 arch_amdgpu_power_dpm_state: balanced
 arch_amdgpu_force_performance_level: auto
