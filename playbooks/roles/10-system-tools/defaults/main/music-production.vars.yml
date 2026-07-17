@@ -8,11 +8,11 @@ arch_wineasio_setup:
   repo: https://github.com/wineasio/wineasio
   repo_path: "{{ ansible_facts.env.HOME }}/data/repos/wineasio"
   version: master
-  number_inputs: 16
-  number_outputs: 16
+  number_inputs: 2
+  number_outputs: 2
   autostart_server: 0
   connect_to_hardware: 1
-  fixed_buffersize: 0
+  fixed_buffersize: 1
   reaper_block_size: 512
   reaper_sample_rate: 48000
 
