@@ -18,13 +18,7 @@ arch_wineasio_setup:
   reaper_sample_rate: 48000
 
 arch_pipeasio_setup:
-  version: 1.2.2
   configure_reaper: false
-  archive_url: "https://github.com/M0n7y5/pipeasio/archive/refs/tags/v{{ arch_pipeasio_setup.version }}.tar.gz"
-  archive_path: "{{ ansible_facts.env.HOME }}/data/Downloads/music-production/pipeasio-{{ arch_pipeasio_setup.version }}.tar.gz"
-  source_path: "{{ ansible_facts.env.HOME }}/data/repos/pipeasio-{{ arch_pipeasio_setup.version }}"
-  build_path: "{{ ansible_facts.env.HOME }}/data/repos/pipeasio-{{ arch_pipeasio_setup.version }}/build-wine-{{ arch_wine_staging_version }}"
-  register_reaper_portable: false
 
 arch_reaper_sws_extension_setup:
   version: 2.14.0.7
