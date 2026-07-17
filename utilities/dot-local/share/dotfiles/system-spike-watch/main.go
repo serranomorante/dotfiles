@@ -54,6 +54,7 @@ var (
 	dockerScopePattern = regexp.MustCompile(`^docker-([a-f0-9]{12,64})\.scope$`)
 	monitorUnits       = map[string]bool{
 		"system-spike-watch.service":     true,
+		"dotfiles-health-notify.service": true,
 		"system-spike-notify.service":    true,
 		"dotfiles-spikes.service":        true,
 		"dotfiles-health.service":        true,

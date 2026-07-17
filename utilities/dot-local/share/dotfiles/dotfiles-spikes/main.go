@@ -24,6 +24,8 @@ const (
 var (
 	monitorUnits = map[string]bool{
 		"system-spike-watch.service":     true,
+		"dotfiles-health-notify.service": true,
+		"system-spike-notify.service":    true,
 		"dotfiles-spikes.service":        true,
 		"dotfiles-health.service":        true,
 		"browser-task-snapshotd.service": true,
@@ -1869,7 +1871,7 @@ func writeRules() error {
 		"",
 		"## Ignored Noise Candidates",
 		"",
-		"- `system-spike-watch.service`, `system-spike-notify.service`, `dotfiles-spikes.service`, `dotfiles-health.service`, and `browser-task-snapshotd.service` as primary suspects; report them as monitor overhead instead.",
+		"- `system-spike-watch.service`, `dotfiles-health-notify.service`, `system-spike-notify.service`, `dotfiles-spikes.service`, `dotfiles-health.service`, and `browser-task-snapshotd.service` as primary suspects; report them as monitor overhead instead.",
 		"- `sddm.service` as the host unit for `Xorg`; keep it as victim-unit context unless a separate client or helper process provides causal evidence.",
 		"- One-off low-confidence spikes below the freeze threshold.",
 		"- Known foreground commands that the user intentionally launched and that do not affect `Xorg`, input, compositor, or audio.",

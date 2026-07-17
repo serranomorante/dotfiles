@@ -1,10 +1,10 @@
 [Unit]
-Description=Notify about new Xorg spike events
+Description=Notify about configured System Health events
 After=graphical-session.target system-spike-watch.service
 Wants=system-spike-watch.service
 
 [Service]
-ExecStart=%h/bin/system-spike-notify run
+ExecStart=%h/bin/dotfiles-health-notify run
 Restart=on-failure
 RestartSec=5s
 Nice=15

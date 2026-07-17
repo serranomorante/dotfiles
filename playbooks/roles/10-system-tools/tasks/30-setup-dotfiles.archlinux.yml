@@ -228,23 +228,23 @@
   changed_when: "'installed' in var_system_spike_watch_build.stdout_lines"
   notify: "10-system-tools : handler_restart_system_spike_watch_service"
 
-- name: "[archlinux] Dotfiles: compile system spike notifier"
+- name: "[archlinux] Dotfiles: compile system health notifier"
   ansible.builtin.shell: |
     set -eu
     tmp=$(mktemp)
     trap 'rm -f "$tmp"' EXIT HUP INT TERM
     GOWORK=off go build -buildvcs=false -trimpath -ldflags="-s -w" -o "$tmp" .
-    if [ -x "{{ ansible_facts.env.HOME }}/bin/system-spike-notify" ] && cmp -s "$tmp" "{{ ansible_facts.env.HOME }}/bin/system-spike-notify"; then
+    if [ -x "{{ ansible_facts.env.HOME }}/bin/dotfiles-health-notify" ] && cmp -s "$tmp" "{{ ansible_facts.env.HOME }}/bin/dotfiles-health-notify"; then
       printf 'unchanged\n'
     else
-      install -m 755 "$tmp" "{{ ansible_facts.env.HOME }}/bin/system-spike-notify"
+      install -m 755 "$tmp" "{{ ansible_facts.env.HOME }}/bin/dotfiles-health-notify"
       printf 'installed\n'
     fi
   args:
-    chdir: "{{ ansible_facts.env.HOME }}/.local/share/dotfiles/system-spike-notify"
-  register: var_system_spike_notify_build
-  changed_when: "'installed' in var_system_spike_notify_build.stdout_lines"
-  notify: "10-system-tools : handler_restart_system_spike_notify_service"
+    chdir: "{{ ansible_facts.env.HOME }}/.local/share/dotfiles/dotfiles-health-notify"
+  register: var_dotfiles_health_notify_build
+  changed_when: "'installed' in var_dotfiles_health_notify_build.stdout_lines"
+  notify: "10-system-tools : handler_restart_dotfiles_health_notify_service"
 
 - name: "[archlinux] Dotfiles: compile browser task snapshot receiver"
   ansible.builtin.command:
@@ -299,31 +299,46 @@
     state: started
     daemon_reload: true
 
-- name: "[archlinux] Dotfiles: stat system spike notifier service"
+- name: "[archlinux] Dotfiles: stat system health notifier service"
   ansible.builtin.stat:
-    path: ~/dotfiles/utilities/dot-config/systemd/user/system-spike-notify.service
+    path: ~/dotfiles/utilities/dot-config/systemd/user/dotfiles-health-notify.service
     checksum_algorithm: sha256
-  register: var_system_spike_notify_service
+  register: var_dotfiles_health_notify_service
 
-- name: "[archlinux] Dotfiles: ensure system spike notifier"
+- name: "[archlinux] Dotfiles: disable retired system spike notifier"
   ansible.builtin.systemd_service:
     scope: user
     name: system-spike-notify.service
+    enabled: false
+    masked: false
+    state: stopped
+    daemon_reload: true
+  failed_when: false
+
+- name: "[archlinux] Dotfiles: remove retired system spike notifier binary"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/bin/system-spike-notify"
+    state: absent
+
+- name: "[archlinux] Dotfiles: ensure system health notifier"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: dotfiles-health-notify.service
     enabled: true
     masked: false
     state: started
     daemon_reload: true
 
-- name: "[archlinux] Dotfiles: record applied system spike notifier checksum"
+- name: "[archlinux] Dotfiles: record applied system health notifier checksum"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
   vars:
-    dotfiles_marker_name: system-spike-notify-sha256
-    dotfiles_marker_content: "{{ var_system_spike_notify_service.stat.checksum }}\n"
+    dotfiles_marker_name: dotfiles-health-notify-sha256
+    dotfiles_marker_content: "{{ var_dotfiles_health_notify_service.stat.checksum }}\n"
     dotfiles_marker_notify:
-      - "10-system-tools : handler_restart_system_spike_notify_service"
-  when: var_system_spike_notify_service.stat.exists
+      - "10-system-tools : handler_restart_dotfiles_health_notify_service"
+  when: var_dotfiles_health_notify_service.stat.exists
 
 - name: "[archlinux] Dotfiles: install laptop LAN NetworkManager dispatcher"
   become: true

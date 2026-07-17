@@ -1,5 +1,7 @@
 ^/\.gitignore$
 ^roles$
+^action_plugins$
+^callback_plugins$
 \.mypy_cache.*
 ^/\.claude
 ^/\.codex

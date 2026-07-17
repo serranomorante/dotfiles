@@ -20,6 +20,8 @@ discovery_sources_dir="$sources_dir/discovery"
 reports_dir="$health_dir/reports"
 spikes_state_dir=${DOTFILES_SPIKES_STATE_DIR:-"$HOME/.local/state/dotfiles/system-spikes"}
 spike_events_dir="$spikes_state_dir/events"
+ansible_events_dir=${DOTFILES_ANSIBLE_EVENTS_DIR:-"$HOME/.local/state/dotfiles/ansible-events"}
+ansible_events_log_dir="$ansible_events_dir/events"
 manual_start='<!-- dotfiles-health:manual-reminders:start -->'
 manual_end='<!-- dotfiles-health:manual-reminders:end -->'
 
@@ -548,6 +550,61 @@ spike_event_count_today() {
     awk 'NF {count++} END {print count + 0}' "$file"
 }
 
+ansible_event_files() {
+    [ -d "$ansible_events_log_dir" ] || return 0
+    find "$ansible_events_log_dir" -type f -name '*.jsonl' -mtime -7 -print 2>/dev/null | sort
+}
+
+ansible_signal_count() {
+    files=$(ansible_event_files)
+    [ -n "$files" ] || {
+        printf '0\n'
+        return
+    }
+    # shellcheck disable=SC2086
+    awk 'NF {count++} END {print count + 0}' $files 2>/dev/null || printf '0\n'
+}
+
+ansible_signal_lines() {
+    files=$(ansible_event_files)
+    [ -n "$files" ] || return 0
+    # shellcheck disable=SC2086
+    python3 -c '
+import json
+import sys
+
+events = []
+for path in sys.argv[1:]:
+    try:
+        with open(path, encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    event = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if event.get("schema") != "dotfiles.ansible-event.v1":
+                    continue
+                events.append(event)
+    except OSError:
+        continue
+
+events.sort(key=lambda item: item.get("timestamp", ""))
+for event in events[-20:]:
+    stamp = event.get("timestamp", "unknown-time")
+    severity = event.get("severity", "unknown")
+    host = event.get("host") or "unknown-host"
+    task = event.get("task") or "unknown-task"
+    message = event.get("message") or ""
+    print(f"{stamp} [{severity}] {host} {task}: {message}")
+' $files 2>/dev/null || {
+        # shellcheck disable=SC2086
+        tail -n 20 $files 2>/dev/null
+    }
+}
+
 journal_warning_lines() {
     {
         journalctl --user -p warning..alert --since today -n 1000 --no-pager 2>/dev/null |
@@ -880,7 +937,7 @@ write_source_page() {
     evidence=$5
     case "$name" in
     system-health-bluetooth | system-health-storage) file="$hardware_sources_dir/$name.md" ;;
-    system-health-containers | system-health-sync | system-health-editor | system-health-music) file="$app_sources_dir/$name.md" ;;
+    system-health-ansible | system-health-containers | system-health-sync | system-health-editor | system-health-music) file="$app_sources_dir/$name.md" ;;
     *) file="$sources_dir/$name.md" ;;
     esac
 
@@ -1165,6 +1222,25 @@ EOF
     write_source_page "system-health-security" "Auth And Security Signals" "$count" "$commands" "$signals"
 }
 
+write_ansible_page() {
+    signals=$(ansible_signal_lines)
+    count=$(printf '%s\n' "$signals" | count_lines)
+    commands=$(
+        cat <<'EOF'
+```sh
+find ~/.local/state/dotfiles/ansible-events/events -type f -name '*.jsonl' -mtime -7 -print -exec tail -n 50 {} \;
+```
+
+```sh
+cd ~/dotfiles/playbooks
+ansible-playbook --syntax-check tools.yml -l localhost
+```
+EOF
+    )
+
+    write_source_page "system-health-ansible" "Ansible Playbook Signals" "$count" "$commands" "$signals"
+}
+
 write_unclassified_page() {
     signals=$(unclassified_warning_lines)
     families=$(unclassified_warning_families)
@@ -1229,11 +1305,13 @@ write_coverage_page() {
         printf '%s\n' "- [[system-health-editor]]: Neovim LSP and Overseer state logs."
         printf '%s\n' "- [[system-health-music]]: REAPER, yabridge, WineASIO, and related user-session signals."
         printf '%s\n' "- [[system-health-security]]: sshd, auditd, polkit, and authentication warnings visible without sudo."
+        printf '%s\n' "- [[system-health-ansible]]: warnings and task failures from playbook runs that load the repository Ansible config."
         printf '%s\n' '- [[system-spikes]]: lightweight CPU spike events and attribution captured by `system-spike-watch`.'
         printf '%s\n\n' "- [[system-health-unclassified]]: recent journal warnings that do not match a known classifier."
         printf '## Partial Coverage\n\n'
         printf '%s\n' '- SMART/NVMe device health is limited to kernel symptoms because direct device health checks may need elevated permissions.'
         printf '%s\n' '- Security coverage is limited to journal-visible warnings; privileged audit details may require sudo.'
+        printf '%s\n' '- Ansible coverage starts after callback initialization, so syntax or parser errors that happen before callbacks load may only be visible in the terminal or saved Ansible log.'
         printf '%s\n' "- Journal-backed detectors inspect the latest \`$journal_lines\` service entries and \`$kernel_journal_lines\` kernel entries by default so noisy services or drivers cannot make timer runs crawl all logs."
         printf '%s\n' '- CPU spike attribution is best-effort and uses temporal evidence from `/proc` and systemd cgroups; it should name likely causes, not guarantee causality.'
         printf '%s\n' '- Application logs outside known paths are not crawled globally to avoid slow scans and noisy private data dumps.'
@@ -1275,6 +1353,7 @@ write_source_pages() {
     write_editor_page
     write_music_page
     write_security_page
+    write_ansible_page
     write_unclassified_page
     write_coverage_page
 }
@@ -1364,6 +1443,7 @@ write_main() {
     editor_count=$(editor_signal_count)
     music_count=$(music_signal_count)
     security_count=$(security_signal_count)
+    ansible_count=$(ansible_signal_count)
     spike_count=$(spike_event_count_today)
     unclassified_count=$(unclassified_warning_top_family_count)
     manual_block=$(manual_reminders)
@@ -1393,6 +1473,7 @@ write_main() {
         printf '%s\n' "- Editor/LSP signals: \`$editor_count\`"
         printf '%s\n' "- Music production signals: \`$music_count\`"
         printf '%s\n' "- Auth/security signals: \`$security_count\`"
+        printf '%s\n' "- Ansible playbook signals 7d: \`$ansible_count\`"
         printf '%s\n' "- CPU spike events today: \`$spike_count\`"
         printf '%s\n' "- Top unclassified warning families: \`$unclassified_count\`"
         printf '%s\n' '- Rules: [[rules]]'
@@ -1414,6 +1495,7 @@ write_main() {
         printf '%s\n' "- [[system-health-editor]]: \`$editor_count editor signals\`"
         printf '%s\n' "- [[system-health-music]]: \`$music_count music production signals\`"
         printf '%s\n' "- [[system-health-security]]: \`$security_count auth/security signals\`"
+        printf '%s\n' "- [[system-health-ansible]]: \`$ansible_count Ansible playbook signals 7d\`"
         printf '%s\n' "- [[system-spikes]]: \`$spike_count CPU spike events today\`"
         printf '%s\n' "- [[system-health-unclassified]]: \`$unclassified_count unclassified families\`"
         printf '%s\n\n' "- [[system-health-coverage]]: coverage map and promotion workflow"
@@ -1460,6 +1542,9 @@ write_main() {
         if [ "$security_count" -gt 0 ]; then
             printf '%s\n' "- [[system-health-security]]: \`$security_count auth/security signals\`"
         fi
+        if [ "$ansible_count" -gt 0 ]; then
+            printf '%s\n' "- [[system-health-ansible]]: \`$ansible_count Ansible playbook signals 7d\`"
+        fi
         if [ "$spike_count" -gt 0 ]; then
             printf '%s\n' "- [[system-spikes]]: \`$spike_count CPU spike events today\`"
         fi
@@ -1497,6 +1582,7 @@ write_main() {
             [ "$editor_count" -eq 0 ] &&
             [ "$music_count" -eq 0 ] &&
             [ "$security_count" -eq 0 ] &&
+            [ "$ansible_count" -eq 0 ] &&
             [ "$spike_count" -eq 0 ] &&
             [ "$unclassified_count" -eq 0 ]; then
             printf '%s\n' '- No active issues in the latest check.'
@@ -1564,6 +1650,7 @@ update_monthly_digest() {
         printf '%s\n' "- Editor/LSP signals: \`$(editor_signal_count)\`"
         printf '%s\n' "- Music production signals: \`$(music_signal_count)\`"
         printf '%s\n' "- Auth/security signals: \`$(security_signal_count)\`"
+        printf '%s\n' "- Ansible playbook signals 7d: \`$(ansible_signal_count)\`"
         printf '%s\n' "- CPU spike events today: \`$(spike_event_count_today)\`"
         printf '%s\n\n' "- Top unclassified warning families: \`$(unclassified_warning_top_family_count)\`"
         printf '### Signal Sources\n\n'
@@ -1580,6 +1667,7 @@ update_monthly_digest() {
         printf '%s\n' "- [[system-health-editor]]"
         printf '%s\n' "- [[system-health-music]]"
         printf '%s\n' "- [[system-health-security]]"
+        printf '%s\n' "- [[system-health-ansible]]"
         printf '%s\n' "- [[system-spikes]]"
         printf '%s\n' "- [[system-health-unclassified]]"
         printf '%s\n\n' "- [[system-health-coverage]]"
@@ -1694,6 +1782,15 @@ update_monthly_digest() {
         printf '\n### Auth And Security Signals\n\n'
         if security_signal_lines | grep -q .; then
             security_signal_lines | sed -n '1,5p' | while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                printf '%s\n' "- $(markdown_text "$line")"
+            done
+        else
+            printf '%s\n' '- None.'
+        fi
+        printf '\n### Ansible Playbook Signals\n\n'
+        if ansible_signal_lines | grep -q .; then
+            ansible_signal_lines | sed -n '1,8p' | while IFS= read -r line; do
                 [ -n "$line" ] || continue
                 printf '%s\n' "- $(markdown_text "$line")"
             done
