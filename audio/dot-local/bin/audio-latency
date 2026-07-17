@@ -1,0 +1,266 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly PROGRAM_NAME=${0##*/}
+readonly DEFAULTS_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/audio-latency.defaults.env"
+readonly STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/audio-latency.env"
+readonly PIPEASIO_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/pipeasio/config.ini"
+readonly REAPER_WINE_PREFIX="${REAPER_WINE_PREFIX:-$HOME/data/.wine-win64-windows-reaper}"
+readonly REAPER_INI="${REAPER_INI:-$REAPER_WINE_PREFIX/drive_c/users/$USER/AppData/Roaming/REAPER/REAPER.ini}"
+
+usage() {
+  cat <<EOF
+Usage:
+  $PROGRAM_NAME status
+  $PROGRAM_NAME set <buffer> [rate]
+
+Examples:
+  $PROGRAM_NAME set 256
+  $PROGRAM_NAME set 1024 48000
+
+Defaults are read from $DEFAULTS_FILE. The selected runtime buffer is stored in $STATE_FILE and is picked up by the dotfiles launchers on the next start. PipeASIO and REAPER.ini are updated at the same time so ASIO hosts converge on the same value after their audio device or process is restarted.
+EOF
+}
+
+die() {
+  printf '%s: %s\n' "$PROGRAM_NAME" "$*" >&2
+  exit 1
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+validate_number() {
+  local label=$1 value=$2
+  [[ "$value" =~ ^[0-9]+$ ]] || die "$label must be a positive integer: $value"
+  (( value > 0 )) || die "$label must be greater than zero: $value"
+}
+
+validate_buffer() {
+  local buffer=$1
+  validate_number buffer "$buffer"
+  (( buffer >= 32 && buffer <= 2048 )) || die "unsupported buffer: $buffer (expected a power of two between 32 and 2048)"
+  (( (buffer & (buffer - 1)) == 0 )) || die "unsupported buffer: $buffer (expected a power of two between 32 and 2048)"
+}
+
+env_file_value() {
+  local key=$1 file=$2
+  [[ -r "$file" ]] || return 1
+  awk -F= -v key="$key" '$1 == key { print $2; found = 1; exit } END { exit found ? 0 : 1 }' "$file"
+}
+
+default_value() {
+  local key=$1
+  env_file_value "$key" "$DEFAULTS_FILE"
+}
+
+current_rate() {
+  local value
+  value="$(env_file_value AUDIO_LATENCY_RATE "$STATE_FILE" 2>/dev/null || true)"
+  if [[ -n "$value" ]]; then
+    printf '%s\n' "$value"
+    return
+  fi
+
+  value="$(default_value AUDIO_LATENCY_DEFAULT_RATE 2>/dev/null || true)"
+  if [[ -n "$value" ]]; then
+    printf '%s\n' "$value"
+    return
+  fi
+
+  value="$(ini_value "$REAPER_INI" asio_srate 2>/dev/null || true)"
+  if [[ -n "$value" && "$value" != "0" ]]; then
+    printf '%s\n' "$value"
+    return
+  fi
+
+  die "cannot infer sample rate; run Ansible to generate $DEFAULTS_FILE or pass the rate explicitly"
+}
+
+ini_value() {
+  local file=$1 key=$2
+  [[ -r "$file" ]] || return 1
+  awk -F= -v key="$key" '
+    $1 ~ "^[[:space:]]*" key "[[:space:]]*$" {
+      value = $2
+      sub(/^[[:space:]]+/, "", value)
+      sub(/[[:space:]]+$/, "", value)
+      print value
+      found = 1
+      exit
+    }
+    END { exit found ? 0 : 1 }
+  ' "$file"
+}
+
+set_ini_value() {
+  local file=$1 section=$2 key=$3 value=$4 separator=$5 tmp
+  tmp="$(mktemp)"
+  awk -v section="[$section]" -v key="$key" -v line="${key}${separator}${value}" '
+    $0 == section {
+      seen_section = 1
+      in_section = 1
+      print
+      next
+    }
+    in_section && /^\[/ {
+      if (!done) {
+        print line
+        done = 1
+      }
+      in_section = 0
+    }
+    in_section && $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
+      if (!done) {
+        print line
+        done = 1
+      }
+      next
+    }
+    { print }
+    END {
+      if (in_section && !done) {
+        print line
+      } else if (!seen_section) {
+        print section
+        print line
+      }
+    }
+  ' "$file" >"$tmp"
+  mv "$tmp" "$file"
+}
+
+ensure_pipeasio_config() {
+  local buffer=$1
+  if [[ -e "$PIPEASIO_CONFIG" ]]; then
+    return
+  fi
+
+  mkdir -p "$(dirname "$PIPEASIO_CONFIG")"
+  cat >"$PIPEASIO_CONFIG" <<EOF
+# PipeASIO settings - managed by dotfiles
+[pipeasio]
+inputs = 2
+outputs = 2
+buffer_size = $buffer
+fixed_buffer_size = 1
+sample_rate = 0
+auto_connect = 1
+follow_device_clock = 0
+output_device =
+input_device =
+node_name =
+EOF
+}
+
+write_state() {
+  local buffer=$1 rate=$2 tmp
+  mkdir -p "$(dirname "$STATE_FILE")"
+  tmp="$(mktemp)"
+  cat >"$tmp" <<EOF
+AUDIO_LATENCY_BUFFER=$buffer
+AUDIO_LATENCY_RATE=$rate
+PIPEWIRE_LATENCY=$buffer/$rate
+PIPEWIRE_QUANTUM=$buffer/$rate
+PIPEWIRE_RATE=1/$rate
+WINEASIO_PREFERRED_BUFFERSIZE=$buffer
+EOF
+  mv "$tmp" "$STATE_FILE"
+}
+
+update_pipeasio_config() {
+  local buffer=$1
+  ensure_pipeasio_config "$buffer"
+  set_ini_value "$PIPEASIO_CONFIG" pipeasio buffer_size "$buffer" " = "
+}
+
+update_reaper_ini() {
+  local buffer=$1 rate=$2
+  [[ -e "$REAPER_INI" ]] || return 0
+  set_ini_value "$REAPER_INI" audioconfig asio_bsize "$buffer" "="
+  set_ini_value "$REAPER_INI" audioconfig asio_bsize_use 1 "="
+  set_ini_value "$REAPER_INI" audioconfig asio_srate "$rate" "="
+  set_ini_value "$REAPER_INI" audioconfig asio_srate_use 1 "="
+}
+
+update_wineasio_registry() {
+  local buffer=$1
+  [[ -d "$REAPER_WINE_PREFIX" ]] || return 0
+
+  if [[ -x "$HOME/bin/wwine" ]]; then
+    "$HOME/bin/wwine" --prefix reaper --wine-debug -all wine reg add 'HKCU\Software\Wine\WineASIO' /v 'Preferred buffersize' /t REG_DWORD /d "$buffer" /f >/dev/null 2>&1 || true
+    return 0
+  fi
+
+  command -v wine >/dev/null 2>&1 || return 0
+  WINEPREFIX="$REAPER_WINE_PREFIX" WINEARCH=win64 WINEDEBUG=-all wine reg add 'HKCU\Software\Wine\WineASIO' /v 'Preferred buffersize' /t REG_DWORD /d "$buffer" /f >/dev/null 2>&1 || true
+}
+
+apply_pipewire_metadata() {
+  local buffer=$1
+  command -v pw-metadata >/dev/null 2>&1 || return 0
+  pw-metadata -n settings 0 clock.quantum "$buffer" >/dev/null 2>&1 || true
+  pw-metadata -n settings 0 clock.force-quantum 0 >/dev/null 2>&1 || true
+}
+
+print_status() {
+  local default_buffer default_rate state_buffer state_rate pipewire_quantum pipeasio_buffer reaper_buffer reaper_rate
+  default_buffer="$(default_value AUDIO_LATENCY_DEFAULT_BUFFER 2>/dev/null || true)"
+  default_rate="$(default_value AUDIO_LATENCY_DEFAULT_RATE 2>/dev/null || true)"
+  state_buffer="$(env_file_value AUDIO_LATENCY_BUFFER "$STATE_FILE" 2>/dev/null || true)"
+  state_rate="$(env_file_value AUDIO_LATENCY_RATE "$STATE_FILE" 2>/dev/null || true)"
+  pipeasio_buffer="$(ini_value "$PIPEASIO_CONFIG" buffer_size 2>/dev/null || true)"
+  reaper_buffer="$(ini_value "$REAPER_INI" asio_bsize 2>/dev/null || true)"
+  reaper_rate="$(ini_value "$REAPER_INI" asio_srate 2>/dev/null || true)"
+  pipewire_quantum="$(pw-metadata -n settings 0 2>/dev/null | awk -F"'" '$2 == "clock.quantum" { print $4; found = 1; exit } END { exit found ? 0 : 1 }' || true)"
+
+  printf 'defaults:   %s/%s (%s)\n' "${default_buffer:-unset}" "${default_rate:-unset}" "$DEFAULTS_FILE"
+  printf 'state:      %s/%s (%s)\n' "${state_buffer:-unset}" "${state_rate:-unset}" "$STATE_FILE"
+  printf 'pipewire:   quantum=%s\n' "${pipewire_quantum:-unknown}"
+  printf 'pipeasio:   buffer_size=%s (%s)\n' "${pipeasio_buffer:-unknown}" "$PIPEASIO_CONFIG"
+  printf 'reaper ini: asio_bsize=%s asio_srate=%s (%s)\n' "${reaper_buffer:-unknown}" "${reaper_rate:-unknown}" "$REAPER_INI"
+}
+
+set_latency() {
+  local buffer=$1 rate=${2:-}
+  validate_buffer "$buffer"
+  if [[ -z "$rate" ]]; then
+    rate="$(current_rate)"
+  fi
+  validate_number rate "$rate"
+
+  require_command awk
+  require_command mktemp
+  require_command mv
+
+  write_state "$buffer" "$rate"
+  update_pipeasio_config "$buffer"
+  update_reaper_ini "$buffer" "$rate"
+  update_wineasio_registry "$buffer"
+  apply_pipewire_metadata "$buffer"
+
+  printf 'audio latency set to %s/%s\n' "$buffer" "$rate"
+  printf 'restart REAPER or reselect its audio device so ASIO hosts reopen with the new buffer\n'
+}
+
+case "${1:-}" in
+  status)
+    print_status
+    ;;
+  set)
+    shift
+    [[ $# -ge 1 && $# -le 2 ]] || {
+      usage >&2
+      exit 1
+    }
+    set_latency "$@"
+    ;;
+  -h|--help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
+esac

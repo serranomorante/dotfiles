@@ -70,6 +70,37 @@ reaper_boost_stop() {
 use_firejail=1
 firejail_sandbox_name="${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-wwine-reaper}"
 wine_debug="${WWINE_WINEDEBUG:-${WINEDEBUG:--all,+err}}"
+audio_latency_buffer={{ audio_latency_buffer_size }}
+audio_latency_rate={{ audio_latency_sample_rate }}
+audio_latency_defaults_file="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/audio-latency.defaults.env"
+audio_latency_state_file="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/audio-latency.env"
+
+load_audio_latency_file() {
+  local file=$1 name value
+  if [ ! -r "$file" ]; then
+    return
+  fi
+
+  while IFS='=' read -r name value; do
+    case "$name" in
+      AUDIO_LATENCY_DEFAULT_BUFFER|AUDIO_LATENCY_BUFFER)
+        [[ "$value" =~ ^[0-9]+$ ]] && audio_latency_buffer="$value"
+        ;;
+      AUDIO_LATENCY_DEFAULT_RATE|AUDIO_LATENCY_RATE)
+        [[ "$value" =~ ^[0-9]+$ ]] && audio_latency_rate="$value"
+        ;;
+    esac
+  done <"$file"
+}
+
+export_audio_latency_env() {
+  load_audio_latency_file "$audio_latency_defaults_file"
+  load_audio_latency_file "$audio_latency_state_file"
+  export PIPEWIRE_LATENCY="${audio_latency_buffer}/${audio_latency_rate}"
+  export PIPEWIRE_QUANTUM="${audio_latency_buffer}/${audio_latency_rate}"
+  export PIPEWIRE_RATE="1/${audio_latency_rate}"
+  export WINEASIO_PREFERRED_BUFFERSIZE="$audio_latency_buffer"
+}
 
 case "${1:-}" in
   --firejail)
@@ -93,15 +124,12 @@ fi
 
 export LC_ALL=C
 export WINEDEBUG="$wine_debug"
-{% for name, value in pipewire_latency_vars.items() %}
-export {{ name }}={{ value | quote }}
-{% endfor %}
+export_audio_latency_env
 export WINEASIO_NUMBER_INPUTS={{ arch_wineasio_setup.number_inputs | string | quote }}
 export WINEASIO_NUMBER_OUTPUTS={{ arch_wineasio_setup.number_outputs | string | quote }}
 export WINEASIO_AUTOSTART_SERVER={{ (arch_wineasio_setup.autostart_server | int == 1) | ternary('on', 'off') | quote }}
 export WINEASIO_CONNECT_TO_HARDWARE={{ (arch_wineasio_setup.connect_to_hardware | int == 1) | ternary('on', 'off') | quote }}
 export WINEASIO_FIXED_BUFFERSIZE={{ (arch_wineasio_setup.fixed_buffersize | int == 1) | ternary('on', 'off') | quote }}
-export WINEASIO_PREFERRED_BUFFERSIZE={{ (arch_wineasio_setup.preferred_buffersize | default(arch_wineasio_setup.reaper_block_size)) | string | quote }}
 
 wwine_prepare_args=(--prefix reaper --wine-debug "$wine_debug")
 wwine_cmd=(

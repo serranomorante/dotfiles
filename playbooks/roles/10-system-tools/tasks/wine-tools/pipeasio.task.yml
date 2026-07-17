@@ -93,6 +93,21 @@
     var_pipeasio_registration_env: "{{ wine_env_profiles.get(var_pipeasio_reaper_wine_profile, wine_env_vars) | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix, 'WINEARCH': arch_reaper_wine_setup.architecture | default('win64'), 'PIPEASIO_PREFIX': var_pipeasio_reaper_pipeasio_prefix, 'WINEDLLPATH': var_pipeasio_reaper_pipeasio_lib ~ (((wine_env_profiles.get(var_pipeasio_reaper_wine_profile, wine_env_vars).WINEDLLPATH | default('')) | length > 0) | ternary(':' ~ wine_env_profiles.get(var_pipeasio_reaper_wine_profile, wine_env_vars).WINEDLLPATH, '')) }) }}"
   when: var_pipeasio_package.rc == 0
 
+- name: "[archlinux] Wine tools: ensure pipeasio config directory"
+  ansible.builtin.file:
+    path: ~/.config/pipeasio
+    state: directory
+    mode: "755"
+  when: var_pipeasio_package.rc == 0
+
+- name: "[archlinux] Wine tools: configure pipeasio defaults"
+  ansible.builtin.template:
+    src: pipeasio-config.ini
+    dest: ~/.config/pipeasio/config.ini
+    mode: "644"
+    follow: false
+  when: var_pipeasio_package.rc == 0
+
 - name: "[archlinux] Wine tools: stage pipeasio in reaper prefix"
   ansible.builtin.copy:
     src: "{{ var_pipeasio_reaper_pipeasio_lib }}/x86_64-windows/pipeasio64.dll"

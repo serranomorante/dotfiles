@@ -1,8 +1,11 @@
 ---
+audio_latency_buffer_size: 256
+audio_latency_sample_rate: 48000
+
 pipewire_latency_vars:
-  PIPEWIRE_LATENCY: "512/48000"
-  PIPEWIRE_QUANTUM: "512/48000"
-  PIPEWIRE_RATE: "1/48000"
+  PIPEWIRE_LATENCY: "{{ audio_latency_buffer_size }}/{{ audio_latency_sample_rate }}"
+  PIPEWIRE_QUANTUM: "{{ audio_latency_buffer_size }}/{{ audio_latency_sample_rate }}"
+  PIPEWIRE_RATE: "1/{{ audio_latency_sample_rate }}"
 
 arch_wineasio_setup:
   repo: https://github.com/wineasio/wineasio
@@ -13,8 +16,8 @@ arch_wineasio_setup:
   autostart_server: 0
   connect_to_hardware: 1
   fixed_buffersize: 1
-  reaper_block_size: 512
-  reaper_sample_rate: 48000
+  reaper_block_size: "{{ audio_latency_buffer_size }}"
+  reaper_sample_rate: "{{ audio_latency_sample_rate }}"
 
 arch_reaper_wine_audio_device: wineasio
 arch_reaper_wine_audio_devices:

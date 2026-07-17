@@ -173,6 +173,18 @@
     dest: ~/.local/bin/launch-reaper-linux
     mode: "755"
 
+- name: "[archlinux] Setup audio tools: ensure dotfiles config directory"
+  ansible.builtin.file:
+    path: ~/.config/dotfiles
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Setup audio tools: setup audio latency defaults"
+  ansible.builtin.template:
+    src: audio-latency.defaults.env
+    dest: ~/.config/dotfiles/audio-latency.defaults.env
+    mode: "644"
+
 - name: "[archlinux] Setup audio tools: ensure user services"
   ansible.builtin.systemd_service:
     scope: user

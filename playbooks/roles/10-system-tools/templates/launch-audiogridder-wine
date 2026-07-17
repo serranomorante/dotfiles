@@ -3,10 +3,39 @@
 # Purpose: Launch Windows AudioGridderServer through wwine without opening a terminal, while capturing launcher logs.
 set -euo pipefail
 
+audio_latency_buffer={{ audio_latency_buffer_size }}
+audio_latency_rate={{ audio_latency_sample_rate }}
+audio_latency_defaults_file="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/audio-latency.defaults.env"
+audio_latency_state_file="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/audio-latency.env"
+
+load_audio_latency_file() {
+  local file=$1 name value
+  if [ ! -r "$file" ]; then
+    return
+  fi
+
+  while IFS='=' read -r name value; do
+    case "$name" in
+      AUDIO_LATENCY_DEFAULT_BUFFER|AUDIO_LATENCY_BUFFER)
+        [[ "$value" =~ ^[0-9]+$ ]] && audio_latency_buffer="$value"
+        ;;
+      AUDIO_LATENCY_DEFAULT_RATE|AUDIO_LATENCY_RATE)
+        [[ "$value" =~ ^[0-9]+$ ]] && audio_latency_rate="$value"
+        ;;
+    esac
+  done <"$file"
+}
+
+export_audio_latency_env() {
+  load_audio_latency_file "$audio_latency_defaults_file"
+  load_audio_latency_file "$audio_latency_state_file"
+  export PIPEWIRE_LATENCY="${audio_latency_buffer}/${audio_latency_rate}"
+  export PIPEWIRE_QUANTUM="${audio_latency_buffer}/${audio_latency_rate}"
+  export PIPEWIRE_RATE="1/${audio_latency_rate}"
+}
+
 export LC_ALL=C
-{% for name, value in pipewire_latency_vars.items() %}
-export {{ name }}={{ value | quote }}
-{% endfor %}
+export_audio_latency_env
 
 cd "{{ arch_reaper_wine_setup.wine_prefix }}/dosdevices/c:/ProgramData/Microsoft/Windows/Start Menu/Programs"
 exec "{{ ansible_facts.env.HOME }}/bin/wwine" --prefix musicplugins --use-sandbox --log-id audiogridder wine "C:/ProgramData/Microsoft/Windows/Start Menu/Programs/AudioGridderServer.lnk"

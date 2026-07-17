@@ -240,6 +240,8 @@ env = jinja2.Environment(undefined=jinja2.StrictUndefined, keep_trailing_newline
 
 common_context = {
     "ansible_managed": "dotfiles test fixture",
+    "audio_latency_buffer_size": 256,
+    "audio_latency_sample_rate": 48000,
     "ansible_facts": {
         "env": {
             "HOME": str(home),
@@ -282,11 +284,6 @@ wwine_rendered = wwine_template.render(
 launch_template = env.from_string((test_root / "playbooks/roles/10-system-tools/templates/launch-reaper-linux").read_text())
 launch_rendered = launch_template.render(
     **common_context,
-    pipewire_latency_vars={
-        "PIPEWIRE_LATENCY": "512/48000",
-        "PIPEWIRE_QUANTUM": "512/48000",
-        "PIPEWIRE_RATE": "1/48000",
-    },
 )
 launch_rendered = launch_rendered.replace("/usr/bin/reaper", str(fixture / "fake-reaper"))
 
@@ -363,8 +360,8 @@ launch-reaper-linux-no-firejail-prepares-sandboxed-yabridge-env)
     grep -Fxq "WINELOADER=$wwine_loader" "$fake_reaper_log"
     grep -Fxq "WWINE_SANDBOX_NAME=$sandbox_name" "$fake_reaper_log"
     grep -Fxq "WWINE_USE_SANDBOX=1" "$fake_reaper_log"
-    grep -Fxq "PIPEWIRE_LATENCY=512/48000" "$fake_reaper_log"
-    grep -Fxq "PIPEWIRE_QUANTUM=512/48000" "$fake_reaper_log"
+    grep -Fxq "PIPEWIRE_LATENCY=256/48000" "$fake_reaper_log"
+    grep -Fxq "PIPEWIRE_QUANTUM=256/48000" "$fake_reaper_log"
     grep -Fxq "ARGS=<--empty-project>" "$fake_reaper_log"
     refute grep -Fq 'KITTY_EXEC=' "$kitty_log"
     ;;

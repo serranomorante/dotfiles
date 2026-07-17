@@ -69,10 +69,40 @@ reaper_boost_stop() {
 use_firejail=0
 firejail_sandbox_name="${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-wwine-reaper}"
 firejail_profile="{{ ansible_facts.env.HOME }}/.config/firejail/wine-reaper.local"
+audio_latency_buffer={{ audio_latency_buffer_size }}
+audio_latency_rate={{ audio_latency_sample_rate }}
+audio_latency_defaults_file="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/audio-latency.defaults.env"
+audio_latency_state_file="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/audio-latency.env"
 wwine_prepare_args=(--prefix musicplugins --use-sandbox)
 if [ -n "${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-}" ]; then
   wwine_prepare_args+=(--sandbox-name "$firejail_sandbox_name")
 fi
+
+load_audio_latency_file() {
+  local file=$1 name value
+  if [ ! -r "$file" ]; then
+    return
+  fi
+
+  while IFS='=' read -r name value; do
+    case "$name" in
+      AUDIO_LATENCY_DEFAULT_BUFFER|AUDIO_LATENCY_BUFFER)
+        [[ "$value" =~ ^[0-9]+$ ]] && audio_latency_buffer="$value"
+        ;;
+      AUDIO_LATENCY_DEFAULT_RATE|AUDIO_LATENCY_RATE)
+        [[ "$value" =~ ^[0-9]+$ ]] && audio_latency_rate="$value"
+        ;;
+    esac
+  done <"$file"
+}
+
+export_audio_latency_env() {
+  load_audio_latency_file "$audio_latency_defaults_file"
+  load_audio_latency_file "$audio_latency_state_file"
+  export PIPEWIRE_LATENCY="${audio_latency_buffer}/${audio_latency_rate}"
+  export PIPEWIRE_QUANTUM="${audio_latency_buffer}/${audio_latency_rate}"
+  export PIPEWIRE_RATE="1/${audio_latency_rate}"
+}
 
 sandbox_is_registered() {
   firejail --list 2>/dev/null | awk -F: -v name="$firejail_sandbox_name" '$3 == name { found = 1 } END { exit found ? 0 : 1 }'
@@ -138,9 +168,7 @@ fi
 eval "$("{{ ansible_facts.env.HOME }}/bin/wwine" "${wwine_prepare_args[@]}" prepare-env)"
 
 export WINEDEBUG=-all,+err
-{% for env in pipewire_latency_vars.items() %}
-export {{ env | join('=') }}
-{% endfor %}
+export_audio_latency_env
 cd "{{ ansible_facts.env.HOME }}/data/audio-pjs"
 
 # Boost the laptop platform profile and CPU governor for the lifetime of this
