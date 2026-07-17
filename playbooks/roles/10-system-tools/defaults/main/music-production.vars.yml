@@ -13,9 +13,36 @@ arch_wineasio_setup:
   autostart_server: 0
   connect_to_hardware: 1
   fixed_buffersize: 0
-  reaper_audio_mode: 3
   reaper_block_size: 512
   reaper_sample_rate: 48000
+
+arch_reaper_wine_audio_device: wineasio
+arch_reaper_wine_audio_devices:
+  dummy:
+    description: "REAPER Dummy Audio; no real audio device, useful for isolating backend crashes."
+    mode: 0
+  waveout:
+    description: "Windows WaveOut compatibility backend."
+    mode: 1
+  directsound:
+    description: "Windows DirectSound backend."
+    mode: 2
+  wineasio:
+    description: "ASIO through WineASIO and PipeWire JACK."
+    mode: 3
+    asio_driver: 1
+    asio_driver_name: WineASIO Driver
+  pipeasio:
+    description: "ASIO through PipeASIO and PipeWire."
+    mode: 3
+    asio_driver: 2
+    asio_driver_name: PipeASIO Driver
+  wdm_kernel_streaming:
+    description: "Windows WDM Kernel Streaming backend."
+    mode: 4
+  wasapi:
+    description: "Windows WASAPI backend."
+    mode: 5
 
 arch_pipeasio_setup:
   configure_reaper: false

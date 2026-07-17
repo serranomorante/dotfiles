@@ -162,27 +162,28 @@
     regexp: "^{{ item.key }}=.*"
     line: "{{ item.key }}={{ item.value }}"
     insertafter: "^\\[audioconfig\\]"
-  loop:
-    - key: mode
-      value: "{{ arch_wineasio_setup.reaper_audio_mode }}"
-    - key: asio_driver_name
-      value: '"PipeASIO Driver"'
-    - key: asio_input0
-      value: "0"
-    - key: asio_input1
-      value: "1"
-    - key: asio_output0
-      value: "0"
-    - key: asio_output1
-      value: "1"
-    - key: asio_srate
-      value: "{{ arch_wineasio_setup.reaper_sample_rate }}"
-    - key: asio_srate_use
-      value: "1"
-    - key: asio_bsize
-      value: "{{ arch_wineasio_setup.reaper_block_size }}"
-    - key: asio_bsize_use
-      value: "1"
+  loop: >-
+    {{
+      [
+        {'key': 'mode', 'value': arch_reaper_wine_audio_devices[arch_reaper_wine_audio_device].mode},
+        {'key': 'asio_input0', 'value': '0'},
+        {'key': 'asio_input1', 'value': '1'},
+        {'key': 'asio_output0', 'value': '0'},
+        {'key': 'asio_output1', 'value': '1'},
+        {'key': 'asio_srate', 'value': arch_wineasio_setup.reaper_sample_rate},
+        {'key': 'asio_srate_use', 'value': '1'},
+        {'key': 'asio_bsize', 'value': arch_wineasio_setup.reaper_block_size},
+        {'key': 'asio_bsize_use', 'value': '1'}
+      ] +
+      (
+        [
+          {'key': 'asio_driver', 'value': arch_reaper_wine_audio_devices[arch_reaper_wine_audio_device].asio_driver},
+          {'key': 'asio_driver_name', 'value': arch_reaper_wine_audio_devices[arch_reaper_wine_audio_device].asio_driver_name | to_json}
+        ]
+        if arch_reaper_wine_audio_devices[arch_reaper_wine_audio_device].asio_driver_name is defined
+        else []
+      )
+    }}
   when:
     - var_pipeasio_package.rc == 0
     - var_pipeasio_registration_active | default(false)

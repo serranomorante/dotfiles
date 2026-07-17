@@ -387,34 +387,42 @@
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
   register: var_wineasio_reaper_ini
 
+- name: "[archlinux] Wine tools: validate selected reaper audio device"
+  ansible.builtin.assert:
+    that:
+      - arch_reaper_wine_audio_device in arch_reaper_wine_audio_devices
+    fail_msg: "Unknown arch_reaper_wine_audio_device={{ arch_reaper_wine_audio_device }}. Expected one of {{ arch_reaper_wine_audio_devices.keys() | list | join(', ') }}."
+
 - name: "[archlinux] Wine tools: configure wine reaper for wineasio"
   ansible.builtin.lineinfile:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
     regexp: "^{{ item.key }}=.*"
     line: "{{ item.key }}={{ item.value }}"
     insertafter: "^\\[audioconfig\\]"
-  loop:
-    - key: mode
-      value: "{{ arch_wineasio_setup.reaper_audio_mode }}"
-    - key: asio_driver_name
-      value: '"WineASIO Driver"'
-    - key: asio_input0
-      value: "0"
-    - key: asio_input1
-      value: "1"
-    - key: asio_output0
-      value: "0"
-    - key: asio_output1
-      value: "1"
-    - key: asio_srate
-      value: "{{ arch_wineasio_setup.reaper_sample_rate }}"
-    - key: asio_srate_use
-      value: "1"
-    - key: asio_bsize
-      value: "{{ arch_wineasio_setup.reaper_block_size }}"
-    - key: asio_bsize_use
-      value: "1"
-  when: var_wineasio_reaper_ini.stat.exists
+  loop: >-
+    {{
+      [
+        {'key': 'mode', 'value': arch_reaper_wine_audio_devices[arch_reaper_wine_audio_device].mode},
+        {'key': 'asio_input0', 'value': '0'},
+        {'key': 'asio_input1', 'value': '1'},
+        {'key': 'asio_output0', 'value': '0'},
+        {'key': 'asio_output1', 'value': '1'},
+        {'key': 'asio_srate', 'value': arch_wineasio_setup.reaper_sample_rate},
+        {'key': 'asio_srate_use', 'value': '1'},
+        {'key': 'asio_bsize', 'value': arch_wineasio_setup.reaper_block_size},
+        {'key': 'asio_bsize_use', 'value': '1'}
+      ] +
+      (
+        [
+          {'key': 'asio_driver', 'value': arch_reaper_wine_audio_devices[arch_reaper_wine_audio_device].asio_driver},
+          {'key': 'asio_driver_name', 'value': arch_reaper_wine_audio_devices[arch_reaper_wine_audio_device].asio_driver_name | to_json}
+        ]
+        if arch_reaper_wine_audio_devices[arch_reaper_wine_audio_device].asio_driver_name is defined
+        else []
+      )
+    }}
+  when:
+    - var_wineasio_reaper_ini.stat.exists
 
 - name: "[archlinux] Wine tools: mark wineasio reaper configured"
   ansible.builtin.include_role:
