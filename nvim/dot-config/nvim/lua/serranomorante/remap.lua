@@ -318,6 +318,13 @@ vim.keymap.set({ "n", "x" }, "<leader>rm", function()
   vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(output:gsub("\n$", ""), "\n", { plain = true }))
 end, { desc = "Show next reminders" })
 
+vim.keymap.set({ "n", "x" }, "<leader>r_", function()
+  vim.cmd("enew | setlocal ft=markdown ff=unix")
+  local output = utils.cmd({ "dunst-history", "--markdown" })
+  if not output then return end
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(output:gsub("\n$", ""), "\n", { plain = true }))
+end, { desc = "Show notifications history" })
+
 vim.keymap.set("t", "<C-q>", function()
   utils.feedkeys("<C-\\><C-n>", "t")
   return "<cmd>close<CR>"

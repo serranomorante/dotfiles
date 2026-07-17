@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 # Purpose: Browse the current Dunst notification history with fzf.
-# Usage: dunst-history [--raw|--list]
+# Usage: dunst-history [--raw|--list|--markdown]
 # Notes: Dunst keeps this history in daemon memory, bounded by history_length.
 
 set -euo pipefail
 
 usage() {
     cat <<'EOF'
-Usage: dunst-history [--raw|--list]
+Usage: dunst-history [--raw|--list|--markdown]
 
 Browse the current in-memory Dunst notification history with fzf.
 
 Options:
   --raw     Print dunstctl history JSON and exit
   --list    Print tab-separated rows and exit
+  --markdown Print a Markdown report and exit
   -h,--help Show this help
 EOF
 }
@@ -38,8 +39,9 @@ history_json() {
 
 entries_jq='
 def scalar_text:
-  if type == "array" then map(tostring) | join(", ")
-  elif type == "object" then tojson
+  if type == "object" and has("data") then .data | scalar_text
+  elif type == "array" then map(scalar_text) | join(", ")
+  elif type == "object" then ""
   elif . == null then ""
   else tostring
   end;
@@ -104,6 +106,38 @@ format_rows() {
     '
 }
 
+format_markdown() {
+    jq -rs '
+      def md_escape:
+        gsub("\\\\"; "\\\\\\\\")
+        | gsub("`"; "\\`");
+
+      def fallback($value; $default):
+        if ($value // "") == "" then $default else $value end;
+
+      def compact($limit):
+        gsub("[\t\r\n]+"; " ")
+        | gsub("  +"; " ")
+        | if length > $limit then .[0:($limit - 3)] + "..." else . end;
+
+      "## Dunst History",
+      "",
+      (
+        .[]
+        | . as $n
+          | "- **" + (((.index + 1) | tostring) + ".** "
+              + "`" + (fallback(.timestamp; "unknown") | compact(32) | md_escape) + "` "
+              + "**" + (fallback(.app; "unknown") | compact(32) | md_escape) + "**: "
+              + (fallback(.summary; "(no summary)") | compact(120) | md_escape)),
+            (
+              if (($n.body // "") == "") then "_No body._"
+              else "  " + ($n.body | compact(180) | md_escape)
+              end
+            )
+      )
+    '
+}
+
 preview_jq='
 [
     "Index: " + (((.index + 1) | tostring) // ""),
@@ -150,6 +184,11 @@ main() {
         need_command dunstctl
         need_command jq
         print_entries | format_rows
+        ;;
+    --markdown)
+        need_command dunstctl
+        need_command jq
+        print_entries | format_markdown
         ;;
     -h | --help)
         usage
