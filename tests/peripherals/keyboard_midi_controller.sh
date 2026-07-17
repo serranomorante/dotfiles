@@ -435,7 +435,7 @@ assert "yabridge_focus_repair.lua" not in block
 PY
     refute rg -q 'allow REAPER sandbox to publish keyboard MIDI feedback|keyboard-midi-controller' "$sws_task"
     rg -q 'whitelist \$\{HOME\}/\.config/pipeasio' "$wine_reaper_firejail_template"
-    rg -q 'whitelist-ro \$\{HOME\}/dotfiles/audio/dot-config/pipeasio' "$wine_reaper_firejail_template"
+    refute rg -q 'dotfiles/audio/dot-config/pipeasio' "$wine_reaper_firejail_template"
     rg -q 'whitelist \$\{HOME\}/\.cache/dotfiles/keyboard-midi-controller' "$wine_reaper_firejail_template"
     rg -q 'keyboard MIDI LED matrix firmware' "$embedded_task"
     rg -q 'keyboard MIDI TFT display firmware' "$embedded_task"
