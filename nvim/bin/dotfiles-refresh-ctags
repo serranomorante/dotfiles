@@ -42,6 +42,7 @@ EXCLUDE_FILE_PATTERNS = (
 
 CTAGS_ARGS = (
     "--recurse",
+    "--links=no",
     "--quiet=yes",
     "--exclude=.git",
     "--exclude=node_modules",

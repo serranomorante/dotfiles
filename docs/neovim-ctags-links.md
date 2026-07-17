@@ -2,7 +2,7 @@
 
 Neovim starts the `editor-tasks-refresh-ctags` Overseer task for Kitty cwd-scoped sessions. That task resolves `utils.git_root_or_cwd()`, runs `nvim/bin/dotfiles-refresh-ctags` from that project root, generates the normal Universal Ctags `tags` file there, and appends repository-specific tags that make structural Ansible/YAML navigation work through native Vim tag commands such as `Ctrl-]`, `:tag`, `:tjump`, and `:ts`.
 
-The wrapper keeps the existing ctags exclusions for `.git`, `node_modules`, `.mypy_cache`, generated web assets, minified bundles, and the `tags` file itself. It sorts the final merged file after appending synthetic tags so Vim's default `tagbsearch` can navigate it without `E432`.
+The wrapper keeps the existing ctags exclusions for `.git`, `node_modules`, `.mypy_cache`, generated web assets, minified bundles, and the `tags` file itself. It also runs Universal Ctags with `--links=no` so repository-local symlinks, including stowed bookmarks into runtime state, do not turn a project refresh into a scan of unrelated active-system directories. It sorts the final merged file after appending synthetic tags so Vim's default `tagbsearch` can navigate it without `E432`.
 
 Top-level YAML keys become tags through a Universal Ctags regex. A definition such as `arch_music_plugins_wine_prefix:` or `arch_reaper_wine_setup:` can be reached from references such as `{{ arch_music_plugins_wine_prefix }}` or `{{ arch_reaper_wine_setup.wine_prefix }}` by putting the cursor on the variable/object name and using native tag navigation.
 
