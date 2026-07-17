@@ -6,6 +6,8 @@
     name:
       - remind
       - dunst
+      - fzf
+      - jq
       - libnotify
   notify: handler_restart_remind_service
 

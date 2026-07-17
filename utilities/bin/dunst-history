@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+# Purpose: Browse the current Dunst notification history with fzf.
+# Usage: dunst-history [--raw|--list]
+# Notes: Dunst keeps this history in daemon memory, bounded by history_length.
+
+set -euo pipefail
+
+usage() {
+    cat <<'EOF'
+Usage: dunst-history [--raw|--list]
+
+Browse the current in-memory Dunst notification history with fzf.
+
+Options:
+  --raw     Print dunstctl history JSON and exit
+  --list    Print tab-separated rows and exit
+  -h,--help Show this help
+EOF
+}
+
+need_command() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        printf 'dunst-history: missing required command: %s\n' "$1" >&2
+        exit 127
+    fi
+}
+
+raw_history() {
+    dunstctl history
+}
+
+history_json() {
+    if ! raw_history; then
+        printf 'dunst-history: could not read dunst history; is dunst running?\n' >&2
+        exit 1
+    fi
+}
+
+entries_jq='
+def scalar_text:
+  if type == "array" then map(tostring) | join(", ")
+  elif type == "object" then tojson
+  elif . == null then ""
+  else tostring
+  end;
+
+def field($names):
+  . as $root
+  | reduce $names[] as $name (null;
+      if . != null then .
+      elif ($root | has($name)) then $root[$name]
+      else null
+      end
+    );
+
+def clean:
+  scalar_text
+  | gsub("[\t\r\n]+"; " ")
+  | gsub("  +"; " ")
+  | sub("^ "; "")
+  | sub(" $"; "");
+
+def notification_objects:
+  [
+    .. | objects
+    | select(
+        (has("summary") or has("body") or has("message") or has("appname") or has("app_name"))
+        and ((has("history") | not) or ((keys | length) > 1))
+      )
+  ];
+
+notification_objects
+| to_entries[]
+| .key as $index
+| .value as $n
+| {
+    index: $index,
+    id: (($n | field(["id", "notification_id"])) | clean),
+    app: (($n | field(["appname", "app_name", "app"])) | clean),
+    summary: (($n | field(["summary", "title"])) | clean),
+    body: (($n | field(["body", "message"])) | clean),
+    category: (($n | field(["category"])) | clean),
+    urgency: (($n | field(["urgency"])) | clean),
+    timestamp: (($n | field(["timestamp", "time", "created", "created_at"])) | clean)
+  }
+| select((.summary + .body + .app) != "")
+| @json
+'
+
+print_entries() {
+    history_json | jq -r "$entries_jq"
+}
+
+format_rows() {
+    jq -r '
+      [
+          ((.index + 1) | tostring),
+          (.timestamp // ""),
+          (.app // ""),
+          (.summary // ""),
+          (.body // "")
+        ]
+      | @tsv
+    '
+}
+
+preview_jq='
+[
+    "Index: " + (((.index + 1) | tostring) // ""),
+    "ID: " + (.id // ""),
+    "Time: " + (.timestamp // ""),
+    "App: " + (.app // ""),
+    "Urgency: " + (.urgency // ""),
+    "Category: " + (.category // ""),
+    "",
+    (.summary // ""),
+    "",
+    (.body // "")
+  ]
+| .[]
+'
+
+run_picker() {
+    local entries_file
+    entries_file=$(mktemp)
+    trap 'rm -f "$entries_file"' EXIT HUP INT TERM
+
+    print_entries >"$entries_file"
+    if [[ ! -s "$entries_file" ]]; then
+        printf 'dunst-history: no notifications in Dunst history\n' >&2
+        return 1
+    fi
+
+    format_rows <"$entries_file" \
+        | fzf \
+            --with-nth=1.. \
+            --delimiter=$'\t' \
+            --header='Dunst history (in-memory)' \
+            --preview="line=\$(printf '%s' {} | cut -f1); sed -n \"\${line}p\" '$entries_file' | jq -r '$preview_jq'" \
+            --preview-window=down,wrap,60%
+}
+
+main() {
+    case "${1:-}" in
+    --raw)
+        need_command dunstctl
+        raw_history
+        ;;
+    --list)
+        need_command dunstctl
+        need_command jq
+        print_entries | format_rows
+        ;;
+    -h | --help)
+        usage
+        ;;
+    "")
+        need_command dunstctl
+        need_command jq
+        need_command fzf
+        run_picker
+        ;;
+    *)
+        usage >&2
+        exit 2
+        ;;
+    esac
+}
+
+main "$@"

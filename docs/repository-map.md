@@ -12,6 +12,7 @@ This map describes where changes usually belong. It is intentionally practical: 
 - `audio/`: audio production and routing configuration/scripts.
 - `utilities/`: general user scripts and utility configs, including `btop` under `utilities/dot-config/btop/`.
 - `dunst/`: notification daemon configuration.
+- `utilities/bin/dunst-history` browses Dunst's current in-memory notification history with `fzf`; it is intentionally a thin TUI over `dunstctl history`, not a persistent notification logger.
 - `lazygit/`: lazygit configuration. See [lazygit.md](./lazygit.md) for pager and diff setup.
 - `home/`: generic home-directory dotfiles.
 - `PKM/`: personal knowledge management tooling.
