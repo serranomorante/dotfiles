@@ -18,11 +18,14 @@ import (
 )
 
 const (
-	version            = 2
-	sessionReadBytes   = 512 * 1024
-	titleMaxRunes      = 200
-	searchTextMaxBytes = 64 * 1024
-	searchPromptLines  = 6
+	version             = 2
+	sessionReadBytes    = 512 * 1024
+	titleMaxRunes       = 200
+	searchTextMaxBytes  = 64 * 1024
+	searchPromptLines   = 6
+	refreshSessionFiles = 160
+	watchSessionFiles   = 80
+	minPollingInterval  = 100 * time.Millisecond
 )
 
 var providers = map[string]providerDefaults{
@@ -97,6 +100,11 @@ type watchPayload struct {
 	Provider string   `json:"provider"`
 	Event    string   `json:"event"`
 	Session  *session `json:"session,omitempty"`
+}
+
+type sessionFile struct {
+	path    string
+	modTime time.Time
 }
 
 type exitError struct {
@@ -862,15 +870,7 @@ func sessionFiles(provider string, root string) []string {
 		if entry.IsDir() {
 			return nil
 		}
-		if provider == "gemini" {
-			parent := filepath.Base(filepath.Dir(path))
-			if parent == "chats" && strings.HasPrefix(entry.Name(), "session-") &&
-				(strings.HasSuffix(entry.Name(), ".jsonl") || strings.HasSuffix(entry.Name(), ".json")) {
-				files = append(files, path)
-			}
-			return nil
-		}
-		if strings.HasSuffix(entry.Name(), ".jsonl") {
+		if isProviderSessionFile(provider, path, entry.Name()) {
 			files = append(files, path)
 		}
 		return nil
@@ -879,6 +879,59 @@ func sessionFiles(provider string, root string) []string {
 		return files
 	}
 	return files
+}
+
+func isProviderSessionFile(provider string, path string, name string) bool {
+	if provider == "gemini" {
+		parent := filepath.Base(filepath.Dir(path))
+		return parent == "chats" && strings.HasPrefix(name, "session-") &&
+			(strings.HasSuffix(name, ".jsonl") || strings.HasSuffix(name, ".json"))
+	}
+	return strings.HasSuffix(name, ".jsonl")
+}
+
+func recentSessionFiles(provider string, root string, limit int) []string {
+	if limit <= 0 {
+		return sessionFiles(provider, root)
+	}
+
+	files := []sessionFile{}
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		if !isProviderSessionFile(provider, path, entry.Name()) {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return nil
+		}
+		files = append(files, sessionFile{path: path, modTime: info.ModTime()})
+		return nil
+	})
+	if err != nil {
+		return nil
+	}
+
+	sort.Slice(files, func(i, j int) bool {
+		if files[i].modTime.Equal(files[j].modTime) {
+			return files[i].path > files[j].path
+		}
+		return files[i].modTime.After(files[j].modTime)
+	})
+	if len(files) > limit {
+		files = files[:limit]
+	}
+
+	paths := make([]string, 0, len(files))
+	for _, file := range files {
+		paths = append(paths, file.path)
+	}
+	return paths
 }
 
 func parseSession(provider string, path string, cwd string) *session {
@@ -894,9 +947,9 @@ func parseSession(provider string, path string, cwd string) *session {
 	}
 }
 
-func sessions(provider string, root string, cwd string) []session {
+func sessionsFromFiles(provider string, files []string, cwd string) []session {
 	items := []session{}
-	for _, path := range sessionFiles(provider, root) {
+	for _, path := range files {
 		if item := parseSession(provider, path, cwd); item != nil {
 			items = append(items, *item)
 		}
@@ -918,12 +971,20 @@ func sessions(provider string, root string, cwd string) []session {
 	return items
 }
 
+func sessions(provider string, root string, cwd string) []session {
+	return sessionsFromFiles(provider, sessionFiles(provider, root), cwd)
+}
+
+func recentSessions(provider string, root string, cwd string) []session {
+	return sessionsFromFiles(provider, recentSessionFiles(provider, root, watchSessionFiles), cwd)
+}
+
 func emitRefresh(provider string, root string) error {
 	return emitJSON(refreshPayload{
 		Version:     version,
 		Provider:    provider,
 		GeneratedAt: time.Now().Unix(),
-		Sessions:    sessions(provider, root, ""),
+		Sessions:    sessionsFromFiles(provider, recentSessionFiles(provider, root, refreshSessionFiles), ""),
 	})
 }
 
@@ -937,7 +998,7 @@ func emitIDs(provider string, root string, cwd string) error {
 }
 
 func findNewSession(provider string, root string, cwd string, knownIDs map[string]bool) *session {
-	for _, item := range sessions(provider, root, cwd) {
+	for _, item := range recentSessions(provider, root, cwd) {
 		if !knownIDs[item.ID] {
 			return &item
 		}
@@ -1013,10 +1074,9 @@ func emitWatchNew(provider string, root string, args []string) error {
 
 	titleDeadline := time.Now().Add(titleTimeout)
 	for {
-		for _, item := range sessions(provider, root, cwd) {
-			if item.ID == newSession.ID && item.Title != "" {
-				return emitJSON(watchPayload{Version: version, Provider: provider, Event: "title", Session: &item})
-			}
+		if item := parseSession(provider, newSession.Path, cwd); item != nil &&
+			item.ID == newSession.ID && item.Title != "" {
+			return emitJSON(watchPayload{Version: version, Provider: provider, Event: "title", Session: item})
 		}
 		if !time.Now().Before(titleDeadline) {
 			return nil
@@ -1026,8 +1086,8 @@ func emitWatchNew(provider string, root string, args []string) error {
 }
 
 func sleepPollingInterval(interval time.Duration) {
-	if interval <= 0 {
-		time.Sleep(time.Millisecond)
+	if interval < minPollingInterval {
+		time.Sleep(minPollingInterval)
 		return
 	}
 	time.Sleep(interval)
