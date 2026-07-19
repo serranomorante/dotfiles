@@ -211,12 +211,12 @@ vim.api.nvim_create_autocmd("FileChangedShellPost", {
     local notes_dir = vim.fs.normalize(vim.env.HOME .. "/data/notes/foam")
     local is_notes_file = vim.fs.normalize(bufname):sub(1, #notes_dir + 1) == notes_dir .. "/"
     if not is_notes_file or not vim.list_contains({ "markdown", "markdown.system_health" }, filetype) then return end
-    if vim.b[bufnr].persistent_scratch_disable_lsp then return end
+    if not require("serranomorante.plugins.lsp.utils").should_enable_marksman(bufnr) then return end
 
     for _, client in ipairs(vim.lsp.get_clients({ name = "marksman", bufnr = bufnr, _uninitialized = true })) do
       client:stop(true)
     end
-    pcall(vim.lsp.enable, "marksman")
+    require("serranomorante.plugins.lsp.utils").enable("marksman", bufnr)
   end,
 })
 
