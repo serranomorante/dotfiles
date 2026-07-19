@@ -101,6 +101,7 @@ local PROVIDERS = {
     name = "codex",
     display_name = "Codex",
     executable = "codex",
+    mcp_executable = "codex-mcp",
     sessions_dir = vim.fn.expand("~/.codex/sessions"),
     cache_key = "agent-sessions-codex-v1",
     key_prefix = "c",
@@ -119,6 +120,7 @@ local PROVIDERS = {
     name = "claude",
     display_name = "Claude",
     executable = "claude",
+    mcp_executable = "claude-mcp",
     sessions_dir = vim.fn.expand("~/.claude/projects"),
     cache_key = "agent-sessions-claude-v1",
     key_prefix = "a",
@@ -464,7 +466,8 @@ local function tmux_wrap_provider_command(provider, provider_args, tmux_session_
   if size and size.width > 0 and size.height > 0 then
     vim.list_extend(args, { "-x", tostring(size.width), "-y", tostring(size.height) })
   end
-  vim.list_extend(args, { "-s", tmux_session_name, provider.executable })
+  local executable = provider.launch_executable or provider.executable
+  vim.list_extend(args, { "-s", tmux_session_name, executable })
   vim.list_extend(args, provider_args or {})
   return "tmux", args
 end
@@ -1259,6 +1262,7 @@ end
 ---@field all? boolean
 ---@field start_win? integer
 ---@field role? string  -- "sub" to spawn as a sub-agent; nil/other = master/root
+---@field mcp? boolean  -- true to launch through the provider's MCP wrapper
 
 ---@param opts? AgentSessionOpts
 ---@return string? prompt
@@ -1742,11 +1746,19 @@ end
 ---@param opts? AgentSessionOpts
 function M.open_new(provider_name, opts)
   local provider = provider_by_name(provider_name)
-  if vim.fn.executable(provider.executable) ~= 1 then
-    vim.api.nvim_echo({ { provider.executable .. " executable not found", "DiagnosticError" } }, false, {})
+  opts = opts or {}
+  local executable = provider.executable
+  if opts.mcp == true then executable = provider.mcp_executable end
+  if type(executable) ~= "string" or executable == "" then
+    vim.api.nvim_echo({ { provider.display_name .. " MCP launcher is not configured", "DiagnosticError" } }, false, {})
+    return
+  end
+  if vim.fn.executable(executable) ~= 1 then
+    vim.api.nvim_echo({ { executable .. " executable not found", "DiagnosticError" } }, false, {})
     return
   end
 
+  provider = vim.tbl_extend("force", provider, { launch_executable = executable })
   local prompt, label = prompt_from_context(opts)
   leave_visual_mode()
   local cwd = vim.fn.getcwd()

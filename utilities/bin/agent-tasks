@@ -13,7 +13,7 @@
 #        agent-tasks reconcile                    # reopen missing Overseer tasks for live tmux agent sessions
 #        agent-tasks resize-tmux                  # resize all tmux agent sessions to the current Neovim geometry
 #        agent-tasks open [--all|-a] <session-id...>  # open session(s) by id (--all bypasses the cwd filter)
-#        agent-tasks new <provider> [--sub|--role <role>] [task...]  # spawn a new agent session; provider: codex, claude, gemini
+#        agent-tasks new <provider> [--mcp] [--sub|--role <role>] [task...]  # spawn a new agent session; provider: codex, claude, gemini
 #                                                 # --sub marks it as a sub-agent; default = master/root
 #        agent-tasks role <ref> <sub|master>      # (re)tag an existing task's role (master|root clears the sub mark)
 #        agent-tasks dispose <ref>                # stop + REMOVE one task from the Overseer list
@@ -95,27 +95,35 @@ resize-tmux)
     remote "resize_tmux_sessions()"
     ;;
 new)
-    [ $# -ge 1 ] || die "usage: $prog new <provider> [--sub|--role <role>] [task...]"
+    [ $# -ge 1 ] || die "usage: $prog new <provider> [--mcp] [--sub|--role <role>] [task...]"
     provider=$1
     shift
     role=""
-    # Optional role flag right after the provider: --sub (shorthand for sub-agent)
-    # or --role <sub|master>. Anything else is the task prompt. A task with no role
-    # flag stays a master/root agent (the default everywhere).
-    case "${1:-}" in
-    --sub | -s)
-        role="sub"
-        shift
-        ;;
-    --role)
-        [ $# -ge 2 ] || die "usage: $prog new <provider> --role <sub|master> [task...]"
-        role=$2
-        shift 2
-        ;;
-    esac
+    mcp=false
+    # Optional flags right after the provider. Anything else starts the task prompt.
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --mcp)
+            mcp=true
+            shift
+            ;;
+        --sub | -s)
+            role="sub"
+            shift
+            ;;
+        --role)
+            [ $# -ge 2 ] || die "usage: $prog new <provider> --role <sub|master> [task...]"
+            role=$2
+            shift 2
+            ;;
+        *)
+            break
+            ;;
+        esac
+    done
     enc=""
     [ $# -ge 1 ] && enc=$(b64 "$*")
-    remote "new('$provider', '$enc', '$role')"
+    remote "new('$provider', '$enc', '$role', $mcp)"
     ;;
 role)
     # role <ref> <sub|master>  → (re)tag an existing task's orchestration role.

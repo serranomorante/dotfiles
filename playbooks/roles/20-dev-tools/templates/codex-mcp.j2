@@ -1,0 +1,8 @@
+#!/bin/sh
+# {{ ansible_managed }}
+# Purpose: Start Codex with MCP tools routed through the local MCPHub proxy profile.
+# Usage: codex-mcp [codex args...]
+
+set -eu
+
+exec "{{ node_user_bin_dir }}/mcphub-run" codex -p mcphub "$@"

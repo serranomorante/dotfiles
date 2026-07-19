@@ -5,6 +5,9 @@ reaper_mcp_server_setup:
 
 node_ai_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/.npm"
 postman_mcp_legacy_project_path: "{{ ansible_facts.env.HOME }}/.local/share/postman-mcp-server"
+mcphub_setup:
+  port: 37373
+  shutdown_delay_ms: 30000
 
 # Claude Code global settings forced into ~/.claude/settings.json. Runtime state and caches live in ~/.claude.json, but user-editable settings such as promptSuggestionEnabled belong in ~/.claude/settings.json.
 claude_global_settings_config:

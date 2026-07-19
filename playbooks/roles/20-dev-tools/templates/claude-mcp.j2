@@ -1,0 +1,8 @@
+#!/bin/sh
+# {{ ansible_managed }}
+# Purpose: Start Claude Code with MCP tools routed through the local MCPHub proxy.
+# Usage: claude-mcp [claude args...]
+
+set -eu
+
+exec "{{ node_user_bin_dir }}/mcphub-run" "{{ node_user_bin_dir }}/claude" --strict-mcp-config --mcp-config "$HOME/.config/mcphub/client.json" "$@"

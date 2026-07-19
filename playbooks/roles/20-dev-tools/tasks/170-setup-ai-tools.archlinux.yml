@@ -255,6 +255,29 @@
     dest: ~/.config/mcphub/servers.json
     mode: "644"
 
+- name: "[archlinux] Setup ai tools: generate MCPHub client config"
+  ansible.builtin.template:
+    src: mcphub_client_config.json.j2
+    dest: ~/.config/mcphub/client.json
+    mode: "644"
+
+- name: "[archlinux] Setup ai tools: install MCPHub runner"
+  ansible.builtin.template:
+    src: mcphub-run.j2
+    dest: "{{ node_user_bin_dir }}/mcphub-run"
+    mode: "755"
+
+- name: "[archlinux] Setup ai tools: install MCP-aware agent launchers"
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ node_user_bin_dir }}/{{ item.dest }}"
+    mode: "755"
+  loop:
+    - src: claude-mcp.j2
+      dest: claude-mcp
+    - src: codex-mcp.j2
+      dest: codex-mcp
+
 - name: "[archlinux] Setup ai tools: load mcphub servers.json"
   ansible.builtin.set_fact:
     mcphub_servers_json: "{{ lookup('file', '~/.config/mcphub/servers.json') | from_json }}"
@@ -309,9 +332,9 @@
     claude_settings_json: "{{ lookup('file', '~/.claude.json') | default({}) | from_json }}"
   when: var_stat_claude_settings.stat.exists
 
-- name: "[archlinux] Setup ai tools: combine claude settings with mcphub servers"
+- name: "[archlinux] Setup ai tools: remove direct MCP servers from claude settings"
   ansible.builtin.set_fact:
-    claude_settings_json: "{{ claude_settings_json | combine(mcphub_active_servers_json) }}"
+    claude_settings_json: "{{ claude_settings_json | dict2items | rejectattr('key', 'equalto', 'mcpServers') | items2dict }}"
   when:
     - var_stat_claude_settings.stat.exists
     - claude_settings_json.values() | length != 0
@@ -319,11 +342,9 @@
 - name: "[archlinux] Setup ai tools: override claude settings file"
   ansible.builtin.copy:
     dest: ~/.claude.json
-    content: "{{ claude_settings_json }}"
+    content: "{{ claude_settings_json | to_nice_json }}\n"
     mode: "644"
-  when:
-    - var_stat_claude_settings.stat.exists
-    - claude_settings_json.values() | length != 0
+  when: var_stat_claude_settings.stat.exists
 
 - name: "[archlinux] Setup ai tools: ensure claude config folder"
   ansible.builtin.file:
@@ -364,13 +385,19 @@
     state: directory
     mode: "744"
 
-- name: "[archlinux] Setup ai tools: write codex mcp_servers into config.toml"
+- name: "[archlinux] Setup ai tools: remove direct codex mcp_servers from config.toml"
   ansible.builtin.blockinfile:
     path: ~/.codex/config.toml
     create: true
     mode: "644"
     marker: "# {mark} ANSIBLE MANAGED MCP SERVERS (mcphub -> codex)"
-    block: "{{ lookup('template', 'codex_mcp_servers.toml.j2') }}"
+    state: absent
+
+- name: "[archlinux] Setup ai tools: write codex MCPHub profile"
+  ansible.builtin.template:
+    src: codex_mcphub_profile.toml.j2
+    dest: ~/.codex/mcphub.config.toml
+    mode: "644"
 
 # Codex treats [permissions.<name>] as a named permission profile and refuses to
 # start unless the root-level `default_permissions` key selects one. TOML requires

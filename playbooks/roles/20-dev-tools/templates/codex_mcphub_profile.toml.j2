@@ -1,0 +1,5 @@
+# {{ ansible_managed }}
+# Enables the local MCPHub proxy only when Codex is launched with `-p mcphub`.
+
+[mcp_servers."Hub"]
+url = "http://127.0.0.1:{{ mcphub_setup.port }}/mcp"

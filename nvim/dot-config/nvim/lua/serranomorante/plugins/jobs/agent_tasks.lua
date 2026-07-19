@@ -795,14 +795,19 @@ end
 ---@param provider_name string
 ---@param b64_prompt? string optional base64-encoded initial prompt
 ---@param role? string "sub" to mark the spawned task as a sub-agent (default master)
+---@param mcp? boolean|string true to launch through the provider's MCP wrapper
 ---@return string json
-function M.new(provider_name, b64_prompt, role)
+function M.new(provider_name, b64_prompt, role, mcp)
   if type(provider_name) ~= "string" or provider_name == "" then
     return vim.json.encode({ ok = false, error = "missing provider" })
   end
   local provider = provider_by_name(provider_name)
   if not provider then return vim.json.encode({ ok = false, error = "unknown provider: " .. provider_name }) end
   local as_sub = role == ROLE_SUB
+  local use_mcp = mcp == true or mcp == "true" or mcp == "1"
+  if use_mcp and (type(provider.mcp_executable) ~= "string" or provider.mcp_executable == "") then
+    return vim.json.encode({ ok = false, error = provider.name .. " does not have an MCP launcher" })
+  end
 
   local ok_as, agent_sessions = pcall(require, "serranomorante.plugins.jobs.agent_sessions")
   if not ok_as or type(agent_sessions.open_new) ~= "function" then
@@ -821,7 +826,12 @@ function M.new(provider_name, b64_prompt, role)
     if dok then prompt = decoded end
   end
 
-  vim.schedule(function() agent_sessions.open_new(provider.name, as_sub and { role = ROLE_SUB } or nil) end)
+  vim.schedule(function()
+    local opts = {}
+    if as_sub then opts.role = ROLE_SUB end
+    if use_mcp then opts.mcp = true end
+    agent_sessions.open_new(provider.name, opts)
+  end)
 
   if prompt then
     local tries = 0
@@ -852,6 +862,7 @@ function M.new(provider_name, b64_prompt, role)
     spawning = true,
     with_prompt = prompt ~= nil,
     role = as_sub and ROLE_SUB or ROLE_MASTER,
+    mcp = use_mcp,
   })
 end
 
@@ -1078,10 +1089,28 @@ function M.setup_commands()
 
   vim.api.nvim_create_user_command("AgentTaskNew", function(a)
     local provider_name = a.fargs[1]
-    local prompt = table.concat(vim.list_slice(a.fargs, 2, #a.fargs), " ")
+    local use_mcp = false
+    local role = ""
+    local prompt_args = {}
+    local i = 2
+    while i <= #a.fargs do
+      local arg = a.fargs[i]
+      if arg == "--mcp" then
+        use_mcp = true
+      elseif arg == "--sub" or arg == "-s" then
+        role = ROLE_SUB
+      elseif arg == "--role" and i < #a.fargs then
+        role = a.fargs[i + 1]
+        i = i + 1
+      else
+        table.insert(prompt_args, arg)
+      end
+      i = i + 1
+    end
+    local prompt = table.concat(prompt_args, " ")
     local b64 = prompt ~= "" and vim.base64.encode(prompt) or ""
-    vim.api.nvim_echo({ { M.new(provider_name, b64) } }, false, {})
-  end, { nargs = "+", desc = "Agent tasks: spawn a new provider session (<provider> [task to run])" })
+    vim.api.nvim_echo({ { M.new(provider_name, b64, role, use_mcp) } }, false, {})
+  end, { nargs = "+", desc = "Agent tasks: spawn a new provider session (<provider> [--mcp] [--sub|--role role] [task])" })
 end
 
 return M
