@@ -1,0 +1,256 @@
+#!/bin/sh
+
+# Purpose: Save and restore Vim-style copy-mode scroll marks for a tmux pane.
+# Usage: tmux-copy-mark save|restore SOCKET_PATH PANE_ID MARK
+# Usage: tmux-copy-mark record-entry|save-last-and-cancel|restore-last SOCKET_PATH PANE_ID
+
+usage() {
+    printf '%s\n' 'Usage: tmux-copy-mark save|restore SOCKET_PATH PANE_ID MARK' >&2
+    printf '%s\n' 'Usage: tmux-copy-mark record-entry|save-last-and-cancel|restore-last SOCKET_PATH PANE_ID' >&2
+    exit 2
+}
+
+[ "$#" -ge 3 ] || usage
+
+action=$1
+socket_path=$2
+pane=$3
+mark=${4:-}
+
+tmux_cmd() {
+    tmux -S "$socket_path" "$@"
+}
+
+tmux_format() {
+    tmux_cmd display-message -p -t "$pane" "$1"
+}
+
+display_note() {
+    tmux_cmd display-message -t "$pane" "$1"
+}
+
+valid_mark() {
+    case $1 in
+    [abcdefghijklmnopqrstuvwxyz]) return 0 ;;
+    *) return 1 ;;
+    esac
+}
+
+int_or_default() {
+    case $1 in
+    '' | *[!0-9]*) printf '%s\n' "$2" ;;
+    *) printf '%s\n' "$1" ;;
+    esac
+}
+
+option_name() {
+    case $1 in
+    last)
+        case $2 in
+        scroll) printf '%s\n' '@dotfiles-copy-scroll-position' ;;
+        limit) printf '%s\n' '@dotfiles-copy-position-limit' ;;
+        x) printf '%s\n' '@dotfiles-copy-cursor-x' ;;
+        y) printf '%s\n' '@dotfiles-copy-cursor-y' ;;
+        *) usage ;;
+        esac
+        ;;
+    entry)
+        case $2 in
+        scroll) printf '%s\n' '@dotfiles-copy-entry-scroll-position' ;;
+        limit) printf '%s\n' '@dotfiles-copy-entry-position-limit' ;;
+        x) printf '%s\n' '@dotfiles-copy-entry-cursor-x' ;;
+        y) printf '%s\n' '@dotfiles-copy-entry-cursor-y' ;;
+        *) usage ;;
+        esac
+        ;;
+    mark)
+        valid_mark "$2" || usage
+        case $3 in
+        scroll) printf '%s\n' "@dotfiles-copy-mark-$2-scroll-position" ;;
+        limit) printf '%s\n' "@dotfiles-copy-mark-$2-position-limit" ;;
+        x) printf '%s\n' "@dotfiles-copy-mark-$2-cursor-x" ;;
+        y) printf '%s\n' "@dotfiles-copy-mark-$2-cursor-y" ;;
+        *) usage ;;
+        esac
+        ;;
+    *) usage ;;
+    esac
+}
+
+get_option() {
+    name=$1
+    tmux_format "#{${name}}"
+}
+
+set_option() {
+    tmux_cmd set-option -p -t "$pane" "$1" "$2" >/dev/null
+}
+
+save_mark() {
+    valid_mark "$mark" || usage
+
+    if [ "$(tmux_format '#{pane_in_mode}')" != 1 ]; then
+        display_note "tmux copy mark: enter copy-mode before saving marks"
+        return 0
+    fi
+
+    set_option "$(option_name mark "$mark" scroll)" "$(tmux_format '#{scroll_position}')"
+    set_option "$(option_name mark "$mark" limit)" "$(tmux_format '#{copy_position_limit}')"
+    set_option "$(option_name mark "$mark" x)" "$(tmux_format '#{copy_cursor_x}')"
+    set_option "$(option_name mark "$mark" y)" "$(tmux_format '#{copy_cursor_y}')"
+    display_note "tmux copy mark: saved $mark"
+}
+
+store_current_position() {
+    scope=$1
+
+    set_option "$(option_name "$scope" scroll)" "$(tmux_format '#{scroll_position}')"
+    set_option "$(option_name "$scope" limit)" "$(tmux_format '#{copy_position_limit}')"
+    set_option "$(option_name "$scope" x)" "$(tmux_format '#{copy_cursor_x}')"
+    set_option "$(option_name "$scope" y)" "$(tmux_format '#{copy_cursor_y}')"
+}
+
+record_entry() {
+    if [ "$(tmux_format '#{pane_in_mode}')" = 1 ] && [ "$(tmux_format '#{pane_mode}')" = copy-mode ]; then
+        store_current_position entry
+    fi
+}
+
+same_as_entry() {
+    entry_scroll=$(get_option "$(option_name entry scroll)")
+    [ -n "$entry_scroll" ] || return 1
+
+    entry_limit=$(get_option "$(option_name entry limit)")
+    entry_x=$(get_option "$(option_name entry x)")
+    entry_y=$(get_option "$(option_name entry y)")
+
+    current_scroll=$(int_or_default "$(tmux_format '#{scroll_position}')" 0)
+    current_limit=$(int_or_default "$(tmux_format '#{copy_position_limit}')" 0)
+    current_x=$(int_or_default "$(tmux_format '#{copy_cursor_x}')" 0)
+    current_y=$(int_or_default "$(tmux_format '#{copy_cursor_y}')" 0)
+
+    entry_scroll=$(int_or_default "$entry_scroll" 0)
+    entry_limit=$(int_or_default "$entry_limit" "$current_limit")
+    entry_x=$(int_or_default "$entry_x" 0)
+    entry_y=$(int_or_default "$entry_y" 0)
+
+    adjusted_entry_scroll=$((entry_scroll + current_limit - entry_limit))
+    [ "$adjusted_entry_scroll" -lt 0 ] && adjusted_entry_scroll=0
+    [ "$adjusted_entry_scroll" -gt "$current_limit" ] && adjusted_entry_scroll=$current_limit
+
+    [ "$current_scroll" = "$adjusted_entry_scroll" ] && [ "$current_x" = "$entry_x" ] && [ "$current_y" = "$entry_y" ]
+}
+
+save_last_and_cancel() {
+    if [ "$(tmux_format '#{pane_in_mode}')" = 1 ] && ! same_as_entry; then
+        store_current_position last
+    fi
+
+    tmux_cmd send-keys -t "$pane" -X cancel
+}
+
+restore_position() {
+    scope=$1
+
+    if [ "$scope" = mark ]; then
+        valid_mark "$mark" || usage
+        saved_scroll_name=$(option_name mark "$mark" scroll)
+        saved_limit_name=$(option_name mark "$mark" limit)
+        saved_x_name=$(option_name mark "$mark" x)
+        saved_y_name=$(option_name mark "$mark" y)
+        empty_message="tmux copy mark: $mark is empty"
+    else
+        saved_scroll_name=$(option_name last scroll)
+        saved_limit_name=$(option_name last limit)
+        saved_x_name=$(option_name last x)
+        saved_y_name=$(option_name last y)
+        empty_message=
+    fi
+
+    saved_scroll=$(get_option "$saved_scroll_name")
+    if [ "$scope" = mark ] && [ -z "$saved_scroll" ]; then
+        display_note "$empty_message"
+        return 0
+    fi
+
+    saved_limit=$(get_option "$saved_limit_name")
+    saved_x=$(get_option "$saved_x_name")
+    saved_y=$(get_option "$saved_y_name")
+
+    tmux_cmd copy-mode -t "$pane"
+
+    current_scroll=$(int_or_default "$(tmux_format '#{scroll_position}')" 0)
+    current_limit=$(int_or_default "$(tmux_format '#{copy_position_limit}')" 0)
+    current_x=$(int_or_default "$(tmux_format '#{copy_cursor_x}')" 0)
+    current_y=$(int_or_default "$(tmux_format '#{copy_cursor_y}')" 0)
+    pane_height=$(int_or_default "$(tmux_format '#{pane_height}')" 1)
+
+    saved_scroll=$(int_or_default "$saved_scroll" 0)
+    saved_limit=$(int_or_default "$saved_limit" "$current_limit")
+    saved_x=$(int_or_default "$saved_x" 0)
+    saved_y=$(int_or_default "$saved_y" 0)
+
+    middle=$(((pane_height - 1) / 2))
+    restore=$((saved_scroll + current_limit - saved_limit))
+    [ "$restore" -lt 0 ] && restore=0
+    [ "$restore" -gt "$current_limit" ] && restore=$current_limit
+
+    target_scroll=$restore
+    target_y=$saved_y
+    centered_scroll=$((restore - saved_y + middle))
+    if [ "$centered_scroll" -ge 0 ] && [ "$centered_scroll" -le "$current_limit" ]; then
+        target_scroll=$centered_scroll
+        target_y=$middle
+    fi
+
+    if [ "$current_scroll" = "$target_scroll" ] && [ "$current_x" = "$saved_x" ] && [ "$current_y" = "$target_y" ]; then
+        store_current_position entry
+        return 0
+    fi
+
+    tmux_cmd send-keys -t "$pane" -X goto-line "$restore"
+    tmux_cmd send-keys -t "$pane" -X top-line
+
+    i=0
+    while [ "$i" -lt "$saved_y" ]; do
+        tmux_cmd send-keys -t "$pane" -X cursor-down
+        i=$((i + 1))
+    done
+
+    tmux_cmd send-keys -t "$pane" -X start-of-line
+
+    i=0
+    while [ "$i" -lt "$saved_x" ]; do
+        tmux_cmd send-keys -t "$pane" -X cursor-right
+        i=$((i + 1))
+    done
+
+    tmux_cmd send-keys -t "$pane" -X scroll-middle
+    store_current_position entry
+}
+
+case $action in
+record-entry)
+    [ "$#" -eq 3 ] || usage
+    record_entry
+    ;;
+save)
+    [ "$#" -eq 4 ] || usage
+    save_mark
+    ;;
+save-last-and-cancel)
+    [ "$#" -eq 3 ] || usage
+    save_last_and_cancel
+    ;;
+restore)
+    [ "$#" -eq 4 ] || usage
+    restore_position mark
+    ;;
+restore-last)
+    [ "$#" -eq 3 ] || usage
+    restore_position last
+    ;;
+*)
+    usage
+    ;;
+esac

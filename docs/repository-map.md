@@ -27,6 +27,8 @@ This map describes where changes usually belong. It is intentionally practical: 
 
 Kitty remote-control socket naming is owned by `term/bin/kitty-window-utils.sh`. Scripts that need CWD-derived Kitty socket paths, `listen_on` values, or matching Neovim server names should source that file instead of reimplementing the naming rule. `term/bin/kitty` only binds those cwd sockets for explicit directory launches (`-d`, `--directory`, or `--working-directory`), so plain dwm-style terminal launches do not collide on an inherited cwd. Long CWD keys are shortened with a stable hash so socket paths stay within UNIX socket path limits.
 
+Tmux copy-mode scroll marks are owned by `term/bin/tmux-copy-mark` and the shared fragment `term/dot-config/tmux/copy-mode-marks.conf`; keep save/restore arithmetic there instead of duplicating long `run-shell` bodies across `tmux.conf`, `nnn.conf`, and `tmuxnvim.conf`.
+
 ## Ansible Structure
 
 The main playbook is `playbooks/tools.yml`. It gathers facts, detects some host state, then imports roles in numeric order. Roles use numeric task filenames to make execution order visible.
