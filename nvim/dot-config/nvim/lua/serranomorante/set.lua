@@ -18,12 +18,12 @@ vim.go.viewoptions = vim.o.viewoptions:gsub(",curdir", "")
 
 vim.wo.number = true
 vim.wo.foldtext = ""
-vim.bo.expandtab = true
-vim.bo.scrollback = 1000000
+vim.o.expandtab = true
+vim.o.scrollback = 1000000
 vim.o.tabstop = 4
-vim.bo.softtabstop = 4
+vim.o.softtabstop = 4
 vim.go.tabclose = "left"
-vim.bo.shiftwidth = 4
+vim.o.shiftwidth = 4
 vim.o.matchpairs = vim.o.matchpairs .. ",<:>"
 vim.go.showmode = false
 vim.wo.smoothscroll = true
