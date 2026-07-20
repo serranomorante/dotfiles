@@ -12,6 +12,7 @@ local AGENT_TMUX_SESSION_NAME_METADATA = "agent_tmux_session_name"
 -- the task is a top-level ("master"/"root") agent. Kept as a plain string so it
 -- round-trips over the agent-tasks RPC bridge like the other metadata keys.
 local AGENT_ROLE_METADATA = "agent_role"
+local ROLE_SUB = "sub"
 local SESSION_CACHE_VERSION = 2
 local SESSION_CACHE_NAMESPACE = "nvim"
 local SESSION_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
@@ -414,12 +415,34 @@ end
 
 ---@param provider table
 ---@param session_id string?
+---@param role? string
 ---@return string
-local function tmux_session_name_for_task(provider, session_id)
+local function tmux_session_name_prefix(provider, role)
+  return role == ROLE_SUB and ("%s-sub"):format(provider.name) or provider.name
+end
+
+---@param role? string
+---@return string?
+local function normalized_agent_role(role) return role == ROLE_SUB and ROLE_SUB or nil end
+
+---@param task overseer.Task
+---@param role? string
+local function apply_task_role(task, role)
+  if type(task) ~= "table" then return end
+  task.metadata = task.metadata or {}
+  if normalized_agent_role(role) == ROLE_SUB then task.metadata[AGENT_ROLE_METADATA] = ROLE_SUB end
+end
+
+---@param provider table
+---@param session_id string?
+---@param role? string
+---@return string
+local function tmux_session_name_for_task(provider, session_id, role)
   -- Codex does not expose a session id up front, so give it a unique tmux
   -- placeholder and rename it later once the real conversation id lands.
-  if type(session_id) == "string" and session_id ~= "" then return ("%s-%s"):format(provider.name, session_id) end
-  return ("%s-pending-%s"):format(provider.name, generated_uuid())
+  local prefix = tmux_session_name_prefix(provider, role)
+  if type(session_id) == "string" and session_id ~= "" then return ("%s-%s"):format(prefix, session_id) end
+  return ("%s-pending-%s"):format(prefix, generated_uuid())
 end
 
 ---@param provider table
@@ -427,17 +450,24 @@ end
 ---@return boolean
 local function is_pending_tmux_session_name(provider, session_name)
   if type(session_name) ~= "string" then return false end
-  local prefix = ("%s-pending-"):format(provider.name)
-  return session_name:sub(1, #prefix) == prefix
+  for _, prefix in ipairs({
+    ("%s-pending-"):format(provider.name),
+    ("%s-sub-pending-"):format(provider.name),
+  }) do
+    if session_name:sub(1, #prefix) == prefix then return true end
+  end
+  return false
 end
 
 ---@param provider table
 ---@param session_id string
+---@param role? string
 ---@return string
-local function tmux_session_name_for_session(provider, session_id)
-  local final = ("%s-%s"):format(provider.name, session_id)
+local function tmux_session_name_for_session(provider, session_id, role)
+  local final = ("%s-%s"):format(tmux_session_name_prefix(provider, role), session_id)
   local cached = read_tmux_session_name(provider, session_id)
   if cached and cached ~= final and is_pending_tmux_session_name(provider, cached) then return final end
+  if role == ROLE_SUB and cached and cached ~= final and tmux_session_exists(cached) then return final end
   if cached and tmux_session_exists(cached) then return cached end
 
   if cached and cached ~= final and tmux_session_exists(final) then return final end
@@ -957,7 +987,8 @@ end
 local function persist_tmux_session_name(provider, task, session)
   task.metadata = task.metadata or {}
   local current = task.metadata[AGENT_TMUX_SESSION_NAME_METADATA]
-  local final = tmux_session_name_for_session(provider, session.id)
+  local role = normalized_agent_role(task.metadata[AGENT_ROLE_METADATA])
+  local final = tmux_session_name_for_session(provider, session.id, role)
 
   if type(current) ~= "string" or current == "" then
     current = final
@@ -1533,10 +1564,13 @@ end
 ---@param session AgentStoredSession
 ---@param prompt? string
 ---@param start_win integer
-local function resume_session(provider, session, prompt, start_win)
+---@param opts? AgentSessionOpts
+local function resume_session(provider, session, prompt, start_win, opts)
+  opts = opts or {}
+  local role = normalized_agent_role(opts.role)
   restore_regular_win(start_win)
   session = session_with_resolved_cwd(provider, session)
-  local tmux_session_name = tmux_session_name_for_session(provider, session.id)
+  local tmux_session_name = tmux_session_name_for_session(provider, session.id, role)
   local size = tmux_session_size(start_win)
   resize_tmux_window(tmux_session_name, size)
   local tmux_cmd, tmux_args =
@@ -1544,6 +1578,8 @@ local function resume_session(provider, session, prompt, start_win)
 
   local existing_task = running_task_for_session(provider, session)
   if existing_task then
+    apply_task_role(existing_task, role)
+    persist_tmux_session_name(provider, existing_task, session)
     open_task(provider, existing_task, prompt, { start_win = start_win })
     return
   end
@@ -1571,6 +1607,7 @@ local function resume_session(provider, session, prompt, start_win)
     },
     components = { "defaults_without_notification", "serranomorante.agent_watch" },
   })
+  apply_task_role(task, role)
 
   open_task(provider, task, prompt, { wait_for_ready = true, start_win = start_win, open_output = false })
   if not start_and_open_task_output(provider, task, start_win) then return end
@@ -1581,13 +1618,14 @@ end
 ---@param active_sessions_by_id table<string, AgentStoredSession>
 ---@param prompt? string
 ---@param start_win integer
+---@param opts? AgentSessionOpts
 ---@return boolean
-local function resume_selected_session_id(provider, session_id, active_sessions_by_id, prompt, start_win)
+local function resume_selected_session_id(provider, session_id, active_sessions_by_id, prompt, start_win, opts)
   session_id = agent_session_id(session_id)
   local session = session_id and active_sessions_by_id[session_id] or nil
   if not session then return false end
 
-  vim.schedule(function() resume_session(provider, session, prompt, start_win) end)
+  vim.schedule(function() resume_session(provider, session, prompt, start_win, opts) end)
   return true
 end
 
@@ -1595,18 +1633,20 @@ end
 ---@param session_id string
 ---@param prompt? string
 ---@param start_win integer?
+---@param opts? AgentSessionOpts
 ---@return boolean
-local function resume_cached_provider_session(provider, session_id, prompt, start_win)
+local function resume_cached_provider_session(provider, session_id, prompt, start_win, opts)
   local cached_sessions = read_session_cache(provider)
   if not cached_sessions then return false end
-  return resume_selected_session_id(provider, session_id, sessions_by_id(cached_sessions), prompt, start_win)
+  return resume_selected_session_id(provider, session_id, sessions_by_id(cached_sessions), prompt, start_win, opts)
 end
 
 ---@param provider table
 ---@param session_id string
 ---@param prompt? string
 ---@param start_win integer?
-local function refresh_and_resume_provider_session(provider, session_id, prompt, start_win)
+---@param opts? AgentSessionOpts
+local function refresh_and_resume_provider_session(provider, session_id, prompt, start_win, opts)
   refresh_session_cache(provider, {
     silent = true,
     callback = function(refreshed_sessions, ok)
@@ -1617,7 +1657,8 @@ local function refresh_and_resume_provider_session(provider, session_id, prompt,
           session_id,
           sessions_by_id(refreshed_sessions or {}),
           prompt,
-          start_win
+          start_win,
+          opts
         )
       then
         return
@@ -1645,21 +1686,23 @@ function M.open_task_with_prompt(task, prompt, opts)
   local metadata = task.metadata or {}
   local session_id = metadata[AGENT_SESSION_ID_METADATA]
   if type(session_id) ~= "string" or session_id == "" then return false end
-  if resume_cached_provider_session(provider, session_id, prompt, opts.start_win) then return true end
+  local resume_opts = { role = metadata[AGENT_ROLE_METADATA] }
+  if resume_cached_provider_session(provider, session_id, prompt, opts.start_win, resume_opts) then return true end
 
-  refresh_and_resume_provider_session(provider, session_id, prompt, opts.start_win)
+  refresh_and_resume_provider_session(provider, session_id, prompt, opts.start_win, resume_opts)
   return true
 end
 
 ---@param session_id string
 ---@param start_win integer
+---@param opts? AgentSessionOpts
 ---@return boolean
-local function resume_cached_session_any_provider(session_id, start_win)
+local function resume_cached_session_any_provider(session_id, start_win, opts)
   for _, provider in pairs(PROVIDERS) do
     local cached_sessions = read_session_cache(provider)
     if
       cached_sessions
-      and resume_selected_session_id(provider, session_id, sessions_by_id(cached_sessions), nil, start_win)
+      and resume_selected_session_id(provider, session_id, sessions_by_id(cached_sessions), nil, start_win, opts)
     then
       return true
     end
@@ -1669,7 +1712,8 @@ end
 
 ---@param session_id string
 ---@param start_win integer
-local function refresh_and_resume_any_provider(session_id, start_win)
+---@param opts? AgentSessionOpts
+local function refresh_and_resume_any_provider(session_id, start_win, opts)
   local pending = 0
   local finished = false
 
@@ -1687,7 +1731,14 @@ local function refresh_and_resume_any_provider(session_id, start_win)
         if
           not finished
           and ok
-          and resume_selected_session_id(provider, session_id, sessions_by_id(refreshed_sessions or {}), nil, start_win)
+          and resume_selected_session_id(
+            provider,
+            session_id,
+            sessions_by_id(refreshed_sessions or {}),
+            nil,
+            start_win,
+            opts
+          )
         then
           finished = true
           return
@@ -1764,7 +1815,8 @@ function M.open_new(provider_name, opts)
   local cwd = vim.fn.getcwd()
   local label_or_source = label or current_source_label()
   local preallocated_session_id = provider.preallocate_session_id and generated_uuid() or nil
-  local tmux_session_name = tmux_session_name_for_task(provider, preallocated_session_id)
+  local role = normalized_agent_role(opts.role)
+  local tmux_session_name = tmux_session_name_for_task(provider, preallocated_session_id, role)
   local start_win = vim.api.nvim_get_current_win()
 
   require("async")(function()
@@ -1781,7 +1833,7 @@ function M.open_new(provider_name, opts)
     if preallocated_session_id then metadata[AGENT_SESSION_ID_METADATA] = preallocated_session_id end
     -- Orchestration role: only stamp when explicitly spawned as a sub-agent.
     -- Anything without this key renders as a "master"/root agent by default.
-    if type(opts) == "table" and opts.role == "sub" then metadata[AGENT_ROLE_METADATA] = "sub" end
+    if role == ROLE_SUB then metadata[AGENT_ROLE_METADATA] = ROLE_SUB end
 
     local task = require("overseer").new_task({
       name = task_name(provider, cwd, label_or_source),
@@ -1811,15 +1863,20 @@ function M.open_new(provider_name, opts)
   end):catch(function(err) vim.notify(tostring(err), vim.log.levels.ERROR) end)
 end
 
-local function create_agent_resume_command()
-  vim.api.nvim_create_user_command("AgentResumeById", function(command_args)
-    local session_id = agent_session_id(command_args.args)
-    if not session_id then return vim.notify("Agent session id is required", vim.log.levels.ERROR) end
+---@param session_id string
+---@param opts? AgentSessionOpts
+function M.resume_by_id(session_id, opts)
+  opts = opts or {}
+  session_id = agent_session_id(session_id)
+  if not session_id then return vim.notify("Agent session id is required", vim.log.levels.ERROR) end
 
-    local start_win = vim.api.nvim_get_current_win()
-    if resume_cached_session_any_provider(session_id, start_win) then return end
-    refresh_and_resume_any_provider(session_id, start_win)
-  end, {
+  local start_win = opts.start_win or vim.api.nvim_get_current_win()
+  if resume_cached_session_any_provider(session_id, start_win, opts) then return end
+  refresh_and_resume_any_provider(session_id, start_win, opts)
+end
+
+local function create_agent_resume_command()
+  vim.api.nvim_create_user_command("AgentResumeById", function(command_args) M.resume_by_id(command_args.args) end, {
     force = true,
     nargs = 1,
     desc = "Resume an agent session in Overseer by id",

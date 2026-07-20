@@ -336,7 +336,7 @@ vim.keymap.set("t", "<C-g>", "<C-\\><C-n><Cmd>stopinsert<CR>", {
   silent = true,
 })
 
-vim.keymap.set("t", "<A-r>", function() utils.refresh_terminal_window() end, {
+vim.keymap.set("t", "<A-r>", function() utils.refresh_terminal_window(nil, nil, { tmux_pulse = true }) end, {
   desc = "Refresh terminal window",
   nowait = true,
   silent = true,

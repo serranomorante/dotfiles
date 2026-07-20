@@ -1694,11 +1694,16 @@ end
 local function overseer_task_for_buf(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   local task_id = vim.b[bufnr].overseer_task
-  if task_id then return require("overseer.task_list").get(task_id) end
+  if task_id then
+    local ok, task_list = pcall(require, "overseer.task_list")
+    local task = ok and task_list.get(task_id) or nil
+    if task then return task end
+  end
 
   local ok, overseer = pcall(require, "overseer")
   if not ok then return nil end
   local tasks = overseer.list_tasks({
+    include_ephemeral = true,
     recent_first = true,
     filter = function(task) return task:get_bufnr() == bufnr end,
   })
@@ -2129,32 +2134,87 @@ function M.schedule_open_overseer_task_output(task, opts)
   vim.schedule(open)
 end
 
----@param bufnr integer
----@return integer?
 local function overseer_job_id_for_buf(bufnr)
-  local task_id = vim.b[bufnr].overseer_task
-  if task_id then
-    local ok, task_list = pcall(require, "overseer.task_list")
-    local task = ok and task_list.get(task_id) or nil
-    if task then return task.job_id or task.strategy and task.strategy.job_id end
+  local task = overseer_task_for_buf(bufnr)
+  if task then return task.job_id or task.strategy and task.strategy.job_id end
+end
+
+---@param bufnr integer
+---@return { width: integer, height: integer }?
+local function terminal_window_size_for_buffer(bufnr)
+  if type(bufnr) ~= "number" or not vim.api.nvim_buf_is_valid(bufnr) then return nil end
+
+  local current_win = vim.api.nvim_get_current_win()
+  if vim.api.nvim_win_is_valid(current_win) and vim.api.nvim_win_get_buf(current_win) == bufnr then
+    return {
+      width = vim.api.nvim_win_get_width(current_win),
+      height = vim.api.nvim_win_get_height(current_win),
+    }
   end
 
-  local ok, overseer = pcall(require, "overseer")
-  if not ok then return nil end
+  for _, winid in ipairs(vim.fn.win_findbuf(bufnr)) do
+    if vim.api.nvim_win_is_valid(winid) then
+      return {
+        width = vim.api.nvim_win_get_width(winid),
+        height = vim.api.nvim_win_get_height(winid),
+      }
+    end
+  end
+end
 
-  local tasks = overseer.list_tasks({
-    include_ephemeral = true,
-    filter = function(task) return task:get_bufnr() == bufnr end,
+---@param target string
+---@param size { width: integer, height: integer }
+---@return boolean
+local function resize_agent_task_tmux_window(target, size)
+  if type(target) ~= "string" or target == "" then return false end
+  if not size or size.width <= 0 or size.height <= 0 then return false end
+  return M.run_tmux_command(M.agent_tmux_server_name(), {
+    "resize-window",
+    "-t",
+    target,
+    "-x",
+    tostring(size.width),
+    "-y",
+    tostring(size.height),
   })
-  local task = tasks[1]
-  if task then return task.job_id or task.strategy and task.strategy.job_id end
+end
+
+---@param bufnr integer
+---@param opts? { pulse?: boolean }
+local function refresh_agent_task_tmux_window(bufnr, opts)
+  opts = opts or {}
+  local task = overseer_task_for_buf(bufnr)
+  local target = M.agent_task_tmux_target(task)
+  if not target then return end
+
+  local size = terminal_window_size_for_buffer(bufnr)
+  if not size then return end
+
+  if opts.pulse then
+    local pulse_size = { width = size.width, height = size.height }
+    if pulse_size.height > 1 then
+      pulse_size.height = pulse_size.height - 1
+    elseif pulse_size.width > 1 then
+      pulse_size.width = pulse_size.width - 1
+    end
+    if pulse_size.width ~= size.width or pulse_size.height ~= size.height then
+      resize_agent_task_tmux_window(target, pulse_size)
+    end
+  end
+
+  resize_agent_task_tmux_window(target, size)
 end
 
 ---@param bufnr? integer
 ---@param job_id? integer
-function M.refresh_terminal_window(bufnr, job_id)
+---@param opts? { tmux_pulse?: boolean }
+function M.refresh_terminal_window(bufnr, job_id, opts)
+  opts = opts or {}
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   job_id = job_id or vim.b[bufnr].terminal_job_id or overseer_job_id_for_buf(bufnr)
+
+  local ok_agent_tasks, agent_tasks = pcall(require, "serranomorante.plugins.jobs.agent_tasks")
+  if ok_agent_tasks then pcall(agent_tasks.resize_tmux_sessions) end
 
   if not job_id or job_id == 0 then
     local channel = vim.api.nvim_get_option_value("channel", { buf = bufnr })
@@ -2176,6 +2236,7 @@ function M.refresh_terminal_window(bufnr, job_id)
     end
   end
 
+  refresh_agent_task_tmux_window(bufnr, { pulse = opts.tmux_pulse == true })
   vim.cmd.redraw({ bang = true })
 end
 

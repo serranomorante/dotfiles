@@ -21,11 +21,13 @@ set -euo pipefail
 # dotfiles-test-case: overseer-chained-picker-open-output-keeps-alternate-buffer
 # dotfiles-test-case: codex-new-visual-selection-pastes-snippet
 # dotfiles-test-case: codex-new-renames-pending-tmux-session-after-session-id
+# dotfiles-test-case: sub-agent-new-session-uses-role-aware-tmux-name
 # dotfiles-test-case: codex-resume-ignores-cached-pending-tmux-session
 # dotfiles-test-case: agent-tmux-socket-dirs-are-private
 # dotfiles-test-case: agent-tasks-dispose-kills-tmux-session
 # dotfiles-test-case: overseer-actions-include-dispose-and-kill-tmux
 # dotfiles-test-case: agent-tasks-reconcile-opens-missing-tmux-sessions
+# dotfiles-test-case: refresh-terminal-window-resizes-agent-tmux
 
 # Purpose: Guard the agent-session terminal behavior debugged around Overseer output buffers.
 
@@ -1177,6 +1179,105 @@ SH
         'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
     run_nvim_lua_file "$lua_file"
     ;;
+sub-agent-new-session-uses-role-aware-tmux-name)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    mkdir -p "$fake_bin"
+    cat >"${fake_bin}/uuidgen" <<'SH'
+#!/bin/sh
+set -eu
+
+printf '11111111-1111-4111-8111-111111111111\n'
+SH
+    cat >"${fake_bin}/agent-session-store" <<'SH'
+#!/bin/sh
+set -eu
+
+provider=
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --provider)
+        provider=$2
+        shift 2
+        ;;
+    ids)
+        printf '{"version":2,"provider":"%s","ids":[]}\n' "${provider:-claude}"
+        exit 0
+        ;;
+    watch-new)
+        printf '{"version":2,"provider":"%s","event":"timeout"}\n' "${provider:-claude}"
+        exit 0
+        ;;
+    *)
+        shift
+        ;;
+    esac
+done
+
+printf '{"version":2,"provider":"%s","sessions":[]}\n' "${provider:-claude}"
+SH
+    cat >"${fake_bin}/tmux" <<'SH'
+#!/bin/sh
+set -eu
+
+printf '%s\n' "$*" >>"${DOTFILES_TEST_TMP}/tmux-calls"
+
+case "$*" in
+*" new-session "*)
+    printf 'Claude Code\n'
+    printf '? for shortcuts\n'
+    sleep 10
+    ;;
+*)
+    exit 0
+    ;;
+esac
+SH
+    cat >"${fake_bin}/claude" <<'SH'
+#!/bin/sh
+set -eu
+
+printf 'Claude Code\n'
+printf '? for shortcuts\n'
+sleep 10
+SH
+    chmod +x "${fake_bin}/uuidgen" "${fake_bin}/agent-session-store" "${fake_bin}/tmux" "${fake_bin}/claude"
+
+    lua_file="${DOTFILES_TEST_TMP}/sub-agent-new-session-uses-role-aware-tmux-name.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  local session_id = "11111111-1111-4111-8111-111111111111"' \
+        '  vim.env.PATH = vim.env.DOTFILES_TEST_TMP .. "/bin:" .. vim.env.PATH' \
+        '  vim.env.AGENT_SESSION_STORE_BIN = vim.env.DOTFILES_TEST_TMP .. "/bin/agent-session-store"' \
+        '  vim.opt.packpath:prepend("/home/aaaa/.local/share/nvim/site")' \
+        '  vim.cmd.packloadall()' \
+        '  require("overseer").setup({' \
+        '    component_aliases = { defaults_without_notification = { "on_exit_set_status" } },' \
+        '  })' \
+        '  require("serranomorante.plugins.jobs.agent_sessions").open_new("claude", { role = "sub" })' \
+        '  local matching_task' \
+        '  local opened = vim.wait(5000, function()' \
+        '    for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
+        '      local metadata = task.metadata or {}' \
+        '      if metadata.agent_session_id == session_id then' \
+        '        matching_task = task' \
+        '        return metadata.agent_role == "sub" and metadata.agent_tmux_session_name == "claude-sub-" .. session_id' \
+        '      end' \
+        '    end' \
+        '    return false' \
+        '  end, 20)' \
+        '  assert(opened and matching_task, "sub-agent task did not keep role-aware tmux metadata")' \
+        '  local tmux_calls = table.concat(vim.fn.readfile(vim.env.DOTFILES_TEST_TMP .. "/tmux-calls"), "\n")' \
+        '  assert(tmux_calls:find("-s claude-sub-" .. session_id, 1, true), tmux_calls)' \
+        '  assert(not tmux_calls:find("-s claude-" .. session_id, 1, true), tmux_calls)' \
+        '  for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
+        '    pcall(function() task:dispose(true) end)' \
+        '  end' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua_file "$lua_file"
+    ;;
 codex-resume-ignores-cached-pending-tmux-session)
     fake_bin="${DOTFILES_TEST_TMP}/bin"
     mkdir -p "$fake_bin"
@@ -1413,7 +1514,9 @@ case "$*" in
     printf '%s\n' \
         'codex-open-session' \
         'claude-missing-session' \
+        'claude-sub-missing-sub-session' \
         'codex-pending-not-ready' \
+        'claude-sub-pending-not-ready' \
         'notes-not-an-agent'
     ;;
 *)
@@ -1436,6 +1539,7 @@ SH
         '      agent_tmux_session_name = "codex-open-session",' \
         '    },' \
         '  }' \
+        '  local resumed = {}' \
         '  package.loaded["overseer"] = nil' \
         '  package.preload["overseer"] = function()' \
         '    return { list_tasks = function() return { existing_task } end }' \
@@ -1447,28 +1551,68 @@ SH
         '        codex = { name = "codex", sessions_dir = "/tmp/codex" },' \
         '        claude = { name = "claude", sessions_dir = "/tmp/claude" },' \
         '      },' \
+        '      resume_by_id = function(id, opts)' \
+        '        table.insert(resumed, { id = id, role = opts and opts.role or "master" })' \
+        '      end,' \
         '    }' \
         '  end' \
-        '  local resumed = {}' \
         '  vim.api.nvim_create_user_command("AgentResumeById", function(args)' \
-        '    table.insert(resumed, args.args)' \
+        '    table.insert(resumed, { id = args.args, role = "fallback" })' \
         '  end, { nargs = 1, force = true })' \
         '  local agent_tasks = require("serranomorante.plugins.jobs.agent_tasks")' \
         '  agent_tasks.setup_commands()' \
         '  assert(vim.api.nvim_get_commands({}).AgentTasksReconcile ~= nil, "AgentTasksReconcile was not registered")' \
-        '  vim.cmd("AgentTasksReconcile")' \
-        '  assert(vim.wait(1000, function() return #resumed == 1 end, 10), "missing session was not resumed")' \
-        '  assert(resumed[1] == "missing-session", vim.inspect(resumed))' \
+        '  local command_output = vim.fn.execute("AgentTasksReconcile")' \
+        '  assert(command_output:find("Agent task reconcile: 3 tmux sessions, 1 already open, 2 reopened.", 1, true), command_output)' \
+        '  assert(command_output:find("Reopened:", 1, true), command_output)' \
+        '  assert(command_output:find("claude master missing", 1, true), command_output)' \
+        '  assert(command_output:find("claude sub missing", 1, true), command_output)' \
+        '  assert(not command_output:find("^%s*{"), command_output)' \
+        '  assert(vim.wait(1000, function() return #resumed == 2 end, 10), "missing sessions were not resumed")' \
+        '  local resumed_by_id = {}' \
+        '  for _, item in ipairs(resumed) do resumed_by_id[item.id] = item.role end' \
+        '  assert(resumed_by_id["missing-session"] == "master", vim.inspect(resumed))' \
+        '  assert(resumed_by_id["missing-sub-session"] == "sub", vim.inspect(resumed))' \
+        '  assert(existing_task.metadata.agent_role == nil, vim.inspect(existing_task.metadata))' \
         '  resumed = {}' \
         '  local result = vim.json.decode(agent_tasks.reconcile())' \
         '  assert(result.ok == true, vim.inspect(result))' \
-        '  assert(result.tmux_sessions == 2, vim.inspect(result))' \
+        '  assert(result.tmux_sessions == 3, vim.inspect(result))' \
         '  assert(result.existing_count == 1, vim.inspect(result))' \
-        '  assert(result.opened_count == 1, vim.inspect(result))' \
+        '  assert(result.opened_count == 2, vim.inspect(result))' \
         '  assert(result.opened[1].provider == "claude", vim.inspect(result.opened))' \
         '  assert(result.opened[1].session_id == "missing-session", vim.inspect(result.opened))' \
-        '  assert(vim.wait(1000, function() return #resumed == 1 end, 10), "missing session was not resumed")' \
-        '  assert(resumed[1] == "missing-session", vim.inspect(resumed))' \
+        '  assert(result.opened[1].role == "master", vim.inspect(result.opened))' \
+        '  assert(result.opened[2].session_id == "missing-sub-session", vim.inspect(result.opened))' \
+        '  assert(result.opened[2].role == "sub", vim.inspect(result.opened))' \
+        '  assert(vim.wait(1000, function() return #resumed == 2 end, 10), "missing sessions were not resumed")' \
+        '  resumed_by_id = {}' \
+        '  for _, item in ipairs(resumed) do resumed_by_id[item.id] = item.role end' \
+        '  assert(resumed_by_id["missing-session"] == "master", vim.inspect(resumed))' \
+        '  assert(resumed_by_id["missing-sub-session"] == "sub", vim.inspect(resumed))' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua_file "$lua_file"
+    ;;
+refresh-terminal-window-resizes-agent-tmux)
+    lua_file="${DOTFILES_TEST_TMP}/refresh-terminal-window-resizes-agent-tmux.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  local resize_calls = 0' \
+        '  package.loaded["serranomorante.plugins.jobs.agent_tasks"] = nil' \
+        '  package.preload["serranomorante.plugins.jobs.agent_tasks"] = function()' \
+        '    return { resize_tmux_sessions = function() resize_calls = resize_calls + 1; return "{}" end }' \
+        '  end' \
+        '  local utils = require("serranomorante.utils")' \
+        '  utils.refresh_terminal_window()' \
+        '  assert(resize_calls == 1, "refresh_terminal_window should resize agent tmux sessions")' \
+        '  package.loaded["serranomorante.plugins.jobs.agent_tasks"] = nil' \
+        '  package.preload["serranomorante.plugins.jobs.agent_tasks"] = function()' \
+        '    return { resize_tmux_sessions = function() error("resize failed") end }' \
+        '  end' \
+        '  utils.refresh_terminal_window()' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
         'local ok, err = xpcall(main, debug.traceback)' \

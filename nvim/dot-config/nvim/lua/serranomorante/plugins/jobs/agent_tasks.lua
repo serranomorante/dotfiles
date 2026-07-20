@@ -560,6 +560,28 @@ local function resolve_session_ref(ref, known)
   return nil, "not_found"
 end
 
+---@param provider string
+---@param name string
+---@return table?
+local function parse_tmux_agent_session(provider, name)
+  local sub_prefix = provider .. "-sub-"
+  if name:sub(1, #sub_prefix) == sub_prefix then
+    local session_id = name:sub(#sub_prefix + 1)
+    if session_id ~= "" and not session_id:match("^pending%-") then
+      return { provider = provider, role = ROLE_SUB, session_id = session_id, tmux_session_name = name }
+    end
+    return nil
+  end
+
+  local master_prefix = provider .. "-"
+  if name:sub(1, #master_prefix) == master_prefix then
+    local session_id = name:sub(#master_prefix + 1)
+    if session_id ~= "" and not session_id:match("^pending%-") then
+      return { provider = provider, role = ROLE_MASTER, session_id = session_id, tmux_session_name = name }
+    end
+  end
+end
+
 ---@return table[]?
 ---@return string?
 local function tmux_agent_sessions()
@@ -581,12 +603,9 @@ local function tmux_agent_sessions()
   for line in tostring(out):gmatch("[^\r\n]+") do
     local name = vim.trim(line)
     for _, provider in ipairs(provider_names()) do
-      local prefix = provider .. "-"
-      if name:sub(1, #prefix) == prefix then
-        local session_id = name:sub(#prefix + 1)
-        if session_id ~= "" and not session_id:match("^pending%-") then
-          table.insert(sessions, { provider = provider, session_id = session_id, tmux_session_name = name })
-        end
+      local session = parse_tmux_agent_session(provider, name)
+      if session then
+        table.insert(sessions, session)
         break
       end
     end
@@ -632,26 +651,183 @@ end
 local function is_pending_tmux_session_name(name)
   for _, provider in ipairs(provider_names()) do
     if name:sub(1, #provider + 9) == provider .. "-pending-" then return true end
+    if name:sub(1, #provider + 13) == provider .. "-sub-pending-" then return true end
   end
   return false
 end
 
+---@param t overseer.Task
+---@return { width: integer, height: integer }?
+local function task_terminal_window_size(t)
+  local bufnr = t.get_bufnr and t:get_bufnr() or nil
+  if type(bufnr) ~= "number" or not vim.api.nvim_buf_is_valid(bufnr) then return nil end
+
+  local current_win = vim.api.nvim_get_current_win()
+  if vim.api.nvim_win_is_valid(current_win) and vim.api.nvim_win_get_buf(current_win) == bufnr then
+    return {
+      width = vim.api.nvim_win_get_width(current_win),
+      height = vim.api.nvim_win_get_height(current_win),
+    }
+  end
+
+  for _, winid in ipairs(vim.fn.win_findbuf(bufnr)) do
+    if vim.api.nvim_win_is_valid(winid) then
+      return {
+        width = vim.api.nvim_win_get_width(winid),
+        height = vim.api.nvim_win_get_height(winid),
+      }
+    end
+  end
+end
+
+---@return integer
+local function tabline_height()
+  if vim.o.showtabline == 2 then return 1 end
+  if vim.o.showtabline == 1 and #vim.api.nvim_list_tabpages() > 1 then return 1 end
+  return 0
+end
+
+---@return integer
+local function statusline_height()
+  if vim.o.laststatus == 0 then return 0 end
+  if vim.o.laststatus == 1 and #vim.api.nvim_tabpage_list_wins(0) <= 1 then return 0 end
+  return 1
+end
+
 ---@return { width: integer, height: integer }
-local function current_tmux_size()
+local function fallback_tmux_size()
   return {
     width = vim.o.columns,
-    height = math.max(vim.o.lines - vim.o.cmdheight - 1, 1),
+    height = math.max(vim.o.lines - vim.o.cmdheight - tabline_height() - statusline_height(), 1),
   }
+end
+
+---@param session_name string
+---@return overseer.Task?
+local function task_for_tmux_session_name(session_name)
+  for _, t in ipairs(list_tasks()) do
+    if task_tmux_session_name(t) == session_name then return t end
+  end
+end
+
+---@param session_name string?
+---@return { width: integer, height: integer }
+local function current_tmux_size(session_name)
+  if type(session_name) == "string" and session_name ~= "" then
+    local task = task_for_tmux_session_name(session_name)
+    local size = task and task_terminal_window_size(task) or nil
+    if size then return size end
+  end
+
+  return fallback_tmux_size()
+end
+
+---@param t overseer.Task
+---@return integer?
+local function task_terminal_job_id(t)
+  local job_id = t.job_id or (t.strategy and t.strategy.job_id) or nil
+  if type(job_id) == "number" and job_id ~= 0 then return job_id end
+
+  local bufnr = t.get_bufnr and t:get_bufnr() or nil
+  if type(bufnr) ~= "number" or not vim.api.nvim_buf_is_valid(bufnr) then return nil end
+  job_id = vim.b[bufnr].terminal_job_id
+  if type(job_id) == "number" and job_id ~= 0 then return job_id end
+
+  local ok_channel, channel = pcall(vim.api.nvim_get_option_value, "channel", { buf = bufnr })
+  if ok_channel and type(channel) == "number" and channel ~= 0 then return channel end
+
+  for _, chan in ipairs(vim.api.nvim_list_chans()) do
+    if chan.mode == "terminal" and (chan.buffer == bufnr or chan.buf == bufnr) then return chan.id end
+  end
+end
+
+---@param t overseer.Task?
+---@param size { width: integer, height: integer }
+---@return boolean?
+local function resize_task_terminal_job(t, size)
+  if not t then return nil end
+  local job_id = task_terminal_job_id(t)
+  if not job_id then return nil end
+  local ok = pcall(vim.fn.jobresize, job_id, size.width, size.height)
+  return ok
+end
+
+---@param utils table
+---@param session_name string
+---@param size { width: integer, height: integer }
+---@return boolean
+local function resize_tmux_session_window(utils, session_name, size)
+  if type(session_name) ~= "string" or session_name == "" then return false end
+  if not size or size.width <= 0 or size.height <= 0 then return false end
+  return utils.run_tmux_command(utils.agent_tmux_server_name(), {
+    "resize-window",
+    "-t",
+    session_name,
+    "-x",
+    tostring(size.width),
+    "-y",
+    tostring(size.height),
+  })
+end
+
+---@param utils table
+---@param session_name string
+---@param size { width: integer, height: integer }
+---@return boolean
+local function pulse_tmux_session_window(utils, session_name, size)
+  local pulse_size = { width = size.width, height = size.height }
+  if pulse_size.height > 1 then
+    pulse_size.height = pulse_size.height - 1
+  elseif pulse_size.width > 1 then
+    pulse_size.width = pulse_size.width - 1
+  end
+  if pulse_size.width == size.width and pulse_size.height == size.height then return true end
+  local pulse_ok = resize_tmux_session_window(utils, session_name, pulse_size)
+  local restore_ok = resize_tmux_session_window(utils, session_name, size)
+  return pulse_ok and restore_ok
+end
+
+---@param tmux_session table
+---@param t overseer.Task
+local function apply_tmux_session_metadata(tmux_session, t)
+  t.metadata = t.metadata or {}
+  t.metadata[TMUX_SESSION_NAME_METADATA] = tmux_session.tmux_session_name
+  if tmux_session.role == ROLE_SUB then
+    t.metadata[ROLE_KEY] = ROLE_SUB
+  elseif tmux_session.role == ROLE_MASTER then
+    t.metadata[ROLE_KEY] = nil
+  end
 end
 
 ---@param tmux_session table
 ---@return boolean
 local function task_exists_for_tmux_session(tmux_session)
   for _, t in ipairs(list_tasks()) do
-    if task_provider(t) == tmux_session.provider and task_session_id(t) == tmux_session.session_id then return true end
-    if task_tmux_session_name(t) == tmux_session.tmux_session_name then return true end
+    if task_provider(t) == tmux_session.provider and task_session_id(t) == tmux_session.session_id then
+      apply_tmux_session_metadata(tmux_session, t)
+      return true
+    end
+    if task_tmux_session_name(t) == tmux_session.tmux_session_name then
+      apply_tmux_session_metadata(tmux_session, t)
+      return true
+    end
   end
   return false
+end
+
+---@param session table
+local function resume_tmux_session(session)
+  local session_id = session.session_id
+  local role = session.role
+  vim.schedule(function()
+    local ok_as, agent_sessions = pcall(require, "serranomorante.plugins.jobs.agent_sessions")
+    if ok_as and type(agent_sessions.resume_by_id) == "function" then
+      agent_sessions.resume_by_id(session_id, { role = role })
+      return
+    end
+
+    pcall(vim.cmd, "AgentResumeById " .. session_id)
+  end)
 end
 
 ---Open existing sessions as Overseer tasks by id or unique id prefix.
@@ -709,8 +885,8 @@ end
 
 ---Reconcile persistent tmux-backed agent sessions with the current Overseer list.
 ---Live tmux sessions are authoritative for long-running terminals; missing
----Overseer tasks are reopened through AgentResumeById so the resume path stays
----shared with `agent-tasks open` and the provider pickers.
+---Overseer tasks are reopened through agent_sessions.resume_by_id so the resume
+---path stays shared while preserving role metadata parsed from the tmux name.
 ---@return string json
 function M.reconcile()
   local tmux_sessions, warning = tmux_agent_sessions()
@@ -722,8 +898,7 @@ function M.reconcile()
       table.insert(existing, session)
     else
       table.insert(opened, session)
-      local session_id = session.session_id
-      vim.schedule(function() pcall(vim.cmd, "AgentResumeById " .. session_id) end)
+      resume_tmux_session(session)
     end
   end
 
@@ -738,39 +913,98 @@ function M.reconcile()
   })
 end
 
+---@param sessions table[]?
+---@return string[]
+local function reconcile_session_lines(sessions)
+  local lines = {}
+  for _, session in ipairs(sessions or {}) do
+    local provider = session.provider or "agent"
+    local role = session.role == ROLE_SUB and ROLE_SUB or ROLE_MASTER
+    local session_id = session.session_id or session.tmux_session_name or "unknown"
+    table.insert(lines, ("  - %s %s %s"):format(provider, role, tostring(session_id):sub(1, 8)))
+  end
+  return lines
+end
+
+---@param raw_result string
+---@return string
+local function format_reconcile_result(raw_result)
+  local ok, result = pcall(vim.json.decode, raw_result)
+  if not ok or type(result) ~= "table" then return raw_result end
+  if not result.ok then return "Agent task reconcile failed: " .. tostring(result.error or "unknown error") end
+
+  local tmux_sessions = tonumber(result.tmux_sessions) or 0
+  local existing_count = tonumber(result.existing_count) or 0
+  local opened_count = tonumber(result.opened_count) or 0
+  local lines = {
+    ("Agent task reconcile: %d tmux session%s, %d already open, %d reopened."):format(
+      tmux_sessions,
+      tmux_sessions == 1 and "" or "s",
+      existing_count,
+      opened_count
+    ),
+  }
+
+  if opened_count > 0 then
+    table.insert(lines, "Reopened:")
+    vim.list_extend(lines, reconcile_session_lines(result.opened))
+  end
+
+  if type(result.warning) == "string" and result.warning ~= "" then
+    table.insert(lines, "Warning: " .. result.warning)
+  end
+
+  return table.concat(lines, "\n")
+end
+
 ---Resize all agent tmux sessions in the current Neovim-scoped tmux server to
 ---the current editor terminal geometry. Useful after moving Neovim between
 ---monitors or changing the terminal size.
+---@param opts? { pulse?: boolean }
 ---@return string json
-function M.resize_tmux_sessions()
+function M.resize_tmux_sessions(opts)
+  opts = opts or {}
   local names, warning = tmux_agent_session_names()
   if not names then return vim.json.encode({ ok = false, error = warning }) end
 
   local ok_utils, utils = pcall(require, "serranomorante.utils")
   if not ok_utils then return vim.json.encode({ ok = false, error = "serranomorante.utils unavailable" }) end
 
-  local size = current_tmux_size()
-  local resized, failed = {}, {}
+  local resized, failed, sizes = {}, {}, {}
+  local pulsed, pulse_failed = {}, {}
+  local terminal_resized, terminal_failed = {}, {}
+  local last_size
   for _, name in ipairs(names) do
-    local ok = utils.run_tmux_command(utils.agent_tmux_server_name(), {
-      "resize-window",
-      "-t",
-      name,
-      "-x",
-      tostring(size.width),
-      "-y",
-      tostring(size.height),
-    })
+    local size = current_tmux_size(name)
+    last_size = size
+    sizes[name] = size
+    local task = task_for_tmux_session_name(name)
+    local terminal_ok = resize_task_terminal_job(task, size)
+    if terminal_ok == true then
+      table.insert(terminal_resized, name)
+    elseif terminal_ok == false then
+      table.insert(terminal_failed, name)
+    end
+    local ok = resize_tmux_session_window(utils, name, size)
+    if ok and opts.pulse == true then
+      local pulse_ok = pulse_tmux_session_window(utils, name, size)
+      table.insert(pulse_ok and pulsed or pulse_failed, name)
+    end
     table.insert(ok and resized or failed, name)
   end
 
   return vim.json.encode({
     ok = #failed == 0,
-    width = size.width,
-    height = size.height,
+    width = last_size and last_size.width or 0,
+    height = last_size and last_size.height or 0,
+    sizes = sizes,
+    terminal_resized = terminal_resized,
+    terminal_failed = terminal_failed,
     resized = resized,
     resized_count = #resized,
     failed = failed,
+    pulsed = pulsed,
+    pulse_failed = pulse_failed,
     warning = warning,
   })
 end
@@ -1046,14 +1280,14 @@ function M.setup_commands()
 
   vim.api.nvim_create_user_command(
     "AgentTasksReconcile",
-    function() vim.api.nvim_echo({ { M.reconcile() } }, false, {}) end,
+    function() vim.api.nvim_echo({ { format_reconcile_result(M.reconcile()) } }, false, {}) end,
     { desc = "Agent tasks: reconcile live tmux agent sessions with Overseer tasks" }
   )
 
   vim.api.nvim_create_user_command(
     "AgentTasksResizeTmux",
-    function() vim.api.nvim_echo({ { M.resize_tmux_sessions() } }, false, {}) end,
-    { desc = "Agent tasks: resize all current Neovim-scoped tmux agent sessions" }
+    function() vim.api.nvim_echo({ { M.resize_tmux_sessions({ pulse = true }) } }, false, {}) end,
+    { desc = "Agent tasks: resize and repaint all current Neovim-scoped tmux agent sessions" }
   )
 
   vim.api.nvim_create_user_command(
@@ -1087,30 +1321,34 @@ function M.setup_commands()
     { nargs = "+", bang = true, desc = "Agent tasks: open existing agent session(s) by id (! = bypass cwd filter)" }
   )
 
-  vim.api.nvim_create_user_command("AgentTaskNew", function(a)
-    local provider_name = a.fargs[1]
-    local use_mcp = false
-    local role = ""
-    local prompt_args = {}
-    local i = 2
-    while i <= #a.fargs do
-      local arg = a.fargs[i]
-      if arg == "--mcp" then
-        use_mcp = true
-      elseif arg == "--sub" or arg == "-s" then
-        role = ROLE_SUB
-      elseif arg == "--role" and i < #a.fargs then
-        role = a.fargs[i + 1]
+  vim.api.nvim_create_user_command(
+    "AgentTaskNew",
+    function(a)
+      local provider_name = a.fargs[1]
+      local use_mcp = false
+      local role = ""
+      local prompt_args = {}
+      local i = 2
+      while i <= #a.fargs do
+        local arg = a.fargs[i]
+        if arg == "--mcp" then
+          use_mcp = true
+        elseif arg == "--sub" or arg == "-s" then
+          role = ROLE_SUB
+        elseif arg == "--role" and i < #a.fargs then
+          role = a.fargs[i + 1]
+          i = i + 1
+        else
+          table.insert(prompt_args, arg)
+        end
         i = i + 1
-      else
-        table.insert(prompt_args, arg)
       end
-      i = i + 1
-    end
-    local prompt = table.concat(prompt_args, " ")
-    local b64 = prompt ~= "" and vim.base64.encode(prompt) or ""
-    vim.api.nvim_echo({ { M.new(provider_name, b64, role, use_mcp) } }, false, {})
-  end, { nargs = "+", desc = "Agent tasks: spawn a new provider session (<provider> [--mcp] [--sub|--role role] [task])" })
+      local prompt = table.concat(prompt_args, " ")
+      local b64 = prompt ~= "" and vim.base64.encode(prompt) or ""
+      vim.api.nvim_echo({ { M.new(provider_name, b64, role, use_mcp) } }, false, {})
+    end,
+    { nargs = "+", desc = "Agent tasks: spawn a new provider session (<provider> [--mcp] [--sub|--role role] [task])" }
+  )
 end
 
 return M
