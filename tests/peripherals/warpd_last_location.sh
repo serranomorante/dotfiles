@@ -5,12 +5,15 @@ set -euo pipefail
 # dotfiles-test-tags: peripherals warpd keyd shell fast firejail
 # dotfiles-test-case: warpd-last-location-syntax
 # dotfiles-test-case: warpd-last-location-keyd-contract
+# dotfiles-test-case: warpd-marker-style-contract
+# dotfiles-test-case: warpd-marker-wrapper-compile-cache
 # dotfiles-test-case: warpd-last-location-history-navigation
 # dotfiles-test-case: warpd-last-location-history-size
 
 # Purpose: Verify the warpd cursor location toggle/history helper and keyd integration.
 
 script_under_test="${DOTFILES_TEST_ROOT}/peripherals/bin/warpd-last-location"
+warpd_marker="${DOTFILES_TEST_ROOT}/peripherals/bin/warpd-marker"
 keyd_observer="${DOTFILES_TEST_ROOT}/peripherals/bin/keyd-observer"
 keyd_template="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/keyd-default.conf"
 
@@ -111,6 +114,7 @@ history_file() {
 case "${DOTFILES_TEST_CASE:-}" in
 warpd-last-location-syntax)
     sh -n "$script_under_test"
+    sh -n "$warpd_marker"
     sh -n "$keyd_observer"
     ;;
 warpd-last-location-keyd-contract)
@@ -125,6 +129,35 @@ warpd-last-location-keyd-contract)
     rg -q '^\s*\+signal_warpd_history_forward\)$' "$keyd_observer"
     rg -q 'run_warpd_last_location back' "$keyd_observer"
     rg -q 'run_warpd_last_location forward' "$keyd_observer"
+    ;;
+warpd-marker-style-contract)
+    rg -q 'draw_return_brackets' "$warpd_marker"
+    rg -q 'draw_cursor_outline' "$warpd_marker"
+    rg -q 'getenv\("WARPD_MARKER_STYLE"\)' "$warpd_marker"
+    rg -q 'strcmp\(style, "cursor"\)' "$warpd_marker"
+    rg -q 'hotspot_x = scaled\(48, size\)' "$warpd_marker"
+    rg -q 'hotspot_y = scaled\(48, size\)' "$warpd_marker"
+    rg -q 'hotspot_x = scaled\(15, size\)' "$warpd_marker"
+    rg -q 'hotspot_y = scaled\(3, size\)' "$warpd_marker"
+    rg -q 'center_outer_width = outer_width \+ 1' "$warpd_marker"
+    rg -q 'center_inner_width = inner_width \+ 1' "$warpd_marker"
+    ;;
+warpd-marker-wrapper-compile-cache)
+    command -v cc >/dev/null 2>&1 || {
+        printf 'cc is not available\n' >&2
+        exit 77
+    }
+    home="${DOTFILES_TEST_TMP}/home"
+    cache="${DOTFILES_TEST_TMP}/cache"
+    mkdir -p "$home" "$cache"
+
+    HOME="$home" XDG_CACHE_HOME="$cache" "$warpd_marker" --compile-cache >"${DOTFILES_TEST_TMP}/warpd-marker-compile-1.out"
+    HOME="$home" XDG_CACHE_HOME="$cache" "$warpd_marker" --compile-cache >"${DOTFILES_TEST_TMP}/warpd-marker-compile-2.out"
+
+    rg -q '^compiled$' "${DOTFILES_TEST_TMP}/warpd-marker-compile-1.out"
+    rg -q '^unchanged$' "${DOTFILES_TEST_TMP}/warpd-marker-compile-2.out"
+    [[ -x "${cache}/warpd-marker/warpd-marker-x11" ]]
+    rg -q 'draw_return_brackets' "${cache}/warpd-marker/warpd-marker-x11.c"
     ;;
 warpd-last-location-history-navigation)
     make_fake_warpd_fixture

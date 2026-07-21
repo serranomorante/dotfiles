@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
-# Purpose: Keep an input-transparent ghost cursor at the point tab+g would jump
-# to for the current warpd-last-location state.
+# Purpose: Keep an input-transparent return marker at the point tab+g would
+# jump to for the current warpd-last-location state.
 #
 # Notes: The shell wrapper compiles a small X11 helper into the user's cache on
 # first use. The helper uses an override-redirect shaped X11 window with an
@@ -291,6 +291,60 @@ static int scaled(int value, int size) {
     return (value * size + 48) / 96;
 }
 
+static void draw_bracket_segment(uint32_t *pixels, unsigned char *shape,
+                                 int size, int x1, int y1, int x2, int y2,
+                                 int outer_width, int inner_width,
+                                 uint32_t black, uint32_t white) {
+    draw_line(pixels, shape, size, scaled(x1, size) + 1,
+              scaled(y1, size) + 1, scaled(x2, size) + 1,
+              scaled(y2, size) + 1, outer_width, black);
+    draw_line(pixels, shape, size, scaled(x1, size), scaled(y1, size),
+              scaled(x2, size), scaled(y2, size), inner_width, white);
+}
+
+static void draw_return_brackets(Visual *visual, uint32_t *pixels,
+                                 unsigned char *shape, int size,
+                                 int outer_width, int inner_width) {
+    uint32_t black = visual_pixel(visual, 0, 0, 0);
+    uint32_t white = visual_pixel(visual, 255, 255, 255);
+    int center_outer_width;
+    int center_inner_width;
+
+    memset(pixels, 0, (size_t)size * (size_t)size * sizeof(uint32_t));
+    memset(shape, 0, (size_t)size * (size_t)size);
+
+    if (outer_width < 0) {
+        outer_width = 0;
+    }
+    if (inner_width < 0) {
+        inner_width = 0;
+    }
+    center_outer_width = outer_width + 1;
+    center_inner_width = inner_width + 1;
+
+    draw_bracket_segment(pixels, shape, size, 22, 22, 42, 22, outer_width,
+                         inner_width, black, white);
+    draw_bracket_segment(pixels, shape, size, 22, 22, 22, 42, outer_width,
+                         inner_width, black, white);
+    draw_bracket_segment(pixels, shape, size, 54, 22, 74, 22, outer_width,
+                         inner_width, black, white);
+    draw_bracket_segment(pixels, shape, size, 74, 22, 74, 42, outer_width,
+                         inner_width, black, white);
+    draw_bracket_segment(pixels, shape, size, 22, 54, 22, 74, outer_width,
+                         inner_width, black, white);
+    draw_bracket_segment(pixels, shape, size, 22, 74, 42, 74, outer_width,
+                         inner_width, black, white);
+    draw_bracket_segment(pixels, shape, size, 74, 54, 74, 74, outer_width,
+                         inner_width, black, white);
+    draw_bracket_segment(pixels, shape, size, 54, 74, 74, 74, outer_width,
+                         inner_width, black, white);
+
+    draw_thick_point(pixels, shape, size, scaled(48, size) + 1,
+                     scaled(48, size) + 1, center_outer_width, black);
+    draw_thick_point(pixels, shape, size, scaled(48, size), scaled(48, size),
+                     center_inner_width, white);
+}
+
 static void draw_cursor_outline(Visual *visual, uint32_t *pixels,
                                 unsigned char *shape, int size,
                                 int outer_width, int inner_width) {
@@ -370,6 +424,7 @@ static void set_window_atom(Display *display, Window win, const char *property,
 
 int main(void) {
     const char *state_dir = getenv("WARPD_MARKER_STATE_DIR");
+    const char *style = getenv("WARPD_MARKER_STYLE");
     const char *runtime_dir;
     char default_state_dir[PATH_MAX];
     char last_path[PATH_MAX];
@@ -474,7 +529,17 @@ int main(void) {
         return 1;
     }
 
-    draw_cursor_outline(visual, pixels, shape, size, outer_width, inner_width);
+    if (style != NULL && strcmp(style, "cursor") == 0) {
+        draw_cursor_outline(visual, pixels, shape, size, outer_width,
+                            inner_width);
+        hotspot_x = scaled(15, size);
+        hotspot_y = scaled(3, size);
+    } else {
+        draw_return_brackets(visual, pixels, shape, size, outer_width,
+                             inner_width);
+        hotspot_x = scaled(48, size);
+        hotspot_y = scaled(48, size);
+    }
     shape_rect_count = shape_rectangles(shape, size, &shape_rects);
     if (shape_rect_count <= 0) {
         free(shape);
@@ -498,8 +563,6 @@ int main(void) {
     }
 
     gc = XCreateGC(display, win, 0, NULL);
-    hotspot_x = scaled(15, size);
-    hotspot_y = scaled(3, size);
 
     while (running) {
         struct xy target =
