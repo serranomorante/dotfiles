@@ -162,7 +162,7 @@ keyd-observer
   listens for keyd signal layers and starts user-session actions
 
 warpd-last-location
-  wraps warpd hint/toggle behavior and stores cursor points in tmpfs
+  wraps warpd hint/toggle/history behavior and stores cursor points in tmpfs
 
 warpd-marker
   keeps a small input-transparent X11 marker on the point tab+g would jump to
@@ -180,7 +180,7 @@ mouseless config
   owns keyboard-driven mouse movement and mouse buttons
 ```
 
-`warpd-marker`, `warpd-trail`, and `mode-osd` compile their embedded X11 helpers into stable cache paths under `~/.cache`. Do not bump helper filenames for code changes; the wrappers compare the generated C source with the cached source and rebuild when needed. The keyboard-tools Ansible task precompiles the stable helpers. The compositor template excludes `WM_CLASS=warpd` windows from picom fading so `tab+f` hint overlays appear and disappear without fade latency. Keep `warpd-last-location run-hint` latency-sensitive: launch `warpd` before auxiliary cursor-state work such as `xdotool getmouselocation`, then reconcile `previous`, `last`, and trail state after the hint selection returns.
+`warpd-marker`, `warpd-trail`, and `mode-osd` compile their embedded X11 helpers into stable cache paths under `~/.cache`. Do not bump helper filenames for code changes; the wrappers compare the generated C source with the cached source and rebuild when needed. The keyboard-tools Ansible task precompiles the stable helpers. The compositor template excludes `WM_CLASS=warpd` windows from picom fading so `tab+f` hint overlays appear and disappear without fade latency. Keep `warpd-last-location run-hint` latency-sensitive: launch `warpd` before auxiliary cursor-state work such as `xdotool getmouselocation`, then reconcile `previous`, `last`, history, and trail state after the hint selection returns. `Tab+g` keeps the current two-point toggle, while `Tab+o`/`Tab+i` walk the bounded non-cyclic `warpd-last-location` history; readline mode is on `Tab+r` so `Tab+i` stays available for forward history.
 
 When fixing keyboard conflicts, first identify who consumes the key:
 

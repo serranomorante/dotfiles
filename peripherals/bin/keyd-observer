@@ -5,7 +5,8 @@
 # keyd emits short-lived "signal_*" layers when specific shortcuts are pressed.
 # This observer keeps one `keyd listen` process open and reacts to those signals:
 # opening/reopening the warpd hint overlay, toggling between the current cursor
-# position and the last warpd-selected point, temporarily leaving/re-entering
+# position and the last warpd-selected point, walking warpd cursor history,
+# temporarily leaving/re-entering
 # mouseless mode, toggling speech-to-text dictation, toggling the active display
 # layout, repairing the display scanout on demand, typing clipboard snippets,
 # showing clipboard history, picking global Vim registers, toggling keyboard MIDI
@@ -264,6 +265,26 @@ keyd listen | while read x; do
         keyd do $leave_mouseless_mode &
         ( (
             run_warpd_last_location toggle
+            keyd do "$enter_mouseless_mode"
+        ) >/dev/null 2>&1 &)
+        ;;
+
+    +signal_warpd_history_back)
+        [ "$toggle_armed" -eq 1 ] || continue
+        stop_current_warpd_overlay
+        keyd do $leave_mouseless_mode &
+        ( (
+            run_warpd_last_location back
+            keyd do "$enter_mouseless_mode"
+        ) >/dev/null 2>&1 &)
+        ;;
+
+    +signal_warpd_history_forward)
+        [ "$toggle_armed" -eq 1 ] || continue
+        stop_current_warpd_overlay
+        keyd do $leave_mouseless_mode &
+        ( (
+            run_warpd_last_location forward
             keyd do "$enter_mouseless_mode"
         ) >/dev/null 2>&1 &)
         ;;

@@ -194,7 +194,7 @@ keyboard-midi-controller-dotfiles-contract)
     rg -q '^\[midi_panic\]$' "$keyd_template"
     rg -q '^space = layer\(signal_enter_mouseless_mode\)$' "$keyd_template"
     rg -q '^space = togglem\(midi, macro\(leftcontrol\+rightcontrol\)\)$' "$keyd_template"
-    rg -q '^i = toggle\(readline\)$' "$keyd_template"
+    rg -q '^r = toggle\(readline\)$' "$keyd_template"
     refute rg -q '^m = layer\(signal_toggle_keyboard_midi_controller\)$' "$keyd_template"
     refute rg -q '^m = command\(.*/bin/keyboard-midi-controller toggle\)$' "$keyd_template"
     refute rg -q '^\[signal_open_kitty\]$' "$keyd_template"

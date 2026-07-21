@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# Tracks the last warpd-selected point and the previous cursor point in tmpfs.
+# Tracks warpd-selected cursor points in tmpfs.
 # `run-hint` records the cursor position before opening warpd as `previous`,
 # then stores the selected warpd target as `last`. `toggle` jumps between these
 # two points with the same visual trail used after a hint selection: if the
@@ -8,14 +8,22 @@
 # `last` and refreshes `previous` only when the current point is far enough from
 # both stored points. The proximity threshold prevents tiny cursor adjustments
 # from collapsing the two toggle endpoints.
+#
+# `back` and `forward` move through a bounded non-cyclic cursor history. The
+# history is updated from the same accepted points that refresh `last` and
+# `previous`, plus the current point when a history walk starts after manual
+# cursor movement.
 
 set -u
 
 state_dir="${XDG_RUNTIME_DIR:-/tmp}/warpd-last-location"
 last_file="$state_dir/last"
 previous_file="$state_dir/previous"
+history_file="$state_dir/history"
+history_index_file="$state_dir/history-index"
 lock_dir="$state_dir/lock"
 same_xy_threshold="${WARPD_LAST_LOCATION_SAME_XY_THRESHOLD:-120}"
+history_size="${WARPD_LAST_LOCATION_HISTORY_SIZE:-10}"
 warpd_trail="${WARPD_TRAIL:-$HOME/bin/warpd-trail}"
 
 is_int() {
@@ -58,6 +66,7 @@ clamp_int() {
 }
 
 same_xy_threshold="$(clamp_int "$same_xy_threshold" 1 500 120)"
+history_size="$(clamp_int "$history_size" 10 200 10)"
 
 abs() {
     n="$1"
@@ -84,7 +93,130 @@ save_xy_file() {
     mkdir -p "$state_dir" || return 1
 
     tmp="$file.$$"
-    printf '%s %s\n' "$x" "$y" >"$tmp" && mv "$tmp" "$file"
+    if printf '%s %s\n' "$x" "$y" >"$tmp" && mv "$tmp" "$file"; then
+        save_history_xy "$x" "$y" >/dev/null 2>&1 || true
+        return 0
+    fi
+
+    return 1
+}
+
+history_count() {
+    [ -r "$history_file" ] || {
+        printf '0\n'
+        return 0
+    }
+
+    count="$(wc -l <"$history_file" 2>/dev/null)" || count=0
+    set -- $count
+    printf '%s\n' "${1:-0}"
+}
+
+read_history_index() {
+    count="$1"
+
+    [ "$count" -gt 0 ] || return 1
+    if [ -r "$history_index_file" ]; then
+        read -r index <"$history_index_file" || index=""
+    else
+        index=""
+    fi
+
+    is_int "${index:-}" || index=$((count - 1))
+    if [ "$index" -lt 0 ]; then
+        index=0
+    elif [ "$index" -ge "$count" ]; then
+        index=$((count - 1))
+    fi
+
+    printf '%s\n' "$index"
+}
+
+write_history_index() {
+    index="$1"
+
+    tmp="$history_index_file.$$"
+    printf '%s\n' "$index" >"$tmp" && mv "$tmp" "$history_index_file"
+}
+
+read_history_xy() {
+    index="$1"
+    line_no=$((index + 1))
+
+    [ -r "$history_file" ] || return 1
+    xy="$(sed -n "${line_no}p" "$history_file")" || return 1
+    set -- $xy
+    [ "$#" -ge 2 ] && is_int "$1" && is_int "$2" || return 1
+
+    printf '%s %s\n' "$1" "$2"
+}
+
+history_last_xy_from_file() {
+    file="$1"
+    count="$2"
+
+    [ "$count" -gt 0 ] || return 1
+    xy="$(sed -n "${count}p" "$file")" || return 1
+    set -- $xy
+    [ "$#" -ge 2 ] && is_int "$1" && is_int "$2" || return 1
+
+    printf '%s %s\n' "$1" "$2"
+}
+
+save_history_xy() {
+    x="$1"
+    y="$2"
+
+    is_int "$x" && is_int "$y" || return 1
+    mkdir -p "$state_dir" || return 1
+
+    count="$(history_count)"
+    if [ "$count" -gt 0 ]; then
+        index="$(read_history_index "$count")" || index=$((count - 1))
+        keep=$((index + 1))
+    else
+        keep=0
+    fi
+
+    tmp="$history_file.$$"
+    trim_tmp="$history_file.trim.$$"
+
+    if [ "$keep" -gt 0 ] && [ -r "$history_file" ]; then
+        sed -n "1,${keep}p" "$history_file" >"$tmp" || return 1
+    else
+        : >"$tmp" || return 1
+    fi
+
+    prefix_count="$(wc -l <"$tmp" 2>/dev/null)" || prefix_count=0
+    set -- $prefix_count
+    prefix_count="${1:-0}"
+
+    if [ "$prefix_count" -gt 0 ]; then
+        last_xy="$(history_last_xy_from_file "$tmp" "$prefix_count")" || last_xy=""
+        if [ -n "$last_xy" ]; then
+            set -- $last_xy "$x" "$y"
+            same_xy "$1" "$2" "$3" "$4" || printf '%s %s\n' "$x" "$y" >>"$tmp"
+        else
+            printf '%s %s\n' "$x" "$y" >>"$tmp"
+        fi
+    else
+        printf '%s %s\n' "$x" "$y" >>"$tmp"
+    fi
+
+    new_count="$(wc -l <"$tmp" 2>/dev/null)" || new_count=0
+    set -- $new_count
+    new_count="${1:-0}"
+
+    if [ "$new_count" -gt "$history_size" ]; then
+        tail -n "$history_size" "$tmp" >"$trim_tmp" && mv "$trim_tmp" "$tmp"
+    else
+        rm -f "$trim_tmp"
+    fi
+
+    mv "$tmp" "$history_file" || return 1
+    new_count="$(history_count)"
+    [ "$new_count" -gt 0 ] || return 0
+    write_history_index "$((new_count - 1))"
 }
 
 save_last_xy() {
@@ -210,6 +342,8 @@ run_hint() {
         last_x="$1"
         last_y="$2"
 
+        with_lock
+
         if [ -n "$before_xy" ]; then
             set -- $before_xy
             save_previous_xy_force "$1" "$2" >/dev/null 2>&1 || true
@@ -258,6 +392,61 @@ toggle() {
     fi
 }
 
+history_move() {
+    direction="$1"
+
+    mkdir -p "$state_dir" || return 1
+    with_lock
+
+    count="$(history_count)"
+    [ "$count" -gt 0 ] || return 0
+
+    current_xy="$(current_xy)" || return 1
+    set -- $current_xy
+    current_x="$1"
+    current_y="$2"
+
+    index="$(read_history_index "$count")" || return 0
+    indexed_xy="$(read_history_xy "$index")" || indexed_xy=""
+
+    if [ -n "$indexed_xy" ]; then
+        set -- $indexed_xy "$current_x" "$current_y"
+        if ! same_xy "$1" "$2" "$3" "$4"; then
+            save_history_xy "$current_x" "$current_y" || return 1
+            count="$(history_count)"
+            index=$((count - 1))
+        fi
+    fi
+
+    case "$direction" in
+    back)
+        [ "$index" -gt 0 ] || return 0
+        target_index=$((index - 1))
+        ;;
+    forward)
+        [ "$index" -lt $((count - 1)) ] || return 0
+        target_index=$((index + 1))
+        ;;
+    *)
+        return 2
+        ;;
+    esac
+
+    target_xy="$(read_history_xy "$target_index")" || return 0
+    set -- $target_xy
+    target_x="$1"
+    target_y="$2"
+
+    same_xy "$current_x" "$current_y" "$target_x" "$target_y" && {
+        write_history_index "$target_index" >/dev/null 2>&1 || true
+        return 0
+    }
+
+    warpd --move "$target_x $target_y" >/dev/null 2>&1 || return 1
+    show_trail "$current_x" "$current_y" "$target_x" "$target_y"
+    write_history_index "$target_index"
+}
+
 case "${1:-}" in
 run-hint)
     run_hint
@@ -265,8 +454,14 @@ run-hint)
 toggle)
     toggle
     ;;
+back)
+    history_move back
+    ;;
+forward)
+    history_move forward
+    ;;
 *)
-    printf 'usage: %s run-hint|toggle\n' "$0" >&2
+    printf 'usage: %s run-hint|toggle|back|forward\n' "$0" >&2
     exit 2
     ;;
 esac
