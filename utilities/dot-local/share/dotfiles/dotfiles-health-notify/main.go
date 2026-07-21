@@ -18,19 +18,24 @@ import (
 )
 
 const defaultPollInterval = 6 * time.Second
+const defaultRecentDays = 3
 
 type config struct {
 	stateDir           string
 	notifyStateDir     string
 	notifiedFile       string
+	offsetsFile        string
 	notificationAction string
 	notesRoot          string
 	pollInterval       time.Duration
+	recentDays         int
 	spikeEventsDir     string
 	ansibleEventsDir   string
 	xorgSectionID      string
 	ansibleSectionID   string
 }
+
+type fileOffsets map[string]int64
 
 type processRef struct {
 	PID  int    `json:"pid"`
@@ -131,9 +136,11 @@ func loadConfig() config {
 		stateDir:           stateDir,
 		notifyStateDir:     notifyStateDir,
 		notifiedFile:       filepath.Join(notifyStateDir, "notified-events"),
+		offsetsFile:        filepath.Join(notifyStateDir, "event-file-offsets.json"),
 		notificationAction: getenvAny([]string{"DOTFILES_HEALTH_NOTIFY_NOTIFICATION_ACTION", "DOTFILES_SPIKE_NOTIFY_NOTIFICATION_ACTION"}, "notification-action"),
 		notesRoot:          getenvAny([]string{"DOTFILES_HEALTH_NOTIFY_FOAM_CWD", "DOTFILES_SPIKE_NOTIFY_FOAM_CWD"}, filepath.Join(home, "data/notes/foam")),
 		pollInterval:       parsePollInterval(getenvAny([]string{"DOTFILES_HEALTH_NOTIFY_POLL_INTERVAL", "DOTFILES_SPIKE_NOTIFY_POLL_INTERVAL"}, "6")),
+		recentDays:         parseRecentDays(getenv("DOTFILES_HEALTH_NOTIFY_RECENT_DAYS", strconv.Itoa(defaultRecentDays))),
 		spikeEventsDir:     getenv("DOTFILES_HEALTH_NOTIFY_SPIKE_EVENTS_DIR", filepath.Join(spikeStateDir, "events")),
 		ansibleEventsDir:   getenv("DOTFILES_HEALTH_NOTIFY_ANSIBLE_EVENTS_DIR", filepath.Join(ansibleStateDir, "events")),
 		xorgSectionID:      getenvAny([]string{"DOTFILES_HEALTH_NOTIFY_XORG_SECTION_ID", "DOTFILES_SPIKE_NOTIFY_SECTION_ID"}, "system-spikes-report"),
@@ -165,6 +172,14 @@ func parsePollInterval(raw string) time.Duration {
 	return time.Duration(seconds * float64(time.Second))
 }
 
+func parseRecentDays(raw string) int {
+	days, err := strconv.Atoi(raw)
+	if err != nil || days < 0 {
+		return defaultRecentDays
+	}
+	return days
+}
+
 func processLoop(cfg config) error {
 	if err := processOnce(cfg, "initialize"); err != nil {
 		return err
@@ -182,18 +197,37 @@ func processOnce(cfg config, mode string) error {
 		return err
 	}
 
-	events, err := readNotificationEvents(cfg)
+	notified, stateExisted, err := readNotified(cfg.notifiedFile)
 	if err != nil {
 		return err
 	}
-	notified, stateExisted, err := readNotified(cfg.notifiedFile)
+	offsets, offsetsExisted, err := readOffsets(cfg.offsetsFile)
 	if err != nil {
+		return err
+	}
+
+	initializeOffsetsOnly := !offsetsExisted && mode != "notify-existing"
+	events, updatedOffsets, err := readNotificationEventsSince(cfg, offsets, initializeOffsetsOnly, time.Now())
+	if err != nil {
+		return err
+	}
+	if err := writeOffsets(cfg.offsetsFile, updatedOffsets); err != nil {
 		return err
 	}
 
 	allIDs := make(map[string]struct{}, len(events))
 	for _, ev := range events {
 		allIDs[ev.ID] = struct{}{}
+	}
+
+	if initializeOffsetsOnly {
+		if !stateExisted {
+			if err := writeNotified(cfg.notifiedFile, map[string]struct{}{}); err != nil {
+				return err
+			}
+		}
+		fmt.Printf("initialized health notification offsets for %d event files\n", len(updatedOffsets))
+		return nil
 	}
 
 	if !stateExisted && mode != "notify-existing" {
@@ -250,19 +284,29 @@ func printCheck(cfg config) error {
 	fmt.Printf("spike_events_dir=%s\n", cfg.spikeEventsDir)
 	fmt.Printf("ansible_events_dir=%s\n", cfg.ansibleEventsDir)
 	fmt.Printf("notification_action=%s\n", cfg.notificationAction)
+	fmt.Printf("recent_days=%d\n", cfg.recentDays)
 	return nil
 }
 
 func readNotificationEvents(cfg config) ([]notificationEvent, error) {
+	events, _, err := readNotificationEventsSince(cfg, nil, false, time.Now())
+	return events, err
+}
+
+func readNotificationEventsSince(cfg config, offsets fileOffsets, initializeOffsetsOnly bool, now time.Time) ([]notificationEvent, fileOffsets, error) {
+	linesByDir, updatedOffsets, err := readJSONLLinesSince([]string{cfg.spikeEventsDir, cfg.ansibleEventsDir}, offsets, initializeOffsetsOnly, now, cfg.recentDays)
+	if err != nil {
+		return nil, nil, err
+	}
+	spikeEvents, err := parseSpikeNotificationEvents(cfg, linesByDir[cfg.spikeEventsDir])
+	if err != nil {
+		return nil, nil, err
+	}
+	ansibleEvents, err := parseAnsibleNotificationEvents(cfg, linesByDir[cfg.ansibleEventsDir])
+	if err != nil {
+		return nil, nil, err
+	}
 	var events []notificationEvent
-	spikeEvents, err := readSpikeNotificationEvents(cfg)
-	if err != nil {
-		return nil, err
-	}
-	ansibleEvents, err := readAnsibleNotificationEvents(cfg)
-	if err != nil {
-		return nil, err
-	}
 	events = append(events, spikeEvents...)
 	events = append(events, ansibleEvents...)
 	sort.SliceStable(events, func(i, j int) bool {
@@ -271,7 +315,7 @@ func readNotificationEvents(cfg config) ([]notificationEvent, error) {
 		}
 		return events[i].StartedAt < events[j].StartedAt
 	})
-	return events, nil
+	return events, updatedOffsets, nil
 }
 
 func readSpikeNotificationEvents(cfg config) ([]notificationEvent, error) {
@@ -279,6 +323,10 @@ func readSpikeNotificationEvents(cfg config) ([]notificationEvent, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseSpikeNotificationEvents(cfg, lines)
+}
+
+func parseSpikeNotificationEvents(cfg config, lines []string) ([]notificationEvent, error) {
 	events := make([]notificationEvent, 0)
 	for _, line := range lines {
 		var ev spikeEvent
@@ -313,6 +361,10 @@ func readAnsibleNotificationEvents(cfg config) ([]notificationEvent, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseAnsibleNotificationEvents(cfg, lines)
+}
+
+func parseAnsibleNotificationEvents(cfg config, lines []string) ([]notificationEvent, error) {
 	events := make([]notificationEvent, 0)
 	for _, line := range lines {
 		var ev ansibleEvent
@@ -339,32 +391,90 @@ func readAnsibleNotificationEvents(cfg config) ([]notificationEvent, error) {
 }
 
 func readJSONLLines(eventsDir string) ([]string, error) {
+	linesByDir, _, err := readJSONLLinesSince([]string{eventsDir}, nil, false, time.Now(), 0)
+	if err != nil {
+		return nil, err
+	}
+	return linesByDir[eventsDir], nil
+}
+
+func readJSONLLinesSince(eventsDirs []string, offsets fileOffsets, initializeOffsetsOnly bool, now time.Time, recentDays int) (map[string][]string, fileOffsets, error) {
+	linesByDir := make(map[string][]string, len(eventsDirs))
+	updatedOffsets := make(fileOffsets)
+	for _, eventsDir := range eventsDirs {
+		linesByDir[eventsDir] = nil
+		if err := collectJSONLLinesSince(eventsDir, offsets, updatedOffsets, linesByDir, initializeOffsetsOnly, now, recentDays); err != nil {
+			return nil, nil, err
+		}
+	}
+	return linesByDir, updatedOffsets, nil
+}
+
+func collectJSONLLinesSince(eventsDir string, offsets fileOffsets, updatedOffsets fileOffsets, linesByDir map[string][]string, initializeOffsetsOnly bool, now time.Time, recentDays int) error {
 	entries, err := os.ReadDir(eventsDir)
 	if err != nil {
-		return nil, nil
+		return nil
 	}
 
-	var lines []string
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".jsonl") {
 			continue
 		}
 		path := filepath.Join(eventsDir, entry.Name())
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		if !isRecentEventFile(entry.Name(), info.ModTime(), now, recentDays) {
+			continue
+		}
+		size := info.Size()
+		if initializeOffsetsOnly {
+			updatedOffsets[path] = size
+			continue
+		}
+		start := offsets[path]
+		if start < 0 || start > size {
+			start = 0
+		}
+		updatedOffsets[path] = size
+		if start == size {
+			continue
+		}
 		file, err := os.Open(path)
 		if err != nil {
 			continue
+		}
+		if start > 0 {
+			if _, err := file.Seek(start, io.SeekStart); err != nil {
+				_ = file.Close()
+				continue
+			}
 		}
 		scanner := bufio.NewScanner(file)
 		scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
 			if line != "" {
-				lines = append(lines, line)
+				linesByDir[eventsDir] = append(linesByDir[eventsDir], line)
 			}
 		}
 		_ = file.Close()
 	}
-	return lines, nil
+	return nil
+}
+
+func isRecentEventFile(name string, modTime time.Time, now time.Time, recentDays int) bool {
+	if recentDays <= 0 {
+		return true
+	}
+	if len(name) >= len("2006-01-02.jsonl") {
+		if fileDate, err := time.ParseInLocation("2006-01-02", strings.TrimSuffix(name, ".jsonl"), now.Location()); err == nil {
+			cutoff := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, -recentDays)
+			return !fileDate.Before(cutoff)
+		}
+	}
+	return !modTime.Before(now.AddDate(0, 0, -recentDays))
 }
 
 func isNotifiableAnsibleEvent(ev ansibleEvent) bool {
@@ -433,6 +543,37 @@ func readNotified(path string) (map[string]struct{}, bool, error) {
 		notified[line] = struct{}{}
 	}
 	return notified, true, nil
+}
+
+func readOffsets(path string) (fileOffsets, bool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return make(fileOffsets), false, nil
+	}
+	var offsets fileOffsets
+	if err := json.Unmarshal(data, &offsets); err != nil {
+		return nil, true, err
+	}
+	if offsets == nil {
+		offsets = make(fileOffsets)
+	}
+	return offsets, true, nil
+}
+
+func writeOffsets(path string, offsets fileOffsets) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(offsets, "", "  ")
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 func writeNotified(path string, ids map[string]struct{}) error {

@@ -73,7 +73,7 @@ run_once() {
     local home=$3
     local spike_state=$4
     local ansible_state=$5
-    HOME="$home" PATH="${bin}:/usr/bin:/bin" DOTFILES_SPIKES_STATE_DIR="$spike_state" DOTFILES_ANSIBLE_EVENTS_DIR="$ansible_state" DOTFILES_HEALTH_NOTIFY_STATE_DIR="${DOTFILES_TEST_TMP}/notify-state" DOTFILES_HEALTH_NOTIFY_FOAM_CWD="${DOTFILES_TEST_TMP}/foam" "$script_under_test" once
+    HOME="$home" PATH="${bin}:/usr/bin:/bin" DOTFILES_SPIKES_STATE_DIR="$spike_state" DOTFILES_ANSIBLE_EVENTS_DIR="$ansible_state" DOTFILES_HEALTH_NOTIFY_STATE_DIR="${DOTFILES_TEST_TMP}/notify-state" DOTFILES_HEALTH_NOTIFY_FOAM_CWD="${DOTFILES_TEST_TMP}/foam" DOTFILES_HEALTH_NOTIFY_RECENT_DAYS=0 "$script_under_test" once
 }
 
 case "${DOTFILES_TEST_CASE:-}" in
