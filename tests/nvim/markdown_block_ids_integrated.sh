@@ -41,6 +41,7 @@ vim.fn.writefile({
   "Broken heading [[personal.todos#missing-heading]]",
 }, root .. "/a.md")
 
+vim.g.lsp_enabled = true
 vim.cmd.edit(root .. "/a.md")
 
 local function diagnostic_messages()
