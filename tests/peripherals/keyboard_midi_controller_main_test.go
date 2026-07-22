@@ -45,6 +45,10 @@ type recordedTFTEvent struct {
 	velocity         int
 	controller       int
 	value            int
+	profile          int
+	continuous       int
+	switch1          int
+	switch2          int
 }
 
 type recordingTFTOut struct {
@@ -127,6 +131,12 @@ func (r *recordingTFTOut) setState(active bool, channel, bank int, transportRunn
 		bank:             bank,
 		transportRunning: transportRunning,
 	})
+}
+
+func (r *recordingTFTOut) setPedalboard(profile int, continuous int, switch1 int, switch2 int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.events = append(r.events, recordedTFTEvent{kind: "pedalboard", profile: profile, continuous: continuous, switch1: switch1, switch2: switch2})
 }
 
 func (r *recordingTFTOut) setNote(note, velocity int) {
@@ -741,6 +751,19 @@ func TestControlFeedbackCommandsUpdateRenderers(t *testing.T) {
 	if got := tft.snapshot(); !reflect.DeepEqual(got, wantTFT) {
 		t.Fatalf("feedback-cc TFT events = %#v, want %#v", got, wantTFT)
 	}
+
+	response = runControlCommand(t, d, "pedalboard-state desktop 64 127 0\n")
+	if response != "ok\n" {
+		t.Fatalf("pedalboard-state response = %q, want ok", response)
+	}
+	wantPedalboard := []recordedTFTEvent{
+		{kind: "pad", channel: 9, note: 41, velocity: 90},
+		{kind: "cc", channel: 9, controller: 90, value: 6},
+		{kind: "pedalboard", profile: 3, continuous: 64, switch1: 127, switch2: 0},
+	}
+	if got := tft.snapshot(); !reflect.DeepEqual(got, wantPedalboard) {
+		t.Fatalf("pedalboard-state TFT events = %#v, want %#v", got, wantPedalboard)
+	}
 }
 
 func runControlCommand(t *testing.T, d *daemon, command string) string {
@@ -1020,6 +1043,10 @@ func TestStatusJSONReportsUserFacingState(t *testing.T) {
 	d.state.channelSelect = true
 	d.state.tabAsModifier = true
 	d.state.entrySelect = true
+	d.state.pedalboardProfile = 3
+	d.state.pedalboardContinuous = 64
+	d.state.pedalboardSwitch1 = 127
+	d.state.pedalboardSwitch2 = 0
 	d.state.held["midi_pad_01"] = heldNote{channel: 2, note: 52, velocity: 100}
 
 	var buf bytes.Buffer
@@ -1047,6 +1074,10 @@ func TestStatusJSONReportsUserFacingState(t *testing.T) {
 	assertStatus("channel_select", true)
 	assertStatus("tab_modifier", true)
 	assertStatus("entry_select", true)
+	assertStatus("pedalboard_profile", float64(3))
+	assertStatus("pedalboard_continuous", float64(64))
+	assertStatus("pedalboard_switch1", float64(127))
+	assertStatus("pedalboard_switch2", float64(0))
 	assertStatus("client", clientName)
 	assertStatus("port", portName)
 	assertStatus("led_client", ledClientName)

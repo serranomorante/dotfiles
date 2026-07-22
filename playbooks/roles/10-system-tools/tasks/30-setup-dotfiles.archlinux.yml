@@ -156,6 +156,16 @@
     checksum_algorithm: sha256
   register: var_arch_plasma_clipboard_service
 
+- name: "[archlinux] Dotfiles: stat pedalboard MIDI action mapper files"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item }}"
+    checksum_algorithm: sha256
+  register: var_arch_pedalboard_midi_actions_files
+  loop:
+    - audio/dot-local/bin/pedalboard-midi-actions
+    - audio/dot-config/systemd/user/pedalboard-midi-actions.service
+    - audio/dot-config/dotfiles/pedalboard-midi-actions.tsv
+
 - name: "[archlinux] Dotfiles: ensure Plasma clipboard service"
   ansible.builtin.systemd_service:
     scope: user
@@ -164,6 +174,25 @@
     masked: false
     state: started
     daemon_reload: true
+
+- name: "[archlinux] Dotfiles: ensure pedalboard MIDI action mapper"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: pedalboard-midi-actions.service
+    enabled: true
+    masked: false
+    state: started
+    daemon_reload: true
+
+- name: "[archlinux] Dotfiles: record applied pedalboard MIDI action mapper checksum"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: pedalboard-midi-actions-sha256
+    dotfiles_marker_content: "{{ var_arch_pedalboard_midi_actions_files.results | selectattr('stat.exists') | map(attribute='stat.checksum') | join('\n') }}\n"
+    dotfiles_marker_notify:
+      - "10-system-tools : handler_restart_pedalboard_midi_actions_service"
 
 - name: "[archlinux] Dotfiles: record applied Plasma clipboard service checksum"
   ansible.builtin.include_role:

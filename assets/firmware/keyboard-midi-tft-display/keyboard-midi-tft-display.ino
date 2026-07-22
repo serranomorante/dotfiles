@@ -9,6 +9,7 @@
 //   N <note> <velocity>
 //   P <channel> <note> <velocity>
 //   K <channel> <cc> <value>
+//   B <profile> <continuous> <switch1> <switch2>
 //   C
 
 const uint8_t TFT_CS = 10;
@@ -21,6 +22,7 @@ const uint8_t TFT_MISO = 13;
 const uint8_t NOTE_BASE = 36;
 const uint8_t NOTE_COUNT = 64;
 const uint8_t CC_BASE = 10;
+const uint8_t PEDALBOARD_CHANNEL = 15;
 const uint8_t MIDI_EDITOR_GRID_CC = 90;
 const uint8_t TRACK_COUNT = 8;
 const uint8_t MON_OFF_MAX = 42;
@@ -37,6 +39,10 @@ bool midiModeActive = false;
 bool transportRunning = false;
 uint8_t currentChannel = 1;
 uint8_t currentBank = 1;
+uint8_t pedalboardProfile = 0;
+uint8_t pedalboardContinuous = 0;
+uint8_t pedalboardSwitch1 = 0;
+uint8_t pedalboardSwitch2 = 0;
 bool fullRedraw = true;
 bool headerTopDirty = false;
 bool midiEditorGridHeaderDirty = false;
@@ -79,10 +85,25 @@ const char *channelContext() {
       return "Markers";
     case 12:
       return "Items";
+    case PEDALBOARD_CHANNEL:
+      return "Pedalboard";
     case 16:
       return "Global";
     default:
       return "Custom";
+  }
+}
+
+const char *pedalboardProfileLabel() {
+  switch (pedalboardProfile) {
+    case 1:
+      return "piano";
+    case 2:
+      return "guitar";
+    case 3:
+      return "desktop";
+    default:
+      return "unknown";
   }
 }
 
@@ -184,6 +205,16 @@ void drawHeaderTop() {
   uint16_t headerColor = ILI9341_NAVY;
   tft.fillRect(0, 0, 320, 31, headerColor);
   tft.setTextColor(ILI9341_WHITE, headerColor);
+
+  if (currentChannel == PEDALBOARD_CHANNEL) {
+    tft.setTextSize(1);
+    tft.setCursor(6, 5);
+    tft.print("Ch 15 Pedalboard");
+    tft.setCursor(6, 18);
+    tft.print("Profile ");
+    tft.print(pedalboardProfileLabel());
+    return;
+  }
 
   if (currentChannel == 9) {
     tft.setTextSize(1);
@@ -401,6 +432,14 @@ uint16_t colorForItems(uint8_t row, uint8_t col) {
   return ILI9341_ORANGE;
 }
 
+uint16_t colorForPedalboard(uint8_t row, uint8_t col) {
+  if (row != 0 || col > 3) {
+    return ILI9341_DARKGREY;
+  }
+  const uint16_t colors[4] = {ILI9341_BLUE, ILI9341_GREEN, ILI9341_CYAN, ILI9341_CYAN};
+  return colors[col];
+}
+
 uint16_t colorForGlobal(uint8_t row, uint8_t col) {
   if (row < 2) {
     return ILI9341_DARKGREY;
@@ -459,6 +498,8 @@ uint16_t tileBaseColor(uint8_t row, uint8_t col) {
       return colorForMarkers(row, col);
     case 12:
       return colorForItems(row, col);
+    case PEDALBOARD_CHANNEL:
+      return colorForPedalboard(row, col);
     case 16:
       return colorForGlobal(row, col);
   }
@@ -480,6 +521,8 @@ bool tileAssigned(uint8_t row, uint8_t col) {
       return row > 1;
     case 12:
       return row > 1;
+    case PEDALBOARD_CHANNEL:
+      return row == 0 && col < 4;
     default:
       return false;
   }
@@ -488,6 +531,23 @@ bool tileAssigned(uint8_t row, uint8_t col) {
 bool tileActive(uint8_t row, uint8_t col) {
   if (!tileAssigned(row, col)) {
     return false;
+  }
+  if (currentChannel == PEDALBOARD_CHANNEL) {
+    if (row != 0) {
+      return false;
+    }
+    if (col == 0) {
+      return pedalboardProfile != 0;
+    }
+    if (col == 1) {
+      return pedalboardContinuous > 0;
+    }
+    if (col == 2) {
+      return pedalboardSwitch1 >= 64;
+    }
+    if (col == 3) {
+      return pedalboardSwitch2 >= 64;
+    }
   }
   if (currentChannel == 2 && row == 2 && col == 5) {
     return monitorModeFromValue(noteValue(padNote(0, col))) > 0;
@@ -605,6 +665,12 @@ void tileLabel(uint8_t row, uint8_t col, char *out, size_t outSize) {
     return;
   }
 
+  if (currentChannel == PEDALBOARD_CHANNEL) {
+    const char *labels[4] = {"PROF", "DAMP", "SW1", "SW2"};
+    snprintf(out, outSize, "%s", row == 0 && col < 4 ? labels[col] : "");
+    return;
+  }
+
   if (currentChannel == 16) {
     const char *labels[4][8] = {
         {"", "", "", "", "", "", "", ""},
@@ -697,6 +763,21 @@ void tileValue(uint8_t row, uint8_t col, char *out, size_t outSize) {
 
   if (currentChannel == 12) {
     snprintf(out, outSize, "Item");
+    return;
+  }
+
+  if (currentChannel == PEDALBOARD_CHANNEL) {
+    if (row == 0 && col == 0) {
+      snprintf(out, outSize, "%s", pedalboardProfileLabel());
+    } else if (row == 0 && col == 1) {
+      formatPercentValue(pedalboardContinuous, out, outSize);
+    } else if (row == 0 && col == 2) {
+      snprintf(out, outSize, "%s", pedalboardSwitch1 >= 64 ? "ON" : "OFF");
+    } else if (row == 0 && col == 3) {
+      snprintf(out, outSize, "%s", pedalboardSwitch2 >= 64 ? "ON" : "OFF");
+    } else {
+      snprintf(out, outSize, "");
+    }
     return;
   }
 
@@ -991,6 +1072,40 @@ void handleLine(char *line) {
         ccKnown[channelIndex][controller] = true;
         ccValues[channelIndex][controller] = nextValue;
         markTileForCC(channel, controller);
+      }
+    }
+    return;
+  }
+
+  if (line[0] == 'B' && sscanf(line, "B %d %d %d %d", &first, &second, &third, &fourth) == 4) {
+    uint8_t nextProfile = constrain(first, 0, 3);
+    uint8_t nextContinuous = constrain(second, 0, 127);
+    uint8_t nextSwitch1 = constrain(third, 0, 127);
+    uint8_t nextSwitch2 = constrain(fourth, 0, 127);
+
+    if (pedalboardProfile != nextProfile) {
+      pedalboardProfile = nextProfile;
+      if (currentChannel == PEDALBOARD_CHANNEL) {
+        headerTopDirty = true;
+        tileDirty[0][0] = true;
+      }
+    }
+    if (pedalboardContinuous != nextContinuous) {
+      pedalboardContinuous = nextContinuous;
+      if (currentChannel == PEDALBOARD_CHANNEL) {
+        tileDirty[0][1] = true;
+      }
+    }
+    if (pedalboardSwitch1 != nextSwitch1) {
+      pedalboardSwitch1 = nextSwitch1;
+      if (currentChannel == PEDALBOARD_CHANNEL) {
+        tileDirty[0][2] = true;
+      }
+    }
+    if (pedalboardSwitch2 != nextSwitch2) {
+      pedalboardSwitch2 = nextSwitch2;
+      if (currentChannel == PEDALBOARD_CHANNEL) {
+        tileDirty[0][3] = true;
       }
     }
     return;

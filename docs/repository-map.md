@@ -208,7 +208,7 @@ Wacom tablet behavior is split between Xorg defaults and runtime reapply hooks:
 
 ## Audio And MIDI
 
-MIDI hardware capture helpers that support DAW/controller mapping live under `audio/dot-local/bin/`. `pedalboard-midi-actions` is the host-side action layer for the Arduino pedalboard firmware: the firmware remains a plain USB MIDI pedal surface, and desktop actions such as microphone toggles are mapped from MIDI CC events by the host script and its `~/.config/dotfiles/pedalboard-midi-actions.tsv` rules.
+MIDI hardware capture helpers that support DAW/controller mapping live under `audio/dot-local/bin/`. `pedalboard-midi-actions` is the host-side action layer for the Arduino pedalboard firmware: the firmware remains a plain USB MIDI pedal surface, and desktop actions such as microphone toggles are mapped from MIDI CC events by the host script and its `~/.config/dotfiles/pedalboard-midi-actions.tsv` rules. The always-on user unit lives at `audio/dot-config/systemd/user/pedalboard-midi-actions.service`; it is enabled by the Arch dotfiles task, restarted when the script/unit/config checksum changes, and may subscribe to the same Arduino MIDI output as a DAW without taking exclusive ownership of that port. For display feedback, `pedalboard-midi-actions` publishes `pedalboard-state PROFILE CONT SW1 SW2` to the `keyboard-midi-controller` control socket; the daemon remains the sole writer to the TFT and renders that state on visual channel `15`, `Pedalboard`, leaving channel `16` for REAPER global utilities.
 
 ## Terminal And Kitty
 

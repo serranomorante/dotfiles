@@ -9,12 +9,18 @@ config=${PEDALBOARD_MIDI_ACTIONS_CONFIG:-"${XDG_CONFIG_HOME:-"$HOME/.config"}/do
 port=${PEDALBOARD_MIDI_ACTIONS_ALSA_PORT:-}
 channel_base=${PEDALBOARD_MIDI_ACTIONS_CHANNEL_BASE:-0}
 dry_run=0
+feedback_command=${PEDALBOARD_MIDI_FEEDBACK_COMMAND:-}
+pedalboard_profile=unknown
+pedalboard_continuous=0
+pedalboard_switch1=0
+pedalboard_switch2=0
 
 usage() {
   cat <<EOF
 Usage: $prog [OPTIONS]
 
 Listen to Pedalboard MIDI Controller CC events and dispatch configured commands.
+The current pedalboard state is also published to keyboard-midi-controller for TFT feedback when available.
 
 Options:
   --list             List visible ALSA sequencer ports.
@@ -74,6 +80,25 @@ validate_channel_base() {
   esac
 }
 
+resolve_feedback_command() {
+  if [ -n "$feedback_command" ]; then
+    printf '%s\n' "$feedback_command"
+    return 0
+  fi
+
+  cached="${XDG_CACHE_HOME:-"$HOME/.cache"}/dotfiles/keyboard-midi-controller/keyboard-midi-controller"
+  if [ -x "$cached" ]; then
+    printf '%s\n' "$cached"
+    return 0
+  fi
+
+  wrapper="$HOME/bin/keyboard-midi-controller"
+  if [ -x "$wrapper" ]; then
+    printf '%s\n' "$wrapper"
+  fi
+  return 0
+}
+
 declare -A actions
 
 load_config() {
@@ -119,6 +144,63 @@ run_action() {
     bash -lc "$command" &
 }
 
+publish_pedalboard_state() {
+  command_path=$(resolve_feedback_command)
+  [ -n "$command_path" ] || return 0
+
+  "$command_path" pedalboard-state "$pedalboard_profile" "$pedalboard_continuous" "$pedalboard_switch1" "$pedalboard_switch2" >/dev/null 2>&1 || true
+}
+
+update_pedalboard_state() {
+  local channel=$1
+  local controller=$2
+  local value=$3
+
+  case "$channel:$controller" in
+    1:64)
+      pedalboard_profile=piano
+      pedalboard_continuous=$value
+      ;;
+    1:66)
+      pedalboard_profile=piano
+      pedalboard_switch1=$value
+      ;;
+    1:67)
+      pedalboard_profile=piano
+      pedalboard_switch2=$value
+      ;;
+    2:4)
+      pedalboard_profile=guitar
+      pedalboard_continuous=$value
+      ;;
+    2:80)
+      pedalboard_profile=guitar
+      pedalboard_switch1=$value
+      ;;
+    2:81)
+      pedalboard_profile=guitar
+      pedalboard_switch2=$value
+      ;;
+    16:4)
+      pedalboard_profile=desktop
+      pedalboard_continuous=$value
+      ;;
+    16:80)
+      pedalboard_profile=desktop
+      pedalboard_switch1=$value
+      ;;
+    16:81)
+      pedalboard_profile=desktop
+      pedalboard_switch2=$value
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+
+  publish_pedalboard_state
+}
+
 handle_cc() {
   local printed_channel=$1
   local controller=$2
@@ -130,6 +212,8 @@ handle_cc() {
     channel=$((printed_channel + 1))
   fi
   [ "$value" -lt 64 ] || edge=press
+
+  update_pedalboard_state "$channel" "$controller" "$value"
 
   run_action "$channel" "$controller" "$value" any
   run_action "$channel" "$controller" "$value" "$edge"

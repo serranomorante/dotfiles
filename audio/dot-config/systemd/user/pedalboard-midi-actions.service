@@ -1,0 +1,11 @@
+[Unit]
+Description=Pedalboard MIDI desktop action mapper
+After=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/pedalboard-midi-actions
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=graphical-session.target

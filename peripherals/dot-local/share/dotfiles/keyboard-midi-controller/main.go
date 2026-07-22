@@ -446,6 +446,7 @@ type midiOutput interface {
 
 type tftOutput interface {
 	setState(active bool, channel, bank int, transportRunning bool)
+	setPedalboard(profile int, continuous int, switch1 int, switch2 int)
 	setNote(note, velocity int)
 	setPad(channel, note, velocity int)
 	setCC(channel, controller, value int)
@@ -465,20 +466,24 @@ type encoderHold struct {
 }
 
 type controllerState struct {
-	mu               sync.Mutex
-	active           bool
-	bank             int
-	channel          int
-	transportRunning bool
-	shift            bool
-	alt              bool
-	altgr            bool
-	control          bool
-	bankSelect       bool
-	channelSelect    bool
-	tabAsModifier    bool
-	entrySelect      bool
-	held             map[string]heldNote
+	mu                   sync.Mutex
+	active               bool
+	bank                 int
+	channel              int
+	transportRunning     bool
+	shift                bool
+	alt                  bool
+	altgr                bool
+	control              bool
+	bankSelect           bool
+	channelSelect        bool
+	tabAsModifier        bool
+	entrySelect          bool
+	pedalboardProfile    int
+	pedalboardContinuous int
+	pedalboardSwitch1    int
+	pedalboardSwitch2    int
+	held                 map[string]heldNote
 }
 
 type daemon struct {
@@ -524,6 +529,13 @@ func main() {
 		if err := sendCommand(strings.Join(os.Args[1:], " ")); err != nil {
 			log.Fatal(err)
 		}
+	case "pedalboard-state":
+		if len(os.Args) != 6 {
+			usage()
+		}
+		if err := sendCommand(strings.Join(os.Args[1:], " ")); err != nil {
+			log.Fatal(err)
+		}
 	case "-h", "--help":
 		usage()
 	default:
@@ -532,7 +544,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: keyboard-midi-controller [run|toggle|enter|exit|status|panic|feedback-note CH NOTE VEL|feedback-cc CH CC VALUE]\n")
+	fmt.Fprintf(os.Stderr, "usage: keyboard-midi-controller [run|toggle|enter|exit|status|panic|feedback-note CH NOTE VEL|feedback-cc CH CC VALUE|pedalboard-state PROFILE CONT SW1 SW2]\n")
 	os.Exit(2)
 }
 
@@ -826,6 +838,10 @@ func newSerialTFTOutput() *serialTFTOutput {
 
 func (t *serialTFTOutput) setState(active bool, channel, bank int, transportRunning bool) {
 	t.sendLine(fmt.Sprintf("S %d %d %d %d", boolToInt(active), channel, bank, boolToInt(transportRunning)))
+}
+
+func (t *serialTFTOutput) setPedalboard(profile int, continuous int, switch1 int, switch2 int) {
+	t.sendLine(fmt.Sprintf("B %d %d %d %d", clampPedalboardProfile(profile), clampMIDIData(continuous), clampMIDIData(switch1), clampMIDIData(switch2)))
 }
 
 func (t *serialTFTOutput) setNote(note, velocity int) {
@@ -1146,6 +1162,31 @@ func clampMIDIData(value int) int {
 	return value
 }
 
+func clampPedalboardProfile(profile int) int {
+	if profile < 0 {
+		return 0
+	}
+	if profile > 3 {
+		return 3
+	}
+	return profile
+}
+
+func pedalboardProfileID(name string) (int, error) {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "unknown", "?", "0":
+		return 0, nil
+	case "piano", "1":
+		return 1, nil
+	case "guitar", "2":
+		return 2, nil
+	case "desktop", "3":
+		return 3, nil
+	default:
+		return 0, fmt.Errorf("pedalboard profile must be unknown, piano, guitar, or desktop, got %q", name)
+	}
+}
+
 func midiEventStart() int {
 	return int(C.kmc_event_start())
 }
@@ -1195,10 +1236,15 @@ func (d *daemon) refreshLocalLEDState() {
 	bank := d.state.bank
 	channel := d.state.channel
 	transportRunning := d.state.transportRunning
+	pedalboardProfile := d.state.pedalboardProfile
+	pedalboardContinuous := d.state.pedalboardContinuous
+	pedalboardSwitch1 := d.state.pedalboardSwitch1
+	pedalboardSwitch2 := d.state.pedalboardSwitch2
 	d.state.mu.Unlock()
 
 	if d.tft != nil {
 		d.tft.setState(active, channel+1, bank+1, transportRunning)
+		d.tft.setPedalboard(pedalboardProfile, pedalboardContinuous, pedalboardSwitch1, pedalboardSwitch2)
 	}
 
 	d.setLED(ledModeNote, ledOff)
@@ -1948,8 +1994,69 @@ func (d *daemon) handleControlConn(conn net.Conn) {
 		}
 		d.applyFeedbackCC(channel, controller, value)
 		fmt.Fprintln(conn, "ok")
+	case fields[0] == "pedalboard-state":
+		if len(fields) != 5 {
+			fmt.Fprintln(conn, "error: usage pedalboard-state PROFILE CONT SW1 SW2")
+			return
+		}
+		profile, continuous, switch1, switch2, err := parsePedalboardState(fields[1:])
+		if err != nil {
+			fmt.Fprintf(conn, "error: %v\n", err)
+			return
+		}
+		d.setPedalboardState(profile, continuous, switch1, switch2)
+		fmt.Fprintln(conn, "ok")
 	default:
 		fmt.Fprintf(conn, "error: unknown command %q\n", command)
+	}
+}
+
+func parsePedalboardState(args []string) (int, int, int, int, error) {
+	if len(args) != 4 {
+		return 0, 0, 0, 0, errors.New("expected profile plus three numeric values")
+	}
+	profile, err := pedalboardProfileID(args[0])
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	continuous, err := parseMIDIDataArg("continuous", args[1])
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	switch1, err := parseMIDIDataArg("switch1", args[2])
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	switch2, err := parseMIDIDataArg("switch2", args[3])
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	return profile, continuous, switch1, switch2, nil
+}
+
+func parseMIDIDataArg(name, raw string) (int, error) {
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 0 || value > 127 {
+		return 0, fmt.Errorf("%s must be 0-127, got %q", name, raw)
+	}
+	return value, nil
+}
+
+func (d *daemon) setPedalboardState(profile int, continuous int, switch1 int, switch2 int) {
+	profile = clampPedalboardProfile(profile)
+	continuous = clampMIDIData(continuous)
+	switch1 = clampMIDIData(switch1)
+	switch2 = clampMIDIData(switch2)
+
+	d.state.mu.Lock()
+	d.state.pedalboardProfile = profile
+	d.state.pedalboardContinuous = continuous
+	d.state.pedalboardSwitch1 = switch1
+	d.state.pedalboardSwitch2 = switch2
+	d.state.mu.Unlock()
+
+	if d.tft != nil {
+		d.tft.setPedalboard(profile, continuous, switch1, switch2)
 	}
 }
 
@@ -1985,26 +2092,30 @@ func (d *daemon) toggleActive() (bool, error) {
 func (d *daemon) writeStatus(w io.Writer) {
 	d.state.mu.Lock()
 	status := map[string]any{
-		"active":            d.state.active,
-		"bank":              d.state.bank + 1,
-		"channel":           d.state.channel + 1,
-		"held_notes":        len(d.state.held),
-		"transport_running": d.state.transportRunning,
-		"alt_speed":         d.state.alt || d.state.altgr,
-		"control_fine":      d.state.control,
-		"bank_select":       d.state.bankSelect,
-		"channel_select":    d.state.channelSelect,
-		"tab_modifier":      d.state.tabAsModifier,
-		"entry_select":      d.state.entrySelect,
-		"client":            clientName,
-		"port":              portName,
-		"led_client":        ledClientName,
-		"led_port":          ledPortName,
-		"led_disabled":      envFlagEnabled(disableLEDEnv),
-		"feedback_client":   feedbackClientName,
-		"feedback_port":     feedbackPortName,
-		"tft_serial_port":   d.tftSerialPort(),
-		"outputs":           d.outputNames(),
+		"active":                d.state.active,
+		"bank":                  d.state.bank + 1,
+		"channel":               d.state.channel + 1,
+		"held_notes":            len(d.state.held),
+		"transport_running":     d.state.transportRunning,
+		"alt_speed":             d.state.alt || d.state.altgr,
+		"control_fine":          d.state.control,
+		"bank_select":           d.state.bankSelect,
+		"channel_select":        d.state.channelSelect,
+		"tab_modifier":          d.state.tabAsModifier,
+		"entry_select":          d.state.entrySelect,
+		"pedalboard_profile":    d.state.pedalboardProfile,
+		"pedalboard_continuous": d.state.pedalboardContinuous,
+		"pedalboard_switch1":    d.state.pedalboardSwitch1,
+		"pedalboard_switch2":    d.state.pedalboardSwitch2,
+		"client":                clientName,
+		"port":                  portName,
+		"led_client":            ledClientName,
+		"led_port":              ledPortName,
+		"led_disabled":          envFlagEnabled(disableLEDEnv),
+		"feedback_client":       feedbackClientName,
+		"feedback_port":         feedbackPortName,
+		"tft_serial_port":       d.tftSerialPort(),
+		"outputs":               d.outputNames(),
 	}
 	d.state.mu.Unlock()
 
