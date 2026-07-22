@@ -4,6 +4,7 @@ After=graphical-session.target
 
 [Service]
 Environment="PIPEWIRE_PROPS={ node.lock-quantum=false }"
+Environment="KMC_DISABLE_LED=1"
 ExecStart=%h/bin/keyboard-midi-controller run
 Restart=on-failure
 RestartSec=2s

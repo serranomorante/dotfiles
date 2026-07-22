@@ -1,0 +1,3 @@
+# CHANNEL CC EDGE COMMAND...
+# The desktop firmware profile sends switch 1 as channel 16 CC80 press/release.
+16 80 press wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle

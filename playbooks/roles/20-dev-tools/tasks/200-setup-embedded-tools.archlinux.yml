@@ -144,6 +144,12 @@
     checksum_algorithm: sha256
   register: var_keyboard_midi_tft_display_firmware
 
+- name: "[archlinux] Setup embedded tools: stat pedalboard MIDI controller firmware"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/dotfiles/assets/firmware/pedalboard-midi-controller/pedalboard-midi-controller.ino"
+    checksum_algorithm: sha256
+  register: var_pedalboard_midi_controller_firmware
+
 - name: "[archlinux] Setup embedded tools: read keyboard MIDI LED matrix firmware marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
@@ -214,6 +220,17 @@
   changed_when: false
   when: var_keyboard_midi_tft_display_firmware.stat.exists
 
+- name: "[archlinux] Setup embedded tools: compile pedalboard MIDI controller firmware"
+  ansible.builtin.command:
+    argv:
+      - arduino-cli
+      - compile
+      - --fqbn
+      - arduino:avr:micro
+      - "{{ ansible_facts.env.HOME }}/dotfiles/assets/firmware/pedalboard-midi-controller"
+  changed_when: false
+  when: var_pedalboard_midi_controller_firmware.stat.exists
+
 - name: "[archlinux] Setup embedded tools: upload keyboard MIDI LED matrix firmware"
   ansible.builtin.command:
     argv:
@@ -232,6 +249,22 @@
       var_keyboard_midi_led_matrix_firmware_marker.content is not defined or
       (var_keyboard_midi_led_matrix_firmware_marker.content | b64decode | trim) != var_keyboard_midi_led_matrix_firmware.stat.checksum
     )
+
+- name: "[archlinux] Setup embedded tools: upload pedalboard MIDI controller firmware"
+  ansible.builtin.command:
+    argv:
+      - arduino-cli
+      - upload
+      - -p
+      - "{{ var_arduino_micro_port.stdout | trim }}"
+      - --fqbn
+      - arduino:avr:micro
+      - "{{ ansible_facts.env.HOME }}/dotfiles/assets/firmware/pedalboard-midi-controller"
+  register: var_pedalboard_midi_controller_firmware_upload
+  when: >-
+    dotfiles_upload_pedalboard_midi_controller | default(false) | bool and
+    var_pedalboard_midi_controller_firmware.stat.exists and
+    var_arduino_micro_port.stdout | trim | length > 0
 
 - name: "[archlinux] Setup embedded tools: inspect keyboard MIDI controller before TFT upload"
   ansible.builtin.command:

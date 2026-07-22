@@ -257,6 +257,28 @@ func TestLEDAutoConnectTarget(t *testing.T) {
 	}
 }
 
+func TestEnvFlagEnabled(t *testing.T) {
+	const name = "KMC_TEST_FLAG"
+	t.Setenv(name, "")
+	if envFlagEnabled(name) {
+		t.Fatal("empty flag should be disabled")
+	}
+
+	for _, value := range []string{"1", "true", "yes", "on", " TRUE "} {
+		t.Setenv(name, value)
+		if !envFlagEnabled(name) {
+			t.Fatalf("flag value %q should be enabled", value)
+		}
+	}
+
+	for _, value := range []string{"0", "false", "no", "off", "anything"} {
+		t.Setenv(name, value)
+		if envFlagEnabled(name) {
+			t.Fatalf("flag value %q should be disabled", value)
+		}
+	}
+}
+
 func TestRelativeCCValueAndAddressing(t *testing.T) {
 	tests := []struct {
 		name  string

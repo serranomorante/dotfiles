@@ -355,6 +355,7 @@ const (
 	feedbackPortName     = "Feedback In"
 	arduinoLEDClientName = "Arduino Micro"
 	arduinoLEDPortName   = "Arduino Micro MIDI 1"
+	disableLEDEnv        = "KMC_DISABLE_LED"
 	tftSerialPortEnv     = "KMC_TFT_SERIAL_PORT"
 
 	showMIDIOSDCommand = "show_keyboard_midi_osd"
@@ -539,9 +540,15 @@ func run() error {
 	out := waitForMIDI()
 	defer out.close()
 
-	ledOut := waitForLEDMIDI()
-	defer ledOut.close()
-	go runLEDAutoConnectLoop(ledOut)
+	var ledOut midiOutput
+	if envFlagEnabled(disableLEDEnv) {
+		log.Printf("LED MIDI output disabled by %s", disableLEDEnv)
+	} else {
+		managedLEDOut := waitForLEDMIDI()
+		defer managedLEDOut.close()
+		ledOut = managedLEDOut
+		go runLEDAutoConnectLoop(managedLEDOut)
+	}
 
 	tftOut := newSerialTFTOutput()
 	defer tftOut.close()
@@ -943,6 +950,15 @@ func boolToInt(value bool) int {
 		return 1
 	}
 	return 0
+}
+
+func envFlagEnabled(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(name))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 func (f *feedbackMIDIIn) close() {
@@ -1984,6 +2000,7 @@ func (d *daemon) writeStatus(w io.Writer) {
 		"port":              portName,
 		"led_client":        ledClientName,
 		"led_port":          ledPortName,
+		"led_disabled":      envFlagEnabled(disableLEDEnv),
 		"feedback_client":   feedbackClientName,
 		"feedback_port":     feedbackPortName,
 		"tft_serial_port":   d.tftSerialPort(),

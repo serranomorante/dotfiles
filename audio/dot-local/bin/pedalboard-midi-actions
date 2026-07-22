@@ -1,0 +1,191 @@
+#!/usr/bin/env bash
+# Purpose: Map Pedalboard MIDI Controller CC events to local shell commands.
+# Usage: pedalboard-midi-actions [--list] [--port ALSA_PORT] [--config PATH] [--channel-base 0|1] [--dry-run]
+
+set -euo pipefail
+
+prog=${0##*/}
+config=${PEDALBOARD_MIDI_ACTIONS_CONFIG:-"${XDG_CONFIG_HOME:-"$HOME/.config"}/dotfiles/pedalboard-midi-actions.tsv"}
+port=${PEDALBOARD_MIDI_ACTIONS_ALSA_PORT:-}
+channel_base=${PEDALBOARD_MIDI_ACTIONS_CHANNEL_BASE:-0}
+dry_run=0
+
+usage() {
+  cat <<EOF
+Usage: $prog [OPTIONS]
+
+Listen to Pedalboard MIDI Controller CC events and dispatch configured commands.
+
+Options:
+  --list             List visible ALSA sequencer ports.
+  --port PORT        Read a specific ALSA sequencer port, for example 28:0.
+  --config PATH      Read mappings from PATH. Default: $config
+  --channel-base 0|1 Interpret aseqdump channels as zero- or one-based. Default: $channel_base
+  --dry-run          Print matching commands instead of executing them.
+  -h, --help         Show this help.
+
+Config format:
+  CHANNEL CC EDGE COMMAND...
+
+Edges:
+  press    Match values >= 64.
+  release  Match values < 64.
+  any      Match every value change.
+
+Example:
+  16 80 press wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+EOF
+}
+
+log() {
+  printf '%s: %s\n' "$prog" "$*" >&2
+}
+
+die() {
+  log "$*"
+  exit 1
+}
+
+require_cmd() {
+  command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+list_ports() {
+  require_cmd aseqdump
+  aseqdump -l || true
+}
+
+detect_port() {
+  aseqdump -l 2>/dev/null | awk '
+    $1 ~ /^[0-9]+:[0-9]+$/ {
+      line = tolower($0)
+      if (line ~ /arduino/ && line ~ /micro/) {
+        print $1
+        exit
+      }
+    }
+  '
+}
+
+validate_channel_base() {
+  case "$channel_base" in
+    0|1) ;;
+    *) die "--channel-base must be 0 or 1" ;;
+  esac
+}
+
+declare -A actions
+
+load_config() {
+  [ -f "$config" ] || die "missing config file: $config"
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line=${line%%#*}
+    [[ $line =~ [^[:space:]] ]] || continue
+
+    read -r channel controller edge command <<<"$line"
+    [ -n "${channel:-}" ] && [ -n "${controller:-}" ] && [ -n "${edge:-}" ] && [ -n "${command:-}" ] || die "invalid config line: $line"
+    [[ $channel =~ ^[0-9]+$ ]] && [ "$channel" -ge 1 ] && [ "$channel" -le 16 ] || die "invalid channel in line: $line"
+    [[ $controller =~ ^[0-9]+$ ]] && [ "$controller" -ge 0 ] && [ "$controller" -le 127 ] || die "invalid CC in line: $line"
+    case "$edge" in
+      press|release|any) ;;
+      *) die "invalid edge in line: $line" ;;
+    esac
+
+    actions["$channel:$controller:$edge"]=$command
+  done <"$config"
+
+  [ "${#actions[@]}" -gt 0 ] || die "config has no actions: $config"
+}
+
+run_action() {
+  local channel=$1
+  local controller=$2
+  local value=$3
+  local edge=$4
+  local command=${actions["$channel:$controller:$edge"]:-}
+
+  [ -n "$command" ] || return 0
+
+  if [ "$dry_run" -eq 1 ]; then
+    printf 'match channel=%s cc=%s value=%s edge=%s command=%s\n' "$channel" "$controller" "$value" "$edge" "$command"
+    return 0
+  fi
+
+  PEDALBOARD_MIDI_CHANNEL=$channel \
+    PEDALBOARD_MIDI_CC=$controller \
+    PEDALBOARD_MIDI_VALUE=$value \
+    PEDALBOARD_MIDI_EDGE=$edge \
+    bash -lc "$command" &
+}
+
+handle_cc() {
+  local printed_channel=$1
+  local controller=$2
+  local value=$3
+  local channel=$printed_channel
+  local edge=release
+
+  if [ "$channel_base" -eq 0 ]; then
+    channel=$((printed_channel + 1))
+  fi
+  [ "$value" -lt 64 ] || edge=press
+
+  run_action "$channel" "$controller" "$value" any
+  run_action "$channel" "$controller" "$value" "$edge"
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --list)
+      list_ports
+      exit 0
+      ;;
+    --port)
+      [ "$#" -ge 2 ] || die "--port requires a value"
+      port=$2
+      shift 2
+      ;;
+    --config)
+      [ "$#" -ge 2 ] || die "--config requires a value"
+      config=$2
+      shift 2
+      ;;
+    --channel-base)
+      [ "$#" -ge 2 ] || die "--channel-base requires a value"
+      channel_base=$2
+      shift 2
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "unknown argument: $1"
+      ;;
+  esac
+done
+
+require_cmd aseqdump
+validate_channel_base
+load_config
+
+if [ -z "$port" ]; then
+  port=$(detect_port)
+fi
+[ -n "$port" ] || {
+  list_ports >&2
+  die "could not auto-detect Arduino Micro ALSA sequencer port; pass --port PORT"
+}
+
+log "listening on ALSA sequencer port $port"
+aseqdump -p "$port" | while IFS= read -r line; do
+  [[ $line == *"Control change"* ]] || continue
+  if [[ $line =~ Control[[:space:]]change[[:space:]]+([0-9]+),[[:space:]]controller[[:space:]]([0-9]+),[[:space:]]value[[:space:]]([0-9]+) ]]; then
+    handle_cc "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+  fi
+done
