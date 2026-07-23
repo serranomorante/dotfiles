@@ -1,6 +1,6 @@
 #!/bin/sh
 # Purpose: Compile/cache and run the HHKB MIDI controller daemon.
-# Usage: keyboard-midi-controller [--compile-cache]|[run|toggle|enter|exit|status|panic|feedback-note CH NOTE VEL|feedback-cc CH CC VALUE|pedalboard-state PROFILE CONT SW1 SW2]
+# Usage: keyboard-midi-controller [--compile-cache]|[run|toggle|enter|exit|status|panic|feedback-note CH NOTE VEL|feedback-cc CH CC VALUE|pedalboard-state PROFILE CONT SW1 SW2|desktop-action-state SLOT LABEL VALUE]
 
 set -eu
 
@@ -12,7 +12,7 @@ binary="$build_dir/keyboard-midi-controller"
 hash_file="$build_dir/source.sha256"
 
 usage() {
-    printf 'usage: %s [--compile-cache]|[run|toggle|enter|exit|status|panic|feedback-note CH NOTE VEL|feedback-cc CH CC VALUE|pedalboard-state PROFILE CONT SW1 SW2]\n' "$prog" >&2
+    printf 'usage: %s [--compile-cache]|[run|toggle|enter|exit|status|panic|feedback-note CH NOTE VEL|feedback-cc CH CC VALUE|pedalboard-state PROFILE CONT SW1 SW2|desktop-action-state SLOT LABEL VALUE]\n' "$prog" >&2
     exit 2
 }
 
@@ -72,6 +72,9 @@ feedback-note | feedback-cc)
     ;;
 pedalboard-state)
     [ "$#" -eq 5 ] || usage
+    ;;
+desktop-action-state)
+    [ "$#" -eq 4 ] || usage
     ;;
 "")
     usage

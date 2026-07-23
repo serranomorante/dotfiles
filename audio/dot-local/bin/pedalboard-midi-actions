@@ -7,13 +7,18 @@ set -euo pipefail
 prog=${0##*/}
 config=${PEDALBOARD_MIDI_ACTIONS_CONFIG:-"${XDG_CONFIG_HOME:-"$HOME/.config"}/dotfiles/pedalboard-midi-actions.tsv"}
 port=${PEDALBOARD_MIDI_ACTIONS_ALSA_PORT:-}
+port_locked=0
+reconnect_delay=${PEDALBOARD_MIDI_RECONNECT_DELAY:-2}
 channel_base=${PEDALBOARD_MIDI_ACTIONS_CHANNEL_BASE:-0}
 dry_run=0
 feedback_command=${PEDALBOARD_MIDI_FEEDBACK_COMMAND:-}
+desktop_event_command=${PEDALBOARD_MIDI_DESKTOP_EVENT_COMMAND:-desktop-action-event}
+shift_threshold=${PEDALBOARD_MIDI_SHIFT_THRESHOLD:-21}
 pedalboard_profile=unknown
 pedalboard_continuous=0
 pedalboard_switch1=0
 pedalboard_switch2=0
+last_desktop_layer=
 
 usage() {
   cat <<EOF
@@ -37,6 +42,10 @@ Edges:
   press    Match values >= 64.
   release  Match values < 64.
   any      Match every value change.
+  shift-press
+           Match press while the continuous desktop pedal is >= $shift_threshold.
+  shift-release
+           Match release while the continuous desktop pedal is >= $shift_threshold.
 
 Example:
   16 80 press wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
@@ -80,6 +89,14 @@ validate_channel_base() {
   esac
 }
 
+validate_shift_threshold() {
+  [[ $shift_threshold =~ ^[0-9]+$ ]] && [ "$shift_threshold" -ge 0 ] && [ "$shift_threshold" -le 127 ] || die "PEDALBOARD_MIDI_SHIFT_THRESHOLD must be 0-127"
+}
+
+validate_reconnect_delay() {
+  [[ $reconnect_delay =~ ^[0-9]+$ ]] && [ "$reconnect_delay" -ge 1 ] && [ "$reconnect_delay" -le 60 ] || die "PEDALBOARD_MIDI_RECONNECT_DELAY must be 1-60 seconds"
+}
+
 resolve_feedback_command() {
   if [ -n "$feedback_command" ]; then
     printf '%s\n' "$feedback_command"
@@ -113,7 +130,7 @@ load_config() {
     [[ $channel =~ ^[0-9]+$ ]] && [ "$channel" -ge 1 ] && [ "$channel" -le 16 ] || die "invalid channel in line: $line"
     [[ $controller =~ ^[0-9]+$ ]] && [ "$controller" -ge 0 ] && [ "$controller" -le 127 ] || die "invalid CC in line: $line"
     case "$edge" in
-      press|release|any) ;;
+      press|release|any|shift-press|shift-release) ;;
       *) die "invalid edge in line: $line" ;;
     esac
 
@@ -149,6 +166,27 @@ publish_pedalboard_state() {
   [ -n "$command_path" ] || return 0
 
   "$command_path" pedalboard-state "$pedalboard_profile" "$pedalboard_continuous" "$pedalboard_switch1" "$pedalboard_switch2" >/dev/null 2>&1 || true
+}
+
+publish_desktop_layer_state() {
+  [ "$pedalboard_profile" = desktop ] || return 0
+  command -v "$desktop_event_command" >/dev/null 2>&1 || return 0
+
+  local next_layer=BASE
+
+  if [ "$pedalboard_continuous" -ge "$shift_threshold" ]; then
+    next_layer=SHIFT
+  fi
+
+  [ "$next_layer" != "$last_desktop_layer" ] || return 0
+  last_desktop_layer=$next_layer
+  "$desktop_event_command" desktop.layer "$next_layer" >/dev/null 2>&1 || true
+}
+
+sync_initial_pedalboard_state() {
+  if command -v pedalboard-midi-profile >/dev/null 2>&1; then
+    pedalboard-midi-profile status >/dev/null 2>&1 || true
+  fi
 }
 
 update_pedalboard_state() {
@@ -199,6 +237,9 @@ update_pedalboard_state() {
   esac
 
   publish_pedalboard_state
+  if [ "$channel:$controller" = "16:4" ]; then
+    publish_desktop_layer_state
+  fi
 }
 
 handle_cc() {
@@ -216,7 +257,96 @@ handle_cc() {
   update_pedalboard_state "$channel" "$controller" "$value"
 
   run_action "$channel" "$controller" "$value" any
-  run_action "$channel" "$controller" "$value" "$edge"
+  if [ "$channel" -eq 16 ] && [ "$pedalboard_continuous" -ge "$shift_threshold" ]; then
+    run_action "$channel" "$controller" "$value" "shift-$edge"
+  else
+    run_action "$channel" "$controller" "$value" "$edge"
+  fi
+}
+
+handle_aseqdump_line() {
+  local line=$1
+
+  [[ $line == *"Control change"* ]] || return 0
+  if [[ $line =~ Control[[:space:]]change[[:space:]]+([0-9]+),[[:space:]]controller[[:space:]]([0-9]+),[[:space:]]value[[:space:]]([0-9]+) ]]; then
+    handle_cc "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+  fi
+}
+
+listen_port() {
+  local active_port=$1
+  local line
+
+  log "listening on ALSA sequencer port $active_port"
+  while IFS= read -r line; do
+    handle_aseqdump_line "$line"
+  done < <(aseqdump -p "$active_port")
+}
+
+wait_for_port_visibility_change() {
+  local active_port=$1
+  local next_port
+
+  while :; do
+    sleep "$reconnect_delay"
+    next_port=$(detect_port)
+    if [ -z "$next_port" ] || [ "$next_port" != "$active_port" ]; then
+      printf 'pedalboard port visibility changed: %s -> %s\n' "$active_port" "${next_port:-missing}" >&2
+      return 0
+    fi
+  done
+}
+
+stop_background_pid() {
+  local pid=${1:-}
+  local child
+  [ -n "$pid" ] || return 0
+  for child in $(pgrep -P "$pid" 2>/dev/null || true); do
+    stop_background_pid "$child"
+  done
+  kill -TERM "$pid" >/dev/null 2>&1 || true
+  wait "$pid" >/dev/null 2>&1 || true
+}
+
+run_listener_loop() {
+  local active_port listener_pid watchdog_pid
+
+  while :; do
+    active_port=$port
+    if [ -z "$active_port" ]; then
+      active_port=$(detect_port)
+    fi
+
+    if [ -z "$active_port" ]; then
+      list_ports >&2
+      log "could not auto-detect Arduino Micro ALSA sequencer port; retrying in ${reconnect_delay}s"
+      [ "$dry_run" -eq 0 ] || return 1
+      sleep "$reconnect_delay"
+      continue
+    fi
+
+    if [ "$dry_run" -eq 1 ]; then
+      listen_port "$active_port"
+      return 0
+    fi
+
+    listen_port "$active_port" &
+    listener_pid=$!
+
+    wait_for_port_visibility_change "$active_port" &
+    watchdog_pid=$!
+
+    wait -n "$listener_pid" "$watchdog_pid" >/dev/null 2>&1 || true
+    if kill -0 "$listener_pid" >/dev/null 2>&1; then
+      log "MIDI port visibility changed; reconnecting pedalboard listener"
+    fi
+    stop_background_pid "$listener_pid"
+    stop_background_pid "$watchdog_pid"
+
+    [ "$dry_run" -eq 0 ] || return 0
+    [ "$port_locked" -eq 1 ] || port=
+    sleep "$reconnect_delay"
+  done
 }
 
 while [ "$#" -gt 0 ]; do
@@ -228,6 +358,7 @@ while [ "$#" -gt 0 ]; do
     --port)
       [ "$#" -ge 2 ] || die "--port requires a value"
       port=$2
+      port_locked=1
       shift 2
       ;;
     --config)
@@ -256,20 +387,8 @@ done
 
 require_cmd aseqdump
 validate_channel_base
+validate_shift_threshold
+validate_reconnect_delay
 load_config
-
-if [ -z "$port" ]; then
-  port=$(detect_port)
-fi
-[ -n "$port" ] || {
-  list_ports >&2
-  die "could not auto-detect Arduino Micro ALSA sequencer port; pass --port PORT"
-}
-
-log "listening on ALSA sequencer port $port"
-aseqdump -p "$port" | while IFS= read -r line; do
-  [[ $line == *"Control change"* ]] || continue
-  if [[ $line =~ Control[[:space:]]change[[:space:]]+([0-9]+),[[:space:]]controller[[:space:]]([0-9]+),[[:space:]]value[[:space:]]([0-9]+) ]]; then
-    handle_cc "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
-  fi
-done
+sync_initial_pedalboard_state
+run_listener_loop

@@ -349,14 +349,15 @@ const (
 	clientName = "Keyboard MIDI Controller"
 	portName   = "BeatStep Out"
 
-	ledClientName        = "Keyboard MIDI Controller LED"
-	ledPortName          = "LED Out"
-	feedbackClientName   = "Keyboard MIDI Controller Feedback"
-	feedbackPortName     = "Feedback In"
-	arduinoLEDClientName = "Arduino Micro"
-	arduinoLEDPortName   = "Arduino Micro MIDI 1"
-	disableLEDEnv        = "KMC_DISABLE_LED"
-	tftSerialPortEnv     = "KMC_TFT_SERIAL_PORT"
+	ledClientName          = "Keyboard MIDI Controller LED"
+	ledPortName            = "LED Out"
+	feedbackClientName     = "Keyboard MIDI Controller Feedback"
+	feedbackPortName       = "Feedback In"
+	arduinoLEDClientName   = "Arduino Micro"
+	arduinoLEDPortName     = "Arduino Micro MIDI 1"
+	disableLEDEnv          = "KMC_DISABLE_LED"
+	tftSerialPortEnv       = "KMC_TFT_SERIAL_PORT"
+	desktopActionSlotCount = 5
 
 	showMIDIOSDCommand = "show_keyboard_midi_osd"
 	hideMIDIOSDCommand = "hide_keyboard_midi_osd"
@@ -447,6 +448,7 @@ type midiOutput interface {
 type tftOutput interface {
 	setState(active bool, channel, bank int, transportRunning bool)
 	setPedalboard(profile int, continuous int, switch1 int, switch2 int)
+	setDesktopAction(slot int, label string, value string)
 	setNote(note, velocity int)
 	setPad(channel, note, velocity int)
 	setCC(channel, controller, value int)
@@ -483,6 +485,8 @@ type controllerState struct {
 	pedalboardContinuous int
 	pedalboardSwitch1    int
 	pedalboardSwitch2    int
+	desktopActionLabels  [desktopActionSlotCount]string
+	desktopActionValues  [desktopActionSlotCount]string
 	held                 map[string]heldNote
 }
 
@@ -536,6 +540,13 @@ func main() {
 		if err := sendCommand(strings.Join(os.Args[1:], " ")); err != nil {
 			log.Fatal(err)
 		}
+	case "desktop-action-state":
+		if len(os.Args) != 5 {
+			usage()
+		}
+		if err := sendCommand(strings.Join(os.Args[1:], " ")); err != nil {
+			log.Fatal(err)
+		}
 	case "-h", "--help":
 		usage()
 	default:
@@ -544,7 +555,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: keyboard-midi-controller [run|toggle|enter|exit|status|panic|feedback-note CH NOTE VEL|feedback-cc CH CC VALUE|pedalboard-state PROFILE CONT SW1 SW2]\n")
+	fmt.Fprintf(os.Stderr, "usage: keyboard-midi-controller [run|toggle|enter|exit|status|panic|feedback-note CH NOTE VEL|feedback-cc CH CC VALUE|pedalboard-state PROFILE CONT SW1 SW2|desktop-action-state SLOT LABEL VALUE]\n")
 	os.Exit(2)
 }
 
@@ -842,6 +853,10 @@ func (t *serialTFTOutput) setState(active bool, channel, bank int, transportRunn
 
 func (t *serialTFTOutput) setPedalboard(profile int, continuous int, switch1 int, switch2 int) {
 	t.sendLine(fmt.Sprintf("B %d %d %d %d", clampPedalboardProfile(profile), clampMIDIData(continuous), clampMIDIData(switch1), clampMIDIData(switch2)))
+}
+
+func (t *serialTFTOutput) setDesktopAction(slot int, label string, value string) {
+	t.sendLine(fmt.Sprintf("D %d %s %s", clampDesktopActionSlot(slot), sanitizeTFTToken(label), sanitizeTFTToken(value)))
 }
 
 func (t *serialTFTOutput) setNote(note, velocity int) {
@@ -1172,6 +1187,43 @@ func clampPedalboardProfile(profile int) int {
 	return profile
 }
 
+func clampDesktopActionSlot(slot int) int {
+	if slot < 0 {
+		return 0
+	}
+	if slot >= desktopActionSlotCount {
+		return desktopActionSlotCount - 1
+	}
+	return slot
+}
+
+func sanitizeTFTToken(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "-"
+	}
+	var b strings.Builder
+	for _, r := range value {
+		switch {
+		case r >= 'a' && r <= 'z':
+			b.WriteRune(r - 'a' + 'A')
+		case r >= 'A' && r <= 'Z':
+			b.WriteRune(r)
+		case r >= '0' && r <= '9':
+			b.WriteRune(r)
+		case r == '_' || r == '-' || r == '.':
+			b.WriteRune(r)
+		}
+		if b.Len() >= 8 {
+			break
+		}
+	}
+	if b.Len() == 0 {
+		return "-"
+	}
+	return b.String()
+}
+
 func pedalboardProfileID(name string) (int, error) {
 	switch strings.ToLower(strings.TrimSpace(name)) {
 	case "unknown", "?", "0":
@@ -1240,11 +1292,18 @@ func (d *daemon) refreshLocalLEDState() {
 	pedalboardContinuous := d.state.pedalboardContinuous
 	pedalboardSwitch1 := d.state.pedalboardSwitch1
 	pedalboardSwitch2 := d.state.pedalboardSwitch2
+	desktopActionLabels := d.state.desktopActionLabels
+	desktopActionValues := d.state.desktopActionValues
 	d.state.mu.Unlock()
 
 	if d.tft != nil {
 		d.tft.setState(active, channel+1, bank+1, transportRunning)
 		d.tft.setPedalboard(pedalboardProfile, pedalboardContinuous, pedalboardSwitch1, pedalboardSwitch2)
+		for slot := range desktopActionLabels {
+			if desktopActionLabels[slot] != "" || desktopActionValues[slot] != "" {
+				d.tft.setDesktopAction(slot, desktopActionLabels[slot], desktopActionValues[slot])
+			}
+		}
 	}
 
 	d.setLED(ledModeNote, ledOff)
@@ -2006,6 +2065,18 @@ func (d *daemon) handleControlConn(conn net.Conn) {
 		}
 		d.setPedalboardState(profile, continuous, switch1, switch2)
 		fmt.Fprintln(conn, "ok")
+	case fields[0] == "desktop-action-state":
+		if len(fields) != 4 {
+			fmt.Fprintln(conn, "error: usage desktop-action-state SLOT LABEL VALUE")
+			return
+		}
+		slot, label, value, err := parseDesktopActionState(fields[1:])
+		if err != nil {
+			fmt.Fprintf(conn, "error: %v\n", err)
+			return
+		}
+		d.setDesktopActionState(slot, label, value)
+		fmt.Fprintln(conn, "ok")
 	default:
 		fmt.Fprintf(conn, "error: unknown command %q\n", command)
 	}
@@ -2042,6 +2113,22 @@ func parseMIDIDataArg(name, raw string) (int, error) {
 	return value, nil
 }
 
+func parseDesktopActionState(args []string) (int, string, string, error) {
+	if len(args) != 3 {
+		return 0, "", "", errors.New("expected slot, label, and value")
+	}
+	slot, err := strconv.Atoi(args[0])
+	if err != nil || slot < 0 || slot >= desktopActionSlotCount {
+		return 0, "", "", fmt.Errorf("slot must be 0-%d, got %q", desktopActionSlotCount-1, args[0])
+	}
+	label := sanitizeTFTToken(args[1])
+	value := sanitizeTFTToken(args[2])
+	if label == "-" || value == "-" {
+		return 0, "", "", errors.New("label and value must contain at least one alphanumeric, underscore, dash, or dot character")
+	}
+	return slot, label, value, nil
+}
+
 func (d *daemon) setPedalboardState(profile int, continuous int, switch1 int, switch2 int) {
 	profile = clampPedalboardProfile(profile)
 	continuous = clampMIDIData(continuous)
@@ -2057,6 +2144,21 @@ func (d *daemon) setPedalboardState(profile int, continuous int, switch1 int, sw
 
 	if d.tft != nil {
 		d.tft.setPedalboard(profile, continuous, switch1, switch2)
+	}
+}
+
+func (d *daemon) setDesktopActionState(slot int, label string, value string) {
+	slot = clampDesktopActionSlot(slot)
+	label = sanitizeTFTToken(label)
+	value = sanitizeTFTToken(value)
+
+	d.state.mu.Lock()
+	d.state.desktopActionLabels[slot] = label
+	d.state.desktopActionValues[slot] = value
+	d.state.mu.Unlock()
+
+	if d.tft != nil {
+		d.tft.setDesktopAction(slot, label, value)
 	}
 }
 
@@ -2107,6 +2209,8 @@ func (d *daemon) writeStatus(w io.Writer) {
 		"pedalboard_continuous": d.state.pedalboardContinuous,
 		"pedalboard_switch1":    d.state.pedalboardSwitch1,
 		"pedalboard_switch2":    d.state.pedalboardSwitch2,
+		"desktop_action_labels": d.state.desktopActionLabels,
+		"desktop_action_values": d.state.desktopActionValues,
 		"client":                clientName,
 		"port":                  portName,
 		"led_client":            ledClientName,

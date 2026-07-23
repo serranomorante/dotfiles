@@ -1,0 +1,217 @@
+#!/usr/bin/env bash
+# Purpose: Run common desktop actions and publish generic state-change events.
+# Usage: desktop-action-run ACTION
+
+set -euo pipefail
+
+prog=${0##*/}
+record_script=${DESKTOP_ACTION_RECORD_SCRIPT:-"$HOME/dotfiles/audio/dot-local/bin/record-screen-ffmpeg"}
+event_command=${DESKTOP_ACTION_EVENT_COMMAND:-desktop-action-event}
+
+usage() {
+  cat <<EOF
+Usage: $prog ACTION
+
+Actions:
+  mic-toggle       Toggle default microphone mute through PipeWire/WirePlumber.
+  screenshot       Save an immediate Spectacle screenshot under ~/Pictures.
+  record-toggle    Start or stop the screen recording backend used by Overseer.
+  monitor-toggle   Run the same display toggle path as Tab+Shift+M.
+EOF
+}
+
+log() {
+  printf '%s: %s\n' "$prog" "$*" >&2
+}
+
+die() {
+  log "$*"
+  exit 1
+}
+
+emit_event() {
+  command -v "$event_command" >/dev/null 2>&1 || return 0
+  "$event_command" "$@" >/dev/null 2>&1 || true
+}
+
+emit_action_start() {
+  emit_event desktop.action START "$1"
+}
+
+require_cmd() {
+  command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+expand_path() {
+  local path=$1
+  case "$path" in
+    '~')
+      printf '%s\n' "$HOME"
+      ;;
+    '~/'*)
+      printf '%s/%s\n' "$HOME" "${path#~/}"
+      ;;
+    '$HOME')
+      printf '%s\n' "$HOME"
+      ;;
+    '$HOME/'*)
+      printf '%s/%s\n' "$HOME" "${path#\$HOME/}"
+      ;;
+    "$HOME/~/"*)
+      printf '%s/%s\n' "$HOME" "${path#"$HOME/~/"}"
+      ;;
+    *)
+      printf '%s\n' "$path"
+      ;;
+  esac
+}
+
+default_pictures_dir() {
+  local dir
+
+  if command -v xdg-user-dir >/dev/null 2>&1; then
+    dir=$(xdg-user-dir PICTURES 2>/dev/null || true)
+    if [ -n "$dir" ] && [ "$dir" != "$HOME" ]; then
+      expand_path "$dir"
+      return 0
+    fi
+  fi
+
+  expand_path "${XDG_PICTURES_DIR:-~/Pictures}"
+}
+
+recording_status() {
+  "$record_script" status 2>/dev/null || true
+}
+
+recording_is_running() {
+  local status pid state
+
+  status=$(recording_status)
+  state=$(printf '%s\n' "$status" | awk -F= '$1 == "state" { print $2; exit }')
+  pid=$(printf '%s\n' "$status" | awk -F= '$1 == "pid" { print $2; exit }')
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null || return 1
+
+  case "$state" in
+    starting|recording|paused|pausing)
+      return 0
+      ;;
+  esac
+  return 1
+}
+
+recording_state_label() {
+  local status state pid
+
+  status=$(recording_status)
+  state=$(printf '%s\n' "$status" | awk -F= '$1 == "state" { print $2; exit }')
+  pid=$(printf '%s\n' "$status" | awk -F= '$1 == "pid" { print $2; exit }')
+  if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
+    printf '%s\n' IDLE
+    return 0
+  fi
+
+  case "$state" in
+    recording|starting)
+      printf '%s\n' REC
+      ;;
+    paused|pausing)
+      printf '%s\n' PAUSED
+      ;;
+    saving)
+      printf '%s\n' SAVING
+      ;;
+    *)
+      printf '%s\n' IDLE
+      ;;
+  esac
+}
+
+run_mic_toggle() {
+  require_cmd wpctl
+  wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+}
+
+run_screenshot() {
+  local pictures timestamp output
+
+  require_cmd spectacle
+  pictures=$(default_pictures_dir)
+  mkdir -p "$pictures"
+  timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
+  output="$pictures/screenshot_$timestamp.png"
+
+  if spectacle -b -f -n -o "$output"; then
+    emit_event screenshot.capture SAVED "$output"
+    printf 'screenshot saved: %s\n' "$output"
+    return 0
+  fi
+
+  emit_event screenshot.capture ERROR "$output"
+  return 1
+}
+
+run_record_toggle() {
+  [ -x "$record_script" ] || die "missing record script: $record_script"
+
+  if recording_is_running; then
+    "$record_script" stop
+    emit_event screen.recording STOPPING
+    printf 'screen recording stopping\n'
+    return 0
+  fi
+
+  mkdir -p "$HOME/Videos"
+  "$record_script" start --audio-source source_node.work_audio_with_mic --output mp4 --path "$HOME/Videos" >/dev/null 2>&1 &
+  disown
+  emit_event screen.recording STARTING
+  printf 'screen recording starting\n'
+}
+
+run_monitor_toggle() {
+  local output rc present_window setup_displays
+
+  present_window=${DESKTOP_ACTION_PRESENT_WINDOW:-"$HOME/bin/present-window"}
+  setup_displays=${DESKTOP_ACTION_SETUP_DISPLAYS:-"$HOME/bin/setup-displays.sh"}
+
+  if [ -x "$present_window" ]; then
+    output=$("$present_window" clear 2>&1) || log "present-window clear failed: $output"
+  fi
+
+  [ -x "$setup_displays" ] || die "missing setup-displays script: $setup_displays"
+  output=$("$setup_displays" --toggle 2>&1)
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    emit_event display.layout ERROR "$output"
+    printf '%s\n' "$output" >&2
+    return "$rc"
+  fi
+
+  printf '%s\n' "$output"
+}
+
+case "${1:-}" in
+  mic-toggle)
+    emit_action_start mic-toggle
+    run_mic_toggle
+    ;;
+  screenshot)
+    emit_action_start screenshot
+    run_screenshot
+    ;;
+  record-toggle)
+    emit_action_start record-toggle
+    run_record_toggle
+    ;;
+  monitor-toggle)
+    emit_action_start monitor-toggle
+    run_monitor_toggle
+    ;;
+  -h|--help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

@@ -49,6 +49,9 @@ type recordedTFTEvent struct {
 	continuous       int
 	switch1          int
 	switch2          int
+	slot             int
+	label            string
+	actionValue      string
 }
 
 type recordingTFTOut struct {
@@ -137,6 +140,12 @@ func (r *recordingTFTOut) setPedalboard(profile int, continuous int, switch1 int
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.events = append(r.events, recordedTFTEvent{kind: "pedalboard", profile: profile, continuous: continuous, switch1: switch1, switch2: switch2})
+}
+
+func (r *recordingTFTOut) setDesktopAction(slot int, label string, value string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.events = append(r.events, recordedTFTEvent{kind: "desktop-action", slot: slot, label: label, actionValue: value})
 }
 
 func (r *recordingTFTOut) setNote(note, velocity int) {
@@ -764,6 +773,20 @@ func TestControlFeedbackCommandsUpdateRenderers(t *testing.T) {
 	if got := tft.snapshot(); !reflect.DeepEqual(got, wantPedalboard) {
 		t.Fatalf("pedalboard-state TFT events = %#v, want %#v", got, wantPedalboard)
 	}
+
+	response = runControlCommand(t, d, "desktop-action-state 1 MIC MUTED\n")
+	if response != "ok\n" {
+		t.Fatalf("desktop-action-state response = %q, want ok", response)
+	}
+	wantDesktopAction := []recordedTFTEvent{
+		{kind: "pad", channel: 9, note: 41, velocity: 90},
+		{kind: "cc", channel: 9, controller: 90, value: 6},
+		{kind: "pedalboard", profile: 3, continuous: 64, switch1: 127, switch2: 0},
+		{kind: "desktop-action", slot: 1, label: "MIC", actionValue: "MUTED"},
+	}
+	if got := tft.snapshot(); !reflect.DeepEqual(got, wantDesktopAction) {
+		t.Fatalf("desktop-action-state TFT events = %#v, want %#v", got, wantDesktopAction)
+	}
 }
 
 func runControlCommand(t *testing.T, d *daemon, command string) string {
@@ -1047,6 +1070,8 @@ func TestStatusJSONReportsUserFacingState(t *testing.T) {
 	d.state.pedalboardContinuous = 64
 	d.state.pedalboardSwitch1 = 127
 	d.state.pedalboardSwitch2 = 0
+	d.state.desktopActionLabels[1] = "MIC"
+	d.state.desktopActionValues[1] = "MUTED"
 	d.state.held["midi_pad_01"] = heldNote{channel: 2, note: 52, velocity: 100}
 
 	var buf bytes.Buffer
@@ -1078,6 +1103,12 @@ func TestStatusJSONReportsUserFacingState(t *testing.T) {
 	assertStatus("pedalboard_continuous", float64(64))
 	assertStatus("pedalboard_switch1", float64(127))
 	assertStatus("pedalboard_switch2", float64(0))
+	if got := status["desktop_action_labels"]; !reflect.DeepEqual(got, []any{"", "MIC", "", "", ""}) {
+		t.Fatalf("status[desktop_action_labels] = %#v, want slot 1 MIC", got)
+	}
+	if got := status["desktop_action_values"]; !reflect.DeepEqual(got, []any{"", "MUTED", "", "", ""}) {
+		t.Fatalf("status[desktop_action_values] = %#v, want slot 1 MUTED", got)
+	}
 	assertStatus("client", clientName)
 	assertStatus("port", portName)
 	assertStatus("led_client", ledClientName)

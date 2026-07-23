@@ -13,6 +13,7 @@ state_dir="${XDG_RUNTIME_DIR:-/tmp}/setup-displays"
 internal_brightness_state="$state_dir/internal-brightness"
 sysfs_root="${SETUP_DISPLAYS_SYSFS_ROOT:-/sys}"
 compositor_service="${SETUP_DISPLAYS_COMPOSITOR_SERVICE:-compositor.service}"
+desktop_action_event="${SETUP_DISPLAYS_DESKTOP_ACTION_EVENT_COMMAND:-desktop-action-event}"
 
 usage() {
     printf '%s\n' 'usage: setup-displays.sh [--toggle]'
@@ -96,6 +97,45 @@ output_active() {
     END {
       exit(found ? 0 : 1)
     }'
+}
+
+output_active_in_state() {
+    local output="$1"
+    local output_state="$2"
+
+    printf '%s\n' "$output_state" | awk -v output="$output" '
+    $1 == output && / connected/ && /[0-9]+x[0-9]+\+[0-9]+\+[0-9]+/ {
+      found = 1
+    }
+    END {
+      exit(found ? 0 : 1)
+    }'
+}
+
+current_layout_label() {
+    local output_state
+
+    output_state="$(xrandr --query 2>/dev/null)" || {
+        printf '%s\n' UNKNOWN
+        return
+    }
+
+    if [[ -n "${external:-}" ]] && output_active_in_state "$external" "$output_state" && ! output_active_in_state "$internal" "$output_state"; then
+        printf '%s\n' EXT
+        return
+    fi
+
+    if output_active_in_state "$internal" "$output_state"; then
+        printf '%s\n' LAPTOP
+        return
+    fi
+
+    printf '%s\n' UNKNOWN
+}
+
+emit_display_layout_event() {
+    command -v "$desktop_action_event" >/dev/null 2>&1 || return 0
+    "$desktop_action_event" display.layout "$(current_layout_label)" "${external:-}" >/dev/null 2>&1 || true
 }
 
 screen_has_mode() {
@@ -428,3 +468,5 @@ if command -v wacom-config.sh >/dev/null 2>&1; then
 else
     warn "wacom-config.sh is not available; skipping"
 fi
+
+emit_display_layout_event

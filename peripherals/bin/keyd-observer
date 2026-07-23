@@ -25,6 +25,7 @@ stt_dictate="$HOME/bin/stt-dictate"
 keyboard_midi_controller="$HOME/bin/keyboard-midi-controller"
 display_health_check="$HOME/bin/display-health-check"
 setup_displays="$HOME/bin/setup-displays.sh"
+desktop_action_run="$HOME/bin/desktop-action-run"
 present_window="$HOME/bin/present-window"
 snippets_picker="$HOME/bin/snippets"
 vim_register_picker="$HOME/bin/vim-register-picker"
@@ -103,22 +104,24 @@ run_display_health_check() {
 }
 
 run_toggle_display_layout() {
-    output="$("$present_window" clear 2>&1)"
-    rc="$?"
-
-    if [ "$rc" -ne 0 ]; then
-        logger -t keyd-observer "present-window clear before display toggle failed with rc=$rc: $output"
-    elif [ -n "$output" ]; then
-        logger -t keyd-observer "present-window clear before display toggle: $output"
+    if [ -x "$desktop_action_run" ]; then
+        output="$("$desktop_action_run" monitor-toggle 2>&1)"
+    else
+        output="$("$present_window" clear 2>&1)"
+        rc="$?"
+        if [ "$rc" -ne 0 ]; then
+            logger -t keyd-observer "present-window clear before display toggle failed with rc=$rc: $output"
+        elif [ -n "$output" ]; then
+            logger -t keyd-observer "present-window clear before display toggle: $output"
+        fi
+        output="$("$setup_displays" --toggle 2>&1)"
     fi
-
-    output="$("$setup_displays" --toggle 2>&1)"
     rc="$?"
 
     if [ "$rc" -ne 0 ]; then
-        logger -t keyd-observer "setup-displays --toggle failed with rc=$rc: $output"
+        logger -t keyd-observer "display layout toggle failed with rc=$rc: $output"
     elif [ -n "$output" ]; then
-        logger -t keyd-observer "setup-displays --toggle: $output"
+        logger -t keyd-observer "display layout toggle: $output"
     fi
 
     return "$rc"

@@ -244,6 +244,13 @@
     state: restarted
     daemon_reload: true
 
+- name: handler_restart_desktop_state_monitor_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: desktop-state-monitor.service
+    state: restarted
+    daemon_reload: true
+
 - name: handler_restart_pedalboard_midi_actions_service
   ansible.builtin.systemd_service:
     scope: user

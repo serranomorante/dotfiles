@@ -17,6 +17,7 @@ readonly DEFAULT_PATH='~/Videos'
 readonly DEFAULT_REVIEW_SECONDS='30'
 readonly FALLBACK_VIDEO_SIZE='1920x1080'
 readonly RUNTIME_ROOT="${XDG_RUNTIME_DIR:-/tmp}/dotfiles-record-screen"
+readonly DESKTOP_ACTION_EVENT_COMMAND="${DESKTOP_ACTION_EVENT_COMMAND:-desktop-action-event}"
 
 COMMAND="${1:-}"
 if [[ $# -gt 0 ]]; then
@@ -194,6 +195,12 @@ write_status() {
         fi
     } >"$tmp"
     mv "$tmp" "$STATUS_FILE"
+    emit_recording_state_event
+}
+
+emit_recording_state_event() {
+    command -v "$DESKTOP_ACTION_EVENT_COMMAND" >/dev/null 2>&1 || return 0
+    "$DESKTOP_ACTION_EVENT_COMMAND" screen.recording "$STATE" "$ID" >/dev/null 2>&1 || true
 }
 
 connect_music_production_source() {

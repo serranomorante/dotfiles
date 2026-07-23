@@ -1,0 +1,335 @@
+#!/usr/bin/env bash
+# Purpose: Publish desktop/system state changes to local feedback consumers.
+# Usage: desktop-state-monitor [--once]
+
+set -euo pipefail
+
+prog=${0##*/}
+feedback_command=${DESKTOP_STATE_MONITOR_FEEDBACK_COMMAND:-}
+record_script=${DESKTOP_STATE_MONITOR_RECORD_SCRIPT:-"$HOME/dotfiles/audio/dot-local/bin/record-screen-ffmpeg"}
+once=0
+last_mic_state=
+desktop_layer=BASE
+mic_state=UNKNOWN
+record_state=IDLE
+display_state=UNKNOWN
+screenshot_state=READY
+
+usage() {
+  cat <<EOF
+Usage: $prog [--once]
+
+Watch cheap native desktop event streams and publish system-derived state to keyboard-midi-controller.
+
+Options:
+  --once    Publish the current state once and exit.
+  -h, --help
+            Show this help.
+EOF
+}
+
+log() {
+  printf '%s: %s\n' "$prog" "$*" >&2
+}
+
+die() {
+  log "$*"
+  exit 1
+}
+
+require_cmd() {
+  command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+resolve_feedback_command() {
+  if [ -n "$feedback_command" ]; then
+    printf '%s\n' "$feedback_command"
+    return 0
+  fi
+
+  cached="${XDG_CACHE_HOME:-"$HOME/.cache"}/dotfiles/keyboard-midi-controller/keyboard-midi-controller"
+  if [ -x "$cached" ]; then
+    printf '%s\n' "$cached"
+    return 0
+  fi
+
+  wrapper="$HOME/bin/keyboard-midi-controller"
+  if [ -x "$wrapper" ]; then
+    printf '%s\n' "$wrapper"
+  fi
+  return 0
+}
+
+publish_desktop_action_state() {
+  local slot=$1
+  local label=$2
+  local value=$3
+  local command_path
+
+  command_path=$(resolve_feedback_command)
+  [ -n "$command_path" ] || return 0
+
+  "$command_path" desktop-action-state "$slot" "$label" "$value" >/dev/null 2>&1 || true
+}
+
+publish_desktop_action_states() {
+  publish_desktop_action_state 0 MODE "$desktop_layer"
+  publish_desktop_action_state 1 MIC "$mic_state"
+  publish_desktop_action_state 2 SHOT "$screenshot_state"
+  publish_desktop_action_state 3 REC "$record_state"
+  publish_desktop_action_state 4 MON "$display_state"
+}
+
+read_default_mic_state() {
+  local volume
+
+  volume=$(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null || true)
+  if [[ $volume == *"[MUTED]"* ]]; then
+    printf '%s\n' MUTED
+    return 0
+  fi
+  if [[ $volume == Volume:* ]]; then
+    printf '%s\n' LIVE
+    return 0
+  fi
+
+  printf '%s\n' UNKNOWN
+}
+
+read_recording_state() {
+  local status state pid
+
+  [ -x "$record_script" ] || {
+    printf '%s\n' IDLE
+    return 0
+  }
+
+  status=$("$record_script" status 2>/dev/null || true)
+  state=$(printf '%s\n' "$status" | awk -F= '$1 == "state" { print $2; exit }')
+  pid=$(printf '%s\n' "$status" | awk -F= '$1 == "pid" { print $2; exit }')
+
+  if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
+    printf '%s\n' IDLE
+    return 0
+  fi
+
+  case "$state" in
+    starting|recording)
+      printf '%s\n' REC
+      ;;
+    paused|pausing)
+      printf '%s\n' PAUSED
+      ;;
+    saving)
+      printf '%s\n' SAVING
+      ;;
+    *)
+      printf '%s\n' IDLE
+      ;;
+  esac
+}
+
+read_display_state() {
+  local query internal external
+
+  command -v xrandr >/dev/null 2>&1 || {
+    printf '%s\n' UNKNOWN
+    return 0
+  }
+  query=$(xrandr --query 2>/dev/null || true)
+  [ -n "$query" ] || {
+    printf '%s\n' UNKNOWN
+    return 0
+  }
+
+  internal=$(printf '%s\n' "$query" | awk '/^(eDP|LVDS|DP)[^ ]* connected/{print $1; exit}')
+  [ -n "$internal" ] || internal=$(printf '%s\n' "$query" | awk '/ connected/{print $1; exit}')
+  external=$(printf '%s\n' "$query" | awk -v internal="$internal" '$1 != internal && / connected/ { print $1; exit }')
+
+  if [ -n "$external" ] &&
+    printf '%s\n' "$query" | awk -v output="$external" '$1 == output && / connected/ && /[0-9]+x[0-9]+\+[0-9]+\+[0-9]+/ { found = 1 } END { exit(found ? 0 : 1) }' &&
+    ! printf '%s\n' "$query" | awk -v output="$internal" '$1 == output && / connected/ && /[0-9]+x[0-9]+\+[0-9]+\+[0-9]+/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+    printf '%s\n' EXT
+    return 0
+  fi
+
+  if [ -n "$internal" ] &&
+    printf '%s\n' "$query" | awk -v output="$internal" '$1 == output && / connected/ && /[0-9]+x[0-9]+\+[0-9]+\+[0-9]+/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+    printf '%s\n' LAPTOP
+    return 0
+  fi
+
+  printf '%s\n' UNKNOWN
+}
+
+emit_default_mic_state() {
+  local state
+
+  state=$(read_default_mic_state)
+  if [ "$state" = "$last_mic_state" ]; then
+    return 0
+  fi
+
+  last_mic_state=$state
+  mic_state=$state
+  publish_desktop_action_states
+}
+
+emit_recording_state() {
+  record_state=$(read_recording_state)
+  publish_desktop_action_states
+}
+
+emit_display_state() {
+  display_state=$(read_display_state)
+  publish_desktop_action_states
+}
+
+handle_desktop_action_event() {
+  local key=$1
+  local value=$2
+  local detail=${3:-}
+  local next_layer
+
+  case "$key" in
+    desktop.action)
+      case "$value:$detail" in
+        START:mic-toggle)
+          publish_desktop_action_state 1 MIC BUSY
+          ;;
+        START:screenshot)
+          publish_desktop_action_state 2 SHOT BUSY
+          ;;
+        START:record-toggle)
+          publish_desktop_action_state 3 REC BUSY
+          ;;
+        START:monitor-toggle)
+          publish_desktop_action_state 4 MON BUSY
+          ;;
+      esac
+      ;;
+    desktop.layer)
+      case "$value" in
+        SHIFT|shift)
+          next_layer=SHIFT
+          ;;
+        *)
+          next_layer=BASE
+          ;;
+      esac
+      [ "$next_layer" != "$desktop_layer" ] || return 0
+      desktop_layer=$next_layer
+      publish_desktop_action_state 0 MODE "$desktop_layer"
+      ;;
+    screen.recording)
+      emit_recording_state
+      ;;
+    display.layout)
+      emit_display_state
+      ;;
+    screenshot.capture)
+      case "$value" in
+        SAVED|saved)
+          screenshot_state=SAVED
+          ;;
+        ERROR|error|FAILED|failed)
+          screenshot_state=ERROR
+          ;;
+        *)
+          screenshot_state=READY
+          ;;
+      esac
+      publish_desktop_action_states
+      screenshot_state=READY
+      ;;
+  esac
+}
+
+watch_desktop_action_bus() {
+  require_cmd dbus-monitor
+
+  log "watching desktop action DBus events"
+  dbus-monitor --session "type='signal',interface='org.dotfiles.DesktopAction',member='Event'" |
+    awk '
+      /^signal / {
+        in_signal = 1
+        count = 0
+        next
+      }
+      in_signal && /^[[:space:]]*string / {
+        value = $0
+        sub(/^[[:space:]]*string "/, "", value)
+        sub(/"$/, "", value)
+        gsub(/\\"/, "\"", value)
+        count += 1
+        fields[count] = value
+        if (count == 3) {
+          print fields[1] "\t" fields[2] "\t" fields[3]
+          fflush()
+          in_signal = 0
+        }
+      }
+    ' |
+    while IFS="$(printf '\t')" read -r key value detail; do
+      handle_desktop_action_event "$key" "$value" "$detail"
+    done
+}
+
+watch_pipewire_mic_state() {
+  local jq_filter
+
+  require_cmd jq
+  require_cmd pw-dump
+  require_cmd wpctl
+
+  jq_filter='
+    .[]? |
+    select(
+      (
+        .type == "PipeWire:Interface:Node"
+        and
+        (
+          .info.props."media.class" == "Audio/Source"
+          or ((.info.params.Props // []) | any(.mute != null))
+        )
+      )
+      or
+      (
+        .type == "PipeWire:Interface:Metadata"
+        and .props."metadata.name" == "default"
+        and ((.metadata // []) | any(.key == "default.audio.source"))
+      )
+    ) |
+    "pipewire"
+  '
+
+  emit_default_mic_state
+  emit_recording_state
+  emit_display_state
+  publish_desktop_action_states
+  [ "$once" -eq 0 ] || return 0
+
+  watch_desktop_action_bus &
+  log "watching PipeWire default-source events"
+  pw-dump --monitor | jq --unbuffered -r "$jq_filter" | while IFS= read -r _event; do
+    emit_default_mic_state
+  done
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --once)
+      once=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "unknown argument: $1"
+      ;;
+  esac
+done
+
+watch_pipewire_mic_state

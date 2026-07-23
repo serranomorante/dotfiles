@@ -1,6 +1,7 @@
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
+#include <string.h>
 
 // Keyboard MIDI TFT display renderer.
 // Wiring target: ESP32-S3 DevKitC-1 + 2.8 inch ILI9341 SPI TFT.
@@ -10,6 +11,7 @@
 //   P <channel> <note> <velocity>
 //   K <channel> <cc> <value>
 //   B <profile> <continuous> <switch1> <switch2>
+//   D <slot> <label> <value>
 //   C
 
 const uint8_t TFT_CS = 10;
@@ -23,6 +25,7 @@ const uint8_t NOTE_BASE = 36;
 const uint8_t NOTE_COUNT = 64;
 const uint8_t CC_BASE = 10;
 const uint8_t PEDALBOARD_CHANNEL = 15;
+const uint8_t DESKTOP_ACTION_SLOT_COUNT = 5;
 const uint8_t MIDI_EDITOR_GRID_CC = 90;
 const uint8_t TRACK_COUNT = 8;
 const uint8_t MON_OFF_MAX = 42;
@@ -43,6 +46,9 @@ uint8_t pedalboardProfile = 0;
 uint8_t pedalboardContinuous = 0;
 uint8_t pedalboardSwitch1 = 0;
 uint8_t pedalboardSwitch2 = 0;
+char desktopActionLabels[DESKTOP_ACTION_SLOT_COUNT][9] = {"", "", "", "", ""};
+char desktopActionValues[DESKTOP_ACTION_SLOT_COUNT][9] = {"", "", "", "", ""};
+uint32_t desktopActionFlashUntil[DESKTOP_ACTION_SLOT_COUNT];
 bool fullRedraw = true;
 bool headerTopDirty = false;
 bool midiEditorGridHeaderDirty = false;
@@ -50,6 +56,7 @@ bool midiEditorGridTypeHeaderDirty = false;
 bool midiEditorSnapHeaderDirty = false;
 bool badgeDirty[5];
 bool tileDirty[4][8];
+bool modifierDotDirty[2];
 
 char serialLine[48];
 uint8_t serialLineLength = 0;
@@ -105,6 +112,25 @@ const char *pedalboardProfileLabel() {
     default:
       return "unknown";
   }
+}
+
+bool desktopActionKnown(uint8_t slot) {
+  return slot < DESKTOP_ACTION_SLOT_COUNT && desktopActionLabels[slot][0] != '\0' && desktopActionValues[slot][0] != '\0';
+}
+
+bool desktopActionValueActive(uint8_t slot) {
+  if (!desktopActionKnown(slot)) {
+    return false;
+  }
+  if (desktopActionFlashUntil[slot] != 0) {
+    return true;
+  }
+  const char *value = desktopActionValues[slot];
+  return strcmp(value, "OFF") != 0 && strcmp(value, "LIVE") != 0 && strcmp(value, "READY") != 0 && strcmp(value, "IDLE") != 0 && strcmp(value, "UNKNOWN") != 0 && strcmp(value, "BASE") != 0 && strcmp(value, "0") != 0 && strcmp(value, "FALSE") != 0 && strcmp(value, "-") != 0;
+}
+
+bool desktopActionFlashValue(const char *value) {
+  return strcmp(value, "SAVED") == 0 || strcmp(value, "ERROR") == 0;
 }
 
 uint16_t dimColor(uint16_t color) {
@@ -323,6 +349,44 @@ const char *midiEditorGridTypeLabel() {
   return "Type ?";
 }
 
+const char *tileKeyLabel(uint8_t row, uint8_t col) {
+  if (currentChannel == PEDALBOARD_CHANNEL) {
+    if (row != 0 || col >= 5) {
+      return "";
+    }
+    if (col >= 3) {
+      return col == 3 ? "2" : "3";
+    }
+  }
+  return keys[row][col];
+}
+
+bool pedalboardModifierTile(uint8_t row, uint8_t col) {
+  return currentChannel == PEDALBOARD_CHANNEL && row == 0 && (col == 3 || col == 4);
+}
+
+bool pedalboardModifierActive() {
+  return pedalboardProfile == 3 && desktopActionKnown(0) && strcmp(desktopActionLabels[0], "MODE") == 0 && strcmp(desktopActionValues[0], "SHIFT") == 0;
+}
+
+bool pedalboardDesktopActionTile(uint8_t row, uint8_t col) {
+  return currentChannel == PEDALBOARD_CHANNEL && pedalboardProfile == 3 && row == 0 && col < 5;
+}
+
+void markPedalboardModifierDotsDirty() {
+  modifierDotDirty[0] = true;
+  modifierDotDirty[1] = true;
+}
+
+void drawPedalboardModifierDot(uint8_t col) {
+  const int16_t x = col * 40;
+  const int16_t y = 50;
+  const int16_t w = 39;
+  uint16_t modifierColor = pedalboardModifierActive() ? ILI9341_YELLOW : ILI9341_DARKGREY;
+  tft.fillCircle(x + w - 6, y + 6, 3, modifierColor);
+  tft.drawCircle(x + w - 6, y + 6, 3, ILI9341_BLACK);
+}
+
 void drawBadgeStripBackground() {
   tft.fillRect(0, 31, 320, 19, ILI9341_BLACK);
   tft.setTextColor(ILI9341_LIGHTGREY, ILI9341_BLACK);
@@ -433,10 +497,18 @@ uint16_t colorForItems(uint8_t row, uint8_t col) {
 }
 
 uint16_t colorForPedalboard(uint8_t row, uint8_t col) {
-  if (row != 0 || col > 3) {
+  if (row != 0 || col > 4) {
     return ILI9341_DARKGREY;
   }
-  const uint16_t colors[4] = {ILI9341_BLUE, ILI9341_GREEN, ILI9341_CYAN, ILI9341_CYAN};
+  if (pedalboardProfile == 3 && desktopActionKnown(col)) {
+    if (strcmp(desktopActionValues[col], "MUTED") == 0) {
+      return ILI9341_RED;
+    }
+    if (strcmp(desktopActionValues[col], "LIVE") == 0) {
+      return ILI9341_GREEN;
+    }
+  }
+  const uint16_t colors[5] = {ILI9341_GREEN, ILI9341_CYAN, ILI9341_CYAN, ILI9341_PURPLE, ILI9341_PURPLE};
   return colors[col];
 }
 
@@ -522,7 +594,7 @@ bool tileAssigned(uint8_t row, uint8_t col) {
     case 12:
       return row > 1;
     case PEDALBOARD_CHANNEL:
-      return row == 0 && col < 4;
+      return row == 0 && col < 5;
     default:
       return false;
   }
@@ -536,16 +608,16 @@ bool tileActive(uint8_t row, uint8_t col) {
     if (row != 0) {
       return false;
     }
-    if (col == 0) {
-      return pedalboardProfile != 0;
+    if (pedalboardProfile == 3 && desktopActionKnown(col)) {
+      return desktopActionValueActive(col);
     }
-    if (col == 1) {
+    if (col == 0) {
       return pedalboardContinuous > 0;
     }
-    if (col == 2) {
+    if (col == 1) {
       return pedalboardSwitch1 >= 64;
     }
-    if (col == 3) {
+    if (col == 2) {
       return pedalboardSwitch2 >= 64;
     }
   }
@@ -666,8 +738,22 @@ void tileLabel(uint8_t row, uint8_t col, char *out, size_t outSize) {
   }
 
   if (currentChannel == PEDALBOARD_CHANNEL) {
-    const char *labels[4] = {"PROF", "DAMP", "SW1", "SW2"};
-    snprintf(out, outSize, "%s", row == 0 && col < 4 ? labels[col] : "");
+    if (row != 0 || col >= 5) {
+      snprintf(out, outSize, "");
+      return;
+    }
+    if (pedalboardProfile == 3 && desktopActionKnown(col)) {
+      snprintf(out, outSize, "%s", desktopActionLabels[col]);
+      return;
+    }
+    const char *labels[4][5] = {
+        {"CONT", "SW1", "SW2", "SW1", "SW2"},
+        {"DAMP", "SOST", "SOFT", "SOST", "SOFT"},
+        {"EXP", "STMPA", "STMPB", "STMPA", "STMPB"},
+        {"CTRL", "ACT A", "ACT B", "ACT A", "ACT B"},
+    };
+    uint8_t profile = pedalboardProfile <= 3 ? pedalboardProfile : 0;
+    snprintf(out, outSize, "%s", labels[profile][col]);
     return;
   }
 
@@ -767,13 +853,13 @@ void tileValue(uint8_t row, uint8_t col, char *out, size_t outSize) {
   }
 
   if (currentChannel == PEDALBOARD_CHANNEL) {
-    if (row == 0 && col == 0) {
-      snprintf(out, outSize, "%s", pedalboardProfileLabel());
-    } else if (row == 0 && col == 1) {
+    if (pedalboardDesktopActionTile(row, col) && desktopActionKnown(col)) {
+      snprintf(out, outSize, "%s", desktopActionValues[col]);
+    } else if (row == 0 && col == 0) {
       formatPercentValue(pedalboardContinuous, out, outSize);
-    } else if (row == 0 && col == 2) {
+    } else if (row == 0 && col == 1) {
       snprintf(out, outSize, "%s", pedalboardSwitch1 >= 64 ? "ON" : "OFF");
-    } else if (row == 0 && col == 3) {
+    } else if (row == 0 && col == 2) {
       snprintf(out, outSize, "%s", pedalboardSwitch2 >= 64 ? "ON" : "OFF");
     } else {
       snprintf(out, outSize, "");
@@ -807,14 +893,17 @@ void drawTile(uint8_t row, uint8_t col) {
 
   tft.setTextSize(1);
   tft.setCursor(x + 3, y + 3);
-  tft.print(keys[row][col]);
+  tft.print(tileKeyLabel(row, col));
+  if (pedalboardModifierTile(row, col)) {
+    drawPedalboardModifierDot(col);
+  }
 
-  char label[8];
+  char label[9];
   tileLabel(row, col, label, sizeof(label));
   tft.setCursor(x + 3, y + 16);
   tft.print(label);
 
-  char value[8];
+  char value[9];
   tileValue(row, col, value, sizeof(value));
   tft.setCursor(x + 3, y + 30);
   tft.print(value);
@@ -841,6 +930,9 @@ void drawDashboard() {
   for (uint8_t badge = 0; badge < 5; badge++) {
     badgeDirty[badge] = false;
   }
+  for (uint8_t dot = 0; dot < 2; dot++) {
+    modifierDotDirty[dot] = false;
+  }
 }
 
 void clearNotes() {
@@ -864,6 +956,17 @@ void processFlashExpirations() {
             markTileForNote(NOTE_BASE + i);
           }
         }
+      }
+    }
+  }
+  for (uint8_t slot = 0; slot < DESKTOP_ACTION_SLOT_COUNT; slot++) {
+    if (desktopActionFlashUntil[slot] != 0 && (int32_t)(now - desktopActionFlashUntil[slot]) >= 0) {
+      desktopActionFlashUntil[slot] = 0;
+      if (desktopActionFlashValue(desktopActionValues[slot])) {
+        snprintf(desktopActionValues[slot], sizeof(desktopActionValues[slot]), "READY");
+      }
+      if (currentChannel == PEDALBOARD_CHANNEL && pedalboardProfile == 3) {
+        tileDirty[0][slot] = true;
       }
     }
   }
@@ -984,6 +1087,15 @@ void renderDirty() {
       }
     }
   }
+
+  if (currentChannel == PEDALBOARD_CHANNEL && pedalboardProfile == 3) {
+    for (uint8_t dot = 0; dot < 2; dot++) {
+      if (modifierDotDirty[dot]) {
+        drawPedalboardModifierDot(dot + 3);
+        modifierDotDirty[dot] = false;
+      }
+    }
+  }
 }
 
 void handleLine(char *line) {
@@ -1087,25 +1199,44 @@ void handleLine(char *line) {
       pedalboardProfile = nextProfile;
       if (currentChannel == PEDALBOARD_CHANNEL) {
         headerTopDirty = true;
-        tileDirty[0][0] = true;
+        markAllTilesDirty();
       }
     }
     if (pedalboardContinuous != nextContinuous) {
       pedalboardContinuous = nextContinuous;
       if (currentChannel == PEDALBOARD_CHANNEL) {
-        tileDirty[0][1] = true;
+        tileDirty[0][0] = true;
       }
     }
     if (pedalboardSwitch1 != nextSwitch1) {
       pedalboardSwitch1 = nextSwitch1;
       if (currentChannel == PEDALBOARD_CHANNEL) {
-        tileDirty[0][2] = true;
+        tileDirty[0][1] = true;
       }
     }
     if (pedalboardSwitch2 != nextSwitch2) {
       pedalboardSwitch2 = nextSwitch2;
       if (currentChannel == PEDALBOARD_CHANNEL) {
-        tileDirty[0][3] = true;
+        tileDirty[0][2] = true;
+      }
+    }
+    return;
+  }
+
+  if (line[0] == 'D') {
+    char label[9] = "";
+    char value[9] = "";
+    if (sscanf(line, "D %d %8s %8s", &first, label, value) == 3 && first >= 0 && first < DESKTOP_ACTION_SLOT_COUNT) {
+      uint8_t slot = first;
+      bool changed = strcmp(desktopActionLabels[slot], label) != 0 || strcmp(desktopActionValues[slot], value) != 0;
+      snprintf(desktopActionLabels[slot], sizeof(desktopActionLabels[slot]), "%s", label);
+      snprintf(desktopActionValues[slot], sizeof(desktopActionValues[slot]), "%s", value);
+      desktopActionFlashUntil[slot] = desktopActionFlashValue(value) ? millis() + FLASH_DURATION_MS : 0;
+      if (changed && currentChannel == PEDALBOARD_CHANNEL && pedalboardProfile == 3) {
+        tileDirty[0][slot] = true;
+        if (slot == 0) {
+          markPedalboardModifierDotsDirty();
+        }
       }
     }
     return;

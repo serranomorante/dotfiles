@@ -1,0 +1,15 @@
+[Unit]
+Description=Publish desktop state feedback
+After=graphical-session.target pipewire.service wireplumber.service
+Wants=pipewire.service wireplumber.service
+
+[Service]
+ExecStart=%h/bin/desktop-state-monitor
+Restart=on-failure
+RestartSec=5s
+Nice=10
+IOSchedulingClass=idle
+MemoryMax=64M
+
+[Install]
+WantedBy=graphical-session.target

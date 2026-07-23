@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Purpose: Emit a generic desktop action state event on the session DBus.
+# Usage: desktop-action-event KEY VALUE [DETAIL]
+
+set -euo pipefail
+
+prog=${0##*/}
+object_path=/org/dotfiles/DesktopAction
+signal_name=org.dotfiles.DesktopAction.Event
+
+usage() {
+  cat <<EOF
+Usage: $prog KEY VALUE [DETAIL]
+
+Emit a desktop action event on the session DBus. Producers should describe the
+system state they changed, not any consumer such as the pedalboard or TFT.
+
+Examples:
+  $prog screen.recording REC
+  $prog display.layout EXT HDMI-1
+  $prog screenshot.capture SAVED ~/Pictures/screenshot.png
+EOF
+}
+
+die() {
+  printf '%s: %s\n' "$prog" "$*" >&2
+  exit 1
+}
+
+sanitize_field() {
+  printf '%s' "$1" | tr '\t\r\n' '   ' | sed 's/  */ /g; s/^ //; s/ $//'
+}
+
+case "${1:-}" in
+  -h|--help)
+    usage
+    exit 0
+    ;;
+esac
+
+[ "$#" -ge 2 ] || {
+  usage >&2
+  exit 2
+}
+
+command -v gdbus >/dev/null 2>&1 || die "missing required command: gdbus"
+
+key=$(sanitize_field "$1")
+value=$(sanitize_field "$2")
+detail=$(sanitize_field "${3:-}")
+
+[ -n "$key" ] || die "KEY must not be empty"
+[ -n "$value" ] || die "VALUE must not be empty"
+
+gdbus emit --session --object-path "$object_path" --signal "$signal_name" "$key" "$value" "$detail" >/dev/null

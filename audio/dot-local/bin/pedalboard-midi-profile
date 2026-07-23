@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+# Purpose: Query or change the Arduino pedalboard MIDI profile over USB serial.
+# Usage: pedalboard-midi-profile [--port DEV] [status|piano|guitar|desktop|range ZERO FULL|range reset]
+
+set -euo pipefail
+
+prog=${0##*/}
+port=${PEDALBOARD_MIDI_SERIAL_PORT:-}
+action=status
+range_zero=
+range_full=
+serial_timeout=${PEDALBOARD_MIDI_PROFILE_TIMEOUT_SECONDS:-3}
+serial_settle=${PEDALBOARD_MIDI_PROFILE_SETTLE_SECONDS:-1}
+feedback_command=${PEDALBOARD_MIDI_FEEDBACK_COMMAND:-}
+
+usage() {
+  cat <<EOF
+Usage: $prog [OPTIONS] [status|piano|guitar|desktop|range ZERO FULL|range reset]
+
+Query or change the Arduino pedalboard MIDI profile and continuous range without reconnecting USB.
+
+Options:
+  --port DEV   Use a specific serial device.
+  -h, --help   Show this help.
+
+Examples:
+  pedalboard-midi-profile status
+  pedalboard-midi-profile piano
+  pedalboard-midi-profile guitar
+  pedalboard-midi-profile desktop
+  pedalboard-midi-profile range 15 60
+  pedalboard-midi-profile range reset
+EOF
+}
+
+log() {
+  printf '%s: %s\n' "$prog" "$*" >&2
+}
+
+die() {
+  log "$*"
+  exit 1
+}
+
+detect_port() {
+  if command -v arduino-cli >/dev/null 2>&1; then
+    arduino-cli board list 2>/dev/null | awk '$0 ~ /arduino:avr:micro/ { print $1; exit }'
+  fi
+
+  for candidate in /dev/serial/by-id/*; do
+    [ -e "$candidate" ] || continue
+    case "${candidate##*/}" in
+      *Arduino*Micro*|*arduino*Micro*|*Leonardo*|*leonardo*)
+        printf '%s\n' "$candidate"
+        return 0
+        ;;
+    esac
+  done
+}
+
+resolve_feedback_command() {
+  if [ -n "$feedback_command" ]; then
+    printf '%s\n' "$feedback_command"
+    return 0
+  fi
+
+  cached="${XDG_CACHE_HOME:-"$HOME/.cache"}/dotfiles/keyboard-midi-controller/keyboard-midi-controller"
+  if [ -x "$cached" ]; then
+    printf '%s\n' "$cached"
+    return 0
+  fi
+
+  wrapper="$HOME/bin/keyboard-midi-controller"
+  if [ -x "$wrapper" ]; then
+    printf '%s\n' "$wrapper"
+  fi
+  return 0
+}
+
+publish_status() {
+  local status_line=$1
+  local profile=
+  local value=
+  local command_path=
+
+  [[ $status_line =~ profile=([^[:space:]]+) ]] || return 0
+  profile=${BASH_REMATCH[1]}
+  [[ $status_line =~ value=([0-9]+) ]] && value=${BASH_REMATCH[1]} || value=0
+
+  command_path=$(resolve_feedback_command)
+  [ -n "$command_path" ] || return 0
+  "$command_path" pedalboard-state "$profile" "$value" 0 0 >/dev/null 2>&1 || true
+}
+
+run_serial_command() {
+  local command=$1
+  local line=
+  local output=
+  local status_line=
+  local deadline=$((SECONDS + serial_timeout))
+
+  [ -n "$port" ] || die "could not auto-detect Arduino Micro serial port; pass --port DEV"
+  [ -e "$port" ] || die "serial port does not exist: $port"
+
+  exec 3<>"$port"
+  stty -F "$port" 115200 cs8 -cstopb -parenb -ixon -ixoff -echo raw
+  sleep "$serial_settle"
+  printf '%s\n' "$command" >&3
+
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if IFS= read -r -t 0.2 -u 3 line; then
+      output="${output}${line}"$'\n'
+      case "$line" in
+        profile=*)
+          status_line=$line
+          break
+          ;;
+        error:*)
+          printf '%s' "$output"
+          return 1
+          ;;
+      esac
+    fi
+  done
+
+  [ -n "$output" ] || die "no response from $port"
+  printf '%s' "$output"
+
+  if [ -n "$status_line" ]; then
+    publish_status "$status_line"
+  fi
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --port)
+      [ "$#" -ge 2 ] || die "--port requires a value"
+      port=$2
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    status|piano|guitar|desktop)
+      action=$1
+      shift
+      ;;
+    range)
+      action=range
+      shift
+      if [ "${1:-}" = reset ]; then
+        range_zero=reset
+        shift
+      else
+        [ "$#" -ge 2 ] || die "range requires ZERO and FULL percentages, or reset"
+        range_zero=$1
+        range_full=$2
+        shift 2
+      fi
+      ;;
+    *)
+      die "unknown argument: $1"
+      ;;
+  esac
+done
+
+if [ -z "$port" ]; then
+  port=$(detect_port | sed -n '1p')
+fi
+
+case "$action" in
+  status)
+    run_serial_command status
+    ;;
+  piano|guitar|desktop)
+    run_serial_command "profile $action"
+    ;;
+  range)
+    if [ "$range_zero" = reset ]; then
+      run_serial_command "range reset"
+    else
+      run_serial_command "range $range_zero $range_full"
+    fi
+    ;;
+esac

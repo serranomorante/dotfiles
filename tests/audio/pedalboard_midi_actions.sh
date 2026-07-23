@@ -4,12 +4,14 @@ set -euo pipefail
 # dotfiles-test-unit: audio
 # dotfiles-test-tags: audio midi shell
 # dotfiles-test-case: pedalboard-midi-actions-dispatch
+# dotfiles-test-case: pedalboard-midi-actions-shift-dispatch
 # dotfiles-test-case: pedalboard-midi-actions-publishes-tft-state
 # dotfiles-test-case: pedalboard-midi-actions-service-contract
 
 # Purpose: Verify the pedalboard MIDI action mapper parses CC events and matches configured actions.
 
 script="${DOTFILES_TEST_ROOT}/audio/dot-local/bin/pedalboard-midi-actions"
+profile_script="${DOTFILES_TEST_ROOT}/audio/dot-local/bin/pedalboard-midi-profile"
 unit="${DOTFILES_TEST_ROOT}/audio/dot-config/systemd/user/pedalboard-midi-actions.service"
 dotfiles_task="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/tasks/30-setup-dotfiles.archlinux.yml"
 handlers_file="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/handlers/main.yml"
@@ -43,6 +45,56 @@ SH
     rg -q 'match channel=16 cc=80 value=127 edge=press command=echo toggle-mic' "${DOTFILES_TEST_TMP}/actions.out"
     refute rg -q 'value=0 edge=release' "${DOTFILES_TEST_TMP}/actions.out"
     ;;
+pedalboard-midi-actions-shift-dispatch)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    config="${DOTFILES_TEST_TMP}/pedalboard-midi-actions.tsv"
+    mkdir -p "$fake_bin"
+
+    cat >"${fake_bin}/aseqdump" <<'SH'
+#!/bin/sh
+case "$1" in
+  -l)
+    printf ' Port    Client name                      Port name\n'
+    printf ' 28:0    Arduino Micro                    Arduino Micro MIDI 1\n'
+    ;;
+  -p)
+    printf 'Waiting for data. Press Ctrl+C to end.\n'
+    printf 'Source  Event                  Ch  Data\n'
+    printf ' 28:0   Control change         15, controller 4, value 20\n'
+    printf ' 28:0   Control change         15, controller 4, value 18\n'
+    printf ' 28:0   Control change         15, controller 80, value 127\n'
+    printf ' 28:0   Control change         15, controller 4, value 21\n'
+    printf ' 28:0   Control change         15, controller 4, value 23\n'
+    printf ' 28:0   Control change         15, controller 81, value 127\n'
+    printf ' 28:0   Control change         15, controller 4, value 20\n'
+    ;;
+esac
+SH
+    cat >"${fake_bin}/desktop-action-event" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" >>"$PEDALBOARD_TEST_DESKTOP_EVENT_LOG"
+SH
+    chmod +x "${fake_bin}/aseqdump" "${fake_bin}/desktop-action-event"
+
+    {
+      printf '16 80 press echo mic-toggle\n'
+      printf '16 81 press echo screenshot\n'
+      printf '16 80 shift-press echo record-toggle\n'
+      printf '16 81 shift-press echo monitor-toggle\n'
+    } >"$config"
+
+    PEDALBOARD_TEST_DESKTOP_EVENT_LOG="${DOTFILES_TEST_TMP}/desktop-events.log" \
+      PATH="${fake_bin}:$PATH" "$script" --config "$config" --dry-run >"${DOTFILES_TEST_TMP}/shift-actions.out" 2>"${DOTFILES_TEST_TMP}/shift-actions.err"
+
+    rg -q 'match channel=16 cc=80 value=127 edge=press command=echo mic-toggle' "${DOTFILES_TEST_TMP}/shift-actions.out"
+    rg -q 'match channel=16 cc=81 value=127 edge=shift-press command=echo monitor-toggle' "${DOTFILES_TEST_TMP}/shift-actions.out"
+    refute rg -q 'command=echo record-toggle' "${DOTFILES_TEST_TMP}/shift-actions.out"
+    refute rg -q 'command=echo screenshot' "${DOTFILES_TEST_TMP}/shift-actions.out"
+    rg -q '^desktop.layer BASE$' "${DOTFILES_TEST_TMP}/desktop-events.log"
+    rg -q '^desktop.layer SHIFT$' "${DOTFILES_TEST_TMP}/desktop-events.log"
+    [[ $(rg -c '^desktop.layer BASE$' "${DOTFILES_TEST_TMP}/desktop-events.log") -eq 2 ]]
+    [[ $(rg -c '^desktop.layer SHIFT$' "${DOTFILES_TEST_TMP}/desktop-events.log") -eq 1 ]]
+    ;;
 pedalboard-midi-actions-publishes-tft-state)
     fake_bin="${DOTFILES_TEST_TMP}/bin"
     config="${DOTFILES_TEST_TMP}/pedalboard-midi-actions.tsv"
@@ -58,7 +110,7 @@ case "$1" in
   -p)
     printf 'Waiting for data. Press Ctrl+C to end.\n'
     printf 'Source  Event                  Ch  Data\n'
-    printf ' 28:0   Control change         15, controller 4, value 64\n'
+    printf ' 28:0   Control change         15, controller 4, value 20\n'
     printf ' 28:0   Control change         15, controller 80, value 127\n'
     printf ' 28:0   Control change         15, controller 81, value 0\n'
     ;;
@@ -75,8 +127,8 @@ SH
       PEDALBOARD_MIDI_FEEDBACK_COMMAND="${fake_bin}/keyboard-midi-controller" \
       PATH="${fake_bin}:$PATH" "$script" --config "$config" --dry-run >"${DOTFILES_TEST_TMP}/state.out" 2>"${DOTFILES_TEST_TMP}/state.err"
 
-    rg -q '^pedalboard-state desktop 64 0 0$' "${DOTFILES_TEST_TMP}/feedback.log"
-    rg -q '^pedalboard-state desktop 64 127 0$' "${DOTFILES_TEST_TMP}/feedback.log"
+    rg -q '^pedalboard-state desktop 20 0 0$' "${DOTFILES_TEST_TMP}/feedback.log"
+    rg -q '^pedalboard-state desktop 20 127 0$' "${DOTFILES_TEST_TMP}/feedback.log"
     rg -q 'match channel=16 cc=80 value=127 edge=press command=echo toggle-mic' "${DOTFILES_TEST_TMP}/state.out"
     ;;
 pedalboard-midi-actions-service-contract)
@@ -91,12 +143,45 @@ pedalboard-midi-actions-service-contract)
     rg -q '^    name: pedalboard-midi-actions.service$' "$dotfiles_task"
     rg -q 'Dotfiles: stat pedalboard MIDI action mapper files' "$dotfiles_task"
     rg -q 'audio/dot-local/bin/pedalboard-midi-actions' "$dotfiles_task"
+    rg -q '^last_desktop_layer=$' "$script"
+    rg -q '\[ "\$next_layer" != "\$last_desktop_layer" \] \|\| return 0' "$script"
+    rg -q '^reconnect_delay=\$\{PEDALBOARD_MIDI_RECONNECT_DELAY:-2\}$' "$script"
+    rg -q 'validate_reconnect_delay' "$script"
+    rg -q 'handle_aseqdump_line' "$script"
+    rg -q 'listen_port' "$script"
+    rg -q 'run_listener_loop' "$script"
+    rg -q 'wait_for_port_visibility_change' "$script"
+    rg -q 'pedalboard port visibility changed' "$script"
+    refute rg -q 'wait_for_midi_topology_change' "$script"
+    refute rg -q 'aseqdump -p 0:1' "$script"
+    refute rg -q 'System Announce' "$script"
+    refute rg -q 'udevadm monitor' "$script"
+    rg -q 'MIDI port visibility changed; reconnecting pedalboard listener' "$script"
+    rg -q 'wait -n "\$listener_pid" "\$watchdog_pid"' "$script"
+    rg -q 'pgrep -P "\$pid"' "$script"
+    rg -q 'stop_background_pid "\$child"' "$script"
+    rg -q '\[ "\$port_locked" -eq 1 \] \|\| port=' "$script"
+    rg -q 'audio/dot-local/bin/pedalboard-midi-profile' "$dotfiles_task"
     rg -q 'audio/dot-config/systemd/user/pedalboard-midi-actions.service' "$dotfiles_task"
     rg -q 'audio/dot-config/dotfiles/pedalboard-midi-actions.tsv' "$dotfiles_task"
     rg -q 'Dotfiles: record applied pedalboard MIDI action mapper checksum' "$dotfiles_task"
     rg -q 'pedalboard-midi-actions-sha256' "$dotfiles_task"
     rg -q 'handler_restart_pedalboard_midi_actions_service' "$dotfiles_task"
     rg -q '^- name: handler_restart_pedalboard_midi_actions_service$' "$handlers_file"
+    bash -n "$profile_script"
+    rg -q 'profile piano' "$profile_script"
+    rg -q 'profile guitar' "$profile_script"
+    rg -q 'profile desktop' "$profile_script"
+    rg -q 'range ZERO FULL' "$profile_script"
+    rg -q 'range reset' "$profile_script"
+    rg -q 'run_serial_command "range reset"' "$profile_script"
+    rg -q 'run_serial_command "range \$range_zero \$range_full"' "$profile_script"
+    rg -q 'keyboard-midi-controller' "$profile_script"
+    rg -q 'pedalboard-state "\$profile" "\$value" 0 0' "$profile_script"
+    rg -q '^16 80 press desktop-action-run mic-toggle$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.tsv"
+    rg -q '^16 81 press desktop-action-run screenshot$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.tsv"
+    rg -q '^16 80 shift-press desktop-action-run record-toggle$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.tsv"
+    rg -q '^16 81 shift-press desktop-action-run monitor-toggle$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.tsv"
     ;;
 *)
     printf 'unknown test case: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

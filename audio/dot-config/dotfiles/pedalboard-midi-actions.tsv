@@ -1,3 +1,9 @@
 # CHANNEL CC EDGE COMMAND...
-# The desktop firmware profile sends switch 1 as channel 16 CC80 press/release.
-16 80 press wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+# The desktop firmware profile sends the continuous pedal as channel 16 CC4 and
+# the switches as channel 16 CC80/CC81. CC4 >= PEDALBOARD_MIDI_SHIFT_THRESHOLD
+# selects the shift layer; the default threshold is 21, so 0..20 is base and
+# 21..127 is shift.
+16 80 press desktop-action-run mic-toggle
+16 81 press desktop-action-run screenshot
+16 80 shift-press desktop-action-run record-toggle
+16 81 shift-press desktop-action-run monitor-toggle
