@@ -8,6 +8,23 @@ local function warn(message) vim.notify("[Markdown @id] " .. message, vim.log.le
 
 local function lua_pattern_escape(value) return (value:gsub("([^%w])", "%%%1")) end
 
+---@param options vim.lsp.LocationOpts.OnList
+local function on_lsp_location_list(options)
+  ---@diagnostic disable-next-line: param-type-mismatch
+  vim.fn.setqflist({}, " ", options)
+  vim.cmd.cfirst({ mods = { emsg_silent = true } })
+  utils.open_qflist()
+end
+
+---@param bufnr integer
+local function has_lsp_definition_client(bufnr)
+  local method = vim.lsp.protocol.Methods.textDocument_definition
+  for _, client in ipairs(vim.lsp.get_clients({ bufnr = bufnr })) do
+    if client:supports_method(method, bufnr) then return true end
+  end
+  return false
+end
+
 local function is_blank(line) return line:match("^%s*$") ~= nil end
 
 local function is_metadata_line(line) return line:match("^%s*@[%w-]+%s+") ~= nil end
@@ -278,6 +295,20 @@ function M.goto_block_id_under_cursor(bufnr)
   end)
 
   return true
+end
+
+---@param bufnr? integer
+function M.goto_definition(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+
+  if utils.mark_cur_pos() and M.goto_block_id_under_cursor(bufnr) then return end
+
+  if has_lsp_definition_client(bufnr) then
+    vim.lsp.buf.definition({ on_list = on_lsp_location_list })
+    return
+  end
+
+  vim.cmd.normal({ args = { "gd" }, bang = true })
 end
 
 function M.goto_block_id(id, root)

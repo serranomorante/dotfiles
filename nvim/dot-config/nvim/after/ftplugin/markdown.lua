@@ -57,6 +57,11 @@ end
 
 if lsp_utils.should_enable_marksman(bufnr) then lsp_utils.enable("marksman", bufnr) end
 
+vim.keymap.set("n", "gd", function() markdown_block_ids.goto_definition(bufnr) end, {
+  buffer = bufnr,
+  desc = "Show definitions",
+})
+
 markdown_images.attach(bufnr)
 
 local markdown_tags_group =

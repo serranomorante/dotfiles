@@ -40,7 +40,7 @@ function M.attach(client, bufnr)
   local function goto_definition()
     if vim.bo[bufnr].filetype:match("^markdown") then
       local ok, markdown_block_ids = pcall(require, "serranomorante.markdown_block_ids")
-      if ok and utils.mark_cur_pos() and markdown_block_ids.goto_block_id_under_cursor(bufnr) then return end
+      if ok then return markdown_block_ids.goto_definition(bufnr) end
     end
 
     vim.lsp.buf.definition(lsp_default_opts)
@@ -59,7 +59,7 @@ function M.attach(client, bufnr)
     )
   end
 
-  if client_buf_supports_method(ms.textDocument_definition) then
+  if client_buf_supports_method(ms.textDocument_definition) and not vim.bo[bufnr].filetype:match("^markdown") then
     vim.keymap.set("n", "gd", goto_definition, opts_with_desc("Show definitions"))
   end
 
