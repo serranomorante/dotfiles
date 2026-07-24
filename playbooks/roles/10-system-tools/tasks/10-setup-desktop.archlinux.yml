@@ -62,6 +62,7 @@
       - ncdu
       - btop
       - bluez
+      - bluez-utils
       - firejail
       - feh
       # - kde-applications

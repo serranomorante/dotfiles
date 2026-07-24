@@ -1,0 +1,372 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Purpose: Pair, trust, and connect a Bluetooth device from a terminal.
+# Usage: Put the device in pairing mode, then run bluetooth-pair.
+
+readonly PROGRAM_NAME=${0##*/}
+
+usage() {
+    cat <<EOF
+Usage:
+  $PROGRAM_NAME [--name PATTERN|--mac MAC] [--timeout SECONDS] [--scan-seconds SECONDS] [--connect-attempts COUNT]
+  $PROGRAM_NAME --help
+
+Examples:
+  $PROGRAM_NAME
+  $PROGRAM_NAME --name sony
+  $PROGRAM_NAME --mac 00:11:22:33:44:55
+  $PROGRAM_NAME --scan-seconds 8
+
+The command powers on the local Bluetooth controller, scans for nearby devices, then runs pair, trust, and connect through bluetoothctl. Pairing registers a temporary NoInputNoOutput agent for that command. Without --name or --mac it opens an fzf picker; with --name or --mac it selects the matching device automatically. If an already-paired device times out during connect, the command removes the stale pairing, waits for the device to be discoverable again, and pairs it again.
+EOF
+}
+
+die() {
+    printf '%s: %s\n' "$PROGRAM_NAME" "$*" >&2
+    exit 1
+}
+
+require_command() {
+    command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+run_bluetoothctl() {
+    if [[ "${1:-}" == "pair" ]]; then
+        bluetoothctl --agent NoInputNoOutput "$@" 2>&1
+        return
+    fi
+    bluetoothctl "$@" 2>&1
+}
+
+last_bluetooth_output=
+discovery_dir=
+discovery_fifo=
+discovery_pid=
+discovery_fd=
+
+start_discovery() {
+    discovery_dir="$(mktemp -d "${TMPDIR:-/tmp}/bluetooth-pair.XXXXXX")"
+    discovery_fifo="$discovery_dir/commands"
+    mkfifo "$discovery_fifo"
+    bluetoothctl <"$discovery_fifo" >/dev/null 2>&1 &
+    discovery_pid=$!
+    exec {discovery_fd}>"$discovery_fifo"
+    rm -f "$discovery_fifo"
+    printf 'scan on\n' >&"$discovery_fd"
+}
+
+stop_discovery() {
+    [[ -n "$discovery_fd" ]] && printf 'scan off\n' >&"$discovery_fd" 2>/dev/null || true
+    [[ -n "$discovery_fd" ]] && printf 'quit\n' >&"$discovery_fd" 2>/dev/null || true
+    [[ -n "$discovery_fd" ]] && exec {discovery_fd}>&- || true
+    [[ -n "$discovery_pid" ]] && wait "$discovery_pid" 2>/dev/null || true
+    [[ -n "$discovery_dir" ]] && rmdir "$discovery_dir" 2>/dev/null || true
+}
+
+bluetooth_cmd() {
+    local output status
+    status=0
+    output="$(run_bluetoothctl "$@")" || status=$?
+    last_bluetooth_output=$output
+    printf '%s\n' "$output"
+    if [[ "$*" == "scan on" ]] && printf '%s\n' "$output" | grep -Fq 'org.bluez.Error.InProgress'; then
+        return 0
+    fi
+    if ((status != 0)); then
+        return 1
+    fi
+    if printf '%s\n' "$output" | grep -Eiq 'Failed|not available|not ready|org\.bluez\.Error'; then
+        return 1
+    fi
+}
+
+device_name() {
+    local mac=$1
+    run_bluetoothctl info "$mac" | awk -F': ' '$1 ~ /^[[:space:]]*Name$/ { print $2; found = 1; exit } END { exit found ? 0 : 1 }'
+}
+
+device_paired() {
+    local mac=$1
+    run_bluetoothctl info "$mac" | awk -F': ' '$1 ~ /^[[:space:]]*Paired$/ { print $2; found = 1; exit } END { exit found ? 0 : 1 }'
+}
+
+device_trusted() {
+    local mac=$1
+    run_bluetoothctl info "$mac" | awk -F': ' '$1 ~ /^[[:space:]]*Trusted$/ { print $2; found = 1; exit } END { exit found ? 0 : 1 }'
+}
+
+device_connected() {
+    local mac=$1
+    run_bluetoothctl info "$mac" | awk -F': ' '$1 ~ /^[[:space:]]*Connected$/ { print $2; found = 1; exit } END { exit found ? 0 : 1 }'
+}
+
+device_rssi() {
+    local mac=$1
+    run_bluetoothctl info "$mac" | awk -F': ' '$1 ~ /^[[:space:]]*RSSI$/ { print $2; found = 1; exit } END { exit found ? 0 : 1 }'
+}
+
+list_devices() {
+    run_bluetoothctl devices | awk '/^Device ([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2} / { mac=$2; sub(/^Device [^ ]+ /, ""); print mac "\t" $0 }'
+}
+
+wait_for_devices() {
+    local deadline=$((SECONDS + scan_seconds))
+    while ((SECONDS <= deadline)); do
+        if [[ -n "$(list_devices)" ]]; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+device_rows() {
+    local mac name paired trusted connected rssi seen row_status
+    while IFS="$(printf '\t')" read -r mac name; do
+        [[ -n "$mac" ]] || continue
+        paired="$(device_paired "$mac" 2>/dev/null || printf 'unknown')"
+        trusted="$(device_trusted "$mac" 2>/dev/null || printf 'unknown')"
+        connected="$(device_connected "$mac" 2>/dev/null || printf 'unknown')"
+        rssi="$(device_rssi "$mac" 2>/dev/null || true)"
+        if [[ -n "$rssi" ]]; then
+            seen="seen=yes rssi=${rssi}"
+        else
+            seen="seen=no"
+        fi
+        row_status="${seen} paired=${paired} trusted=${trusted} connected=${connected}"
+        printf '%s\t%s\t%s\n' "$mac" "$name" "$row_status"
+    done < <(list_devices)
+}
+
+match_device() {
+    local mac_filter=$1 name_filter=$2 line mac name paired trusted
+    while IFS="$(printf '\t')" read -r mac name; do
+        [[ -n "$mac" ]] || continue
+        if [[ -n "$mac_filter" ]]; then
+            [[ "${mac,,}" == "${mac_filter,,}" ]] || continue
+            printf '%s\n' "$mac"
+            return 0
+        fi
+        if [[ -n "$name_filter" ]]; then
+            [[ "${name,,}" == *"${name_filter,,}"* ]] || continue
+            printf '%s\n' "$mac"
+            return 0
+        fi
+        paired="$(device_paired "$mac" 2>/dev/null || true)"
+        trusted="$(device_trusted "$mac" 2>/dev/null || true)"
+        if [[ "$paired" != "yes" && "$trusted" != "yes" ]]; then
+            printf '%s\n' "$mac"
+        fi
+    done < <(list_devices)
+}
+
+parse_args() {
+    timeout_seconds=20
+    scan_seconds=6
+    connect_attempts=2
+    connect_retry_delay=2
+    target_name=
+    target_mac=
+
+    while (($#)); do
+        case "$1" in
+        --name)
+            [[ $# -ge 2 ]] || die "--name needs a value"
+            target_name=$2
+            shift 2
+            ;;
+        --mac)
+            [[ $# -ge 2 ]] || die "--mac needs a value"
+            target_mac=$2
+            shift 2
+            ;;
+        --timeout)
+            [[ $# -ge 2 ]] || die "--timeout needs a value"
+            [[ "$2" =~ ^[0-9]+$ && "$2" -gt 0 ]] || die "--timeout must be a positive integer"
+            timeout_seconds=$2
+            shift 2
+            ;;
+        --scan-seconds)
+            [[ $# -ge 2 ]] || die "--scan-seconds needs a value"
+            [[ "$2" =~ ^[0-9]+$ && "$2" -gt 0 ]] || die "--scan-seconds must be a positive integer"
+            scan_seconds=$2
+            shift 2
+            ;;
+        --connect-attempts)
+            [[ $# -ge 2 ]] || die "--connect-attempts needs a value"
+            [[ "$2" =~ ^[0-9]+$ && "$2" -gt 0 ]] || die "--connect-attempts must be a positive integer"
+            connect_attempts=$2
+            shift 2
+            ;;
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "unknown argument: $1"
+            ;;
+        esac
+    done
+
+    [[ -z "$target_name" || -z "$target_mac" ]] || die "use either --name or --mac, not both"
+    [[ -z "$target_mac" || "$target_mac" =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ ]] || die "invalid Bluetooth MAC: $target_mac"
+}
+
+pick_target() {
+    local selected
+    require_command fzf
+    printf 'Scanning for Bluetooth devices for up to %s seconds before opening picker...\n' "$scan_seconds" >&2
+    wait_for_devices || die "no Bluetooth devices discovered; put the device in pairing mode and retry"
+    selected="$(device_rows | sort -k2,2f | fzf \
+        --prompt='Bluetooth device: ' \
+        --with-nth=2,1,3 \
+        --delimiter="$(printf '\t')" \
+        --preview='bluetoothctl info {1}' \
+        --preview-window='down,60%,wrap' \
+        --header='Enter pairs/trusts/connects. Prefer seen=yes and non-LE audio devices for headphones. Use --scan-seconds N if slow.')" || return 1
+    [[ -n "$selected" ]] || return 1
+    printf '%s\n' "${selected%%$'\t'*}"
+}
+
+find_target() {
+    local deadline now matches
+    deadline=$((SECONDS + timeout_seconds))
+    while ((SECONDS <= deadline)); do
+        mapfile -t matches < <(match_device "$target_mac" "$target_name" | awk 'NF' | sort -u)
+        if [[ ${#matches[@]} -eq 1 ]]; then
+            printf '%s\n' "${matches[0]}"
+            return 0
+        fi
+        if [[ ${#matches[@]} -gt 1 ]]; then
+            printf '%s: multiple candidate devices found; rerun with --name or --mac\n' "$PROGRAM_NAME" >&2
+            for now in "${matches[@]}"; do
+                printf '  %s  %s\n' "$now" "$(device_name "$now" 2>/dev/null || printf 'unknown')" >&2
+            done
+            exit 1
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+wait_for_device() {
+    local mac=$1 deadline=$((SECONDS + timeout_seconds))
+    printf 'Waiting up to %s seconds for %s to become discoverable again. Put it in pairing mode now.\n' \
+        "$timeout_seconds" "$mac" >&2
+    while ((SECONDS <= deadline)); do
+        if list_devices | awk -v target="$mac" -F '\t' '$1 == target { found = 1 } END { exit found ? 0 : 1 }'; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+run_or_die() {
+    local description=$1
+    shift
+    if ! bluetooth_cmd "$@"; then
+        die "$description failed"
+    fi
+}
+
+ensure_paired() {
+    local mac=$1 paired
+    paired="$(device_paired "$mac" 2>/dev/null || true)"
+    if [[ "$paired" == "yes" ]]; then
+        printf 'Already paired %s\n' "$mac"
+        return
+    fi
+    run_or_die "pair for $mac" pair "$mac"
+}
+
+ensure_trusted() {
+    local mac=$1 trusted
+    trusted="$(device_trusted "$mac" 2>/dev/null || true)"
+    if [[ "$trusted" == "yes" ]]; then
+        printf 'Already trusted %s\n' "$mac"
+        return
+    fi
+    run_or_die "trust for $mac" trust "$mac"
+}
+
+connect_device() {
+    local mac=$1 attempt
+    attempt=1
+    while ((attempt <= connect_attempts)); do
+        if bluetooth_cmd connect "$mac"; then
+            return 0
+        fi
+        if ! printf '%s\n' "$last_bluetooth_output" | grep -Fq 'br-connection-page-timeout'; then
+            return 1
+        fi
+        if ((attempt >= connect_attempts)); then
+            return 1
+        fi
+        printf 'Connect timed out for %s; retrying (%s/%s)\n' "$mac" "$attempt" "$connect_attempts"
+        sleep "$connect_retry_delay"
+        attempt=$((attempt + 1))
+    done
+}
+
+ensure_connected() {
+    local mac=$1 force_connect=${2:-no} connected paired_before
+    connected="$(device_connected "$mac" 2>/dev/null || true)"
+    if [[ "$connected" == "yes" && "$force_connect" != "yes" ]]; then
+        printf 'Already connected %s\n' "$mac"
+        return
+    fi
+    paired_before="$(device_paired "$mac" 2>/dev/null || true)"
+    if connect_device "$mac"; then
+        return
+    fi
+    if [[ "$paired_before" == "yes" ]] && printf '%s\n' "$last_bluetooth_output" | grep -Fq 'br-connection-page-timeout'; then
+        printf 'Connection timed out for existing pairing; removing and pairing %s again\n' "$mac"
+        run_or_die "remove for $mac" remove "$mac"
+        wait_for_device "$mac" || die "device $mac did not reappear; put the headphones in pairing mode and retry"
+        run_or_die "pair for $mac" pair "$mac"
+        run_or_die "trust for $mac" trust "$mac"
+        if connect_device "$mac"; then
+            return
+        fi
+    fi
+    die "connect for $mac failed"
+}
+
+main() {
+    local mac name paired_before
+    parse_args "$@"
+    require_command bluetoothctl
+    require_command awk
+    require_command grep
+    require_command sort
+    require_command mkfifo
+    require_command mktemp
+    require_command rmdir
+
+    bluetooth_cmd power on >/dev/null || die "could not power on the Bluetooth controller"
+    start_discovery || die "could not start Bluetooth discovery"
+    trap stop_discovery EXIT
+
+    if [[ -z "$target_name" && -z "$target_mac" ]]; then
+        mac="$(pick_target)" || die "no device selected"
+    else
+        printf 'Scanning for matching Bluetooth device for up to %s seconds...\n' "$timeout_seconds"
+        mac="$(find_target)" || die "no matching device found"
+    fi
+    name="$(device_name "$mac" 2>/dev/null || printf 'unknown')"
+    printf 'Using %s  %s\n' "$mac" "$name"
+
+    paired_before="$(device_paired "$mac" 2>/dev/null || true)"
+    ensure_paired "$mac"
+    ensure_trusted "$mac"
+    if [[ "$paired_before" != "yes" ]]; then
+        ensure_connected "$mac" yes
+    else
+        ensure_connected "$mac"
+    fi
+    printf 'Paired, trusted, and connected %s  %s\n' "$mac" "$name"
+}
+
+main "$@"
