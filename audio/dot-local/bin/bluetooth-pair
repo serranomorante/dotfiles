@@ -57,9 +57,17 @@ start_discovery() {
 }
 
 stop_discovery() {
+    local pipe_trap
+    pipe_trap="$(trap -p PIPE || true)"
+    trap '' PIPE
     [[ -n "$discovery_fd" ]] && printf 'scan off\n' >&"$discovery_fd" 2>/dev/null || true
     [[ -n "$discovery_fd" ]] && printf 'quit\n' >&"$discovery_fd" 2>/dev/null || true
     [[ -n "$discovery_fd" ]] && exec {discovery_fd}>&- || true
+    if [[ -n "$pipe_trap" ]]; then
+        eval "$pipe_trap"
+    else
+        trap - PIPE
+    fi
     [[ -n "$discovery_pid" ]] && wait "$discovery_pid" 2>/dev/null || true
     [[ -n "$discovery_dir" ]] && rmdir "$discovery_dir" 2>/dev/null || true
 }
