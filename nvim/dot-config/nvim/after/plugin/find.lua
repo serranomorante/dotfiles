@@ -4,7 +4,7 @@
 ---@param arg_lead string
 local function find(arg_lead)
   arg_lead = arg_lead:gsub("\\|", "|") -- fix regex pipe compatibility
-  return vim.split(vim.fn.system("fd --type file --follow --full-path " .. arg_lead) or "", "\n", { trimempty = true })
+  return vim.split(vim.fn.system("fd --type file --full-path " .. arg_lead) or "", "\n", { trimempty = true })
 end
 
 vim.api.nvim_create_user_command(
