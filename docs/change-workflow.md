@@ -1,180 +1,60 @@
 # Change Workflow
 
-This repository configures a real workstation. Treat changes as production changes: keep them narrow, verify what you can locally, and avoid surprising system actions.
+This repo configures a real workstation. Keep edits narrow, preserve unrelated work, validate proportionally, and avoid active-system side effects unless requested.
 
-## User-Facing Command Formatting
+## User-Facing Commands
 
-This is a user-wide assistant convention, not only a dotfiles convention. In any repository, whenever an assistant suggests a shell command for the user to run, the command must be shown with escaped fenced shell delimiters so the literal opening and closing fence lines remain visible in terminal buffers:
+When suggesting shell commands to the user, show escaped Markdown fences so literal fence lines remain visible:
 
     \`\`\`sh
     command ...
     \`\`\`
 
-This rule applies to Ansible, Stow, systemctl, validation, follow-up commands, and every other suggested shell command. Do not use normal Markdown code fences for user-facing commands.
+Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 
 ## Before Editing
 
-1. Check the working tree:
-
-   ```sh
-   git -C ~/dotfiles status --short
-   ```
-
-1. Identify unrelated dirty files and leave them alone.
-
-1. Read the owning files before editing. For text search, prefer `rg`.
-
-1. If a behavior is managed by Ansible, update the playbook/template/source file rather than only changing the generated destination under `/etc`, `~/.config`, or `~/bin`.
-
-1. If a file is delivered by a Stow package, add or update the package source and run the repository Stow wrapper instead of creating symlinks directly in the target tree. Direct `ln -s` fixes can later conflict with Stow or hide package conflicts. If Stow fails, report the exact conflict and leave unrelated target files untouched rather than bypassing Stow manually.
+1. Run `git -C ~/dotfiles status --short`; note unrelated dirty files and leave them alone.
+2. For each target, verify ownership with `git -C <owning-repo> ls-files -- <path>`; if absent, check `git check-ignore -v -- <path>` and find the tracked source/generator before editing.
+3. Read owning files first; use `rg` for search.
+4. If managed by Ansible or Stow, edit the tracked playbook/template/package source, not generated destinations under `/etc`, `~/.config`, `~/bin`, etc.
 
 ## Editing Rules
 
-- Match the existing style of the file.
-- Use English for repository-authored prose, comments, user-facing strings, generated Markdown, scripts, configuration labels, and documentation. Keep non-English text only when it is the literal technical subject being configured or documented, such as locale names, keyboard layout names, language model names, examples of characters that must be typed, upstream output, or user-owned private content outside the public repository.
-- When writing or editing Markdown prose, keep each paragraph or list item on a single physical line. Do not insert manual hard wraps inside the same paragraph just to keep lines under a column limit. Use line breaks only when Markdown syntax requires them or when the content is intentionally multi-line, such as fenced code blocks, tables, quoted excerpts, nested lists, or other structured blocks.
-- Keep shell scripts POSIX `sh` unless the file already requires Bash.
-- Executable scripts intended to be run from `~/bin` or another `PATH` directory should not include a language extension such as `.sh` in the command name. Keep extensions only for sourced libraries, generated snippets, or legacy files that are not being renamed in the current change.
-- Keep comments useful and short. Add comments when they explain non-obvious behavior or latency-sensitive tradeoffs.
-- Avoid fixed sleeps, arbitrary delays, and timing-based retries for readiness unless there is no practical observable signal. Prefer events, process output, sockets, files, exit states, API responses, or other explicit state. When a timing fallback is truly unavoidable, keep it bounded and document why no better signal is available.
-- Backward compatibility shims for renamed local dotfiles helpers, commands, modules, and keymaps are not required by default. Prefer updating all repository-owned callers to the new convention in the same change; keep compatibility only when a real external consumer exists or the user explicitly asks for a migration window.
-- Scripts should start with a brief header after the shebang, and after any generated-file marker. Use this structure by default: `Purpose:` one or two lines describing what the script does; `Usage:` only when invocation is not obvious; `Notes:` only for important side effects, assumptions, or external state.
-- Script `--help` output is part of the script contract. When adding, removing, or renaming supported command-line options or environment variables, update the script's help text in the same change so discoverable documentation stays aligned with runtime behavior.
-- Private one-command shortcuts should be exposed through the `sx` dispatcher instead of adding many top-level commands to `~/bin`. Put the shortcut implementation under the Stow-managed private package, include a `# sx-description: ...` header in each shortcut script, and keep `sx --list`, `sx --list-descriptions`, `sx --help`, and shell completion aligned. When ble.sh completion is available, completion entries should show the same short descriptions alongside each shortcut name; plain Bash completion should remain a working fallback.
-- Avoid new dependencies unless the playbooks declare them.
-- If a new runtime dependency is required, add it to the relevant Ansible task and do not install it manually unless asked.
-- Treat new tools, apps, model downloaders, install scripts, and language package-manager flows as supply-chain-risky by default. Use pacman-managed packages when they satisfy the need because they keep ownership, upgrades, and removal reproducible, but do not treat them as immune to compromise. For AUR packages, upstream binary downloads, `curl | sh` style installers, Python, Node, npm, pnpm, Cargo, Go, and similar ecosystems, use the repository Firejail wrappers for installation and runtime execution whenever the task can be expressed that way. In Ansible, use `ansible-firejail-pip`, `ansible-firejail-npm`, or `ansible-firejail-pnpm` when possible. For runtime Python/Node tooling, prefer `fj-py` or `fj-node` with the narrowest viable network mode. If sandboxing is not practical, document the reason in the owning workflow doc or task comment. See [firejail-dev-tools.md](./firejail-dev-tools.md).
-- For Ansible templates, include an appropriate file-format comment containing `{{ ansible_managed }}` near the top unless the target format cannot carry comments.
-- Reference gathered facts through the `ansible_facts` dictionary (for example `ansible_facts.user_dir`, `ansible_facts.env.HOME`, `ansible_facts.date_time.epoch`) rather than the auto-injected top-level `ansible_*` variables, which are deprecated by `INJECT_FACTS_AS_VARS` and will stop being injected in a future ansible-core. This applies only to setup-gathered facts; leave repository-defined variables that happen to use an `ansible_` prefix, connection variables, and magic variables such as `ansible_loop` unchanged.
-- Do not rewrite unrelated sections for formatting.
-- When you learn a durable project structure, convention, workflow, or operational rule that would help future work, update the relevant document in `docs/` as part of the same change. Keep those notes vendor-neutral and focused on repository practice rather than tool-specific memory.
-- After reaching a working solution in an interactive session, actively check whether the change revealed a new convention, operational rule, or maintenance expectation that belongs in `docs/`. Documentation updates should include new guidance when useful, not only edits to existing text.
-- If a fix requires a manual operational step that is part of maintaining this workstation, prefer encoding that step in the owning Ansible task or handler so future runs can reproduce it. Do this especially when the step is not obvious to run manually, such as rebuilding generated caches, refreshing helper binaries, or restarting only the services affected by a changed artifact.
-- For one-time migrations that remove an obsolete setup, clean the active system state directly after asking the user to confirm that direct cleanup. Do not add Ansible cleanup tasks for artifacts from setups that should not have existed and have been replaced by a better implementation, because those artifacts are historical debris rather than desired playbook behavior.
-- Reserve Ansible-based cleanup for problematic files that are still autogenerated for a known reason, or for stale generated state that must be removed so the playbooks can operate normally. In those cases, document the generator or playbook dependency that makes the cleanup part of durable system maintenance.
-- Local Go helpers owned by this repository should be built by Ansible into the final command path, usually `~/bin/<command>`, rather than hidden behind self-compiling shell wrappers. Keep the Go source under the owning Stow package, let the owning Ansible task run `go build` after Stow has removed any old managed wrapper symlink, compare the newly built binary with the installed one before reporting a change, and notify restart handlers only when the installed binary or relevant unit file actually changed. Use wrappers only when they provide real runtime behavior beyond compilation.
-- When an Ansible task intentionally patches an upstream checkout in place, avoid running a forced checkout on every playbook pass. Gate the clone, patch, dependency install, and build behind a versioned marker that includes the pinned upstream version and a local patch contract suffix, and bump that suffix whenever the local patch behavior changes. Use the central `dotfiles-markers` role for those markers instead of writing `.ansible-*` files inside the checkout or install directory.
+- Match local style; do not reformat unrelated sections.
+- Repository-authored prose, comments, labels, generated Markdown, and user-facing strings are English unless the literal subject requires another language.
+- Markdown prose uses one physical line per paragraph/list item; no manual hard wraps.
+- Keep shell scripts POSIX `sh` unless already Bash.
+- PATH executables should normally have no `.sh` extension.
+- Scripts start with a short `Purpose:` header; add `Usage:`/`Notes:` only when useful. Keep `--help` aligned with supported options/env vars.
+- Keep comments short and explain non-obvious behavior or tradeoffs.
+- Avoid arbitrary sleeps; prefer observable readiness signals. If timing fallback is necessary, bound and explain it.
+- Avoid new dependencies. If required, declare them in the relevant playbook; do not install manually unless asked.
+- Treat new tools/installers/package registries as supply-chain risk. Prefer reproducible package ownership and repository Firejail wrappers (`ansible-firejail-*`, `fj-py`, `fj-node`) when practical; document exceptions.
+- Prefer updating all repository-owned callers over adding compatibility shims, unless an external consumer or explicit migration window exists.
+- Encode durable maintenance steps in Ansible/handlers when possible. Ask before direct one-time active-system cleanup.
+- Local Go helpers should be built by Ansible into final command paths; avoid self-compiling wrappers unless they provide real runtime behavior.
+- For patched upstream checkouts, gate clone/patch/build behind versioned central markers and bump marker contracts when local patch behavior changes.
+- Add durable conventions/workflows to focused docs when they will help future work, but keep startup context compact.
 
 ## Validation
 
-Use the smallest validation that matches the change.
+- Use the smallest relevant check: examples include `sh -n path`, targeted unit tests, or `ansible-playbook --syntax-check`.
+- Before validating through active `$HOME`, remember that new Stow-package files are inactive until stowed; say when validation used repo paths directly.
+- Do not reload keyd, restart services, run full playbooks, or apply config unless explicitly requested.
 
-Before validating behavior through the active `$HOME` configuration, check whether the change added new files under a Stow package. Existing symlinked files update in place, but new files do not exist under `$HOME` until the package is stowed. Run `~/bin/dotfiles-stow <package>` first, or explicitly say that the validation is using the repository path directly rather than the active configuration. This is especially easy to miss for new Neovim files under `ftdetect/`, `after/ftplugin/`, `plugin/`, or `lua/`, because edited existing files may be active while newly added companion files are not.
+## Commits
 
-Shell scripts:
-
-```sh
-sh -n path/to/script
-```
-
-Ansible syntax, when requested or appropriate:
-
-```sh
-cd ~/dotfiles/playbooks
-ansible-playbook --syntax-check tools.yml -l localhost
-```
-
-Keyd templates:
-
-```sh
-cd ~/dotfiles/playbooks
-ansible-playbook --syntax-check tools.yml -l localhost --tags 10-40
-```
-
-Do not reload keyd, restart user services, or run full playbooks unless the task explicitly calls for applying the change to the active system.
-
-## Commit Hygiene
-
-After completing and validating an implementation, create a commit unless the user explicitly asks to leave the change uncommitted or more work is still planned in the same turn.
-
-Commit subjects use `<type>(<scope>): <imperative summary>`, for example `fix(keyd): release mouseless before swapfocus`. Prefer `fix`, `feat`, `docs`, `refactor`, `chore`, or `test`; keep the scope concrete and local to the changed area.
-
-Commit bodies should explain the context behind the change, not merely restate the implementation that is already visible in the diff. Describe the problem or friction that led to the work, what outcome the change was meant to achieve, and the intent behind the chosen solution. Include operational impact when relevant. For very small self-explanatory changes, a subject-only commit is still fine.
-
-When a commit is generated from an assistant conversation, include `@agent <conversation id>` in the commit body on its own physical line. Resolve ids with `utilities/bin/agent-session-store --provider codex current-id --cwd "$PWD"`, `utilities/bin/agent-session-store --provider claude current-id --cwd "$PWD"`, `utilities/bin/agent-session-store --provider gemini current-id --cwd "$PWD"`, or the active `agent-session-store` on `PATH`; this is the same session parser used by Neovim's agent Overseer integration. Placeholder values such as `unknown`, `unavailable`, `none`, or `n/a` are never acceptable. If the id cannot be resolved, stop before committing instead of inventing a value. Keep the identifier line provider-neutral; do not name the assistant product or vendor.
-
-When passing a multi-paragraph commit message non-interactively, use separate `git commit -m` arguments for the subject, body paragraphs, and `@agent` trailer. Do not embed escaped newline text such as `\n\n@agent ...` inside a quoted `-m` argument; Git records that literally instead of turning it into separate lines.
-
-The repository Git hooks live under `utilities/git-hooks`. Keep `core.hooksPath` pointed at `utilities/git-hooks` for this repository. The `pre-commit` hook checks newly added files under configured Stow packages with `dotfiles-stow --check-stowed-from`; if Stow would still create a link for one of those files, run `dotfiles-stow <package>` before committing. The `commit-msg` hook applies only to agent-generated commits, detected first through inherited `CODEX_*`, `CLAUDE_*`, or `GEMINI_*` environment variables and then by walking parent processes for a process named `codex`, `claude`, or `gemini`. In that context, `@agent <conversation id>` is required and placeholder values are rejected before they enter history. Manual commits outside that agent context are not blocked by this guard.
-
-When committing:
-
-1. Re-check status:
-
-   ```sh
-   git -C ~/dotfiles status --short
-   ```
-
-1. Stage exact paths only:
-
-   ```sh
-   git -C ~/dotfiles add path/one path/two
-   ```
-
-1. Confirm staged files:
-
-   ```sh
-   git -C ~/dotfiles diff --cached --name-only
-   ```
-
-1. Commit with a scoped message, using a separate `-m` for the assistant trailer when present:
-
-   ```sh
-   git -C ~/dotfiles commit -m "fix(keyd): release mouseless before swapfocus" -m "Explain why the change is needed and what behavior it preserves." -m "@agent <conversation id>"
-   ```
-
-Private submodule commits need two layers of history:
-
-- Commit the actual private change inside `~/dotfiles/for-my-eyes-only` first.
-- Then commit the updated `for-my-eyes-only` gitlink in `~/dotfiles` when the public repository should pin that private submodule revision.
-- Keep detailed subjects, filenames, service names, feature names, bug details, and command output in the private submodule history only. The public parent commit should disclose only that the private submodule pointer changed.
-- Use neutral parent-repo messages such as `chore(private): update private submodule pointer`, `chore(private): advance private package`, or `chore(submodule): update private package pointer`.
-- If public files changed for the same work, prefer a separate public commit whose message describes only the public behavior. Do not copy the private submodule commit subject into the parent repository commit message or body.
+- Commit after implementation/validation unless the user asks not to, more work is planned, or the agent conversation id cannot be resolved.
+- Re-check status, stage exact paths only, and verify staged filenames.
+- Subject format: `<type>(<scope>): <imperative summary>`; use concrete scopes and types such as `fix`, `feat`, `docs`, `refactor`, `chore`, `test`.
+- Commit bodies explain context/intent/operational impact. For assistant-generated commits include `@agent <conversation id>` as its own line; never use placeholders. Resolve with `utilities/bin/agent-session-store ... current-id --cwd "$PWD"`.
+- Private submodule work is committed first inside `for-my-eyes-only`, then the parent gitlink is committed separately with a neutral parent message.
 
 ## Active System Application
 
-Many source files are not active until the user deploys them:
-
-- Do not apply durable configuration by copying files directly into active system paths, creating ad hoc symlinks, reloading services, or restarting units. Encode the change in the owning Stow package or Ansible task, then use `~/bin/dotfiles-stow <package>` or the relevant Ansible tag to apply it.
-- keyd config templates need Ansible to install `/etc/keyd/default.conf`.
-- systemd units need stowing and then the relevant Ansible task or handler to reload/restart/enable them when active application is requested.
-- scripts under stowed packages are usually active immediately for new invocations once linked into `~/bin`.
-- new files under stowed packages must be stowed before the active system can see them. Existing symlinked files update immediately when edited, but newly created files need `~/bin/dotfiles-stow <package>` or an Ansible dotfile setup run. Mention this in the final response whenever adding new files under packages such as `nvim/`, `term/`, `peripherals/`, or `utilities/`.
-- scripts run by long-lived user services, such as `keyd-observer.service`, need the relevant `systemctl --user restart ...` before the running session uses the new script code.
-- helper scripts that compile cached binaries may need a cache version bump when embedded source code changes.
-
-When changing Ansible playbooks, include exactly one suggested `ansible-playbook` command in the final response. Combine all relevant tags in a single `--tags` value instead of listing multiple commands. For active application commands, include `-K` so tasks that use `become` can prompt for the sudo password instead of failing mid-run. Format the command according to the user-facing command formatting rule above.
-
-Append logging to suggested `ansible-playbook` commands so the resulting output can be inspected after the user runs the command. The Neovim Overseer `run-ansible-playbook` task follows the same convention.
-
-```sh
-2>&1 | tee /tmp/ansible-<scope>.log
-```
-
-`playbooks/ansible.cfg` sets `force_color = True`, so Ansible output keeps ANSI color while being piped through `tee`. The saved log can be read with `less -R /tmp/ansible-<scope>.log` when color escapes should be rendered.
-
-Choose a stable, readable `/tmp` filename based on the command scope. Prefer the primary tag when there is one, such as `/tmp/ansible-10-30.log`; for combined tags, join them with underscores, such as `/tmp/ansible-10-20_20-90.log`; for a full playbook run without tags or the picker scope `all`, use `/tmp/ansible-tools.log`. Derive the scope from the requested Ansible tags, not from UI labels: strip picker descriptions such as `: Setup foo (...)` or `[Full editor setup]`, keep role tags as written, and join multiple tags in selection order with `_`.
-
-Logs launched from Neovim include a short machine-readable header before the Ansible output:
-
-```text
-ansible-log-version: 1
-cwd: /home/aaaa/dotfiles/playbooks
-command: ansible-playbook ...
-log_path: /tmp/ansible-<scope>.log
-started_at_utc: <timestamp>
-```
-
-When reading a large log afterward, inspect it selectively with `tail`, `rg`, and narrow `sed -n` excerpts around matching line numbers instead of loading the whole file.
-
-Before adding bootstrap, service-management, package-manager, or shared tooling setup to an Ansible task, search the existing playbooks for the same behavior and reuse the existing owner when one exists. If the requested task depends on that owner, leave the prerequisite there and include its tag in the single suggested `ansible-playbook` command instead of duplicating the setup in the new task.
-
-If the requested playbook scope includes local AUR packages, make sure the AUR setup task runs first by including the `10-20` tag before the requested tag in that single command. This prepares the `[aur-local]` pacman repository, clean-chroot tooling, and local repository directories from `playbooks/roles/10-system-tools/tasks/20-setup-aur.archlinux.yml`. Normal playbook runs must not call AUR helpers or build PKGBUILDs; AUR package code is reviewed and published separately with `aur-review publish <package>`, then installed by Ansible from `[aur-local]`. For example, use `--tags 10-20,20-90` when applying a `20-90` task file that installs local AUR packages.
-
-Before editing any file under `~/dotfiles`, confirm whether the file is tracked by the relevant Git repository. Use the repo that owns the path, including submodules, and check `git ls-files -- <path>` first. When the file is not listed, also check `git check-ignore -v -- <path>`. If the file is ignored or untracked, assume it is generated, downloaded, cached, or otherwise outside source control until you identify the owning template, setup task, generator, or upstream checkout. Durable fixes should usually change that tracked source instead of relying on a direct edit to an ignored file that can be replaced later.
-
-If active-system testing is needed, say which service or command would apply the change before running it.
-
-## Arch System Upgrades
-
-Do not run full-system upgrades from Ansible. Avoid `community.general.pacman` with `upgrade: true` and command tasks equivalent to `pacman -Syu` or `pacman -Su`. System upgrades should be an explicit operator action outside these workstation configuration playbooks so long-running playbook runs do not mix old in-memory Python or Ansible code with upgraded files on disk.
+- Durable changes are applied through Stow or Ansible, not ad hoc copies/symlinks/restarts.
+- keyd templates require Ansible to install `/etc/keyd/default.conf`; systemd units require stowing plus the relevant task/handler; long-lived services need restart to pick up script changes.
+- When changing Ansible playbooks and suggesting application, provide exactly one `ansible-playbook` command, combine tags in one `--tags`, include `-K` for become paths, and append `2>&1 | tee /tmp/ansible-<scope>.log`.
+- If applying a scope that installs local AUR packages, include tag `10-20` before the requested tag so `[aur-local]` is prepared.
+- Inspect large Ansible logs with `tail`, `rg`, and narrow `sed -n` excerpts, not full-file dumps.
