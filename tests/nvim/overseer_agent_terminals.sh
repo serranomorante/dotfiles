@@ -342,7 +342,7 @@ done
 
 printf '{"version":2,"provider":"%s","sessions":[]}\n' "$provider"
 SH
-    cat >"${fake_bin}/codex" <<'SH'
+    cat >"${fake_bin}/fj-codex" <<'SH'
 #!/bin/sh
 set -eu
 
@@ -351,7 +351,7 @@ printf 'model: fake\n'
 printf 'directory: %s\n' "$PWD"
 sleep 10
 SH
-    chmod +x "${fake_bin}/agent-session-store" "${fake_bin}/codex"
+    chmod +x "${fake_bin}/agent-session-store" "${fake_bin}/fj-codex"
 
     lua_file="${DOTFILES_TEST_TMP}/codex-new-session-focuses-task-terminal-from-overseer-terminal.lua"
     write_lua "$lua_file" \
@@ -430,7 +430,7 @@ done
 
 printf '{"version":2,"provider":"%s","sessions":[]}\n' "$provider"
 SH
-    cat >"${fake_bin}/codex" <<'SH'
+    cat >"${fake_bin}/fj-codex" <<'SH'
 #!/bin/sh
 set -eu
 
@@ -439,7 +439,7 @@ printf 'model: fake\n'
 printf 'directory: %s\n' "$PWD"
 sleep 10
 SH
-    chmod +x "${fake_bin}/agent-session-store" "${fake_bin}/codex"
+    chmod +x "${fake_bin}/agent-session-store" "${fake_bin}/fj-codex"
 
     lua_file="${DOTFILES_TEST_TMP}/codex-new-session-does-not-wait-for-session-id-scan.lua"
     write_lua "$lua_file" \
@@ -497,7 +497,7 @@ done
 
 printf '{"version":2,"provider":"%s","sessions":[]}\n' "$provider"
 SH
-    cat >"${fake_bin}/codex" <<'SH'
+    cat >"${fake_bin}/fj-codex" <<'SH'
 #!/bin/sh
 set -eu
 
@@ -506,7 +506,7 @@ printf 'model: fake\n'
 printf 'directory: %s\n' "$PWD"
 sleep 10
 SH
-    chmod +x "${fake_bin}/agent-session-store" "${fake_bin}/codex"
+    chmod +x "${fake_bin}/agent-session-store" "${fake_bin}/fj-codex"
 
     lua_file="${DOTFILES_TEST_TMP}/codex-new-session-from-shell-fence-uses-fence-as-alternate.lua"
     write_lua "$lua_file" \
@@ -610,7 +610,7 @@ done
         ;;
     esac
 SH
-    cat >"${fake_bin}/codex" <<'SH'
+    cat >"${fake_bin}/fj-codex" <<'SH'
 #!/bin/sh
 set -eu
 
@@ -621,7 +621,7 @@ printf 'model: fake\n'
 printf 'directory: %s\n' "$PWD"
 sleep 10
 SH
-    chmod +x "${fake_bin}/agent-session-store" "${fake_bin}/codex"
+    chmod +x "${fake_bin}/agent-session-store" "${fake_bin}/fj-codex"
 
     lua_file="${DOTFILES_TEST_TMP}/codex-resume-missing-session-cwd-uses-current-cwd.lua"
     write_lua "$lua_file" \
@@ -1007,7 +1007,7 @@ done
 
 printf '{"version":2,"provider":"%s","sessions":[]}\n' "$provider"
 SH
-cat >"${fake_bin}/codex" <<'SH'
+cat >"${fake_bin}/fj-codex" <<'SH'
 #!/bin/sh
 set -eu
 
@@ -1019,7 +1019,7 @@ while IFS= read -r line; do
     printf '%s\n' "$line" >>"${DOTFILES_TEST_TMP}/codex-stdin"
 done
 SH
-    chmod +x "${fake_bin}/agent-session-store" "${fake_bin}/codex"
+    chmod +x "${fake_bin}/agent-session-store" "${fake_bin}/fj-codex"
 
     lua_file="${DOTFILES_TEST_TMP}/codex-new-visual-selection-pastes-snippet.lua"
     write_lua "$lua_file" \
@@ -1130,7 +1130,7 @@ case "$*" in
     ;;
 esac
 SH
-    cat >"${fake_bin}/codex" <<'SH'
+    cat >"${fake_bin}/fj-codex" <<'SH'
 #!/bin/sh
 set -eu
 
@@ -1139,7 +1139,7 @@ printf 'model: fake\n'
 printf 'directory: %s\n' "$PWD"
 sleep 10
 SH
-    chmod +x "${fake_bin}/cachectl" "${fake_bin}/agent-session-store" "${fake_bin}/tmux" "${fake_bin}/codex"
+    chmod +x "${fake_bin}/cachectl" "${fake_bin}/agent-session-store" "${fake_bin}/tmux" "${fake_bin}/fj-codex"
 
     lua_file="${DOTFILES_TEST_TMP}/codex-new-renames-pending-tmux-session-after-session-id.lua"
     write_lua "$lua_file" \
@@ -1232,7 +1232,7 @@ case "$*" in
     ;;
 esac
 SH
-    cat >"${fake_bin}/claude" <<'SH'
+    cat >"${fake_bin}/fj-claude" <<'SH'
 #!/bin/sh
 set -eu
 
@@ -1240,7 +1240,7 @@ printf 'Claude Code\n'
 printf '? for shortcuts\n'
 sleep 10
 SH
-    chmod +x "${fake_bin}/uuidgen" "${fake_bin}/agent-session-store" "${fake_bin}/tmux" "${fake_bin}/claude"
+    chmod +x "${fake_bin}/uuidgen" "${fake_bin}/agent-session-store" "${fake_bin}/tmux" "${fake_bin}/fj-claude"
 
     lua_file="${DOTFILES_TEST_TMP}/sub-agent-new-session-uses-role-aware-tmux-name.lua"
     write_lua "$lua_file" \
@@ -1344,7 +1344,7 @@ case "$*" in
     ;;
 esac
 SH
-    cat >"${fake_bin}/codex" <<'SH'
+    cat >"${fake_bin}/fj-codex" <<'SH'
 #!/bin/sh
 set -eu
 
@@ -1353,7 +1353,7 @@ printf 'model: fake\n'
 printf 'directory: %s\n' "$PWD"
 sleep 10
 SH
-    chmod +x "${fake_bin}/cachectl" "${fake_bin}/agent-session-store" "${fake_bin}/tmux" "${fake_bin}/codex"
+    chmod +x "${fake_bin}/cachectl" "${fake_bin}/agent-session-store" "${fake_bin}/tmux" "${fake_bin}/fj-codex"
 
     lua_file="${DOTFILES_TEST_TMP}/codex-resume-ignores-cached-pending-tmux-session.lua"
     write_lua "$lua_file" \

@@ -19,6 +19,10 @@
   loop:
     - dev-tools-common.inc
     - dev-editor-shell-common.inc
+    - ai-agent-common.inc
+    - claude.profile
+    - codex.profile
+    - gemini.profile
     - fj-node.profile
     - fj-node-ansible.profile
     - fj-node-volta-bootstrap.profile
@@ -93,6 +97,22 @@
     src: fj-node
     dest: "{{ node_firejail_executable }}"
     mode: "755"
+
+- name: "[archlinux] Setup node: install MCP inherited sandbox wrapper"
+  ansible.builtin.copy:
+    src: fj-mcp-inherit
+    dest: "{{ node_user_bin_dir }}/fj-mcp-inherit"
+    mode: "755"
+
+- name: "[archlinux] Setup node: install AI agent firejail wrapper"
+  ansible.builtin.copy:
+    src: fj-ai-agent
+    dest: "{{ node_user_bin_dir }}/{{ item }}"
+    mode: "755"
+  loop:
+    - fj-claude
+    - fj-codex
+    - fj-gemini
 
 - name: "[archlinux] Setup node: install ansible firejail npm wrapper"
   ansible.builtin.copy:

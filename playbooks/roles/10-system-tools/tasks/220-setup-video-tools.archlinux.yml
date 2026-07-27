@@ -55,6 +55,15 @@
     - not var_davinci_resolve_version_installed
     - not var_stat_davinci_zip_before_download.stat.exists
 
+- name: "[archlinux] Setup video tools: stat claude firejail wrapper"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/bin/fj-claude"
+  register: var_stat_claude_firejail_wrapper
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - not var_stat_davinci_zip_before_download.stat.exists
+
 - name: "[archlinux] Setup video tools: stat mcp server config"
   ansible.builtin.stat:
     path: "{{ ansible_facts.env.HOME }}/.config/mcphub/servers.json"
@@ -78,6 +87,7 @@
     - not var_davinci_resolve_version_installed
     - not var_stat_davinci_zip_before_download.stat.exists
     - (var_stat_claude_executable.stat.exists | default(false))
+    - (var_stat_claude_firejail_wrapper.stat.exists | default(false))
     - (var_stat_mcp_servers_json.stat.exists | default(false))
 
 - name: "[archlinux] Setup video tools: register davinci resolve blackmagic password"
@@ -94,11 +104,15 @@
     - not var_davinci_resolve_version_installed
     - not var_stat_davinci_zip_before_download.stat.exists
     - (var_stat_claude_executable.stat.exists | default(false))
+    - (var_stat_claude_firejail_wrapper.stat.exists | default(false))
     - (var_stat_mcp_servers_json.stat.exists | default(false))
 
 - name: "[archlinux] Setup video tools: download davinci resolve with claude"
   ansible.builtin.command:
     argv:
+      - "{{ ansible_facts.env.HOME }}/bin/fj-claude"
+      - --exec
+      - --
       - "{{ ansible_facts.env.HOME }}/bin/claude"
       - --print
       - --permission-mode
@@ -139,6 +153,7 @@
     - is_x_display_session
     - not var_davinci_resolve_version_installed
     - not var_stat_davinci_zip_before_download.stat.exists
+    - (var_stat_claude_firejail_wrapper.stat.exists | default(false))
     - (var_davinci_resolve_blackmagic_email.rc | default(1)) == 0
     - (var_davinci_resolve_blackmagic_email.stdout | default('') | trim | length) > 0
     - (var_davinci_resolve_blackmagic_password.rc | default(1)) == 0

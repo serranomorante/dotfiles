@@ -3,10 +3,12 @@
   "mcpServers": {
     "reaper": {
       "disabled": true,
-      "command": "{{ python_firejail_executable }}",
+      "command": "{{ node_user_bin_dir }}/fj-mcp-inherit",
       "args": [
+        "python",
         "offline",
         "{{ reaper_mcp_server_setup.repo_path }}",
+        "fj-py-mcp-reaper.profile",
         "--",
         "{{ reaper_mcp_server_setup.repo_path }}/.venv/bin/uv",
         "--directory",
@@ -27,10 +29,12 @@
     },
     "Figma": {
       "disabled": true,
-      "command": "{{ node_firejail_executable }}",
+      "command": "{{ node_user_bin_dir }}/fj-mcp-inherit",
       "args": [
+        "node",
         "online",
         "{{ node_ai_npm_prefix }}",
+        "fj-node-mcp.profile",
         "--",
         "{{ node_system_default_node_path }}",
         "{{ figma_mcp_server_setup.exe_path }}"{% if figma_api_key | length > 0 %},
@@ -44,10 +48,12 @@
     },
     "figma-comments": {
       "disabled": true,
-      "command": "{{ node_firejail_executable }}",
+      "command": "{{ node_user_bin_dir }}/fj-mcp-inherit",
       "args": [
+        "node",
         "online",
         "{{ node_ai_npm_prefix }}",
+        "fj-node-mcp.profile",
         "--",
         "/usr/bin/env"{% if figma_api_key | length > 0 %},
         "FIGMA_ACCESS_TOKEN={{ figma_api_key }}"{% endif %},
@@ -60,10 +66,12 @@
     },
     "cf-projects": {
       "disabled": true,
-      "command": "{{ node_firejail_executable }}",
+      "command": "{{ node_user_bin_dir }}/fj-mcp-inherit",
       "args": [
+        "node",
         "online",
         "{{ node_ai_npm_prefix }}",
+        "fj-node-mcp.profile",
         "--",
         "{{ node_system_default_node_path }}",
         "{{ cf_projects_mcp_server_setup.exe_path }}"
@@ -74,10 +82,12 @@
     },
     "chrome-devtools": {
       "disabled": true,
-      "command": "{{ node_firejail_executable }}",
+      "command": "{{ node_user_bin_dir }}/fj-mcp-inherit",
       "args": [
+        "node",
         "online",
         "{{ node_ai_npm_prefix }}",
+        "fj-node-mcp.profile",
         "--",
         "{{ node_system_default_node_path }}",
         "{{ chrome_devtools_mcp_server_setup.exe_path }}",
@@ -92,10 +102,12 @@
     },
     "Context7": {
       "disabled": true,
-      "command": "{{ node_firejail_executable }}",
+      "command": "{{ node_user_bin_dir }}/fj-mcp-inherit",
       "args": [
+        "node",
         "online",
         "{{ node_ai_npm_prefix }}",
+        "fj-node-mcp.profile",
         "--",
         "{{ node_system_default_node_path }}",
         "{{ context7_mcp_server_setup.exe_path }}"
@@ -106,10 +118,12 @@
     },
     "playwright": {
       "disabled": false,
-      "command": "{{ node_firejail_executable }}",
+      "command": "{{ node_user_bin_dir }}/fj-mcp-inherit",
       "args": [
+        "node",
         "online",
         "{{ node_ai_npm_prefix }}",
+        "fj-node-mcp.profile",
         "--",
         "{{ node_system_default_node_path }}",
         "{{ playwright_mcp_server_setup.exe_path }}",
@@ -123,10 +137,12 @@
     },
     "playwright-mcp-QA-1": {
       "disabled": false,
-      "command": "{{ node_firejail_executable }}",
+      "command": "{{ node_user_bin_dir }}/fj-mcp-inherit",
       "args": [
+        "node",
         "online",
         "{{ node_ai_npm_prefix }}",
+        "fj-node-mcp.profile",
         "--",
         "{{ node_system_default_node_path }}",
         "{{ playwright_mcp_server_setup.exe_path }}",
@@ -139,10 +155,12 @@
     },
     "playwright-mcp-QA-2": {
       "disabled": false,
-      "command": "{{ node_firejail_executable }}",
+      "command": "{{ node_user_bin_dir }}/fj-mcp-inherit",
       "args": [
+        "node",
         "online",
         "{{ node_ai_npm_prefix }}",
+        "fj-node-mcp.profile",
         "--",
         "{{ node_system_default_node_path }}",
         "{{ playwright_mcp_server_setup.exe_path }}",
@@ -155,10 +173,12 @@
     },
     "playwright-mcp-QA-3": {
       "disabled": false,
-      "command": "{{ node_firejail_executable }}",
+      "command": "{{ node_user_bin_dir }}/fj-mcp-inherit",
       "args": [
+        "node",
         "online",
         "{{ node_ai_npm_prefix }}",
+        "fj-node-mcp.profile",
         "--",
         "{{ node_system_default_node_path }}",
         "{{ playwright_mcp_server_setup.exe_path }}",
@@ -171,10 +191,12 @@
     },
     "playwright-mcp-QA-4": {
       "disabled": false,
-      "command": "{{ node_firejail_executable }}",
+      "command": "{{ node_user_bin_dir }}/fj-mcp-inherit",
       "args": [
+        "node",
         "online",
         "{{ node_ai_npm_prefix }}",
+        "fj-node-mcp.profile",
         "--",
         "{{ node_system_default_node_path }}",
         "{{ playwright_mcp_server_setup.exe_path }}",

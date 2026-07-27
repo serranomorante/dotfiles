@@ -81,13 +81,13 @@ agent-local-execution-syntax)
     ;;
 agent-local-execution-codex-builds-noninteractive-command)
     bin=$(make_fake_path)
-    write_fake_agent "$bin" codex
+    write_fake_agent "$bin" fj-codex
     payload=$(write_payload)
 
     run_wrapper_with_path "$bin" --agent codex --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
 
     rg -q "agent result" "${DOTFILES_TEST_TMP}/stdout"
-    expected="-a never -s read-only -m gpt-5 exec --skip-git-repo-check --color never -C ${DOTFILES_TEST_TMP}/work -"
+    expected="--exec --root ${DOTFILES_TEST_TMP}/work -- codex -a never -s read-only -m gpt-5 exec --skip-git-repo-check --color never -C ${DOTFILES_TEST_TMP}/work -"
     actual=$(cat "${DOTFILES_TEST_TMP}/agent.args")
     [[ "$actual" == "$expected" ]]
     rg -q "title: Run wrapped task" "${DOTFILES_TEST_TMP}/agent.stdin"
@@ -102,13 +102,13 @@ agent-local-execution-codex-builds-noninteractive-command)
     ;;
 agent-local-execution-claude-builds-noninteractive-command)
     bin=$(make_fake_path)
-    write_fake_agent "$bin" claude
+    write_fake_agent "$bin" fj-claude
     payload=$(write_payload)
 
     run_wrapper_with_path "$bin" --agent claude --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
 
     rg -q "agent result" "${DOTFILES_TEST_TMP}/stdout"
-    expected="-p --permission-mode dontAsk --output-format text --model gpt-5"
+    expected="--exec --root ${DOTFILES_TEST_TMP}/work -- claude -p --permission-mode dontAsk --output-format text --model gpt-5"
     actual=$(cat "${DOTFILES_TEST_TMP}/agent.args")
     [[ "$actual" == "$expected" ]]
     rg -q "agent: claude" "${DOTFILES_TEST_TMP}/agent.stdin"
@@ -116,13 +116,13 @@ agent-local-execution-claude-builds-noninteractive-command)
     ;;
 agent-local-execution-gemini-builds-noninteractive-command)
     bin=$(make_fake_path)
-    write_fake_agent "$bin" gemini
+    write_fake_agent "$bin" fj-gemini
     payload=$(write_payload)
 
     run_wrapper_with_path "$bin" --agent gemini --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
 
     rg -q "agent result" "${DOTFILES_TEST_TMP}/stdout"
-    expected="--prompt  --model gpt-5"
+    expected="--exec --root ${DOTFILES_TEST_TMP}/work -- gemini --prompt  --model gpt-5"
     actual=$(cat "${DOTFILES_TEST_TMP}/agent.args")
     [[ "$actual" == "$expected" ]]
     rg -q "agent: gemini" "${DOTFILES_TEST_TMP}/agent.stdin"

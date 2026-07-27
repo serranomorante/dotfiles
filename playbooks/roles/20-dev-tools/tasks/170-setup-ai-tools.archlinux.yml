@@ -277,6 +277,8 @@
       dest: claude-mcp
     - src: codex-mcp.j2
       dest: codex-mcp
+    - src: gemini-mcp.j2
+      dest: gemini-mcp
 
 - name: "[archlinux] Setup ai tools: load mcphub servers.json"
   ansible.builtin.set_fact:
@@ -351,6 +353,24 @@
     path: ~/.claude
     state: directory
     mode: "755"
+
+- name: "[archlinux] Setup ai tools: ensure agent sandbox state directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  loop:
+    - "{{ ansible_facts.env.HOME }}/.cache/claude-cli-nodejs"
+    - "{{ ansible_facts.env.HOME }}/.local/state/claude"
+    - "{{ ansible_facts.env.HOME }}/.local/share/claude"
+    - "{{ ansible_facts.env.HOME }}/.cache/codex"
+    - "{{ ansible_facts.env.HOME }}/.local/state/codex"
+    - "{{ ansible_facts.env.HOME }}/.local/share/codex"
+    - "{{ ansible_facts.env.HOME }}/.cache/gemini"
+    - "{{ ansible_facts.env.HOME }}/.local/state/gemini"
+    - "{{ ansible_facts.env.HOME }}/.local/share/gemini"
+    - "{{ ansible_facts.env.HOME }}/.local/state/mcp-hub"
+    - "{{ ansible_facts.env.HOME }}/.local/share/mcp-hub"
 
 - name: "[archlinux] Setup ai tools: stat claude global settings"
   ansible.builtin.stat:

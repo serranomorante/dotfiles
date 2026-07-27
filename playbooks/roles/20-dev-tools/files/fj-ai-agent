@@ -1,0 +1,199 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run terminal AI coding agents inside Firejail using the current Git root, or
+# the current directory outside Git, as the writable work root. The profile
+# supplies persistent agent/MCP state; this wrapper adds the dynamic work root
+# and any explicit extra paths.
+
+SCRIPT_NAME=$(basename "$0")
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
+source "${script_dir}/firejail-wrapper-common.bash"
+
+agent=${SCRIPT_NAME#fj-}
+case "$agent" in
+claude | codex | gemini) ;;
+*)
+    die "expected to be invoked as fj-claude, fj-codex, or fj-gemini"
+    ;;
+esac
+
+real_home=${HOME:-}
+[[ -n "$real_home" ]] || die "HOME is required"
+
+network_mode=${FJ_AI_AGENT_NETWORK:-online}
+work_root=
+agent_args=()
+exec_mode=0
+path_value=${PATH:-/usr/local/bin:/usr/bin:/bin}
+profile_path=$(firejail_profile_path "$real_home" "${agent}.profile")
+forward_env=$'CODEX_THREAD_ID\nGEMINI_API_KEY\nANTHROPIC_API_KEY\nCLAUDE_CODE_USE_BEDROCK\nCLAUDE_CODE_USE_VERTEX\nOPENAI_API_KEY\nOPENAI_BASE_URL\nMCPHUB_PORT\nMCPHUB_CONFIG\nKITTY_LISTEN_ON\nNVIM\nAGENT_TASKS_NVIM'
+tmux_socket_dir="/tmp/tmux-$(id -u)"
+RW_PATHS=
+
+resolve_default_work_root() {
+    local cwd
+    local git_root
+
+    cwd=$(pwd -P) || return 1
+    if command -v git >/dev/null 2>&1; then
+        git_root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)
+        if [[ -n "$git_root" && -d "$git_root" ]]; then
+            canonicalize_existing_dir "$git_root"
+            return 0
+        fi
+    fi
+
+    printf '%s\n' "$cwd"
+}
+
+canonicalize_existing_path() {
+    local path=$1
+    local dir
+    local base
+
+    [[ -e "$path" ]] || return 1
+    if [[ -d "$path" ]]; then
+        canonicalize_existing_dir "$path"
+        return 0
+    fi
+
+    dir=$(dirname "$path")
+    base=$(basename "$path")
+    dir=$(canonicalize_existing_dir "$dir") || return 1
+    printf '%s/%s\n' "$dir" "$base"
+}
+
+add_rw_path() {
+    local candidate=$1
+    local parent=
+
+    [[ -n "$candidate" ]] || return 0
+    if [[ ! -e "$candidate" ]]; then
+        if [[ "$candidate" == */* ]]; then
+            parent=$(dirname "$candidate")
+            [[ -d "$parent" ]] || return 0
+            candidate=$parent
+        else
+            return 0
+        fi
+    fi
+
+    if [[ -d "$candidate" ]]; then
+        candidate=$(canonicalize_existing_dir "$candidate") || return 0
+    else
+        candidate=$(canonicalize_existing_path "$candidate") || return 0
+        candidate=$(dirname "$candidate")
+    fi
+
+    RW_PATHS+="${candidate}"$'\n'
+}
+
+print_help() {
+    cat <<EOF
+Usage:
+  ${SCRIPT_NAME} [--root DIR] [--local|--offline|--online] [--] [agent args...]
+  ${SCRIPT_NAME} --exec [--root DIR] [--local|--offline|--online] -- command [args...]
+
+Run ${agent} inside Firejail with the Git root, cwd fallback, or --root DIR exposed read-write.
+Extra read-only and read-write paths can be supplied with FJ_AI_AGENT_EXTRA_PATHS
+and FJ_AI_AGENT_WRITABLE_PATHS.
+EOF
+}
+
+work_root=$(resolve_default_work_root) || die "unable to resolve work root"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -h | --help)
+        print_help
+        exit 0
+        ;;
+    --online)
+        network_mode=online
+        shift
+        ;;
+    --local)
+        network_mode=local
+        shift
+        ;;
+    --offline)
+        network_mode=offline
+        shift
+        ;;
+    --exec)
+        exec_mode=1
+        shift
+        ;;
+    --root)
+        [[ $# -ge 2 ]] || die "expected a directory after --root"
+        work_root=$(canonicalize_existing_dir "$2") || die "unable to resolve work root: $2"
+        shift 2
+        ;;
+    --)
+        shift
+        agent_args+=("$@")
+        break
+        ;;
+    *)
+        agent_args+=("$1")
+        shift
+        ;;
+    esac
+done
+
+command -v /usr/bin/firejail >/dev/null 2>&1 || die "firejail is required"
+command -v "$agent" >/dev/null 2>&1 || die "missing agent executable: $agent"
+if [[ "$exec_mode" == 1 && "${#agent_args[@]}" -eq 0 ]]; then
+    die "--exec needs a command"
+fi
+
+add_rw_path "$work_root"
+[[ -d "$real_home/data/work/cf" ]] && add_rw_path "$real_home/data/work/cf"
+
+mkdir -p \
+    "$real_home/.config/gcloud" \
+    "$real_home/.cache/firejail-wrapper/node" \
+    "$real_home/.cache/firejail-wrapper/python" \
+    "$real_home/.local/state/firejail-wrapper/node" \
+    "$real_home/.local/state/firejail-wrapper/python" \
+    "$real_home/.local/share/firejail-wrapper/node" \
+    "$real_home/.local/share/firejail-wrapper/python" \
+    "$real_home/.cache/claude-cli-nodejs" \
+    "$real_home/.local/state/claude" \
+    "$real_home/.local/share/claude" \
+    "$real_home/.codex" \
+    "$real_home/.cache/codex" \
+    "$real_home/.local/state/codex" \
+    "$real_home/.local/share/codex" \
+    "$real_home/.gemini" \
+    "$real_home/.cache/gemini" \
+    "$real_home/.local/state/gemini" \
+    "$real_home/.local/share/gemini" \
+    "$real_home/.local/state/mcp-hub" \
+    "$real_home/.local/share/mcp-hub"
+touch "$real_home/.claude.json"
+
+init_firejail_args "$profile_path" "$network_mode"
+append_paths rw "$RW_PATHS"
+append_optional_path rw "$tmux_socket_dir"
+append_paths ro "${FJ_AI_AGENT_EXTRA_PATHS:-}"
+append_paths rw "${FJ_AI_AGENT_WRITABLE_PATHS:-}"
+
+init_clean_env
+append_common_terminal_env
+append_env_literal HOME "$real_home"
+append_env_literal PATH "$path_value"
+append_env_literal XDG_CACHE_HOME "${XDG_CACHE_HOME:-$real_home/.cache}"
+append_env_literal XDG_STATE_HOME "${XDG_STATE_HOME:-$real_home/.local/state}"
+append_env_literal XDG_DATA_HOME "${XDG_DATA_HOME:-$real_home/.local/share}"
+append_env_literal FJ_MCP_INHERITED_PROFILE "${FJ_MCP_INHERITED_PROFILE:-$profile_path}"
+append_env_names_if_set "$forward_env"
+append_env_names_if_set "${FJ_AI_AGENT_FORWARD_ENV:-}"
+
+cd "$work_root"
+if [[ "$exec_mode" == 1 ]]; then
+    exec "${FIREJAIL_ARGS[@]}" "${ENV_ARGS[@]}" "${agent_args[@]}"
+fi
+
+exec "${FIREJAIL_ARGS[@]}" "${ENV_ARGS[@]}" "$agent" "${agent_args[@]}"

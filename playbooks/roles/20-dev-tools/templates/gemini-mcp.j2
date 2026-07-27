@@ -1,0 +1,8 @@
+#!/bin/sh
+# {{ ansible_managed }}
+# Purpose: Start Gemini CLI with MCP tools from ~/.gemini/settings.json.
+# Usage: gemini-mcp [gemini args...]
+
+set -eu
+
+exec "{{ node_user_bin_dir }}/fj-gemini" --exec -- "{{ node_user_bin_dir }}/gemini" "$@"

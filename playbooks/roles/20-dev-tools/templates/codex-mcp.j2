@@ -5,4 +5,4 @@
 
 set -eu
 
-exec "{{ node_user_bin_dir }}/mcphub-run" codex -p mcphub "$@"
+exec "{{ node_user_bin_dir }}/fj-codex" --exec -- "{{ node_user_bin_dir }}/mcphub-run" codex -p mcphub "$@"

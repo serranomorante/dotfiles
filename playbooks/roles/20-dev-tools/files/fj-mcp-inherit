@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run MCP commands without nesting Firejail when they are launched from an agent
+# sandbox. Outside Firejail, delegate to the existing fj-node/fj-py wrappers.
+
+SCRIPT_NAME=fj-mcp-inherit
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
+source "${script_dir}/firejail-wrapper-common.bash"
+
+usage() {
+    printf '%s\n' "usage: fj-mcp-inherit <node|python> <online|local|offline> <project> <profile> -- <command...>" >&2
+}
+
+[[ $# -ge 6 ]] || {
+    usage
+    exit 2
+}
+
+runtime=$1
+network_mode=$2
+project=$3
+child_profile=$4
+shift 4
+[[ "$1" == "--" ]] || {
+    usage
+    exit 2
+}
+shift
+
+real_home=${HOME:-}
+[[ -n "$real_home" ]] || die "HOME is required"
+
+project_root=$(canonicalize_existing_dir "$project") || die "unable to resolve project path: $project"
+profile_checker="${real_home}/bin/fj-profile-checker"
+inherited_profile=${FJ_MCP_INHERITED_PROFILE:-}
+
+case "$runtime" in
+node)
+    wrapper="${real_home}/bin/fj-node"
+    profile_env=FJ_NODE_PROFILE
+    cache_root=${real_home}/.cache/firejail-wrapper/node
+    state_root=${real_home}/.local/state/firejail-wrapper/node
+    data_root=${real_home}/.local/share/firejail-wrapper/node
+    ;;
+python)
+    wrapper="${real_home}/bin/fj-py"
+    profile_env=FJ_PY_PROFILE
+    cache_root=${real_home}/.cache/firejail-wrapper/python
+    state_root=${real_home}/.local/state/firejail-wrapper/python
+    data_root=${real_home}/.local/share/firejail-wrapper/python
+    ;;
+*)
+    die "unsupported MCP runtime: $runtime"
+    ;;
+esac
+
+if is_inside_firejail; then
+    [[ -n "$inherited_profile" ]] || die "FJ_MCP_INHERITED_PROFILE is required inside inherited Firejail"
+    [[ -x "$profile_checker" ]] || die "missing profile checker: $profile_checker"
+
+    "$profile_checker" "$inherited_profile" -- true
+    mkdir -p "$cache_root" "$state_root" "$data_root"
+    export XDG_CACHE_HOME="$cache_root"
+    export XDG_STATE_HOME="$state_root"
+    export XDG_DATA_HOME="$data_root"
+    if [[ "$runtime" == "node" ]]; then
+        mkdir -p "${cache_root}/npm" "${data_root}/pnpm/store"
+        export NPM_CONFIG_UPDATE_NOTIFIER="${NPM_CONFIG_UPDATE_NOTIFIER:-false}"
+        export NPM_CONFIG_FUND="${NPM_CONFIG_FUND:-false}"
+        export NPM_CONFIG_USERCONFIG="${NPM_CONFIG_USERCONFIG:-/dev/null}"
+        export NPM_CONFIG_IGNORE_SCRIPTS="${NPM_CONFIG_IGNORE_SCRIPTS:-true}"
+        export NPM_CONFIG_CACHE="${NPM_CONFIG_CACHE:-${cache_root}/npm}"
+        export npm_config_store_dir="${npm_config_store_dir:-${data_root}/pnpm/store}"
+    else
+        mkdir -p "${cache_root}/pip" "${cache_root}/uv" "${cache_root}/pycacheprefix"
+        export PIP_DISABLE_PIP_VERSION_CHECK="${PIP_DISABLE_PIP_VERSION_CHECK:-1}"
+        export PIP_CONFIG_FILE="${PIP_CONFIG_FILE:-/dev/null}"
+        export PIP_CACHE_DIR="${PIP_CACHE_DIR:-${cache_root}/pip}"
+        export UV_CACHE_DIR="${UV_CACHE_DIR:-${cache_root}/uv}"
+        export PYTHONPYCACHEPREFIX="${PYTHONPYCACHEPREFIX:-${cache_root}/pycacheprefix}"
+    fi
+    cd "$project_root"
+    exec "$@"
+fi
+
+[[ -x "$wrapper" ]] || die "missing Firejail wrapper: $wrapper"
+exec env "$profile_env=$child_profile" "$wrapper" "$network_mode" "$project_root" -- "$@"

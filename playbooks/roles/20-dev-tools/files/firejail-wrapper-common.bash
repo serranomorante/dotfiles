@@ -92,6 +92,14 @@ append_optional_path() {
     append_paths "$mode" "$path"
 }
 
+# @description Return success when the current process already runs inside Firejail.
+# @noargs
+# @exitcode 0 If /run/firejail/profile is the inaccessible Firejail metadata mount.
+# @exitcode 1 If the process is not inside Firejail.
+is_inside_firejail() {
+    [[ -d /run/firejail/profile ]] && ! ls /run/firejail/profile >/dev/null 2>&1
+}
+
 # @description Initialize FIREJAIL_ARGS with the selected profile and network policy.
 # @arg $1 path Readable Firejail profile path.
 # @arg $2 network-mode Network policy: online, local, or offline.

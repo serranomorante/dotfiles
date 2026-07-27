@@ -15,6 +15,8 @@ Recuerda que puedes paralelizar el trabajo usando estos sub-agentes que están e
 
 Recuerda que tenemos varias instancias de chromium abiertas en puertos específicos para que puedas paralelizar también los tests y/o interacción con el navegador usando alguno de los mcps de playwright que hemos preparado para esas instancias/perfiles de chromium.
 
+No uses rutas bajo `/tmp` para escribir briefs, scratchpads o handoffs que deba leer otro agente; cada sandbox puede tener un `/tmp` privado o mounts distintos y eso rompe la delegación. Usa una ruta ignorada dentro del proyecto actual, preferentemente `.agent-briefs/`. Antes de escribir ahí, asegúrate de que Git la ignora: comprueba `git check-ignore -q .agent-briefs/` desde el repo actual y, si no está ignorada, añade `.agent-briefs/` a `.git/info/exclude` (preferido para scratchpads locales) o al mecanismo de ignore que ya use ese proyecto. Crea la carpeta con `mkdir -p .agent-briefs` y pasa rutas de briefs/handoffs dentro de esa carpeta.
+
 No debes abrir todos los sub-agentes de golpe, ve abriéndolos bajo demanda conforme necesites más y más paralelización.
 
 Ejemplos de cómo interactuar con agentes hijos:

@@ -144,6 +144,11 @@ def run_agent(payload, opts):
 
     if opts["agent"] == "codex":
         cmd = [
+            "fj-codex",
+            "--exec",
+            "--root",
+            opts["cwd"],
+            "--",
             "codex",
             "-a",
             "never",
@@ -165,6 +170,11 @@ def run_agent(payload, opts):
         )
     elif opts["agent"] == "claude":
         cmd = [
+            "fj-claude",
+            "--exec",
+            "--root",
+            opts["cwd"],
+            "--",
             "claude",
             "-p",
             "--permission-mode",
@@ -176,6 +186,11 @@ def run_agent(payload, opts):
             cmd.extend(["--model", opts["model"]])
     else:
         cmd = [
+            "fj-gemini",
+            "--exec",
+            "--root",
+            opts["cwd"],
+            "--",
             "gemini",
             "--prompt",
             "",
