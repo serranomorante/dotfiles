@@ -142,6 +142,7 @@ overseer-agent-session-terminal-contract)
         '  assert(text:find("utils.schedule_open_overseer_task_output(task, { winid = start_win })", 1, true) ~= nil, "started task output should be focused in the source window")' \
         '  assert(text:find("open_task(provider, task, prompt, { wait_for_ready = true, start_win = start_win, open_output = false })", 1, true) ~= nil, "new/resumed tasks should delay output focus until after start")' \
         '  assert(text:find([[local retry_known_session_ids = provider.name == "codex" and nil or known_session_ids]], 1, true) ~= nil, "Codex fallback linking must ignore possibly contaminated post-start known ids")' \
+        '  assert(text:find([[codex_known_session_ids_promise = async_session_ids(provider, cwd)]], 1, true) ~= nil, "Codex session id snapshot should start before task launch")' \
         '  assert(text:find("if not start_and_open_task_output(provider, task, start_win) then return end", 1, true) ~= nil, "new task flow should open only after a successful start")' \
         '  assert(text:find("vim%.cmd%.stopinsert") ~= nil, "terminal cleanup must use stopinsert")' \
         '  vim.cmd.qa({ bang = true })' \
@@ -1090,7 +1091,11 @@ while [ "$#" -gt 0 ]; do
         shift 2
         ;;
     ids)
-        printf '{"version":2,"provider":"%s","ids":["existing-elasticsearch-session","renamed-session"]}\n' "${provider:-codex}"
+        if [ -s "${DOTFILES_TEST_TMP}/tmux-calls" ]; then
+            printf '{"version":2,"provider":"%s","ids":["existing-elasticsearch-session","renamed-session"]}\n' "${provider:-codex}"
+        else
+            printf '{"version":2,"provider":"%s","ids":["existing-elasticsearch-session"]}\n' "${provider:-codex}"
+        fi
         exit 0
         ;;
     watch-new)

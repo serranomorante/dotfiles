@@ -1893,7 +1893,12 @@ function M.open_new(provider_name, opts)
 
   require("async")(function()
     local known_session_ids
-    if provider.name ~= "codex" then known_session_ids = await(async_session_ids(provider, cwd)) end
+    local codex_known_session_ids_promise
+    if provider.name == "codex" then
+      codex_known_session_ids_promise = async_session_ids(provider, cwd)
+    else
+      known_session_ids = await(async_session_ids(provider, cwd))
+    end
     local size = tmux_session_size(start_win)
     local tmux_cmd, tmux_args =
       tmux_wrap_provider_command(provider, provider.start_args(preallocated_session_id), tmux_session_name, cwd, size)
@@ -1929,7 +1934,7 @@ function M.open_new(provider_name, opts)
       { wait_for_ready = true, start_win = start_win, open_output = false }
     )
     if not start_and_open_task_output(provider, task, start_win) then return end
-    if provider.name == "codex" then known_session_ids = await(async_session_ids(provider, cwd)) end
+    if provider.name == "codex" then known_session_ids = await(codex_known_session_ids_promise) end
     link_new_task_to_session_id(provider, task, cwd, known_session_ids)
     if prompt_after_session_watch then paste_prompt(provider, task, prompt_after_session_watch) end
   end):catch(function(err) vim.notify(tostring(err), vim.log.levels.ERROR) end)

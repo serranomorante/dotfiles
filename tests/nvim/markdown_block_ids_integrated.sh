@@ -4,27 +4,33 @@ set -euo pipefail
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim integration headless firejail lsp marksman
 # dotfiles-test-readonly: /home/aaaa/.local/bin/nvim
+# dotfiles-test-readonly: /home/aaaa/.local/share/nvim/runtime
 # dotfiles-test-case: markdown-block-ids-marksman-diagnostics-filter-integrated
 
 # Purpose: Load the active Neovim configuration and verify Marksman diagnostics
 # still treat Markdown #^ block-id links as handled by the local @id feature.
 
 nvim_bin=${NVIM_BIN:-/home/aaaa/.local/bin/nvim}
+rtp="${DOTFILES_TEST_ROOT}/nvim/dot-config/nvim"
 
-prepare_full_config() {
-    mkdir -p "${XDG_CONFIG_HOME}" "${XDG_DATA_HOME}/nvim"
-    ln -s /home/aaaa/.config/nvim "${XDG_CONFIG_HOME}/nvim"
-    ln -s /home/aaaa/.local/share/nvim/site "${XDG_DATA_HOME}/nvim/site"
+prepare_lsp_config() {
+    test_config="${DOTFILES_TEST_TMP}/nvim-config"
+    mkdir -p "${test_config}/lua/serranomorante"
+    cat >"${test_config}/lua/serranomorante/binaries.lua" <<'LUA'
+return {
+  marksman = function() return "/usr/bin/marksman" end,
+}
+LUA
 }
 
 run_nvim_lua() {
     local lua_file=$1
-    "$nvim_bin" --headless -S "$lua_file"
+    VIMRUNTIME=/home/aaaa/.local/share/nvim/runtime "$nvim_bin" --headless -u NONE -c "set rtp^=${rtp}" -c "set rtp^=${test_config}" -S "$lua_file"
 }
 
 case "${DOTFILES_TEST_CASE:-}" in
 markdown-block-ids-marksman-diagnostics-filter-integrated)
-    prepare_full_config
+    prepare_lsp_config
     lua_file="${DOTFILES_TEST_TMP}/marksman-diagnostics-filter.lua"
     cat >"$lua_file" <<'LUA'
 local function main()
@@ -39,7 +45,11 @@ vim.fn.writefile({
 }, root .. "/a.md")
 
 vim.g.lsp_enabled = true
+require("serranomorante.plugins.lsp").config()
+vim.lsp.config("marksman", dofile(vim.env.DOTFILES_TEST_ROOT .. "/nvim/dot-config/nvim/after/lsp/marksman.lua"))
 vim.cmd.edit(root .. "/a.md")
+vim.bo.filetype = "markdown"
+require("serranomorante.plugins.lsp.utils").enable("marksman", 0)
 
 local function diagnostic_messages()
   return vim.tbl_map(function(diagnostic) return diagnostic.message or "" end, vim.diagnostic.get(0))
