@@ -109,6 +109,8 @@ const char *pedalboardProfileLabel() {
       return "guitar";
     case 3:
       return "desktop";
+    case 4:
+      return "obs";
     default:
       return "unknown";
   }
@@ -355,14 +357,17 @@ const char *tileKeyLabel(uint8_t row, uint8_t col) {
       return "";
     }
     if (col >= 3) {
-      return col == 3 ? "2" : "3";
+      if (pedalboardProfile == 3) {
+        return col == 3 ? "2" : "3";
+      }
+      return "";
     }
   }
   return keys[row][col];
 }
 
 bool pedalboardModifierTile(uint8_t row, uint8_t col) {
-  return currentChannel == PEDALBOARD_CHANNEL && row == 0 && (col == 3 || col == 4);
+  return currentChannel == PEDALBOARD_CHANNEL && pedalboardProfile == 3 && row == 0 && (col == 3 || col == 4);
 }
 
 bool pedalboardModifierActive() {
@@ -508,6 +513,10 @@ uint16_t colorForPedalboard(uint8_t row, uint8_t col) {
       return ILI9341_GREEN;
     }
   }
+  if (pedalboardProfile == 4) {
+    const uint16_t obsColors[5] = {ILI9341_DARKGREY, ILI9341_RED, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_DARKGREY};
+    return obsColors[col];
+  }
   const uint16_t colors[5] = {ILI9341_GREEN, ILI9341_CYAN, ILI9341_CYAN, ILI9341_PURPLE, ILI9341_PURPLE};
   return colors[col];
 }
@@ -594,6 +603,9 @@ bool tileAssigned(uint8_t row, uint8_t col) {
     case 12:
       return row > 1;
     case PEDALBOARD_CHANNEL:
+      if (pedalboardProfile == 4) {
+        return row == 0 && col < 3;
+      }
       return row == 0 && col < 5;
     default:
       return false;
@@ -746,13 +758,14 @@ void tileLabel(uint8_t row, uint8_t col, char *out, size_t outSize) {
       snprintf(out, outSize, "%s", desktopActionLabels[col]);
       return;
     }
-    const char *labels[4][5] = {
+    const char *labels[5][5] = {
         {"CONT", "SW1", "SW2", "SW1", "SW2"},
         {"DAMP", "SOST", "SOFT", "SOST", "SOFT"},
         {"EXP", "STMPA", "STMPB", "STMPA", "STMPB"},
         {"CTRL", "ACT A", "ACT B", "ACT A", "ACT B"},
+        {"CTRL", "SCENE", "AUX", "", ""},
     };
-    uint8_t profile = pedalboardProfile <= 3 ? pedalboardProfile : 0;
+    uint8_t profile = pedalboardProfile <= 4 ? pedalboardProfile : 0;
     snprintf(out, outSize, "%s", labels[profile][col]);
     return;
   }
@@ -1190,7 +1203,7 @@ void handleLine(char *line) {
   }
 
   if (line[0] == 'B' && sscanf(line, "B %d %d %d %d", &first, &second, &third, &fourth) == 4) {
-    uint8_t nextProfile = constrain(first, 0, 3);
+    uint8_t nextProfile = constrain(first, 0, 4);
     uint8_t nextContinuous = constrain(second, 0, 127);
     uint8_t nextSwitch1 = constrain(third, 0, 127);
     uint8_t nextSwitch2 = constrain(fourth, 0, 127);

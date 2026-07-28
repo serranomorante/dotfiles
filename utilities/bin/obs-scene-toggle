@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+# Purpose: Toggle between two OBS program scenes through OBS WebSocket v5.
+
+import argparse
+import base64
+import hashlib
+import json
+import os
+import socket
+import ssl
+import struct
+import sys
+import urllib.parse
+
+GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+
+class ProtocolError(RuntimeError):
+    pass
+
+
+class WebSocket:
+    def __init__(self, url, timeout):
+        self.url = urllib.parse.urlparse(url)
+        self.timeout = timeout
+        self.sock = None
+
+    def connect(self):
+        if self.url.scheme not in ("ws", "wss"):
+            raise ProtocolError(f"unsupported WebSocket scheme: {self.url.scheme}")
+        host = self.url.hostname or "127.0.0.1"
+        port = self.url.port or (443 if self.url.scheme == "wss" else 4455)
+        path = self.url.path or "/"
+        if self.url.query:
+            path = f"{path}?{self.url.query}"
+
+        raw = socket.create_connection((host, port), timeout=self.timeout)
+        if self.url.scheme == "wss":
+            raw = ssl.create_default_context().wrap_socket(raw, server_hostname=host)
+        raw.settimeout(self.timeout)
+        self.sock = raw
+
+        key = base64.b64encode(os.urandom(16)).decode("ascii")
+        request = (
+            f"GET {path} HTTP/1.1\r\n"
+            f"Host: {host}:{port}\r\n"
+            "Upgrade: websocket\r\n"
+            "Connection: Upgrade\r\n"
+            f"Sec-WebSocket-Key: {key}\r\n"
+            "Sec-WebSocket-Version: 13\r\n\r\n"
+        )
+        self.sock.sendall(request.encode("ascii"))
+        response = self._recv_until(b"\r\n\r\n")
+        headers = response.decode("iso-8859-1", errors="replace").split("\r\n")
+        if not headers or " 101 " not in headers[0]:
+            raise ProtocolError(f"websocket handshake failed: {headers[0] if headers else 'empty response'}")
+
+        expected = base64.b64encode(hashlib.sha1((key + GUID).encode("ascii")).digest()).decode("ascii")
+        accept = ""
+        for header in headers[1:]:
+            name, sep, value = header.partition(":")
+            if sep and name.lower() == "sec-websocket-accept":
+                accept = value.strip()
+                break
+        if accept != expected:
+            raise ProtocolError("websocket handshake returned an invalid accept key")
+
+    def close(self):
+        if self.sock is None:
+            return
+        try:
+            self._send_frame(b"", 0x8)
+        except OSError:
+            pass
+        self.sock.close()
+        self.sock = None
+
+    def send_json(self, value):
+        payload = json.dumps(value, separators=(",", ":")).encode("utf-8")
+        self._send_frame(payload, 0x1)
+
+    def recv_json(self):
+        while True:
+            opcode, payload = self._recv_frame()
+            if opcode == 0x1:
+                return json.loads(payload.decode("utf-8"))
+            if opcode == 0x8:
+                raise ProtocolError("websocket closed")
+            if opcode == 0x9:
+                self._send_frame(payload, 0xA)
+
+    def _recv_until(self, marker):
+        data = b""
+        while marker not in data:
+            chunk = self.sock.recv(4096)
+            if not chunk:
+                break
+            data += chunk
+            if len(data) > 65536:
+                raise ProtocolError("websocket handshake response too large")
+        return data
+
+    def _recv_exact(self, size):
+        data = b""
+        while len(data) < size:
+            chunk = self.sock.recv(size - len(data))
+            if not chunk:
+                raise ProtocolError("websocket closed while reading frame")
+            data += chunk
+        return data
+
+    def _recv_frame(self):
+        first, second = self._recv_exact(2)
+        opcode = first & 0x0F
+        masked = second & 0x80
+        length = second & 0x7F
+        if length == 126:
+            length = struct.unpack("!H", self._recv_exact(2))[0]
+        elif length == 127:
+            length = struct.unpack("!Q", self._recv_exact(8))[0]
+        if length > 10 * 1024 * 1024:
+            raise ProtocolError(f"websocket frame too large: {length}")
+        mask = self._recv_exact(4) if masked else b""
+        payload = self._recv_exact(length)
+        if masked:
+            payload = bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
+        return opcode, payload
+
+    def _send_frame(self, payload, opcode):
+        header = bytearray([0x80 | opcode])
+        length = len(payload)
+        if length < 126:
+            header.append(0x80 | length)
+        elif length <= 65535:
+            header.append(0x80 | 126)
+            header.extend(struct.pack("!H", length))
+        else:
+            header.append(0x80 | 127)
+            header.extend(struct.pack("!Q", length))
+        mask = os.urandom(4)
+        masked = bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
+        self.sock.sendall(bytes(header) + mask + masked)
+
+
+def obs_auth(password, auth_data):
+    salt = auth_data.get("salt")
+    challenge = auth_data.get("challenge")
+    if not salt or not challenge:
+        raise ProtocolError("OBS requested authentication without salt/challenge")
+    secret = base64.b64encode(hashlib.sha256((password + salt).encode("utf-8")).digest()).decode("ascii")
+    return base64.b64encode(hashlib.sha256((secret + challenge).encode("utf-8")).digest()).decode("ascii")
+
+
+def identify(ws, password):
+    hello = ws.recv_json()
+    if hello.get("op") != 0:
+        raise ProtocolError("expected OBS Hello message")
+    data = hello.get("d") or {}
+    rpc_version = min(int(data.get("rpcVersion", 1)), 1)
+    auth_data = data.get("authentication")
+    identify_data = {"rpcVersion": rpc_version}
+    if auth_data:
+        if password is None:
+            raise ProtocolError("OBS WebSocket authentication is enabled; set OBS_WEBSOCKET_PASSWORD")
+        identify_data["authentication"] = obs_auth(password, auth_data)
+    ws.send_json({"op": 1, "d": identify_data})
+    reply = ws.recv_json()
+    if reply.get("op") != 2:
+        raise ProtocolError("OBS did not accept Identify")
+
+
+def request(ws, request_type, request_data=None):
+    request_id = f"obs-scene-toggle-{request_type}"
+    payload = {"requestType": request_type, "requestId": request_id}
+    if request_data is not None:
+        payload["requestData"] = request_data
+    ws.send_json({"op": 6, "d": payload})
+    while True:
+        reply = ws.recv_json()
+        if reply.get("op") != 7:
+            continue
+        data = reply.get("d") or {}
+        if data.get("requestId") != request_id:
+            continue
+        status = data.get("requestStatus") or {}
+        if not status.get("result"):
+            comment = status.get("comment") or status.get("code") or "request failed"
+            raise ProtocolError(f"OBS {request_type} failed: {comment}")
+        return data.get("responseData") or {}
+
+
+def scene_pair(raw, scenes):
+    if raw:
+        separator = "\t" if "\t" in raw else ","
+        pair = [item.strip() for item in raw.split(separator) if item.strip()]
+        if len(pair) != 2:
+            raise ProtocolError("OBS_SCENE_TOGGLE_SCENES must contain exactly two scene names")
+        return pair
+    if len(scenes) != 2:
+        raise ProtocolError("OBS must have exactly two scenes, or set OBS_SCENE_TOGGLE_SCENES='Scene A,Scene B'")
+    return scenes
+
+
+def toggle_scene(args):
+    ws = WebSocket(args.url, args.timeout)
+    ws.connect()
+    try:
+        identify(ws, args.password)
+        response = request(ws, "GetSceneList")
+        scenes = [scene.get("sceneName") for scene in response.get("scenes", []) if scene.get("sceneName")]
+        current = response.get("currentProgramSceneName")
+        first, second = scene_pair(args.scenes, scenes)
+        target = second if current == first else first
+        request(ws, "SetCurrentProgramScene", {"sceneName": target})
+        print(f"OBS scene: {current or 'UNKNOWN'} -> {target}")
+    finally:
+        ws.close()
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(description="Toggle between two OBS program scenes through OBS WebSocket v5.")
+    parser.add_argument("--url", default=os.environ.get("OBS_WEBSOCKET_URL", "ws://127.0.0.1:4455"))
+    parser.add_argument("--password", default=os.environ.get("OBS_WEBSOCKET_PASSWORD"))
+    parser.add_argument("--scenes", default=os.environ.get("OBS_SCENE_TOGGLE_SCENES"))
+    parser.add_argument("--timeout", type=float, default=float(os.environ.get("OBS_WEBSOCKET_TIMEOUT", "2")))
+    args = parser.parse_args(argv)
+    try:
+        toggle_scene(args)
+    except (OSError, ProtocolError, json.JSONDecodeError) as exc:
+        print(f"obs-scene-toggle: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

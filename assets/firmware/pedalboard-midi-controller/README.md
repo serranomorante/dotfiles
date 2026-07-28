@@ -29,6 +29,7 @@ Profiles are persisted in EEPROM and can be changed over the Arduino serial port
 profile piano
 profile guitar
 profile desktop
+profile obs-mouseless-setup
 status
 range 15 60
 range reset
@@ -51,6 +52,7 @@ pedalboard-midi-profile status
 pedalboard-midi-profile piano
 pedalboard-midi-profile guitar
 pedalboard-midi-profile desktop
+pedalboard-midi-profile obs-mouseless-setup
 pedalboard-midi-profile range 15 60
 pedalboard-midi-profile range reset
 ```
@@ -77,9 +79,17 @@ desktop:
   continuous -> CC4 foot controller, 0..127
   switch 1 -> CC80 action A, momentary 0/127
   switch 2 -> CC81 action B, momentary 0/127
+
+obs-mouseless-setup:
+  channel 15
+  continuous -> CC4 foot controller, 0..127
+  switch 1 -> CC80 OBS scene toggle, momentary 0/127
+  switch 2 -> CC81 auxiliary OBS action, momentary 0/127
 ```
 
-The `desktop` profile is intentionally still plain MIDI. A separate host-side action mapper should translate these events into microphone toggles, scripts, or window actions.
+The `desktop` and `obs-mouseless-setup` profiles are intentionally still plain MIDI. Separate host-side action mappers translate these events into microphone toggles, scripts, OBS scene changes, or window actions.
+
+Host-side action mapper profiles run as `pedalboard-midi-actions@<profile>.service` instances backed by `pedalboard-midi-actions.<profile>.tsv`; `pedalboard-midi-profile desktop` starts `@desktop`, `pedalboard-midi-profile obs-mouseless-setup` starts `@obs-mouseless-setup`, and instrument-only profiles stop the mapper instances.
 
 ## TFT feedback
 

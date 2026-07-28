@@ -13,6 +13,7 @@
 //   profile piano
 //   profile guitar
 //   profile desktop
+//   profile obs-mouseless-setup
 //   range <zero_percent> <full_percent>
 //   range reset
 //
@@ -69,6 +70,7 @@ const PedalMapping PROFILES[] = {
     {"piano", 0, 64, 66, 67, SWITCH_MOMENTARY, SWITCH_MOMENTARY},
     {"guitar", 1, 4, 80, 81, SWITCH_LATCH, SWITCH_LATCH},
     {"desktop", 15, 4, 80, 81, SWITCH_MOMENTARY, SWITCH_MOMENTARY},
+    {"obs-mouseless-setup", 14, 4, 80, 81, SWITCH_MOMENTARY, SWITCH_MOMENTARY},
 };
 
 const uint8_t PROFILE_COUNT = sizeof(PROFILES) / sizeof(PROFILES[0]);
@@ -430,7 +432,7 @@ void handleSerialLine(char *line) {
   }
 
   if (*line != '\0') {
-    Serial.println("error: expected status, profile <piano|guitar|desktop>, range <zero> <full>, or range reset");
+    Serial.println("error: expected status, profile <piano|guitar|desktop|obs-mouseless-setup>, range <zero> <full>, or range reset");
   }
 }
 

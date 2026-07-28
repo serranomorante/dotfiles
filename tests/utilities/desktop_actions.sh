@@ -6,6 +6,7 @@ set -euo pipefail
 # dotfiles-test-case: desktop-action-event-emits-dbus-signal
 # dotfiles-test-case: desktop-action-run-mic-toggle
 # dotfiles-test-case: desktop-action-run-screenshot
+# dotfiles-test-case: desktop-action-run-obs-scene-toggle
 # dotfiles-test-case: desktop-action-run-record-stop
 # dotfiles-test-case: desktop-action-run-monitor-toggle
 
@@ -104,6 +105,27 @@ SH
     rg -q '^-n$' "${DOTFILES_TEST_TMP}/spectacle.args"
     rg -q '^desktop.action START screenshot$' "${DOTFILES_TEST_TMP}/events.log"
     rg -q "^screenshot.capture SAVED ${screenshot_path}$" "${DOTFILES_TEST_TMP}/events.log"
+    ;;
+desktop-action-run-obs-scene-toggle)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    mkdir -p "$fake_bin"
+    cat >"${fake_bin}/obs-scene-toggle" <<'SH'
+#!/bin/sh
+printf 'obs toggled\n'
+SH
+    cat >"${fake_bin}/desktop-action-event" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" >>"$DESKTOP_ACTION_TEST_EVENT_LOG"
+SH
+    chmod +x "${fake_bin}/obs-scene-toggle" "${fake_bin}/desktop-action-event"
+
+    DESKTOP_ACTION_OBS_SCENE_TOGGLE="${fake_bin}/obs-scene-toggle" \
+      DESKTOP_ACTION_TEST_EVENT_LOG="${DOTFILES_TEST_TMP}/events.log" \
+      PATH="${fake_bin}:/usr/bin:/bin" \
+      "$run_script" obs-scene-toggle >"${DOTFILES_TEST_TMP}/obs.out"
+
+    rg -q '^obs toggled$' "${DOTFILES_TEST_TMP}/obs.out"
+    rg -q '^desktop.action START obs-scene-toggle$' "${DOTFILES_TEST_TMP}/events.log"
     ;;
 desktop-action-run-record-stop)
     fake_bin="${DOTFILES_TEST_TMP}/bin"

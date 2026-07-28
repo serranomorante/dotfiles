@@ -1181,8 +1181,8 @@ func clampPedalboardProfile(profile int) int {
 	if profile < 0 {
 		return 0
 	}
-	if profile > 3 {
-		return 3
+	if profile > 4 {
+		return 4
 	}
 	return profile
 }
@@ -1234,8 +1234,10 @@ func pedalboardProfileID(name string) (int, error) {
 		return 2, nil
 	case "desktop", "3":
 		return 3, nil
+	case "obs", "obs-mouseless-setup", "4":
+		return 4, nil
 	default:
-		return 0, fmt.Errorf("pedalboard profile must be unknown, piano, guitar, or desktop, got %q", name)
+		return 0, fmt.Errorf("pedalboard profile must be unknown, piano, guitar, desktop, or obs-mouseless-setup, got %q", name)
 	}
 }
 

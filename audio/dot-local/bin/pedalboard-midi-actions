@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Purpose: Map Pedalboard MIDI Controller CC events to local shell commands.
-# Usage: pedalboard-midi-actions [--list] [--port ALSA_PORT] [--config PATH] [--channel-base 0|1] [--dry-run]
+# Usage: pedalboard-midi-actions [--list] [--port ALSA_PORT] [--profile PROFILE] [--config PATH] [--channel-base 0|1] [--dry-run]
 
 set -euo pipefail
 
 prog=${0##*/}
-config=${PEDALBOARD_MIDI_ACTIONS_CONFIG:-"${XDG_CONFIG_HOME:-"$HOME/.config"}/dotfiles/pedalboard-midi-actions.tsv"}
+default_config="${XDG_CONFIG_HOME:-"$HOME/.config"}/dotfiles/pedalboard-midi-actions.desktop.tsv"
+config=${PEDALBOARD_MIDI_ACTIONS_CONFIG:-"$default_config"}
+config_explicit=0
+profile=${PEDALBOARD_MIDI_ACTIONS_PROFILE:-}
 port=${PEDALBOARD_MIDI_ACTIONS_ALSA_PORT:-}
 port_locked=0
 reconnect_delay=${PEDALBOARD_MIDI_RECONNECT_DELAY:-2}
@@ -30,7 +33,8 @@ The current pedalboard state is also published to keyboard-midi-controller for T
 Options:
   --list             List visible ALSA sequencer ports.
   --port PORT        Read a specific ALSA sequencer port, for example 28:0.
-  --config PATH      Read mappings from PATH. Default: $config
+  --profile PROFILE  Read mappings from pedalboard-midi-actions.PROFILE.tsv.
+  --config PATH      Read mappings from PATH. Default: $default_config
   --channel-base 0|1 Interpret aseqdump channels as zero- or one-based. Default: $channel_base
   --dry-run          Print matching commands instead of executing them.
   -h, --help         Show this help.
@@ -95,6 +99,13 @@ validate_shift_threshold() {
 
 validate_reconnect_delay() {
   [[ $reconnect_delay =~ ^[0-9]+$ ]] && [ "$reconnect_delay" -ge 1 ] && [ "$reconnect_delay" -le 60 ] || die "PEDALBOARD_MIDI_RECONNECT_DELAY must be 1-60 seconds"
+}
+
+resolve_config() {
+  [ -n "$profile" ] || return 0
+  [[ $profile =~ ^[A-Za-z0-9._-]+$ ]] || die "invalid profile name: $profile"
+  [ "$config_explicit" -eq 0 ] || return 0
+  config="${XDG_CONFIG_HOME:-"$HOME/.config"}/dotfiles/pedalboard-midi-actions.${profile}.tsv"
 }
 
 resolve_feedback_command() {
@@ -217,6 +228,18 @@ update_pedalboard_state() {
       ;;
     2:81)
       pedalboard_profile=guitar
+      pedalboard_switch2=$value
+      ;;
+    15:4)
+      pedalboard_profile=obs-mouseless-setup
+      pedalboard_continuous=$value
+      ;;
+    15:80)
+      pedalboard_profile=obs-mouseless-setup
+      pedalboard_switch1=$value
+      ;;
+    15:81)
+      pedalboard_profile=obs-mouseless-setup
       pedalboard_switch2=$value
       ;;
     16:4)
@@ -364,6 +387,12 @@ while [ "$#" -gt 0 ]; do
     --config)
       [ "$#" -ge 2 ] || die "--config requires a value"
       config=$2
+      config_explicit=1
+      shift 2
+      ;;
+    --profile)
+      [ "$#" -ge 2 ] || die "--profile requires a value"
+      profile=$2
       shift 2
       ;;
     --channel-base)
@@ -389,6 +418,7 @@ require_cmd aseqdump
 validate_channel_base
 validate_shift_threshold
 validate_reconnect_delay
+resolve_config
 load_config
 sync_initial_pedalboard_state
 run_listener_loop

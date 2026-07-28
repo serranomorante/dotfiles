@@ -1,0 +1,4 @@
+# CHANNEL CC EDGE COMMAND...
+# OBS mouseless setup uses the dedicated firmware profile on MIDI channel 15 and this
+# host-side action map so the normal desktop map remains unchanged.
+15 80 press desktop-action-run obs-scene-toggle

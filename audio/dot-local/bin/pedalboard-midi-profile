@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Purpose: Query or change the Arduino pedalboard MIDI profile over USB serial.
-# Usage: pedalboard-midi-profile [--port DEV] [status|piano|guitar|desktop|range ZERO FULL|range reset]
+# Usage: pedalboard-midi-profile [--port DEV] [--dry-run] [status|piano|guitar|desktop|obs-mouseless-setup|range ZERO FULL|range reset]
 
 set -euo pipefail
 
@@ -12,15 +12,20 @@ range_full=
 serial_timeout=${PEDALBOARD_MIDI_PROFILE_TIMEOUT_SECONDS:-3}
 serial_settle=${PEDALBOARD_MIDI_PROFILE_SETTLE_SECONDS:-1}
 feedback_command=${PEDALBOARD_MIDI_FEEDBACK_COMMAND:-}
+systemctl_command=${PEDALBOARD_MIDI_SYSTEMCTL_COMMAND:-systemctl}
+dry_run=0
+action_mapper_profiles=(desktop obs-mouseless-setup)
 
 usage() {
   cat <<EOF
-Usage: $prog [OPTIONS] [status|piano|guitar|desktop|range ZERO FULL|range reset]
+Usage: $prog [OPTIONS] [status|piano|guitar|desktop|obs-mouseless-setup|range ZERO FULL|range reset]
 
 Query or change the Arduino pedalboard MIDI profile and continuous range without reconnecting USB.
+Profiles with host actions also switch the pedalboard action mapper service.
 
 Options:
   --port DEV   Use a specific serial device.
+  --dry-run    Print the serial and systemd operations without running them.
   -h, --help   Show this help.
 
 Examples:
@@ -28,6 +33,7 @@ Examples:
   pedalboard-midi-profile piano
   pedalboard-midi-profile guitar
   pedalboard-midi-profile desktop
+  pedalboard-midi-profile obs-mouseless-setup
   pedalboard-midi-profile range 15 60
   pedalboard-midi-profile range reset
 EOF
@@ -92,12 +98,63 @@ publish_status() {
   "$command_path" pedalboard-state "$profile" "$value" 0 0 >/dev/null 2>&1 || true
 }
 
+run_systemctl_user() {
+  if [ "$dry_run" -eq 1 ]; then
+    printf 'systemctl --user'
+    printf ' %s' "$@"
+    printf '\n'
+    return 0
+  fi
+
+  command -v "$systemctl_command" >/dev/null 2>&1 || die "missing required command: $systemctl_command"
+  "$systemctl_command" --user "$@"
+}
+
+stop_systemctl_user() {
+  if [ "$dry_run" -eq 1 ]; then
+    run_systemctl_user stop "$@"
+    return 0
+  fi
+
+  run_systemctl_user stop "$@" >/dev/null 2>&1 || true
+}
+
+stop_action_mappers() {
+  local profile_unit
+  for profile_unit in "${action_mapper_profiles[@]}"; do
+    stop_systemctl_user "pedalboard-midi-actions@${profile_unit}.service"
+  done
+}
+
+activate_action_profile() {
+  local action_profile=$1
+
+  case "$action_profile" in
+    desktop)
+      stop_action_mappers
+      run_systemctl_user start pedalboard-midi-actions@desktop.service
+      ;;
+    obs-mouseless-setup)
+      stop_action_mappers
+      run_systemctl_user start pedalboard-midi-actions@obs-mouseless-setup.service
+      ;;
+    none)
+      stop_action_mappers
+      ;;
+  esac
+}
+
 run_serial_command() {
   local command=$1
   local line=
   local output=
   local status_line=
   local deadline=$((SECONDS + serial_timeout))
+
+  if [ "$dry_run" -eq 1 ]; then
+    printf 'serial %s\n' "$command"
+    return 0
+  fi
 
   [ -n "$port" ] || die "could not auto-detect Arduino Micro serial port; pass --port DEV"
   [ -e "$port" ] || die "serial port does not exist: $port"
@@ -138,11 +195,15 @@ while [ "$#" -gt 0 ]; do
       port=$2
       shift 2
       ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
       ;;
-    status|piano|guitar|desktop)
+    status|piano|guitar|desktop|obs-mouseless-setup)
       action=$1
       shift
       ;;
@@ -165,7 +226,7 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-if [ -z "$port" ]; then
+if [ "$dry_run" -eq 0 ] && [ -z "$port" ]; then
   port=$(detect_port | sed -n '1p')
 fi
 
@@ -173,8 +234,17 @@ case "$action" in
   status)
     run_serial_command status
     ;;
-  piano|guitar|desktop)
+  piano|guitar)
     run_serial_command "profile $action"
+    activate_action_profile none
+    ;;
+  desktop)
+    run_serial_command "profile desktop"
+    activate_action_profile desktop
+    ;;
+  obs-mouseless-setup)
+    run_serial_command "profile obs-mouseless-setup"
+    activate_action_profile obs-mouseless-setup
     ;;
   range)
     if [ "$range_zero" = reset ]; then

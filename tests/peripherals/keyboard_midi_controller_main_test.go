@@ -787,6 +787,21 @@ func TestControlFeedbackCommandsUpdateRenderers(t *testing.T) {
 	if got := tft.snapshot(); !reflect.DeepEqual(got, wantDesktopAction) {
 		t.Fatalf("desktop-action-state TFT events = %#v, want %#v", got, wantDesktopAction)
 	}
+
+	response = runControlCommand(t, d, "pedalboard-state obs-mouseless-setup 10 127 0\n")
+	if response != "ok\n" {
+		t.Fatalf("pedalboard-state obs response = %q, want ok", response)
+	}
+	wantOBS := []recordedTFTEvent{
+		{kind: "pad", channel: 9, note: 41, velocity: 90},
+		{kind: "cc", channel: 9, controller: 90, value: 6},
+		{kind: "pedalboard", profile: 3, continuous: 64, switch1: 127, switch2: 0},
+		{kind: "desktop-action", slot: 1, label: "MIC", actionValue: "MUTED"},
+		{kind: "pedalboard", profile: 4, continuous: 10, switch1: 127, switch2: 0},
+	}
+	if got := tft.snapshot(); !reflect.DeepEqual(got, wantOBS) {
+		t.Fatalf("pedalboard-state obs TFT events = %#v, want %#v", got, wantOBS)
+	}
 }
 
 func runControlCommand(t *testing.T, d *daemon, command string) string {

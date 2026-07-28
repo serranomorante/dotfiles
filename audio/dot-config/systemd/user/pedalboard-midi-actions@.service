@@ -1,0 +1,12 @@
+[Unit]
+Description=Pedalboard MIDI %i action mapper
+After=graphical-session.target
+
+[Service]
+EnvironmentFile=-%h/.config/dotfiles/pedalboard-midi-actions.%i.env
+ExecStart=%h/.local/bin/pedalboard-midi-actions --profile %i
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=graphical-session.target

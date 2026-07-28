@@ -254,7 +254,7 @@
 - name: handler_restart_pedalboard_midi_actions_service
   ansible.builtin.systemd_service:
     scope: user
-    name: pedalboard-midi-actions.service
+    name: pedalboard-midi-actions@desktop.service
     state: restarted
     daemon_reload: true
 
