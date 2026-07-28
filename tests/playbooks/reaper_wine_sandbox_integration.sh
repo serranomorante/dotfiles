@@ -75,6 +75,8 @@ make_fixture() {
         "$hidden" \
         "$musicplugins_prefix" \
         "$wine_prefix"
+    chmod a-w "$readonly"
+    chmod 000 "$hidden"
 
     cat >"$sandbox_profile" <<PROFILE
 quiet

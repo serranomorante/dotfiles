@@ -51,6 +51,8 @@ make_fixture() {
     sandbox_profile="${profile_dir}/sandbox.profile"
 
     mkdir -p "$profile_dir" "$visible" "$readonly" "$hidden" "$home/from-home" "$home/from-tilde" "$home/readonly-home"
+    chmod a-w "$readonly" "$home/readonly-home"
+    chmod 000 "$hidden"
 
     cat >"$sandbox_profile" <<PROFILE
 quiet

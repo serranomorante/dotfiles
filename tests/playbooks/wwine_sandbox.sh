@@ -80,6 +80,8 @@ make_fixture() {
         "$other_wine_prefix" \
         "${fixture}/fake-winever/bin" \
         "${fixture}/fake-system-wine/bin"
+    chmod a-w "$readonly"
+    chmod 000 "$hidden"
 
     cat >"$sandbox_profile" <<PROFILE
 quiet
@@ -547,6 +549,8 @@ wwine-serializes-parallel-named-sandbox-startup)
     ;;
 wwine-fails-closed-when-inherited-sandbox-does-not-match-profile)
     make_fixture
+    chmod u+w "$readonly"
+    chmod 755 "$hidden"
 
     if HOME="$home" XDG_RUNTIME_DIR="$runtime" PATH="${fixture}:/usr/bin:/bin" \
         firejail --quiet --profile="$writable_sandbox_profile" -- \

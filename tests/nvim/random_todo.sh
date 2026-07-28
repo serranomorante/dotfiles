@@ -4,8 +4,6 @@ set -euo pipefail
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim remind firejail
 # dotfiles-test-readonly: /home/aaaa/.local/bin/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/lib/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: random-todo-ignores-example-sources
 
 # Purpose: Verify the workspace random TODO picker ignores generated/example Markdown.

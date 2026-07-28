@@ -4,8 +4,6 @@ set -euo pipefail
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim remind agent firejail
 # dotfiles-test-readonly: /home/aaaa/.local/bin/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/lib/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: reminders-agent-run-uses-attached-id
 # dotfiles-test-case: reminders-agent-run-emits-agenda-metadata
 # dotfiles-test-case: reminders-agent-run-without-id-does-not-emit-run

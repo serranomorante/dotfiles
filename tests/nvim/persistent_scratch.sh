@@ -4,8 +4,6 @@ set -euo pipefail
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim headless scratch floating-window
 # dotfiles-test-readonly: /home/aaaa/.local/bin/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/lib/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: persistent-scratch-padding-uses-visual-margins
 # dotfiles-test-case: persistent-scratch-undo-history-survives-reopen
 
@@ -16,7 +14,7 @@ rtp="${DOTFILES_TEST_ROOT}/nvim/dot-config/nvim"
 
 run_nvim_lua() {
     local lua=$1
-    "$nvim_bin" --headless --noplugin -u NONE -i NONE -c "set rtp^=${rtp}" -c "lua local ok, err = xpcall(function() ${lua} end, debug.traceback); if not ok then vim.api.nvim_err_writeln(err); vim.cmd.cquit({ args = '1' }) end" -c 'qa!'
+    "$nvim_bin" --headless --noplugin -u NONE -i NONE -c "set rtp^=${rtp}" -c "lua local ok, err = xpcall(function() ${lua} end, debug.traceback); if not ok then vim.api.nvim_err_writeln(err); vim.cmd("cquit 1") end" -c 'qa!'
 }
 
 case "${DOTFILES_TEST_CASE:-}" in

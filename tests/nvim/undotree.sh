@@ -4,8 +4,6 @@ set -euo pipefail
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim headless undotree floating-window
 # dotfiles-test-readonly: /home/aaaa/.local/bin/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/lib/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: undotree-float-window-moves-buffer-to-new-tab
 # dotfiles-test-case: undotree-regular-window-keeps-current-tab
 

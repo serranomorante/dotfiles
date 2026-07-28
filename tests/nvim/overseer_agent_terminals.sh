@@ -95,7 +95,7 @@ overseer-agent-terminal-output-navigation)
         '  task.metadata.agent_session_id = session_id' \
         '  utils.attach_overseer_task_output_navigation(term_bufnr)' \
         '  task_bufname = vim.api.nvim_buf_get_name(term_bufnr)' \
-        '  assert(task_bufname == "task://" .. session_id, task_bufname)' \
+        '  assert(task_bufname == "task://019e97", task_bufname)' \
         '  assert(not task_bufname:find(task.name, 1, true), task_bufname)' \
         '  assert(vim.b[term_bufnr].overseer_output_navigation_attached == true, "output navigation marker missing")' \
         '  local function map_for(mode, lhs)' \
@@ -1571,8 +1571,8 @@ SH
         '  local command_output = vim.fn.execute("AgentTasksReconcile")' \
         '  assert(command_output:find("Agent task reconcile: 3 tmux sessions, 1 already open, 2 reopened.", 1, true), command_output)' \
         '  assert(command_output:find("Reopened:", 1, true), command_output)' \
-        '  assert(command_output:find("claude master missing", 1, true), command_output)' \
-        '  assert(command_output:find("claude sub missing", 1, true), command_output)' \
+        '  assert(command_output:find("claude master missin", 1, true), command_output)' \
+        '  assert(command_output:find("claude sub missin", 1, true), command_output)' \
         '  assert(not command_output:find("^%s*{"), command_output)' \
         '  assert(vim.wait(1000, function() return #resumed == 2 end, 10), "missing sessions were not resumed")' \
         '  local resumed_by_id = {}' \

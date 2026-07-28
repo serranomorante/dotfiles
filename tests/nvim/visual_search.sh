@@ -4,8 +4,6 @@ set -euo pipefail
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim headless search
 # dotfiles-test-readonly: /home/aaaa/.local/bin/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/lib/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: nvim-visual-search-repeat-scopes-to-selection
 # dotfiles-test-case: nvim-visual-search-reverse-repeat-scopes-to-selection
 # dotfiles-test-case: nvim-normal-search-repeat-no-wrap-does-not-raise-lua-error

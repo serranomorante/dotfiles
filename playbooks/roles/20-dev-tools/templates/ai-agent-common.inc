@@ -34,6 +34,10 @@ whitelist ${HOME}/.local/share/uv
 
 # Profile checker support for inherited MCP sandboxes.
 whitelist ${HOME}/bin/fj-profile-checker
+whitelist-ro ${HOME}/.config/firejail/ai-agent-common.inc
+whitelist-ro ${HOME}/.config/firejail/claude.profile
+whitelist-ro ${HOME}/.config/firejail/codex.profile
+whitelist-ro ${HOME}/.config/firejail/gemini.profile
 whitelist-ro ${HOME}/.local/share/firejail-wrapper/ai-agent-profiles
 
 # Keep sensitive host data hidden unless the launcher explicitly exposes a CWD

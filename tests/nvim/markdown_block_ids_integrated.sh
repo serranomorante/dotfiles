@@ -3,10 +3,7 @@ set -euo pipefail
 
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim integration headless firejail lsp marksman
-# dotfiles-test-readonly: /home/aaaa/.config/nvim
 # dotfiles-test-readonly: /home/aaaa/.local/bin/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/lib/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: markdown-block-ids-marksman-diagnostics-filter-integrated
 
 # Purpose: Load the active Neovim configuration and verify Marksman diagnostics

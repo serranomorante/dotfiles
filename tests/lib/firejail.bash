@@ -22,7 +22,16 @@ dotfiles_test_firejail_run() {
     local term_value=${TERM:-dumb}
     local errtrap_value="${repo_root}/tests/lib/errtrap.bash"
 
+    local nvim_runtime="${tmp_root}/nvim-runtime"
+
     mkdir -p "$home_dir" "$xdg_config" "$xdg_cache" "$xdg_data"
+    mkdir -p "$nvim_runtime/lua/vim" "$nvim_runtime/syntax"
+    printf 'return { levels = { TRACE = 0, DEBUG = 1, INFO = 2, WARN = 3, ERROR = 4, OFF = 5 } }\n' >"$nvim_runtime/lua/vim/log.lua"
+    printf 'return { select = function() end, input = function() end }\n' >"$nvim_runtime/lua/vim/ui.lua"
+    printf 'return { protocol = { Methods = { textDocument_definition = "textDocument/definition" } }, get_clients = function() return {} end }\n' >"$nvim_runtime/lua/vim/lsp.lua"
+    printf 'local Iter = {}; Iter.__index = Iter; function Iter:filter(fn) local out = {}; for _, v in ipairs(self.items) do if fn(v) then table.insert(out, v) end end; return setmetatable({ items = out }, Iter) end; function Iter:any(fn) for _, v in ipairs(self.items) do if fn(v) then return true end end; return false end; function Iter:all(fn) for _, v in ipairs(self.items) do if not fn(v) then return false end end; return true end; function Iter:find(fn) for _, v in ipairs(self.items) do if fn(v) then return v end end; return nil end; function Iter:totable() return self.items end; return function(items) return setmetatable({ items = items or {} }, Iter) end\n' >"$nvim_runtime/lua/vim/iter.lua"
+    : >"$nvim_runtime/syntax/manual.vim"
+    : >"$nvim_runtime/syntax/syntax.vim"
 
     if [[ "$firejail_mode" == "disabled" && -n "$readonly_paths" ]]; then
         printf 'dotfiles-test-readonly cannot be enforced when dotfiles-test-firejail is disabled\n' >&2
@@ -38,6 +47,7 @@ dotfiles_test_firejail_run() {
                 XDG_CACHE_HOME="$xdg_cache" \
                 XDG_DATA_HOME="$xdg_data" \
                 TMPDIR="$tmp_root" \
+                VIMRUNTIME="$nvim_runtime" \
                 PATH="$path_value" \
                 LANG="$lang_value" \
                 TERM="$term_value" \
@@ -94,6 +104,7 @@ dotfiles_test_firejail_run() {
             XDG_CACHE_HOME="$xdg_cache" \
             XDG_DATA_HOME="$xdg_data" \
             TMPDIR="$tmp_root" \
+            VIMRUNTIME="$nvim_runtime" \
             PATH="$path_value" \
             LANG="$lang_value" \
             TERM="$term_value" \

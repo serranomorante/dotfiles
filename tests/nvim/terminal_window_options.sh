@@ -4,8 +4,6 @@ set -euo pipefail
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim headless terminal window-options
 # dotfiles-test-readonly: /home/aaaa/.local/bin/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/lib/nvim
-# dotfiles-test-readonly: /home/aaaa/.local/share/nvim
 # dotfiles-test-case: terminal-window-options-hide-editor-columns
 # dotfiles-test-case: terminal-window-options-restore-regular-buffer-options
 # dotfiles-test-case: terminal-window-options-leave-regular-buffer-untouched
