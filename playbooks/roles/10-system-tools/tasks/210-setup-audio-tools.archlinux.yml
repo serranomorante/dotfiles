@@ -88,6 +88,22 @@
       - reaper
   notify: handler_ensure_rtirq_service
 
+- name: "[archlinux] Setup audio tools: mask global ALSA state services"
+  become: true
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    masked: true
+    state: stopped
+  loop:
+    - alsa-state.service
+    - alsa-restore.service
+
+- name: "[archlinux] Setup audio tools: remove global ALSA state file"
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/alsa/asound.state
+    state: absent
+
 - name: "[archlinux] Setup audio tools: prioritize USB IRQ handlers"
   become: true
   ansible.builtin.lineinfile:

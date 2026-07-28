@@ -2,6 +2,7 @@
 set -euo pipefail
 
 readonly CARD="${SCARLETT_ALSA_CARD:-Gen}"
+readonly STATE_FILE="${SCARLETT_ALSA_STATE_FILE:-$HOME/.config/alsa-scarlett-gui/default.state}"
 readonly WAIT_SECONDS="${SCARLETT_MONITORING_WAIT_SECONDS:-20}"
 readonly UNITY_VOLUME=160
 
@@ -32,6 +33,18 @@ cset() {
   local value=$2
 
   amixer -q -c "$CARD" cset "numid=${numid}" "$value"
+}
+
+restore_saved_state() {
+  [[ -r "$STATE_FILE" ]] || return 1
+
+  command -v alsactl >/dev/null 2>&1 || {
+    log 'missing required command: alsactl'
+    exit 1
+  }
+
+  alsactl -f "$STATE_FILE" restore "$CARD"
+  log "restored Scarlett ALSA state from $STATE_FILE"
 }
 
 configure_output_routes() {
@@ -65,6 +78,10 @@ main() {
   }
 
   wait_for_card
+  if restore_saved_state; then
+    return
+  fi
+
   configure_output_routes
   configure_monitoring_mixes
   log 'configured Scarlett direct monitoring for inputs 3 and 4'
