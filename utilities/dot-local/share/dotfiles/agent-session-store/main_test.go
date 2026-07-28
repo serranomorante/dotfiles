@@ -47,6 +47,38 @@ func TestContentTextBoundsArrayPrompts(t *testing.T) {
 	}
 }
 
+func TestParseCodexSessionAcceptsRepositoryRootForNestedCWD(t *testing.T) {
+	root := t.TempDir()
+	repo := filepath.Join(root, "repo")
+	nested := filepath.Join(repo, "playbooks")
+	sibling := filepath.Join(root, "other")
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(sibling, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	sessionPath := filepath.Join(root, "codex.jsonl")
+	lines := strings.Join([]string{
+		`{"type":"session_meta","payload":{"id":"019fa7f5-5780-7541-ad4a-debcfe7eda34","cwd":"` + repo + `","timestamp":"2026-07-28T09:01:41.636Z","originator":"codex-tui"}}`,
+		`{"type":"event_msg","payload":{"type":"user_message","message":"Investigate nested cwd linking"}}`,
+	}, "\n")
+	if err := os.WriteFile(sessionPath, []byte(lines), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if session := parseCodexSession(sessionPath, nested); session == nil {
+		t.Fatal("expected repo-root Codex session to match nested cwd")
+	}
+	if session := parseCodexSession(sessionPath, sibling); session != nil {
+		t.Fatalf("expected sibling cwd filter to reject session: %#v", session)
+	}
+}
+
 func TestParseGeminiJSONLSessionUsesProjectRoot(t *testing.T) {
 	root := t.TempDir()
 	cwd := filepath.Join(root, "repo")

@@ -599,6 +599,40 @@ func millisTimestamp(value any) string {
 	return time.Unix(0, int64(millis*float64(time.Millisecond))).UTC().Format("2006-01-02T15:04:05.000Z")
 }
 
+func pathIsAtOrInside(parent string, child string) bool {
+	parentAbs, err := filepath.Abs(parent)
+	if err != nil {
+		return false
+	}
+	childAbs, err := filepath.Abs(child)
+	if err != nil {
+		return false
+	}
+	if parentAbs == childAbs {
+		return true
+	}
+	rel, err := filepath.Rel(parentAbs, childAbs)
+	if err != nil {
+		return false
+	}
+	return rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
+}
+
+func hasGitMarker(path string) bool {
+	if path == "" {
+		return false
+	}
+	_, err := os.Stat(filepath.Join(path, ".git"))
+	return err == nil
+}
+
+func sessionMatchesCWD(provider string, requestedCWD string, sessionCWD string) bool {
+	if requestedCWD == "" || requestedCWD == sessionCWD {
+		return true
+	}
+	return provider == "codex" && sessionCWD != "" && hasGitMarker(sessionCWD) && pathIsAtOrInside(sessionCWD, requestedCWD)
+}
+
 func parseCodexSession(path string, cwd string) *session {
 	result := session{Provider: "codex", Path: path}
 	var promptSearch sessionSearchBuilder
@@ -640,7 +674,7 @@ func parseCodexSession(path string, cwd string) *session {
 	if result.ThreadSource == "subagent" {
 		return nil
 	}
-	if (cwd != "" && result.CWD != cwd) || result.ID == "" || result.Timestamp == "" || result.Originator != "codex-tui" {
+	if (cwd != "" && !sessionMatchesCWD("codex", cwd, result.CWD)) || result.ID == "" || result.Timestamp == "" || result.Originator != "codex-tui" {
 		return nil
 	}
 

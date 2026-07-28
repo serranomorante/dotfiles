@@ -141,6 +141,7 @@ overseer-agent-session-terminal-contract)
         '  assert(text:find("local function start_and_open_task_output", 1, true) ~= nil, "agent sessions should focus output after task:start()")' \
         '  assert(text:find("utils.schedule_open_overseer_task_output(task, { winid = start_win })", 1, true) ~= nil, "started task output should be focused in the source window")' \
         '  assert(text:find("open_task(provider, task, prompt, { wait_for_ready = true, start_win = start_win, open_output = false })", 1, true) ~= nil, "new/resumed tasks should delay output focus until after start")' \
+        '  assert(text:find([[local retry_known_session_ids = provider.name == "codex" and nil or known_session_ids]], 1, true) ~= nil, "Codex fallback linking must ignore possibly contaminated post-start known ids")' \
         '  assert(text:find("if not start_and_open_task_output(provider, task, start_win) then return end", 1, true) ~= nil, "new task flow should open only after a successful start")' \
         '  assert(text:find("vim%.cmd%.stopinsert") ~= nil, "terminal cleanup must use stopinsert")' \
         '  vim.cmd.qa({ bang = true })' \
@@ -1089,12 +1090,16 @@ while [ "$#" -gt 0 ]; do
         shift 2
         ;;
     ids)
-        printf '{"version":2,"provider":"%s","ids":["existing-elasticsearch-session"]}\n' "${provider:-codex}"
+        printf '{"version":2,"provider":"%s","ids":["existing-elasticsearch-session","renamed-session"]}\n' "${provider:-codex}"
         exit 0
         ;;
     watch-new)
         known_ids=${3:-}
         case "$known_ids" in
+        *renamed-session*)
+            printf '{"version":2,"provider":"%s","event":"timeout"}\n' "${provider:-codex}"
+            exit 0
+            ;;
         *existing-elasticsearch-session*) ;;
         *)
             printf '{"version":2,"provider":"%s","event":"timeout"}\n' "${provider:-codex}"
@@ -1110,7 +1115,8 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
-printf '{"version":2,"provider":"%s","sessions":[]}\n' "${provider:-codex}"
+now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '{"version":2,"provider":"%s","sessions":[{"provider":"%s","path":"%s/session.jsonl","id":"renamed-session","cwd":"%s","timestamp":"%s","updated_at":"%s","title":"renamed session"}]}\n' "${provider:-codex}" "${provider:-codex}" "${DOTFILES_TEST_TMP}" "${DOTFILES_TEST_TMP}" "$now" "$now"
 SH
     cat >"${fake_bin}/tmux" <<'SH'
 #!/bin/sh

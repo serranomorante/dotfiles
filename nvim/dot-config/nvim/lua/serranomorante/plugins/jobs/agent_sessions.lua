@@ -669,6 +669,30 @@ local function write_session_cache(provider, sessions)
   pcall(vim.fn.system, cmd, vim.json.encode(payload))
 end
 
+---@param parent string?
+---@param child string?
+---@return boolean
+local function path_is_at_or_inside(parent, child)
+  if type(parent) ~= "string" or parent == "" or type(child) ~= "string" or child == "" then return false end
+  parent = vim.fs.normalize(parent):gsub("/+$", "")
+  child = vim.fs.normalize(child):gsub("/+$", "")
+  if parent == child then return true end
+  return vim.startswith(child, parent .. "/")
+end
+
+---@param provider table
+---@param requested_cwd string?
+---@param session_cwd string?
+---@return boolean
+local function session_matches_cwd(provider, requested_cwd, session_cwd)
+  if type(requested_cwd) ~= "string" or requested_cwd == "" or requested_cwd == session_cwd then return true end
+  return provider.name == "codex"
+    and type(session_cwd) == "string"
+    and session_cwd ~= ""
+    and vim.uv.fs_stat(utils.join_paths(session_cwd, ".git")) ~= nil
+    and path_is_at_or_inside(session_cwd, requested_cwd)
+end
+
 ---@param provider table
 ---@param sessions AgentStoredSession[]?
 ---@param cwd? string
@@ -682,7 +706,9 @@ local function scoped_sessions(provider, sessions, cwd, opts)
   cwd = cwd or vim.fn.getcwd()
   local scoped = {}
   for _, session in ipairs(sessions) do
-    if session.provider == provider.name and session.cwd == cwd then table.insert(scoped, session) end
+    if session.provider == provider.name and session_matches_cwd(provider, cwd, session.cwd) then
+      table.insert(scoped, session)
+    end
   end
   return valid_sessions(scoped)
 end
@@ -1075,7 +1101,7 @@ local function unlinked_task_session_delta(provider, task, session, known_sessio
   if known_session_ids and known_session_ids[session.id] then return nil end
   if session.provider ~= provider.name then return nil end
   if not is_unlinked_plain_agent_task(provider, task) then return nil end
-  if task.cwd ~= session.cwd then return nil end
+  if not session_matches_cwd(provider, task.cwd, session.cwd) then return nil end
   if type(task.time_start) ~= "number" then return nil end
   if type(provider.session_epoch_seconds) ~= "function" then return nil end
 
@@ -1494,15 +1520,16 @@ end
 ---@param known_session_ids? table<string, true>
 local function link_new_task_to_session_id(provider, task, cwd, known_session_ids)
   known_session_ids = known_session_ids or {}
+  local retry_known_session_ids = provider.name == "codex" and nil or known_session_ids
 
   async_watch_new_session(provider, task, cwd, known_session_ids)
     :thenCall(function()
       if task_has_session_path(task) then return end
-      retry_link_task_until_session_path(provider, task, cwd, known_session_ids)
+      retry_link_task_until_session_path(provider, task, cwd, retry_known_session_ids)
     end)
     :catch(function(err)
       vim.notify(tostring(err), vim.log.levels.ERROR)
-      retry_link_task_until_session_path(provider, task, cwd, known_session_ids)
+      retry_link_task_until_session_path(provider, task, cwd, retry_known_session_ids)
     end)
 end
 
