@@ -16,6 +16,16 @@ local groups = {
   QuickFixLine = { ctermfg = "NONE", fg = "NONE", bg = bg == "NvimDark" and "#1e2e4a" or "#c1cee5" },
   LspInlayHint = { link = "CursorColumn" },
   TabLineSel = { fg = fg .. "Grey1", bg = bg .. "Grey2" },
+  CustomAgentSubTabLine = {
+    fg = background == "dark" and "White" or "Black",
+    bg = background == "dark" and "#3a2a00" or "#f0d56a",
+    bold = true,
+  },
+  CustomAgentSubTabLineSel = {
+    fg = background == "dark" and "White" or "Black",
+    bg = background == "dark" and "#5a4100" or "#d6a90f",
+    bold = true,
+  },
   Folded = { bg = bg .. "Grey3" },
   MatchParen = { bg = bg .. "Grey3" },
   Number = { fg = fg .. "Yellow" },

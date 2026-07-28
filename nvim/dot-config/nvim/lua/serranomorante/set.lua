@@ -104,6 +104,7 @@ vim.go.cmdheight = 1
 
 vim.cmd.syntax("manual")
 vim.cmd.colorscheme("default")
+require("serranomorante.tabline").setup()
 
 vim.filetype.get_option = utils.hijack_commentstring_get_option()
 

@@ -20,6 +20,7 @@ local TMUX_SESSION_CACHE_PREFIX = "agent-tmux-session-name-v1"
 local TMUX_SESSION_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60
 local SESSION_CACHE_GC_PAYLOAD_BYTES = 1024 * 1024
 local SESSION_TITLE_MAX_BYTES = 240
+local SESSION_ID_DISPLAY_CHARS = 6
 local SESSION_LINK_POLL_INTERVAL_MS = 500
 local SESSION_LINK_TIMEOUT_MS = 60 * 1000
 local SESSION_TITLE_TIMEOUT_MS = 10 * 60 * 1000
@@ -307,12 +308,22 @@ local function current_source_label()
   return ("%s:%s"):format(vim.fn.fnamemodify(bufname, ":~:."), line)
 end
 
+---@param session_id string?
+---@return string?
+local function short_session_id(session_id)
+  if type(session_id) ~= "string" or session_id == "" then return nil end
+  return session_id:sub(1, SESSION_ID_DISPLAY_CHARS)
+end
+
 ---@param provider table
 ---@param cwd string
 ---@param label? string
+---@param session_id? string
 ---@return string
-local function task_name(provider, cwd, label)
+local function task_name(provider, cwd, label, session_id)
   local name = provider.name .. ": " .. vim.fn.fnamemodify(cwd, ":t")
+  local short_id = short_session_id(session_id)
+  if short_id then name = ("%s [%s]"):format(name, short_id) end
   if label and label ~= "" then name = ("%s | %s"):format(name, label) end
   return ("%s | %s"):format(name, vim.fn.strftime("%H:%M"))
 end
@@ -840,8 +851,11 @@ end
 local function update_task_title(task, session)
   local provider = provider_by_name(session.provider)
   local title = normalized_session_title(session.title)
-  if type(title) ~= "string" or title == "" then return end
-  task.name = provider.name .. ": " .. title
+  if type(title) == "string" and title ~= "" then
+    task.name = ("%s: %s"):format(provider.name, M.session_display_title({ id = session.id, title = title }))
+    return
+  end
+  M.apply_task_display_name(task)
 end
 
 ---@param session AgentStoredSession
@@ -849,6 +863,36 @@ end
 local function session_display_title(session)
   if type(session.title) == "string" and session.title ~= "" then return session.title end
   return "Untitled session"
+end
+
+---@param session { id?: string, title?: string }
+---@return string
+function M.session_display_title(session)
+  local title = session_display_title(session)
+  local short_id = short_session_id(session and session.id)
+  if short_id then return ("[%s] %s"):format(short_id, title) end
+  return title
+end
+
+---@param task overseer.Task
+---@return string?
+function M.apply_task_display_name(task)
+  if type(task) ~= "table" or type(task.metadata) ~= "table" then return nil end
+  local provider_name = task.metadata[AGENT_PROVIDER_METADATA]
+  local session_id = task.metadata[AGENT_SESSION_ID_METADATA]
+  if type(provider_name) ~= "string" or not PROVIDERS[provider_name] then return nil end
+  if type(session_id) ~= "string" or session_id == "" then return nil end
+
+  local title = type(task.name) == "string" and task.name or ""
+  for _, prefix in ipairs({ provider_name .. ": ", provider_name .. " resume: " }) do
+    if title:sub(1, #prefix) == prefix then title = title:sub(#prefix + 1) end
+  end
+  title = title:gsub("^%[[%da-fA-F][%da-fA-F][%da-fA-F][%da-fA-F][%da-fA-F][%da-fA-F]%]%s+", "")
+  title = normalized_session_title(title) or "Untitled session"
+
+  local name = ("%s: %s"):format(provider_name, M.session_display_title({ id = session_id, title = title }))
+  task.name = name
+  return name
 end
 
 ---@param provider table
@@ -1507,7 +1551,7 @@ end
 local function format_session(session, include_cwd)
   local label = ("%s | %s"):format(
     format_timestamp(session.updated_at or session.timestamp),
-    session_display_title(session)
+    M.session_display_title(session)
   )
   if include_cwd then label = ("%s | %s"):format(label, vim.fn.fnamemodify(session.cwd, ":~")) end
   return label
@@ -1587,7 +1631,7 @@ local function resume_session(provider, session, prompt, start_win, opts)
   dispose_pending_task_for_session(provider, session)
 
   local task = require("overseer").new_task({
-    name = ("%s resume: %s"):format(provider.name, session_display_title(session)),
+    name = ("%s: %s"):format(provider.name, M.session_display_title(session)),
     cmd = tmux_cmd,
     args = tmux_args,
     cwd = session.cwd,
@@ -1837,7 +1881,7 @@ function M.open_new(provider_name, opts)
     if role == ROLE_SUB then metadata[AGENT_ROLE_METADATA] = ROLE_SUB end
 
     local task = require("overseer").new_task({
-      name = task_name(provider, cwd, label_or_source),
+      name = task_name(provider, cwd, label_or_source, preallocated_session_id),
       cmd = tmux_cmd,
       args = tmux_args,
       cwd = cwd,

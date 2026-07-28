@@ -132,8 +132,15 @@ local function opts()
       ---@param task overseer.Task
       render = function(task)
         local r = require("overseer.render")
-        local lines = r.format_standard(task)
         local is_agent = task.metadata and task.metadata.agent_provider ~= nil
+        if is_agent then
+          local ok_sessions, agent_sessions = pcall(require, "serranomorante.plugins.jobs.agent_sessions")
+          if ok_sessions and type(agent_sessions.apply_task_display_name) == "function" then
+            agent_sessions.apply_task_display_name(task)
+          end
+        end
+
+        local lines = r.format_standard(task)
         if not is_agent then return lines end
 
         local ok, agent_tasks = pcall(require, "serranomorante.plugins.jobs.agent_tasks")

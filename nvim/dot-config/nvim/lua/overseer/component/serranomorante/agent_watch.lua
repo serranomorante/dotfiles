@@ -66,7 +66,7 @@ local function notification_body(task, state)
   local metadata = task.metadata or {}
   local provider = tostring(metadata[PROVIDER_KEY] or "agent")
   local session_id = tostring(metadata[SESSION_ID_KEY] or "")
-  local sid = session_id ~= "" and session_id:sub(1, 8) or "pending"
+  local sid = session_id ~= "" and session_id:sub(1, 6) or "pending"
   return table.concat({
     ("State: %s"):format(state_label(state)),
     ("Task: %s"):format(truncate(task.name, 72)),

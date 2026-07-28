@@ -1741,7 +1741,20 @@ function M.name_overseer_task_output(task, bufnr)
   end
 
   local metadata = task.metadata or {}
-  local task_name = metadata.agent_session_id
+  local task_name
+  if type(metadata.agent_provider) == "string" then
+    pcall(function()
+      local agent_sessions = require("serranomorante.plugins.jobs.agent_sessions")
+      if type(agent_sessions.apply_task_display_name) == "function" then
+        agent_sessions.apply_task_display_name(task)
+      end
+    end)
+    task_name = compact_overseer_task_output_label(task.name)
+  end
+  if type(task_name) ~= "string" or task_name == "" then
+    local session_id = metadata.agent_session_id
+    if type(session_id) == "string" and session_id ~= "" then task_name = session_id:sub(1, 6) end
+  end
   if type(task_name) ~= "string" or task_name == "" then
     if metadata.shell_fence_task == true then task_name = ("shell-fenced %s"):format(task.id or bufnr) end
   end

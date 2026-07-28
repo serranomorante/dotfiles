@@ -117,6 +117,24 @@ end
 ---@return string
 local function role_badge(role) return role == ROLE_SUB and "SUB" or "MASTER" end
 
+---@param session_id string?
+---@return string?
+local function short_session_id(session_id)
+  if type(session_id) ~= "string" or session_id == "" then return nil end
+  return session_id:sub(1, 6)
+end
+
+---@param t overseer.Task
+---@return string
+local function task_display_name(t)
+  local ok, agent_sessions = pcall(require, "serranomorante.plugins.jobs.agent_sessions")
+  if ok and type(agent_sessions.apply_task_display_name) == "function" then
+    local name = agent_sessions.apply_task_display_name(t)
+    if type(name) == "string" and name ~= "" then return name end
+  end
+  return type(t.name) == "string" and t.name or ""
+end
+
 ---@param provider string?
 ---@return string[]
 local function prompt_markers_for_provider(provider)
@@ -222,7 +240,8 @@ local function task_summary(t)
     status = tostring(t.status),
     provider = task_provider(t),
     session_id = task_session_id(t),
-    name = t.name,
+    session_short_id = short_session_id(task_session_id(t)),
+    name = task_display_name(t),
     role = task_role(t),
     state = detect_state(task_provider(t), lines),
   }
@@ -259,7 +278,7 @@ function M.read(ref, n)
   local start = math.max(1, total - n + 1)
   local header = ("# task id=%s session=%s provider=%s role=%s state=%s status=%s\n# lines %d-%d of %d"):format(
     tostring(t.id),
-    tostring(task_session_id(t)),
+    short_session_id(task_session_id(t)) or "-",
     tostring(task_provider(t)),
     task_role(t),
     detect_state(task_provider(t), lines),
@@ -921,7 +940,7 @@ local function reconcile_session_lines(sessions)
     local provider = session.provider or "agent"
     local role = session.role == ROLE_SUB and ROLE_SUB or ROLE_MASTER
     local session_id = session.session_id or session.tmux_session_name or "unknown"
-    table.insert(lines, ("  - %s %s %s"):format(provider, role, tostring(session_id):sub(1, 8)))
+    table.insert(lines, ("  - %s %s %s"):format(provider, role, short_session_id(session_id) or "unknown"))
   end
   return lines
 end
@@ -1270,7 +1289,7 @@ function M.setup_commands()
           tostring(t.id),
           t.state or "?",
           t.provider or "-",
-          (t.session_id or "-"):sub(1, 8),
+          t.session_short_id or (t.session_id or "-"):sub(1, 6),
           t.name or ""
         )
       )
