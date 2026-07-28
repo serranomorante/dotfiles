@@ -27,6 +27,7 @@ agent_args=()
 exec_mode=0
 path_value=${PATH:-/usr/local/bin:/usr/bin:/bin}
 profile_path=$(firejail_profile_path "$real_home" "${agent}.profile")
+profile_checker_profile="${real_home}/.local/share/firejail-wrapper/ai-agent-profiles/${agent}.profile"
 forward_env=$'CODEX_THREAD_ID\nGEMINI_API_KEY\nANTHROPIC_API_KEY\nCLAUDE_CODE_USE_BEDROCK\nCLAUDE_CODE_USE_VERTEX\nOPENAI_API_KEY\nOPENAI_BASE_URL\nMCPHUB_PORT\nMCPHUB_CONFIG\nKITTY_LISTEN_ON\nNVIM\nAGENT_TASKS_NVIM'
 tmux_socket_dir="/tmp/tmux-$(id -u)"
 RW_PATHS=
@@ -171,7 +172,8 @@ mkdir -p \
     "$real_home/.local/state/gemini" \
     "$real_home/.local/share/gemini" \
     "$real_home/.local/state/mcp-hub" \
-    "$real_home/.local/share/mcp-hub"
+    "$real_home/.local/share/mcp-hub" \
+    "$real_home/.local/share/firejail-wrapper/ai-agent-profiles"
 touch "$real_home/.claude.json"
 
 init_firejail_args "$profile_path" "$network_mode"
@@ -187,7 +189,8 @@ append_env_literal PATH "$path_value"
 append_env_literal XDG_CACHE_HOME "${XDG_CACHE_HOME:-$real_home/.cache}"
 append_env_literal XDG_STATE_HOME "${XDG_STATE_HOME:-$real_home/.local/state}"
 append_env_literal XDG_DATA_HOME "${XDG_DATA_HOME:-$real_home/.local/share}"
-append_env_literal FJ_MCP_INHERITED_PROFILE "${FJ_MCP_INHERITED_PROFILE:-$profile_path}"
+append_env_literal FJ_MCP_INHERITED_PROFILE "${FJ_MCP_INHERITED_PROFILE:-$profile_checker_profile}"
+append_env_literal FJ_PROFILE_CHECKER_RW_PATHS "$RW_PATHS"
 append_env_names_if_set "$forward_env"
 append_env_names_if_set "${FJ_AI_AGENT_FORWARD_ENV:-}"
 

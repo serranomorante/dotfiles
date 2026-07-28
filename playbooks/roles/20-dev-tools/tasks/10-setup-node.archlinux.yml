@@ -29,10 +29,34 @@
     - fj-node-mcp.profile
     - fj-node-hypothesis.profile
 
+- name: "[archlinux] Setup node: ensure AI agent profile checker snapshot directory"
+  ansible.builtin.file:
+    path: "{{ ansible_facts.env.HOME }}/.local/share/firejail-wrapper/ai-agent-profiles"
+    state: directory
+    mode: "755"
+
+- name: "[archlinux] Setup node: install AI agent profile checker snapshots"
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "{{ ansible_facts.env.HOME }}/.local/share/firejail-wrapper/ai-agent-profiles/{{ item }}"
+    mode: "644"
+  loop:
+    - dev-tools-common.inc
+    - ai-agent-common.inc
+    - claude.profile
+    - codex.profile
+    - gemini.profile
+
 - name: "[archlinux] Setup node: install firejail wrapper helper"
   ansible.builtin.copy:
     src: firejail-wrapper-common.bash
     dest: "{{ node_user_bin_dir }}/firejail-wrapper-common.bash"
+    mode: "755"
+
+- name: "[archlinux] Setup node: install firejail profile checker"
+  ansible.builtin.copy:
+    src: fj-profile-checker
+    dest: "{{ node_user_bin_dir }}/fj-profile-checker"
     mode: "755"
 
 - name: "[archlinux] Setup node: ensure volta home exists"

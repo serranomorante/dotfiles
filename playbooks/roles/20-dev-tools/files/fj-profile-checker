@@ -43,7 +43,58 @@ assert_visible() {
 
 assert_readonly() {
     path=$1
+    resolved_path=$(readlink -f "$path" 2>/dev/null || printf '%s\n' "$path")
+    is_dynamic_rw_path "$path" && return 0
+    is_dynamic_rw_path "$resolved_path" && return 0
+    is_mounted_readonly "$path" && return 0
+    is_mounted_readonly "$resolved_path" && return 0
     [ ! -w "$path" ] || die "sandbox exposes read-only path as writable: $path"
+}
+
+is_mounted_readonly() {
+    path=$1
+    awk -v target="$path" '
+        function unescape_mount_path(value) {
+            gsub(/\\040/, " ", value)
+            gsub(/\\011/, "\t", value)
+            gsub(/\\012/, "\n", value)
+            gsub(/\\134/, "\\", value)
+            return value
+        }
+        {
+            mountpoint = unescape_mount_path($5)
+            if (target == mountpoint || index(target, mountpoint "/") == 1) {
+                if (length(mountpoint) > best_length) {
+                    best_length = length(mountpoint)
+                    best_options = $6
+                }
+            }
+        }
+        END {
+            split(best_options, options, ",")
+            for (i in options) {
+                if (options[i] == "ro") {
+                    exit 0
+                }
+            }
+            exit 1
+        }
+    ' /proc/self/mountinfo
+}
+
+is_dynamic_rw_path() {
+    path=$1
+    while IFS= read -r root || [ -n "$root" ]; do
+        [ -n "$root" ] || continue
+        case "$path" in
+        "$root" | "$root"/*)
+            return 0
+            ;;
+        esac
+    done <<EOF
+${FJ_PROFILE_CHECKER_RW_PATHS:-}
+EOF
+    return 1
 }
 
 canonicalize_file() {

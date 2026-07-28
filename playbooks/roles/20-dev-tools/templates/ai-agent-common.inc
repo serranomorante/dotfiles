@@ -15,6 +15,7 @@ whitelist-ro ${HOME}/dotfiles/utilities
 whitelist-ro ${HOME}/dotfiles/for-my-eyes-only
 whitelist-ro ${HOME}/.config/git
 whitelist-ro ${HOME}/.gitconfig
+whitelist-ro ${HOME}/.cache/ms-playwright
 whitelist ${HOME}/.config/gcloud
 whitelist-ro ${HOME}/data/apps/dev-tools/ai-tools
 
@@ -33,11 +34,7 @@ whitelist ${HOME}/.local/share/uv
 
 # Profile checker support for inherited MCP sandboxes.
 whitelist ${HOME}/bin/fj-profile-checker
-whitelist-ro ${HOME}/.config/firejail/ai-agent-common.inc
-whitelist-ro ${HOME}/.config/firejail/dev-tools-common.inc
-whitelist-ro ${HOME}/.config/firejail/claude.profile
-whitelist-ro ${HOME}/.config/firejail/codex.profile
-whitelist-ro ${HOME}/.config/firejail/gemini.profile
+whitelist-ro ${HOME}/.local/share/firejail-wrapper/ai-agent-profiles
 
 # Keep sensitive host data hidden unless the launcher explicitly exposes a CWD
 # or extra path that contains it.

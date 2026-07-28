@@ -10,6 +10,7 @@ dbus-user none
 whitelist-ro ${HOME}/.volta
 whitelist-ro ${HOME}/.local/bin
 whitelist-ro ${HOME}/bin
+whitelist-ro ${HOME}/.cache/ms-playwright
 
 # Writable host cache and state used by node tooling.
 whitelist ${HOME}/.cache/firejail-wrapper/node

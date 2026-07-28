@@ -33,6 +33,7 @@ Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 - Treat new tools/installers/package registries as supply-chain risk. Prefer reproducible package ownership and repository Firejail wrappers (`ansible-firejail-*`, `fj-py`, `fj-node`) when practical; document exceptions.
 - Prefer updating all repository-owned callers over adding compatibility shims, unless an external consumer or explicit migration window exists.
 - Encode durable maintenance steps in Ansible/handlers when possible. Ask before direct one-time active-system cleanup.
+- When applying workstation Ansible from an agent session, limit the inventory to localhost with `-l localhost` unless the user explicitly asks to target other hosts.
 - Local Go helpers should be built by Ansible into final command paths; avoid self-compiling wrappers unless they provide real runtime behavior.
 - For patched upstream checkouts, gate clone/patch/build behind versioned central markers and bump marker contracts when local patch behavior changes.
 - Add durable conventions/workflows to focused docs when they will help future work, but keep startup context compact.
