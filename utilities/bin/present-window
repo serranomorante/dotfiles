@@ -1,9 +1,11 @@
 #!/usr/bin/env sh
 # Purpose: Mirror selected existing X11 windows through x11vnc and noVNC.
-# Usage: present-window [toggle|start|stop|open|status|add|remove|toggle-window|clear|select|desktop] [WINDOWID]
+# Usage: present-window [toggle|toggle-background|start|stop|open|status|add|remove|toggle-window|clear|select|desktop] [WINDOWID]
 # Notes: The noVNC tab follows the focused window only when that window is in the selected set.
 #        "desktop" bypasses the window filter and mirrors the whole screen (all
 #        windows), reusing the same quality knobs (profile/scale/wait/defer).
+#        Use DOTFILES_PRESENT_WINDOW_PROFILE=performance for smoother motion
+#        during local browser-to-Meet screen sharing.
 
 set -eu
 
@@ -16,31 +18,55 @@ low)
     default_wait_ms=90
     default_defer_ms=35
     default_scale=1/2
+    default_active_poll_ms=500
+    default_cursor_transport=paint
     ;;
 medium)
     default_wait_ms=35
     default_defer_ms=15
     default_scale=1/2
+    default_active_poll_ms=500
+    default_cursor_transport=paint
     ;;
 balanced)
     default_wait_ms=45
     default_defer_ms=20
     default_scale=3/4
+    default_active_poll_ms=500
+    default_cursor_transport=paint
     ;;
 quality)
     default_wait_ms=20
     default_defer_ms=10
     default_scale=1
+    default_active_poll_ms=500
+    default_cursor_transport=paint
+    ;;
+performance)
+    default_wait_ms=8
+    default_defer_ms=2
+    default_scale=1
+    default_active_poll_ms=100
+    default_cursor_transport=paint
     ;;
 *)
-    printf 'present-window: invalid DOTFILES_PRESENT_WINDOW_PROFILE=%s; expected low, medium, balanced, or quality\n' "$profile" >&2
+    printf 'present-window: invalid DOTFILES_PRESENT_WINDOW_PROFILE=%s; expected low, medium, balanced, quality, or performance\n' "$profile" >&2
     exit 2
     ;;
 esac
 wait_ms="${DOTFILES_PRESENT_WINDOW_WAIT_MS:-$default_wait_ms}"
 defer_ms="${DOTFILES_PRESENT_WINDOW_DEFER_MS:-$default_defer_ms}"
 scale="${DOTFILES_PRESENT_WINDOW_SCALE:-$default_scale}"
-active_poll_ms="${DOTFILES_PRESENT_WINDOW_ACTIVE_POLL_MS:-500}"
+active_poll_ms="${DOTFILES_PRESENT_WINDOW_ACTIVE_POLL_MS:-$default_active_poll_ms}"
+cursor_transport="${DOTFILES_PRESENT_WINDOW_CURSOR:-$default_cursor_transport}"
+case "$cursor_transport" in
+paint | remote)
+    ;;
+*)
+    printf 'present-window: invalid DOTFILES_PRESENT_WINDOW_CURSOR=%s; expected paint or remote\n' "$cursor_transport" >&2
+    exit 2
+    ;;
+esac
 idle_mode="${DOTFILES_PRESENT_WINDOW_IDLE:-last}"
 capture_mode="${DOTFILES_PRESENT_WINDOW_CAPTURE_MODE:-window}"
 view_only="${DOTFILES_PRESENT_WINDOW_VIEW_ONLY:-1}"
@@ -55,6 +81,7 @@ pid_file="${state_dir}/server.pid"
 web_pid_file="${state_dir}/websockify.pid"
 vnc_pid_file="${state_dir}/x11vnc.pid"
 current_target_file="${state_dir}/current-target"
+config_file="${state_dir}/config"
 windows_file="${state_dir}/windows"
 last_window_file="${state_dir}/last-window"
 log_file="${state_dir}/present-window.log"
@@ -81,7 +108,7 @@ die() {
 }
 
 usage() {
-    printf '%s\n' 'usage: present-window [toggle|start|stop|open|status|add|remove|toggle-window|clear|select|desktop] [WINDOWID]'
+    printf '%s\n' 'usage: present-window [toggle|toggle-background|start|stop|open|status|add|remove|toggle-window|clear|select|desktop] [WINDOWID]'
 }
 
 need_command() {
@@ -215,6 +242,7 @@ server_env_args() {
         "DOTFILES_PRESENT_WINDOW_DEFER_MS=$defer_ms" \
         "DOTFILES_PRESENT_WINDOW_SCALE=$scale" \
         "DOTFILES_PRESENT_WINDOW_ACTIVE_POLL_MS=$active_poll_ms" \
+        "DOTFILES_PRESENT_WINDOW_CURSOR=$cursor_transport" \
         "DOTFILES_PRESENT_WINDOW_WINDOWS_FILE=$windows_file" \
         "DOTFILES_PRESENT_WINDOW_LAST_FILE=$last_window_file" \
         "DOTFILES_PRESENT_WINDOW_LOG=$log_file" \
@@ -226,6 +254,38 @@ server_env_args() {
         "DOTFILES_PRESENT_WINDOW_WEB_PID_FILE=$web_pid_file" \
         "DOTFILES_PRESENT_WINDOW_VNC_PID_FILE=$vnc_pid_file" \
         "DOTFILES_PRESENT_WINDOW_CURRENT_TARGET_FILE=$current_target_file"
+}
+
+server_config() {
+    printf '%s\n' \
+        "profile=$profile" \
+        "wait_ms=$wait_ms" \
+        "defer_ms=$defer_ms" \
+        "scale=$scale" \
+        "active_poll_ms=$active_poll_ms" \
+        "cursor=$cursor_transport" \
+        "idle=$idle_mode" \
+        "view_only=$view_only" \
+        "resize=$resize_mode" \
+        "novnc_path=$novnc_path"
+}
+
+server_config_matches() {
+    [ -r "$config_file" ] || return 1
+    [ "$(server_config)" = "$(cat "$config_file")" ]
+}
+
+server_config_summary() {
+    if [ -r "$config_file" ]; then
+        summary=
+        while IFS= read -r config_line; do
+            [ -n "$config_line" ] || continue
+            summary="${summary} ${config_line}"
+        done <"$config_file"
+        printf '%s\n' "$summary"
+    else
+        printf ' profile=%s wait_ms=%s defer_ms=%s scale=%s cursor=%s\n' "$profile" "$wait_ms" "$defer_ms" "$scale" "$cursor_transport"
+    fi
 }
 
 wait_until_running() {
@@ -317,10 +377,9 @@ start_x11vnc() {
 
     [ "$target" = none ] && return 0
 
-    # Paint the pointer into the framebuffer (-nocursorshape/-nocursorpos)
-    # instead of sending it as a separate cursor-shape layer. noVNC would
-    # otherwise render that layer as the browser's local CSS cursor, which is
-    # invisible on touch devices that have no hovering pointer.
+    # "paint" keeps the cursor visible in touch/recording contexts. "remote"
+    # lets noVNC update cursor movement separately from framebuffer updates,
+    # which feels smoother when sharing the preview from a desktop browser.
     set -- x11vnc \
         -display "${DISPLAY:-:0}" \
         -rfbport "$vnc_port" \
@@ -331,10 +390,12 @@ start_x11vnc() {
         -nopw \
         -quiet \
         -cursor most \
-        -nocursorshape \
-        -nocursorpos \
         -wait "$wait_ms" \
         -defer "$defer_ms"
+
+    if [ "$cursor_transport" = paint ]; then
+        set -- "$@" -nocursorshape -nocursorpos
+    fi
 
     case "$scale" in
     1 | 1.0)
@@ -348,7 +409,7 @@ start_x11vnc() {
         set -- "$@" -id "$target"
     fi
 
-    printf 'starting x11vnc target=%s display=%s web_port=%s vnc_port=%s\n' "$target" "${DISPLAY:-:0}" "$port" "$vnc_port" >>"$log_file"
+    printf 'starting x11vnc target=%s display=%s web_port=%s vnc_port=%s profile=%s wait_ms=%s defer_ms=%s scale=%s cursor=%s\n' "$target" "${DISPLAY:-:0}" "$port" "$vnc_port" "$profile" "$wait_ms" "$defer_ms" "$scale" "$cursor_transport" >>"$log_file"
     "$@" >>"$log_file" 2>&1 &
     printf '%s\n' "$!" >"$vnc_pid_file"
     printf '%s\n' "$target" >"$current_target_file"
@@ -360,12 +421,13 @@ server_main() {
     need_command xdotool
     mkdir -p "$state_dir"
     touch "$windows_file" "$log_file"
+    server_config >"$config_file"
     printf '%s\n' "$$" >"$pid_file"
 
     cleanup() {
         stop_pid_file "$vnc_pid_file"
         stop_pid_file "$web_pid_file"
-        rm -f "$pid_file" "$current_target_file"
+        rm -f "$pid_file" "$current_target_file" "$config_file"
         exit 0
     }
     trap cleanup HUP INT TERM
@@ -392,11 +454,13 @@ start_server() {
     mkdir -p "$state_dir"
     touch "$windows_file"
 
-    if running; then
+    if running && server_config_matches; then
         if [ "$should_open" = "1" ]; then
             open_tab
         fi
         return 0
+    elif running; then
+        stop_server
     fi
 
     if command -v systemd-run >/dev/null 2>&1; then
@@ -428,13 +492,14 @@ stop_server() {
     pid="$(server_pid 2>/dev/null)" || {
         stop_pid_file "$vnc_pid_file"
         stop_pid_file "$web_pid_file"
+        rm -f "$config_file"
         return 0
     }
     kill "$pid" >/dev/null 2>&1 || true
     wait "$pid" 2>/dev/null || true
     stop_pid_file "$vnc_pid_file"
     stop_pid_file "$web_pid_file"
-    rm -f "$pid_file" "$current_target_file"
+    rm -f "$pid_file" "$current_target_file" "$config_file"
 }
 
 server_capture_mode() {
@@ -529,7 +594,8 @@ present_desktop() {
 status_server() {
     if running; then
         target="$(cat "$current_target_file" 2>/dev/null || printf 'none')"
-        printf 'running url=%s target=%s bind=%s web_port=%s vnc_port=%s profile=%s mode=%s\n' "$url" "$target" "$bind_host" "$port" "$vnc_port" "$profile" "$(server_capture_mode)"
+        config_summary="$(server_config_summary)"
+        printf 'running url=%s target=%s bind=%s web_port=%s vnc_port=%s mode=%s%s\n' "$url" "$target" "$bind_host" "$port" "$vnc_port" "$(server_capture_mode)" "$config_summary"
     else
         printf 'stopped url=%s\n' "$url"
     fi
@@ -545,6 +611,13 @@ toggle)
         stop_server
     else
         start_server 1
+    fi
+    ;;
+toggle-background)
+    if running; then
+        stop_server
+    else
+        start_server 0
     fi
     ;;
 start)

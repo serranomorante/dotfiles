@@ -52,6 +52,10 @@ notify_keyd_action() {
     fi
 }
 
+run_present_window() {
+    DOTFILES_PRESENT_WINDOW_PROFILE="${DOTFILES_PRESENT_WINDOW_PROFILE:-performance}" "$present_window" "$@"
+}
+
 next_warpd_generation() {
     mkdir -p "$state_dir" || return 1
     warpd_generation=$((warpd_generation + 1))
@@ -129,14 +133,14 @@ run_toggle_display_layout() {
 }
 
 run_open_present_window() {
-    output="$("$present_window" open 2>&1)"
+    output="$(run_present_window toggle-background 2>&1)"
     rc="$?"
 
     if [ "$rc" -ne 0 ]; then
-        logger -t keyd-observer "present-window open failed with rc=$rc: $output"
+        logger -t keyd-observer "present-window toggle-background failed with rc=$rc: $output"
         notify_keyd_action "Present window" "Error: $output" critical
     elif [ -n "$output" ]; then
-        logger -t keyd-observer "present-window open: $output"
+        logger -t keyd-observer "present-window toggle-background: $output"
     fi
 
     return "$rc"
@@ -171,7 +175,7 @@ run_open_vim_register_picker() {
 }
 
 run_toggle_present_window() {
-    output="$("$present_window" toggle-window 2>&1)"
+    output="$(run_present_window toggle-window 2>&1)"
     rc="$?"
 
     if [ "$rc" -ne 0 ]; then

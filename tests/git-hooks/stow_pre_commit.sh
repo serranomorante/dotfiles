@@ -5,6 +5,7 @@ set -euo pipefail
 # dotfiles-test-tags: git stow hooks firejail
 # dotfiles-test-case: stow-pre-commit-allows-linked-new-file
 # dotfiles-test-case: stow-pre-commit-blocks-unlinked-new-file
+# dotfiles-test-case: stow-pre-commit-allows-linked-new-file-when-package-has-conflict
 # dotfiles-test-case: dotfiles-stow-help-documents-check-mode
 # dotfiles-test-case: dotfiles-stow-recreate-switches-stow-dir
 # dotfiles-test-case: dotfiles-stow-recreate-finds-current-stow-dir
@@ -20,6 +21,7 @@ make_fixture_repo() {
         "${repo}/playbooks/roles/10-system-tools/defaults/main" \
         "${repo}/pkg/dot-config/app"
 
+    printf '%s\n' "base" >"${repo}/pkg/dot-config/app/name"
     cp "${DOTFILES_TEST_ROOT}/utilities/git-hooks/pre-commit" "${repo}/utilities/git-hooks/pre-commit"
     cp "${DOTFILES_TEST_ROOT}/utilities/git-hooks/lib/stow-check" "${repo}/utilities/git-hooks/lib/stow-check"
     chmod +x "${repo}/utilities/git-hooks/pre-commit"
@@ -43,7 +45,7 @@ YAML
     git -C "$repo" config user.email test@example.invalid
     git -C "$repo" config user.name "Dotfiles Test"
     git -C "$repo" config core.hooksPath utilities/git-hooks
-    git -C "$repo" add utilities playbooks
+    git -C "$repo" add utilities playbooks pkg
     git -C "$repo" commit -q --no-verify -m "test: base"
 }
 
@@ -119,6 +121,21 @@ stow-pre-commit-blocks-unlinked-new-file)
 
     rg -q "pkg/dot-config/app/unlinked" "$output"
     rg -q "dotfiles-stow pkg" "$output"
+    ;;
+stow-pre-commit-allows-linked-new-file-when-package-has-conflict)
+    repo="${DOTFILES_TEST_TMP}/repo"
+    home="${DOTFILES_TEST_TMP}/home"
+    output="${DOTFILES_TEST_TMP}/commit.out"
+    mkdir -p "$home/.config/app"
+    make_fixture_repo "$repo"
+
+    printf '%s\n' "host-owned" >"$home/.config/app/name"
+    printf '%s\n' "linked despite package conflict" >"$repo/pkg/dot-config/app/linked-after-conflict"
+    ln -s "../../../repo/pkg/dot-config/app/linked-after-conflict" "$home/.config/app/linked-after-conflict"
+    run_commit "$repo" "$home" add pkg/dot-config/app/linked-after-conflict
+    run_commit "$repo" "$home" commit -q -m "test: linked file with unrelated package conflict" >"$output" 2>&1
+
+    rg -q "falling back to direct checks" "$output"
     ;;
 dotfiles-stow-help-documents-check-mode)
     template="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/dotfiles-stow"

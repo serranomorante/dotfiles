@@ -127,6 +127,27 @@ dotfiles_stow_check_link_is_pending() {
     ' "$output_file"
 }
 
+dotfiles_stow_check_target_rel_for_source_path() {
+    path=$1
+    source_rel=${path#*/}
+
+    printf '%s\n' "$source_rel" | sed 's#^dot-#.#; s#/dot-#/.#g'
+}
+
+dotfiles_stow_check_target_points_to_source() {
+    source_path=$1
+    source_abs=$DOTFILES_STOW_CHECK_DIR/$source_path
+    target_rel=$(dotfiles_stow_check_target_rel_for_source_path "$source_path")
+    target_abs=$DOTFILES_STOW_CHECK_TARGET/$target_rel
+
+    [ -L "$target_abs" ] || return 1
+
+    source_real=$(readlink -f "$source_abs" 2>/dev/null) || return 1
+    target_real=$(readlink -f "$target_abs" 2>/dev/null) || return 1
+
+    [ "$target_real" = "$source_real" ]
+}
+
 dotfiles_stow_check_collect_args() {
     paths_file=$1
     shift
@@ -245,9 +266,12 @@ dotfiles_stow_check_main() {
         if ! dotfiles_stow_check_run_stow "$package" "$output_file" "$args_file"; then
             printf '%s\n' "dotfiles-stow: cannot verify package '$package' because Stow reported conflicts:" >&2
             sed 's/^/  /' "$output_file" >&2
+            printf '%s\n' "dotfiles-stow: falling back to direct checks for newly added files in package '$package'" >&2
             awk -F '\t' -v package="$package" '$1 == package { print }' "$prepared_file" | while IFS='	' read -r _package path; do
-                printf '%s\t%s\n' "$package" "$path" >>"$failed_file"
-                printf '%s\n' "$package" >>"$failed_packages_file"
+                if ! dotfiles_stow_check_target_points_to_source "$path"; then
+                    printf '%s\t%s\n' "$package" "$path" >>"$failed_file"
+                    printf '%s\n' "$package" >>"$failed_packages_file"
+                fi
             done
             continue
         fi
