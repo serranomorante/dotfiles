@@ -146,6 +146,20 @@ run_open_present_window() {
     return "$rc"
 }
 
+run_open_present_desktop() {
+    output="$(run_present_window toggle-desktop-background 2>&1)"
+    rc="$?"
+
+    if [ "$rc" -ne 0 ]; then
+        logger -t keyd-observer "present-window toggle-desktop-background failed with rc=$rc: $output"
+        notify_keyd_action "Present desktop" "Error: $output" critical
+    elif [ -n "$output" ]; then
+        logger -t keyd-observer "present-window toggle-desktop-background: $output"
+    fi
+
+    return "$rc"
+}
+
 run_open_snippets_picker() {
     output="$("$snippets_picker" 2>&1)"
     rc="$?"
@@ -352,6 +366,11 @@ keyd listen | while read x; do
     +signal_open_present_window)
         keyd do $leave_mouseless_mode &
         run_open_present_window >/dev/null 2>&1 &
+        ;;
+
+    +signal_open_present_desktop)
+        keyd do $leave_mouseless_mode &
+        run_open_present_desktop >/dev/null 2>&1 &
         ;;
 
     +signal_toggle_present_window)
