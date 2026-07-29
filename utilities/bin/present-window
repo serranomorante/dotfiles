@@ -636,7 +636,7 @@ toggle)
     ;;
 toggle-background)
     if running; then
-        stop_server
+        clear_windows
     else
         start_server 0
     fi
