@@ -163,6 +163,15 @@ local function speed_for_value(value)
     + (options.max_lines_per_second - options.min_lines_per_second) * (normalized ^ options.curve)
 end
 
+local function configure_ui()
+  vim.o.showtabline = 0
+  vim.o.laststatus = 0
+  vim.o.cmdheight = 0
+  vim.o.ruler = false
+  vim.o.showcmd = false
+  vim.o.showmode = false
+end
+
 local function configure_window(win)
   if not valid_window(win) then return end
 
@@ -306,6 +315,7 @@ function M.start()
   state.accumulator = 0
   set_midi_value(0)
   prepare_scratch_buffer(state.win)
+  configure_ui()
   configure_window(state.win)
   ensure_reader()
   ensure_timer()

@@ -57,6 +57,7 @@ kitty \
     --class "$app_id" \
     --name "$app_id" \
     --title Teleprompter \
+    --override tab_bar_style=hidden \
     env \
     DOTFILES_TELEPROMPTER=1 \
     DOTFILES_TELEPROMPTER_NVIM_SOCKET="$socket" \
