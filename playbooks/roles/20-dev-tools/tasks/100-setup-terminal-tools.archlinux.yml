@@ -14,6 +14,7 @@
       - jq
       - bat # markdown-highlighted previews for the shared snippet picker
       - bash-completion
+      - fastfetch
     state: present
 
 - name: "[archlinux] Setup terminal tools: ensure ble.sh local AUR package"
