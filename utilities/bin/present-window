@@ -58,7 +58,14 @@ wait_ms="${DOTFILES_PRESENT_WINDOW_WAIT_MS:-$default_wait_ms}"
 defer_ms="${DOTFILES_PRESENT_WINDOW_DEFER_MS:-$default_defer_ms}"
 scale="${DOTFILES_PRESENT_WINDOW_SCALE:-$default_scale}"
 active_poll_ms="${DOTFILES_PRESENT_WINDOW_ACTIVE_POLL_MS:-$default_active_poll_ms}"
+stop_timeout_ms="${DOTFILES_PRESENT_WINDOW_STOP_TIMEOUT_MS:-700}"
 cursor_transport="${DOTFILES_PRESENT_WINDOW_CURSOR:-$default_cursor_transport}"
+case "$stop_timeout_ms" in
+'' | *[!0-9]*)
+    printf 'present-window: invalid DOTFILES_PRESENT_WINDOW_STOP_TIMEOUT_MS=%s; expected integer milliseconds\n' "$stop_timeout_ms" >&2
+    exit 2
+    ;;
+esac
 case "$cursor_transport" in
 paint | remote)
     ;;
@@ -242,6 +249,7 @@ server_env_args() {
         "DOTFILES_PRESENT_WINDOW_DEFER_MS=$defer_ms" \
         "DOTFILES_PRESENT_WINDOW_SCALE=$scale" \
         "DOTFILES_PRESENT_WINDOW_ACTIVE_POLL_MS=$active_poll_ms" \
+        "DOTFILES_PRESENT_WINDOW_STOP_TIMEOUT_MS=$stop_timeout_ms" \
         "DOTFILES_PRESENT_WINDOW_CURSOR=$cursor_transport" \
         "DOTFILES_PRESENT_WINDOW_WINDOWS_FILE=$windows_file" \
         "DOTFILES_PRESENT_WINDOW_LAST_FILE=$last_window_file" \
@@ -263,6 +271,7 @@ server_config() {
         "defer_ms=$defer_ms" \
         "scale=$scale" \
         "active_poll_ms=$active_poll_ms" \
+        "stop_timeout_ms=$stop_timeout_ms" \
         "cursor=$cursor_transport" \
         "idle=$idle_mode" \
         "view_only=$view_only" \
@@ -284,7 +293,7 @@ server_config_summary() {
         done <"$config_file"
         printf '%s\n' "$summary"
     else
-        printf ' profile=%s wait_ms=%s defer_ms=%s scale=%s cursor=%s\n' "$profile" "$wait_ms" "$defer_ms" "$scale" "$cursor_transport"
+        printf ' profile=%s wait_ms=%s defer_ms=%s scale=%s active_poll_ms=%s stop_timeout_ms=%s cursor=%s\n' "$profile" "$wait_ms" "$defer_ms" "$scale" "$active_poll_ms" "$stop_timeout_ms" "$cursor_transport"
     fi
 }
 
@@ -351,6 +360,18 @@ stop_pid_file() {
     read -r pid <"$file" || return 0
     [ -n "$pid" ] || return 0
     kill "$pid" >/dev/null 2>&1 || true
+
+    tries=0
+    max_tries=$((stop_timeout_ms / 100))
+    [ "$max_tries" -gt 0 ] || max_tries=1
+    while kill -0 "$pid" >/dev/null 2>&1 && [ "$tries" -lt "$max_tries" ]; do
+        tries=$((tries + 1))
+        sleep 0.1
+    done
+    if kill -0 "$pid" >/dev/null 2>&1; then
+        printf 'force-killing pid=%s file=%s after stop timeout\n' "$pid" "$file" >>"$log_file"
+        kill -KILL "$pid" >/dev/null 2>&1 || true
+    fi
     wait "$pid" 2>/dev/null || true
     rm -f "$file"
 }
