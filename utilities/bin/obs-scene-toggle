@@ -243,6 +243,7 @@ def toggle_scene(args):
         first, second = scene_pair(args.scenes, scenes)
         target = second if current == first else first
         request(ws, "SetCurrentProgramScene", {"sceneName": target})
+        publish_scene(args.feedback_command, target)
         print(f"OBS scene: {current or 'UNKNOWN'} -> {target}")
     finally:
         ws.close()

@@ -233,6 +233,7 @@ desktop-state-monitor-service-contract)
     [[ -x "$obs_script" ]]
     rg -q -- "--monitor" "$obs_script"
     rg -q "desktop-action-state" "$obs_script"
+    rg -F -q "publish_scene(args.feedback_command, target)" "$obs_script"
     rg -q "CurrentProgramSceneChanged" "$obs_script"
     [[ -s "$obs_unit" ]]
     rg -q "^Description=Publish OBS scene feedback$" "$obs_unit"
