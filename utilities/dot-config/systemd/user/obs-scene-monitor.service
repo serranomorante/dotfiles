@@ -1,0 +1,15 @@
+[Unit]
+Description=Publish OBS scene feedback
+After=graphical-session.target keyboard-midi-controller.service
+Wants=keyboard-midi-controller.service
+
+[Service]
+ExecStart=%h/bin/obs-scene-toggle --monitor
+Restart=on-failure
+RestartSec=5s
+Nice=10
+IOSchedulingClass=idle
+MemoryMax=64M
+
+[Install]
+WantedBy=graphical-session.target

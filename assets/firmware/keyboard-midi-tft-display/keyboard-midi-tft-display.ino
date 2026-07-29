@@ -375,7 +375,13 @@ bool pedalboardModifierActive() {
 }
 
 bool pedalboardDesktopActionTile(uint8_t row, uint8_t col) {
-  return currentChannel == PEDALBOARD_CHANNEL && pedalboardProfile == 3 && row == 0 && col < 5;
+  if (currentChannel != PEDALBOARD_CHANNEL || row != 0) {
+    return false;
+  }
+  if (pedalboardProfile == 3) {
+    return col < 5;
+  }
+  return pedalboardProfile == 4 && col == 1;
 }
 
 void markPedalboardModifierDotsDirty() {
@@ -505,7 +511,7 @@ uint16_t colorForPedalboard(uint8_t row, uint8_t col) {
   if (row != 0 || col > 4) {
     return ILI9341_DARKGREY;
   }
-  if (pedalboardProfile == 3 && desktopActionKnown(col)) {
+  if (pedalboardDesktopActionTile(row, col) && desktopActionKnown(col)) {
     if (strcmp(desktopActionValues[col], "MUTED") == 0) {
       return ILI9341_RED;
     }
@@ -620,7 +626,7 @@ bool tileActive(uint8_t row, uint8_t col) {
     if (row != 0) {
       return false;
     }
-    if (pedalboardProfile == 3 && desktopActionKnown(col)) {
+  if (pedalboardDesktopActionTile(row, col) && desktopActionKnown(col)) {
       return desktopActionValueActive(col);
     }
     if (col == 0) {
@@ -647,6 +653,16 @@ bool tileActive(uint8_t row, uint8_t col) {
 
 void formatPercentValue(uint8_t value, char *out, size_t outSize) {
   snprintf(out, outSize, "%u%%", (uint16_t)value * 100 / 127);
+}
+
+uint8_t teleprompterSpeedLevel(uint8_t value) {
+  if (value == 0) {
+    return 0;
+  }
+  if (value <= 64) {
+    return 1;
+  }
+  return 2;
 }
 
 void formatPanValue(uint8_t value, char *out, size_t outSize) {
@@ -754,7 +770,7 @@ void tileLabel(uint8_t row, uint8_t col, char *out, size_t outSize) {
       snprintf(out, outSize, "");
       return;
     }
-    if (pedalboardProfile == 3 && desktopActionKnown(col)) {
+  if (pedalboardDesktopActionTile(row, col) && desktopActionKnown(col)) {
       snprintf(out, outSize, "%s", desktopActionLabels[col]);
       return;
     }
@@ -763,7 +779,7 @@ void tileLabel(uint8_t row, uint8_t col, char *out, size_t outSize) {
         {"DAMP", "SOST", "SOFT", "SOST", "SOFT"},
         {"EXP", "STMPA", "STMPB", "STMPA", "STMPB"},
         {"CTRL", "ACT A", "ACT B", "ACT A", "ACT B"},
-        {"CTRL", "SCENE", "AUX", "", ""},
+        {"VEL", "SCENE", "AUX", "", ""},
     };
     uint8_t profile = pedalboardProfile <= 4 ? pedalboardProfile : 0;
     snprintf(out, outSize, "%s", labels[profile][col]);
@@ -869,7 +885,11 @@ void tileValue(uint8_t row, uint8_t col, char *out, size_t outSize) {
     if (pedalboardDesktopActionTile(row, col) && desktopActionKnown(col)) {
       snprintf(out, outSize, "%s", desktopActionValues[col]);
     } else if (row == 0 && col == 0) {
-      formatPercentValue(pedalboardContinuous, out, outSize);
+      if (pedalboardProfile == 4) {
+        snprintf(out, outSize, "%u", teleprompterSpeedLevel(pedalboardContinuous));
+      } else {
+        formatPercentValue(pedalboardContinuous, out, outSize);
+      }
     } else if (row == 0 && col == 1) {
       snprintf(out, outSize, "%s", pedalboardSwitch1 >= 64 ? "ON" : "OFF");
     } else if (row == 0 && col == 2) {
@@ -1245,7 +1265,7 @@ void handleLine(char *line) {
       snprintf(desktopActionLabels[slot], sizeof(desktopActionLabels[slot]), "%s", label);
       snprintf(desktopActionValues[slot], sizeof(desktopActionValues[slot]), "%s", value);
       desktopActionFlashUntil[slot] = desktopActionFlashValue(value) ? millis() + FLASH_DURATION_MS : 0;
-      if (changed && currentChannel == PEDALBOARD_CHANNEL && pedalboardProfile == 3) {
+      if (changed && currentChannel == PEDALBOARD_CHANNEL && pedalboardDesktopActionTile(0, slot)) {
         tileDirty[0][slot] = true;
         if (slot == 0) {
           markPedalboardModifierDotsDirty();

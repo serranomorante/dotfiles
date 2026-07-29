@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Purpose: Launch or refocus the Kitty/Neovim teleprompter window.
+
+set -euo pipefail
+
+app_id=${DOTFILES_TELEPROMPTER_APP_ID:-kitty-teleprompter}
+socket=${DOTFILES_TELEPROMPTER_NVIM_SOCKET:-"${XDG_RUNTIME_DIR:-/tmp}/dotfiles-teleprompter.nvim.sock"}
+fifo=${DOTFILES_TELEPROMPTER_SCROLL_FIFO:-"${XDG_RUNTIME_DIR:-/tmp}/dotfiles-teleprompter-scroll.fifo"}
+
+usage() {
+    cat <<USAGE
+Usage: kitty-teleprompter [FILE...]
+
+Open a dedicated Kitty window running Neovim as a pedal-controlled teleprompter.
+The matching control helper is teleprompter-scroll.
+USAGE
+}
+
+server_is_running() {
+    [ -S "$socket" ] || return 1
+    nvim --server "$socket" --remote-expr '1' >/dev/null 2>&1
+}
+
+focus_teleprompter_window() {
+    command -v wmctrl >/dev/null 2>&1 || return 0
+    wmctrl -xa "${app_id}.${app_id}" >/dev/null 2>&1 ||
+        wmctrl -xa "$app_id" >/dev/null 2>&1 ||
+        true
+}
+
+attach_existing_server() {
+    if [ "$#" -gt 0 ]; then
+        nvim --server "$socket" --remote "$@" >/dev/null 2>&1 || true
+    fi
+    nvim --server "$socket" --remote-send "<Cmd>lua require('serranomorante.teleprompter_scroll').start()<CR>" >/dev/null 2>&1 || true
+    focus_teleprompter_window
+}
+
+case ${1:-} in
+-h | --help)
+    usage
+    exit 0
+    ;;
+esac
+
+mkdir -p "$(dirname "$socket")"
+
+if server_is_running; then
+    attach_existing_server "$@"
+    exit 0
+fi
+
+rm -f "$socket"
+
+kitty \
+    --detach \
+    --class "$app_id" \
+    --name "$app_id" \
+    --title Teleprompter \
+    env \
+    DOTFILES_TELEPROMPTER=1 \
+    DOTFILES_TELEPROMPTER_NVIM_SOCKET="$socket" \
+    DOTFILES_TELEPROMPTER_SCROLL_FIFO="$fifo" \
+    KITTY_LISTEN_ON= \
+    KITTY_PID= \
+    nvim \
+    --listen "$socket" \
+    -i NONE \
+    +"lua require('serranomorante.teleprompter_scroll').start()" \
+    "$@"

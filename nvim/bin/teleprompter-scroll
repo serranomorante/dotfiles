@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Purpose: Send one MIDI-style value to the Neovim teleprompter FIFO.
+
+set -euo pipefail
+
+fifo=${DOTFILES_TELEPROMPTER_SCROLL_FIFO:-"${XDG_RUNTIME_DIR:-/tmp}/dotfiles-teleprompter-scroll.fifo"}
+value=${1:-${PEDALBOARD_MIDI_VALUE:-}}
+fifo_fd=
+
+usage() {
+    cat <<USAGE
+Usage: teleprompter-scroll [0-127]
+
+Send one scroll-speed value to the active Neovim teleprompter FIFO. When no
+argument is provided, PEDALBOARD_MIDI_VALUE is used.
+USAGE
+}
+
+case ${value:-} in
+-h | --help)
+    usage
+    exit 0
+    ;;
+esac
+
+if [ -z "${value:-}" ]; then
+    printf '%s\n' "teleprompter-scroll: missing MIDI value" >&2
+    exit 2
+fi
+
+case $value in
+*[!0-9]*)
+    printf '%s\n' "teleprompter-scroll: MIDI value must be 0-127: $value" >&2
+    exit 2
+    ;;
+esac
+
+if [ "$value" -gt 127 ]; then
+    value=127
+fi
+
+[ -p "$fifo" ] || exit 0
+if exec {fifo_fd}<>"$fifo"; then
+    printf '%s\n' "$value" >&"$fifo_fd"
+    exec {fifo_fd}>&-
+fi

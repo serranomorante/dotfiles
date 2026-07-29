@@ -18,6 +18,11 @@ feedback_command=${PEDALBOARD_MIDI_FEEDBACK_COMMAND:-}
 desktop_event_command=${PEDALBOARD_MIDI_DESKTOP_EVENT_COMMAND:-desktop-action-event}
 profiles_command=${PEDALBOARD_MIDI_PROFILES_COMMAND:-}
 shift_threshold=${PEDALBOARD_MIDI_SHIFT_THRESHOLD:-21}
+teleprompter_scroll_fifo=${DOTFILES_TELEPROMPTER_SCROLL_FIFO:-"${XDG_RUNTIME_DIR:-/tmp}/dotfiles-teleprompter-scroll.fifo"}
+teleprompter_scroll_deadzone=${DOTFILES_TELEPROMPTER_DEADZONE:-$shift_threshold}
+teleprompter_scroll_fast_threshold=${DOTFILES_TELEPROMPTER_FAST_THRESHOLD:-64}
+teleprompter_scroll_last_value=
+teleprompter_scroll_last_level=
 pedalboard_profile=unknown
 pedalboard_continuous=0
 pedalboard_switch1=0
@@ -124,6 +129,14 @@ validate_shift_threshold() {
   [[ $shift_threshold =~ ^[0-9]+$ ]] && [ "$shift_threshold" -ge 0 ] && [ "$shift_threshold" -le 127 ] || die "PEDALBOARD_MIDI_SHIFT_THRESHOLD must be 0-127"
 }
 
+validate_teleprompter_deadzone() {
+  [[ $teleprompter_scroll_deadzone =~ ^[0-9]+$ ]] && [ "$teleprompter_scroll_deadzone" -ge 0 ] && [ "$teleprompter_scroll_deadzone" -le 127 ] || die "DOTFILES_TELEPROMPTER_DEADZONE must be 0-127"
+}
+
+validate_teleprompter_fast_threshold() {
+  [[ $teleprompter_scroll_fast_threshold =~ ^[0-9]+$ ]] && [ "$teleprompter_scroll_fast_threshold" -ge 0 ] && [ "$teleprompter_scroll_fast_threshold" -le 127 ] || die "DOTFILES_TELEPROMPTER_FAST_THRESHOLD must be 0-127"
+}
+
 validate_reconnect_delay() {
   [[ $reconnect_delay =~ ^[0-9]+$ ]] && [ "$reconnect_delay" -ge 1 ] && [ "$reconnect_delay" -le 60 ] || die "PEDALBOARD_MIDI_RECONNECT_DELAY must be 1-60 seconds"
 }
@@ -215,6 +228,11 @@ run_action() {
     return 0
   fi
 
+  if [ "$command" = teleprompter-scroll ]; then
+    update_teleprompter_scroll "$value"
+    return 0
+  fi
+
   PEDALBOARD_MIDI_CHANNEL=$channel \
     PEDALBOARD_MIDI_CC=$controller \
     PEDALBOARD_MIDI_VALUE=$value \
@@ -222,11 +240,77 @@ run_action() {
     bash -lc "$command" &
 }
 
-publish_pedalboard_state() {
+update_teleprompter_scroll() {
+  local value=$1
+  local fifo_fd=
+
+  if [ "$value" -le "$teleprompter_scroll_deadzone" ]; then
+    value=0
+  fi
+
+  [ "$value" != "$teleprompter_scroll_last_value" ] || return 0
+  teleprompter_scroll_last_value=$value
+
+  [ -p "$teleprompter_scroll_fifo" ] || return 0
+  if exec {fifo_fd}<>"$teleprompter_scroll_fifo"; then
+    printf '%s\n' "$value" >&"$fifo_fd" || true
+    exec {fifo_fd}>&-
+  fi
+}
+
+publish_pedalboard_state_values() {
+  local profile_value=$1
+  local continuous_value=$2
+  local switch1_value=$3
+  local switch2_value=$4
+  local command_path
+
   command_path=$(resolve_feedback_command)
   [ -n "$command_path" ] || return 0
 
-  "$command_path" pedalboard-state "$pedalboard_profile" "$pedalboard_continuous" "$pedalboard_switch1" "$pedalboard_switch2" >/dev/null 2>&1 || true
+  "$command_path" pedalboard-state "$profile_value" "$continuous_value" "$switch1_value" "$switch2_value" >/dev/null 2>&1 || true
+}
+
+publish_pedalboard_state() {
+  local continuous_value=$pedalboard_continuous
+
+  if [ "$pedalboard_profile" = obs-mouseless-setup ]; then
+    continuous_value=$(teleprompter_scroll_level_value "$(teleprompter_scroll_level "$pedalboard_continuous")")
+  fi
+
+  publish_pedalboard_state_values "$pedalboard_profile" "$continuous_value" "$pedalboard_switch1" "$pedalboard_switch2"
+}
+
+teleprompter_scroll_level() {
+  local value=$1
+
+  if [ "$value" -le "$teleprompter_scroll_deadzone" ]; then
+    printf '0\n'
+  elif [ "$value" -le "$teleprompter_scroll_fast_threshold" ]; then
+    printf '1\n'
+  else
+    printf '2\n'
+  fi
+}
+
+teleprompter_scroll_level_value() {
+  case "$1" in
+    0) printf '0\n' ;;
+    1) printf '64\n' ;;
+    *) printf '127\n' ;;
+  esac
+}
+
+publish_teleprompter_scroll_state() {
+  local level
+  local feedback_value
+
+  level=$(teleprompter_scroll_level "$1")
+  [ "$level" != "$teleprompter_scroll_last_level" ] || return 0
+  teleprompter_scroll_last_level=$level
+  feedback_value=$(teleprompter_scroll_level_value "$level")
+
+  publish_pedalboard_state_values "$pedalboard_profile" "$feedback_value" "$pedalboard_switch1" "$pedalboard_switch2"
 }
 
 publish_desktop_layer_state() {
@@ -267,6 +351,11 @@ update_pedalboard_state() {
     switch2) pedalboard_switch2=$value ;;
     *) return 0 ;;
   esac
+
+  if [ "$profile_name" = obs-mouseless-setup ] && [ "$control_field" = continuous ]; then
+    publish_teleprompter_scroll_state "$value"
+    return 0
+  fi
 
   publish_pedalboard_state
   if [ "$profile_name" = desktop ] && [ "$control_field" = continuous ]; then
@@ -426,6 +515,8 @@ done
 require_cmd aseqdump
 validate_channel_base
 validate_shift_threshold
+validate_teleprompter_deadzone
+validate_teleprompter_fast_threshold
 validate_reconnect_delay
 resolve_config
 load_profile_controls

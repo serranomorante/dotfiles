@@ -11,6 +11,8 @@ set -euo pipefail
 
 script="${DOTFILES_TEST_ROOT}/utilities/bin/desktop-state-monitor"
 unit="${DOTFILES_TEST_ROOT}/utilities/dot-config/systemd/user/desktop-state-monitor.service"
+obs_script="${DOTFILES_TEST_ROOT}/utilities/bin/obs-scene-toggle"
+obs_unit="${DOTFILES_TEST_ROOT}/utilities/dot-config/systemd/user/obs-scene-monitor.service"
 dotfiles_task="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/tasks/30-setup-dotfiles.archlinux.yml"
 handlers_file="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/handlers/main.yml"
 repository_map="${DOTFILES_TEST_ROOT}/docs/repository-map.md"
@@ -228,14 +230,28 @@ desktop-state-monitor-service-contract)
     rg -q '^ExecStart=%h/bin/desktop-state-monitor$' "$unit"
     rg -q '^Restart=on-failure$' "$unit"
     rg -q '^WantedBy=graphical-session.target$' "$unit"
+    [[ -x "$obs_script" ]]
+    rg -q -- "--monitor" "$obs_script"
+    rg -q "desktop-action-state" "$obs_script"
+    rg -q "CurrentProgramSceneChanged" "$obs_script"
+    [[ -s "$obs_unit" ]]
+    rg -q "^Description=Publish OBS scene feedback$" "$obs_unit"
+    rg -q "^ExecStart=%h/bin/obs-scene-toggle --monitor$" "$obs_unit"
+    rg -q "^Restart=on-failure$" "$obs_unit"
     rg -q 'Dotfiles: ensure desktop state monitor' "$dotfiles_task"
     rg -q '^    name: desktop-state-monitor.service$' "$dotfiles_task"
+    rg -q "Dotfiles: ensure OBS scene monitor" "$dotfiles_task"
+    rg -q "^    name: obs-scene-monitor.service$" "$dotfiles_task"
     rg -q 'Dotfiles: stat desktop state monitor files' "$dotfiles_task"
     rg -q 'utilities/bin/desktop-state-monitor' "$dotfiles_task"
     rg -q 'utilities/dot-config/systemd/user/desktop-state-monitor.service' "$dotfiles_task"
+    rg -q "utilities/bin/obs-scene-toggle" "$dotfiles_task"
+    rg -q "utilities/dot-config/systemd/user/obs-scene-monitor.service" "$dotfiles_task"
     rg -q 'desktop-state-monitor-sha256' "$dotfiles_task"
     rg -q 'handler_restart_desktop_state_monitor_service' "$dotfiles_task"
+    rg -q "handler_restart_obs_scene_monitor_service" "$dotfiles_task"
     rg -q '^- name: handler_restart_desktop_state_monitor_service$' "$handlers_file"
+    rg -q "^- name: handler_restart_obs_scene_monitor_service$" "$handlers_file"
     rg -q 'Prefer event-driven desktop state monitors' "$repository_map"
     ;;
 *)

@@ -35,12 +35,11 @@ index 56ee471..b306005 100644
 +	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
 +	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
 +	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
-+	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
-+	{ NULL,                   NULL,                   NULL,                      0,            0,           -1,        -1,-1,-1,-1,                     -1                              },
++	{ "kitty-pedalboard-profiles", "kitty-pedalboard-profiles", NULL,            0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,              0,           1 },
++	{ "kitty-teleprompter",   "kitty-teleprompter",   NULL,                      0,            1,           -1,        710,0,500,500,                   0,              0,           1 },
 +	{ "kitty-vim-registers",  "kitty-vim-registers",  NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,              0,           1 },
 +	{ "alsa-scarlett-gui",    "alsa-scarlett-gui",    NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1                              },
 +	{ "kitty-snippets",       "kitty-snippets",       NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,              0,           1 },
-+	{ "kitty-pedalboard-profiles", "kitty-pedalboard-profiles", NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,              0,           1 },
 +	{ "Plasma",               NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1,              1,             }, // make plasma windows unmanaged
 +	{ "plasma-desktop",       NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1,              1,             }, // make plasma windows unmanaged
 +	{ "plasmashell",          NULL,                   NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1,              1,             }, // make plasma windows unmanaged

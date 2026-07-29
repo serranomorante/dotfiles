@@ -9,6 +9,8 @@ import os
 import socket
 import ssl
 import struct
+import subprocess
+import time
 import sys
 import urllib.parse
 
@@ -169,8 +171,8 @@ def identify(ws, password):
         raise ProtocolError("OBS did not accept Identify")
 
 
-def request(ws, request_type, request_data=None):
-    request_id = f"obs-scene-toggle-{request_type}"
+def request(ws, request_type, request_data=None, request_prefix="obs-scene-toggle"):
+    request_id = f"{request_prefix}-{request_type}"
     payload = {"requestType": request_type, "requestId": request_id}
     if request_data is not None:
         payload["requestData"] = request_data
@@ -201,6 +203,35 @@ def scene_pair(raw, scenes):
     return scenes
 
 
+def tft_token(value):
+    token = []
+    for char in value.strip().upper():
+        if "A" <= char <= "Z" or "0" <= char <= "9" or char in "_-.":
+            token.append(char)
+        if len(token) >= 8:
+            break
+    return "".join(token) or "UNKNOWN"
+
+
+def publish_scene(feedback_command, scene_name):
+    token = tft_token(scene_name)
+    command = feedback_command or os.path.expanduser("~/bin/keyboard-midi-controller")
+    try:
+        subprocess.run(
+            [command, "desktop-action-state", "1", "SCENE", token],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+    except OSError:
+        pass
+
+
+def current_scene(ws):
+    response = request(ws, "GetSceneList", request_prefix="obs-scene-monitor")
+    return response.get("currentProgramSceneName") or "UNKNOWN"
+
+
 def toggle_scene(args):
     ws = WebSocket(args.url, args.timeout)
     ws.connect()
@@ -217,13 +248,47 @@ def toggle_scene(args):
         ws.close()
 
 
+def monitor_scene_once(args):
+    ws = WebSocket(args.url, args.timeout)
+    ws.connect()
+    try:
+        identify(ws, args.password)
+        publish_scene(args.feedback_command, current_scene(ws))
+        while True:
+            message = ws.recv_json()
+            if message.get("op") != 5:
+                continue
+            data = message.get("d") or {}
+            if data.get("eventType") != "CurrentProgramSceneChanged":
+                continue
+            event_data = data.get("eventData") or {}
+            publish_scene(args.feedback_command, event_data.get("sceneName") or current_scene(ws))
+    finally:
+        ws.close()
+
+
+def monitor_scene(args):
+    while True:
+        try:
+            monitor_scene_once(args)
+        except (OSError, ProtocolError, json.JSONDecodeError) as exc:
+            print(f"obs-scene-toggle: monitor: {exc}", file=sys.stderr)
+            time.sleep(args.reconnect_delay)
+
+
 def main(argv):
     parser = argparse.ArgumentParser(description="Toggle between two OBS program scenes through OBS WebSocket v5.")
     parser.add_argument("--url", default=os.environ.get("OBS_WEBSOCKET_URL", "ws://127.0.0.1:4455"))
     parser.add_argument("--password", default=os.environ.get("OBS_WEBSOCKET_PASSWORD"))
     parser.add_argument("--scenes", default=os.environ.get("OBS_SCENE_TOGGLE_SCENES"))
     parser.add_argument("--timeout", type=float, default=float(os.environ.get("OBS_WEBSOCKET_TIMEOUT", "2")))
+    parser.add_argument("--monitor", action="store_true", help="publish current OBS scene to keyboard-midi-controller and watch OBS scene changes")
+    parser.add_argument("--feedback-command", default=os.environ.get("OBS_SCENE_FEEDBACK_COMMAND"))
+    parser.add_argument("--reconnect-delay", type=float, default=float(os.environ.get("OBS_SCENE_MONITOR_RECONNECT_DELAY", "5")))
     args = parser.parse_args(argv)
+    if args.monitor:
+        monitor_scene(args)
+        return 0
     try:
         toggle_scene(args)
     except (OSError, ProtocolError, json.JSONDecodeError) as exc:

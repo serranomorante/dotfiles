@@ -164,6 +164,8 @@
   loop:
     - utilities/bin/desktop-state-monitor
     - utilities/dot-config/systemd/user/desktop-state-monitor.service
+    - utilities/bin/obs-scene-toggle
+    - utilities/dot-config/systemd/user/obs-scene-monitor.service
 
 - name: "[archlinux] Dotfiles: stat pedalboard MIDI action mapper files"
   ansible.builtin.stat:
@@ -198,6 +200,15 @@
     state: started
     daemon_reload: true
 
+- name: "[archlinux] Dotfiles: ensure OBS scene monitor"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: obs-scene-monitor.service
+    enabled: true
+    masked: false
+    state: started
+    daemon_reload: true
+
 - name: "[archlinux] Dotfiles: ensure pedalboard MIDI action mapper"
   ansible.builtin.systemd_service:
     scope: user
@@ -226,6 +237,7 @@
     dotfiles_marker_content: "{{ var_arch_desktop_state_monitor_files.results | selectattr('stat.exists') | map(attribute='stat.checksum') | join('\n') }}\n"
     dotfiles_marker_notify:
       - "10-system-tools : handler_restart_desktop_state_monitor_service"
+      - "10-system-tools : handler_restart_obs_scene_monitor_service"
 
 - name: "[archlinux] Dotfiles: record applied Plasma clipboard service checksum"
   ansible.builtin.include_role:

@@ -242,6 +242,7 @@ pedalboard-midi-actions-service-contract)
     rg -q '^16 81 press desktop-action-run screenshot$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.desktop.tsv"
     rg -q '^16 80 shift-press desktop-action-run record-toggle$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.desktop.tsv"
     rg -q '^16 81 shift-press desktop-action-run monitor-toggle$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.desktop.tsv"
+    rg -q '^15 4 any teleprompter-scroll$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.obs-mouseless-setup.tsv"
     rg -q '^15 80 press desktop-action-run obs-scene-toggle$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.obs-mouseless-setup.tsv"
     ;;
 *)
