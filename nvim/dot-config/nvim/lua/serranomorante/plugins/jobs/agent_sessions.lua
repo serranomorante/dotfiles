@@ -8,6 +8,7 @@ local AGENT_SESSION_ID_METADATA = "agent_session_id"
 local AGENT_SESSION_PATH_METADATA = "agent_session_path"
 local AGENT_SESSION_UPDATED_AT_METADATA = "agent_session_updated_at"
 local AGENT_TMUX_SESSION_NAME_METADATA = "agent_tmux_session_name"
+local AGENT_UNSANDBOXED_METADATA = "agent_unsandboxed"
 -- Orchestration role. Only "sub" is ever stored; the ABSENCE of this key means
 -- the task is a top-level ("master"/"root") agent. Kept as a plain string so it
 -- round-trips over the agent-tasks RPC bridge like the other metadata keys.
@@ -103,6 +104,7 @@ local PROVIDERS = {
     name = "codex",
     display_name = "Codex",
     executable = "fj-codex",
+    unsandboxed_executable = "codex",
     mcp_executable = "codex-mcp",
     sessions_dir = vim.fn.expand("~/.codex/sessions"),
     cache_key = "agent-sessions-codex-v1",
@@ -1365,6 +1367,7 @@ end
 ---@field start_win? integer
 ---@field role? string  -- "sub" to spawn as a sub-agent; nil/other = master/root
 ---@field mcp? boolean  -- true to launch through the provider's MCP wrapper
+---@field unsandboxed? boolean  -- true to launch without the Firejail provider wrapper
 
 ---@param opts? AgentSessionOpts
 ---@return string? prompt
@@ -1640,6 +1643,19 @@ end
 local function resume_session(provider, session, prompt, start_win, opts)
   opts = opts or {}
   local role = normalized_agent_role(opts.role)
+  local unsandboxed = opts.unsandboxed == true
+  if unsandboxed then
+    local executable = provider.unsandboxed_executable
+    if type(executable) ~= "string" or executable == "" then
+      vim.notify(("%s does not have an unsandboxed launcher"):format(provider.display_name), vim.log.levels.ERROR)
+      return
+    end
+    if vim.fn.executable(executable) ~= 1 then
+      vim.notify(("%s executable not found"):format(executable), vim.log.levels.ERROR)
+      return
+    end
+    provider = vim.tbl_extend("force", provider, { launch_executable = executable })
+  end
   restore_regular_win(start_win)
   session = session_with_resolved_cwd(provider, session)
   local tmux_session_name = tmux_session_name_for_session(provider, session.id, role)
@@ -1680,6 +1696,7 @@ local function resume_session(provider, session, prompt, start_win, opts)
     components = { "defaults_without_notification", "serranomorante.agent_watch" },
   })
   apply_task_role(task, role)
+  if unsandboxed then task.metadata[AGENT_UNSANDBOXED_METADATA] = true end
 
   open_task(provider, task, prompt, { wait_for_ready = true, start_win = start_win, open_output = false })
   if not start_and_open_task_output(provider, task, start_win) then return end
@@ -1758,7 +1775,8 @@ function M.open_task_with_prompt(task, prompt, opts)
   local metadata = task.metadata or {}
   local session_id = metadata[AGENT_SESSION_ID_METADATA]
   if type(session_id) ~= "string" or session_id == "" then return false end
-  local resume_opts = { role = metadata[AGENT_ROLE_METADATA] }
+  local resume_opts =
+    { role = metadata[AGENT_ROLE_METADATA], unsandboxed = metadata[AGENT_UNSANDBOXED_METADATA] == true }
   if resume_cached_provider_session(provider, session_id, prompt, opts.start_win, resume_opts) then return true end
 
   refresh_and_resume_provider_session(provider, session_id, prompt, opts.start_win, resume_opts)

@@ -203,6 +203,16 @@ local function opts()
           require("serranomorante.plugins.jobs.agent_tasks").dispose_and_kill_tmux(tostring(task.id))
         end,
       },
+      ["detach from sandbox"] = {
+        desc = "Dispose the Codex task, kill its tmux session, and resume it without Firejail",
+        condition = function(task)
+          return type(task.metadata) == "table"
+            and task.metadata.agent_provider == "codex"
+            and type(task.metadata.agent_tmux_session_name) == "string"
+            and task.metadata.agent_tmux_session_name ~= ""
+        end,
+        run = function(task) require("serranomorante.plugins.jobs.agent_tasks").detach_from_sandbox(tostring(task.id)) end,
+      },
       ["close term window"] = {
         desc = "Close terminal window without killing process",
         condition = function(task) return task:get_bufnr() end,

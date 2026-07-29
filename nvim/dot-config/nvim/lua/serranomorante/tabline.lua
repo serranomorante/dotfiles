@@ -1,6 +1,7 @@
 local M = {}
 
 local SUB_AGENT_TASK_PREFIX = "task://SUB-"
+local UNSANDBOXED_AGENT_TASK_PREFIX = "task://UNSANDBOXED-"
 local AUGROUP = vim.api.nvim_create_augroup("serranomorante_tabline", { clear = true })
 local last_regular_win_by_tab = {}
 
@@ -123,13 +124,25 @@ end
 local function tab_is_sub_agent_task(tabnr)
   local bufnr = tab_current_bufnr(tabnr)
   if type(bufnr) ~= "number" or not vim.api.nvim_buf_is_valid(bufnr) then return false end
-  return vim.startswith(vim.api.nvim_buf_get_name(bufnr), SUB_AGENT_TASK_PREFIX)
+  local name = vim.api.nvim_buf_get_name(bufnr)
+  return vim.startswith(name, SUB_AGENT_TASK_PREFIX) or vim.startswith(name, UNSANDBOXED_AGENT_TASK_PREFIX .. "SUB-")
+end
+
+---@param tabnr integer
+---@return boolean
+local function tab_is_unsandboxed_agent_task(tabnr)
+  local bufnr = tab_current_bufnr(tabnr)
+  if type(bufnr) ~= "number" or not vim.api.nvim_buf_is_valid(bufnr) then return false end
+  return vim.startswith(vim.api.nvim_buf_get_name(bufnr), UNSANDBOXED_AGENT_TASK_PREFIX)
 end
 
 ---@param tabnr integer
 ---@return string
 local function tab_highlight(tabnr)
   local is_current = tabnr == vim.fn.tabpagenr()
+  if tab_is_unsandboxed_agent_task(tabnr) then
+    return is_current and "CustomAgentUnsandboxedTabLineSel" or "CustomAgentUnsandboxedTabLine"
+  end
   if tab_is_sub_agent_task(tabnr) then return is_current and "CustomAgentSubTabLineSel" or "CustomAgentSubTabLine" end
   return is_current and "TabLineSel" or "TabLine"
 end

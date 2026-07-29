@@ -20,6 +20,7 @@ local SESSION_ID_KEY = "agent_session_id"
 local ROLE_KEY = "agent_role"
 local ROLE_SUB = "sub"
 local ROLE_MASTER = "master"
+local UNSANDBOXED_KEY = "agent_unsandboxed"
 local PROMPT_MARKERS = {
   codex = "›",
   claude = "❯",
@@ -103,6 +104,27 @@ local function task_tmux_session_name(t)
   if ok and type(target) == "string" and target ~= "" then return target end
 end
 
+---@param provider string?
+---@param tmux_session_name string?
+---@return string?
+local function session_id_from_tmux_session_name(provider, tmux_session_name)
+  if type(provider) ~= "string" or provider == "" then return nil end
+  if type(tmux_session_name) ~= "string" or tmux_session_name == "" then return nil end
+
+  local sub_prefix = provider .. "-sub-"
+  if tmux_session_name:sub(1, #sub_prefix) == sub_prefix then
+    local session_id = tmux_session_name:sub(#sub_prefix + 1)
+    if session_id ~= "" and not session_id:match("^pending%-") then return session_id end
+    return nil
+  end
+
+  local master_prefix = provider .. "-"
+  if tmux_session_name:sub(1, #master_prefix) == master_prefix then
+    local session_id = tmux_session_name:sub(#master_prefix + 1)
+    if session_id ~= "" and not session_id:match("^pending%-") then return session_id end
+  end
+end
+
 ---Orchestration role of a task. Defaults to "master" when unmarked so every
 ---pre-existing / top-level agent reads as master/root without needing a stamp.
 ---@param t overseer.Task
@@ -110,6 +132,13 @@ end
 local function task_role(t)
   local md = t.metadata or {}
   return md[ROLE_KEY] == ROLE_SUB and ROLE_SUB or ROLE_MASTER
+end
+
+---@param t overseer.Task
+---@return boolean
+local function task_unsandboxed(t)
+  local md = t.metadata or {}
+  return md[UNSANDBOXED_KEY] == true
 end
 
 ---Short uppercase badge for a role, for name/title listings.
@@ -243,6 +272,7 @@ local function task_summary(t)
     session_short_id = short_session_id(task_session_id(t)),
     name = task_display_name(t),
     role = task_role(t),
+    unsandboxed = task_unsandboxed(t),
     state = detect_state(task_provider(t), lines),
   }
 end
@@ -276,11 +306,12 @@ function M.read(ref, n)
   end
   local total = #lines
   local start = math.max(1, total - n + 1)
-  local header = ("# task id=%s session=%s provider=%s role=%s state=%s status=%s\n# lines %d-%d of %d"):format(
+  local header = ("# task id=%s session=%s provider=%s role=%s%s state=%s status=%s\n# lines %d-%d of %d"):format(
     tostring(t.id),
     short_session_id(task_session_id(t)) or "-",
     tostring(task_provider(t)),
     task_role(t),
+    task_unsandboxed(t) and " unsandboxed" or "",
     detect_state(task_provider(t), lines),
     tostring(t.status),
     start,
@@ -455,6 +486,7 @@ function M.state(ref)
     session_id = task_session_id(t),
     provider = provider,
     role = task_role(t),
+    unsandboxed = task_unsandboxed(t),
     state = state,
     options = options,
     tail = tail,
@@ -496,6 +528,14 @@ end
 function M.task_role(task)
   if type(task) ~= "table" then return ROLE_MASTER end
   return task_role(task)
+end
+
+---Whether an agent task was intentionally launched outside the Firejail sandbox.
+---@param task overseer.Task
+---@return boolean
+function M.task_unsandboxed(task)
+  if type(task) ~= "table" then return false end
+  return task_unsandboxed(task)
 end
 
 local AGENT_WATCH_COMPONENT = "serranomorante.agent_watch"
@@ -1171,14 +1211,9 @@ function M.dispose(ref)
   return vim.json.encode({ ok = ok, id = id, session_id = sid, disposed = ok })
 end
 
----Dispose a task and also kill its tmux session if one is known.
----This is for manual session teardown, not for the normal "remove from list" flow.
----@param ref string
----@return string json
-function M.dispose_and_kill_tmux(ref)
-  local t, err = resolve_task(ref)
-  if not t then return vim.json.encode({ ok = false, error = err }) end
-
+---@param t overseer.Task
+---@return table
+local function dispose_and_kill_tmux_task(t)
   local sid, id = task_session_id(t), t.id
   local tmux_session_name = task_tmux_session_name(t)
   local disposed = pcall(function() t:dispose(true) end)
@@ -1189,14 +1224,62 @@ function M.dispose_and_kill_tmux(ref)
     tmux_killed = u.run_tmux_command(u.agent_tmux_server_name(), { "kill-session", "-t", tmux_session_name })
   end
 
-  return vim.json.encode({
+  return {
     ok = disposed and (tmux_session_name == nil or tmux_killed),
     id = id,
     session_id = sid,
     disposed = disposed,
     tmux_killed = tmux_killed,
     tmux_session_name = tmux_session_name,
-  })
+  }
+end
+
+---Dispose a task and also kill its tmux session if one is known.
+---This is for manual session teardown, not for the normal "remove from list" flow.
+---@param ref string
+---@return string json
+function M.dispose_and_kill_tmux(ref)
+  local t, err = resolve_task(ref)
+  if not t then return vim.json.encode({ ok = false, error = err }) end
+  return vim.json.encode(dispose_and_kill_tmux_task(t))
+end
+
+---Kill the sandboxed Codex tmux task and reopen the same conversation with codex.
+---@param ref string
+---@return string json
+function M.detach_from_sandbox(ref)
+  local t, err = resolve_task(ref)
+  if not t then return vim.json.encode({ ok = false, error = err }) end
+  local provider = task_provider(t)
+  if provider ~= "codex" then
+    return vim.json.encode({ ok = false, error = "detach from sandbox is only supported for codex tasks" })
+  end
+
+  local tmux_session_name = task_tmux_session_name(t)
+  local session_id = task_session_id(t) or session_id_from_tmux_session_name(provider, tmux_session_name)
+  if type(session_id) ~= "string" or session_id == "" then
+    return vim.json.encode({ ok = false, error = "task has no resolved codex session id" })
+  end
+
+  local role = task_role(t)
+  local start_win = vim.api.nvim_get_current_win()
+  local result = dispose_and_kill_tmux_task(t)
+  if not result.ok then
+    result.detached = false
+    return vim.json.encode(result)
+  end
+
+  result.detached = true
+  result.unsandboxed = true
+  result.session_id = session_id
+  vim.schedule(function()
+    local ok_as, agent_sessions = pcall(require, "serranomorante.plugins.jobs.agent_sessions")
+    if ok_as and type(agent_sessions.resume_by_id) == "function" then
+      agent_sessions.resume_by_id(session_id, { role = role, start_win = start_win, unsandboxed = true })
+    end
+  end)
+
+  return vim.json.encode(result)
 end
 
 ---Kill pending tmux sessions in the current Neovim-scoped tmux server. Pending
@@ -1325,6 +1408,12 @@ function M.setup_commands()
     "AgentTaskDisposeAndKillTmux",
     function(a) vim.api.nvim_echo({ { M.dispose_and_kill_tmux(a.fargs[1]) } }, false, {}) end,
     { nargs = 1, desc = "Agent tasks: dispose a task and kill its tmux session (<ref>)" }
+  )
+
+  vim.api.nvim_create_user_command(
+    "AgentTaskDetachFromSandbox",
+    function(a) vim.api.nvim_echo({ { M.detach_from_sandbox(a.fargs[1]) } }, false, {}) end,
+    { nargs = 1, desc = "Agent tasks: dispose a Codex task, kill tmux, and resume it without Firejail (<ref>)" }
   )
 
   vim.api.nvim_create_user_command("AgentTaskSend", function(a)

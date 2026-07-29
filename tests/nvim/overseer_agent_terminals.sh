@@ -23,8 +23,10 @@ set -euo pipefail
 # dotfiles-test-case: codex-new-renames-pending-tmux-session-after-session-id
 # dotfiles-test-case: sub-agent-new-session-uses-role-aware-tmux-name
 # dotfiles-test-case: codex-resume-ignores-cached-pending-tmux-session
+# dotfiles-test-case: codex-resume-unsandboxed-uses-direct-executable
 # dotfiles-test-case: agent-tmux-socket-dirs-are-private
 # dotfiles-test-case: agent-tasks-dispose-kills-tmux-session
+# dotfiles-test-case: agent-tasks-detach-from-sandbox-resumes-codex-unsandboxed
 # dotfiles-test-case: overseer-actions-include-dispose-and-kill-tmux
 # dotfiles-test-case: agent-tasks-reconcile-opens-missing-tmux-sessions
 # dotfiles-test-case: refresh-terminal-window-resizes-agent-tmux
@@ -1405,6 +1407,109 @@ SH
         'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
     run_nvim_lua_file "$lua_file"
     ;;
+codex-resume-unsandboxed-uses-direct-executable)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    mkdir -p "$fake_bin"
+    cat >"${fake_bin}/cachectl" <<'SH'
+#!/bin/sh
+set -eu
+
+exit 1
+SH
+    cat >"${fake_bin}/agent-session-store" <<'SH'
+#!/bin/sh
+set -eu
+
+provider=
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    --provider)
+        provider=$2
+        shift 2
+        ;;
+    *)
+        shift
+        ;;
+    esac
+done
+
+case " ${provider} $* " in
+*" codex "*)
+    printf '{"version":2,"provider":"codex","sessions":[{"provider":"codex","path":"%s/session.jsonl","id":"resume-unsandboxed-session","cwd":"%s","timestamp":"2026-07-07T10:34:15Z","updated_at":"2026-07-07T10:35:00Z","title":"unsandboxed session"}]}\n' "${DOTFILES_TEST_TMP}" "${DOTFILES_TEST_TMP}"
+    ;;
+*)
+    printf '{"version":2,"provider":"%s","sessions":[]}\n' "${provider:-claude}"
+    ;;
+esac
+SH
+    cat >"${fake_bin}/tmux" <<'SH'
+#!/bin/sh
+set -eu
+
+printf '%s\n' "$*" >>"${DOTFILES_TEST_TMP}/tmux-calls"
+
+case "$*" in
+*" new-session "*)
+    printf 'OpenAI Codex\n'
+    printf 'model: fake\n'
+    printf 'directory: %s\n' "$PWD"
+    sleep 10
+    ;;
+*)
+    exit 0
+    ;;
+esac
+SH
+    cat >"${fake_bin}/codex" <<'SH'
+#!/bin/sh
+set -eu
+
+printf 'OpenAI Codex\n'
+printf 'model: fake\n'
+printf 'directory: %s\n' "$PWD"
+sleep 10
+SH
+    chmod +x "${fake_bin}/cachectl" "${fake_bin}/agent-session-store" "${fake_bin}/tmux" "${fake_bin}/codex"
+
+    lua_file="${DOTFILES_TEST_TMP}/codex-resume-unsandboxed-uses-direct-executable.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  local session_id = "resume-unsandboxed-session"' \
+        '  vim.env.PATH = vim.env.DOTFILES_TEST_TMP .. "/bin:" .. vim.env.PATH' \
+        '  vim.env.CACHECTL_BIN = vim.env.DOTFILES_TEST_TMP .. "/bin/cachectl"' \
+        '  vim.env.AGENT_SESSION_STORE_BIN = vim.env.DOTFILES_TEST_TMP .. "/bin/agent-session-store"' \
+        '  vim.opt.packpath:prepend("/home/aaaa/.local/share/nvim/site")' \
+        '  vim.cmd.packloadall()' \
+        '  require("overseer").setup({' \
+        '    component_aliases = { defaults_without_notification = { "on_exit_set_status" } },' \
+        '  })' \
+        '  require("serranomorante.plugins.jobs.agent_sessions").resume_by_id(session_id, { unsandboxed = true })' \
+        '  local matching_task' \
+        '  local running = vim.wait(5000, function()' \
+        '    for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
+        '      local metadata = task.metadata or {}' \
+        '      if metadata.agent_session_id == session_id then' \
+        '        matching_task = task' \
+        '        if task.status == require("overseer.constants").STATUS.RUNNING then return true end' \
+        '      end' \
+        '    end' \
+        '    return false' \
+        '  end, 20)' \
+        '  assert(running and matching_task, "unsandboxed resumed task did not start")' \
+        '  assert(matching_task.metadata.agent_unsandboxed == true, vim.inspect(matching_task.metadata))' \
+        '  assert(matching_task.metadata.agent_tmux_session_name == "codex-" .. session_id, vim.inspect(matching_task.metadata))' \
+        '  local tmux_calls = table.concat(vim.fn.readfile(vim.env.DOTFILES_TEST_TMP .. "/tmux-calls"), "\n")' \
+        '  assert(tmux_calls:find(" codex %-a on%-request ", 1, false), tmux_calls)' \
+        '  assert(not tmux_calls:find("fj%-codex"), tmux_calls)' \
+        '  for _, task in ipairs(require("overseer").list_tasks({ include_ephemeral = true })) do' \
+        '    pcall(function() task:dispose(true) end)' \
+        '  end' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua_file "$lua_file"
+    ;;
 agent-tasks-dispose-kills-tmux-session)
     fake_bin="${DOTFILES_TEST_TMP}/bin"
     mkdir -p "$fake_bin"
@@ -1459,12 +1564,80 @@ SH
         'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
     run_nvim_lua_file "$lua_file"
     ;;
+agent-tasks-detach-from-sandbox-resumes-codex-unsandboxed)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    mkdir -p "$fake_bin"
+    cat >"${fake_bin}/tmux" <<'SH'
+#!/bin/sh
+set -eu
+
+printf '%s\n' "$*" >>"${DOTFILES_TEST_TMP}/detach-tmux-calls"
+exit 0
+SH
+    chmod +x "${fake_bin}/tmux"
+
+    lua_file="${DOTFILES_TEST_TMP}/agent-tasks-detach-from-sandbox-resumes-codex-unsandboxed.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  vim.env.PATH = vim.env.DOTFILES_TEST_TMP .. "/bin:" .. vim.env.PATH' \
+        '  local calls_path = vim.env.DOTFILES_TEST_TMP .. "/detach-tmux-calls"' \
+        '  local wrapper = table.concat(vim.fn.readfile(vim.env.DOTFILES_TEST_ROOT .. "/utilities/bin/agent-tasks"), "\n")' \
+        '  assert(wrapper:find("detach-sandbox", 1, true) ~= nil, "agent-tasks wrapper is missing detach-sandbox")' \
+        '  assert(wrapper:find("detach_from_sandbox", 1, true) ~= nil, "agent-tasks wrapper is missing detach_from_sandbox")' \
+        '  local task = {' \
+        '    id = 45,' \
+        '    name = "codex sandboxed",' \
+        '    metadata = {' \
+        '      agent_provider = "codex",' \
+        '      agent_session_id = "detach-session",' \
+        '      agent_tmux_session_name = "codex-detach-session",' \
+        '      agent_role = "sub",' \
+        '    },' \
+        '    dispose = function()' \
+        '      local f = assert(io.open(calls_path, "a"))' \
+        '      f:write("dispose\n")' \
+        '      f:close()' \
+        '    end,' \
+        '  }' \
+        '  local resumed' \
+        '  package.loaded["overseer"] = nil' \
+        '  package.preload["overseer"] = function()' \
+        '    return { list_tasks = function() return { task } end }' \
+        '  end' \
+        '  package.loaded["serranomorante.plugins.jobs.agent_sessions"] = nil' \
+        '  package.preload["serranomorante.plugins.jobs.agent_sessions"] = function()' \
+        '    return {' \
+        '      providers = { codex = { name = "codex", sessions_dir = "/tmp/codex" } },' \
+        '      resume_by_id = function(id, opts) resumed = { id = id, opts = opts } end,' \
+        '    }' \
+        '  end' \
+        '  local agent_tasks = require("serranomorante.plugins.jobs.agent_tasks")' \
+        '  agent_tasks.setup_commands()' \
+        '  assert(vim.api.nvim_get_commands({}).AgentTaskDetachFromSandbox ~= nil, "AgentTaskDetachFromSandbox was not registered")' \
+        '  local result = vim.json.decode(agent_tasks.detach_from_sandbox("detach-session"))' \
+        '  assert(result.ok == true, vim.inspect(result))' \
+        '  assert(result.detached == true, vim.inspect(result))' \
+        '  assert(result.unsandboxed == true, vim.inspect(result))' \
+        '  assert(result.session_id == "detach-session", vim.inspect(result))' \
+        '  assert(vim.wait(1000, function() return resumed ~= nil end, 10), "session was not resumed")' \
+        '  assert(resumed.id == "detach-session", vim.inspect(resumed))' \
+        '  assert(resumed.opts.role == "sub", vim.inspect(resumed))' \
+        '  assert(resumed.opts.unsandboxed == true, vim.inspect(resumed))' \
+        '  local calls = table.concat(vim.fn.readfile(calls_path), "\n")' \
+        '  assert(calls:match("^dispose\n%-L .+ kill%-session %-t codex%-detach%-session$"), calls)' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua_file "$lua_file"
+    ;;
 overseer-actions-include-dispose-and-kill-tmux)
     lua_file="${DOTFILES_TEST_TMP}/overseer-actions-include-dispose-and-kill-tmux.lua"
     write_lua "$lua_file" \
         'local function main()' \
         '  local captured' \
         '  local run_ref' \
+        '  local detach_ref' \
         '  package.loaded["overseer"] = nil' \
         '  package.preload["overseer"] = function()' \
         '    return {' \
@@ -1491,6 +1664,7 @@ overseer-actions-include-dispose-and-kill-tmux)
         '    return {' \
         '      setup_commands = function() end,' \
         '      dispose_and_kill_tmux = function(ref) run_ref = ref end,' \
+        '      detach_from_sandbox = function(ref) detach_ref = ref end,' \
         '      task_state = function() return "unknown" end,' \
         '      task_role = function() return "master" end,' \
         '    }' \
@@ -1507,6 +1681,14 @@ overseer-actions-include-dispose-and-kill-tmux)
         '  assert(action.condition({ metadata = { agent_tmux_session_name = "codex-close-session" } }) == true, "action should be visible for tmux-backed agent tasks")' \
         '  action.run({ id = 44, metadata = { agent_tmux_session_name = "codex-close-session" } })' \
         '  assert(run_ref == "44", tostring(run_ref))' \
+        '  assert(captured.actions["detach from sandbox"], "detach from sandbox action was not registered")' \
+        '  local detach_action = captured.actions["detach from sandbox"]' \
+        '  assert(detach_action.desc == "Dispose the Codex task, kill its tmux session, and resume it without Firejail", vim.inspect(detach_action))' \
+        '  assert(detach_action.condition({ metadata = { agent_provider = "claude", agent_tmux_session_name = "claude-close-session" } }) == false, "detach should be hidden for non-Codex tasks")' \
+        '  assert(detach_action.condition({ metadata = { agent_provider = "codex" } }) == false, "detach should be hidden without tmux metadata")' \
+        '  assert(detach_action.condition({ metadata = { agent_provider = "codex", agent_tmux_session_name = "codex-close-session" } }) == true, "detach should be visible for tmux-backed Codex tasks")' \
+        '  detach_action.run({ id = 45, metadata = { agent_provider = "codex", agent_tmux_session_name = "codex-close-session" } })' \
+        '  assert(detach_ref == "45", tostring(detach_ref))' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
         'local ok, err = xpcall(main, debug.traceback)' \

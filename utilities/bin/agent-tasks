@@ -19,6 +19,7 @@
 #        agent-tasks dispose <ref>                # stop + REMOVE one task from the Overseer list
 #        agent-tasks dispose --idle [exclude-sid] # dispose ALL idle tasks (optionally excluding one session id)
 #        agent-tasks dispose-kill <ref>           # stop + REMOVE one task and kill its tmux session
+#        agent-tasks detach-sandbox <ref>         # kill a Codex tmux task and reopen it by id with unsandboxed codex
 #        agent-tasks dispose-pending              # kill tmux sessions that still have only a pending id
 # Notes: <ref> = session-id, session-id prefix, overseer numeric id, or unique name substring.
 #        The Neovim server socket is read from $AGENT_TASKS_NVIM, else $NVIM (set by Neovim
@@ -149,6 +150,10 @@ dispose)
 dispose-kill)
     [ $# -ge 1 ] || die "usage: $prog dispose-kill <ref>"
     remote "dispose_and_kill_tmux('$1')"
+    ;;
+detach-sandbox)
+    [ $# -ge 1 ] || die "usage: $prog detach-sandbox <ref>"
+    remote "detach_from_sandbox('$1')"
     ;;
 dispose-pending)
     remote "dispose_pending_tmux()"
