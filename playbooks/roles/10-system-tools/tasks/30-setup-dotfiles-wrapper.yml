@@ -5,6 +5,12 @@
     state: directory
     mode: "755"
 
+- name: "Dotfiles: install AI agent Stow target profile generator"
+  ansible.builtin.template:
+    src: dotfiles-ai-agent-stow-targets
+    dest: "{{ dotfiles_stow_wrapper_path | dirname }}/dotfiles-ai-agent-stow-targets"
+    mode: "755"
+
 - name: "Dotfiles: install stow wrapper"
   ansible.builtin.template:
     src: dotfiles-stow

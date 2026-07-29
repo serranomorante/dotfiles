@@ -10,6 +10,7 @@ set -euo pipefail
 # dotfiles-test-case: firejail-ai-agent-mcp-uses-inherited-sandbox
 # dotfiles-test-case: firejail-ai-agent-runtime-launchers-use-wrappers
 # dotfiles-test-case: firejail-ai-agent-orchestration-paths-visible
+# dotfiles-test-case: firejail-ai-agent-stow-targets-visible
 
 # Purpose: Static guardrails for dev-tool Firejail profile path exposure.
 
@@ -79,10 +80,7 @@ firejail-ai-agent-mcp-uses-inherited-sandbox)
     wrapper="$root/playbooks/roles/20-dev-tools/files/fj-mcp-inherit"
     for path in \
         'whitelist ${HOME}/bin/fj-profile-checker' \
-        'whitelist-ro ${HOME}/.config/firejail/ai-agent-common.inc' \
-        'whitelist-ro ${HOME}/.config/firejail/claude.profile' \
-        'whitelist-ro ${HOME}/.config/firejail/codex.profile' \
-        'whitelist-ro ${HOME}/.config/firejail/gemini.profile'; do
+        'whitelist-ro ${HOME}/.local/share/firejail-wrapper/ai-agent-profiles'; do
         if ! grep -Fqx "$path" "$profile"; then
             printf 'AI agent profile does not expose inherited sandbox checker path: %s\n' "$path" >&2
             exit 1
@@ -148,6 +146,51 @@ firejail-ai-agent-orchestration-paths-visible)
         '[[ -d "$real_home/data/work/cf" ]] && add_rw_path "$real_home/data/work/cf"'; do
         if ! grep -Fq "$expected" "$wrapper"; then
             printf 'AI agent wrapper is missing orchestration access: %s\n' "$expected" >&2
+            exit 1
+        fi
+    done
+    ;;
+firejail-ai-agent-stow-targets-visible)
+    profile="$root/playbooks/roles/20-dev-tools/templates/ai-agent-common.inc"
+    node_tasks="$root/playbooks/roles/20-dev-tools/tasks/10-setup-node.archlinux.yml"
+    stow_wrapper_tasks="$root/playbooks/roles/10-system-tools/tasks/30-setup-dotfiles-wrapper.yml"
+    stow_wrapper="$root/playbooks/roles/10-system-tools/templates/dotfiles-stow"
+    generator="$root/playbooks/roles/10-system-tools/templates/dotfiles-ai-agent-stow-targets"
+    for expected in \
+        'include ai-agent-stow-targets.inc' \
+        'whitelist-ro ${HOME}/.local/share/firejail-wrapper/ai-agent-profiles'; do
+        if ! grep -Fqx "$expected" "$profile"; then
+            printf 'AI agent profile is missing Stow target include support: %s\n' "$expected" >&2
+            exit 1
+        fi
+    done
+    for expected in \
+        'ai-agent-stow-targets.inc' \
+        'dotfiles-ai-agent-stow-targets'; do
+        if ! grep -Fq "$expected" "$node_tasks"; then
+            printf 'Node setup does not maintain AI agent Stow target includes: %s\n' "$expected" >&2
+            exit 1
+        fi
+    done
+    if ! grep -Fq 'dotfiles-ai-agent-stow-targets' "$stow_wrapper_tasks"; then
+        printf 'Dotfiles wrapper setup does not install the AI agent Stow target generator\n' >&2
+        exit 1
+    fi
+    if ! grep -Fq 'refresh_ai_agent_stow_targets' "$stow_wrapper"; then
+        printf 'dotfiles-stow does not refresh AI agent Stow target includes\n' >&2
+        exit 1
+    fi
+    for expected in \
+        '--simulate' \
+        '--verbose=2' \
+        '[[ -e "$target_path" || -L "$target_path" ]] || continue' \
+        'readlink -f "$target_path"' \
+        '"$dotfiles_stow_dir"/*) ;;' \
+        '.mypy_cache | .mypy_cache/*' \
+        '.config/firejail | .config/firejail/*' \
+        'snapshot_output_path='; do
+        if ! grep -Fq -- "$expected" "$generator"; then
+            printf 'AI agent Stow target generator is missing expected guard: %s\n' "$expected" >&2
             exit 1
         fi
     done

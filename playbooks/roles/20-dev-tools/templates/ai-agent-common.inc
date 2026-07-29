@@ -5,6 +5,10 @@
 include dev-tools-common.inc
 dbus-user none
 
+# Generated from active Stow targets so agents can resolve ~/.config, ~/bin,
+# and other dotfile symlinks without exposing unrelated $HOME content.
+include ai-agent-stow-targets.inc
+
 # Read-only host toolchains and helper commands.
 whitelist-ro ${HOME}/.volta
 whitelist-ro ${HOME}/.pyenv
@@ -34,10 +38,6 @@ whitelist ${HOME}/.local/share/uv
 
 # Profile checker support for inherited MCP sandboxes.
 whitelist ${HOME}/bin/fj-profile-checker
-whitelist-ro ${HOME}/.config/firejail/ai-agent-common.inc
-whitelist-ro ${HOME}/.config/firejail/claude.profile
-whitelist-ro ${HOME}/.config/firejail/codex.profile
-whitelist-ro ${HOME}/.config/firejail/gemini.profile
 whitelist-ro ${HOME}/.local/share/firejail-wrapper/ai-agent-profiles
 
 # Keep sensitive host data hidden unless the launcher explicitly exposes a CWD

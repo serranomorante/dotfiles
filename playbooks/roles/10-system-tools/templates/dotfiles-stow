@@ -52,6 +52,15 @@ fi
 
 cd "$dotfiles_stow_dir"
 
+refresh_ai_agent_stow_targets() {
+    generator=$HOME/bin/dotfiles-ai-agent-stow-targets
+    [ -x "$generator" ] || return 0
+
+    if ! DOTFILES_AI_AGENT_STOW_TARGETS_STOW_BIN=$stow_bin "$generator" >/dev/null 2>&1; then
+        echo "dotfiles-stow: warning: failed to refresh AI agent Stow target profile" >&2
+    fi
+}
+
 append_arg() {
     printf '%s\n' "$2" >>"$1"
 }
@@ -286,9 +295,19 @@ if [ "$recreate" -eq 1 ]; then
         set -- "$@" "$arg"
     done <"$recreate_stow_args_file"
 
-    exec "$stow_bin" "$@"
+    "$stow_bin" "$@"
+    stow_rc=$?
+    if [ "$stow_rc" -eq 0 ]; then
+        refresh_ai_agent_stow_targets
+    fi
+    exit "$stow_rc"
 fi
 
 set -- {% for option in dotfiles_stow_options %}{{ option | quote }} {% endfor %}{% for pattern in stow_ignore_patterns %}--ignore={{ pattern | quote }} {% endfor %}"$@"
 
-exec "$stow_bin" "$@"
+"$stow_bin" "$@"
+stow_rc=$?
+if [ "$stow_rc" -eq 0 ]; then
+    refresh_ai_agent_stow_targets
+fi
+exit "$stow_rc"

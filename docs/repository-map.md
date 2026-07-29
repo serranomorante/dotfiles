@@ -34,6 +34,7 @@ Use this file to choose the source file that owns a behavior before editing gene
 - Stow packages are applied from the repo root through `~/bin/dotfiles-stow`.
 - Use `dot-*` names for hidden targets and `.stow-local-ignore` for files that must not link into `$HOME`.
 - New files under stowed packages are inactive until stowed; edited existing symlinked files update in place.
+- `dotfiles-stow` refreshes the generated Firejail include that exposes active Stow targets to sandboxed AI agents without opening all of `$HOME`.
 - Use `dotfiles-stow --recreate [--dir=...] <package>...` to migrate links between Stow directories; plain `--restow` does not migrate.
 - Termux packages are applied only by `otherlinux` tasks to `phone2`; widgets must be real executable files, not symlinks.
 
