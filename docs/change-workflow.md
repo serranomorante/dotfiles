@@ -58,6 +58,6 @@ Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 
 - Durable changes are applied through Stow or Ansible, not ad hoc copies/symlinks/restarts.
 - keyd templates require Ansible to install `/etc/keyd/default.conf`; systemd units require stowing plus the relevant task/handler; long-lived services need restart to pick up script changes.
-- When changing Ansible playbooks and suggesting application, provide a `cd ~/dotfiles/playbooks` line before the `ansible-playbook` command, refer to `tools.yml` directly, combine tags in one `--tags`, include `-K` for become paths, and append `2>&1 | tee /tmp/ansible-<scope>.log`.
+- When changing Ansible playbooks and suggesting application, provide a single-line command using `cd ~/dotfiles/playbooks && ansible-playbook tools.yml --tags <tag>`, include `-K` for become paths, and append `2>&1 | tee /tmp/ansible-<scope>.log`. Offer tags, not roles.
 - If applying a scope that installs local AUR packages, include tag `10-20` before the requested tag so `[aur-local]` is prepared.
 - Inspect large Ansible logs with `tail`, `rg`, and narrow `sed -n` excerpts, not full-file dumps.
