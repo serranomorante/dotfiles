@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -53,6 +54,13 @@ var providers = map[string]providerDefaults{
 		envSessionKeys: []string{
 			"GEMINI_SESSION_ID",
 			"GEMINI_CURRENT_SESSION_ID",
+		},
+	},
+	"opencode": {
+		root: "~/.local/share/opencode",
+		envSessionKeys: []string{
+			"OPENCODE_SESSION_ID",
+			"OPENCODE_CURRENT_SESSION_ID",
 		},
 	},
 }
@@ -312,31 +320,31 @@ func wantsCommandHelp(args []string) bool {
 }
 
 func printUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini] [--root PATH] refresh")
-	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini] [--root PATH] ids CWD")
-	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini] [--root PATH] wait-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS")
-	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini] [--root PATH] watch-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS TITLE_TIMEOUT_SECONDS")
-	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini] [--root PATH] current-id [--cwd CWD] [--history PATH]")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] refresh")
+	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] ids CWD")
+	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] wait-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS")
+	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] watch-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS TITLE_TIMEOUT_SECONDS")
+	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] current-id [--cwd CWD] [--history PATH]")
 }
 
 func printRefreshUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini] [--root PATH] refresh")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] refresh")
 }
 
 func printIDsUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini] [--root PATH] ids CWD")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] ids CWD")
 }
 
 func printWaitNewUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini] [--root PATH] wait-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] wait-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS")
 }
 
 func printWatchNewUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini] [--root PATH] watch-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS TITLE_TIMEOUT_SECONDS")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] watch-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS TITLE_TIMEOUT_SECONDS")
 }
 
 func printCurrentIDUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini] [--root PATH] current-id [--cwd CWD] [--history PATH]")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] current-id [--cwd CWD] [--history PATH]")
 }
 
 func compactTitleText(text string) string {
@@ -630,7 +638,7 @@ func sessionMatchesCWD(provider string, requestedCWD string, sessionCWD string) 
 	if requestedCWD == "" || requestedCWD == sessionCWD {
 		return true
 	}
-	return provider == "codex" && sessionCWD != "" && hasGitMarker(sessionCWD) && pathIsAtOrInside(sessionCWD, requestedCWD)
+	return (provider == "codex" || provider == "opencode") && sessionCWD != "" && hasGitMarker(sessionCWD) && pathIsAtOrInside(sessionCWD, requestedCWD)
 }
 
 func parseCodexSession(path string, cwd string) *session {
@@ -856,6 +864,116 @@ func finishGeminiSession(result session, cwd string, promptSearch string) *sessi
 	return &result
 }
 
+func timestampValue(value any) string {
+	if text, ok := stringValue(value); ok {
+		return text
+	}
+	number, ok := numberFloat(value)
+	if !ok || number <= 0 {
+		return ""
+	}
+	if number > 100000000000 {
+		return time.Unix(0, int64(number*float64(time.Millisecond))).UTC().Format("2006-01-02T15:04:05.000Z")
+	}
+	return time.Unix(int64(number), 0).UTC().Format("2006-01-02T15:04:05.000Z")
+}
+
+func parseOpenCodeSessionObject(item map[string]any, sourcePath string, cwd string) *session {
+	result := session{Provider: "opencode", Path: sourcePath}
+	if id, ok := stringValue(item["id"]); ok {
+		result.ID = id
+	}
+	if itemCWD, ok := stringValue(item["directory"]); ok {
+		result.CWD = itemCWD
+	} else if itemCWD, ok := stringValue(item["cwd"]); ok {
+		result.CWD = itemCWD
+	} else if itemCWD, ok := stringValue(item["path"]); ok {
+		result.CWD = itemCWD
+	}
+	if title, ok := stringValue(item["title"]); ok {
+		result.Title = normalizeTitle(title)
+	}
+
+	if times, ok := item["time"].(map[string]any); ok {
+		result.Timestamp = timestampValue(times["created"])
+		result.UpdatedAt = timestampValue(times["updated"])
+	}
+	if result.Timestamp == "" {
+		for _, key := range []string{"createdAt", "timeCreated", "time_created", "created"} {
+			if result.Timestamp = timestampValue(item[key]); result.Timestamp != "" {
+				break
+			}
+		}
+	}
+	if result.UpdatedAt == "" {
+		for _, key := range []string{"updatedAt", "timeUpdated", "time_updated", "updated"} {
+			if result.UpdatedAt = timestampValue(item[key]); result.UpdatedAt != "" {
+				break
+			}
+		}
+	}
+	if result.UpdatedAt == "" {
+		result.UpdatedAt = result.Timestamp
+	}
+	if (cwd != "" && !sessionMatchesCWD("opencode", cwd, result.CWD)) || result.ID == "" || result.CWD == "" || result.Timestamp == "" {
+		return nil
+	}
+	finishSessionSearchText(&result, "")
+	return &result
+}
+
+func collectOpenCodeSessionObjects(value any, out *[]map[string]any) {
+	switch typed := value.(type) {
+	case []any:
+		for _, item := range typed {
+			collectOpenCodeSessionObjects(item, out)
+		}
+	case map[string]any:
+		if _, ok := typed["id"]; ok {
+			if _, ok := typed["directory"]; ok {
+				*out = append(*out, typed)
+				return
+			}
+		}
+		for _, key := range []string{"sessions", "data", "items"} {
+			if child, ok := typed[key]; ok {
+				collectOpenCodeSessionObjects(child, out)
+			}
+		}
+	}
+}
+
+func parseOpenCodeSessionsJSON(data []byte, sourcePath string, cwd string) []session {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	var payload any
+	if err := decoder.Decode(&payload); err != nil {
+		return nil
+	}
+	objects := []map[string]any{}
+	collectOpenCodeSessionObjects(payload, &objects)
+	items := []session{}
+	for _, object := range objects {
+		if item := parseOpenCodeSessionObject(object, sourcePath, cwd); item != nil {
+			items = append(items, *item)
+		}
+	}
+	sortSessions(items)
+	return items
+}
+
+func opencodeSessions(root string, cwd string, limit int) []session {
+	args := []string{"session", "list", "--format", "json"}
+	if limit > 0 {
+		args = append(args, "--max-count", strconv.Itoa(limit))
+	}
+	output, err := exec.Command("opencode", args...).Output()
+	if err != nil {
+		return nil
+	}
+	return parseOpenCodeSessionsJSON(output, filepath.Join(root, "opencode.db"), cwd)
+}
+
 func readSessionLines(path string, handle func(map[string]any) bool) error {
 	file, err := os.Open(path)
 	if err != nil {
@@ -981,13 +1099,7 @@ func parseSession(provider string, path string, cwd string) *session {
 	}
 }
 
-func sessionsFromFiles(provider string, files []string, cwd string) []session {
-	items := []session{}
-	for _, path := range files {
-		if item := parseSession(provider, path, cwd); item != nil {
-			items = append(items, *item)
-		}
-	}
+func sortSessions(items []session) {
 	sort.Slice(items, func(i, j int) bool {
 		left := items[i].UpdatedAt
 		if left == "" {
@@ -1002,23 +1114,43 @@ func sessionsFromFiles(provider string, files []string, cwd string) []session {
 		}
 		return left > right
 	})
+}
+
+func sessionsFromFiles(provider string, files []string, cwd string) []session {
+	items := []session{}
+	for _, path := range files {
+		if item := parseSession(provider, path, cwd); item != nil {
+			items = append(items, *item)
+		}
+	}
+	sortSessions(items)
 	return items
 }
 
 func sessions(provider string, root string, cwd string) []session {
+	if provider == "opencode" {
+		return opencodeSessions(root, cwd, 0)
+	}
 	return sessionsFromFiles(provider, sessionFiles(provider, root), cwd)
 }
 
 func recentSessions(provider string, root string, cwd string) []session {
+	if provider == "opencode" {
+		return opencodeSessions(root, cwd, watchSessionFiles)
+	}
 	return sessionsFromFiles(provider, recentSessionFiles(provider, root, watchSessionFiles), cwd)
 }
 
 func emitRefresh(provider string, root string) error {
+	items := sessionsFromFiles(provider, recentSessionFiles(provider, root, refreshSessionFiles), "")
+	if provider == "opencode" {
+		items = opencodeSessions(root, "", refreshSessionFiles)
+	}
 	return emitJSON(refreshPayload{
 		Version:     version,
 		Provider:    provider,
 		GeneratedAt: time.Now().Unix(),
-		Sessions:    sessionsFromFiles(provider, recentSessionFiles(provider, root, refreshSessionFiles), ""),
+		Sessions:    items,
 	})
 }
 

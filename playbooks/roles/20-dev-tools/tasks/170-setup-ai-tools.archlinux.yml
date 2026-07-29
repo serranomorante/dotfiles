@@ -279,6 +279,8 @@
       dest: codex-mcp
     - src: gemini-mcp.j2
       dest: gemini-mcp
+    - src: opencode-mcp.j2
+      dest: opencode-mcp
 
 - name: "[archlinux] Setup ai tools: load mcphub servers.json"
   ansible.builtin.set_fact:
@@ -369,6 +371,10 @@
     - "{{ ansible_facts.env.HOME }}/.cache/gemini"
     - "{{ ansible_facts.env.HOME }}/.local/state/gemini"
     - "{{ ansible_facts.env.HOME }}/.local/share/gemini"
+    - "{{ ansible_facts.env.HOME }}/.config/opencode"
+    - "{{ ansible_facts.env.HOME }}/.cache/opencode"
+    - "{{ ansible_facts.env.HOME }}/.local/state/opencode"
+    - "{{ ansible_facts.env.HOME }}/.local/share/opencode"
     - "{{ ansible_facts.env.HOME }}/.local/state/mcp-hub"
     - "{{ ansible_facts.env.HOME }}/.local/share/mcp-hub"
 
@@ -417,6 +423,12 @@
   ansible.builtin.template:
     src: codex_mcphub_profile.toml.j2
     dest: ~/.codex/mcphub.config.toml
+    mode: "644"
+
+- name: "[archlinux] Setup ai tools: write opencode MCPHub config"
+  ansible.builtin.template:
+    src: opencode_mcphub_config.json.j2
+    dest: ~/.config/opencode/mcphub.json
     mode: "644"
 
 # Codex treats [permissions.<name>] as a named permission profile and refuses to

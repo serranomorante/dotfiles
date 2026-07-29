@@ -139,6 +139,11 @@ M.KEYRINGS = {
     passkey = "anthropic-api-key",
     wallet = "kdewallet",
   },
+  deepseek = {
+    folder = "dev-tools",
+    passkey = "deepseek-api-key",
+    wallet = "kdewallet",
+  },
   claude_code = {
     folder = "dev-tools",
     passkey = "claude-code-token",

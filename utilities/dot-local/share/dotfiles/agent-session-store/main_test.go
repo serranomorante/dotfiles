@@ -79,6 +79,43 @@ func TestParseCodexSessionAcceptsRepositoryRootForNestedCWD(t *testing.T) {
 	}
 }
 
+func TestParseOpenCodeSessionsAcceptsRepositoryRootForNestedCWD(t *testing.T) {
+	root := t.TempDir()
+	repo := filepath.Join(root, "repo")
+	nested := filepath.Join(repo, "playbooks")
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	payload := `[
+  {
+    "id": "ses_01k2opencode",
+    "directory": "` + repo + `",
+    "title": "Wire DeepSeek into OpenCode",
+    "time": { "created": 1785262351000, "updated": 1785262411000 }
+  }
+]`
+	sessions := parseOpenCodeSessionsJSON([]byte(payload), filepath.Join(root, "opencode.db"), nested)
+	if len(sessions) != 1 {
+		t.Fatalf("expected one OpenCode session, got %#v", sessions)
+	}
+	if sessions[0].ID != "ses_01k2opencode" {
+		t.Fatalf("unexpected id: %q", sessions[0].ID)
+	}
+	if sessions[0].CWD != repo {
+		t.Fatalf("unexpected cwd: %q", sessions[0].CWD)
+	}
+	if sessions[0].Title != "Wire DeepSeek into OpenCode" {
+		t.Fatalf("unexpected title: %q", sessions[0].Title)
+	}
+	if sessions[0].Timestamp == "" || sessions[0].UpdatedAt == "" {
+		t.Fatalf("expected timestamps: %#v", sessions[0])
+	}
+}
+
 func TestParseGeminiJSONLSessionUsesProjectRoot(t *testing.T) {
 	root := t.TempDir()
 	cwd := filepath.Join(root, "repo")

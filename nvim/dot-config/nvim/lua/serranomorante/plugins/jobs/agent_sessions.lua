@@ -79,6 +79,18 @@ local function gemini_ready(output, cwd)
     or (cwd ~= nil and text:find(vim.fn.fnamemodify(cwd, ":~"), 1, true) ~= nil)
 end
 
+---@param output string
+---@param cwd? string
+---@return boolean
+local function opencode_ready(output, cwd)
+  local text = strip_ansi(output)
+  return text:find("OpenCode", 1, true) ~= nil
+    or text:find("opencode", 1, true) ~= nil
+    or text:find("? for help", 1, true) ~= nil
+    or text:find("? for commands", 1, true) ~= nil
+    or (cwd ~= nil and text:find(vim.fn.fnamemodify(cwd, ":~"), 1, true) ~= nil)
+end
+
 ---@param ... string
 ---@return string[]
 local function codex_args(...) return vim.list_extend(vim.deepcopy(CODEX_AUTO_REVIEW_ARGS), { ... }) end
@@ -161,6 +173,19 @@ local PROVIDERS = {
       return args
     end,
     resume_args = function(session) return { "--resume", session.id } end,
+  },
+  opencode = {
+    name = "opencode",
+    display_name = "OpenCode",
+    executable = "fj-opencode",
+    mcp_executable = "opencode-mcp",
+    sessions_dir = vim.fn.expand("~/.local/share/opencode"),
+    cache_key = "agent-sessions-opencode-v1",
+    key_prefix = "o",
+    continuation_name = "opencode",
+    ready = opencode_ready,
+    start_args = function() return { "--auto" } end,
+    resume_args = function(session) return { "--auto", "--session", session.id } end,
   },
 }
 
@@ -915,7 +940,7 @@ function M.apply_task_display_name(task)
   for _, prefix in ipairs({ provider_name .. ": ", provider_name .. " resume: " }) do
     if title:sub(1, #prefix) == prefix then title = title:sub(#prefix + 1) end
   end
-  title = title:gsub("^%[[%da-fA-F][%da-fA-F][%da-fA-F][%da-fA-F][%da-fA-F][%da-fA-F]%]%s+", "")
+  title = title:gsub("^%[[^%]%s]+%]%s+", "")
   title = normalized_session_title(title) or "Untitled session"
 
   local name = ("%s: %s"):format(provider_name, M.session_display_title({ id = session_id, title = title }))
@@ -2033,6 +2058,7 @@ function M.keys()
   create_provider_keymaps(PROVIDERS.codex)
   create_provider_keymaps(PROVIDERS.claude)
   create_provider_keymaps(PROVIDERS.gemini)
+  create_provider_keymaps(PROVIDERS.opencode)
 end
 
 return M

@@ -13,7 +13,7 @@
 #        agent-tasks reconcile                    # reopen missing Overseer tasks for live tmux agent sessions
 #        agent-tasks resize-tmux                  # resize all tmux agent sessions to the current Neovim geometry
 #        agent-tasks open [--all|-a] <session-id...>  # open session(s) by id (--all bypasses the cwd filter)
-#        agent-tasks new <provider> [--mcp] [--sub|--role <role>] [task...]  # spawn a new agent session; provider: codex, claude, gemini
+#        agent-tasks new <provider> [--mcp] [--sub|--role <role>] [task...]  # spawn a new agent session; provider: codex, claude, gemini, opencode
 #                                                 # --sub marks it as a sub-agent; default = master/root
 #        agent-tasks role <ref> <sub|master>      # (re)tag an existing task's role (master|root clears the sub mark)
 #        agent-tasks dispose <ref>                # stop + REMOVE one task from the Overseer list

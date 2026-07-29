@@ -32,6 +32,7 @@
     - claude.profile
     - codex.profile
     - gemini.profile
+    - opencode.profile
     - fj-node.profile
     - fj-node-ansible.profile
     - fj-node-volta-bootstrap.profile
@@ -64,6 +65,7 @@
     - claude.profile
     - codex.profile
     - gemini.profile
+    - opencode.profile
 
 - name: "[archlinux] Setup node: stat AI agent Stow target generator"
   ansible.builtin.stat:
@@ -168,6 +170,7 @@
     - fj-claude
     - fj-codex
     - fj-gemini
+    - fj-opencode
 
 - name: "[archlinux] Setup node: install ansible firejail npm wrapper"
   ansible.builtin.copy:

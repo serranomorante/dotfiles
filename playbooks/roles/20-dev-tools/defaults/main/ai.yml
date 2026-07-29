@@ -63,6 +63,10 @@ node_ai_npm_packages:
     version: 0.52.0
     bins:
       - gemini
+  - name: opencode-ai
+    version: 1.18.9
+    bins:
+      - opencode
   - name: chrome-devtools-mcp
     version: 1.6.0
     bins:

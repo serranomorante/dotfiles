@@ -12,9 +12,9 @@ source "${script_dir}/firejail-wrapper-common.bash"
 
 agent=${SCRIPT_NAME#fj-}
 case "$agent" in
-claude | codex | gemini) ;;
+claude | codex | gemini | opencode) ;;
 *)
-    die "expected to be invoked as fj-claude, fj-codex, or fj-gemini"
+    die "expected to be invoked as fj-claude, fj-codex, fj-gemini, or fj-opencode"
     ;;
 esac
 
@@ -28,7 +28,7 @@ exec_mode=0
 path_value=${PATH:-/usr/local/bin:/usr/bin:/bin}
 profile_path=$(firejail_profile_path "$real_home" "${agent}.profile")
 profile_checker_profile="${real_home}/.local/share/firejail-wrapper/ai-agent-profiles/${agent}.profile"
-forward_env=$'CODEX_THREAD_ID\nGEMINI_API_KEY\nANTHROPIC_API_KEY\nCLAUDE_CODE_USE_BEDROCK\nCLAUDE_CODE_USE_VERTEX\nOPENAI_API_KEY\nOPENAI_BASE_URL\nMCPHUB_PORT\nMCPHUB_CONFIG\nKITTY_LISTEN_ON\nNVIM\nAGENT_TASKS_NVIM'
+forward_env=$'CODEX_THREAD_ID\nGEMINI_API_KEY\nANTHROPIC_API_KEY\nCLAUDE_CODE_USE_BEDROCK\nCLAUDE_CODE_USE_VERTEX\nOPENAI_API_KEY\nOPENAI_BASE_URL\nDEEPSEEK_API_KEY\nOPENCODE_CONFIG\nOPENCODE_CONFIG_CONTENT\nMCPHUB_PORT\nMCPHUB_CONFIG\nKITTY_LISTEN_ON\nNVIM\nAGENT_TASKS_NVIM'
 tmux_socket_dir="/tmp/tmux-$(id -u)"
 RW_PATHS=
 
@@ -149,6 +149,11 @@ if [[ "$exec_mode" == 1 && "${#agent_args[@]}" -eq 0 ]]; then
     die "--exec needs a command"
 fi
 
+if [[ "$agent" == "opencode" && -z "${DEEPSEEK_API_KEY:-}" ]] && command -v kwallet-query >/dev/null 2>&1; then
+    DEEPSEEK_API_KEY=$(kwallet-query --folder dev-tools --read-password deepseek-api-key kdewallet 2>/dev/null || true)
+    export DEEPSEEK_API_KEY
+fi
+
 add_rw_path "$work_root"
 [[ -d "$real_home/data/work/cf" ]] && add_rw_path "$real_home/data/work/cf"
 
@@ -171,6 +176,10 @@ mkdir -p \
     "$real_home/.cache/gemini" \
     "$real_home/.local/state/gemini" \
     "$real_home/.local/share/gemini" \
+    "$real_home/.config/opencode" \
+    "$real_home/.cache/opencode" \
+    "$real_home/.local/state/opencode" \
+    "$real_home/.local/share/opencode" \
     "$real_home/.local/state/mcp-hub" \
     "$real_home/.local/share/mcp-hub" \
     "$real_home/.local/share/firejail-wrapper/ai-agent-profiles"

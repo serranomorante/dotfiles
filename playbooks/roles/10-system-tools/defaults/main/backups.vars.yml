@@ -71,6 +71,9 @@ ai_conversations_backup_env: # AI assistant conversation transcripts only (no ca
   - ~/.gemini/tmp
   - ~/.codex/sessions
   - ~/.codex/history.jsonl
+  - ~/.local/share/opencode
+  - ~/.local/state/opencode
+  - ~/.config/opencode
 
 # borg repos
 dev2_audio_pjs_borg_repo: /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev2 }}/data/backups/audio-pjs
