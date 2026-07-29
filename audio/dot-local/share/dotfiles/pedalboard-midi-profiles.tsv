@@ -1,0 +1,7 @@
+# Pedalboard MIDI profile definitions.
+# Columns: id name label midi_channel continuous_cc switch1_cc switch2_cc switch1_mode switch2_mode action_profile aliases
+# midi_channel is one-based for host tools; Arduino firmware stores the same value as zero-based channel - 1.
+1	piano	piano	1	64	66	67	momentary	momentary	-	-
+2	guitar	guitar	2	4	80	81	latch	latch	-	-
+3	desktop	desktop	16	4	80	81	momentary	momentary	desktop	-
+4	obs-mouseless-setup	obs	15	4	80	81	momentary	momentary	obs-mouseless-setup	obs

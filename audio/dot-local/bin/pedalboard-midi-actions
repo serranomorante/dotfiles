@@ -16,12 +16,14 @@ channel_base=${PEDALBOARD_MIDI_ACTIONS_CHANNEL_BASE:-0}
 dry_run=0
 feedback_command=${PEDALBOARD_MIDI_FEEDBACK_COMMAND:-}
 desktop_event_command=${PEDALBOARD_MIDI_DESKTOP_EVENT_COMMAND:-desktop-action-event}
+profiles_command=${PEDALBOARD_MIDI_PROFILES_COMMAND:-}
 shift_threshold=${PEDALBOARD_MIDI_SHIFT_THRESHOLD:-21}
 pedalboard_profile=unknown
 pedalboard_continuous=0
 pedalboard_switch1=0
 pedalboard_switch2=0
 last_desktop_layer=
+desktop_midi_channel=
 
 usage() {
   cat <<EOF
@@ -86,6 +88,31 @@ detect_port() {
   '
 }
 
+resolve_profiles_command() {
+  if [ -n "$profiles_command" ]; then
+    printf '%s\n' "$profiles_command"
+    return 0
+  fi
+
+  local installed="$HOME/.local/bin/pedalboard-midi-profiles"
+  if [ -x "$installed" ]; then
+    printf '%s\n' "$installed"
+    return 0
+  fi
+
+  local repo="$HOME/dotfiles/audio/dot-local/bin/pedalboard-midi-profiles"
+  if [ -x "$repo" ]; then
+    printf '%s\n' "$repo"
+    return 0
+  fi
+
+  command -v pedalboard-midi-profiles 2>/dev/null || die "pedalboard-midi-profiles not found"
+}
+
+profile_row() {
+  "$(resolve_profiles_command)" get "$1"
+}
+
 validate_channel_base() {
   case "$channel_base" in
     0|1) ;;
@@ -104,6 +131,12 @@ validate_reconnect_delay() {
 resolve_config() {
   [ -n "$profile" ] || return 0
   [[ $profile =~ ^[A-Za-z0-9._-]+$ ]] || die "invalid profile name: $profile"
+
+  local profile_data
+  profile_data=$(profile_row "$profile") || die "unknown profile name: $profile"
+  IFS=$'\t' read -r _profile_id profile_name _profile_label _midi_channel _continuous_cc _switch1_cc _switch2_cc _switch1_mode _switch2_mode _mapper_profile _aliases <<<"$profile_data"
+  profile=$profile_name
+
   [ "$config_explicit" -eq 0 ] || return 0
   config="${XDG_CONFIG_HOME:-"$HOME/.config"}/dotfiles/pedalboard-midi-actions.${profile}.tsv"
 }
@@ -128,6 +161,23 @@ resolve_feedback_command() {
 }
 
 declare -A actions
+declare -A pedalboard_control_profiles
+declare -A pedalboard_control_fields
+
+load_profile_controls() {
+  local profile_id profile_name profile_label channel continuous_cc switch1_cc switch2_cc switch1_mode switch2_mode mapper_profile aliases
+  while IFS=$'\t' read -r profile_id profile_name profile_label channel continuous_cc switch1_cc switch2_cc switch1_mode switch2_mode mapper_profile aliases; do
+    pedalboard_control_profiles["$channel:$continuous_cc"]=$profile_name
+    pedalboard_control_fields["$channel:$continuous_cc"]=continuous
+    pedalboard_control_profiles["$channel:$switch1_cc"]=$profile_name
+    pedalboard_control_fields["$channel:$switch1_cc"]=switch1
+    pedalboard_control_profiles["$channel:$switch2_cc"]=$profile_name
+    pedalboard_control_fields["$channel:$switch2_cc"]=switch2
+    if [ "$profile_name" = desktop ]; then
+      desktop_midi_channel=$channel
+    fi
+  done < <("$(resolve_profiles_command)" list)
+}
 
 load_config() {
   [ -f "$config" ] || die "missing config file: $config"
@@ -204,63 +254,22 @@ update_pedalboard_state() {
   local channel=$1
   local controller=$2
   local value=$3
+  local key="$channel:$controller"
+  local profile_name=${pedalboard_control_profiles["$key"]:-}
+  local control_field=${pedalboard_control_fields["$key"]:-}
 
-  case "$channel:$controller" in
-    1:64)
-      pedalboard_profile=piano
-      pedalboard_continuous=$value
-      ;;
-    1:66)
-      pedalboard_profile=piano
-      pedalboard_switch1=$value
-      ;;
-    1:67)
-      pedalboard_profile=piano
-      pedalboard_switch2=$value
-      ;;
-    2:4)
-      pedalboard_profile=guitar
-      pedalboard_continuous=$value
-      ;;
-    2:80)
-      pedalboard_profile=guitar
-      pedalboard_switch1=$value
-      ;;
-    2:81)
-      pedalboard_profile=guitar
-      pedalboard_switch2=$value
-      ;;
-    15:4)
-      pedalboard_profile=obs-mouseless-setup
-      pedalboard_continuous=$value
-      ;;
-    15:80)
-      pedalboard_profile=obs-mouseless-setup
-      pedalboard_switch1=$value
-      ;;
-    15:81)
-      pedalboard_profile=obs-mouseless-setup
-      pedalboard_switch2=$value
-      ;;
-    16:4)
-      pedalboard_profile=desktop
-      pedalboard_continuous=$value
-      ;;
-    16:80)
-      pedalboard_profile=desktop
-      pedalboard_switch1=$value
-      ;;
-    16:81)
-      pedalboard_profile=desktop
-      pedalboard_switch2=$value
-      ;;
-    *)
-      return 0
-      ;;
+  [ -n "$profile_name" ] || return 0
+  pedalboard_profile=$profile_name
+
+  case "$control_field" in
+    continuous) pedalboard_continuous=$value ;;
+    switch1) pedalboard_switch1=$value ;;
+    switch2) pedalboard_switch2=$value ;;
+    *) return 0 ;;
   esac
 
   publish_pedalboard_state
-  if [ "$channel:$controller" = "16:4" ]; then
+  if [ "$profile_name" = desktop ] && [ "$control_field" = continuous ]; then
     publish_desktop_layer_state
   fi
 }
@@ -280,7 +289,7 @@ handle_cc() {
   update_pedalboard_state "$channel" "$controller" "$value"
 
   run_action "$channel" "$controller" "$value" any
-  if [ "$channel" -eq 16 ] && [ "$pedalboard_continuous" -ge "$shift_threshold" ]; then
+  if [ "$channel" = "$desktop_midi_channel" ] && [ "$pedalboard_continuous" -ge "$shift_threshold" ]; then
     run_action "$channel" "$controller" "$value" "shift-$edge"
   else
     run_action "$channel" "$controller" "$value" "$edge"
@@ -419,6 +428,7 @@ validate_channel_base
 validate_shift_threshold
 validate_reconnect_delay
 resolve_config
+load_profile_controls
 load_config
 sync_initial_pedalboard_state
 run_listener_loop

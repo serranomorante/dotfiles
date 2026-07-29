@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# Purpose: Query the central Pedalboard MIDI profile definitions.
+# Usage: pedalboard-midi-profiles [list|get NAME|action-mappers|cc CHANNEL CC]
+
+set -euo pipefail
+
+prog=${0##*/}
+profiles_file=${PEDALBOARD_MIDI_PROFILES_FILE:-}
+
+usage() {
+  cat <<EOF
+Usage: $prog [list|get NAME|action-mappers|cc CHANNEL CC]
+
+Read Pedalboard MIDI profile definitions from the central TSV file.
+
+Commands:
+  list             Print all profiles as TSV.
+  get NAME         Print the matching profile by name, alias, label, or id.
+  action-mappers   Print action mapper profile names that have systemd units.
+  cc CHANNEL CC    Print matching profile rows with a final control column.
+EOF
+}
+
+log() {
+  printf '%s: %s\n' "$prog" "$*" >&2
+}
+
+die() {
+  log "$*"
+  exit 1
+}
+
+resolve_profiles_file() {
+  if [ -n "$profiles_file" ]; then
+    printf '%s\n' "$profiles_file"
+    return 0
+  fi
+
+  local installed="${XDG_DATA_HOME:-"$HOME/.local/share"}/dotfiles/pedalboard-midi-profiles.tsv"
+  if [ -r "$installed" ]; then
+    printf '%s\n' "$installed"
+    return 0
+  fi
+
+  local repo="$HOME/dotfiles/audio/dot-local/share/dotfiles/pedalboard-midi-profiles.tsv"
+  if [ -r "$repo" ]; then
+    printf '%s\n' "$repo"
+    return 0
+  fi
+
+  die "missing profile definitions: $installed"
+}
+
+profiles_awk='
+  BEGIN { FS = OFS = "\t" }
+  /^[[:space:]]*($|#)/ { next }
+  NF != 11 {
+    printf "invalid profile row at line %d: expected 11 fields, got %d\n", NR, NF > "/dev/stderr"
+    exit 2
+  }
+  {
+    print
+  }
+'
+
+list_profiles() {
+  awk "$profiles_awk" "$(resolve_profiles_file)"
+}
+
+match_profile() {
+  local query=$1
+  list_profiles | awk -v query="$query" '
+    BEGIN {
+      FS = OFS = "\t"
+      q = tolower(query)
+    }
+    {
+      if (tolower($1) == q || tolower($2) == q || tolower($3) == q) {
+        print
+        found = 1
+        exit
+      }
+      split($11, aliases, /,/)
+      for (i in aliases) {
+        if (aliases[i] != "-" && tolower(aliases[i]) == q) {
+          print
+          found = 1
+          exit
+        }
+      }
+    }
+    END { if (!found) exit 1 }
+  '
+}
+
+action_mappers() {
+  list_profiles | awk '
+    BEGIN { FS = "\t" }
+    $10 != "-" { print $10 }
+  ' | LC_ALL=C sort -u
+}
+
+cc_profiles() {
+  local channel=$1
+  local controller=$2
+  list_profiles | awk -v channel="$channel" -v controller="$controller" '
+    BEGIN { FS = OFS = "\t" }
+    $4 == channel && $5 == controller { print $0, "continuous"; found = 1 }
+    $4 == channel && $6 == controller { print $0, "switch1"; found = 1 }
+    $4 == channel && $7 == controller { print $0, "switch2"; found = 1 }
+    END { if (!found) exit 1 }
+  '
+}
+
+case "${1:-list}" in
+  list)
+    [ "$#" -eq 0 ] || [ "$#" -eq 1 ] || die "list takes no arguments"
+    list_profiles
+    ;;
+  get)
+    [ "$#" -eq 2 ] || die "get needs NAME"
+    match_profile "$2" || die "unknown pedalboard profile: $2"
+    ;;
+  action-mappers)
+    [ "$#" -eq 1 ] || die "action-mappers takes no arguments"
+    action_mappers
+    ;;
+  cc)
+    [ "$#" -eq 3 ] || die "cc needs CHANNEL and CC"
+    cc_profiles "$2" "$3" || exit 1
+    ;;
+  -h|--help)
+    usage
+    ;;
+  *)
+    die "unknown command: $1"
+    ;;
+esac

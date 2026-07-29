@@ -1,0 +1,173 @@
+#!/usr/bin/env sh
+# Purpose: Open a Pedalboard MIDI profile picker and switch to the selected profile.
+# Usage: pedalboard-midi-profile-picker
+# Notes: Profile definitions come from pedalboard-midi-profiles, which reads the central pedalboard-midi-profiles.tsv file.
+
+set -eu
+
+prog=${0##*/}
+script_path=$0
+profile_command=${PEDALBOARD_MIDI_PROFILE_COMMAND:-}
+profiles_command=${PEDALBOARD_MIDI_PROFILES_COMMAND:-}
+picker_app_id=${PEDALBOARD_MIDI_PROFILE_PICKER_APP_ID:-kitty-pedalboard-profiles}
+picker_instance_group_prefix=${PEDALBOARD_MIDI_PROFILE_PICKER_INSTANCE_GROUP_PREFIX:-kitty-pedalboard-profiles}
+
+die() {
+    printf '%s: %s\n' "$prog" "$*" >&2
+    exit 2
+}
+
+usage() {
+    cat <<EOF
+Usage:
+  $prog
+
+Open a Pedalboard MIDI profile picker and switch the Arduino pedalboard plus host action mapper.
+EOF
+}
+
+need_command() {
+    command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+resolve_script_path() {
+    case $script_path in
+    /*) ;;
+    *)
+        resolved_script_path=$(command -v "$script_path" 2>/dev/null || true)
+        if [ -n "$resolved_script_path" ]; then
+            script_path=$resolved_script_path
+        fi
+        ;;
+    esac
+}
+
+find_profile_command() {
+    if [ -n "$profile_command" ]; then
+        printf '%s\n' "$profile_command"
+    elif [ -x "$HOME/.local/bin/pedalboard-midi-profile" ]; then
+        printf '%s\n' "$HOME/.local/bin/pedalboard-midi-profile"
+    elif [ -x "$HOME/dotfiles/audio/dot-local/bin/pedalboard-midi-profile" ]; then
+        printf '%s\n' "$HOME/dotfiles/audio/dot-local/bin/pedalboard-midi-profile"
+    else
+        command -v pedalboard-midi-profile 2>/dev/null || die "pedalboard-midi-profile not found"
+    fi
+}
+
+find_profiles_command() {
+    if [ -n "$profiles_command" ]; then
+        printf '%s\n' "$profiles_command"
+    elif [ -x "$HOME/.local/bin/pedalboard-midi-profiles" ]; then
+        printf '%s\n' "$HOME/.local/bin/pedalboard-midi-profiles"
+    elif [ -x "$HOME/dotfiles/audio/dot-local/bin/pedalboard-midi-profiles" ]; then
+        printf '%s\n' "$HOME/dotfiles/audio/dot-local/bin/pedalboard-midi-profiles"
+    else
+        command -v pedalboard-midi-profiles 2>/dev/null || die "pedalboard-midi-profiles not found"
+    fi
+}
+
+picker_panel_group() {
+    printf '%s-%s\n' "$picker_instance_group_prefix" "${KITTY_OS_INSTANCE_ID:-default}"
+}
+
+profile_entries() {
+    "$(find_profiles_command)" list | awk '
+        BEGIN { FS = OFS = "\t" }
+        {
+            action = $10 == "-" ? "no host action mapper" : "host actions: " $10
+            printf "%s\t%s\tch %s / CC %s,%s,%s\t%s\t%s\n", $3, $2, $4, $5, $6, $7, action, $2
+        }
+    '
+}
+
+preview_profile() {
+    "$(find_profiles_command)" get "$1" | awk '
+        BEGIN { FS = "\t" }
+        {
+            print "Profile: " $2
+            print "Label: " $3
+            print "TFT id: " $1
+            print "MIDI channel: " $4
+            print "Continuous CC: " $5
+            print "Switch 1 CC/mode: " $6 " / " $8
+            print "Switch 2 CC/mode: " $7 " / " $9
+            print "Host action mapper: " ($10 == "-" ? "none" : $10)
+            print "Aliases: " ($11 == "-" ? "none" : $11)
+        }
+    '
+}
+
+pick_profile() {
+    selected_profile=
+    tab=$(printf '\t')
+    selected_profile=$(profile_entries | fzf \
+        --prompt="Pedalboard> " \
+        --delimiter="$tab" \
+        --with-nth=1,2,3,4 \
+        --wrap \
+        --gap=1 \
+        --preview-window='right:50%:wrap' \
+        --preview-label=' profile ' \
+        --preview="PEDALBOARD_MIDI_PROFILE_PICKER_ACTION=preview \"$script_path\" {5}") || exit 0
+    [ -n "$selected_profile" ] || exit 0
+
+    IFS="$tab" read -r _label _name _summary _action profile_name <<EOF
+$selected_profile
+EOF
+
+    "$(find_profile_command)" "$profile_name"
+}
+
+launch_picker() {
+    resolve_script_path
+
+    if command -v kitten >/dev/null 2>&1; then
+        kitten quick-access-terminal \
+            --instance-group="$(picker_panel_group)" \
+            --detach=no \
+            --override app_id="$picker_app_id" \
+            --override edge=none \
+            --override background_opacity=0.8 \
+            env \
+            PEDALBOARD_MIDI_PROFILE_PICKER_ACTION=pick \
+            PEDALBOARD_MIDI_PROFILE_PICKER_APP_ID="$picker_app_id" \
+            PEDALBOARD_MIDI_PROFILE_PICKER_INSTANCE_GROUP_PREFIX="$picker_instance_group_prefix" \
+            "$script_path"
+        exit "$?"
+    fi
+
+    exec env \
+        PEDALBOARD_MIDI_PROFILE_PICKER_ACTION=pick \
+        PEDALBOARD_MIDI_PROFILE_PICKER_APP_ID="$picker_app_id" \
+        PEDALBOARD_MIDI_PROFILE_PICKER_INSTANCE_GROUP_PREFIX="$picker_instance_group_prefix" \
+        "$script_path"
+}
+
+case ${PEDALBOARD_MIDI_PROFILE_PICKER_ACTION:-launch} in
+launch)
+    if [ "$#" -gt 0 ]; then
+        case $1 in
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        *)
+            die "unexpected arguments: $*"
+            ;;
+        esac
+    fi
+    need_command fzf
+    launch_picker
+    ;;
+pick)
+    need_command fzf
+    pick_profile
+    ;;
+preview)
+    [ "$#" -eq 1 ] || die "missing profile for preview"
+    preview_profile "$1"
+    ;;
+*)
+    die "unsupported action: ${PEDALBOARD_MIDI_PROFILE_PICKER_ACTION:-}"
+    ;;
+esac

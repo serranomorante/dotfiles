@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Purpose: Query or change the Arduino pedalboard MIDI profile over USB serial.
-# Usage: pedalboard-midi-profile [--port DEV] [--dry-run] [status|piano|guitar|desktop|obs-mouseless-setup|range ZERO FULL|range reset]
+# Usage: pedalboard-midi-profile [--port DEV] [--dry-run] [status|PROFILE|range ZERO FULL|range reset]
 
 set -euo pipefail
 
@@ -13,12 +13,12 @@ serial_timeout=${PEDALBOARD_MIDI_PROFILE_TIMEOUT_SECONDS:-3}
 serial_settle=${PEDALBOARD_MIDI_PROFILE_SETTLE_SECONDS:-1}
 feedback_command=${PEDALBOARD_MIDI_FEEDBACK_COMMAND:-}
 systemctl_command=${PEDALBOARD_MIDI_SYSTEMCTL_COMMAND:-systemctl}
+profiles_command=${PEDALBOARD_MIDI_PROFILES_COMMAND:-}
 dry_run=0
-action_mapper_profiles=(desktop obs-mouseless-setup)
 
 usage() {
   cat <<EOF
-Usage: $prog [OPTIONS] [status|piano|guitar|desktop|obs-mouseless-setup|range ZERO FULL|range reset]
+Usage: $prog [OPTIONS] [status|PROFILE|range ZERO FULL|range reset]
 
 Query or change the Arduino pedalboard MIDI profile and continuous range without reconnecting USB.
 Profiles with host actions also switch the pedalboard action mapper service.
@@ -34,6 +34,7 @@ Examples:
   pedalboard-midi-profile guitar
   pedalboard-midi-profile desktop
   pedalboard-midi-profile obs-mouseless-setup
+  pedalboard-midi-profile obs
   pedalboard-midi-profile range 15 60
   pedalboard-midi-profile range reset
 EOF
@@ -62,6 +63,35 @@ detect_port() {
         ;;
     esac
   done
+}
+
+resolve_profiles_command() {
+  if [ -n "$profiles_command" ]; then
+    printf '%s\n' "$profiles_command"
+    return 0
+  fi
+
+  local installed="$HOME/.local/bin/pedalboard-midi-profiles"
+  if [ -x "$installed" ]; then
+    printf '%s\n' "$installed"
+    return 0
+  fi
+
+  local repo="$HOME/dotfiles/audio/dot-local/bin/pedalboard-midi-profiles"
+  if [ -x "$repo" ]; then
+    printf '%s\n' "$repo"
+    return 0
+  fi
+
+  command -v pedalboard-midi-profiles 2>/dev/null || die "pedalboard-midi-profiles not found"
+}
+
+profile_row() {
+  "$(resolve_profiles_command)" get "$1"
+}
+
+action_mapper_profiles() {
+  "$(resolve_profiles_command)" action-mappers
 }
 
 resolve_feedback_command() {
@@ -121,27 +151,18 @@ stop_systemctl_user() {
 
 stop_action_mappers() {
   local profile_unit
-  for profile_unit in "${action_mapper_profiles[@]}"; do
+  while IFS= read -r profile_unit; do
+    [ -n "$profile_unit" ] || continue
     stop_systemctl_user "pedalboard-midi-actions@${profile_unit}.service"
-  done
+  done < <(action_mapper_profiles)
 }
 
 activate_action_profile() {
-  local action_profile=$1
+  local mapper_profile=$1
 
-  case "$action_profile" in
-    desktop)
-      stop_action_mappers
-      run_systemctl_user start pedalboard-midi-actions@desktop.service
-      ;;
-    obs-mouseless-setup)
-      stop_action_mappers
-      run_systemctl_user start pedalboard-midi-actions@obs-mouseless-setup.service
-      ;;
-    none)
-      stop_action_mappers
-      ;;
-  esac
+  stop_action_mappers
+  [ "$mapper_profile" = "-" ] && return 0
+  run_systemctl_user start "pedalboard-midi-actions@${mapper_profile}.service"
 }
 
 run_serial_command() {
@@ -203,7 +224,7 @@ while [ "$#" -gt 0 ]; do
       usage
       exit 0
       ;;
-    status|piano|guitar|desktop|obs-mouseless-setup)
+    status)
       action=$1
       shift
       ;;
@@ -221,7 +242,9 @@ while [ "$#" -gt 0 ]; do
       fi
       ;;
     *)
-      die "unknown argument: $1"
+      [ "$action" = status ] || die "unexpected extra profile argument: $1"
+      action=$1
+      shift
       ;;
   esac
 done
@@ -234,23 +257,17 @@ case "$action" in
   status)
     run_serial_command status
     ;;
-  piano|guitar)
-    run_serial_command "profile $action"
-    activate_action_profile none
-    ;;
-  desktop)
-    run_serial_command "profile desktop"
-    activate_action_profile desktop
-    ;;
-  obs-mouseless-setup)
-    run_serial_command "profile obs-mouseless-setup"
-    activate_action_profile obs-mouseless-setup
-    ;;
   range)
     if [ "$range_zero" = reset ]; then
       run_serial_command "range reset"
     else
       run_serial_command "range $range_zero $range_full"
     fi
+    ;;
+  *)
+    profile_data=$(profile_row "$action") || die "unknown profile: $action"
+    IFS=$'\t' read -r _profile_id profile_name _profile_label _midi_channel _continuous_cc _switch1_cc _switch2_cc _switch1_mode _switch2_mode mapper_profile _aliases <<<"$profile_data"
+    run_serial_command "profile $profile_name"
+    activate_action_profile "$mapper_profile"
     ;;
 esac

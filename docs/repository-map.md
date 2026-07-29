@@ -48,7 +48,7 @@ Use this file to choose the source file that owns a behavior before editing gene
 - Notifications: clickable actions go through `utilities/bin/notification-action` with allowlisted JSON payloads.
 - System health: `dotfiles-health`, `system-spike-watch`, `dotfiles-spikes`, `dotfiles-health-notify`, `browser-task-snapshotd`; keep watchers cheap and incremental.
 - KDE runtime: tracked shortcuts in `utilities/dot-config/kglobalshortcutsrc`; live KDE state is applied by the Arch dotfiles task, not manual edits.
-- Audio/MIDI/REAPER/Wine: detailed operational notes are intentionally in focused docs/assets. Keep Wine prefix setup in shared roles and use `wwine` contracts instead of ad hoc Wine wrappers.
+- Audio/MIDI/pedalboard/REAPER/Wine: detailed operational notes are intentionally in focused docs/assets; pedalboard profile ownership is in `docs/pedalboard-midi.md`. Keep Wine prefix setup in shared roles and use `wwine` contracts instead of ad hoc Wine wrappers.
 
 ## Hot-Path Rules
 

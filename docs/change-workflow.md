@@ -41,7 +41,7 @@ Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 ## Validation
 
 - Use the smallest relevant check: examples include `sh -n path`, targeted unit tests, or `ansible-playbook --syntax-check`.
-- Before validating through active `$HOME`, remember that new Stow-package files are inactive until stowed; say when validation used repo paths directly.
+- Before validating through active `$HOME`, remember that new Stow-package files are inactive until stowed; say when validation used repo paths directly. Agent sessions run in a sandbox and cannot write to active `$HOME`, so when Stow is required, give the user the exact `dotfiles-stow` command instead of running it.
 - Do not reload keyd, restart services, run full playbooks, or apply config unless explicitly requested.
 
 ## Commits
