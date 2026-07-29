@@ -36,6 +36,7 @@ Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 - When applying workstation Ansible from an agent session, limit the inventory to localhost with `-l localhost` unless the user explicitly asks to target other hosts.
 - Local Go helpers should be built by Ansible into final command paths; avoid self-compiling wrappers unless they provide real runtime behavior.
 - For patched upstream checkouts, gate clone/patch/build behind versioned central markers and bump marker contracts when local patch behavior changes.
+- If a commit hook reports that Stow or Ansible must apply a new tracked file first, stop and give the user the exact declarative command to run; do not bypass hooks with `--no-verify`.
 - Add durable conventions/workflows to focused docs when they will help future work, but keep startup context compact.
 
 ## Validation
@@ -47,6 +48,7 @@ Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 ## Commits
 
 - Commit after implementation/validation unless the user asks not to, more work is planned, or the agent conversation id cannot be resolved.
+- Always attempt the commit before finishing implementation work; if blocked by required user-side Stow/Ansible application, leave the index ready when appropriate and report the unblock command.
 - Re-check status, stage exact paths only, and verify staged filenames.
 - Subject format: `<type>(<scope>): <imperative summary>`; use concrete scopes and types such as `fix`, `feat`, `docs`, `refactor`, `chore`, `test`.
 - Commit bodies explain context/intent/operational impact. For assistant-generated commits include `@agent <conversation id>` as its own line; never use placeholders. Resolve with `utilities/bin/agent-session-store ... current-id --cwd "$PWD"`.
@@ -56,6 +58,6 @@ Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 
 - Durable changes are applied through Stow or Ansible, not ad hoc copies/symlinks/restarts.
 - keyd templates require Ansible to install `/etc/keyd/default.conf`; systemd units require stowing plus the relevant task/handler; long-lived services need restart to pick up script changes.
-- When changing Ansible playbooks and suggesting application, provide exactly one `ansible-playbook` command, combine tags in one `--tags`, include `-K` for become paths, and append `2>&1 | tee /tmp/ansible-<scope>.log`.
+- When changing Ansible playbooks and suggesting application, provide a `cd ~/dotfiles/playbooks` line before the `ansible-playbook` command, refer to `tools.yml` directly, combine tags in one `--tags`, include `-K` for become paths, and append `2>&1 | tee /tmp/ansible-<scope>.log`.
 - If applying a scope that installs local AUR packages, include tag `10-20` before the requested tag so `[aur-local]` is prepared.
 - Inspect large Ansible logs with `tail`, `rg`, and narrow `sed -n` excerpts, not full-file dumps.

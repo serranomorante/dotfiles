@@ -54,6 +54,7 @@ Use this file to choose the source file that owns a behavior before editing gene
 
 - Avoid Python for always-on, high-frequency, latency-sensitive, or freeze-path scripts; prefer Go/C/Rust or bounded shell wrappers that exec cached binaries.
 - Prefer event-driven watchers over polling. If polling is unavoidable, keep it bounded, low-frequency, and documented.
+- For high-frequency device events, avoid per-event subprocesses, RPC calls, active-system writes, and persistent mirror files; keep mapping in a resident process and quantize downstream UI feedback.
 - Runtime Neovim paths must not block the main loop with recursive scans, large reads, synchronous JSON parsing, waits, or polling; use async APIs/background jobs.
 - For cross-tool runtime identity, reuse central resolvers such as `kitty-window-utils.sh` and `open_in_nvim` rather than reimplementing socket/server naming.
 - Prefer event-driven desktop state monitors for desktop action feedback; avoid polling loops in `desktop-state-monitor` unless the bounded fallback is documented and tested.
