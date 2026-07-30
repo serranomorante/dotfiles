@@ -29,6 +29,7 @@
       - bind
       - dmenu
       - obs-studio
+      - obs-studio-plugin-browser
       - xorg
       - xorg-xinit
       - plasma
