@@ -38,6 +38,13 @@ local session_link_retry_tasks = setmetatable({}, { __mode = "k" })
 local function agent_task_env()
   local env = { TERM = "xterm-256color" }
   if type(vim.v.servername) == "string" and vim.v.servername ~= "" then env.NVIM = vim.v.servername end
+  if vim.env.DEEPSEEK_API_KEY == nil then
+    local ok, result = pcall(vim.fn.system, { "kwallet-query", "--folder", "dev-tools", "--read-password", "deepseek-api-key", "kdewallet" })
+    if ok and type(result) == "string" then
+      local key = result:gsub("^%s*(.-)%s*$", "%1")
+      if key ~= "" then env.DEEPSEEK_API_KEY = key end
+    end
+  end
   return env
 end
 
@@ -340,9 +347,16 @@ end
 
 ---@param session_id string?
 ---@return string?
-local function short_session_id(session_id)
+---Visual short id: strip internal "ses_" prefix for opencode so sessions
+---show as "[04abc]" instead of the redundant "[ses_04]".
+---@param provider_name string?
+---@param session_id string?
+---@return string?
+local function short_session_id(provider_name, session_id)
   if type(session_id) ~= "string" or session_id == "" then return nil end
-  return session_id:sub(1, SESSION_ID_DISPLAY_CHARS)
+  local id = session_id
+  if provider_name == "opencode" then id = id:gsub("^ses_", "") end
+  return id:sub(1, SESSION_ID_DISPLAY_CHARS)
 end
 
 ---@param provider table
@@ -352,7 +366,7 @@ end
 ---@return string
 local function task_name(provider, cwd, label, session_id)
   local name = provider.name .. ": " .. vim.fn.fnamemodify(cwd, ":t")
-  local short_id = short_session_id(session_id)
+  local short_id = short_session_id(provider.name, session_id)
   if short_id then name = ("%s [%s]"):format(name, short_id) end
   if label and label ~= "" then name = ("%s | %s"):format(name, label) end
   return ("%s | %s"):format(name, vim.fn.strftime("%H:%M"))
@@ -716,7 +730,7 @@ end
 ---@return boolean
 local function session_matches_cwd(provider, requested_cwd, session_cwd)
   if type(requested_cwd) ~= "string" or requested_cwd == "" or requested_cwd == session_cwd then return true end
-  return provider.name == "codex"
+  return (provider.name == "codex" or provider.name == "opencode")
     and type(session_cwd) == "string"
     and session_cwd ~= ""
     and vim.uv.fs_stat(utils.join_paths(session_cwd, ".git")) ~= nil
@@ -908,7 +922,7 @@ local function update_task_title(task, session)
   local provider = provider_by_name(session.provider)
   local title = normalized_session_title(session.title)
   if type(title) == "string" and title ~= "" then
-    task.name = ("%s: %s"):format(provider.name, M.session_display_title({ id = session.id, title = title }))
+    task.name = ("%s: %s"):format(provider.name, M.session_display_title(session.id, title, provider.name))
     return
   end
   M.apply_task_display_name(task)
@@ -921,13 +935,15 @@ local function session_display_title(session)
   return "Untitled session"
 end
 
----@param session { id?: string, title?: string }
+---@param session_id? string
+---@param title? string
+---@param provider_name? string
 ---@return string
-function M.session_display_title(session)
-  local title = session_display_title(session)
-  local short_id = short_session_id(session and session.id)
-  if short_id then return ("[%s] %s"):format(short_id, title) end
-  return title
+function M.session_display_title(session_id, title, provider_name)
+  local t = type(title) == "string" and title or "Untitled session"
+  local short_id = short_session_id(provider_name, session_id)
+  if short_id then return ("[%s] %s"):format(short_id, t) end
+  return t
 end
 
 ---@param task overseer.Task
@@ -946,7 +962,7 @@ function M.apply_task_display_name(task)
   title = title:gsub("^%[[^%]%s]+%]%s+", "")
   title = normalized_session_title(title) or "Untitled session"
 
-  local name = ("%s: %s"):format(provider_name, M.session_display_title({ id = session_id, title = title }))
+  local name = ("%s: %s"):format(provider_name, M.session_display_title(session_id, title, provider_name))
   task.name = name
   return name
 end
@@ -1564,51 +1580,6 @@ local function link_new_task_to_session_id(provider, task, cwd, known_session_id
     end)
 end
 
-local OPENCODE_TERM_BG = "#0d1117"
-local OPENCODE_TERM_BLACK = "#7d8590"
-local OPENCODE_TERM_BLUE = "#58a6ff"
-local OPENCODE_TERM_BRIGHT_BLACK = "#8b949e"
-local OPENCODE_TERM_BRIGHT_BLUE = "#79c0ff"
-
-local function prepare_opencode_terminal_palette(provider)
-  if provider.name ~= "opencode" then return end
-  vim.g.terminal_color_0 = OPENCODE_TERM_BLACK
-  vim.g.terminal_color_4 = OPENCODE_TERM_BLUE
-  vim.g.terminal_color_8 = OPENCODE_TERM_BRIGHT_BLACK
-  vim.g.terminal_color_12 = OPENCODE_TERM_BRIGHT_BLUE
-end
-
-local function is_opencode_terminal_buffer(buf)
-  if not vim.api.nvim_buf_is_valid(buf) then return false end
-  if vim.api.nvim_get_option_value("buftype", { buf = buf }) ~= "terminal" then return false end
-
-  local name = vim.api.nvim_buf_get_name(buf):lower()
-  return name:find("opencode", 1, true) ~= nil or name:find("fj-opencode", 1, true) ~= nil
-end
-
-local function apply_opencode_terminal_display(buf)
-  if not is_opencode_terminal_buffer(buf) then return end
-
-  vim.b[buf].opencode_term = true
-  vim.b[buf].terminal_color_0 = OPENCODE_TERM_BLACK
-  vim.b[buf].terminal_color_4 = OPENCODE_TERM_BLUE
-  vim.b[buf].terminal_color_8 = OPENCODE_TERM_BRIGHT_BLACK
-  vim.b[buf].terminal_color_12 = OPENCODE_TERM_BRIGHT_BLUE
-  vim.api.nvim_set_hl(0, "OpencodeTermBg", { bg = OPENCODE_TERM_BG })
-
-  for _, winid in ipairs(vim.fn.win_findbuf(buf)) do
-    vim.api.nvim_set_option_value("winhl", "Normal:OpencodeTermBg", { win = winid })
-  end
-end
-
----@param task overseer.Task
----@param bufnr integer
-function M.apply_task_terminal_display(task, bufnr)
-  if type(task) ~= "table" or type(task.metadata) ~= "table" then return end
-  if task.metadata[AGENT_PROVIDER_METADATA] ~= "opencode" then return end
-  apply_opencode_terminal_display(bufnr)
-end
-
 ---@param provider table
 ---@param task overseer.Task
 ---@param prompt? string
@@ -1621,7 +1592,6 @@ local function open_task(provider, task, prompt, opts)
   task.metadata.wait_for_agent_ready = opts.wait_for_ready == true
   utils.attach_keymaps(task)
   if opts.open_output ~= false then
-    prepare_opencode_terminal_palette(provider)
     local start_win = utils.close_floating_window(opts.start_win or vim.api.nvim_get_current_win())
     utils.schedule_open_overseer_task_output(task, { winid = start_win })
     require("serranomorante.remote_kitty_focus").focus_current_window()
@@ -1638,7 +1608,6 @@ local function start_and_open_task_output(provider, task, start_win)
   start_win = start_win or vim.api.nvim_get_current_win()
   leave_terminal_insert()
   utils.remember_overseer_output_previous_buffer(start_win)
-  prepare_opencode_terminal_palette(provider)
   if not task:start() then
     vim.notify(("Failed to start %s task"):format(provider.display_name), vim.log.levels.ERROR)
     task:dispose(true)
@@ -1656,7 +1625,7 @@ end
 local function format_session(session, include_cwd)
   local label = ("%s | %s"):format(
     format_timestamp(session.updated_at or session.timestamp),
-    M.session_display_title(session)
+    M.session_display_title(session.id, session.title, session.provider)
   )
   if include_cwd then label = ("%s | %s"):format(label, vim.fn.fnamemodify(session.cwd, ":~")) end
   return label
@@ -1730,6 +1699,13 @@ local function resume_session(provider, session, prompt, start_win, opts)
       return
     end
     provider = vim.tbl_extend("force", provider, { launch_executable = executable })
+    if provider.name == "opencode" and vim.fn.executable("opencode-mini-readable") == 1 then
+      provider = vim.tbl_extend("force", provider, { launch_executable = "opencode-mini-readable" })
+    end
+  end
+  local task_env = agent_task_env()
+  if unsandboxed and provider.name == "opencode" and provider.launch_executable == "opencode-mini-readable" then
+    task_env.OPENCODE_MINI_READABLE_TARGET = "opencode"
   end
   restore_regular_win(start_win)
   session = session_with_resolved_cwd(provider, session)
@@ -1749,7 +1725,7 @@ local function resume_session(provider, session, prompt, start_win, opts)
   dispose_pending_task_for_session(provider, session)
 
   local task = require("overseer").new_task({
-    name = ("%s: %s"):format(provider.name, M.session_display_title(session)),
+    name = ("%s: %s"):format(provider.name, M.session_display_title(session.id, session.title, provider.name)),
     cmd = tmux_cmd,
     args = tmux_args,
     cwd = session.cwd,
@@ -1759,7 +1735,7 @@ local function resume_session(provider, session, prompt, start_win, opts)
     -- TERM so the tmux client attaches with full color (RGB enabled in tmuxnvim.conf).
     -- Also pin NVIM so the agent inherits the parent Neovim socket instead of a
     -- nested one created by the agent/TUI process itself.
-    env = agent_task_env(),
+    env = task_env,
     metadata = {
       [AGENT_TASK_METADATA] = true,
       [AGENT_PROVIDER_METADATA] = provider.name,
@@ -2110,13 +2086,5 @@ function M.keys()
   create_provider_keymaps(PROVIDERS.gemini)
   create_provider_keymaps(PROVIDERS.opencode)
 end
-
-vim.api.nvim_create_autocmd({ "TermOpen", "BufEnter", "BufWinEnter" }, {
-  desc = "Override terminal background/ANSI colors for opencode mini mode visibility",
-  group = vim.api.nvim_create_augroup("opencode_term_bg", { clear = true }),
-  callback = function(args)
-    vim.schedule(function() apply_opencode_terminal_display(args.buf) end)
-  end,
-})
 
 return M

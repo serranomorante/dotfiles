@@ -963,15 +963,77 @@ func parseOpenCodeSessionsJSON(data []byte, sourcePath string, cwd string) []ses
 }
 
 func opencodeSessions(root string, cwd string, limit int) []session {
+	dbPath := filepath.Join(root, "opencode.db")
 	args := []string{"session", "list", "--format", "json"}
 	if limit > 0 {
 		args = append(args, "--max-count", strconv.Itoa(limit))
 	}
 	output, err := exec.Command("opencode", args...).Output()
+	var sessions []session
+	if err == nil {
+		sessions = parseOpenCodeSessionsJSON(output, dbPath, cwd)
+	}
+
+	if sqliteSessions := opencodeSqliteSessions(dbPath, cwd); sqliteSessions != nil {
+		seen := make(map[string]bool, len(sessions))
+		for _, s := range sessions {
+			seen[s.ID] = true
+		}
+		for _, s := range sqliteSessions {
+			if !seen[s.ID] {
+				sessions = append(sessions, s)
+				seen[s.ID] = true
+			}
+		}
+		sortSessions(sessions)
+	}
+
+	if len(sessions) > limit && limit > 0 {
+		sessions = sessions[:limit]
+	}
+	return sessions
+}
+
+type opencodeSqliteRow struct {
+	ID          string `json:"id"`
+	Directory   string `json:"directory"`
+	Title       string `json:"title"`
+	TimeCreated int64  `json:"time_created"`
+	TimeUpdated int64  `json:"time_updated"`
+}
+
+func opencodeSqliteSessions(dbPath string, cwd string) []session {
+	output, err := exec.Command("sqlite3", "-json", dbPath,
+		"SELECT id, directory, title, time_created, time_updated FROM session ORDER BY time_created DESC",
+	).Output()
 	if err != nil {
 		return nil
 	}
-	return parseOpenCodeSessionsJSON(output, filepath.Join(root, "opencode.db"), cwd)
+	var rows []opencodeSqliteRow
+	if err := json.Unmarshal(output, &rows); err != nil {
+		return nil
+	}
+	items := []session{}
+	for _, row := range rows {
+		s := session{
+			Provider:  "opencode",
+			Path:      dbPath,
+			ID:        row.ID,
+			CWD:       row.Directory,
+			Title:     normalizeTitle(row.Title),
+			Timestamp: timestampValue(float64(row.TimeCreated)),
+			UpdatedAt: timestampValue(float64(row.TimeUpdated)),
+		}
+		if s.UpdatedAt == "" {
+			s.UpdatedAt = s.Timestamp
+		}
+		if (cwd != "" && !sessionMatchesCWD("opencode", cwd, s.CWD)) || s.ID == "" || s.CWD == "" || s.Timestamp == "" {
+			continue
+		}
+		finishSessionSearchText(&s, "")
+		items = append(items, s)
+	}
+	return items
 }
 
 func readSessionLines(path string, handle func(map[string]any) bool) error {

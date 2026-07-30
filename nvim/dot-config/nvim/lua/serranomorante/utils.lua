@@ -1753,7 +1753,11 @@ function M.name_overseer_task_output(task, bufnr)
   end
   if type(task_name) ~= "string" or task_name == "" then
     local session_id = metadata.agent_session_id
-    if type(session_id) == "string" and session_id ~= "" then task_name = session_id:sub(1, 6) end
+    if type(session_id) == "string" and session_id ~= "" then
+      local id = session_id
+      if metadata.agent_provider == "opencode" then id = id:gsub("^ses_", "") end
+      task_name = id:sub(1, 6)
+    end
   end
   if type(task_name) ~= "string" or task_name == "" then
     if metadata.shell_fence_task == true then task_name = ("shell-fenced %s"):format(task.id or bufnr) end

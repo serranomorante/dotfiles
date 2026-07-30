@@ -146,11 +146,14 @@ end
 ---@return string
 local function role_badge(role) return role == ROLE_SUB and "SUB" or "MASTER" end
 
+---@param provider_name string?
 ---@param session_id string?
 ---@return string?
-local function short_session_id(session_id)
+local function short_session_id(provider_name, session_id)
   if type(session_id) ~= "string" or session_id == "" then return nil end
-  return session_id:sub(1, 6)
+  local id = session_id
+  if provider_name == "opencode" then id = id:gsub("^ses_", "") end
+  return id:sub(1, 6)
 end
 
 ---@param t overseer.Task
@@ -269,7 +272,7 @@ local function task_summary(t)
     status = tostring(t.status),
     provider = task_provider(t),
     session_id = task_session_id(t),
-    session_short_id = short_session_id(task_session_id(t)),
+    session_short_id = short_session_id(task_provider(t), task_session_id(t)),
     name = task_display_name(t),
     role = task_role(t),
     unsandboxed = task_unsandboxed(t),
@@ -308,7 +311,7 @@ function M.read(ref, n)
   local start = math.max(1, total - n + 1)
   local header = ("# task id=%s session=%s provider=%s role=%s%s state=%s status=%s\n# lines %d-%d of %d"):format(
     tostring(t.id),
-    short_session_id(task_session_id(t)) or "-",
+    short_session_id(task_provider(t), task_session_id(t)) or "-",
     tostring(task_provider(t)),
     task_role(t),
     task_unsandboxed(t) and " unsandboxed" or "",
@@ -980,7 +983,7 @@ local function reconcile_session_lines(sessions)
     local provider = session.provider or "agent"
     local role = session.role == ROLE_SUB and ROLE_SUB or ROLE_MASTER
     local session_id = session.session_id or session.tmux_session_name or "unknown"
-    table.insert(lines, ("  - %s %s %s"):format(provider, role, short_session_id(session_id) or "unknown"))
+    table.insert(lines, ("  - %s %s %s"):format(provider, role, short_session_id(provider, session_id) or "unknown"))
   end
   return lines
 end
@@ -1372,7 +1375,7 @@ function M.setup_commands()
           tostring(t.id),
           t.state or "?",
           t.provider or "-",
-          t.session_short_id or (t.session_id or "-"):sub(1, 6),
+          t.session_short_id or short_session_id(t.provider, t.session_id) or "-",
           t.name or ""
         )
       )
