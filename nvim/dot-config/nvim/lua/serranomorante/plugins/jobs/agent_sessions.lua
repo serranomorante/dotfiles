@@ -184,8 +184,8 @@ local PROVIDERS = {
     key_prefix = "o",
     continuation_name = "opencode",
     ready = opencode_ready,
-    start_args = function() return { "--auto" } end,
-    resume_args = function(session) return { "--auto", "--session", session.id } end,
+    start_args = function() return { "--auto", "--mini" } end,
+    resume_args = function(session) return { "--auto", "--mini", "--session", session.id } end,
   },
 }
 
@@ -1561,6 +1561,45 @@ local function link_new_task_to_session_id(provider, task, cwd, known_session_id
     end)
 end
 
+local OPENCODE_TERM_BG = "#0d1117"
+local OPENCODE_TERM_BLACK = "#7d8590"
+local OPENCODE_TERM_BRIGHT_BLACK = "#8b949e"
+
+local function prepare_opencode_terminal_palette(provider)
+  if provider.name ~= "opencode" then return end
+  vim.g.terminal_color_0 = OPENCODE_TERM_BLACK
+  vim.g.terminal_color_8 = OPENCODE_TERM_BRIGHT_BLACK
+end
+
+local function is_opencode_terminal_buffer(buf)
+  if not vim.api.nvim_buf_is_valid(buf) then return false end
+  if vim.api.nvim_get_option_value("buftype", { buf = buf }) ~= "terminal" then return false end
+
+  local name = vim.api.nvim_buf_get_name(buf):lower()
+  return name:find("opencode", 1, true) ~= nil or name:find("fj-opencode", 1, true) ~= nil
+end
+
+local function apply_opencode_terminal_display(buf)
+  if not is_opencode_terminal_buffer(buf) then return end
+
+  vim.b[buf].opencode_term = true
+  vim.b[buf].terminal_color_0 = OPENCODE_TERM_BLACK
+  vim.b[buf].terminal_color_8 = OPENCODE_TERM_BRIGHT_BLACK
+  vim.api.nvim_set_hl(0, "OpencodeTermBg", { bg = OPENCODE_TERM_BG })
+
+  for _, winid in ipairs(vim.fn.win_findbuf(buf)) do
+    vim.api.nvim_set_option_value("winhl", "Normal:OpencodeTermBg", { win = winid })
+  end
+end
+
+---@param task overseer.Task
+---@param bufnr integer
+function M.apply_task_terminal_display(task, bufnr)
+  if type(task) ~= "table" or type(task.metadata) ~= "table" then return end
+  if task.metadata[AGENT_PROVIDER_METADATA] ~= "opencode" then return end
+  apply_opencode_terminal_display(bufnr)
+end
+
 ---@param provider table
 ---@param task overseer.Task
 ---@param prompt? string
@@ -1573,6 +1612,7 @@ local function open_task(provider, task, prompt, opts)
   task.metadata.wait_for_agent_ready = opts.wait_for_ready == true
   utils.attach_keymaps(task)
   if opts.open_output ~= false then
+    prepare_opencode_terminal_palette(provider)
     local start_win = utils.close_floating_window(opts.start_win or vim.api.nvim_get_current_win())
     utils.schedule_open_overseer_task_output(task, { winid = start_win })
     require("serranomorante.remote_kitty_focus").focus_current_window()
@@ -1589,6 +1629,7 @@ local function start_and_open_task_output(provider, task, start_win)
   start_win = start_win or vim.api.nvim_get_current_win()
   leave_terminal_insert()
   utils.remember_overseer_output_previous_buffer(start_win)
+  prepare_opencode_terminal_palette(provider)
   if not task:start() then
     vim.notify(("Failed to start %s task"):format(provider.display_name), vim.log.levels.ERROR)
     task:dispose(true)
@@ -2060,5 +2101,13 @@ function M.keys()
   create_provider_keymaps(PROVIDERS.gemini)
   create_provider_keymaps(PROVIDERS.opencode)
 end
+
+vim.api.nvim_create_autocmd({ "TermOpen", "BufEnter", "BufWinEnter" }, {
+  desc = "Override terminal background/ANSI colors for opencode mini mode visibility",
+  group = vim.api.nvim_create_augroup("opencode_term_bg", { clear = true }),
+  callback = function(args)
+    vim.schedule(function() apply_opencode_terminal_display(args.buf) end)
+  end,
+})
 
 return M

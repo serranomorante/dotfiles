@@ -1780,6 +1780,14 @@ function M.name_overseer_task_output(task, bufnr)
     pcall(vim.api.nvim_buf_set_name, bufnr, task_name)
   end
   vim.b[bufnr].overseer_output_name = task_name
+  if type(metadata.agent_provider) == "string" then
+    pcall(function()
+      local agent_sessions = require("serranomorante.plugins.jobs.agent_sessions")
+      if type(agent_sessions.apply_task_terminal_display) == "function" then
+        agent_sessions.apply_task_terminal_display(task, bufnr)
+      end
+    end)
+  end
 end
 
 ---Backward-compatible local alias (call sites inside this module).

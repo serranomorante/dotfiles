@@ -5,6 +5,7 @@ set -euo pipefail
 # dotfiles-test-tags: nvim headless overseer agent-session terminal
 # dotfiles-test-firejail: disabled
 # dotfiles-test-case: overseer-agent-terminal-output-navigation
+# dotfiles-test-case: opencode-output-uses-readable-ansi-black
 # dotfiles-test-case: overseer-agent-session-terminal-contract
 # dotfiles-test-case: overseer-agent-output-scheduler-contract
 # dotfiles-test-case: ansible-task-picker-preserves-source-window-for-output
@@ -118,6 +119,33 @@ overseer-agent-terminal-output-navigation)
         '  assert(not map_for("t", "<C-^>"), "Overseer output should not override terminal <C-^>")' \
         '  assert(map_for("n", "<M-j>"), "missing normal-mode next task map")' \
         '  assert(map_for("n", "<M-k>"), "missing normal-mode previous task map")' \
+        '  vim.fn.jobstop(job)' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua_file "$lua_file"
+    ;;
+opencode-output-uses-readable-ansi-black)
+    lua_file="${DOTFILES_TEST_TMP}/opencode-output-uses-readable-ansi-black.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  local utils = require("serranomorante.utils")' \
+        '  local term_bufnr = vim.api.nvim_create_buf(false, true)' \
+        '  vim.api.nvim_set_current_buf(term_bufnr)' \
+        '  local job = vim.fn.termopen({ "sh", "-c", "sleep 2" })' \
+        '  assert(job > 0, "termopen failed")' \
+        '  local task = {' \
+        '    id = 4321,' \
+        '    name = "opencode: [ses_04] Contrast", ' \
+        '    metadata = { agent_provider = "opencode", agent_session_id = "ses_04contrast" },' \
+        '    get_bufnr = function() return term_bufnr end,' \
+        '  }' \
+        '  utils.name_overseer_task_output(task, term_bufnr)' \
+        '  assert(vim.api.nvim_buf_get_name(term_bufnr) == "task://MASTER-opencode: [ses_04] Contrast", vim.api.nvim_buf_get_name(term_bufnr))' \
+        '  assert(vim.b[term_bufnr].opencode_term == true, "opencode output marker missing")' \
+        '  assert(vim.b[term_bufnr].terminal_color_0 == "#7d8590", "ANSI black should be readable muted text")' \
+        '  assert(vim.b[term_bufnr].terminal_color_8 == "#8b949e", "bright ANSI black should be readable muted text")' \
         '  vim.fn.jobstop(job)' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
