@@ -5,8 +5,6 @@
     realtime_kernel_packages:
       - linux-lts
       - linux-lts-headers
-      - linux-rt-lts
-      - linux-rt-lts-headers
       - linux-rt
       - linux-rt-headers
     realtime_nvidia_lts_module_packages:
@@ -26,13 +24,10 @@
     realtime_uki_presets:
       - path: /etc/mkinitcpio.d/linux-lts.preset
         pkgbase: linux-lts
-      - path: /etc/mkinitcpio.d/linux-rt-lts.preset
-        pkgbase: linux-rt-lts
       - path: /etc/mkinitcpio.d/linux-rt.preset
         pkgbase: linux-rt
     realtime_saved_uki_files:
       - /boot/EFI/Linux/arch-linux-lts.efi
-      - /boot/EFI/Linux/arch-linux-rt-lts.efi
       - /boot/EFI/Linux/arch-linux-rt.efi
     realtime_default_boot_entry: arch-linux-rt.efi
     realtime_ntsync_load_unit: /etc/systemd/system/ntsync-load.service
@@ -250,7 +245,7 @@
         msg:
           - "Reboot into the default linux-rt UKI from systemd-boot."
           - "Keep linux-lts installed and select it from the boot menu if NVIDIA, display, or audio tests fail."
-          - "linux-rt-lts remains installed as the conservative RT fallback, but linux-rt is the default because it provides ntsync for current Wine."
+          - "linux-rt is the default because it provides ntsync for current Wine."
           - "After booting linux-rt, verify Wine ntsync with: test -e /dev/ntsync && echo ntsync-ready"
           - "VirtualBox host modules are installed for fallback use, but their boot autoload is masked because vboxdrv is not clean on PREEMPT_RT."
           - "{{ var_realtime_final_dkms_status.stdout_lines }}"

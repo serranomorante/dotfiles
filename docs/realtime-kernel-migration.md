@@ -1,6 +1,6 @@
 # Realtime Kernel Migration
 
-This workstation can migrate from `linux-lts` to realtime kernels without reinstalling. Keep `linux-lts` and `linux-lts-headers` installed as the stable fallback boot path, keep `linux-rt-lts` and `linux-rt-lts-headers` as the conservative realtime fallback, install `linux-rt` and `linux-rt-headers` as the default realtime boot path, and use DKMS-backed kernel modules for hardware that must work across installed kernels.
+This workstation can migrate from `linux-lts` to realtime kernels without reinstalling. Keep `linux-lts` and `linux-lts-headers` installed as the stable fallback boot path, install `linux-rt` and `linux-rt-headers` as the default realtime boot path, and use DKMS-backed kernel modules for hardware that must work across installed kernels.
 
 ## Secure Boot And TPM
 
@@ -14,17 +14,15 @@ The pre-hibernation setup used on the current machine has hibernation disabled a
 
 `nvidia-open-lts` is built for Arch's `linux-lts` package. The realtime kernel needs `nvidia-open-dkms` so the open NVIDIA kernel module is built for every installed kernel that has headers available.
 
-LenovoLegionLinux uses a separate DKMS module named `lenovolegionlinux` that builds the `legion-laptop` kernel module. It does not replace or share files with NVIDIA DKMS; it only appears alongside `nvidia` in `dkms status`. The migration playbook includes it in the built-only DKMS check so an already installed Legion module is installed for `linux-lts`, `linux-rt-lts`, and `linux-rt` when headers are present.
+LenovoLegionLinux uses a separate DKMS module named `lenovolegionlinux` that builds the `legion-laptop` kernel module. It does not replace or share files with NVIDIA DKMS; it only appears alongside `nvidia` in `dkms status`. The migration playbook includes it in the built-only DKMS check so an already installed Legion module is installed for `linux-lts` and `linux-rt` when headers are present.
 
 VirtualBox host modules need the same package treatment, but the supported workstation workflow is `linux-lts` only. Use `virtualbox-host-dkms`, not `virtualbox-host-modules-lts`, keep `/etc/modules-load.d/virtualbox-host-dkms.conf -> /dev/null` masked because `vboxdrv` can trigger scheduler BUG warnings on `PREEMPT_RT`, and load the host modules manually from the fallback `linux-lts` boot with `~/bin/virtualbox-lts-load` before starting VMs.
 
-`linux-rt-lts` itself provides `VIRTUALBOX-GUEST-MODULES`, which satisfies the guest-utils dependency path. Host support still needs the DKMS host module package when running VirtualBox guests on the workstation.
-
 ## Boot Flow
 
-The install uses systemd-boot with UKIs under `/boot/EFI/Linux/`. The migration playbook rewrites the `linux-lts`, `linux-rt-lts`, and `linux-rt` mkinitcpio presets to use `/boot` instead of `/efi`, runs `mkinitcpio --allpresets`, saves the LTS and RT UKIs in the `sbctl` signing database, signs any unsigned `/boot` EFI files reported by `sbctl verify`, regenerates the presets once more so the signed UKIs are fresh, verifies that no `/boot` file remains unsigned, masks VirtualBox host module autoloading, installs any migration DKMS entries that were left in a built-only state, enables an `ntsync-load.service` helper that loads `ntsync` only when the running kernel provides the module, and sets `arch-linux-rt.efi` as the systemd-boot default entry.
+The install uses systemd-boot with UKIs under `/boot/EFI/Linux/`. The migration playbook rewrites the `linux-lts` and `linux-rt` mkinitcpio presets to use `/boot` instead of `/efi`, runs `mkinitcpio --allpresets`, saves the LTS and RT UKIs in the `sbctl` signing database, signs any unsigned `/boot` EFI files reported by `sbctl verify`, regenerates the presets once more so the signed UKIs are fresh, verifies that no `/boot` file remains unsigned, masks VirtualBox host module autoloading, installs any migration DKMS entries that were left in a built-only state, enables an `ntsync-load.service` helper that loads `ntsync` only when the running kernel provides the module, and sets `arch-linux-rt.efi` as the systemd-boot default entry.
 
-After the playbook succeeds, reboot normally to enter the `linux-rt` UKI by default. Keep `linux-lts` available as the stable fallback and `linux-rt-lts` available as the conservative realtime fallback until NVIDIA, audio, display switching, Wine ntsync, and VirtualBox fallback workflows have been tested; if the new RT boot path regresses, use the boot menu or `bootctl set-default arch-linux-lts.efi` to return the stable fallback kernel to default.
+After the playbook succeeds, reboot normally to enter the `linux-rt` UKI by default. Keep `linux-lts` available as the stable fallback until NVIDIA, audio, display switching, Wine ntsync, and VirtualBox fallback workflows have been tested; if the new RT boot path regresses, use the boot menu or `bootctl set-default arch-linux-lts.efi` to return the stable fallback kernel to default.
 
 ## Expected Side Effects
 
@@ -32,4 +30,4 @@ The audio stack is already mostly prepared for RT use: `realtime-privileges`, `r
 
 The NVIDIA display workflow should remain functionally the same because the userspace packages, Xorg offload config, SDDM `Xsetup`, `nvidia-prime-rtd3pm`, and `/etc/cmdline.d/video.conf` are unchanged. The higher-risk part is DKMS build success for the open module against the RT headers.
 
-VirtualBox host modules are deliberately not autoloaded after the migration. `virtualbox-host-dkms` remains installed, but `vboxdrv` has shown scheduler BUG warnings on RT kernels and VM use is intentionally limited to `linux-lts`. For VirtualBox work, boot `linux-lts`, run `~/bin/virtualbox-lts-load`, and then start the VM; the helper refuses to run on `linux-rt-lts` or `linux-rt` so the RT boot paths remain audio-focused environments.
+VirtualBox host modules are deliberately not autoloaded after the migration. `virtualbox-host-dkms` remains installed, but `vboxdrv` has shown scheduler BUG warnings on RT kernels and VM use is intentionally limited to `linux-lts`. For VirtualBox work, boot `linux-lts`, run `~/bin/virtualbox-lts-load`, and then start the VM; the helper refuses to run on `linux-rt` so the RT boot paths remain audio-focused environments.
