@@ -159,6 +159,8 @@ add_rw_path "$work_root"
 
 mkdir -p \
     "$real_home/.config/gcloud" \
+    "$real_home/.config/configstore" \
+    "$real_home/.cache/firebase" \
     "$real_home/.cache/firejail-wrapper/node" \
     "$real_home/.cache/firejail-wrapper/python" \
     "$real_home/.local/state/firejail-wrapper/node" \

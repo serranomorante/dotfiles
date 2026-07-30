@@ -438,6 +438,12 @@
     dest: ~/.config/opencode/tui.json
     mode: "644"
 
+- name: "[archlinux] Setup ai tools: write opencode global config"
+  ansible.builtin.template:
+    src: opencode_config.jsonc.j2
+    dest: ~/.config/opencode/opencode.jsonc
+    mode: "644"
+
 - name: "[archlinux] Setup ai tools: write opencode dotfiles system theme"
   ansible.builtin.template:
     src: opencode_dotfiles_system_theme.json.j2

@@ -129,7 +129,10 @@ firejail-ai-agent-orchestration-paths-visible)
     for path in \
         'whitelist-ro ${HOME}/dotfiles/utilities' \
         'whitelist-ro ${HOME}/dotfiles/for-my-eyes-only' \
-        'whitelist ${HOME}/.config/gcloud'; do
+        'whitelist ${HOME}/.config/gcloud' \
+        'whitelist-ro ${HOME}/data/apps/dev-tools/firebase-{{ firebase_cli_version }}' \
+        'whitelist ${HOME}/.config/configstore' \
+        'whitelist ${HOME}/.cache/firebase'; do
         if ! grep -Fqx "$path" "$profile"; then
             printf 'AI agent profile does not expose required runtime path: %s\n' "$path" >&2
             exit 1
@@ -137,6 +140,8 @@ firejail-ai-agent-orchestration-paths-visible)
     done
     for expected in \
         '"$real_home/.config/gcloud"' \
+        '"$real_home/.config/configstore"' \
+        '"$real_home/.cache/firebase"' \
         'work_root=$(resolve_default_work_root)' \
         'git -C "$cwd" rev-parse --show-toplevel' \
         'NVIM' \

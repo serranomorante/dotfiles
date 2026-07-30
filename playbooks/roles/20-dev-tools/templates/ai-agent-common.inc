@@ -23,6 +23,13 @@ whitelist-ro ${HOME}/.cache/ms-playwright
 whitelist ${HOME}/.config/gcloud
 whitelist-ro ${HOME}/data/apps/dev-tools/ai-tools
 
+# Firebase CLI: ${HOME}/bin/firebase is a symlink, so the pinned standalone
+# binary needs its own read-only entry. Hosting deploys also need the writable
+# login/token store in configstore and the CLI's own cache directory.
+whitelist-ro ${HOME}/data/apps/dev-tools/firebase-{{ firebase_cli_version }}
+whitelist ${HOME}/.config/configstore
+whitelist ${HOME}/.cache/firebase
+
 # MCPHub config and logs plus child MCP runtime state. Child MCP commands reuse
 # this sandbox through fj-mcp-inherit instead of starting nested Firejail.
 whitelist-ro ${HOME}/.config/mcphub
