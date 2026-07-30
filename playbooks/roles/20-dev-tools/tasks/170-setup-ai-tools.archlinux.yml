@@ -372,6 +372,7 @@
     - "{{ ansible_facts.env.HOME }}/.local/state/gemini"
     - "{{ ansible_facts.env.HOME }}/.local/share/gemini"
     - "{{ ansible_facts.env.HOME }}/.config/opencode"
+    - "{{ ansible_facts.env.HOME }}/.config/opencode/themes"
     - "{{ ansible_facts.env.HOME }}/.cache/opencode"
     - "{{ ansible_facts.env.HOME }}/.local/state/opencode"
     - "{{ ansible_facts.env.HOME }}/.local/share/opencode"
@@ -435,6 +436,12 @@
   ansible.builtin.template:
     src: opencode_tui_config.json.j2
     dest: ~/.config/opencode/tui.json
+    mode: "644"
+
+- name: "[archlinux] Setup ai tools: write opencode dotfiles system theme"
+  ansible.builtin.template:
+    src: opencode_dotfiles_system_theme.json.j2
+    dest: ~/.config/opencode/themes/dotfiles-system.json
     mode: "644"
 
 # Codex treats [permissions.<name>] as a named permission profile and refuses to

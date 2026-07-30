@@ -172,6 +172,12 @@
     - fj-gemini
     - fj-opencode
 
+- name: "[archlinux] Setup node: install OpenCode mini readability wrapper"
+  ansible.builtin.copy:
+    src: opencode-mini-readable
+    dest: "{{ node_user_bin_dir }}/opencode-mini-readable"
+    mode: "755"
+
 - name: "[archlinux] Setup node: install ansible firejail npm wrapper"
   ansible.builtin.copy:
     src: ansible-firejail-npm

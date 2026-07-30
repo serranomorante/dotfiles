@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+import fcntl
+import os
+import pty
+import select
+import signal
+import struct
+import sys
+import termios
+import tty
+
+
+TARGET = os.environ.get("OPENCODE_MINI_READABLE_TARGET", "fj-opencode")
+
+REPLACEMENTS = (
+    (b"\x1b[38;2;15;23;42m", b"\x1b[38;2;240;246;252m"),
+    (b"\x1b[38;2;0;0;0m", b"\x1b[38;2;125;133;144m"),
+)
+MAX_PATTERN = max(len(pattern) for pattern, _ in REPLACEMENTS)
+
+
+def readable(data: bytes) -> bytes:
+    for pattern, replacement in REPLACEMENTS:
+        data = data.replace(pattern, replacement)
+    return data
+
+
+def copy_winsize(src_fd: int, dst_fd: int) -> None:
+    try:
+        size = fcntl.ioctl(src_fd, termios.TIOCGWINSZ, b"\0" * 8)
+        rows, cols, xpix, ypix = struct.unpack("HHHH", size)
+        if rows and cols:
+            fcntl.ioctl(dst_fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, xpix, ypix))
+    except OSError:
+        pass
+
+
+def main() -> int:
+    pid, child_fd = pty.fork()
+    if pid == 0:
+        os.execvp(TARGET, [TARGET, *sys.argv[1:]])
+
+    stdin_fd = sys.stdin.fileno()
+    stdout_fd = sys.stdout.fileno()
+    old_termios = None
+    pending = b""
+    input_open = True
+
+    def resize(_signum=None, _frame=None):
+        copy_winsize(stdout_fd, child_fd)
+        try:
+            os.kill(pid, signal.SIGWINCH)
+        except ProcessLookupError:
+            pass
+
+    signal.signal(signal.SIGWINCH, resize)
+    resize()
+
+    if os.isatty(stdin_fd):
+        old_termios = termios.tcgetattr(stdin_fd)
+        tty.setraw(stdin_fd)
+
+    try:
+        while True:
+            read_targets = [child_fd]
+            if input_open:
+                read_targets.append(stdin_fd)
+            readable_fds, _, _ = select.select(read_targets, [], [])
+
+            if child_fd in readable_fds:
+                try:
+                    chunk = os.read(child_fd, 65536)
+                except OSError:
+                    chunk = b""
+                if not chunk:
+                    break
+
+                pending += chunk
+                if len(pending) > MAX_PATTERN:
+                    cut = len(pending) - MAX_PATTERN
+                    os.write(stdout_fd, readable(pending[:cut]))
+                    pending = pending[cut:]
+
+            if stdin_fd in readable_fds:
+                try:
+                    chunk = os.read(stdin_fd, 65536)
+                except OSError:
+                    chunk = b""
+                if chunk:
+                    os.write(child_fd, chunk)
+                else:
+                    input_open = False
+    finally:
+        if pending:
+            os.write(stdout_fd, readable(pending))
+        if old_termios is not None:
+            termios.tcsetattr(stdin_fd, termios.TCSADRAIN, old_termios)
+
+    _, status = os.waitpid(pid, 0)
+    if os.WIFEXITED(status):
+        return os.WEXITSTATUS(status)
+    if os.WIFSIGNALED(status):
+        return 128 + os.WTERMSIG(status)
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

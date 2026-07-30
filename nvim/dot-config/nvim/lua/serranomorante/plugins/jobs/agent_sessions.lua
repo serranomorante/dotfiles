@@ -136,6 +136,7 @@ local PROVIDERS = {
     name = "claude",
     display_name = "Claude",
     executable = "fj-claude",
+    unsandboxed_executable = "claude",
     mcp_executable = "claude-mcp",
     sessions_dir = vim.fn.expand("~/.claude/projects"),
     cache_key = "agent-sessions-claude-v1",
@@ -158,6 +159,7 @@ local PROVIDERS = {
     name = "gemini",
     display_name = "Gemini",
     executable = "fj-gemini",
+    unsandboxed_executable = "gemini",
     mcp_executable = "gemini-mcp",
     sessions_dir = vim.fn.expand("~/.gemini/tmp"),
     cache_key = "agent-sessions-gemini-v1",
@@ -177,7 +179,8 @@ local PROVIDERS = {
   opencode = {
     name = "opencode",
     display_name = "OpenCode",
-    executable = "fj-opencode",
+    executable = "opencode-mini-readable",
+    unsandboxed_executable = "opencode",
     mcp_executable = "opencode-mcp",
     sessions_dir = vim.fn.expand("~/.local/share/opencode"),
     cache_key = "agent-sessions-opencode-v1",
@@ -1563,12 +1566,16 @@ end
 
 local OPENCODE_TERM_BG = "#0d1117"
 local OPENCODE_TERM_BLACK = "#7d8590"
+local OPENCODE_TERM_BLUE = "#58a6ff"
 local OPENCODE_TERM_BRIGHT_BLACK = "#8b949e"
+local OPENCODE_TERM_BRIGHT_BLUE = "#79c0ff"
 
 local function prepare_opencode_terminal_palette(provider)
   if provider.name ~= "opencode" then return end
   vim.g.terminal_color_0 = OPENCODE_TERM_BLACK
+  vim.g.terminal_color_4 = OPENCODE_TERM_BLUE
   vim.g.terminal_color_8 = OPENCODE_TERM_BRIGHT_BLACK
+  vim.g.terminal_color_12 = OPENCODE_TERM_BRIGHT_BLUE
 end
 
 local function is_opencode_terminal_buffer(buf)
@@ -1584,7 +1591,9 @@ local function apply_opencode_terminal_display(buf)
 
   vim.b[buf].opencode_term = true
   vim.b[buf].terminal_color_0 = OPENCODE_TERM_BLACK
+  vim.b[buf].terminal_color_4 = OPENCODE_TERM_BLUE
   vim.b[buf].terminal_color_8 = OPENCODE_TERM_BRIGHT_BLACK
+  vim.b[buf].terminal_color_12 = OPENCODE_TERM_BRIGHT_BLUE
   vim.api.nvim_set_hl(0, "OpencodeTermBg", { bg = OPENCODE_TERM_BG })
 
   for _, winid in ipairs(vim.fn.win_findbuf(buf)) do

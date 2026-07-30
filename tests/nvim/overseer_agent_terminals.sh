@@ -145,7 +145,9 @@ opencode-output-uses-readable-ansi-black)
         '  assert(vim.api.nvim_buf_get_name(term_bufnr) == "task://MASTER-opencode: [ses_04] Contrast", vim.api.nvim_buf_get_name(term_bufnr))' \
         '  assert(vim.b[term_bufnr].opencode_term == true, "opencode output marker missing")' \
         '  assert(vim.b[term_bufnr].terminal_color_0 == "#7d8590", "ANSI black should be readable muted text")' \
+        '  assert(vim.b[term_bufnr].terminal_color_4 == "#58a6ff", "ANSI blue should be readable on selected rows")' \
         '  assert(vim.b[term_bufnr].terminal_color_8 == "#8b949e", "bright ANSI black should be readable muted text")' \
+        '  assert(vim.b[term_bufnr].terminal_color_12 == "#79c0ff", "bright ANSI blue should be readable on selected rows")' \
         '  vim.fn.jobstop(job)' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
@@ -1711,10 +1713,12 @@ overseer-actions-include-dispose-and-kill-tmux)
         '  assert(run_ref == "44", tostring(run_ref))' \
         '  assert(captured.actions["detach from sandbox"], "detach from sandbox action was not registered")' \
         '  local detach_action = captured.actions["detach from sandbox"]' \
-        '  assert(detach_action.desc == "Dispose the Codex task, kill its tmux session, and resume it without Firejail", vim.inspect(detach_action))' \
-        '  assert(detach_action.condition({ metadata = { agent_provider = "claude", agent_tmux_session_name = "claude-close-session" } }) == false, "detach should be hidden for non-Codex tasks")' \
+        '  assert(detach_action.desc == "Dispose the sandboxed task, kill its tmux session, and resume it without Firejail", vim.inspect(detach_action))' \
+        '  assert(detach_action.condition({ metadata = { agent_provider = "claude", agent_tmux_session_name = "claude-close-session" } }) == true, "detach should be visible for tmux-backed Claude tasks")' \
+        '  assert(detach_action.condition({ metadata = { agent_provider = "gemini", agent_tmux_session_name = "gemini-close-session" } }) == true, "detach should be visible for tmux-backed Gemini tasks")' \
         '  assert(detach_action.condition({ metadata = { agent_provider = "codex" } }) == false, "detach should be hidden without tmux metadata")' \
         '  assert(detach_action.condition({ metadata = { agent_provider = "codex", agent_tmux_session_name = "codex-close-session" } }) == true, "detach should be visible for tmux-backed Codex tasks")' \
+        '  assert(detach_action.condition({ metadata = { agent_provider = "opencode", agent_tmux_session_name = "opencode-close-session" } }) == true, "detach should be visible for tmux-backed OpenCode tasks")' \
         '  detach_action.run({ id = 45, metadata = { agent_provider = "codex", agent_tmux_session_name = "codex-close-session" } })' \
         '  assert(detach_ref == "45", tostring(detach_ref))' \
         '  vim.cmd.qa({ bang = true })' \

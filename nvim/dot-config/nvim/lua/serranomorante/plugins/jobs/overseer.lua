@@ -38,12 +38,6 @@ local function keys()
   require("serranomorante.plugins.jobs.agent_tasks").setup_commands()
   vim.keymap.set(
     "n",
-    "<leader>ol",
-    "<cmd>OverseerLoadBundle<CR>",
-    { desc = "Overseer: Load tasks that were saved to disk" }
-  )
-  vim.keymap.set(
-    "n",
     "<leader>ob",
     "<cmd>OverseerToggle! bottom<CR>",
     { desc = "Overseer: Toggle the overseer window. Cursor stays in current window" }
@@ -204,10 +198,10 @@ local function opts()
         end,
       },
       ["detach from sandbox"] = {
-        desc = "Dispose the Codex task, kill its tmux session, and resume it without Firejail",
+        desc = "Dispose the sandboxed task, kill its tmux session, and resume it without Firejail",
         condition = function(task)
           return type(task.metadata) == "table"
-            and task.metadata.agent_provider == "codex"
+            and vim.list_contains({ "codex", "opencode", "claude", "gemini" }, task.metadata.agent_provider)
             and type(task.metadata.agent_tmux_session_name) == "string"
             and task.metadata.agent_tmux_session_name ~= ""
         end,
