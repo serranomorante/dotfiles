@@ -10,6 +10,7 @@ Use this file to choose the source file that owns a behavior before editing gene
 - `term/`: Kitty, tmux, terminal wrappers, quick-access TUIs.
 - `systemd/`: generic user units not owned by a narrower package.
 - `audio/`: audio/MIDI production tooling, Bluetooth helpers, pedalboard actions.
+- `mypaint/`: MyPaint settings, custom brushes, brush order under `dot-config/mypaint/` and `dot-local/share/mypaint/`.
 - `utilities/`: general scripts/config, health tooling, notification actions, browser/task helpers, KDE runtime config.
 - `PKM/`: public PKM tooling; private note content stays outside this repo.
 - `termux/`: Android/Termux dotfiles and Termux:Widget shortcuts.
