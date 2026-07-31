@@ -63,7 +63,8 @@ firejail-ai-agent-profiles-avoid-broad-xdg)
         "$root/playbooks/roles/20-dev-tools/templates/ai-agent-common.inc" \
         "$root/playbooks/roles/20-dev-tools/templates/claude.profile" \
         "$root/playbooks/roles/20-dev-tools/templates/codex.profile" \
-        "$root/playbooks/roles/20-dev-tools/templates/gemini.profile"; do
+        "$root/playbooks/roles/20-dev-tools/templates/gemini.profile" \
+        "$root/playbooks/roles/20-dev-tools/templates/opencode.profile"; do
         if grep -Eq '^[[:space:]]*whitelist[[:space:]]+\$\{HOME\}/\.cache([[:space:]]|$)' "$profile"; then
             printf 'broad cache whitelist in %s\n' "$profile" >&2
             exit 1
@@ -112,7 +113,8 @@ firejail-ai-agent-runtime-launchers-use-wrappers)
     for expected in \
         '"fj-codex"' \
         '"fj-claude"' \
-        '"fj-gemini"'; do
+        '"fj-gemini"' \
+        '"fj-opencode"'; do
         if ! grep -Fq "$expected" "$local_execution"; then
             printf 'agent-local-execution is missing wrapper command: %s\n' "$expected" >&2
             exit 1
