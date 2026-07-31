@@ -6,6 +6,7 @@ set -euo pipefail
 # dotfiles-test-case: foam-remind-agent-run-syntax
 # dotfiles-test-case: foam-remind-agent-run-writes-result-and-payload
 # dotfiles-test-case: foam-remind-agent-run-keeps-default-cwd
+# dotfiles-test-case: foam-remind-agent-run-honors-agent-metadata
 # dotfiles-test-case: foam-remind-agent-run-ignores-example-source-duplicates
 # dotfiles-test-case: foam-remind-agent-run-fails-on-duplicate-id
 
@@ -115,7 +116,7 @@ foam-remind-agent-run-writes-result-and-payload)
         FOAM_REMIND_AGENT_WRAPPER="$wrapper" \
         "$script_under_test" todo-sample-agent-task >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
 
-    rg -q -- '--agent codex --input-json -' "${DOTFILES_TEST_TMP}/wrapper.args"
+    rg -q -- '--agent opencode --input-json -' "${DOTFILES_TEST_TMP}/wrapper.args"
     python - "${DOTFILES_TEST_TMP}/wrapper.payload" "$notes" <<'PY'
 import json
 import sys
@@ -127,7 +128,7 @@ assert payload["todo"]["id"] == "todo-sample-agent-task"
 assert payload["todo"]["title"] == "Review sample task"
 assert payload["todo"]["body"] == "Summarize the sample input."
 assert payload["todo"]["tags"] == ["#sample"]
-assert payload["execution"]["agent"] == "codex"
+assert payload["execution"]["agent"] == "opencode"
 assert payload["execution"]["model"] == "gpt-test"
 assert payload["execution"]["cwd"] == notes
 assert payload["source"]["relative_file"] == "misc/tasks/todos.sample.md"
@@ -189,6 +190,38 @@ assert payload["todo"]["id"] == "todo-dotfiles-agent-task"
 assert payload["execution"]["cwd"] == sys.argv[2]
 assert payload["execution"]["sandbox"] == "workspace-write"
 PY
+    ;;
+foam-remind-agent-run-honors-agent-metadata)
+    notes=$(make_foam)
+    wrapper=$(write_fake_wrapper)
+    home=$(write_fake_notify)
+    bin=$(write_fake_systemd_run)
+    cat >>"${notes}/misc/tasks/todos.sample.md" <<'MARKDOWN'
+
+- [ ] **Review claude task**
+  Summarize with claude explicitly.
+  @id todo-claude-agent-task
+  @agent claude
+MARKDOWN
+
+    HOME="$home" \
+        PATH="${bin}:/usr/bin:/bin" \
+        FOAM_REMIND_NOTES_ROOT="$notes" \
+        FOAM_REMIND_AGENT_OUTPUT_ROOT="${notes}/misc/agent-runs" \
+        FOAM_REMIND_AGENT_WRAPPER="$wrapper" \
+        "$script_under_test" todo-claude-agent-task >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+
+    rg -q -- '--agent claude --input-json -' "${DOTFILES_TEST_TMP}/wrapper.args"
+    python - "${DOTFILES_TEST_TMP}/wrapper.payload" <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+assert payload["execution"]["agent"] == "claude"
+PY
+    result=$(find "${notes}/misc/agent-runs" -type f -name 'todo-claude-agent-task-*.md' -print -quit)
+    [[ -n "$result" ]]
+    rg -q "agent: claude" "$result"
     ;;
 foam-remind-agent-run-ignores-example-source-duplicates)
     notes=$(make_foam)

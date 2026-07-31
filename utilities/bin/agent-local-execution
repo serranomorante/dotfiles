@@ -11,7 +11,7 @@ import sys
 
 
 SCHEMA = "foam-ai-autotrigger.v1"
-SUPPORTED_AGENTS = {"codex", "claude", "gemini"}
+SUPPORTED_AGENTS = {"codex", "claude", "gemini", "opencode"}
 
 
 def die(message, code=2):
@@ -184,6 +184,20 @@ def run_agent(payload, opts):
         ]
         if opts["model"]:
             cmd.extend(["--model", opts["model"]])
+    elif opts["agent"] == "opencode":
+        cmd = [
+            "fj-opencode",
+            "--exec",
+            "--root",
+            opts["cwd"],
+            "--",
+            "opencode",
+            "run",
+            "--dir",
+            opts["cwd"],
+        ]
+        if opts["model"]:
+            cmd.extend(["-m", opts["model"]])
     else:
         cmd = [
             "fj-gemini",

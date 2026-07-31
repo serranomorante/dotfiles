@@ -7,6 +7,7 @@ set -euo pipefail
 # dotfiles-test-case: agent-local-execution-codex-builds-noninteractive-command
 # dotfiles-test-case: agent-local-execution-claude-builds-noninteractive-command
 # dotfiles-test-case: agent-local-execution-gemini-builds-noninteractive-command
+# dotfiles-test-case: agent-local-execution-opencode-builds-noninteractive-command
 # dotfiles-test-case: agent-local-execution-rejects-unsupported-schema
 
 # Purpose: Verify the local agent wrapper contract without invoking real agents.
@@ -126,6 +127,20 @@ agent-local-execution-gemini-builds-noninteractive-command)
     actual=$(cat "${DOTFILES_TEST_TMP}/agent.args")
     [[ "$actual" == "$expected" ]]
     rg -q "agent: gemini" "${DOTFILES_TEST_TMP}/agent.stdin"
+    rg -q "model: gpt-5" "${DOTFILES_TEST_TMP}/agent.stdin"
+    ;;
+agent-local-execution-opencode-builds-noninteractive-command)
+    bin=$(make_fake_path)
+    write_fake_agent "$bin" fj-opencode
+    payload=$(write_payload)
+
+    run_wrapper_with_path "$bin" --agent opencode --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+
+    rg -q "agent result" "${DOTFILES_TEST_TMP}/stdout"
+    expected="--exec --root ${DOTFILES_TEST_TMP}/work -- opencode run --dir ${DOTFILES_TEST_TMP}/work -m gpt-5"
+    actual=$(cat "${DOTFILES_TEST_TMP}/agent.args")
+    [[ "$actual" == "$expected" ]]
+    rg -q "agent: opencode" "${DOTFILES_TEST_TMP}/agent.stdin"
     rg -q "model: gpt-5" "${DOTFILES_TEST_TMP}/agent.stdin"
     ;;
 agent-local-execution-rejects-unsupported-schema)

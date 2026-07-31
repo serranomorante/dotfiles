@@ -226,7 +226,7 @@ def find_todo(notes_root, todo_id):
 def payload_for(todo, notes_root):
     meta = todo["meta"]
     execution = {
-        "agent": "codex",
+        "agent": meta.get("agent") or "opencode",
         "model": meta.get("model") or None,
         "cwd": os.path.abspath(os.path.expanduser(os.path.expandvars(meta.get("cwd") or notes_root))),
         "sandbox": meta.get("sandbox") or "workspace-write",
@@ -271,7 +271,7 @@ def write_result(path, todo, payload, started_at, finished_at, status, returncod
             "",
             f"source: {origin_link(todo)}",
             f"status: {status}",
-            f"agent: codex",
+            f"agent: {payload['execution'].get('agent') or ''}",
             f"model: {payload['execution'].get('model') or ''}",
             f"started_at_utc: {started_at.isoformat(timespec='seconds').replace('+00:00', 'Z')}",
             f"finished_at_utc: {finished_at.isoformat(timespec='seconds').replace('+00:00', 'Z')}",
@@ -320,7 +320,7 @@ def run(todo_id):
 
     try:
         result = subprocess.run(
-            [wrapper, "--agent", "codex", "--input-json", "-"],
+            [wrapper, "--agent", payload["execution"]["agent"], "--input-json", "-"],
             input=json.dumps(payload, ensure_ascii=False),
             text=True,
             capture_output=True,

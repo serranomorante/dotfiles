@@ -17,7 +17,7 @@ import tempfile
 
 SCHEMA = "foam-ai-autotrigger.v1"
 DEFAULT_TODO_REL = "misc/todos/ai-autotrigger.todos.md"
-DEFAULT_AGENT = "codex"
+DEFAULT_AGENT = "opencode"
 VALID_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 TODO_RE = re.compile(r"^(\s*)[-*+]\s+\[([ xX])\]\s+(.*)$")
 META_RE = re.compile(r"^\s*@([A-Za-z][A-Za-z0-9_-]*)\s*(.*?)\s*$")

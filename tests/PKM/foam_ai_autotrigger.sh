@@ -7,6 +7,7 @@ set -euo pipefail
 # dotfiles-test-case: foam-ai-autotrigger-completes-new-syncthing-todo
 # dotfiles-test-case: foam-ai-autotrigger-ignores-missing-id
 # dotfiles-test-case: foam-ai-autotrigger-skips-local-reason
+# dotfiles-test-case: foam-ai-autotrigger-defaults-to-opencode
 # dotfiles-test-case: foam-ai-autotrigger-records-wrapper-failure
 # dotfiles-test-case: foam-ai-autotrigger-retries-failed-digest
 
@@ -142,6 +143,28 @@ foam-ai-autotrigger-skips-local-reason)
     rg -q '^- \[ \] \*\*Local edit task\*\*\\$' "${notes_root}/misc/todos/ai-autotrigger.todos.md"
     [[ ! -e "${DOTFILES_TEST_TMP}/wrapper.payload" ]]
     rg -q "skipping reason 'local'" "${DOTFILES_TEST_TMP}/stderr"
+    ;;
+foam-ai-autotrigger-defaults-to-opencode)
+    notes_root=$(make_notes_root)
+    wrapper=$(write_success_wrapper)
+    write_todo_file "$notes_root" \
+        "# AI Autotrigger Todos" \
+        "" \
+        "- [ ] **Default agent task**\\" \
+        "  Runs with the default agent." \
+        "  @id default-agent-task" \
+        "  @tags #autotrigger"
+
+    run_parser "$notes_root" "$wrapper" --reason syncthing >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+
+    rg -q -- '--agent opencode --input-json -' "${DOTFILES_TEST_TMP}/wrapper.args"
+    python - "${DOTFILES_TEST_TMP}/wrapper.payload" <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+assert payload["execution"]["agent"] == "opencode"
+PY
     ;;
 foam-ai-autotrigger-records-wrapper-failure)
     notes_root=$(make_notes_root)
