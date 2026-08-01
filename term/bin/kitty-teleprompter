@@ -6,6 +6,7 @@ set -euo pipefail
 app_id=${DOTFILES_TELEPROMPTER_APP_ID:-kitty-teleprompter}
 socket=${DOTFILES_TELEPROMPTER_NVIM_SOCKET:-"${XDG_RUNTIME_DIR:-/tmp}/dotfiles-teleprompter.nvim.sock"}
 fifo=${DOTFILES_TELEPROMPTER_SCROLL_FIFO:-"${XDG_RUNTIME_DIR:-/tmp}/dotfiles-teleprompter-scroll.fifo"}
+font_size=${DOTFILES_TELEPROMPTER_FONT_SIZE:-48}
 
 usage() {
     cat <<USAGE
@@ -58,6 +59,7 @@ kitty \
     --name "$app_id" \
     --title Teleprompter \
     --override tab_bar_style=hidden \
+    --override "font_size=$font_size" \
     env \
     DOTFILES_TELEPROMPTER=1 \
     DOTFILES_TELEPROMPTER_NVIM_SOCKET="$socket" \
