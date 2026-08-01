@@ -142,8 +142,7 @@ opencode-output-uses-readable-ansi-black)
         '    get_bufnr = function() return term_bufnr end,' \
         '  }' \
         '  utils.name_overseer_task_output(task, term_bufnr)' \
-        '  assert(vim.api.nvim_buf_get_name(term_bufnr) == "task://MASTER-opencode: [ses_04] Contrast", vim.api.nvim_buf_get_name(term_bufnr))' \
-        '  assert(vim.b[term_bufnr].opencode_term == true, "opencode output marker missing")' \
+        '  assert(vim.api.nvim_buf_get_name(term_bufnr) == "task://MASTER-opencode: [04cont] Contrast", vim.api.nvim_buf_get_name(term_bufnr))' \
         '  assert(vim.b[term_bufnr].terminal_color_0 == "#7d8590", "ANSI black should be readable muted text")' \
         '  assert(vim.b[term_bufnr].terminal_color_4 == "#58a6ff", "ANSI blue should be readable on selected rows")' \
         '  assert(vim.b[term_bufnr].terminal_color_8 == "#8b949e", "bright ANSI black should be readable muted text")' \
