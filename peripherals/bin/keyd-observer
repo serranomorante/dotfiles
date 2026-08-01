@@ -139,8 +139,13 @@ run_open_present_window() {
     if [ "$rc" -ne 0 ]; then
         logger -t keyd-observer "present-window toggle-background failed with rc=$rc: $output"
         notify_keyd_action "Present window" "Error: $output" critical
-    elif [ -n "$output" ]; then
+    else
         logger -t keyd-observer "present-window toggle-background: $output"
+        if run_present_window status 2>/dev/null | grep -q '^running'; then
+            notify_keyd_action "Present window" "Started presenting"
+        else
+            notify_keyd_action "Present window" "Stopped presenting"
+        fi
     fi
 
     return "$rc"
