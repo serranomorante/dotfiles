@@ -249,11 +249,13 @@ def toggle_scene(args):
         ws.close()
 
 
-def monitor_scene_once(args):
+def monitor_scene_once(args, connected=None):
     ws = WebSocket(args.url, args.timeout)
     ws.connect()
     try:
         identify(ws, args.password)
+        if connected is not None:
+            connected()
         publish_scene(args.feedback_command, current_scene(ws))
         while True:
             message = ws.recv_json()
@@ -269,11 +271,19 @@ def monitor_scene_once(args):
 
 
 def monitor_scene(args):
+    connected = False
     while True:
         try:
-            monitor_scene_once(args)
+            def on_connected():
+                nonlocal connected
+                if not connected:
+                    print("obs-scene-toggle: monitor: OBS connected", file=sys.stderr)
+                    connected = True
+            monitor_scene_once(args, connected=on_connected)
         except (OSError, ProtocolError, json.JSONDecodeError) as exc:
-            print(f"obs-scene-toggle: monitor: {exc}", file=sys.stderr)
+            if connected:
+                print(f"obs-scene-toggle: monitor: OBS disconnected: {exc}", file=sys.stderr)
+                connected = False
             time.sleep(args.reconnect_delay)
 
 
