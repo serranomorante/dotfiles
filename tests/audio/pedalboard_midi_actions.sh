@@ -7,6 +7,8 @@ set -euo pipefail
 # dotfiles-test-case: pedalboard-midi-actions-profile-dispatch
 # dotfiles-test-case: pedalboard-midi-actions-shift-dispatch
 # dotfiles-test-case: pedalboard-midi-actions-publishes-tft-state
+# dotfiles-test-case: pedalboard-midi-actions-teleprompter-step-dispatch
+# dotfiles-test-case: pedalboard-midi-actions-teleprompter-step
 # dotfiles-test-case: pedalboard-midi-profile-host-action-profile
 # dotfiles-test-case: pedalboard-midi-actions-service-contract
 
@@ -165,6 +167,89 @@ SH
     rg -q '^pedalboard-state desktop 20 127 0$' "${DOTFILES_TEST_TMP}/feedback.log"
     rg -q 'match channel=16 cc=80 value=127 edge=press command=echo toggle-mic' "${DOTFILES_TEST_TMP}/state.out"
     ;;
+pedalboard-midi-actions-teleprompter-step-dispatch)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    config="${DOTFILES_TEST_TMP}/pedalboard-midi-actions.tsv"
+    mkdir -p "$fake_bin"
+
+    cat >"${fake_bin}/aseqdump" <<'SH'
+#!/bin/sh
+case "$1" in
+  -l)
+    printf ' Port    Client name                      Port name\n'
+    printf ' 28:0    Arduino Micro                    Arduino Micro MIDI 1\n'
+    ;;
+  -p)
+    printf 'Waiting for data. Press Ctrl+C to end.\n'
+    printf 'Source  Event                  Ch  Data\n'
+    printf ' 28:0   Control change         15, controller 81, value 127\n'
+    printf ' 28:0   Control change         15, controller 81, value 0\n'
+    ;;
+esac
+SH
+    chmod +x "${fake_bin}/aseqdump"
+
+    printf '16 81 press teleprompter-scroll-step\n' >"$config"
+    printf '16 81 release teleprompter-scroll-step\n' >>"$config"
+    PATH="${fake_bin}:$PATH" "$script" --config "$config" --dry-run >"${DOTFILES_TEST_TMP}/step-dispatch.out" 2>"${DOTFILES_TEST_TMP}/step-dispatch.err"
+
+    rg -q 'match channel=16 cc=81 value=127 edge=press command=teleprompter-scroll-step' "${DOTFILES_TEST_TMP}/step-dispatch.out"
+    rg -q 'match channel=16 cc=81 value=0 edge=release command=teleprompter-scroll-step' "${DOTFILES_TEST_TMP}/step-dispatch.out"
+    ;;
+pedalboard-midi-actions-teleprompter-step)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    config="${DOTFILES_TEST_TMP}/pedalboard-midi-actions.tsv"
+    fifo="${DOTFILES_TEST_TMP}/teleprompter-scroll.fifo"
+    marker="${DOTFILES_TEST_TMP}/aseqdump-emitted"
+    mkdir -p "$fake_bin"
+    mkfifo "$fifo"
+
+    cat >"${fake_bin}/aseqdump" <<SH
+#!/bin/sh
+case "\$1" in
+  -l)
+    printf ' Port    Client name                      Port name\n'
+    printf ' 28:0    Arduino Micro                    Arduino Micro MIDI 1\n'
+    ;;
+  -p)
+    [ -e "\$MARKER" ] && exit 0
+    touch "\$MARKER"
+    printf 'Waiting for data. Press Ctrl+C to end.\n'
+    printf 'Source  Event                  Ch  Data\n'
+    printf ' 28:0   Control change         15, controller 81, value 127\n'
+    sleep 0.4
+    printf ' 28:0   Control change         15, controller 81, value 0\n'
+    ;;
+esac
+SH
+    cat >"${fake_bin}/keyboard-midi-controller" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" >>"$PEDALBOARD_TEST_FEEDBACK_LOG"
+SH
+    chmod +x "${fake_bin}/aseqdump" "${fake_bin}/keyboard-midi-controller"
+
+    printf '16 81 press teleprompter-scroll-step\n' >"$config"
+    printf '16 81 release teleprompter-scroll-step\n' >>"$config"
+
+    exec 3<>"$fifo"
+    MARKER="$marker" \
+      PEDALBOARD_TEST_FEEDBACK_LOG="${DOTFILES_TEST_TMP}/feedback.log" \
+      PEDALBOARD_MIDI_FEEDBACK_COMMAND="${fake_bin}/keyboard-midi-controller" \
+      PEDALBOARD_MIDI_RECONNECT_DELAY=30 \
+      DOTFILES_TELEPROMPTER_SCROLL_FIFO="$fifo" \
+      DOTFILES_TELEPROMPTER_HOLD_MS=200 \
+      DOTFILES_TELEPROMPTER_STEP_MS=100 \
+      PATH="${fake_bin}:$PATH" \
+      timeout 15 "$script" --config "$config" --port 28:0 >"${DOTFILES_TEST_TMP}/step.out" 2>"${DOTFILES_TEST_TMP}/step.err" || true
+    timeout 2 cat <&3 >"${DOTFILES_TEST_TMP}/fifo.log" || true
+    exec 3>&-
+
+    rg -q '^desktop-action-state 2 LINE TAP$' "${DOTFILES_TEST_TMP}/feedback.log"
+    rg -q '^desktop-action-state 2 LINE HOLD$' "${DOTFILES_TEST_TMP}/feedback.log"
+    rg -q '^desktop-action-state 2 LINE IDLE$' "${DOTFILES_TEST_TMP}/feedback.log"
+    [[ $(rg -c '^step$' "${DOTFILES_TEST_TMP}/fifo.log") -ge 2 ]]
+    [[ $(rg -c '^step$' "${DOTFILES_TEST_TMP}/fifo.log") -le 12 ]]
+    ;;
 pedalboard-midi-profile-host-action-profile)
     "$profile_script" --dry-run obs-mouseless-setup >"${DOTFILES_TEST_TMP}/obs-profile.out"
     rg -q '^serial profile obs-mouseless-setup$' "${DOTFILES_TEST_TMP}/obs-profile.out"
@@ -244,6 +329,20 @@ pedalboard-midi-actions-service-contract)
     rg -q '^16 81 shift-press desktop-action-run monitor-toggle$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.desktop.tsv"
     rg -q '^15 4 any teleprompter-scroll$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.obs-mouseless-setup.tsv"
     rg -q '^15 80 press desktop-action-run obs-scene-toggle$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.obs-mouseless-setup.tsv"
+    rg -q '^15 81 press teleprompter-scroll-step$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.obs-mouseless-setup.tsv"
+    rg -q '^15 81 release teleprompter-scroll-step$' "${DOTFILES_TEST_ROOT}/audio/dot-config/dotfiles/pedalboard-midi-actions.obs-mouseless-setup.tsv"
+    rg -q '^teleprompter_step_hold_ms=\$\{DOTFILES_TELEPROMPTER_HOLD_MS:-2000\}$' "$script"
+    rg -q '^teleprompter_step_interval_ms=\$\{DOTFILES_TELEPROMPTER_STEP_MS:-200\}$' "$script"
+    rg -q 'validate_teleprompter_step_hold' "$script"
+    rg -q 'validate_teleprompter_step_interval' "$script"
+    rg -q 'teleprompter_step_resolve_timing' "$script"
+    rg -q 'teleprompter_step_send' "$script"
+    rg -q 'teleprompter_step_publish' "$script"
+    rg -q 'desktop-action-state 2 LINE' "$script"
+    rg -q 'teleprompter_step_loop &' "$script"
+    rg -q 'teleprompter_step_event "\$edge"' "$script"
+    rg -q 'trap cleanup_teleprompter_step EXIT' "$script"
+    rg -q 'publish_initial_teleprompter_step_state' "$script"
     ;;
 *)
     printf 'unknown test case: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

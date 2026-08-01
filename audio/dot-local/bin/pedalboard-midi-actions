@@ -23,6 +23,11 @@ teleprompter_scroll_deadzone=${DOTFILES_TELEPROMPTER_DEADZONE:-$shift_threshold}
 teleprompter_scroll_fast_threshold=${DOTFILES_TELEPROMPTER_FAST_THRESHOLD:-64}
 teleprompter_scroll_last_value=
 teleprompter_scroll_last_level=
+teleprompter_step_hold_ms=${DOTFILES_TELEPROMPTER_HOLD_MS:-2000}
+teleprompter_step_interval_ms=${DOTFILES_TELEPROMPTER_STEP_MS:-200}
+teleprompter_step_hold_s=
+teleprompter_step_interval_s=
+teleprompter_step_pid=
 pedalboard_profile=unknown
 pedalboard_continuous=0
 pedalboard_switch1=0
@@ -137,6 +142,14 @@ validate_teleprompter_fast_threshold() {
   [[ $teleprompter_scroll_fast_threshold =~ ^[0-9]+$ ]] && [ "$teleprompter_scroll_fast_threshold" -ge 0 ] && [ "$teleprompter_scroll_fast_threshold" -le 127 ] || die "DOTFILES_TELEPROMPTER_FAST_THRESHOLD must be 0-127"
 }
 
+validate_teleprompter_step_hold() {
+  [[ $teleprompter_step_hold_ms =~ ^[0-9]+$ ]] && [ "$teleprompter_step_hold_ms" -ge 200 ] && [ "$teleprompter_step_hold_ms" -le 10000 ] || die "DOTFILES_TELEPROMPTER_HOLD_MS must be 200-10000"
+}
+
+validate_teleprompter_step_interval() {
+  [[ $teleprompter_step_interval_ms =~ ^[0-9]+$ ]] && [ "$teleprompter_step_interval_ms" -ge 50 ] && [ "$teleprompter_step_interval_ms" -le 2000 ] || die "DOTFILES_TELEPROMPTER_STEP_MS must be 50-2000"
+}
+
 validate_reconnect_delay() {
   [[ $reconnect_delay =~ ^[0-9]+$ ]] && [ "$reconnect_delay" -ge 1 ] && [ "$reconnect_delay" -le 60 ] || die "PEDALBOARD_MIDI_RECONNECT_DELAY must be 1-60 seconds"
 }
@@ -233,6 +246,11 @@ run_action() {
     return 0
   fi
 
+  if [ "$command" = teleprompter-scroll-step ]; then
+    teleprompter_step_event "$edge"
+    return 0
+  fi
+
   PEDALBOARD_MIDI_CHANNEL=$channel \
     PEDALBOARD_MIDI_CC=$controller \
     PEDALBOARD_MIDI_VALUE=$value \
@@ -256,6 +274,72 @@ update_teleprompter_scroll() {
     printf '%s\n' "$value" >&"$fifo_fd" || true
     exec {fifo_fd}>&-
   fi
+}
+
+teleprompter_step_send() {
+  local fifo_fd=
+  [ -p "$teleprompter_scroll_fifo" ] || return 0
+  if exec {fifo_fd}<>"$teleprompter_scroll_fifo"; then
+    printf 'step\n' >&"$fifo_fd" || true
+    exec {fifo_fd}>&-
+  fi
+}
+
+teleprompter_step_publish() {
+  local command_path state=$1
+  command_path=$(resolve_feedback_command)
+  [ -n "$command_path" ] || return 0
+  "$command_path" desktop-action-state 2 LINE "$state" >/dev/null 2>&1 || true
+}
+
+teleprompter_step_resolve_timing() {
+  teleprompter_step_hold_s=$(awk -v ms="$teleprompter_step_hold_ms" 'BEGIN { printf "%.3f", ms / 1000 }')
+  teleprompter_step_interval_s=$(awk -v ms="$teleprompter_step_interval_ms" 'BEGIN { printf "%.3f", ms / 1000 }')
+}
+
+teleprompter_step_loop() {
+  sleep "$teleprompter_step_hold_s"
+  teleprompter_step_publish HOLD
+  while :; do
+    teleprompter_step_send
+    sleep "$teleprompter_step_interval_s"
+  done
+}
+
+teleprompter_step_start() {
+  teleprompter_step_send
+  teleprompter_step_publish TAP
+  [ -n "$teleprompter_step_pid" ] && return 0
+  teleprompter_step_loop &
+  teleprompter_step_pid=$!
+}
+
+teleprompter_step_stop() {
+  local pid=$teleprompter_step_pid
+  teleprompter_step_pid=
+  [ -n "$pid" ] || return 0
+  stop_background_pid "$pid"
+  teleprompter_step_publish IDLE
+}
+
+teleprompter_step_event() {
+  if [ "$1" = press ]; then
+    teleprompter_step_start
+  else
+    teleprompter_step_stop
+  fi
+}
+
+cleanup_teleprompter_step() {
+  local pid=$teleprompter_step_pid
+  teleprompter_step_pid=
+  [ -n "$pid" ] || return 0
+  stop_background_pid "$pid"
+}
+
+publish_initial_teleprompter_step_state() {
+  [ "$profile" = obs-mouseless-setup ] || return 0
+  teleprompter_step_publish IDLE
 }
 
 publish_pedalboard_state_values() {
@@ -518,8 +602,13 @@ validate_shift_threshold
 validate_teleprompter_deadzone
 validate_teleprompter_fast_threshold
 validate_reconnect_delay
+validate_teleprompter_step_hold
+validate_teleprompter_step_interval
 resolve_config
 load_profile_controls
 load_config
+teleprompter_step_resolve_timing
+trap cleanup_teleprompter_step EXIT
 sync_initial_pedalboard_state
+publish_initial_teleprompter_step_state
 run_listener_loop

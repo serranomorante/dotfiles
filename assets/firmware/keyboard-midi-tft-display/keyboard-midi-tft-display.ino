@@ -381,7 +381,7 @@ bool pedalboardDesktopActionTile(uint8_t row, uint8_t col) {
   if (pedalboardProfile == 3) {
     return col < 5;
   }
-  return pedalboardProfile == 4 && col == 1;
+  return pedalboardProfile == 4 && (col == 1 || col == 2);
 }
 
 void markPedalboardModifierDotsDirty() {
@@ -520,7 +520,7 @@ uint16_t colorForPedalboard(uint8_t row, uint8_t col) {
     }
   }
   if (pedalboardProfile == 4) {
-    const uint16_t obsColors[5] = {ILI9341_DARKGREY, ILI9341_RED, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_DARKGREY};
+    const uint16_t obsColors[5] = {ILI9341_DARKGREY, ILI9341_RED, ILI9341_CYAN, ILI9341_DARKGREY, ILI9341_DARKGREY};
     return obsColors[col];
   }
   const uint16_t colors[5] = {ILI9341_GREEN, ILI9341_CYAN, ILI9341_CYAN, ILI9341_PURPLE, ILI9341_PURPLE};
@@ -779,7 +779,7 @@ void tileLabel(uint8_t row, uint8_t col, char *out, size_t outSize) {
         {"DAMP", "SOST", "SOFT", "SOST", "SOFT"},
         {"EXP", "STMPA", "STMPB", "STMPA", "STMPB"},
         {"CTRL", "ACT A", "ACT B", "ACT A", "ACT B"},
-        {"VEL", "SCENE", "AUX", "", ""},
+        {"VEL", "SCENE", "LINE", "", ""},
     };
     uint8_t profile = pedalboardProfile <= 4 ? pedalboardProfile : 0;
     snprintf(out, outSize, "%s", labels[profile][col]);

@@ -185,7 +185,21 @@ local function configure_window(win)
   vim.wo[win].scrolloff = 0
 end
 
+local function scroll_lines(count)
+  if count <= 0 then return end
+
+  local win = teleprompter_window()
+  if not valid_window(win) then return end
+
+  local keys = vim.api.nvim_replace_termcodes("<C-E>", true, false, true)
+  vim.api.nvim_win_call(win, function() vim.api.nvim_command("normal! " .. math.min(count, 8) .. keys) end)
+end
+
 local function handle_fifo_line(line)
+  if line == "step" then
+    vim.schedule(function() scroll_lines(1) end)
+    return
+  end
   local value = line and line:match("^(%d+)")
   if value == nil then return end
   set_midi_value(value)
@@ -261,16 +275,6 @@ local function ensure_reader()
     vim.notify(("teleprompter: could not read FIFO %s"):format(options.fifo), vim.log.levels.ERROR)
     state.reader_job = nil
   end
-end
-
-local function scroll_lines(count)
-  if count <= 0 then return end
-
-  local win = teleprompter_window()
-  if not valid_window(win) then return end
-
-  local keys = vim.api.nvim_replace_termcodes("<C-E>", true, false, true)
-  vim.api.nvim_win_call(win, function() vim.api.nvim_command("normal! " .. math.min(count, 8) .. keys) end)
 end
 
 local function tick()

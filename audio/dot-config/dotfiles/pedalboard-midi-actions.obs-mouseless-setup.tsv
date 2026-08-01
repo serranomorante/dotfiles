@@ -3,3 +3,5 @@
 # host-side action map so the normal desktop map remains unchanged.
 15 4 any teleprompter-scroll
 15 80 press desktop-action-run obs-scene-toggle
+15 81 press teleprompter-scroll-step
+15 81 release teleprompter-scroll-step
