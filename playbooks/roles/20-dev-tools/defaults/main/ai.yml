@@ -60,7 +60,7 @@ node_ai_npm_packages:
     bins:
       - claude
   - name: "@google/gemini-cli"
-    version: 0.52.0
+    version: 0.53.0
     bins:
       - gemini
   - name: opencode-ai
