@@ -334,7 +334,7 @@
 
 - name: "[archlinux] Setup HPI - inspect docker credential config in docker group"
   ansible.builtin.shell: |
-    sg docker -c 'source "{{ ansible_facts.env.HOME }}/dotfiles/home/lib/session-env.bash"
+    newgrp docker -c 'source "{{ ansible_facts.env.HOME }}/dotfiles/home/lib/session-env.bash"
     export DOCKER_CONFIG="{{ ansible_facts.env.HOME }}/.config/ansible-docker"
     export PATH="{{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH"
     printf "HOME=%s\n" "$HOME"
@@ -356,7 +356,7 @@
 
 - name: "[archlinux] Setup HPI - wait for docker daemon access"
   ansible.builtin.shell: >
-    sg docker -c "docker info >/dev/null"
+    newgrp docker -c "docker info >/dev/null"
   register: var_hpi_docker_info
   changed_when: false
   retries: 10
@@ -372,13 +372,13 @@
   # The docker-compose file of the h repo needs this network to exist
   ansible.builtin.shell: >
     set -o pipefail &&
-    sg docker -c "docker network ls --filter name=dbs --format 'json' | wc -l"
+    newgrp docker -c "docker network ls --filter name=dbs --format 'json' | wc -l"
   register: docker_network_dbs_exists
   changed_when: false
   when: hpi_self_hosted_available
 
 - name: "[archlinux] Setup HPI - create dbs network"
-  ansible.builtin.command: sg docker -c "docker network create dbs"
+  ansible.builtin.command: newgrp docker -c "docker network create dbs"
   changed_when: false
   when:
     - hpi_self_hosted_available
@@ -393,7 +393,7 @@
 - name: "[archlinux] Setup HPI - ensure h services"
   ansible.builtin.command:
     argv:
-      - sg
+      - newgrp
       - docker
       - -c
       - >-
@@ -427,7 +427,7 @@
 - name: "[archlinux] Setup HPI - ensure h db"
   ansible.builtin.command:
     argv:
-      - sg
+      - newgrp
       - docker
       - -c
       - >-
