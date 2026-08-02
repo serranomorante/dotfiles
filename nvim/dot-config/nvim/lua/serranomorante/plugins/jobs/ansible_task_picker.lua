@@ -26,6 +26,14 @@ local MANUAL_TASK_ITEMS = {
   "10-170,40-20 [Full browser extensions]",
   "10-180,10-181,10-190 [Full borg backup setup]",
   "10-system-tools,20-dev-tools,30-lang-tools,40-PKM,80-for-my-eyes-only [Base setup]",
+  "10-system-tools [System tools]",
+  "20-dev-tools [Dev tools]",
+  "30-lang-tools [Lang tools]",
+  "40-PKM [Personal Knowledge Management]",
+  "50-cloud-tools [Cloud tools]",
+  "60-for-my-eyes-only",
+  "70-for-my-eyes-only",
+  "80-for-my-eyes-only",
 }
 
 local function cachectl_bin()

@@ -53,6 +53,7 @@ compile_helper() {
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/Xfixes.h>
+#include <X11/extensions/Xinerama.h>
 #include <X11/extensions/shape.h>
 
 #include <errno.h>
@@ -510,6 +511,35 @@ static void draw_overlay_x11(Display *display, Window win, GC gc, int width,
     }
 }
 
+static int screen_right_edge(Display *display, int screen) {
+    int right_edge = DisplayWidth(display, screen);
+    XineramaScreenInfo *info;
+    int count = 0;
+    int i;
+
+    if (!XineramaIsActive(display)) {
+        return right_edge;
+    }
+
+    info = XineramaQueryScreens(display, &count);
+    if (info == NULL || count < 1) {
+        if (info != NULL) {
+            XFree(info);
+        }
+        return right_edge;
+    }
+
+    right_edge = 0;
+    for (i = 0; i < count; i++) {
+        int edge = info[i].x_org + info[i].width;
+        if (edge > right_edge) {
+            right_edge = edge;
+        }
+    }
+    XFree(info);
+    return right_edge;
+}
+
 int main(int argc, char **argv) {
     const char *state_dir;
     int poll_ms = env_int("DOTFILES_MODE_OSD_POLL_MS", 120, 40, 2000);
@@ -579,7 +609,7 @@ int main(int argc, char **argv) {
         int mask = active_mask(state_dir);
         int count = mask_count(mask);
         int current_width = padding * 2 + count * icon_size;
-        int root_width = DisplayWidth(display, screen);
+        int root_width = screen_right_edge(display, screen);
         int left;
 
         if (count > 1) {
@@ -642,7 +672,7 @@ EOF
         return 0
     fi
 
-    if ! cc "$tmp_src" -O2 -o "$tmp_helper" -lX11 -lXext -lXfixes; then
+    if ! cc "$tmp_src" -O2 -o "$tmp_helper" -lX11 -lXext -lXfixes -lXinerama; then
         rm -f "$tmp_src" "$tmp_helper"
         return 1
     fi

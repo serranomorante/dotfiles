@@ -32,7 +32,7 @@ local function selected_tags(task_id)
 end
 
 local function ansible_tags(task_id)
-  local tags = { "setup" }
+  local tags = {}
   vim.list_extend(tags, selected_tags(task_id))
   return table.concat(tags, ",")
 end
@@ -69,10 +69,16 @@ return {
   name = task_name,
   desc = "Run ansible playbook",
   params = {
+    pass = {
+      desc = "Password",
+      type = "string",
+      conceal = true,
+      order = 1,
+    },
     task_id = {
       desc = "Task id",
       type = "string",
-      order = 1,
+      order = 2,
     },
     host = {
       desc = "Host",
@@ -80,33 +86,32 @@ return {
       choices = vim.tbl_values(HOST_TO_SSHD_CONFIG),
       optional = false,
       default = HOST_TO_SSHD_CONFIG.localhost,
-      order = 2,
+      order = 3,
     },
     force_handlers = {
       desc = "Force running handlers",
       type = "boolean",
       optional = true,
-      order = 3,
+      order = 4,
     },
     skip_tags = {
       desc = "Ignore the ansible always tag",
       type = "enum",
-      choices = { "setup", "never", "always" },
-      default = "setup",
+      choices = {
+        "setup",
+        "never",
+        "always",
+        nil,
+      },
+      default = nil,
       optional = true,
-      order = 4,
+      order = 5,
     },
     verbose = {
       desc = "Verbose",
       type = "enum",
       choices = { "v", "vv", "vvv", "vvvv", "vvvvv" },
       optional = true,
-      order = 5,
-    },
-    pass = {
-      desc = "Password",
-      type = "string",
-      conceal = true,
       order = 6,
     },
   },

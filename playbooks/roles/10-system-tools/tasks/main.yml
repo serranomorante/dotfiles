@@ -28,7 +28,7 @@
       when: "user_os in ['archlinux']"
       loop_control:
         loop_var: task_file
-  tags: [setup, "10-20"]
+  tags: [always, "10-20"]
 
 - block:
     - name: Setup dotfiles stow wrapper

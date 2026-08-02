@@ -74,7 +74,7 @@ export DJANGO_READ_DOT_ENV_FILE=True
 ## BEGIN ANSIBLE MANAGED BLOCK - SETUP NODE
 export VOLTA_HOME="$HOME/.volta"
 dotfiles_path_prepend "$VOLTA_HOME/bin"
-dotfiles_path_prepend "$VOLTA_HOME/tools/image/node/22.23.1/bin" # version is replaced by ansible
+dotfiles_path_prepend "$VOLTA_HOME/tools/image/node/22.23.2/bin" # version is replaced by ansible
 ## END ANSIBLE MANAGED BLOCK - SETUP NODE
 ## BEGIN ANSIBLE MANAGED BLOCK - SETUP PYTHON
 export PYENV_ROOT="$HOME/.pyenv"

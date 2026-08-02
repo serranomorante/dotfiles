@@ -336,7 +336,6 @@
     "toolbar1_linemodes": true
   }, 
   "default_compatibility_mode": "2.x", 
-  "devbrush.last_used": "Wacom Intuos S Pen stylus", 
   "input.button_mapping": {
     "<Primary>Button2": "ZoomViewMode", 
     "<Primary><Shift>Button2": "FrameEditMode", 
@@ -365,9 +364,7 @@
   "input.use_barrel_rotation": true, 
   "colors.history": [
     "#5e5e5e", 
-    "#5e5e5e", 
     "#000000", 
-    "#fefeff", 
     "#fefeff"
   ], 
   "saving.scrap_prefix": "~/MyPaint/scrap", 

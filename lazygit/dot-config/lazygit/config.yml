@@ -18,10 +18,11 @@ git:
   branchLogCmd: "git log --graph --color=always --abbrev-commit --decorate --date=relative --pretty=medium --oneline {{branchName}} --"
   autoStageResolvedConflicts: false
   autoFetch: false
-  pagers:
+  diffRenderers:
     # Delta is provided by Git's diff.external config.
-    - useExternalDiffGitConfig: true
-    - externalDiffCommand: difft --color=always --override="dotfiles-stow:bash"
+    - type: extDiff
+    - command: difft --color=always --override="dotfiles-stow:bash"
+      type: extDiff
 os:
   edit: 'open_in_nvim lazygit_edit "$(printf %q {{filename}})"'
   editAtLine: 'open_in_nvim lazygit_edit_at_line "$(printf %q {{filename}})" "{{line}}"'
