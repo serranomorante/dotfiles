@@ -56,6 +56,7 @@ These contracts are intentionally visible and stable:
 - Exit code `0` means pass, `77` means skip, and any other non-zero code means fail.
 - The runner executes each test with cwd set to `DOTFILES_TEST_ROOT`.
 - Discovery currently scans shell files named `*.sh` one directory below `tests/`, such as `tests/nvim/example.sh`.
+- The runner materializes the discovered file list up front and runs each test with stdin redirected from `/dev/null`, so a test that consumes stdin can never drain the discovery source or silently truncate the run. `tests/harness/runner_stdin_isolation.sh` guards this contract with a stdin-eating fixture in `tests/harness-fixtures/`; keep both intact when changing discovery or process spawning.
 
 Integration tests that intentionally load active user configuration should still avoid modifying the host. Use `# dotfiles-test-readonly:` for host config, plugin, parser, or tool paths, then create symlinks from the temporary XDG directories into those read-only paths. For example, a Neovim integration test can symlink `/home/aaaa/.config/nvim` into the temporary `XDG_CONFIG_HOME` and `/home/aaaa/.local/share/nvim/site` into the temporary `XDG_DATA_HOME` so Neovim loads the active config and plugins while writes still land in per-test temp/state/cache directories.
 

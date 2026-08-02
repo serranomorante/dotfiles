@@ -196,7 +196,7 @@ run_case() {
     output_log="${tmp_dir}/test-output.log"
 
     set +e
-    dotfiles_test_firejail_run "$repo_root" "$tmp_dir" "$file" "$case_name" "$readonly_paths" "$firejail_mode" >"$output_log" 2>&1
+    dotfiles_test_firejail_run "$repo_root" "$tmp_dir" "$file" "$case_name" "$readonly_paths" "$firejail_mode" </dev/null >"$output_log" 2>&1
     rc=$?
     set -e
 
@@ -232,8 +232,14 @@ passed=0
 skipped=0
 failed=0
 
-while IFS= read -r file; do
+mapfile -t test_files < <(discover_files)
+for file in "${test_files[@]}"; do
     [[ -n "$file" ]] || continue
+    if [[ ! -f "$file" ]]; then
+        printf 'test file disappeared during the run: %s\n' "$file" >&2
+        failed=$((failed + 1))
+        continue
+    fi
     mapfile -t cases < <(cases_for_file "$file")
     readonly_paths=$(metadata_values readonly "$file")
     firejail_mode=$(metadata_value firejail "$file")
@@ -273,7 +279,7 @@ while IFS= read -r file; do
             fi
         fi
     done
-done < <(discover_files)
+done
 
 if [[ "$list_only" -eq 1 ]]; then
     exit 0
