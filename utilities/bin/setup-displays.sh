@@ -336,6 +336,35 @@ refresh_compositor() {
     systemctl --user restart "$compositor_service" >/dev/null 2>&1 || true
 }
 
+await_randr_stable() {
+    # After a display layout change, the NVIDIA driver may re-probe
+    # connectors repeatedly (visible as "dispcmnCtrlCmdSystemGetVblankCounter
+    # invalid head number" kernel messages). Wait for the RandR state to
+    # settle before restarting the compositor, so picom doesn't start
+    # polling vblank on a head that is still being torn down.
+    # Max 3 s (30 iterations * 100 ms).
+    local prev_state new_state max_attempts i
+    max_attempts=30
+
+    if ! command -v xrandr >/dev/null 2>&1; then
+        return 1
+    fi
+
+    prev_state="$(xrandr --query 2>/dev/null)" || return 0
+
+    for i in $(seq 1 "$max_attempts"); do
+        sleep 0.1 2>/dev/null || break
+        new_state="$(xrandr --query 2>/dev/null)" || return 0
+        if [ "$prev_state" = "$new_state" ]; then
+            return 0
+        fi
+        prev_state="$new_state"
+    done
+
+    warn "RandR state did not stabilize after $((max_attempts * 100))ms"
+    return 1
+}
+
 internal_backlight_dir() {
     local connector candidate
 
@@ -443,6 +472,7 @@ case "$mode" in
     else
         switch_to_external_only "$external"
     fi
+    await_randr_stable || true
     refresh_compositor
     ;;
 *)
