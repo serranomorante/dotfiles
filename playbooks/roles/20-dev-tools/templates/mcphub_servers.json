@@ -22,6 +22,7 @@
         "{{ reaper_mcp_server_setup.projects_dir }}"
       ],
       "env": {
+        "FJ_MCP_INHERITED_PROFILE": "",
         "FJ_PY_PROFILE": "fj-py-mcp-reaper.profile",
         "FJ_PY_EXTRA_PATHS": "{{ reaper_mcp_server_setup.projects_dir }}",
         "FJ_PY_WRITABLE_PATHS": "{{ ansible_facts.env.HOME }}/.cache/uv"
@@ -43,6 +44,7 @@
         "--stdio"
       ],
       "env": {
+        "FJ_MCP_INHERITED_PROFILE": "",
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"
       }
     },
@@ -61,6 +63,7 @@
         "{{ figma_mcp_commentary_server_setup.exe_path }}"
       ],
       "env": {
+        "FJ_MCP_INHERITED_PROFILE": "",
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"
       }
     },
@@ -77,6 +80,7 @@
         "{{ cf_projects_mcp_server_setup.exe_path }}"
       ],
       "env": {
+        "FJ_MCP_INHERITED_PROFILE": "",
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"
       }
     },
@@ -96,6 +100,7 @@
         "--no-performance-crux"
       ],
       "env": {
+        "FJ_MCP_INHERITED_PROFILE": "",
         "CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS": "1",
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"
       }
@@ -113,6 +118,7 @@
         "{{ context7_mcp_server_setup.exe_path }}"
       ],
       "env": {
+        "FJ_MCP_INHERITED_PROFILE": "",
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"
       }
     },
@@ -132,6 +138,7 @@
         "--shared-browser-context"
       ],
       "env": {
+        "FJ_MCP_INHERITED_PROFILE": "",
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"
       }
     },
@@ -150,6 +157,7 @@
         "http://127.0.0.1:9224"
       ],
       "env": {
+        "FJ_MCP_INHERITED_PROFILE": "",
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"
       }
     },
@@ -168,6 +176,7 @@
         "http://127.0.0.1:9225"
       ],
       "env": {
+        "FJ_MCP_INHERITED_PROFILE": "",
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"
       }
     },
@@ -186,6 +195,7 @@
         "http://127.0.0.1:9226"
       ],
       "env": {
+        "FJ_MCP_INHERITED_PROFILE": "",
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"
       }
     },
@@ -204,6 +214,7 @@
         "http://127.0.0.1:9227"
       ],
       "env": {
+        "FJ_MCP_INHERITED_PROFILE": "",
         "FJ_NODE_PROFILE": "fj-node-mcp.profile"
       }
     }
