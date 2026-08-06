@@ -76,7 +76,7 @@ session-env-builds-stable-path)
     assert_contains "$path" "${home}/bin"
     assert_contains "$path" "${home}/.local/bin"
     assert_contains "$path" "${home}/.local/kitty.app/bin"
-    assert_contains "$path" "${home}/.volta/tools/image/node/22.23.1/bin"
+    assert_contains "$path" "${home}/.volta/tools/image/node/22.23.2/bin"
     assert_contains "$path" "${home}/.pyenv/shims"
     assert_contains "$path" "${home}/go/bin"
     assert_not_contains "$path" /tmp/leaked-path
