@@ -363,6 +363,8 @@
   "display.colorspace_EOTF": 2.2, 
   "input.use_barrel_rotation": true, 
   "colors.history": [
+    "#aa6633", 
+    "#003153", 
     "#5e5e5e", 
     "#000000", 
     "#fefeff"
@@ -384,7 +386,7 @@
   "workspace.layout": {
     "fullscreen": false, 
     "left_sidebar": {
-      "h": 967, 
+      "h": 348, 
       "w": 8, 
       "groups": [
         {
