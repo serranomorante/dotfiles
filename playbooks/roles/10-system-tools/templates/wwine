@@ -572,6 +572,16 @@ default_desktop_size() {
   "$helper" --monitor current --format size 2>/dev/null || printf '%s\n' "$fallback_desktop_size"
 }
 
+prefix_has_virtual_desktop() {
+  "$WINELOADER" reg query 'HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops' /v "$desktop_name" >/dev/null 2>&1
+}
+
+auto_sync_desktop() {
+  if prefix_has_virtual_desktop; then
+    configure_desktop
+  fi
+}
+
 print_environment() {
   local exported_wine_loader="$real_wine_loader"
 
@@ -711,6 +721,7 @@ kill_server() {
 
 case "$tool" in
   wine)
+    auto_sync_desktop
     exec_wine_loader "$@"
     ;;
   winecfg)
