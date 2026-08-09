@@ -67,27 +67,20 @@ local function keys()
     { desc = "Overseer: open task output sorted by recent activity" }
   )
 
-  vim.keymap.set("n", "<leader>e", function()
-    if vim.fn.executable("kitty-nnn-quick-access") ~= 1 then
-      return vim.api.nvim_echo({ { "kitty-nnn-quick-access not found", "DiagnosticError" } }, false, {})
+  vim.keymap.set(
+    "n",
+    "<leader>e",
+    function() utils.open_nnn_quick_access(vim.api.nvim_buf_get_name(0)) end,
+    { desc = "Toggle explorer" }
+  )
+  vim.keymap.set("x", "<leader>e", function()
+    local path = utils.path_from_visual_selection()
+    utils.leave_visual_mode()
+    if not path then
+      return vim.api.nvim_echo({ { "No path under visual selection", "DiagnosticWarn" } }, false, {})
     end
-
-    local args = { "kitty-nnn-quick-access" }
-    local filepath = vim.api.nvim_buf_get_name(0)
-    if filepath ~= "" and (vim.fn.filereadable(filepath) == 1 or vim.fn.isdirectory(filepath) == 1) then
-      table.insert(args, filepath)
-    end
-
-    local job_id = vim.fn.jobstart(args, {
-      detach = true,
-      env = {
-        KITTY_NNN_INSTANCE_ROLE = "nvim",
-      },
-    })
-
-    if job_id <= 0 then vim.api.nvim_echo({ { "Failed to launch nnn quick access", "DiagnosticError" } }, false, {}) end
-  end, { desc = "Toggle explorer" })
-
+    utils.open_nnn_quick_access_at(path)
+  end, { desc = "Toggle explorer at selected path" })
   vim.keymap.set(
     "n",
     "<leader>tp",

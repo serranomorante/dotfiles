@@ -2370,6 +2370,57 @@ local function leave_visual_mode()
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "x", false)
 end
 
+M.leave_visual_mode = leave_visual_mode
+
+---Extract the selected path text from the current visual selection.
+---@return string?
+function M.path_from_visual_selection()
+  local lines = shell_lines_from_visual_selection()
+  if not lines or #lines == 0 then return nil end
+
+  local text = vim.trim(table.concat(lines, "\n"))
+  if text == "" then return nil end
+
+  local expanded = vim.fn.expand(text)
+  if expanded == "" then return nil end
+  return vim.fn.fnamemodify(expanded, ":p")
+end
+
+---Open the nnn quick-access panel for a path after validating it exists.
+---@param path string
+---@return boolean
+function M.open_nnn_quick_access_at(path)
+  if vim.fn.filereadable(path) ~= 1 and vim.fn.isdirectory(path) ~= 1 then
+    vim.api.nvim_echo({ { ("Path not found: %s"):format(path), "DiagnosticError" } }, false, {})
+    return false
+  end
+  local target = vim.fn.isdirectory(path) == 1 and path or vim.fn.fnamemodify(path, ":h")
+  M.open_nnn_quick_access(target)
+  return true
+end
+
+---Launch the nnn quick-access Kitty panel targeting a path.
+---@param filepath string
+function M.open_nnn_quick_access(filepath)
+  if vim.fn.executable("kitty-nnn-quick-access") ~= 1 then
+    return vim.api.nvim_echo({ { "kitty-nnn-quick-access not found", "DiagnosticError" } }, false, {})
+  end
+
+  local args = { "kitty-nnn-quick-access" }
+  if filepath ~= "" and (vim.fn.filereadable(filepath) == 1 or vim.fn.isdirectory(filepath) == 1) then
+    table.insert(args, filepath)
+  end
+
+  local job_id = vim.fn.jobstart(args, {
+    detach = true,
+    env = {
+      KITTY_NNN_INSTANCE_ROLE = "nvim",
+    },
+  })
+
+  if job_id <= 0 then vim.api.nvim_echo({ { "Failed to launch nnn quick access", "DiagnosticError" } }, false, {}) end
+end
+
 local function shell_fence_cwd()
   local name = vim.api.nvim_buf_get_name(0)
   if name ~= "" and not name:match("^%w[%w+.-]*://") then
