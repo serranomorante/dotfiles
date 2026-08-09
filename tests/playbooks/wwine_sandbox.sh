@@ -14,6 +14,7 @@ set -euo pipefail
 # dotfiles-test-case: wwine-serializes-parallel-named-sandbox-startup
 # dotfiles-test-case: wwine-fails-closed-when-inherited-sandbox-does-not-match-profile
 # dotfiles-test-case: wwine-force-desktop-writes-registry-only
+# dotfiles-test-case: wwine-auto-sync-desktop-size-to-monitor-on-launch
 
 # Purpose: Fast real-Firejail tests for wwine sandbox startup, inherited sandbox verification, and loader mode.
 
@@ -572,6 +573,21 @@ wwine-force-desktop-writes-registry-only)
     grep -Fxq 'ARGS=<reg><add><HKEY_CURRENT_USER\Software\Wine\Explorer></v><Desktop></d><Default></f>' "$fake_wine_log"
     grep -Fxq 'ARGS=<reg><add><HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops></v><Default></d><1280x720></f>' "$fake_wine_log"
     [ "$(grep -c '^ARGS=' "$fake_wine_log")" -eq 2 ]
+    ;;
+wwine-auto-sync-desktop-size-to-monitor-on-launch)
+    make_fixture
+
+    cat >"${fixture}/x11-monitor-geometry" <<'SH'
+#!/usr/bin/env sh
+printf '2560x1440\n'
+SH
+    chmod +x "${fixture}/x11-monitor-geometry"
+
+    run_wwine --prefix reaper wine launch-app
+
+    grep -Fxq 'ARGS=<reg><add><HKEY_CURRENT_USER\Software\Wine\Explorer></v><Desktop></d><Default></f>' "$fake_wine_log"
+    grep -Fxq 'ARGS=<reg><add><HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops></v><Default></d><2560x1440></f>' "$fake_wine_log"
+    grep -Fxq 'ARGS=<launch-app>' "$fake_wine_log"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

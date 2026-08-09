@@ -5,10 +5,9 @@ set -euo pipefail
 # dotfiles-test-tags: playbooks wine shell xvfb
 # dotfiles-test-firejail: disabled
 # dotfiles-test-case: wwine-template-renders-and-has-shell-syntax
-# dotfiles-test-case: wwine-force-desktop-writes-virtual-desktop-registry
 # dotfiles-test-case: wine-desktop-launchers-are-terminal-free-and-logged
 
-# Purpose: Verify wwine's standalone virtual desktop action with a temporary Wine prefix.
+# Purpose: Verify wwine's template rendering and the Wine desktop launcher contracts.
 
 skip_missing_commands() {
     local missing=0
@@ -85,44 +84,6 @@ PY
     printf '%s\n' "$rendered"
 }
 
-run_wwine() {
-    local wwine=$1
-    shift
-
-    WINEDEBUG=-all WINEDLLOVERRIDES=mscoree,mshtml= timeout 60s "$wwine" --prefix dotfiles-test "$@"
-}
-
-assert_registry_has_desktop() {
-    local wwine=$1
-    local expected_name=$2
-    local expected_size=$3
-
-    run_wwine "$wwine" wine reg query 'HKEY_CURRENT_USER\Software\Wine\Explorer' /v Desktop >"${DOTFILES_TEST_TMP}/desktop.reg"
-    grep -Eq "Desktop[[:space:]]+REG_SZ[[:space:]]+${expected_name}[[:space:]]*$" "${DOTFILES_TEST_TMP}/desktop.reg"
-
-    run_wwine "$wwine" wine reg query 'HKEY_CURRENT_USER\Software\Wine\Explorer\Desktops' /v "$expected_name" >"${DOTFILES_TEST_TMP}/desktop-size.reg"
-    grep -Eq "${expected_name}[[:space:]]+REG_SZ[[:space:]]+${expected_size}[[:space:]]*$" "${DOTFILES_TEST_TMP}/desktop-size.reg"
-}
-
-run_force_desktop_test() {
-    mkdir -p "${DOTFILES_TEST_TMP}/wine-prefix"
-    # shellcheck disable=SC2016
-    xvfb-run -a --server-args="-screen 0 1024x768x24" bash -c '
-        set -euo pipefail
-
-        source "$DOTFILES_TEST_TMP/test-functions.bash"
-        run_wwine "$WWINE_UNDER_TEST" wine reg query "HKEY_CURRENT_USER\\Software\\Wine" >/dev/null 2>&1 || true
-        run_wwine "$WWINE_UNDER_TEST" wineserver -w >/dev/null 2>&1 || true
-
-        run_wwine "$WWINE_UNDER_TEST" force-desktop 640x480
-        assert_registry_has_desktop "$WWINE_UNDER_TEST" Default 640x480
-    '
-}
-
-write_function_exports() {
-    declare -f run_wwine assert_registry_has_desktop >"${DOTFILES_TEST_TMP}/test-functions.bash"
-}
-
 assert_desktop_terminal_free() {
     local desktop_file=$1
 
@@ -178,15 +139,6 @@ wwine-template-renders-and-has-shell-syntax)
     skip_missing_jinja2
     rendered=$(render_wwine)
     bash -n "$rendered"
-    ;;
-wwine-force-desktop-writes-virtual-desktop-registry)
-    skip_missing_commands bash grep python3 timeout wine wineserver xvfb-run
-    skip_missing_jinja2
-    rendered=$(render_wwine)
-    bash -n "$rendered"
-    write_function_exports
-    export WWINE_UNDER_TEST="$rendered"
-    run_force_desktop_test
     ;;
 wine-desktop-launchers-are-terminal-free-and-logged)
     assert_desktop_terminal_free "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper.desktop"
