@@ -3,8 +3,9 @@ set -euo pipefail
 
 # Run terminal AI coding agents inside Firejail using the current Git root, or
 # the current directory outside Git, as the writable work root. The profile
-# supplies persistent agent/MCP state; this wrapper adds the dynamic work root
-# and any explicit extra paths.
+# supplies persistent agent/MCP state; this wrapper adds the dynamic work root,
+# ~/dotfiles for always-available workstation context, and any explicit extra
+# paths.
 
 SCRIPT_NAME=$(basename "$0")
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)
@@ -97,6 +98,7 @@ Usage:
   ${SCRIPT_NAME} --exec [--root DIR] [--local|--offline|--online] -- command [args...]
 
 Run ${agent} inside Firejail with the Git root, cwd fallback, or --root DIR exposed read-write.
+~/dotfiles is always exposed read-write so agents keep workstation context from any project.
 Extra read-only and read-write paths can be supplied with FJ_AI_AGENT_EXTRA_PATHS
 and FJ_AI_AGENT_WRITABLE_PATHS.
 EOF
@@ -155,6 +157,7 @@ if [[ "$agent" == "opencode" && -z "${DEEPSEEK_API_KEY:-}" ]] && command -v kwal
 fi
 
 add_rw_path "$work_root"
+[[ -d "$real_home/dotfiles" ]] && add_rw_path "$real_home/dotfiles"
 [[ -d "$real_home/data/work/cf" ]] && add_rw_path "$real_home/data/work/cf"
 
 mkdir -p \

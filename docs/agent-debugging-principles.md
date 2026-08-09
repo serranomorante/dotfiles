@@ -10,7 +10,8 @@ Prefer discovering existing runtime state before adding parameters, environment 
 
 ## Firejail Agent Orchestration
 
-- Terminal agents launched through `fj-claude`, `fj-codex`, and `fj-gemini` must expose the real Stow symlink targets needed by runtime helpers, especially `~/dotfiles/utilities` for `agent-tasks` and `~/dotfiles/for-my-eyes-only` for private helper symlinks that the user has explicitly allowed.
+- Terminal agents launched through `fj-claude`, `fj-codex`, `fj-gemini`, and `fj-opencode` must expose the real Stow symlink targets needed by runtime helpers, especially `~/dotfiles/utilities` for `agent-tasks` and `~/dotfiles/for-my-eyes-only` for private helper symlinks that the user has explicitly allowed.
+- The AI-agent wrapper always exposes `~/dotfiles` read-write regardless of the launched project, matching the access agents get when cwd is `~/dotfiles`, so agents keep workstation context from any project.
 - Their default writable project root is the current Git root, falling back to the launch cwd only outside Git repositories; use `--root` when a narrower or different root is intentional.
 - `agent-tasks` talks to the already-running Neovim host through `$AGENT_TASKS_NVIM` or `$NVIM`; the AI-agent wrapper forwards both so sub-agent orchestration does not need a separate discovery mechanism inside the sandbox.
 - Agent tmux sessions use `tmux -L <nvim-server-name>` and place sockets below `/tmp/tmux-$uid`; because the dev-tool baseline uses `private-tmp`, the AI-agent wrapper exposes that socket directory read-write when it exists.

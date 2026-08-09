@@ -150,6 +150,7 @@ firejail-ai-agent-orchestration-paths-visible)
         'AGENT_TASKS_NVIM' \
         'tmux_socket_dir="/tmp/tmux-$(id -u)"' \
         'append_optional_path rw "$tmux_socket_dir"' \
+        '[[ -d "$real_home/dotfiles" ]] && add_rw_path "$real_home/dotfiles"' \
         '[[ -d "$real_home/data/work/cf" ]] && add_rw_path "$real_home/data/work/cf"'; do
         if ! grep -Fq "$expected" "$wrapper"; then
             printf 'AI agent wrapper is missing orchestration access: %s\n' "$expected" >&2

@@ -32,7 +32,7 @@ The `20-dev-tools` role owns the shared wrappers and profiles:
 - `fj-py-ansible.profile`, `fj-node-ansible.profile`, `fj-php-ansible.profile`: package-install profiles used by the Ansible adapters.
 - `fj-py-interactive.profile`: Python profile variant for interactive shells that need real `/dev/pts` behavior.
 
-The wrappers use a clean environment and expose only the project root plus explicitly requested paths. Prefer expanding the existing wrappers before creating a new one.
+The wrappers use a clean environment and expose only the project root plus explicitly requested paths. Prefer expanding the existing wrappers before creating a new one. The `fj-claude`, `fj-codex`, `fj-gemini`, and `fj-opencode` AI-agent wrappers additionally always expose `~/dotfiles` read-write, matching the access agents get when launched with cwd `~/dotfiles`, so agents keep workstation config, scripts, and docs context from any project.
 
 Generic `fj-node`, `fj-py`, and `fj-php` runs preserve the caller's absolute project path as the sandbox-visible work tree, but their default XDG state does not inherit broad host roots. Unless explicitly overridden, Node writes cache/state/data under `~/.cache/firejail-wrapper/node`, `~/.local/state/firejail-wrapper/node`, and `~/.local/share/firejail-wrapper/node`; Python uses the matching `python` roots; PHP and Composer use the matching `php` roots, with `COMPOSER_HOME` defaulting to `~/.local/share/firejail-wrapper/php/composer` and `COMPOSER_CACHE_DIR` defaulting to `~/.cache/firejail-wrapper/php/composer`. Keep package-manager caches inside those wrapper-scoped roots unless a specific adapter has a narrower project-specific cache path.
 
