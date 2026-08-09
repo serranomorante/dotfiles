@@ -179,6 +179,8 @@
     - audio/dot-local/bin/pedalboard-midi-profile-picker
     - audio/dot-local/share/dotfiles/pedalboard-midi-profiles.tsv
     - audio/dot-config/systemd/user/pedalboard-midi-actions@.service
+    - audio/dot-config/dotfiles/pedalboard-midi-actions.piano.tsv
+    - audio/dot-config/dotfiles/pedalboard-midi-actions.guitar.tsv
     - audio/dot-config/dotfiles/pedalboard-midi-actions.desktop.tsv
     - audio/dot-config/dotfiles/pedalboard-midi-actions.obs-mouseless-setup.tsv
 

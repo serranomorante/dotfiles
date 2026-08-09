@@ -1,0 +1,4 @@
+# CHANNEL CC EDGE COMMAND...
+# Feedback-only mapper for the guitar instrument profile: no host actions.
+# This instance exists so the TFT receives live pedalboard state from the
+# continuous pedal (CC4) and switches while the Arduino is in guitar mode.

@@ -89,7 +89,7 @@ obs-mouseless-setup:
 
 The `desktop` and `obs-mouseless-setup` profiles are intentionally still plain MIDI. Separate host-side action mappers translate these events into microphone toggles, scripts, OBS scene changes, or window actions.
 
-Host-side action mapper profiles run as `pedalboard-midi-actions@<profile>.service` instances backed by `pedalboard-midi-actions.<profile>.tsv`; `pedalboard-midi-profile desktop` starts `@desktop`, `pedalboard-midi-profile obs-mouseless-setup` starts `@obs-mouseless-setup`, and instrument-only profiles stop the mapper instances.
+Host-side action mapper profiles run as `pedalboard-midi-actions@<profile>.service` instances backed by `pedalboard-midi-actions.<profile>.tsv`; `pedalboard-midi-profile desktop` starts `@desktop`, `pedalboard-midi-profile obs-mouseless-setup` starts `@obs-mouseless-setup`, and instrument-only profiles start a feedback-only `@piano`/`@guitar` instance that publishes TFT state without host actions.
 
 ## TFT feedback
 

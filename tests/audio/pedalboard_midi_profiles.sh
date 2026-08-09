@@ -95,8 +95,8 @@ pedalboard-midi-profiles-central-contract)
     sh -n "$picker_script"
 
     PEDALBOARD_MIDI_PROFILES_FILE="$profiles_file" "$profile_tool" list >"${DOTFILES_TEST_TMP}/profiles.out"
-    grep -Fqx $'1\tpiano\tpiano\t1\t64\t66\t67\tmomentary\tmomentary\t-\t-' "${DOTFILES_TEST_TMP}/profiles.out"
-    grep -Fqx $'2\tguitar\tguitar\t2\t4\t80\t81\tlatch\tlatch\t-\t-' "${DOTFILES_TEST_TMP}/profiles.out"
+    grep -Fqx $'1\tpiano\tpiano\t1\t64\t66\t67\tmomentary\tmomentary\tpiano\t-' "${DOTFILES_TEST_TMP}/profiles.out"
+    grep -Fqx $'2\tguitar\tguitar\t2\t4\t80\t81\tlatch\tlatch\tguitar\t-' "${DOTFILES_TEST_TMP}/profiles.out"
     grep -Fqx $'3\tdesktop\tdesktop\t16\t4\t80\t81\tmomentary\tmomentary\tdesktop\t-' "${DOTFILES_TEST_TMP}/profiles.out"
     grep -Fqx $'4\tobs-mouseless-setup\tobs\t15\t4\t80\t81\tmomentary\tmomentary\tobs-mouseless-setup\tobs' "${DOTFILES_TEST_TMP}/profiles.out"
 
@@ -105,8 +105,25 @@ pedalboard-midi-profiles-central-contract)
     PEDALBOARD_MIDI_PROFILES_FILE="$profiles_file" "$profile_tool" cc 16 80 >"${DOTFILES_TEST_TMP}/desktop-switch.out"
     grep -Fqx $'3\tdesktop\tdesktop\t16\t4\t80\t81\tmomentary\tmomentary\tdesktop\t-\tswitch1' "${DOTFILES_TEST_TMP}/desktop-switch.out"
     PEDALBOARD_MIDI_PROFILES_FILE="$profiles_file" "$profile_tool" action-mappers >"${DOTFILES_TEST_TMP}/action-mappers.out"
+    grep -Fqx 'piano' "${DOTFILES_TEST_TMP}/action-mappers.out"
+    grep -Fqx 'guitar' "${DOTFILES_TEST_TMP}/action-mappers.out"
     grep -Fqx 'desktop' "${DOTFILES_TEST_TMP}/action-mappers.out"
     grep -Fqx 'obs-mouseless-setup' "${DOTFILES_TEST_TMP}/action-mappers.out"
+
+    # Regression: every profile must have a non-empty action_profile so that
+    # pedalboard-midi-profile always starts a host listener.  Instrument
+    # profiles without a host action mapper break TFT pedal feedback.
+    PEDALBOARD_MIDI_PROFILES_FILE="$profiles_file" "$profile_tool" list | \
+      awk -F'\t' '$10 == "-" { print "profile " $2 " has no action mapper" }' >"${DOTFILES_TEST_TMP}/orphan-profiles.txt"
+    [[ ! -s "${DOTFILES_TEST_TMP}/orphan-profiles.txt" ]] || {
+      cat "${DOTFILES_TEST_TMP}/orphan-profiles.txt" >&2
+      exit 1
+    }
+
+    # Guard: every profile must appear in action-mappers.
+    profile_count=$(wc -l <"${DOTFILES_TEST_TMP}/profiles.out")
+    mapper_count=$(wc -l <"${DOTFILES_TEST_TMP}/action-mappers.out")
+    [[ "$profile_count" -eq "$mapper_count" ]]
 
     PEDALBOARD_MIDI_PROFILES_FILE="$profiles_file" PEDALBOARD_MIDI_PROFILES_COMMAND="$profile_tool" "$profile_script" --dry-run obs >"${DOTFILES_TEST_TMP}/obs-profile.out"
     rg -q '^serial profile obs-mouseless-setup$' "${DOTFILES_TEST_TMP}/obs-profile.out"

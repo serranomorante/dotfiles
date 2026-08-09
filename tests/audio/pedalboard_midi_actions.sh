@@ -7,6 +7,7 @@ set -euo pipefail
 # dotfiles-test-case: pedalboard-midi-actions-profile-dispatch
 # dotfiles-test-case: pedalboard-midi-actions-shift-dispatch
 # dotfiles-test-case: pedalboard-midi-actions-publishes-tft-state
+# dotfiles-test-case: pedalboard-midi-actions-feedback-only-profile
 # dotfiles-test-case: pedalboard-midi-actions-teleprompter-step-dispatch
 # dotfiles-test-case: pedalboard-midi-actions-teleprompter-step
 # dotfiles-test-case: pedalboard-midi-profile-host-action-profile
@@ -167,6 +168,43 @@ SH
     rg -q '^pedalboard-state desktop 20 127 0$' "${DOTFILES_TEST_TMP}/feedback.log"
     rg -q 'match channel=16 cc=80 value=127 edge=press command=echo toggle-mic' "${DOTFILES_TEST_TMP}/state.out"
     ;;
+pedalboard-midi-actions-feedback-only-profile)
+    fake_bin="${DOTFILES_TEST_TMP}/bin"
+    config_dir="${DOTFILES_TEST_TMP}/config/dotfiles"
+    mkdir -p "$fake_bin" "$config_dir"
+
+    cat >"${fake_bin}/aseqdump" <<'SH'
+#!/bin/sh
+case "$1" in
+  -l)
+    printf ' Port    Client name                      Port name\n'
+    printf ' 28:0    Arduino Micro                    Arduino Micro MIDI 1\n'
+    ;;
+  -p)
+    printf 'Waiting for data. Press Ctrl+C to end.\n'
+    printf 'Source  Event                  Ch  Data\n'
+    printf ' 28:0   Control change         0, controller 64, value 64\n'
+    printf ' 28:0   Control change         0, controller 64, value 0\n'
+    ;;
+esac
+SH
+    cat >"${fake_bin}/keyboard-midi-controller" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" >>"$PEDALBOARD_TEST_FEEDBACK_LOG"
+SH
+    chmod +x "${fake_bin}/aseqdump" "${fake_bin}/keyboard-midi-controller"
+
+    : >"${config_dir}/pedalboard-midi-actions.piano.tsv"
+    PEDALBOARD_TEST_FEEDBACK_LOG="${DOTFILES_TEST_TMP}/feedback.log" \
+      PEDALBOARD_MIDI_FEEDBACK_COMMAND="${fake_bin}/keyboard-midi-controller" \
+      XDG_CONFIG_HOME="${DOTFILES_TEST_TMP}/config" \
+      PATH="${fake_bin}:$PATH" \
+      "$script" --profile piano --port 28:0 --dry-run >"${DOTFILES_TEST_TMP}/feedback-only.out" 2>"${DOTFILES_TEST_TMP}/feedback-only.err" || true
+
+    rg -q '^pedalboard-state piano 64 0 0$' "${DOTFILES_TEST_TMP}/feedback.log"
+    rg -q '^pedalboard-state piano 0 0 0$' "${DOTFILES_TEST_TMP}/feedback.log"
+    refute rg -q 'match channel=' "${DOTFILES_TEST_TMP}/feedback-only.out"
+    ;;
 pedalboard-midi-actions-teleprompter-step-dispatch)
     fake_bin="${DOTFILES_TEST_TMP}/bin"
     config="${DOTFILES_TEST_TMP}/pedalboard-midi-actions.tsv"
@@ -267,7 +305,13 @@ pedalboard-midi-profile-host-action-profile)
     rg -q '^serial profile piano$' "${DOTFILES_TEST_TMP}/piano-profile.out"
     rg -q '^systemctl --user stop pedalboard-midi-actions@desktop.service$' "${DOTFILES_TEST_TMP}/piano-profile.out"
     rg -q '^systemctl --user stop pedalboard-midi-actions@obs-mouseless-setup.service$' "${DOTFILES_TEST_TMP}/piano-profile.out"
-    refute rg -q '^systemctl --user start ' "${DOTFILES_TEST_TMP}/piano-profile.out"
+    rg -q '^systemctl --user start pedalboard-midi-actions@piano.service$' "${DOTFILES_TEST_TMP}/piano-profile.out"
+
+    "$profile_script" --dry-run guitar >"${DOTFILES_TEST_TMP}/guitar-profile.out"
+    rg -q '^serial profile guitar$' "${DOTFILES_TEST_TMP}/guitar-profile.out"
+    rg -q '^systemctl --user stop pedalboard-midi-actions@desktop.service$' "${DOTFILES_TEST_TMP}/guitar-profile.out"
+    rg -q '^systemctl --user stop pedalboard-midi-actions@obs-mouseless-setup.service$' "${DOTFILES_TEST_TMP}/guitar-profile.out"
+    rg -q '^systemctl --user start pedalboard-midi-actions@guitar.service$' "${DOTFILES_TEST_TMP}/guitar-profile.out"
     ;;
 pedalboard-midi-actions-service-contract)
     [[ -s "$template_unit" ]]
@@ -301,6 +345,8 @@ pedalboard-midi-actions-service-contract)
     rg -q 'audio/dot-local/bin/pedalboard-midi-profile-picker' "$dotfiles_task"
     rg -q 'audio/dot-local/share/dotfiles/pedalboard-midi-profiles.tsv' "$dotfiles_task"
     rg -q 'audio/dot-config/systemd/user/pedalboard-midi-actions@.service' "$dotfiles_task"
+    rg -q 'audio/dot-config/dotfiles/pedalboard-midi-actions.piano.tsv' "$dotfiles_task"
+    rg -q 'audio/dot-config/dotfiles/pedalboard-midi-actions.guitar.tsv' "$dotfiles_task"
     rg -q 'audio/dot-config/dotfiles/pedalboard-midi-actions.desktop.tsv' "$dotfiles_task"
     rg -q 'audio/dot-config/dotfiles/pedalboard-midi-actions.obs-mouseless-setup.tsv' "$dotfiles_task"
     rg -q 'Dotfiles: record applied pedalboard MIDI action mapper checksum' "$dotfiles_task"

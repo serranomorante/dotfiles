@@ -224,6 +224,7 @@ load_config() {
     actions["$channel:$controller:$edge"]=$command
   done <"$config"
 
+  [ -n "$profile" ] && return 0
   [ "${#actions[@]}" -gt 0 ] || die "config has no actions: $config"
 }
 
