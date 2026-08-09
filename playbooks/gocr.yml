@@ -1,0 +1,22 @@
+---
+- hosts: localhost
+  gather_facts: false
+
+  pre_tasks:
+    - name: "GOCR playbook: gather facts"
+      ansible.builtin.gather_facts:
+      when:
+        - inventory_hostname == 'localhost'
+      tags: always
+
+    - name: "GOCR playbook: set user_os"
+      ansible.builtin.set_fact:
+        user_os: "{{ ansible_facts.distribution | lower | replace(' ', '') }}"
+      when: ansible_facts.distribution is defined
+      tags: always
+
+  tasks:
+    - name: "GOCR playbook: run gocr role"
+      ansible.builtin.import_role:
+        name: gocr
+      tags: always

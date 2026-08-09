@@ -1,0 +1,120 @@
+---
+- block:
+    - name: "[archlinux] GOCR: ensure system dependencies"
+      become: true
+      ansible.builtin.package:
+        state: present
+        name:
+          - go
+          - tesseract
+          - tesseract-data-eng
+          - imagemagick
+          - xdotool
+          - maim
+  when:
+    - user_os is defined
+    - user_os in ['archlinux']
+  tags: ["gocr-deps"]
+
+- block:
+    - name: "GOCR: ensure go module dependencies"
+      ansible.builtin.command:
+        cmd: go mod download
+        chdir: "{{ gocr_repo_path }}"
+      register: gocr_mod_download
+      changed_when: false
+  tags: ["gocr-deps"]
+
+- block:
+    - name: "GOCR: ensure PaddleOCR virtualenv packages (fj-py sandboxed pip)"
+      ansible.builtin.include_role:
+        name: update-diff-capture
+        tasks_from: pip
+      vars:
+        update_diff_capture_scope: gocr
+        update_diff_pip_venv: "{{ ansible_facts.env.HOME }}/data/apps/gocr/.venv"
+        update_diff_pip_executable: "{{ ansible_facts.env.HOME }}/bin/ansible-firejail-pip"
+        update_diff_pip_environment:
+          PYENV_VERSION: "{{ gocr_paddle_python | default('3.11.11') }}"
+        update_diff_pip_packages:
+          - name: pip
+          - name: paddleocr
+          - name: onnxruntime
+  tags: ["gocr-ocrd"]
+
+- block:
+    - name: "GOCR: deploy PaddleOCR daemon script"
+      ansible.builtin.copy:
+        src: "{{ gocr_repo_path }}/cmd/gocr-ocrd/gocr-ocrd.py"
+        dest: "{{ ansible_facts.env.HOME }}/bin/gocr-ocrd"
+        mode: "755"
+  tags: ["gocr-ocrd"]
+
+- block:
+    - name: "GOCR: install PaddleOCR daemon systemd user service"
+      ansible.builtin.copy:
+        content: |
+          [Unit]
+          Description=GOCR PaddleOCR daemon
+          After=default.target
+
+          [Service]
+          Type=simple
+          ExecStart={{ ansible_facts.env.HOME }}/data/apps/gocr/.venv/bin/python {{ ansible_facts.env.HOME }}/bin/gocr-ocrd
+          Restart=always
+          RestartSec=2
+
+          [Install]
+          WantedBy=default.target
+        dest: "{{ ansible_facts.env.HOME }}/.config/systemd/user/gocr-ocrd.service"
+        mode: "644"
+  tags: ["gocr-ocrd"]
+
+- block:
+    - name: "GOCR: enable and start PaddleOCR daemon service"
+      become: false
+      ansible.builtin.systemd_service:
+        scope: user
+        name: gocr-ocrd
+        enabled: true
+        state: started
+        daemon_reload: true
+      when: ansible_facts.env.XDG_RUNTIME_DIR is defined
+  tags: ["gocr-ocrd"]
+
+- block:
+    - name: "GOCR: run tests"
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          go test -buildvcs=false -race -count=1 ./... 2>&1
+        chdir: "{{ gocr_repo_path }}"
+      register: gocr_test_result
+      changed_when: false
+      failed_when: gocr_test_result.rc != 0
+  tags: ["gocr-test"]
+
+- block:
+    - name: "GOCR: build binary"
+      ansible.builtin.command:
+        cmd: go build -buildvcs=false -o /tmp/gocr ./cmd/gocr/
+        chdir: "{{ gocr_repo_path }}"
+      register: gocr_build
+      changed_when: true
+  tags: ["gocr-build"]
+
+- block:
+    - name: "GOCR: install binary"
+      ansible.builtin.copy:
+        src: /tmp/gocr
+        dest: "{{ gocr_install_path }}"
+        mode: "755"
+      when: gocr_build is succeeded
+  tags: ["gocr-install"]
+
+- block:
+    - name: "GOCR: clean build artifact"
+      ansible.builtin.file:
+        path: /tmp/gocr
+        state: absent
+  tags: ["gocr-install"]

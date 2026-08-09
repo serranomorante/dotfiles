@@ -1,0 +1,183 @@
+#!/usr/bin/env sh
+
+gocr="$HOME/.local/bin/gocr"
+state_dir="${XDG_RUNTIME_DIR:-/tmp}/gocr"
+matches_file="$state_dir/matches"
+index_file="$state_dir/index"
+pid_file="$state_dir/pid"
+err_file="$state_dir/err"
+log_file="$state_dir/wrapper.log"
+capture_file="$state_dir/capture.png"
+mode_state_dir="${DOTFILES_MODE_OSD_STATE_DIR:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/dotfiles-mode-osd}"
+
+mkdir -p "$state_dir"
+
+wrapper_log() {
+    printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$log_file" 2>/dev/null || true
+}
+
+# Snapshot the screen before the regex dialog opens, so the dialog (which shows
+# the regex the user is typing) is never part of the search target. Same tools
+# and flags gocr uses for its own capture.
+capture_screen() {
+    if command -v maim >/dev/null 2>&1; then
+        maim --format=png --hidecursor > "$capture_file" 2>/dev/null && [ -s "$capture_file" ] && return 0
+    fi
+    if command -v import >/dev/null 2>&1; then
+        import -window root png:- > "$capture_file" 2>/dev/null && [ -s "$capture_file" ] && return 0
+    fi
+    return 1
+}
+
+get_cursor() {
+    pos=$(xdotool getmouselocation --shell 2>/dev/null)
+    eval "$pos"
+    printf '%s\t%s' "${X:-0}" "${Y:-0}"
+}
+
+trail() {
+    from_x="$1" from_y="$2" to_x="$3" to_y="$4"
+    if [ "$from_x" != "$to_x" ] || [ "$from_y" != "$to_y" ]; then
+        warpd-trail "$from_x" "$from_y" "$to_x" "$to_y" &
+    fi
+}
+
+move_to_match() {
+    match="$1"
+    x=$(echo "$match" | cut -f1)
+    y=$(echo "$match" | cut -f2)
+    old=$(get_cursor)
+    old_x=$(echo "$old" | cut -f1)
+    old_y=$(echo "$old" | cut -f2)
+    trail "$old_x" "$old_y" "$x" "$y"
+    xdotool mousemove "$x" "$y"
+}
+
+# Ensure the mouseless mouse layer is active so the keyboard controls the
+# pointer from the match it just landed on. Idempotent: when mouse mode is
+# already on (the OSD marker file exists) leave it as is.
+enter_mouse_mode() {
+    [ -f "$mode_state_dir/mouse" ] && return 0
+    command -v keyd >/dev/null 2>&1 || return 0
+    keyd do leftcontrol+rightcontrol
+    wrapper_log "entrando en mouse mode"
+}
+
+notify_match() {
+    text="$1" current="$2" total="$3"
+    if [ -n "$total" ]; then
+        msg="match $current/$total: $text"
+    else
+        msg="match $current: $text"
+    fi
+    if command -v dunstify >/dev/null 2>&1; then
+        dunstify -a gocr -t 1500 -r 14511 "gocr" "$msg"
+    fi
+}
+
+cycle_match() {
+    index=$(cat "$index_file" 2>/dev/null || echo 0)
+    total=$(wc -l < "$matches_file" 2>/dev/null || echo 0)
+    [ "$total" -eq 0 ] && return 1
+
+    index=$(( (index + 1) % total ))
+    echo "$index" > "$index_file"
+
+    match=$(sed -n "$((index + 1))p" "$matches_file")
+    move_to_match "$match"
+    enter_mouse_mode
+    text=$(echo "$match" | cut -f3-)
+    notify_match "$text" "$((index + 1))" "$total"
+    return 0
+}
+
+if [ "$1" = "--next" ]; then
+    if [ -f "$matches_file" ]; then
+        cycle_match
+    fi
+    exit 0
+fi
+
+if command -v maim >/dev/null 2>&1 || command -v import >/dev/null 2>&1; then
+    wrapper_log "capturando pantalla antes del dialogo"
+    if capture_screen; then
+        wrapper_log "captura ok: $capture_file"
+    else
+        wrapper_log "captura fallida; gocr capturara en vivo"
+        rm -f "$capture_file"
+    fi
+fi
+
+for prompt_tool in kdialog zenity; do
+    if command -v "$prompt_tool" >/dev/null 2>&1; then
+        case "$prompt_tool" in
+            kdialog)
+                regex=$(kdialog --inputbox "Regex (case-insensitive by default):" "(?i)" 2>/dev/null)
+                ;;
+            zenity)
+                regex=$(zenity --entry --text "Regex (case-insensitive by default):" --entry-text "(?i)" --title "gocr" 2>/dev/null)
+                ;;
+        esac
+        break
+    fi
+done
+
+[ -z "$regex" ] && { wrapper_log "regex vacio, saliendo"; exit 0; }
+wrapper_log "regex='$regex'"
+
+if [ -f "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+    wrapper_log "matando gocr previo pid=$(cat "$pid_file")"
+    kill "$(cat "$pid_file")" 2>/dev/null
+    sleep 0.1
+fi
+
+rm -f "$matches_file" "$index_file" "$pid_file" "$err_file"
+echo "0" > "$index_file"
+
+wrapper_log "iniciando gocr: $gocr --regex '$regex'"
+# --debug saves the capture and dumps all words so a spurious match can be
+# reproduced later from the exact frame. Remove it once debugging is done.
+if [ -s "$capture_file" ]; then
+    wrapper_log "usando captura previa: $capture_file"
+    "$gocr" --image "$capture_file" --regex "$regex" --debug >"$matches_file" 2>"$err_file" &
+else
+    "$gocr" --regex "$regex" --debug >"$matches_file" 2>"$err_file" &
+fi
+gocr_pid=$!
+echo "$gocr_pid" > "$pid_file"
+wrapper_log "gocr pid=$gocr_pid"
+
+timeout=300
+elapsed=0
+while [ ! -s "$matches_file" ] && [ "$elapsed" -lt "$timeout" ]; do
+    if ! kill -0 "$gocr_pid" 2>/dev/null; then
+        break
+    fi
+    sleep 0.1
+    elapsed=$((elapsed + 1))
+done
+
+if [ ! -s "$matches_file" ]; then
+    err=$(cat "$err_file" 2>/dev/null)
+    if kill -0 "$gocr_pid" 2>/dev/null; then
+        wrapper_log "TIMEOUT: matches vacio tras ${timeout}s, gocr sigue vivo pid=$gocr_pid"
+    else
+        wait "$gocr_pid" 2>/dev/null
+        rc=$?
+        wrapper_log "gocr termino rc=$rc con matches vacio; err='$(echo "$err" | head -1)'"
+    fi
+    if [ -n "$err" ]; then
+        if command -v dunstify >/dev/null 2>&1; then
+            dunstify -a gocr -u critical -t 3000 -r 14511 "gocr" "Error: $err"
+        fi
+    else
+        if command -v dunstify >/dev/null 2>&1; then
+            dunstify -a gocr -t 2000 -r 14511 "gocr" "No matches found"
+        fi
+    fi
+    rm -f "$pid_file"
+    exit 0
+fi
+
+wrapper_log "matches listos: $(head -1 "$matches_file")"
+cycle_match

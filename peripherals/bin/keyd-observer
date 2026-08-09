@@ -18,6 +18,8 @@
 
 # https://unix.stackexchange.com/questions/152310/how-to-correctly-start-an-application-from-a-shell
 
+gocr="$HOME/bin/gocr-run"
+
 enter_mouseless_mode=leftcontrol+rightcontrol
 leave_mouseless_mode=leftalt+rightalt
 warpd_last_location="$HOME/bin/warpd-last-location"
@@ -397,6 +399,18 @@ keyd listen | while read x; do
 
     +signal_open_vim_registers)
         run_open_vim_register_picker >/dev/null 2>&1 &
+        ;;
+
+    +signal_open_gocr)
+        keyd do $leave_mouseless_mode &
+        "$gocr" &
+        ;;
+
+    +signal_gocr_next)
+        # Unlike the open handler (which leaves mouseless so the user can type
+        # in the zenity prompt), tab+v must NOT leave mouse mode: gocr-run
+        # re-enters it from each match it jumps to.
+        "$gocr" --next &
         ;;
 
     +signal_open_pedalboard_profiles)

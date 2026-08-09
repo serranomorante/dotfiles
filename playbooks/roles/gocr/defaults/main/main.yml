@@ -1,0 +1,5 @@
+---
+gocr_repo_path: "/home/aaaa/data/dev-pjs/gocr"
+gocr_install_path: "/home/aaaa/.local/bin/gocr"
+# Python version used for the PaddleOCR venv (paddlepaddle does not support 3.14).
+gocr_paddle_python: "3.11.11"
