@@ -37,6 +37,22 @@ local function ansible_tags(task_id)
   return table.concat(tags, ",")
 end
 
+local function env_vars(env)
+  local vars = {}
+  if not env or env == "" then return vars end
+  local current_key = nil
+  for _, token in ipairs(vim.fn.split(env)) do
+    local key = token:match("^([%w_]+)=")
+    if key then
+      current_key = key
+      vars[key] = token:sub(#key + 2)
+    elseif current_key and token ~= "" then
+      vars[current_key] = vars[current_key] .. " " .. token
+    end
+  end
+  return vars
+end
+
 local function log_scope(task_id)
   local tags = vim.tbl_filter(function(tag) return tag ~= "setup" end, selected_tags(task_id))
   if #tags == 0 or (#tags == 1 and tags[1] == "all") then return "tools" end
@@ -78,6 +94,7 @@ return {
     task_id = {
       desc = "Task id",
       type = "string",
+      default = "all",
       order = 2,
     },
     host = {
@@ -114,12 +131,34 @@ return {
       optional = true,
       order = 6,
     },
+    playbook = {
+      desc = "Verbose",
+      type = "enum",
+      default = "tools.yml",
+      choices = {
+        "tools.yml",
+        "gocr.yml",
+        "arch-realtime-migration.yml",
+        "arch-chroot-setup.yml",
+        "testing.yml",
+        "arch-user-setup.yml",
+        "facts_refresh.yml",
+      },
+      optional = false,
+      order = 7,
+    },
+    env = {
+      desc = "Environment variables (e.g. DOTFILES_MUSIC_PRODUCTION_PLUGINS=fortin)",
+      type = "string",
+      optional = true,
+      order = 8,
+    },
   },
   builder = function(params)
     local ansible_argv = {
       "ansible-playbook",
       "-K",
-      string.format("%s/dotfiles/playbooks/tools.yml", HOME),
+      string.format("%s/dotfiles/playbooks/%s", HOME, params.playbook),
       "-l",
       HOST_TO_SSHD_CONFIG[params.host],
       "-i",
@@ -144,6 +183,7 @@ return {
       cmd = "bash",
       args = { "-o", "pipefail", "-c", logged_command(ansible_argv, PLAYBOOKS_DIR, path) },
       cwd = PLAYBOOKS_DIR,
+      env = env_vars(params.env),
       metadata = {
         PREVENT_QUIT = true,
         ansible_log_path = path,
