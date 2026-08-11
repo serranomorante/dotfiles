@@ -32,39 +32,11 @@
   timeout: 60
   when: wine_installer_should_run | bool
 
-- name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine prefix before installer setup"
-  ansible.builtin.command:
-    argv:
-      - "{{ ansible_facts.env.HOME }}/bin/wwine"
-      - --prefix
-      - "{{ wine_installer_prefix }}"
-      - kill-prefix
-  changed_when: true
-  failed_when: false
-  no_log: true
-  timeout: 60
-  when: wine_installer_should_run | bool
-
 - name: "[wine-installer-poll] Force {{ wine_installer_name }} Wine virtual desktop"
   ansible.builtin.command:
     argv: "{{ wine_installer_force_desktop_argv | default((wine_installer_argv[: wine_installer_argv.index('wine')] + ['force-desktop'] + ([wine_installer_virtual_desktop_size] if wine_installer_virtual_desktop_size is defined else []))) }}"
   changed_when: true
   failed_when: false
-  timeout: 60
-  when:
-    - wine_installer_should_run | bool
-    - wine_installer_virtual_desktop | default(true) | bool
-
-- name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine prefix after virtual desktop setup"
-  ansible.builtin.command:
-    argv:
-      - "{{ ansible_facts.env.HOME }}/bin/wwine"
-      - --prefix
-      - "{{ wine_installer_prefix }}"
-      - kill-prefix
-  changed_when: true
-  failed_when: false
-  no_log: true
   timeout: 60
   when:
     - wine_installer_should_run | bool
@@ -177,22 +149,6 @@
     - wine_installer_result.changed | default(false)
     - wine_installer_launch_completed_before_poll | default(false) | bool
 
-- name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine prefix after blocked launch"
-  ansible.builtin.command:
-    argv:
-      - "{{ ansible_facts.env.HOME }}/bin/wwine"
-      - --prefix
-      - "{{ wine_installer_prefix }}"
-      - kill-prefix
-  changed_when: true
-  failed_when: false
-  no_log: true
-  timeout: 60
-  when:
-    - wine_installer_should_run | bool
-    - wine_installer_result.changed | default(false)
-    - wine_installer_launch_blocked | default(false) | bool
-
 - name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine server after blocked launch"
   ansible.builtin.command:
     argv:
@@ -263,22 +219,6 @@
     - not (wine_installer_launch_completed_before_poll | default(false) | bool)
     - wine_installer_poll | default(true) | bool
     - wine_installer_open_poll_result.stdout | default(0) | int > 0
-
-- name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine prefix after polling"
-  ansible.builtin.command:
-    argv:
-      - "{{ ansible_facts.env.HOME }}/bin/wwine"
-      - --prefix
-      - "{{ wine_installer_prefix }}"
-      - kill-prefix
-  changed_when: true
-  failed_when: false
-  no_log: true
-  timeout: 60
-  when:
-    - wine_installer_should_run | bool
-    - wine_installer_result.changed | default(false)
-    - not (wine_installer_launch_blocked | default(false) | bool)
 
 - name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine server after polling"
   ansible.builtin.command:
