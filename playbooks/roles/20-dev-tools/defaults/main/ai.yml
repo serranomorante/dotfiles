@@ -10,7 +10,10 @@ mcphub_setup:
   shutdown_delay_ms: 30000
 
 # Claude Code global settings forced into ~/.claude/settings.json. Runtime state and caches live in ~/.claude.json, but user-editable settings such as promptSuggestionEnabled belong in ~/.claude/settings.json.
+# claude is a pinned npm install whose prefix cannot auto-update, so DISABLE_AUTOUPDATER stops the background check and silences the "Auto-update failed" notice.
 claude_global_settings_config:
+  env:
+    DISABLE_AUTOUPDATER: "1"
   promptSuggestionEnabled: false
 piper_tts_setup:
   project_path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/piper-tts"
