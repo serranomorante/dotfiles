@@ -54,6 +54,10 @@ local groups = {
   qfSeparatorLeft = { fg = bg .. "Grey4" },
   CustomOperatorPending = { bg = fg .. "Blue" },
   CustomDapReplBg = { bg = bg == "NvimDark" and "#192335" or "#b8cef7" },
+  CustomMutedBg = {
+    fg = bg == "NvimDark" and "#c8c8c8" or "#3a3a3a",
+    bg = bg == "NvimDark" and "#1e1e1e" or "#e5e5e5",
+  },
   CustomEphemeralMsgBg = { bg = bg == "NvimDark" and "#10264d" or "#93abd9" },
   CustomAerialBg = { bg = bg .. "Grey3" },
   CustomAerialTitle = { fg = fg .. "Cyan", bg = bg .. "Grey3", bold = true },

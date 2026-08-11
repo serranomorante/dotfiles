@@ -1871,6 +1871,120 @@ local function apply_agent_task_output_listchars(bufnr)
   end
 end
 
+local MUTED_BACKGROUND_WINHL = "Normal:CustomMutedBg"
+
+---@param winhl string
+---@return string
+local function muted_background_winhl(winhl)
+  local parts = vim.split(winhl, ",", { trimempty = true })
+  local kept = {}
+  for _, part in ipairs(parts) do
+    if not part:match("^Normal:") then table.insert(kept, part) end
+  end
+  table.insert(kept, MUTED_BACKGROUND_WINHL)
+  return table.concat(kept, ",")
+end
+
+---@param winhl string
+---@return string
+local function strip_muted_background_winhl(winhl)
+  local parts = vim.split(winhl, ",", { trimempty = true })
+  local kept = {}
+  for _, part in ipairs(parts) do
+    if part ~= MUTED_BACKGROUND_WINHL then table.insert(kept, part) end
+  end
+  return table.concat(kept, ",")
+end
+
+---@param bufnr integer
+---@return boolean
+local function is_agent_output_buffer(bufnr)
+  if not vim.api.nvim_buf_is_valid(bufnr) then return false end
+  local task = overseer_task_for_buf(bufnr)
+  local metadata = task and task.metadata or nil
+  return type(metadata) == "table" and metadata[AGENT_TASK_METADATA] == true
+end
+
+---@param bufnr integer
+---@return boolean
+local function is_markdown_buffer(bufnr)
+  if not vim.api.nvim_buf_is_valid(bufnr) then return false end
+  if vim.b[bufnr].persistent_scratch then return false end
+  local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
+  return type(filetype) == "string" and filetype:match("^markdown") ~= nil
+end
+
+---@param bufnr integer
+---@return boolean
+local function is_muted_background_buffer(bufnr) return is_markdown_buffer(bufnr) or is_agent_output_buffer(bufnr) end
+
+---@param bufnr integer
+local function apply_muted_background(bufnr)
+  if not is_muted_background_buffer(bufnr) then return end
+  vim.g.muted_background_active = true
+
+  for _, winid in ipairs(vim.fn.win_findbuf(bufnr)) do
+    if vim.api.nvim_win_is_valid(winid) then
+      local winhl = vim.wo[winid].winhl
+      if not winhl:find(MUTED_BACKGROUND_WINHL, 1, true) then vim.wo[winid].winhl = muted_background_winhl(winhl) end
+    end
+  end
+end
+
+local function clear_muted_background()
+  local winids = vim.api.nvim_list_wins()
+  local any = false
+  for _, winid in ipairs(winids) do
+    if vim.api.nvim_win_is_valid(winid) and vim.wo[winid].winhl:find(MUTED_BACKGROUND_WINHL, 1, true) then
+      any = true
+      break
+    end
+  end
+  if not any then
+    vim.g.muted_background_active = false
+    return
+  end
+
+  local remaining = false
+  for _, winid in ipairs(winids) do
+    if vim.api.nvim_win_is_valid(winid) then
+      local winhl = vim.wo[winid].winhl
+      if winhl:find(MUTED_BACKGROUND_WINHL, 1, true) then
+        if is_muted_background_buffer(vim.api.nvim_win_get_buf(winid)) then
+          remaining = true
+        else
+          vim.wo[winid].winhl = strip_muted_background_winhl(winhl)
+        end
+      end
+    end
+  end
+  if not remaining then vim.g.muted_background_active = false end
+end
+
+vim.api.nvim_create_autocmd("BufWinEnter", {
+  desc = "Keep agent output and markdown windows on the muted custom background",
+  group = vim.api.nvim_create_augroup("muted_background", { clear = true }),
+  callback = function(args)
+    local bufnr = args.buf
+    if not vim.g.muted_background_active then
+      if
+        not is_markdown_buffer(bufnr)
+        and vim.api.nvim_get_option_value("buftype", { buf = bufnr }) ~= "terminal"
+        and vim.b[bufnr].overseer_task == nil
+      then
+        return
+      end
+      if is_muted_background_buffer(bufnr) then apply_muted_background(bufnr) end
+      return
+    end
+    if is_muted_background_buffer(bufnr) then
+      apply_muted_background(bufnr)
+    else
+      clear_muted_background()
+    end
+  end,
+})
+
 ---@param task overseer.Task?
 ---@return string?
 function M.agent_task_tmux_target(task)
@@ -2027,6 +2141,7 @@ function M.attach_overseer_task_output_navigation(bufnr)
   vim.b[bufnr].overseer_output_navigation_attached = true
   if task and not vim.b[bufnr].overseer_output_agent_listchars_attached then
     apply_agent_task_output_listchars(bufnr)
+    apply_muted_background(bufnr)
     vim.b[bufnr].overseer_output_agent_listchars_attached = true
     vim.api.nvim_create_autocmd("BufWinEnter", {
       desc = "Keep trail hidden in agent task outputs",
