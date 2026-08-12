@@ -29,7 +29,7 @@
         BORG_PASSCOMMAND: gpg --homedir /data/data/com.termux/files/home/.gnupg --decrypt {{ ansible_facts.env.HOME }}/data/secrets/{{ item.pass_file }}
       vars:
         device: '{{ item.device | regex_replace("[^A-Za-z0-9]", "_") }}'
-        reponame: '{{ item.keyrings.passkey | regex_replace("[^A-Za-z0-9]", "_") }}'
+        reponame: '{{ item.repo | basename | regex_replace("[^A-Za-z0-9]", "_") }}'
       args:
         creates: ~/.config/borg/keys/*{{ device }}_data_backups_{{ reponame }}
       loop: "{{ otherlinux_borg_repos_env }}"
@@ -68,7 +68,7 @@
       environment:
         BORG_PASSCOMMAND: gpg --homedir /data/data/com.termux/files/home/.gnupg --decrypt {{ ansible_facts.env.HOME }}/data/secrets/{{ item.pass_file }}
       vars:
-        keyfilename: '{{ item.repo | regex_replace("[^A-Za-z0-9]", "_") }}'
+        keyfilename: '{{ item.device | regex_replace("[^A-Za-z0-9]", "_") }}_data_backups_{{ item.repo | basename | regex_replace("[^A-Za-z0-9]", "_") }}'
       changed_when: true
       loop: "{{ otherlinux_borg_repos_env }}"
 

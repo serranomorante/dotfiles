@@ -16,6 +16,21 @@
     validate: visudo -cf %s
 
 - block:
+    # The sx borg shortcut derives the KWallet key from the repo basename, so
+    # both must agree. Fail fast here rather than letting a renamed passkey
+    # silently authenticate the wrong repo.
+    - name: "[archlinux] Setup backup tools: validate repo basename matches KWallet passkey"
+      ansible.builtin.assert:
+        that:
+          - item.repo | basename == item.keyrings.passkey
+        fail_msg: >-
+          borg repo '{{ item.repo }}' basename '{{ item.repo | basename }}' does not
+          match KWallet passkey '{{ item.keyrings.passkey }}'; the sx borg shortcut
+          resolves the KWallet key from the repo basename, so they must match.
+      loop: "{{ archlinux_borg_repos_env }}"
+      loop_control:
+        label: "{{ item.keyrings.passkey }}"
+
     - name: "[archlinux] Setup backup tools: stat private browser defaults"
       ansible.builtin.stat:
         path: ~/dotfiles/for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/defaults/main/main.vars.yml
@@ -140,7 +155,7 @@
         BORG_PASSCOMMAND: kwallet-query --folder {{ item.0.keyrings.folder }} --read-password {{ item.0.keyrings.passkey }} {{ item.0.keyrings.wallet }}
       vars:
         device: '{{ item.0.device | regex_replace("[^A-Za-z0-9]", "_") }}'
-        reponame: '{{ item.0.keyrings.passkey | regex_replace("[^A-Za-z0-9]", "_") }}'
+        reponame: '{{ item.0.repo | basename | regex_replace("[^A-Za-z0-9]", "_") }}'
         repobasename: /run/media/{{ ansible_facts.env.USER }}/{{ item.0.device }}/data/backups
       args:
         creates: ~/.config/borg/keys/*{{ device }}_data_backups_{{ reponame }}
@@ -208,3 +223,9 @@
         dest: ~/bin/backup_borg_keys
         mode: "755"
   ignore_errors: true
+
+- name: "[archlinux] Setup backup tools: generate sx borg shortcut"
+  ansible.builtin.template:
+    src: ../../../../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/templates/sx-borg
+    dest: ~/.local/libexec/sx/borg
+    mode: "755"

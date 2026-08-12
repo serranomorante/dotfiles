@@ -1,5 +1,20 @@
 ---
 - block:
+    # The sx borg shortcut derives the KWallet key from the repo basename, so
+    # both must agree. Fail fast here rather than letting a renamed passkey
+    # silently authenticate the wrong repo.
+    - name: "[archlinux] Setup root backup tools: validate repo basename matches KWallet passkey"
+      ansible.builtin.assert:
+        that:
+          - item.borg_repo | basename == item.keyrings.passkey
+        fail_msg: >-
+          borg repo '{{ item.borg_repo }}' basename '{{ item.borg_repo | basename }}' does not
+          match KWallet passkey '{{ item.keyrings.passkey }}'; the sx borg shortcut
+          resolves the KWallet key from the repo basename, so they must match.
+      loop: "{{ archlinux_borg_root_repos_env }}"
+      loop_control:
+        label: "{{ item.keyrings.passkey }}"
+
     - name: "[archlinux] Setup root backup tools: stat local backup drives"
       ansible.builtin.stat:
         path: "{{ item }}"
@@ -66,7 +81,7 @@
             --read-password {{ item.0.keyrings.passkey }} {{ item.0.keyrings.wallet }}
       vars:
         device: '{{ item.0.device | regex_replace("[^A-Za-z0-9]", "_") }}'
-        reponame: '{{ item.0.keyrings.passkey | regex_replace("[^A-Za-z0-9]", "_") }}'
+        reponame: '{{ item.0.borg_repo | basename | regex_replace("[^A-Za-z0-9]", "_") }}'
         repobasename: /run/media/{{ ansible_facts.env.USER }}/{{ item.0.device }}/data/backups
       args:
         creates: ~/.config/borg-root/keys/*{{ device }}_data_backups_{{ reponame }}
@@ -132,7 +147,7 @@
             --folder {{ item.keyrings.folder }}
             --read-password {{ item.keyrings.passkey }} {{ item.keyrings.wallet }}
       vars:
-        keyfilename: '{{ item.borg_repo | regex_replace("[^A-Za-z0-9]", "_") }}'
+        keyfilename: '{{ item.device | regex_replace("[^A-Za-z0-9]", "_") }}_data_backups_{{ item.borg_repo | basename | regex_replace("[^A-Za-z0-9]", "_") }}'
       changed_when: true
       loop: "{{ archlinux_borg_root_repos_env }}"
 
