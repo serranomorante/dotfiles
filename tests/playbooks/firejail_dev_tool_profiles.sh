@@ -10,6 +10,7 @@ set -euo pipefail
 # dotfiles-test-case: firejail-ai-agent-mcp-uses-inherited-sandbox
 # dotfiles-test-case: firejail-ai-agent-runtime-launchers-use-wrappers
 # dotfiles-test-case: firejail-ai-agent-orchestration-paths-visible
+# dotfiles-test-case: firejail-ai-agent-controls-foam-notes-exposure
 # dotfiles-test-case: firejail-ai-agent-stow-targets-visible
 
 # Purpose: Static guardrails for dev-tool Firejail profile path exposure.
@@ -157,6 +158,30 @@ firejail-ai-agent-orchestration-paths-visible)
             exit 1
         fi
     done
+    ;;
+firejail-ai-agent-controls-foam-notes-exposure)
+    profile="$root/playbooks/roles/20-dev-tools/templates/ai-agent-common.inc"
+    wrapper="$root/playbooks/roles/20-dev-tools/files/fj-ai-agent"
+    if grep -Fq 'blacklist ${HOME}/data/notes/foam' "$profile"; then
+        printf 'AI agent profile must not statically blacklist the foam notes tree\n' >&2
+        exit 1
+    fi
+    for expected in \
+        'FJ_AI_AGENT_FOAM_NOTES_ROOT' \
+        '"$real_home/data/notes/foam"' \
+        'foam_profile_blacklist=' \
+        'is_under_foam_notes "$work_root"' \
+        '"--noblacklist=$foam_profile_blacklist"' \
+        '"--blacklist=$foam_profile_blacklist"'; do
+        if ! grep -Fq "$expected" "$wrapper"; then
+            printf 'AI agent wrapper is missing conditional foam notes exposure: %s\n' "$expected" >&2
+            exit 1
+        fi
+    done
+    if ! grep -Fq "\${HOME}/data/notes/foam" "$wrapper"; then
+        printf 'AI agent wrapper must use the ${HOME} form for the foam notes path\n' >&2
+        exit 1
+    fi
     ;;
 firejail-ai-agent-stow-targets-visible)
     profile="$root/playbooks/roles/20-dev-tools/templates/ai-agent-common.inc"

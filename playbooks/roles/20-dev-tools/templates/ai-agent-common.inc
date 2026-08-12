@@ -48,11 +48,13 @@ whitelist ${HOME}/bin/fj-profile-checker
 whitelist-ro ${HOME}/.local/share/firejail-wrapper/ai-agent-profiles
 
 # Keep sensitive host data hidden unless the launcher explicitly exposes a CWD
-# or extra path that contains it.
+# or extra path that contains it. Firejail blacklists win over whitelists, so a
+# static blacklist for the foam notes tree would hide it even from foam-cwd
+# agent runs; fj-ai-agent re-adds it conditionally via --blacklist only for
+# launches whose work root is outside the foam tree.
 blacklist ${HOME}/.ssh
 blacklist ${HOME}/.gnupg
 blacklist ${HOME}/data/secrets
-blacklist ${HOME}/data/notes/foam
 
 # AI agents and MCPHub need local HTTP plus internet access.
 protocol unix,inet,inet6,netlink
