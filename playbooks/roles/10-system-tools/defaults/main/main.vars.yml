@@ -17,7 +17,6 @@ dotfiles_public_stow_packages:
   - nvim
   - peripherals
   - audio
-  - playbooks
   - systemd
   - home
   - utilities

@@ -33,6 +33,7 @@ Use this file to choose the source file that owns a behavior before editing gene
 ## Stow
 
 - Stow packages are applied from the repo root through `~/bin/dotfiles-stow`.
+- The `playbooks` package is intentionally **not** stowed: its Ansible config is read in-repo from `~/dotfiles/playbooks` (cwd or `ANSIBLE_CONFIG`), so the `10-30` apply and the pre-commit Stow guard must not see it in `dotfiles_public_stow_packages`.
 - Use `dot-*` names for hidden targets and `.stow-local-ignore` for files that must not link into `$HOME`.
 - New files under stowed packages are inactive until stowed; edited existing symlinked files update in place.
 - `dotfiles-stow` refreshes the generated Firejail include that exposes active Stow targets to sandboxed AI agents without opening all of `$HOME`.
