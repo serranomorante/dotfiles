@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+# On connect, hand off to dotfiles-automount@<uuid>.service so the configured
+# filesystem is mounted at its /run/media path automatically. udev also fires
+# "add" for devices already present at boot, so this covers that case too.
+{% for entry in arch_filesystem_automounts %}
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_FS_UUID}=="{{ entry.uuid }}", TAG+="systemd", ENV{SYSTEMD_WANTS}+="dotfiles-automount@{{ entry.uuid }}.service"
+{% endfor %}

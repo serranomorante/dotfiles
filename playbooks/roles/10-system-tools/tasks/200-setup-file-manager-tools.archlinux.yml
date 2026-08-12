@@ -156,6 +156,50 @@
     mode: "644"
   notify: "10-system-tools : handler_reload_udev_rules"
 
+# Automount configured filesystems on connect (and at boot if already present).
+# A udev rule matches the configured UUIDs and hands off to
+# dotfiles-automount@<uuid>.service, which mounts at the configured
+# /run/media/<user>/<label> path. Ordering after the fs-label service keeps a
+# relabel-triggered unmount from racing the mount.
+- name: "[archlinux] Setup file manager: install automount helper"
+  become: true
+  ansible.builtin.copy:
+    src: ~/dotfiles/assets/scripts/storage/dotfiles-automount
+    dest: /usr/local/bin/dotfiles-automount
+    owner: root
+    mode: "755"
+
+- name: "[archlinux] Setup file manager: write automount config"
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/dotfiles/automounts.conf
+    owner: root
+    mode: "644"
+    content: |
+      # {{ ansible_managed }}
+      # Managed by 10-200 (arch_filesystem_automounts). "<uuid> <mountpoint> <owner>" per line.
+      {% for entry in arch_filesystem_automounts %}
+      {{ entry.uuid }} {{ entry.mountpoint }} {{ entry.owner }}
+      {% endfor %}
+
+- name: "[archlinux] Setup file manager: install automount service unit"
+  become: true
+  ansible.builtin.template:
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/services/dotfiles-automount@.service"
+    dest: /etc/systemd/system/dotfiles-automount@.service
+    owner: root
+    mode: "644"
+  notify: "10-system-tools : handler_reload_systemd"
+
+- name: "[archlinux] Setup file manager: install automount udev rule"
+  become: true
+  ansible.builtin.template:
+    src: 70-dotfiles-automount.rules
+    dest: /etc/udev/rules.d/70-dotfiles-automount.rules
+    owner: root
+    mode: "644"
+  notify: "10-system-tools : handler_reload_udev_rules"
+
 # Allow the local user to mount/unmount/eject via udisks2 without a password,
 # so the nmount plugin can toggle volumes (including pmount-created /media
 # mounts) the same way the desktop file manager does. polkitd auto-reloads

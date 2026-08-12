@@ -146,6 +146,14 @@ arch_filesystem_autolabels:
   - uuid: 3dc52ee3-d7b3-4eb0-86aa-8237ca5c0ad7
     label: dev4
 
+# Filesystems automounted on connect (and at boot if already present) by
+# dotfiles-automount@.service. The mountpoint follows the udisks2 /run/media
+# layout so existing tools keep working unchanged.
+arch_filesystem_automounts:
+  - uuid: 3dc52ee3-d7b3-4eb0-86aa-8237ca5c0ad7
+    mountpoint: /run/media/{{ ansible_facts.env.USER }}/dev4
+    owner: "{{ ansible_facts.env.USER }}"
+
 arch_ansible_long_retries_config:
   delay_n: 5
   retries_n: 10000

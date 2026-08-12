@@ -1,0 +1,63 @@
+#!/usr/bin/env sh
+#
+# Purpose: Automount the filesystem identified by a UUID at its configured
+#          mountpoint. Idempotent and non-fatal on failure.
+# Usage:   dotfiles-automount <fs-uuid>
+# Notes:   Runs as root from the udev-triggered dotfiles-automount@.service,
+#          so it mounts with plain mount(8) and needs no udisks2/polkit
+#          session. The UUID -> mountpoint -> owner map is read from
+#          /etc/dotfiles/automounts.conf, one "<uuid> <mountpoint> <owner>"
+#          line per pair, installed by Ansible. Safe when the device is
+#          already mounted at the target or somewhere else.
+
+set -eu
+
+uuid="${1:?usage: dotfiles-automount <fs-uuid>}"
+conf="${DOTFILES_AUTOMOUNTS_CONF:-/etc/dotfiles/automounts.conf}"
+
+[ -r "$conf" ] || exit 0
+
+mp=""
+owner=""
+while read -r conf_uuid conf_mp conf_owner _rest; do
+    case "$conf_uuid" in
+        ''|'#'*) continue ;;
+    esac
+    if [ "$conf_uuid" = "$uuid" ]; then
+        mp="$conf_mp"
+        owner="$conf_owner"
+        break
+    fi
+done < "$conf"
+
+# UUID not configured: nothing to do.
+[ -n "$mp" ] || exit 0
+
+# Resolve the current device node for the UUID.
+dev="$(blkid -U "$uuid" 2>/dev/null || true)"
+[ -n "$dev" ] || exit 0
+
+# Already mounted at the target: idempotent no-op.
+if mountpoint -q -- "$mp" 2>/dev/null || grep -q " $mp " /proc/mounts; then
+    exit 0
+fi
+
+# Mounted somewhere else (e.g. by the desktop file manager): leave it alone.
+if lsblk -nro MOUNTPOINTS "$dev" 2>/dev/null | grep -q '[^[:space:]]'; then
+    echo "dotfiles-automount: $dev already mounted elsewhere, skipping" >&2
+    exit 0
+fi
+
+# Create the mountpoint and hand it to the configured owner so the desktop
+# user can read/write the filesystem root after the mount.
+mkdir -p -- "$mp"
+if [ -n "$owner" ]; then
+    chown -- "$owner" "$mp" 2>/dev/null || true
+fi
+
+if mount -- "$dev" "$mp"; then
+    echo "dotfiles-automount: mounted $dev at $mp" >&2
+else
+    echo "dotfiles-automount: failed to mount $dev at $mp" >&2
+    exit 0
+fi

@@ -48,6 +48,7 @@ Use this file to choose the source file that owns a behavior before editing gene
 - Kitty/tmux: socket/window naming in `term/bin/kitty-window-utils.sh`; tmux copy marks in `term/bin/tmux-copy-mark` and `term/dot-config/tmux/copy-mode-marks.conf`.
 - Notifications: clickable actions go through `utilities/bin/notification-action` with allowlisted JSON payloads.
 - System health: `dotfiles-health`, `system-spike-watch`, `dotfiles-spikes`, `dotfiles-health-notify`, `browser-task-snapshotd`; keep watchers cheap and incremental.
+- Storage labels/automount: `arch_filesystem_autolabels`/`arch_filesystem_automounts` in `main.vars.yml`, applied by `200-setup-file-manager-tools.archlinux.yml`; operational notes in `docs/storage-automount.md`.
 - KDE runtime: tracked shortcuts in `utilities/dot-config/kglobalshortcutsrc`; live KDE state is applied by the Arch dotfiles task, not manual edits.
 - Audio/MIDI/pedalboard/REAPER/Wine: detailed operational notes are intentionally in focused docs/assets; pedalboard profile ownership is in `docs/pedalboard-midi.md`. Keep Wine prefix setup in shared roles and use `wwine` contracts instead of ad hoc Wine wrappers.
 
