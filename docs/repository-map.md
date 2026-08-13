@@ -46,7 +46,7 @@ Use this file to choose the source file that owns a behavior before editing gene
 - DWM/compositor: `playbooks/roles/10-system-tools/tasks/100-setup-compositor.archlinux.yml` and DWM patches under role `files/`.
 - Display/tablet: Xorg defaults under role `files/wacom/`; runtime display/tablet logic in `peripherals/bin/wacom-config.sh`, `utilities/bin/setup-displays.sh`, `display-health-check`, `x11-monitor-geometry`.
 - Neovim jobs/agents: job modules under `nvim/.../plugins/jobs/`; shared agent task/session helpers in `agent_sessions.lua`, `agent_tasks.lua`, `utilities/bin/agent-tasks`, `utilities/bin/agent-session-store`.
-- Kitty/tmux: socket/window naming in `term/bin/kitty-window-utils.sh`; tmux copy marks in `term/bin/tmux-copy-mark` and `term/dot-config/tmux/copy-mode-marks.conf`.
+- Kitty/tmux: socket/window naming in `term/bin/kitty-window-utils.sh`; tmux copy marks in `term/bin/tmux-copy-mark` and `term/dot-config/tmux/copy-mode-marks.conf`, with the persisted mark pool at `$XDG_STATE_HOME/dotfiles/tmux-copy-mark/state`.
 - Notifications: clickable actions go through `utilities/bin/notification-action` with allowlisted JSON payloads.
 - System health: `dotfiles-health`, `system-spike-watch`, `dotfiles-spikes`, `dotfiles-health-notify`, `browser-task-snapshotd`; keep watchers cheap and incremental.
 - Storage labels/automount: `arch_filesystem_autolabels`/`arch_filesystem_automounts` in `main.vars.yml`, applied by `200-setup-file-manager-tools.archlinux.yml`; operational notes in `docs/storage-automount.md`.

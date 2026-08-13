@@ -1,6 +1,9 @@
 #!/bin/sh
 
 # Purpose: Save and restore Vim-style copy-mode scroll marks for a tmux pane.
+# Named marks persist to $XDG_STATE_HOME/dotfiles/tmux-copy-mark/state so they
+# survive tmux server restarts; the state pool is hydrated into panes that have
+# no marks loaded yet.
 # Usage: tmux-copy-mark save|restore SOCKET_PATH PANE_ID MARK
 # Usage: tmux-copy-mark record-entry|save-last-and-cancel|restore-last SOCKET_PATH PANE_ID
 
@@ -86,6 +89,54 @@ set_option() {
     tmux_cmd set-option -p -t "$pane" "$1" "$2" >/dev/null
 }
 
+state_file() {
+    printf '%s\n' "${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/tmux-copy-mark/state"
+}
+
+pane_pool_loaded() {
+    [ "$(get_option '@dotfiles-copy-pool-loaded')" = "$1" ]
+}
+
+load_marks() {
+    file=$(state_file)
+    [ -f "$file" ] || return 0
+    sum=$(cksum <"$file") || return 0
+    pane_pool_loaded "$sum" && return 0
+
+    while IFS= read -r line; do
+        case $line in
+        @dotfiles-copy-mark-*=*)
+            name=${line%%=*}
+            [ -n "$(get_option "$name")" ] && continue
+            set_option "$name" "${line#*=}"
+            ;;
+        esac
+    done <"$file"
+    set_option '@dotfiles-copy-pool-loaded' "$sum"
+}
+
+save_marks() {
+    dir=$(dirname "$(state_file)")
+    mkdir -p "$dir" || return 0
+    tmp=$(mktemp "$dir/state.XXXXXX") || return 0
+
+    tmux_cmd show-options -p -t "$pane" | {
+        while IFS= read -r line; do
+            case $line in
+            @dotfiles-copy-mark-*' '*)
+                printf '%s=%s\n' "${line%% *}" "${line#* }"
+                ;;
+            esac
+        done
+    } >"$tmp"
+
+    if [ -s "$tmp" ]; then
+        mv "$tmp" "$dir/state"
+    else
+        rm -f "$tmp"
+    fi
+}
+
 save_mark() {
     valid_mark "$mark" || usage
 
@@ -98,6 +149,7 @@ save_mark() {
     set_option "$(option_name mark "$mark" limit)" "$(tmux_format '#{copy_position_limit}')"
     set_option "$(option_name mark "$mark" x)" "$(tmux_format '#{copy_cursor_x}')"
     set_option "$(option_name mark "$mark" y)" "$(tmux_format '#{copy_cursor_y}')"
+    save_marks
     display_note "tmux copy mark: saved $mark"
 }
 
@@ -111,6 +163,7 @@ store_current_position() {
 }
 
 record_entry() {
+    load_marks
     if [ "$(tmux_format '#{pane_in_mode}')" = 1 ] && [ "$(tmux_format '#{pane_mode}')" = copy-mode ]; then
         store_current_position entry
     fi
@@ -153,6 +206,7 @@ restore_position() {
     scope=$1
 
     if [ "$scope" = mark ]; then
+        load_marks
         valid_mark "$mark" || usage
         saved_scroll_name=$(option_name mark "$mark" scroll)
         saved_limit_name=$(option_name mark "$mark" limit)
