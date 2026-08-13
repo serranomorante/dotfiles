@@ -1,15 +1,15 @@
 # {{ ansible_managed }}
-# Instance name (%i / %I) is the filesystem UUID to automount.
+# Instance name (%i) is the filesystem UUID to automount.
 # Started on device connect by /etc/udev/rules.d/70-dotfiles-automount.rules;
 # udev also fires for devices already present at boot.
 # Runs after the fs-label service so a relabel-triggered unmount does not race
 # the mount.
 [Unit]
-Description=Automount filesystem for UUID %I
+Description=Automount filesystem for UUID %i
 DefaultDependencies=no
 After=local-fs.target
 After=dotfiles-fs-label@%i.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/dotfiles-automount %I
+ExecStart=/usr/local/bin/dotfiles-automount %i

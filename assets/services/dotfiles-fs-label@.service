@@ -1,11 +1,11 @@
 # {{ ansible_managed }}
-# Instance name (%i / %I) is the filesystem UUID to ensure the label for.
+# Instance name (%i) is the filesystem UUID to ensure the label for.
 # Started on device connect by /etc/udev/rules.d/70-dotfiles-fs-label.rules.
 [Unit]
-Description=Ensure filesystem label for UUID %I
+Description=Ensure filesystem label for UUID %i
 DefaultDependencies=no
 After=local-fs.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/dotfiles-set-fs-label %I
+ExecStart=/usr/local/bin/dotfiles-set-fs-label %i
