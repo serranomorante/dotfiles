@@ -13,7 +13,7 @@ browser_local_extensions:
   - name: hypothesis-extension
     path: "{{ prefix | default(ansible_facts.env.HOME) }}/data/repos/hypothesis-extension/build"
     repo: https://github.com/hypothesis/browser-extension
-    hide: true
+    hide: false
   - name: promnesia
     path: "{{ prefix | default(ansible_facts.env.HOME) }}/data/repos/promnesia/extension/dist/chrome"
     repo: https://github.com/karlicoss/promnesia
