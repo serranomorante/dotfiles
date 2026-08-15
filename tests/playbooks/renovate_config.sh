@@ -14,6 +14,7 @@ set -euo pipefail
 # dotfiles-test-case: renovate-config-covers-reaper-download-page
 # dotfiles-test-case: renovate-config-covers-music-production-release-assets
 # dotfiles-test-case: renovate-config-keeps-vscode-js-debug-install-scripts-disabled
+# dotfiles-test-case: renovate-config-covers-hypothesis-branch-pins
 # dotfiles-test-case: renovate-tool-is-installed-by-ansible
 # dotfiles-test-case: renovate-local-apply-helper-is-installed
 # dotfiles-test-case: renovate-local-apply-helper-is-exposed-in-lazygit
@@ -30,6 +31,8 @@ font_defaults="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/defaults/ma
 music_defaults="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/defaults/main/music-production.vars.yml"
 dev_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/20-dev-tools/tasks/175-setup-dependency-update-tools.archlinux.yml"
 dev_main_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/20-dev-tools/tasks/main.yml"
+pkm_defaults="${DOTFILES_TEST_ROOT}/playbooks/roles/40-PKM/defaults/main.yml"
+hpi_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/40-PKM/tasks/20-setup-HPI.archlinux.yml"
 local_apply_helper="${DOTFILES_TEST_ROOT}/playbooks/roles/20-dev-tools/files/dotfiles-renovate-apply"
 lazygit_config="${DOTFILES_TEST_ROOT}/lazygit/dot-config/lazygit/config.yml"
 
@@ -267,6 +270,45 @@ block = text[start:end]
 assert 'NPM_CONFIG_IGNORE_SCRIPTS: "true"' in block
 PY
     ;;
+renovate-config-covers-hypothesis-branch-pins)
+    python3 - "$config_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    config = json.load(handle)
+
+expected = {
+    "hypothesis/h": ("hypothesis-h", "git-refs", "github-branch"),
+    "hypothesis/bouncer": ("hypothesis-bouncer", "git-refs", "github-branch"),
+}
+found = {}
+for manager in config["customManagers"]:
+    package = manager.get("packageNameTemplate")
+    if package in expected:
+        found[package] = (
+            manager.get("depNameTemplate"),
+            manager.get("datasourceTemplate"),
+            manager.get("depTypeTemplate"),
+        )
+
+for package, wanted in expected.items():
+    assert found.get(package) == wanted, f"{package}: expected {wanted}, got {found.get(package)}"
+
+for manager in config["customManagers"]:
+    if manager.get("packageNameTemplate") == "hypothesis/browser-extension":
+        assert manager["datasourceTemplate"] == "github-tags"
+        break
+else:
+    raise SystemExit("missing hypothesis browser-extension manager")
+PY
+    rg -q '^hypothesis_h_version: [0-9a-f]{40}$' "$pkm_defaults"
+    rg -q '^hypothesis_bouncer_version: [0-9a-f]{40}$' "$pkm_defaults"
+    rg -Fq 'version: "{{ hypothesis_h_version }}"' "$hpi_tasks"
+    rg -Fq 'version: "{{ hypothesis_bouncer_version }}"' "$hpi_tasks"
+    refute rg -Fq 'update_diff_git_version: main' "$hpi_tasks"
+    rg -q 'h_setup_marker: "h:\{\{ hypothesis_h_version \}\}:bouncer:\{\{ hypothesis_bouncer_version \}\}:h-patches-v2"' "$hpi_tasks"
+    ;;
 renovate-tool-is-installed-by-ansible)
     rg -q 'node_dependency_update_npm_packages:' "$dev_defaults"
     rg -q 'name: renovate' "$dev_defaults"
@@ -296,6 +338,7 @@ PY
     rg -q 'mode: "755"' "$dev_tasks"
     rg -Fq '"github-releases"' "$local_apply_helper"
     rg -Fq '"github-tags"' "$local_apply_helper"
+    rg -Fq '"git-refs"' "$local_apply_helper"
     rg -Fq '"node-version"' "$local_apply_helper"
     rg -Fq '"python-version"' "$local_apply_helper"
     rg -Fq 'minimumReleaseAge' "$local_apply_helper"

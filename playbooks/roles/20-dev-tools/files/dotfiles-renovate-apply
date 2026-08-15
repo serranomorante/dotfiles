@@ -22,6 +22,7 @@ import urllib.request
 
 
 SUPPORTED_DATASOURCES = {
+    "git-refs",
     "github-releases",
     "github-tags",
     "node-version",
@@ -484,6 +485,13 @@ def resolve_latest(
                 versions.append((raw if extract_pattern is None else extracted, extracted, None))
         latest = best_version(versions, current, allowed, min_age)
         return latest[0] if latest else None
+
+    if datasource == "git-refs":
+        # Track the latest commit of the default branch. Commit SHAs have no
+        # ordering or release age, so return the current HEAD directly and let
+        # the caller compare it against the pinned value.
+        data = http_json(f"https://api.github.com/repos/{package_name}/commits/HEAD")
+        return data.get("sha")
 
     if datasource.startswith("custom."):
         versions = []

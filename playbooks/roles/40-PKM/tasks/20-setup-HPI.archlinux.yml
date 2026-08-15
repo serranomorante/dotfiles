@@ -68,12 +68,15 @@
 
 - name: "[archlinux] Setup HPI - set h setup marker facts"
   ansible.builtin.set_fact:
-    h_setup_marker: "main:h-patches-v2"
+    # The marker contract embeds the pinned h and bouncer revisions so a
+    # Renovate git-refs bump of either checkout forces a re-clone and re-patch.
+    h_setup_marker: "h:{{ hypothesis_h_version }}:bouncer:{{ hypothesis_bouncer_version }}:h-patches-v2"
     h_setup_refresh_required: >-
       {{
         not h_setup_marker_result.stat.exists
         or not h_bouncer_checkout_result.stat.exists
-        or ((h_setup_marker_result.content | default('') | b64decode | trim) != 'main:h-patches-v2')
+        or ((h_setup_marker_result.content | default('') | b64decode | trim)
+            != ('h:' ~ hypothesis_h_version ~ ':bouncer:' ~ hypothesis_bouncer_version ~ ':h-patches-v2'))
       }}
 
 - name: "[archlinux] Setup HPI - clone h"
@@ -82,15 +85,15 @@
     tasks_from: git
   vars:
     update_diff_capture_scope: hpi-tools
-    update_diff_git_repo: "{{ item }}"
-    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/{{ item | basename }}"
-    update_diff_git_version: main
-    update_diff_git_depth: 1
+    update_diff_git_repo: "{{ item.repo }}"
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/{{ item.repo | basename }}"
+    update_diff_git_version: "{{ item.version }}"
     update_diff_git_force: true
-    update_diff_git_single_branch: true
   loop:
-    - https://github.com/hypothesis/h # because I want to self-host
-    - https://github.com/hypothesis/bouncer
+    - repo: https://github.com/hypothesis/h # because I want to self-host
+      version: "{{ hypothesis_h_version }}"
+    - repo: https://github.com/hypothesis/bouncer
+      version: "{{ hypothesis_bouncer_version }}"
   when: h_setup_refresh_required
 
 - name: "[archlinux] Setup HPI - get python version from h repo"
@@ -629,11 +632,15 @@
 
 - name: "[archlinux] Setup HPI: set hypothesis client marker facts"
   ansible.builtin.set_fact:
-    hypothesis_client_marker: "v{{ hypothesis_client_version }}:pdf-fixes-v1"
+    # The marker contract embeds the client version and the local patch/build
+    # contract so extension bumps and local fix changes both rebuild the client
+    # and re-pack a freshly named tarball; the PDF fixes patch itself stays
+    # version-agnostic.
+    hypothesis_client_marker: "v{{ hypothesis_client_version }}:{{ hypothesis_client_contract }}"
     hypothesis_client_refresh_required: >-
       {{
         not hypothesis_client_marker_result.stat.exists
-        or ((hypothesis_client_marker_result.content | default('') | b64decode | trim) != ('v' ~ hypothesis_client_version ~ ':pdf-fixes-v1'))
+        or ((hypothesis_client_marker_result.content | default('') | b64decode | trim) != ('v' ~ hypothesis_client_version ~ ':' ~ hypothesis_client_contract))
       }}
 
 - name: "[archlinux] Setup HPI: clone hypothesis client"
@@ -650,11 +657,57 @@
 
 - name: "[archlinux] Setup HPI: patch hypothesis client PDF source fixes"
   ansible.posix.patch:
-    src: hypothesis-client-v{{ hypothesis_client_version }}-pdf-fixes.patch
+    # Version-agnostic name: the same patch must survive extension version bumps.
+    # If the client source drifts so the patch no longer applies, fail softly and
+    # let the verification below alert instead of silently shipping a broken build.
+    src: hypothesis-client-pdf-fixes.patch
     basedir: ~/data/repos/client
     strip: 1
   register: hypothesis_client_patch_result
+  failed_when: false
   when: hypothesis_client_refresh_required
+
+- name: "[archlinux] Setup HPI: check hypothesis client PDF fixes applied"
+  ansible.builtin.command:
+    argv:
+      - rg
+      - -qF
+      - "if (!app.pdfDocument)"
+      - ~/data/repos/client/src/annotator/integrations/pdf-metadata.ts
+  register: hypothesis_client_pdf_fixes_check_result
+  changed_when: false
+  failed_when: false
+  when: hypothesis_client_refresh_required
+
+- name: "[archlinux] Setup HPI: set hypothesis client PDF fixes state"
+  ansible.builtin.set_fact:
+    hypothesis_client_pdf_fixes_ok: >-
+      {{
+        (not hypothesis_client_patch_result.failed | default(false))
+        and (hypothesis_client_pdf_fixes_check_result.rc | default(1) | int == 0)
+      }}
+  when: hypothesis_client_refresh_required
+
+- name: "[archlinux] Setup HPI: alert hypothesis client PDF fixes missing"
+  ansible.builtin.shell: >
+    summary={{ 'Arreglos PDF de Hypothesis faltantes' | quote }};
+    body={{ ('El cliente v' ~ hypothesis_client_version
+    ~ ' se reconstruyó sin los arreglos de PDF;'
+    ~ ' highlight/anotación en PDF fallará.'
+    ~ ' Vuelve a ejecutar el playbook de PKM para reintentar.') | quote }};
+    if command -v dunstify >/dev/null 2>&1; then
+      dunstify -a ansible-hypothesis -u critical -t 6000 "$summary" "$body";
+    elif command -v notify-send >/dev/null 2>&1; then
+      notify-send -a ansible-hypothesis -u critical -t 6000 "$summary" "$body";
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: false
+  failed_when: false
+  when:
+    - hypothesis_client_refresh_required
+    - not hypothesis_client_pdf_fixes_ok | default(false) | bool
+    - is_x_display_session | default(false) | bool
 
 - name: "[archlinux] Setup HPI: check hypothesis client dependency install"
   ansible.builtin.stat:
@@ -712,7 +765,7 @@
 
 - name: "[archlinux] Setup HPI: check hypothesis client tarball"
   ansible.builtin.stat:
-    path: ~/data/repos/client/dist/hypothesis-{{ hypothesis_client_version }}-local.tgz
+    path: ~/data/repos/client/dist/hypothesis-{{ hypothesis_client_version }}-{{ hypothesis_client_contract }}-local.tgz
   register: hypothesis_client_tarball_result
 
 - name: "[archlinux] Setup HPI: pack hypothesis client tarball"
@@ -725,7 +778,7 @@
       - ./.yarn/releases/yarn-3.6.0.cjs
       - pack
       - --out
-      - "dist/hypothesis-{{ hypothesis_client_version }}-local.tgz"
+      - "dist/hypothesis-{{ hypothesis_client_version }}-{{ hypothesis_client_contract }}-local.tgz"
   register: pack_hypothesis_client_result
   args:
     chdir: ~/data/repos/client
@@ -742,7 +795,9 @@
   vars:
     dotfiles_marker_name: hypothesis-client-build
     dotfiles_marker_content: "{{ hypothesis_client_marker }}\n"
-  when: hypothesis_client_refresh_required
+  when:
+    - hypothesis_client_refresh_required
+    - hypothesis_client_pdf_fixes_ok | default(false) | bool
 
 - name: "[archlinux] Setup HPI: stat hypothesis extension marker"
   ansible.builtin.include_role:
@@ -811,7 +866,7 @@
   ansible.builtin.replace:
     path: ~/data/repos/hypothesis-extension/package.json
     regexp: '"hypothesis": "[^"]+"'
-    replace: '"hypothesis": "file:../client/dist/hypothesis-{{ hypothesis_client_version }}-local.tgz"'
+    replace: '"hypothesis": "file:../client/dist/hypothesis-{{ hypothesis_client_version }}-{{ hypothesis_client_contract }}-local.tgz"'
   register: hypothesis_extension_local_client_dependency_result
 
 - name: "[archlinux] Setup HPI: check hypothesis extension dependency install"

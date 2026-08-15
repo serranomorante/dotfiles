@@ -375,6 +375,24 @@
       "versioningTemplate": "semver-coerced",
       "extractVersionTemplate": "^v(?<version>.*)$",
       "depTypeTemplate": "github-tag"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/40-PKM\\/defaults\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)hypothesis_h_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "hypothesis-h",
+      "packageNameTemplate": "hypothesis/h",
+      "datasourceTemplate": "git-refs",
+      "depTypeTemplate": "github-branch"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/40-PKM\\/defaults\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)hypothesis_bouncer_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "hypothesis-bouncer",
+      "packageNameTemplate": "hypothesis/bouncer",
+      "datasourceTemplate": "git-refs",
+      "depTypeTemplate": "github-branch"
     }
   ],
   "customDatasources": {
