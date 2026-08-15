@@ -285,7 +285,7 @@ treesitter_parsers:
     filetype: org
     version: 64cfbc213f5a83da17632c95382a5a0a2f3357c1
 
-python_ml_version: 3.14.7
+python_ml_version: 3.14.6
 
 python_versions:
   - 3.11.2
