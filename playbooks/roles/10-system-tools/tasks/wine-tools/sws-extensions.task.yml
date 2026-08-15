@@ -261,6 +261,7 @@
     - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts"
     - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts/custom"
     - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Data/helgoboss/realearn/presets/main"
+    - "{{ ansible_facts.env.XDG_STATE_HOME | default(ansible_facts.env.HOME ~ '/.local/state') }}/dotfiles/reaper-track-lock-sync"
 
 - name: "[archlinux] Wine tools: ensure canonical ReaLearn main preset folder"
   ansible.builtin.file:
@@ -342,6 +343,7 @@
     content: |
       local resource_path = reaper.GetResourcePath()
       local startup_scripts = {
+          resource_path .. "/Scripts/custom/track_lock_sync.lua",
           resource_path .. "/Scripts/custom/project_transport_state_feedback.lua",
           resource_path .. "/Scripts/custom/midi_editor_state_feedback.lua",
           resource_path .. "/Scripts/custom/item_state_feedback.lua",
@@ -369,3 +371,4 @@
     - item_state_feedback.lua
     - midi_editor_state_feedback.lua
     - project_transport_state_feedback.lua
+    - track_lock_sync.lua

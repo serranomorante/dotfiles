@@ -12,7 +12,20 @@ local active_poll_interval = 0.08
 local idle_poll_interval = 0.50
 local command_timeout_ms = 100
 
-local home = os.getenv("HOME") or ""
+local function resolve_home()
+    local home = os.getenv("HOME")
+    if home and home ~= "" then
+        return home
+    end
+    -- Wine REAPER drops HOME from the Windows environment; fall back to USER.
+    local user = os.getenv("USER")
+    if user and user ~= "" then
+        return "/home/" .. user
+    end
+    return ""
+end
+
+local home = resolve_home()
 local cache_home = os.getenv("XDG_CACHE_HOME") or (home .. "/.cache")
 local controller = cache_home .. "/dotfiles/keyboard-midi-controller/keyboard-midi-controller"
 local next_poll = 0
