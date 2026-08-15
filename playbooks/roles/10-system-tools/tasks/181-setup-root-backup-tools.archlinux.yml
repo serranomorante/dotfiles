@@ -84,7 +84,7 @@
         reponame: '{{ item.0.borg_repo | basename | regex_replace("[^A-Za-z0-9]", "_") }}'
         repobasename: /run/media/{{ ansible_facts.env.USER }}/{{ item.0.device }}/data/backups
       args:
-        creates: ~/.config/borg-root/keys/*{{ device }}_data_backups_{{ reponame }}
+        creates: "{{ ansible_facts.env.HOME }}/.config/borg-root/keys/*{{ device }}_data_backups_{{ reponame }}"
       when:
         - repobasename in available_drives and available_drives[repobasename].exists
         - (item.1.rc | default(1)) == 0
@@ -104,6 +104,7 @@
         borg_repo: "{{ item.borg_repo }}"
         keyrings: "{{ item.keyrings }}"
         files: "{{ item.files }}"
+        borg_keys_dir: "{{ ansible_facts.env.HOME }}/.config/borg-root/keys"
       loop: "{{ archlinux_borg_root_repos_env }}"
 
     - name: "[archlinux] Setup root backup tools: copy root timers & services"

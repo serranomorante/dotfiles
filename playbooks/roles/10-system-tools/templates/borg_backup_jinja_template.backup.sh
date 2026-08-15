@@ -8,9 +8,17 @@ export BORG_RELOCATED_REPO_ACCESS_IS_OK=yes
 # Setting this, so the repo does not need to be given on the commandline:
 export BORG_REPO='{{ borg_repo }}'
 
+# Root repos keep their keyfiles outside the root default keys dir
+# (/root/.config/borg/keys). The root systemd service runs as root, so point
+# borg at the key dir that matches how these repos were initialized.
+{% if borg_keys_dir | default('') %}
+export BORG_KEYS_DIR='{{ borg_keys_dir }}'
+{% endif %}
+
 # See the section "Passphrase notes" for more infos.
-# Check if running under sudo
-if [[ -n "${SUDO_USER:-}" ]] && [[ "$EUID" -eq 0 ]]; then
+# Running as root (sudo or the root systemd service), use run_as_user so the
+# passphrase is read from the user's KWallet, not a root-only session.
+if [[ "$EUID" -eq 0 ]]; then
     export BORG_PASSCOMMAND='/usr/local/bin/run_as_user -u {{ ansible_facts.env.USER }} kwallet-query --folder {{ keyrings.folder }} --read-password {{ keyrings.passkey }} {{ keyrings.wallet }}'
 else
     export BORG_PASSCOMMAND='kwallet-query --folder {{ keyrings.folder }} --read-password {{ keyrings.passkey }} {{ keyrings.wallet }}'
