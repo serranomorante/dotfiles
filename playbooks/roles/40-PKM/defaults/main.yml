@@ -5,7 +5,7 @@ hypothesis_client_version: "{{ hypothesis_browser_extension_version }}"
 # client marker and in the packed tarball filename so that any change to the
 # local fixes forces the browser extension to re-fetch the tarball (Yarn does
 # not re-resolve a `file:` dependency whose specifier string is unchanged).
-hypothesis_client_contract: pdf-fixes-v3
+hypothesis_client_contract: pdf-fixes-v3-shortcuts-v3
 hypothesis_h_version: 5f075f1c328a15f6350bf75a5eeed63f2d7556be
 hypothesis_bouncer_version: f4c550e7d771077ee82d2aa1a5b9dadef6b79475
 # Pinned PKM/HPI dependency versions. promnesia, browserexport and cachew come

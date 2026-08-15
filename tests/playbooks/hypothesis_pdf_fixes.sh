@@ -9,10 +9,11 @@ set -euo pipefail
 # dotfiles-test-case: hypothesis-pdf-fixes-tarball-name-encodes-contract
 # dotfiles-test-case: hypothesis-pdf-fixes-verification-gates-marker
 # dotfiles-test-case: hypothesis-pdf-fixes-alerts-nonfatally
+# dotfiles-test-case: hypothesis-shortcuts-patch-wired
 
-# Purpose: Verify the hypothesis client PDF-fixes pipeline stays wired across
-# extension version bumps: version-agnostic patch, verified application,
-# non-fatal dunst alert, and marker gating.
+# Purpose: Verify the hypothesis client PDF-fixes and keyboard-shortcut patch
+# pipelines stay wired across extension version bumps: version-agnostic patch,
+# verified application, non-fatal dunst alert, and marker gating.
 
 hp_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/40-PKM/tasks/20-setup-HPI.archlinux.yml"
 hp_files="${DOTFILES_TEST_ROOT}/playbooks/roles/40-PKM/files"
@@ -106,16 +107,42 @@ hypothesis-pdf-fixes-verification-gates-marker)
         "ansible.builtin.command:argv=re:if \(!app\.pdfDocument\)" \
         "failed_when=false"
     task_has "record hypothesis client marker" \
-        "when=re:hypothesis_client_pdf_fixes_ok"
+        "when=re:hypothesis_client_patches_ok"
     ;;
 hypothesis-pdf-fixes-alerts-nonfatally)
-    task_has "alert hypothesis client PDF fixes missing" \
+    task_has "alert hypothesis client patches missing" \
         "ansible.builtin.shell=re:dunstify" \
         "changed_when=false" \
         "failed_when=false" \
-        "when=re:hypothesis_client_pdf_fixes_ok" \
+        "when=re:hypothesis_client_patches_ok" \
         "when=re:is_x_display_session"
     rg -q 'ansible-hypothesis' "$hp_tasks"
+    ;;
+hypothesis-shortcuts-patch-wired)
+    shortcuts_patch="${hp_files}/hypothesis-client-shortcuts.patch"
+    [ -f "$shortcuts_patch" ]
+    # toggleSidebar owns the ctrl+shift+k binding; toggleHighlights stays on its
+    # upstream ctrl+shift+h default (which promnesia's chrome.command absorbs).
+    rg -q "toggleSidebar: 'ctrl\+shift\+k'" "$shortcuts_patch"
+    rg -q "toggleHighlights: 'ctrl\+shift\+h'" "$shortcuts_patch"
+    refute rg -q "toggleHighlights: 'ctrl\+shift\+k'" "$shortcuts_patch"
+    task_has "patch hypothesis client keyboard shortcut defaults" \
+        "ansible.posix.patch:src=hypothesis-client-shortcuts.patch" \
+        "failed_when=false"
+    task_has "check hypothesis client keyboard shortcut patch applied" \
+        "ansible.builtin.command:argv=re:shortcut-config\.ts" \
+        "ansible.builtin.command:argv=re:toggleSidebar: 'ctrl\+shift\+k'" \
+        "failed_when=false"
+    # The patch wires the shortcut through the guest, the sidebar iframe and
+    # the host RPC, so the toggle reaches the sidebar app end to end.
+    rg -q "id: 'toggleSidebar'" "$shortcuts_patch"
+    rg -q "_sidebarRPC.call\('toggleSidebar'\)" "$shortcuts_patch"
+    rg -q "guestRPC.on\('toggleSidebar'" "$shortcuts_patch"
+    rg -q "_hostRPC.call\('toggleSidebar'\)" "$shortcuts_patch"
+    rg -q "_sidebarRPC.on\('toggleSidebar'" "$shortcuts_patch"
+    # toggleSidebar is typed in both the guest->sidebar and sidebar->host channels.
+    [[ $(rg -c "toggleSidebar\(\): void;" "$shortcuts_patch") -eq 2 ]]
+    rg -q 'hypothesis_client_contract: pdf-fixes-v[0-9]+-shortcuts-v[0-9]+' "$hp_defaults"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

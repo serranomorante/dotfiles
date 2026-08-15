@@ -676,6 +676,18 @@
   failed_when: false
   when: hypothesis_client_refresh_required
 
+- name: "[archlinux] Setup HPI: patch hypothesis client keyboard shortcut defaults"
+  ansible.posix.patch:
+    # Default keyboard shortcut for toggling the sidebar must not collide with
+    # the promnesia extension shortcuts. Version-agnostic like the PDF fixes
+    # patch; drift fails softly and is caught by the check below.
+    src: hypothesis-client-shortcuts.patch
+    basedir: ~/data/repos/client
+    strip: 1
+  register: hypothesis_client_shortcuts_patch_result
+  failed_when: false
+  when: hypothesis_client_refresh_required
+
 - name: "[archlinux] Setup HPI: check hypothesis client PDF fixes applied"
   ansible.builtin.command:
     argv:
@@ -688,21 +700,48 @@
   failed_when: false
   when: hypothesis_client_refresh_required
 
-- name: "[archlinux] Setup HPI: set hypothesis client PDF fixes state"
+- name: "[archlinux] Setup HPI: check hypothesis client keyboard shortcut patch applied"
+  ansible.builtin.command:
+    argv:
+      - rg
+      - -qF
+      - "toggleSidebar: 'ctrl+shift+k'"
+      - ~/data/repos/client/src/shared/shortcut-config.ts
+  register: hypothesis_client_shortcuts_check_result
+  changed_when: false
+  failed_when: false
+  when: hypothesis_client_refresh_required
+
+- name: "[archlinux] Setup HPI: check hypothesis client keyboard shortcut RPC forward applied"
+  ansible.builtin.command:
+    argv:
+      - rg
+      - -qF
+      - "_hostRPC.call('toggleSidebar')"
+      - ~/data/repos/client/src/sidebar/services/frame-sync.ts
+  register: hypothesis_client_shortcuts_forward_check_result
+  changed_when: false
+  failed_when: false
+  when: hypothesis_client_refresh_required
+
+- name: "[archlinux] Setup HPI: set hypothesis client patches state"
   ansible.builtin.set_fact:
-    hypothesis_client_pdf_fixes_ok: >-
+    hypothesis_client_patches_ok: >-
       {{
         (not hypothesis_client_patch_result.failed | default(false))
         and (hypothesis_client_pdf_fixes_check_result.rc | default(1) | int == 0)
+        and (not hypothesis_client_shortcuts_patch_result.failed | default(false))
+        and (hypothesis_client_shortcuts_check_result.rc | default(1) | int == 0)
+        and (hypothesis_client_shortcuts_forward_check_result.rc | default(1) | int == 0)
       }}
   when: hypothesis_client_refresh_required
 
-- name: "[archlinux] Setup HPI: alert hypothesis client PDF fixes missing"
+- name: "[archlinux] Setup HPI: alert hypothesis client patches missing"
   ansible.builtin.shell: >
-    summary={{ 'Arreglos PDF de Hypothesis faltantes' | quote }};
+    summary={{ 'Arreglos del cliente de Hypothesis faltantes' | quote }};
     body={{ ('El cliente v' ~ hypothesis_client_version
-    ~ ' se reconstruyó sin los arreglos de PDF;'
-    ~ ' highlight/anotación en PDF fallará.'
+    ~ ' se reconstruyó sin los arreglos locales (PDF o atajos de teclado);'
+    ~ ' highlight/anotación en PDF o el keymap fallarán.'
     ~ ' Vuelve a ejecutar el playbook de PKM para reintentar.') | quote }};
     if command -v dunstify >/dev/null 2>&1; then
       dunstify -a ansible-hypothesis -u critical -t 6000 "$summary" "$body";
@@ -715,7 +754,7 @@
   failed_when: false
   when:
     - hypothesis_client_refresh_required
-    - not hypothesis_client_pdf_fixes_ok | default(false) | bool
+    - not hypothesis_client_patches_ok | default(false) | bool
     - is_x_display_session | default(false) | bool
 
 - name: "[archlinux] Setup HPI: check hypothesis client dependency install"
@@ -806,7 +845,7 @@
     dotfiles_marker_content: "{{ hypothesis_client_marker }}\n"
   when:
     - hypothesis_client_refresh_required
-    - hypothesis_client_pdf_fixes_ok | default(false) | bool
+    - hypothesis_client_patches_ok | default(false) | bool
 
 - name: "[archlinux] Setup HPI: stat hypothesis extension marker"
   ansible.builtin.include_role:

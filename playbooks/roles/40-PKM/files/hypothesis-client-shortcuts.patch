@@ -1,0 +1,91 @@
+--- a/src/shared/shortcut-config.ts
++++ b/src/shared/shortcut-config.ts
+@@ -6,6 +6,7 @@
+   | 'annotateSelection'
+   | 'highlightSelection'
+   | 'toggleHighlights'
++  | 'toggleSidebar'
+   | 'showSelection'
+   | 'hideAdder'
+   | 'activateRectMove'
+@@ -32,6 +33,7 @@
+   annotateSelection: 'a',
+   highlightSelection: 'h',
+   toggleHighlights: 'ctrl+shift+h',
++  toggleSidebar: 'ctrl+shift+k',
+   showSelection: 's',
+   hideAdder: 'Escape',
+   activateRectMove: 'ctrl+shift+y',
+@@ -206,6 +208,12 @@
+     group: 'Annotator',
+   },
+   {
++    id: 'toggleSidebar',
++    label: 'Open/close sidebar',
++    description: 'Toggles the sidebar panel.',
++    group: 'Sidebar',
++  },
++  {
+     id: 'showSelection',
+     label: 'Show anchored annotations',
+     description: 'Moves focus to the annotation Card in the Sidebar.',
+--- a/src/types/port-rpc-calls.d.ts
++++ b/src/types/port-rpc-calls.d.ts
+@@ -105,6 +105,7 @@
+ 
+   /** Request to close the sidebar. */
+   closeSidebar(): void;
++  toggleSidebar(): void;
+ 
+   /**
+    * Indicate in the sidebar which annotation cards correspond to hovered
+@@ -298,6 +299,7 @@
+ 
+   /** Open the sidebar container. */
+   openSidebar(): void;
++  toggleSidebar(): void;
+ 
+   /** Make highlights visible in guest frames. */
+   showHighlights(): void;
+--- a/src/annotator/sidebar.tsx
++++ b/src/annotator/sidebar.tsx
+@@ -513,6 +513,13 @@
+     this._sidebarRPC.on('openSidebar', () => this.open());
+ 
+     this._sidebarRPC.on('closeSidebar', () => this.close());
++    this._sidebarRPC.on('toggleSidebar', () => {
++      if (this.toolbar.sidebarOpen) {
++        this.close();
++      } else {
++        this.open();
++      }
++    });
+ 
+     // Sidebar listens to the `openNotebook` and `openProfile` events coming
+     // from the sidebar's iframe and re-publishes them via the emitter to the
+--- a/src/annotator/guest.ts
++++ b/src/annotator/guest.ts
+@@ -1296,6 +1296,10 @@
+         !this._highlightsVisible && !this._commentsMode,
+       );
+     }
++    const toggleSidebar = getAllShortcuts().toggleSidebar;
++    if (toggleSidebar && matchShortcut(event, toggleSidebar)) {
++      this._sidebarRPC.call('toggleSidebar');
++    }
+   }
+ 
+   /** Show or hide banner warning user they are outside page range for assignment. */
+--- a/src/sidebar/services/frame-sync.ts
++++ b/src/sidebar/services/frame-sync.ts
+@@ -508,6 +508,10 @@
+       this._hostRPC.call('closeSidebar');
+     });
+ 
++    guestRPC.on('toggleSidebar', () => {
++      this._hostRPC.call('toggleSidebar');
++    });
++
+     guestRPC.connect(port);
+ 
+     // Synchronize highlight visibility in this guest with the sidebar's controls.
