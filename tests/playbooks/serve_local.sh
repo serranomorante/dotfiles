@@ -8,6 +8,8 @@ set -euo pipefail
 # dotfiles-test-case: serve-local-errors-on-missing-path
 # dotfiles-test-case: serve-local-errors-on-missing-argument
 # dotfiles-test-case: serve-local-starts-nginx-and-local-service
+# dotfiles-test-case: serve-local-converts-markdown-to-html
+# dotfiles-test-case: serve-local-overwrites-markdown-html
 # dotfiles-test-case: nginx-local-config-serves-filesystem-root
 # dotfiles-test-case: media-proxy-config-proxies-html-local
 
@@ -15,13 +17,15 @@ set -euo pipefail
 #   back it (the user-level nginx config and the system nginx html.local proxy
 #   in the 70-for-my-eyes-only media-proxy role). serve-local is exercised with
 #   fake `systemctl`/`xdg-open` in PATH so no service or browser is touched; the
-#   URL is asserted from the xdg-open log.
+#   URL is asserted from the xdg-open log. Markdown conversion is redirected to
+#   a fixture output dir via SERVE_LOCAL_HTML_SITES.
 
 make_fixture() {
     fixture="${DOTFILES_TEST_TMP}/fixture"
     fakebin="${fixture}/fakebin"
     syslog="${fixture}/systemctl.log"
     xdglog="${fixture}/xdg-open.log"
+    htmlsites="${fixture}/html-sites"
 
     rm -rf "$fixture"
     mkdir -p "$fakebin"
@@ -46,7 +50,15 @@ run_serve_local() {
     PATH="${fakebin}:/usr/bin:/bin" \
         SERVE_LOCAL_SYSTEMCTL_LOG="$syslog" \
         SERVE_LOCAL_XDGOPEN_LOG="$xdglog" \
+        SERVE_LOCAL_HTML_SITES="$htmlsites" \
         "$DOTFILES_TEST_ROOT/for-my-eyes-only/bin/serve-local" "$@"
+}
+
+skip_missing_pandoc() {
+    if ! command -v pandoc >/dev/null 2>&1; then
+        printf 'SKIP: pandoc is required to convert markdown files\n' >&2
+        exit 77
+    fi
 }
 
 skip_missing_yaml() {
@@ -112,6 +124,43 @@ serve-local-starts-nginx-and-local-service)
     grep -Fq 'SYSTEMCTL start nginx' "$syslog"
     grep -Fq 'SYSTEMCTL --user is-active --quiet nginx-local.service' "$syslog"
     grep -Fq 'SYSTEMCTL --user start nginx-local.service' "$syslog"
+    ;;
+serve-local-converts-markdown-to-html)
+    skip_missing_pandoc
+    make_fixture
+    mkdir -p "${fixture}/files"
+    printf '# Hello\n\nSome *markdown* content.\n' >"${fixture}/files/My Note.md"
+
+    run_serve_local "${fixture}/files/My Note.md"
+    url="$(cat "$xdglog")"
+    [[ "$url" == http://html.local/* ]]
+
+    grep -Fq 'html-sites' <<<"$url"
+    grep -Fq 'my-note-md' <<<"$url"
+
+    out="$(find "$htmlsites" -maxdepth 1 -type f -name '*.html')"
+    [[ -n "$out" ]]
+    grep -Fq '<h1 id="hello">Hello</h1>' "$out"
+    grep -Fq '<em>markdown</em>' "$out"
+    grep -Fq "$(basename "$out")" <<<"$url"
+    ;;
+serve-local-overwrites-markdown-html)
+    skip_missing_pandoc
+    make_fixture
+    mkdir -p "${fixture}/files"
+    printf '# First\n' >"${fixture}/files/note.md"
+
+    run_serve_local "${fixture}/files/note.md"
+    grep -Fq 'note-md' <<<"$(cat "$xdglog")"
+    out1="$(find "$htmlsites" -maxdepth 1 -type f -name '*.html')"
+    grep -Fq '<h1 id="first">First</h1>' "$out1"
+
+    printf '# Second\n' >"${fixture}/files/note.md"
+    run_serve_local "${fixture}/files/note.md"
+    out2="$(find "$htmlsites" -maxdepth 1 -type f -name '*.html')"
+    [[ "$out1" == "$out2" ]]
+    grep -Fq '<h1 id="second">Second</h1>' "$out2"
+    refute grep -q '<h1 id="first">First</h1>' "$out2"
     ;;
 nginx-local-config-serves-filesystem-root)
     conf="$DOTFILES_TEST_ROOT/for-my-eyes-only/dot-config/nginx-local/nginx.conf"
