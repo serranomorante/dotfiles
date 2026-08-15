@@ -139,6 +139,17 @@
         ])
       }}
 
+- name: "[archlinux] Setup security tools: set hypothesis keyrings facts"
+  ansible.builtin.set_fact:
+    keyrings: >-
+      {{
+        (keyrings | default([]))
+        | union([
+          hypothesis_username_keyring,
+          hypothesis_password_keyring,
+        ])
+      }}
+
 - name: "[archlinux] Setup security tools: stat private cloud tools defaults"
   ansible.builtin.stat:
     path: ~/dotfiles/for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/defaults/main/main.vars.yml

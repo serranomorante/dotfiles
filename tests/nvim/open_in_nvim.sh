@@ -4,6 +4,8 @@ set -euo pipefail
 # dotfiles-test-unit: nvim
 # dotfiles-test-tags: nvim scripts
 # dotfiles-test-case: open-in-nvim-goto-foam-closes-terminal-window
+# dotfiles-test-case: open-in-nvim-agent-conversation-uses-agent-tasks
+# dotfiles-test-case: open-in-nvim-agent-conversation-falls-back-to-nvr
 
 # Purpose: Verify remote editor actions preserve expected pre-navigation window cleanup.
 
@@ -37,6 +39,20 @@ BASH
     printf '%s\n' "$bin"
 }
 
+make_fake_agent_tasks_bin() {
+    local bin="${DOTFILES_TEST_TMP}/bin"
+    mkdir -p "$bin"
+    cat >"${bin}/agent-tasks" <<'BASH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf 'NVIM=%s\n' "${AGENT_TASKS_NVIM:-}"
+printf '%s\n' "$*" >"${DOTFILES_TEST_TMP}/agent-tasks.args"
+BASH
+    chmod +x "${bin}/agent-tasks"
+    printf '%s\n' "$bin"
+}
+
 case "${DOTFILES_TEST_CASE:-}" in
 open-in-nvim-goto-foam-closes-terminal-window)
     home=$(make_fake_home)
@@ -53,6 +69,30 @@ assert args[4].startswith("lua "), args
 assert "vim.bo.buftype == 'terminal'" in args[4], args
 assert "nvim_win_close" in args[4], args
 assert args[5:] == ["-c", "GoToFoamBlockById todo-sample-agent-task"], args
+PY
+    ;;
+open-in-nvim-agent-conversation-uses-agent-tasks)
+    home=$(make_fake_home)
+    bin=$(make_fake_agent_tasks_bin)
+
+    HOME="$home" PATH="${bin}:/usr/bin:/bin" "$script_under_test" --servername /tmp/nvim.sock agent_conversation 019ec503-1d4c >"${DOTFILES_TEST_TMP}/agent-tasks.out" 2>&1
+
+    rg -q -- '^NVIM=/tmp/nvim.sock$' "${DOTFILES_TEST_TMP}/agent-tasks.out"
+    rg -q -- '^open --all 019ec503-1d4c$' "${DOTFILES_TEST_TMP}/agent-tasks.args"
+    ;;
+open-in-nvim-agent-conversation-falls-back-to-nvr)
+    home=$(make_fake_home)
+    bin=$(make_fake_nvr_bin)
+
+    HOME="$home" PATH="${bin}:/usr/bin:/bin" "$script_under_test" --servername /tmp/nvim.sock agent_conversation 019ec503-1d4c
+
+    python - "${DOTFILES_TEST_TMP}/nvr.args" <<'PY'
+import sys
+
+args = open(sys.argv[1], encoding="utf-8").read().splitlines()
+assert args[:3] == ["--servername", "/tmp/nvim.sock", "--nostart"], args
+assert args[3] == "-c", args
+assert args[4] == "AgentResumeById 019ec503-1d4c", args
 PY
     ;;
 *)

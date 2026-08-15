@@ -344,7 +344,7 @@ PY
     rg -Fq 'version: "{{ pkm_promnesia_version }}"' "$hpi_tasks"
     rg -Fq 'version: "{{ pkm_browserexport_version }}"' "$hpi_tasks"
     rg -Fq 'version: "{{ pkm_cachew_version }}"' "$hpi_tasks"
-    rg -Fq 'git+https://github.com/karlicoss/hypexport@{{ pkm_hypexport_version }}' "$hpi_tasks"
+    rg -Fq 'hypexport[export] @ git+https://github.com/karlicoss/hypexport@{{ pkm_hypexport_version }}' "$hpi_tasks"
     rg -Fq 'lookup_name: HPI' "$hpi_tasks"
     rg -Fq 'state: latest' "$hpi_tasks"
     ;;

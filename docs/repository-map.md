@@ -46,6 +46,7 @@ Use this file to choose the source file that owns a behavior before editing gene
 - DWM/compositor: `playbooks/roles/10-system-tools/tasks/100-setup-compositor.archlinux.yml` and DWM patches under role `files/`.
 - Display/tablet: Xorg defaults under role `files/wacom/`; runtime display/tablet logic in `peripherals/bin/wacom-config.sh`, `utilities/bin/setup-displays.sh`, `display-health-check`, `x11-monitor-geometry`.
 - Neovim jobs/agents: job modules under `nvim/.../plugins/jobs/`; shared agent task/session helpers in `agent_sessions.lua`, `agent_tasks.lua`, `utilities/bin/agent-tasks`, `utilities/bin/agent-session-store`.
+- Promnesia agent-conversation indexing: source at `PKM/dot-config/promnesia/agent_conversations.py`, registered in `PKM/dot-config/promnesia/config.py`; editor routing for conversation links lives in `nvim/bin/nvr_open_nvim.sh` and the `agent_conversation` handler in `nvim/bin/open_in_nvim`; the firejail exposure for the transcript dirs is in `playbooks/roles/20-dev-tools/templates/fj-py-promnesia.profile`.
 - Kitty/tmux: socket/window naming in `term/bin/kitty-window-utils.sh`; tmux copy marks in `term/bin/tmux-copy-mark` and `term/dot-config/tmux/copy-mode-marks.conf`, with the persisted mark pool at `$XDG_STATE_HOME/dotfiles/tmux-copy-mark/state`.
 - Notifications: clickable actions go through `utilities/bin/notification-action` with allowlisted JSON payloads.
 - System health: `dotfiles-health`, `system-spike-watch`, `dotfiles-spikes`, `dotfiles-health-notify`, `browser-task-snapshotd`; keep watchers cheap and incremental.

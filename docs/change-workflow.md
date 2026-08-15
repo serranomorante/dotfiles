@@ -33,6 +33,7 @@ Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 - Treat new tools/installers/package registries as supply-chain risk. Prefer reproducible package ownership and repository Firejail wrappers (`ansible-firejail-*`, `fj-py`, `fj-node`) when practical; document exceptions.
 - Prefer updating all repository-owned callers over adding compatibility shims, unless an external consumer or explicit migration window exists.
 - Encode durable maintenance steps in Ansible/handlers when possible. Ask before direct one-time active-system cleanup.
+- Never edit active-system files directly as a substitute for the tracked source: a one-off manual edit (for example patching a venv file or editing `/etc/hosts`) leaves the machine working but silently diverges from Ansible, so the fix is lost or unapplied on the next run. Always change the playbook/template/package in `~/dotfiles` (or `~/dotfiles/for-my-eyes-only`) and let the declarative command apply it.
 - When applying workstation Ansible from an agent session, limit the inventory to localhost with `-l localhost` unless the user explicitly asks to target other hosts.
 - Local Go helpers should be built by Ansible into final command paths; avoid self-compiling wrappers unless they provide real runtime behavior.
 - For patched upstream checkouts, gate clone/patch/build behind versioned central markers and bump marker contracts when local patch behavior changes.
@@ -57,6 +58,8 @@ Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 ## Active System Application
 
 - Durable changes are applied through Stow or Ansible, not ad hoc copies/symlinks/restarts.
+- Do not modify the active system directly (`/etc`, `~/.config`, `~/bin`, venv files, running services, nginx, hosts, databases, indexes) unless the user explicitly asks. Work only on tracked sources under `~/dotfiles` and `~/dotfiles/for-my-eyes-only`, then give the user the exact declarative command to apply.
+- One-off fixes made directly on the host are acceptable only to debug or unblock, and must immediately be reflected in the tracked source or they will regress on the next run.
 - keyd templates require Ansible to install `/etc/keyd/default.conf`; systemd units require stowing plus the relevant task/handler; long-lived services need restart to pick up script changes.
 - When changing Ansible playbooks and suggesting application, provide a single-line command using `cd ~/dotfiles/playbooks && ansible-playbook tools.yml --tags <tag>`, include `-K` for become paths, and append `2>&1 | tee /tmp/ansible-<scope>.log`. Offer tags, not roles.
 - If applying a scope that installs local AUR packages, include tag `10-20` before the requested tag so `[aur-local]` is prepared.

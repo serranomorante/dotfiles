@@ -16,6 +16,15 @@ pkm_browserexport_version: 0.4.4
 pkm_cachew_version: 0.24.20260815
 pkm_hypexport_version: d5547621a790efc734a0f0b8f3116d7f9ca868f8
 
+hypothesis_username_keyring:
+  folder: pkm
+  passkey: hypothesis-username
+  wallet: kdewallet
+hypothesis_password_keyring:
+  folder: pkm
+  passkey: hypothesis-password
+  wallet: kdewallet
+
 pkm_notes_foam_agent_context_dir: "{{ ansible_facts.env.HOME }}/data/notes/foam"
 pkm_notes_foam_agent_context_source_name: AGENTS.md
 pkm_notes_foam_agent_context_symlink_names:

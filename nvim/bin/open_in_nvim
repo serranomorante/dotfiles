@@ -190,8 +190,13 @@ kitty_simple_edit_at_line)
     nvr --servername "$servername" --nostart -cc "lua $nvim_force_newtab; $nvim_edit; $nvim_center_view" -c "$2"
     ;;
 agent_conversation)
-    agent_id=$(ex_command_arg "$1")
-    nvr --servername "$servername" --nostart -c "AgentResumeById $agent_id"
+    agent_id=$1
+    if command -v agent-tasks >/dev/null 2>&1; then
+        AGENT_TASKS_NVIM="$servername" agent-tasks open --all "$agent_id"
+    else
+        agent_id=$(ex_command_arg "$1")
+        nvr --servername "$servername" --nostart -c "AgentResumeById $agent_id"
+    fi
     ;;
 goto_foam_block_by_id)
     block_id=$(ex_command_arg "$1")

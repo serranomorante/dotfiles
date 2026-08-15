@@ -6,6 +6,7 @@ set -euo pipefail
 # dotfiles-test-case: firejail-dev-tool-profiles-avoid-broad-xdg
 # dotfiles-test-case: firejail-dev-nvim-avoids-global-nvim-state
 # dotfiles-test-case: firejail-promnesia-exposes-stow-target
+# dotfiles-test-case: firejail-promnesia-exposes-agent-conversation-dirs
 # dotfiles-test-case: firejail-ai-agent-profiles-avoid-broad-xdg
 # dotfiles-test-case: firejail-ai-agent-mcp-uses-inherited-sandbox
 # dotfiles-test-case: firejail-ai-agent-runtime-launchers-use-wrappers
@@ -55,6 +56,19 @@ firejail-promnesia-exposes-stow-target)
         'whitelist-ro ${HOME}/dotfiles/PKM/dot-config/promnesia'; do
         if ! grep -Fqx "$path" "$profile"; then
             printf 'Promnesia profile does not expose stowed config target: %s\n' "$path" >&2
+            exit 1
+        fi
+    done
+    ;;
+firejail-promnesia-exposes-agent-conversation-dirs)
+    profile="$root/playbooks/roles/20-dev-tools/templates/fj-py-promnesia.profile"
+    for path in \
+        'whitelist-ro ${HOME}/.claude/projects' \
+        'whitelist-ro ${HOME}/.codex/sessions' \
+        'whitelist-ro ${HOME}/.gemini/tmp' \
+        'whitelist-ro ${HOME}/.local/share/opencode'; do
+        if ! grep -Fqx "$path" "$profile"; then
+            printf 'Promnesia profile does not expose agent conversation dir: %s\n' "$path" >&2
             exit 1
         fi
     done

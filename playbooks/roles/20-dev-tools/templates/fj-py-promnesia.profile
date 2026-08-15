@@ -14,5 +14,11 @@ whitelist-ro ${HOME}/dotfiles/PKM/dot-config/promnesia
 whitelist-ro ${HOME}/data/notes/foam
 whitelist-ro ${HOME}/data/repos/HPI
 
+# Agent conversation transcripts read by the agent-conversations source.
+whitelist-ro ${HOME}/.claude/projects
+whitelist-ro ${HOME}/.codex/sessions
+whitelist-ro ${HOME}/.gemini/tmp
+whitelist-ro ${HOME}/.local/share/opencode
+
 whitelist ${HOME}/data/PKM/data
 whitelist ${HOME}/.local/share/promnesia

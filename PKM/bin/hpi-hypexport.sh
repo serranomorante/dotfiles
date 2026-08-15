@@ -6,15 +6,36 @@ set -euo pipefail
 # Key assumption on home directory or adaptation to explicit variables
 HOME_DIR="${HOME}" # Or replace with `$h` if it's a valid variable
 
-# Decrypt credentials
-username=$(gpg --decrypt "${HOME_DIR}/data/secrets/hypothesis_username.gpg" 2>/dev/null || {
-  echo "Failed to decrypt username."
-  exit 1
-})
-token=$(gpg --decrypt "${HOME_DIR}/data/secrets/hypothesis_token.gpg" 2>/dev/null || {
-  echo "Failed to decrypt token."
-  exit 1
-})
+# Read credentials from environment overrides or the KWallet keyring
+# provisioned by setup-kwallet (folder pkm, entries hypothesis-username
+# and hypothesis-password).
+kwallet_value() {
+    local entry=$1
+    local wallet=${HYPOTHESIS_KWALLET_WALLET:-kdewallet}
+    local folder=${HYPOTHESIS_KWALLET_FOLDER:-pkm}
+
+    command -v kwallet-query >/dev/null 2>&1 || return 1
+    local value
+    if command -v timeout >/dev/null 2>&1; then
+        value=$(timeout 10 kwallet-query --folder "$folder" --read-password "$entry" "$wallet" 2>/dev/null) || return 1
+    else
+        value=$(kwallet-query --folder "$folder" --read-password "$entry" "$wallet" 2>/dev/null) || return 1
+    fi
+    printf '%s\n' "$value"
+}
+
+clean_value() {
+    sed -n '1{s/[[:space:]]*$//;p;}' | tr -d '\r'
+}
+
+username="${HYPOTHESIS_USERNAME:-}"
+if [[ -z "$username" ]]; then
+    username=$(kwallet_value hypothesis-username | clean_value) || true
+fi
+token="${HYPOTHESIS_TOKEN:-}"
+if [[ -z "$token" ]]; then
+    token=$(kwallet_value hypothesis-password | clean_value) || true
+fi
 
 # Function to get timestamp
 timestamp() {
