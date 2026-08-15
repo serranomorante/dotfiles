@@ -258,6 +258,15 @@
     - not var_davinci_resolve_version_installed
     - var_stat_davinci_zip.stat.exists
 
+- name: "[archlinux] Setup video tools: stat pre-build qt5-webengine package"
+  ansible.builtin.stat:
+    path: ~/data/apps/video-tools/qt5/qt5-webengine-{{ qt5_webengine_version }}-x86_64.pkg.tar.zst
+  register: var_qt5_webengine_pkg
+  when:
+    - is_x_display_session
+    - not var_davinci_resolve_version_installed
+    - var_stat_davinci_zip.stat.exists
+
 - name: "[archlinux] Setup video tools: get pre-build qt5-webengine package"
   ansible.builtin.get_url:
     url: https://sourceforge.net/projects/fabiololix-os-archive/files/Packages/qt5-webengine-{{ qt5_webengine_version }}-x86_64.pkg.tar.zst/download
@@ -269,6 +278,7 @@
     - is_x_display_session
     - not var_davinci_resolve_version_installed
     - var_stat_davinci_zip.stat.exists
+    - not var_qt5_webengine_pkg.stat.exists
 
 - name: "[archlinux] Setup video tools: install pre-build qt5-webengine package"
   become: true
@@ -280,7 +290,7 @@
     - is_x_display_session
     - not var_davinci_resolve_version_installed
     - var_stat_davinci_zip.stat.exists
-    - var_get_qt5_webengine is success
+    - var_qt5_webengine_pkg.stat.exists
 
 - name: "[archlinux] Setup video tools: ensure packages (needs display)"
   # https://github.com/Ashark/davinci-resolve-checker?tab=readme-ov-file#installation

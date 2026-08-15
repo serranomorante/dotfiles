@@ -94,12 +94,18 @@
     - ~/.config/systemd/user/timers.target.wants/display-health-check.timer
   notify: "10-system-tools : handler_reload_user_systemd"
 
+- name: "[archlinux] Graphic tablet: stat mypaint appimage"
+  ansible.builtin.stat:
+    path: ~/data/apps/graphic-tablet-tools/mypaint-{{ arch_mypaint_version }}.AppImage
+  register: var_mypaint_appimage
+
 - name: "[archlinux] Graphic tablet: ensure mypaint"
   # Mypaint from arch repos was failing for me
   ansible.builtin.get_url:
     url: https://github.com/mypaint/mypaint-appimage/releases/download/continuous/MyPaint-v{{ arch_mypaint_version }}-no-translations.AppImage
     dest: ~/data/apps/graphic-tablet-tools/mypaint-{{ arch_mypaint_version }}.AppImage
     mode: "755"
+  when: not var_mypaint_appimage.stat.exists
   notify: "10-system-tools : handler_ensure_mypaint_service"
 
 - name: "[archlinux] Graphic tablet: link mypaint"

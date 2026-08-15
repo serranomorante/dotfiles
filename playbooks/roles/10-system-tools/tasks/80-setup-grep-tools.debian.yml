@@ -4,6 +4,7 @@
     src: https://github.com/junegunn/fzf/releases/download/v{{ debian_fzf_version }}/fzf-{{ debian_fzf_version }}-linux_amd64.tar.gz
     dest: ~/bin
     remote_src: true
+    creates: ~/bin/fzf
 
 - name: "[debian] Grep utilities: ensure .fzf_history"
   ansible.builtin.blockinfile:
@@ -18,6 +19,7 @@
     src: https://github.com/BurntSushi/ripgrep/releases/download/{{ debian_rg_version }}/ripgrep-{{ debian_rg_version }}-x86_64-unknown-linux-musl.tar.gz
     dest: ~/bin
     remote_src: true
+    creates: ~/bin/ripgrep-{{ debian_rg_version }}-x86_64-unknown-linux-musl
 
 - name: "[debian] Grep utilities: symlink ripgrep"
   ansible.builtin.file:
@@ -31,6 +33,7 @@
     src: https://github.com/sharkdp/fd/releases/download/v{{ debian_fd_version }}/fd-v{{ debian_fd_version }}-x86_64-unknown-linux-musl.tar.gz
     dest: ~/bin
     remote_src: true
+    creates: ~/bin/fd-v{{ debian_fd_version }}-x86_64-unknown-linux-musl
 
 - name: "[debian] Grep utilities: symlink fd"
   ansible.builtin.file:

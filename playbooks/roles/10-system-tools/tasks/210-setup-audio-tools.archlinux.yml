@@ -130,6 +130,7 @@
   ansible.builtin.get_url:
     url: "{{ item.url }}"
     dest: "{{ item.archive_path | dirname }}/{{ item.url | basename | regex_replace('\\.zip$', '') }}-{{ item.url | hash('sha256') }}.zip"
+    checksum: "{{ item.checksum | default(omit) }}"
     mode: "644"
     timeout: 300
   loop: "{{ arch_stt_vosk_models }}"

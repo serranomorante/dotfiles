@@ -30,6 +30,11 @@
     - ~/data/apps/browser-tools/chrome
     - ~/data/apps/browser-tools/chrome/extensions
 
+- name: "[archlinux] Setup browser tools: stat chrome-session-dump"
+  ansible.builtin.stat:
+    path: ~/data/apps/browser-tools/chrome/chrome-session-dump-linux-v{{ chrome_session_dump_version }}
+  register: var_chrome_session_dump_stat
+
 - name: "[archlinux] Setup browser tools: get chrome-session-dump"
   ansible.builtin.get_url:
     url: https://github.com/lemnos/chrome-session-dump/releases/download/v{{ chrome_session_dump_version }}/chrome-session-dump-linux
@@ -38,6 +43,7 @@
     timeout: 30
   register: var_chrome_session_dump_download
   failed_when: false
+  when: not var_chrome_session_dump_stat.stat.exists
 
 - name: "[archlinux] Setup browser tools: symlink chrome-session-dump"
   ansible.builtin.file:

@@ -5,6 +5,7 @@
       default(arch_audiogridder_wine_setup.version) }}/AudioGridder_{{ arch_audiogridder_wine_setup.version }}-Windows-Installers.zip
     dest: "{{ arch_audiogridder_wine_setup.backup_path }}/"
     remote_src: true
+    creates: "{{ arch_audiogridder_wine_setup.backup_path }}/AudioGridderServer_{{ arch_audiogridder_wine_setup.version }}.exe"
   ignore_errors: true
   register: var_get_audiogridder_server
 
@@ -44,7 +45,6 @@
       default(arch_audiogridder_wine_setup.plugin_version) }}/AudioGridder_{{ arch_audiogridder_wine_setup.plugin_version }}-Linux.zip
     dest: ~/.vst3/
     remote_src: true
-  timeout: 60
   ignore_errors: true
   register: var_get_audiogridder_client
   when: not var_audiogridder_client_marker.stat.exists

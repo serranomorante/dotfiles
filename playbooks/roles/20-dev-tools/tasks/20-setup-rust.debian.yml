@@ -14,6 +14,7 @@
     src: https://static.rust-lang.org/dist/rust-{{ rust_version }}-x86_64-unknown-linux-gnu.tar.gz
     dest: ~/data/apps/lang-tools/rust
     remote_src: true
+    creates: ~/data/apps/lang-tools/rust/rust-{{ rust_version }}-x86_64-unknown-linux-gnu
 
 # - name: "[debian] Setup rust: symlink rust tools"
 #   ansible.builtin.file:

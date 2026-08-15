@@ -193,6 +193,7 @@
     src: https://github.com/doitsujin/dxvk/releases/download/v{{ wine_prefix_setup.dxvk.version }}/dxvk-{{ wine_prefix_setup.dxvk.version }}.tar.gz
     dest: "{{ wine_prefix_setup.dxvk.archive_parent | default(ansible_facts.env.HOME ~ '/data/apps/virt-tools') }}"
     remote_src: true
+    creates: "{{ wine_prefix_setup.dxvk.archive_parent | default(ansible_facts.env.HOME ~ '/data/apps/virt-tools') }}/dxvk-{{ wine_prefix_setup.dxvk.version }}"
   ignore_errors: true
   when: wine_prefix_setup.dxvk is defined
 

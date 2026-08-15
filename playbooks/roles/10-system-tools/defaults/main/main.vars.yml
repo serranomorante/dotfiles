@@ -68,12 +68,14 @@ arch_stt_vosk_models:
   - language: es
     name: vosk-model-small-es-0.42
     url: https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip
+    checksum: "sha256:09b239888f633ef2f0b4e09736e3d9936acfd810bc65d53fad45261762c6511f"
     archive_path: "{{ ansible_facts.env.HOME }}/data/apps/audio-tools/vosk/vosk-model-small-es-0.42.zip"
     parent_dir: "{{ ansible_facts.env.HOME }}/.local/share/vosk"
     model_dir: "{{ ansible_facts.env.HOME }}/.local/share/vosk/vosk-model-small-es-0.42"
   - language: en
     name: vosk-model-small-en-us-0.15
     url: https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
+    checksum: "sha256:30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498"
     archive_path: "{{ ansible_facts.env.HOME }}/data/apps/audio-tools/vosk/vosk-model-small-en-us-0.15.zip"
     parent_dir: "{{ ansible_facts.env.HOME }}/.local/share/vosk"
     model_dir: "{{ ansible_facts.env.HOME }}/.local/share/vosk/vosk-model-small-en-us-0.15"

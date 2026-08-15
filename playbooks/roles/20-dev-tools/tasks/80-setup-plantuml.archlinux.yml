@@ -8,11 +8,17 @@
     - ~/data
     - ~/data/plantuml
 
+- name: "[archlinux] Plantuml compiled jar: stat versioned jar"
+  ansible.builtin.stat:
+    path: ~/data/plantuml/plantuml-{{ plantuml_compiled_jar_version }}.jar
+  register: var_plantuml_jar
+
 - name: "[archlinux] Plantuml compiled jar: ensure file in location"
   ansible.builtin.get_url:
     url: https://github.com/plantuml/plantuml/releases/download/v{{ plantuml_compiled_jar_version }}/plantuml-{{ plantuml_compiled_jar_version }}.jar
     dest: ~/data/plantuml/plantuml-{{ plantuml_compiled_jar_version }}.jar
     mode: "744"
+  when: not var_plantuml_jar.stat.exists
 
 - name: "[archlinux] Plantuml compiled jar: link current version"
   ansible.builtin.file:

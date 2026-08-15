@@ -26,13 +26,20 @@
     force: true
   register: var_whisper_cpp_repo
 
+- name: "[archlinux] Setup whisper.cpp: stat profile models"
+  ansible.builtin.stat:
+    path: "{{ whisper_cpp_setup.model_dir }}/{{ item.model_file }}.{{ item.model_url | hash('sha256') }}"
+  loop: "{{ whisper_cpp_setup.profiles }}"
+  register: var_whisper_cpp_model_stats
+
 - name: "[archlinux] Setup whisper.cpp: download profile models"
   ansible.builtin.get_url:
-    url: "{{ item.model_url }}"
-    dest: "{{ whisper_cpp_setup.model_dir }}/{{ item.model_file }}.{{ item.model_url | hash('sha256') }}"
+    url: "{{ item.item.model_url }}"
+    dest: "{{ whisper_cpp_setup.model_dir }}/{{ item.item.model_file }}.{{ item.item.model_url | hash('sha256') }}"
     mode: "644"
     timeout: 900
-  loop: "{{ whisper_cpp_setup.profiles }}"
+  loop: "{{ var_whisper_cpp_model_stats.results }}"
+  when: not item.stat.exists
 
 - name: "[archlinux] Setup whisper.cpp: link profile models"
   ansible.builtin.file:
