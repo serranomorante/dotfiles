@@ -6,6 +6,7 @@ set -euo pipefail
 # dotfiles-test-case: snippets-syntax
 # dotfiles-test-case: snippets-panel-pick-pastes-selection
 # dotfiles-test-case: snippets-lists-public-and-private
+# dotfiles-test-case: snippets-direct-paste-by-name-with-vars
 
 # Purpose: Verify the shared snippet picker metadata display and paste handoff.
 
@@ -234,6 +235,49 @@ EOF
     wait_for_file "${DOTFILES_TEST_TMP}/fzf-input"
     grep -Fq $'public\tDelegate agent tasks\t' "${DOTFILES_TEST_TMP}/fzf-input"
     grep -Fq $'private\tPrivate snippet\t' "${DOTFILES_TEST_TMP}/fzf-input"
+    ;;
+snippets-direct-paste-by-name-with-vars)
+    # Direct paste mode must resolve a snippet by basename, strip metadata,
+    # substitute {var:KEY} placeholders from var:KEY=VALUE args, and reuse the
+    # same clipboard + terminal paste handoff as the picker.
+    bin=$(make_fake_path)
+    snippets_dir=$(write_snippet_fixture)
+    cat >"${snippets_dir}/html-local" <<'EOF'
+---
+snippet-title: Read later
+snippet-summary: Save this conversation to re-read later.
+---
+
+Guarda esta conversación en formato markdown en este archivo: ~/data/notes/foam/agents/{var:AGENT_NAME}/{var:CWD}/{var:CHAT_ID}.md
+
+Si el archivo ya existe actualiza con contenido nuevo.
+EOF
+    : >"${DOTFILES_TEST_TMP}/events.log"
+
+    PATH="${bin}:/usr/bin:/bin" \
+        HOME="${DOTFILES_TEST_TMP}/home" \
+        DISPLAY=:99 \
+        XAUTHORITY="${DOTFILES_TEST_TMP}/Xauthority" \
+        DOTFILES_TEST_XDOTOOL_CLASS_DURING_PANEL=kitty \
+        "$script_under_test" \
+        html-local \
+        var:AGENT_NAME=claude \
+        var:CWD=/tmp/sandbox \
+        var:CHAT_ID=abc123
+
+    wait_for_file "${DOTFILES_TEST_TMP}/clipboard.txt"
+    wait_for_file "${DOTFILES_TEST_TMP}/xdotool-key.txt"
+
+    grep -Fqx 'Guarda esta conversación en formato markdown en este archivo: ~/data/notes/foam/agents/claude/tmp/sandbox/abc123.md' "${DOTFILES_TEST_TMP}/clipboard.txt"
+    grep -Fqx 'Si el archivo ya existe actualiza con contenido nuevo.' "${DOTFILES_TEST_TMP}/clipboard.txt"
+    if rg -Fq '{var:' "${DOTFILES_TEST_TMP}/clipboard.txt"; then
+        printf 'unresolved {var:} placeholder in direct paste payload\n' >&2
+        exit 1
+    fi
+    grep -Fxq 'key --clearmodifiers ctrl+shift+v' "${DOTFILES_TEST_TMP}/xdotool-key.txt"
+    [ ! -e "${DOTFILES_TEST_TMP}/fzf-input" ]
+    rg -q '^xclip$' "${DOTFILES_TEST_TMP}/events.log"
+    rg -q '^paste-terminal$' "${DOTFILES_TEST_TMP}/events.log"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

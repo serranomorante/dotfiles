@@ -1463,6 +1463,18 @@ local function current_overseer_task()
   return task_ok and task or nil
 end
 
+---@return { provider: string?, session_id: string?, cwd: string? }
+function M.current_agent_context()
+  local task = current_overseer_task()
+  if not task then return {} end
+  local metadata = task.metadata or {}
+  return {
+    provider = metadata[AGENT_PROVIDER_METADATA],
+    session_id = metadata[AGENT_SESSION_ID_METADATA],
+    cwd = type(task.cwd) == "string" and task.cwd or vim.fn.getcwd(),
+  }
+end
+
 ---@return string?
 local function prompt_from_agent_task(task)
   local metadata = task and task.metadata or nil

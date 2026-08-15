@@ -181,21 +181,31 @@ firejail-ai-agent-controls-foam-notes-exposure)
         exit 1
     fi
     for expected in \
-        'FJ_AI_AGENT_FOAM_NOTES_ROOT' \
-        '"$real_home/data/notes/foam"' \
-        'foam_profile_blacklist=' \
-        'is_under_foam_notes "$work_root"' \
-        '"--noblacklist=$foam_profile_blacklist"' \
-        '"--blacklist=$foam_profile_blacklist"'; do
+        'agent_notes_dir=' \
+        'agents/$agent' \
+        'mkdir -p "$agent_notes_dir"' \
+        'add_rw_path "$agent_notes_dir"'; do
         if ! grep -Fq "$expected" "$wrapper"; then
-            printf 'AI agent wrapper is missing conditional foam notes exposure: %s\n' "$expected" >&2
+            printf 'AI agent wrapper is missing agent notes dir exposure: %s\n' "$expected" >&2
             exit 1
         fi
     done
-    if ! grep -Fq "\${HOME}/data/notes/foam" "$wrapper"; then
-        printf 'AI agent wrapper must use the ${HOME} form for the foam notes path\n' >&2
-        exit 1
-    fi
+    # Whitelisting the agent notes dir alone must hide the rest of the foam
+    # tree: Firejail mounts a tmpfs over $HOME (the whitelist top directory)
+    # and only bind-mounts whitelisted paths back in, so no per-sibling
+    # blacklist logic or foam-aware flags should be needed in the wrapper.
+    for absent in \
+        'is_under_foam_notes' \
+        'expose_foam' \
+        'foam_profile_blacklist' \
+        'FJ_AI_AGENT_FOAM_NOTES_ROOT' \
+        '--blacklist=$foam_notes_root' \
+        '--noblacklist='; do
+        if grep -Fq -- "$absent" "$wrapper"; then
+            printf 'AI agent wrapper must rely on the agent notes dir whitelist only: %s\n' "$absent" >&2
+            exit 1
+        fi
+    done
     ;;
 firejail-ai-agent-stow-targets-visible)
     profile="$root/playbooks/roles/20-dev-tools/templates/ai-agent-common.inc"

@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
-# Purpose: Open a shared snippet picker and paste the selected text.
-# Usage: snippets
-# Notes: Snippets are stored as plain files under utilities/dot-local/share/dotfiles/snippets/ and, when present, for-my-eyes-only/dot-local/share/dotfiles/snippets/. Snippet files can add YAML frontmatter with `snippet-title:` and `snippet-summary:` keys; the picker shows those fields but pastes only the body after the closing `---`. The picker wraps long title/summary rows and renders the body in an fzf preview pane on the right (via the internal `preview` action); when `bat` is installed the preview is Markdown-highlighted, otherwise it falls back to plain text. When launched from Kitty, the parent process waits for the quick-access picker to close before copying and pasting, so terminal detection never sees the picker itself.
+# Purpose: Open a shared snippet picker and paste the selected text, or paste a
+# named snippet directly with dynamic {var:KEY} substitution.
+# Usage: snippets [<name> [var:KEY=VALUE ...]]
+# Notes: Snippets are stored as plain files under utilities/dot-local/share/dotfiles/snippets/ and, when present, for-my-eyes-only/dot-local/share/dotfiles/snippets/. Snippet files can add YAML frontmatter with `snippet-title:` and `snippet-summary:` keys; the picker shows those fields but pastes only the body after the closing `---`. The picker wraps long title/summary rows and renders the body in an fzf preview pane on the right (via the internal `preview` action); when `bat` is installed the preview is Markdown-highlighted, otherwise it falls back to plain text. When launched from Kitty, the parent process waits for the quick-access picker to close before copying and pasting, so terminal detection never sees the picker itself. When invoked with a snippet name, it resolves that snippet by basename across the public and private roots, strips the metadata, replaces any `{var:KEY}` placeholders with the provided `var:KEY=VALUE` pairs, and pastes the result directly without opening the picker.
 
 set -eu
 
@@ -31,8 +32,11 @@ usage() {
     cat <<EOF
 Usage:
   $prog
+  $prog <name> [var:KEY=VALUE ...]
 
 Open the shared snippet picker and paste the selected text into the previously focused window.
+With a <name>, paste that snippet directly without the picker, resolving it by
+basename and substituting {var:KEY} placeholders with the given values.
 EOF
 }
 
@@ -194,6 +198,42 @@ strip_snippet_metadata() {
     ' "$1"
 }
 
+resolve_snippet_path() {
+    name=$1
+    tab=$(printf '\t')
+    snippet_source_dirs | while IFS="$tab" read -r source_dir source_label; do
+        [ -d "$source_dir" ] || continue
+        candidate="$source_dir/$name"
+        [ -f "$candidate" ] && printf '%s\n' "$candidate"
+    done
+}
+
+apply_snippet_vars() {
+    payload_path=$1
+    shift
+    for arg in "$@"; do
+        case $arg in
+        var:*)
+            spec=${arg#var:}
+            key=${spec%%=*}
+            value=${spec#*=}
+            [ -n "$key" ] || die "invalid variable: $arg"
+            case $key in
+            CWD)
+                value=$(printf '%s' "$value" | sed 's|^/*||')
+                ;;
+            esac
+            escaped=$(printf '%s' "$value" | sed 's/[&|\\]/\\&/g')
+            sed "s|{var:${key}}|${escaped}|g" "$payload_path" >"${payload_path}.tmp" || exit 1
+            mv "${payload_path}.tmp" "$payload_path"
+            ;;
+        *)
+            die "unexpected argument: $arg"
+            ;;
+        esac
+    done
+}
+
 cleanup_snippets_tmpdir() {
     if [ "${snippets_handoff:-0}" -eq 0 ] && [ -n "${snippets_tmpdir:-}" ] && [ -d "$snippets_tmpdir" ]; then
         rm -rf "$snippets_tmpdir"
@@ -276,6 +316,37 @@ paste_payload() {
     payload_path=$1
     xclip -selection clipboard <"$payload_path"
     paste_clipboard
+}
+
+paste_named_snippet() {
+    [ "$#" -ge 1 ] || die "missing snippet name"
+    name=$1
+    shift
+
+    snippet_path=$(resolve_snippet_path "$name")
+    [ -n "$snippet_path" ] || die "missing snippet: $name"
+    [ -r "$snippet_path" ] || die "missing snippet: $name"
+
+    tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/snippets.XXXXXX") || exit 1
+    snippets_tmpdir=$tmpdir
+    snippets_handoff=0
+    trap cleanup_snippets_tmpdir EXIT INT HUP TERM
+    payload_path=$tmpdir/payload
+    strip_snippet_metadata "$snippet_path" >"$payload_path" || exit 1
+
+    if [ "$#" -gt 0 ]; then
+        apply_snippet_vars "$payload_path" "$@"
+    fi
+
+    if [ "$snippet_context" = panel ]; then
+        [ -n "$snippet_payload_out" ] || die "missing panel payload output path"
+        cp "$payload_path" "$snippet_payload_out"
+        exit 0
+    fi
+
+    paste_payload "$payload_path"
+    snippets_handoff=1
+    rm -rf "$tmpdir"
 }
 
 pick_snippet() {
@@ -384,7 +455,10 @@ launch)
             exit 0
             ;;
         *)
-            die "unexpected arguments: $*"
+            need_command xclip
+            need_command xdotool
+            paste_named_snippet "$@"
+            exit 0
             ;;
         esac
     fi

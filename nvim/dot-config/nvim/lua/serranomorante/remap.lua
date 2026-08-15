@@ -55,6 +55,13 @@ vim.keymap.set(
   { desc = "Run shell selection" }
 )
 
+-- Paste the html-local snippet directly (no picker), substituting the current
+-- agent session context into its {var:AGENT_NAME}/{var:CWD}/{var:CHAT_ID}
+-- placeholders.
+vim.keymap.set("n", "<leader>sP", function()
+  require("serranomorante.snippets").paste("html-local")
+end, { desc = "Paste html-local snippet with agent context" })
+
 ---Closing vim
 vim.keymap.set("n", "ZQ", function()
   if has_running_prevent_quit_tasks() then

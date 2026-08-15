@@ -22,14 +22,11 @@ esac
 real_home=${HOME:-}
 [[ -n "$real_home" ]] || die "HOME is required"
 
-# The shared AI-agent profile blacklists the private foam notes tree so normal
-# agent launches never see it. When the launcher explicitly picks a work root or
-# extra path inside that tree, cancel the blacklist so the exposed cwd is usable.
-# Firejail only disables a profile ${VAR}-based blacklist when the --noblacklist
-# value keeps the variable unexpanded, so pass ${HOME} literally here.
-foam_notes_root=${FJ_AI_AGENT_FOAM_NOTES_ROOT:-"$real_home/data/notes/foam"}
-foam_notes_root=$(canonicalize_existing_dir "$foam_notes_root") || foam_notes_root=
-foam_profile_blacklist='${HOME}/data/notes/foam'
+# The shared AI-agent profile has no foam notes blacklist. Exposure is driven
+# purely by whitelists: the current agent's own notes dir is always whitelisted
+# read-write (see below), and the launch work root is whitelisted read-write on
+# every run, so a work root inside the foam tree exposes it whole while other
+# launches only see the agent's own notes dir.
 
 network_mode=${FJ_AI_AGENT_NETWORK:-online}
 work_root=
@@ -98,19 +95,6 @@ add_rw_path() {
     fi
 
     RW_PATHS+="${candidate}"$'\n'
-}
-
-is_under_foam_notes() {
-    local path=$1
-    local root=$2
-
-    [[ -n "$root" && -n "$path" ]] || return 1
-    case "$path" in
-    "$root" | "$root"/*)
-        return 0
-        ;;
-    esac
-    return 1
 }
 
 print_help() {
@@ -182,6 +166,18 @@ add_rw_path "$work_root"
 [[ -d "$real_home/dotfiles" ]] && add_rw_path "$real_home/dotfiles"
 [[ -d "$real_home/data/work/cf" ]] && add_rw_path "$real_home/data/work/cf"
 
+# Always expose the current agent's own notes dir under the private foam tree
+# read-write so the agent can persist transcripts there, even for launches whose
+# work root stays outside the foam tree. Whitelisting this one path is enough:
+# Firejail mounts a tmpfs over $HOME (the whitelist top directory) and only
+# bind-mounts the whitelisted paths back, so every sibling under foam/agents and
+# the rest of the foam tree stays hidden. When the work root is inside the foam
+# tree it is already whitelisted read-write above, so the whole notes tree
+# becomes visible without any extra flag.
+agent_notes_dir="$real_home/data/notes/foam/agents/$agent"
+mkdir -p "$agent_notes_dir"
+add_rw_path "$agent_notes_dir"
+
 mkdir -p \
     "$real_home/.config/gcloud" \
     "$real_home/.config/configstore" \
@@ -217,34 +213,6 @@ append_paths rw "$RW_PATHS"
 append_optional_path rw "$tmux_socket_dir"
 append_paths ro "${FJ_AI_AGENT_EXTRA_PATHS:-}"
 append_paths rw "${FJ_AI_AGENT_WRITABLE_PATHS:-}"
-
-expose_foam=0
-if is_under_foam_notes "$work_root" "$foam_notes_root"; then
-    expose_foam=1
-fi
-while IFS= read -r extra_path || [ -n "$extra_path" ]; do
-    [[ -n "$extra_path" ]] || continue
-    if is_under_foam_notes "$extra_path" "$foam_notes_root"; then
-        expose_foam=1
-        break
-    fi
-done <<EOF
-${FJ_AI_AGENT_EXTRA_PATHS:-}
-${FJ_AI_AGENT_WRITABLE_PATHS:-}
-EOF
-# The shared profile no longer blacklists the foam notes tree; Firejail
-# blacklists win over whitelists, so a static profile blacklist would hide the
-# notes even from foam-cwd runs. Re-add the blacklist here only for launches
-# whose work root and extra paths stay outside the foam tree, so other agent
-# runs keep the private notes hidden while foam-cwd runs see them.
-if [[ "$expose_foam" == 1 ]]; then
-    FIREJAIL_ARGS+=("--noblacklist=$foam_profile_blacklist")
-else
-    FIREJAIL_ARGS+=("--blacklist=$foam_profile_blacklist")
-    if [[ -n "$foam_notes_root" ]]; then
-        FIREJAIL_ARGS+=("--blacklist=$foam_notes_root")
-    fi
-fi
 
 init_clean_env
 append_common_terminal_env
