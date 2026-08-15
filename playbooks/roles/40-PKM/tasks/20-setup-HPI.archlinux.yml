@@ -35,10 +35,12 @@
     update_diff_pip_packages:
       - name: pip
       - name: promnesia
+        version: "{{ pkm_promnesia_version }}"
       - name: google-takeout-parser @ git+https://github.com/purarue/google_takeout_parser
         lookup_name: google-takeout-parser
       - name: "{{ ansible_facts.env.HOME }}/data/repos/HPI"
         lookup_name: HPI
+        state: latest
       - name: bs4
       - name: lxml
       - name: mistletoe
@@ -47,10 +49,12 @@
       - name: colorlog
       - name: ijson
       - name: orjson
-      - name: git+https://github.com/karlicoss/hypexport
+      - name: "git+https://github.com/karlicoss/hypexport@{{ pkm_hypexport_version }}"
         lookup_name: hypexport
       - name: browserexport
+        version: "{{ pkm_browserexport_version }}"
       - name: cachew
+        version: "{{ pkm_cachew_version }}"
 
 - name: "[archlinux] Setup HPI - stat h setup marker"
   ansible.builtin.include_role:

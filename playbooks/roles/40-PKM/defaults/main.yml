@@ -8,6 +8,13 @@ hypothesis_client_version: "{{ hypothesis_browser_extension_version }}"
 hypothesis_client_contract: pdf-fixes-v3
 hypothesis_h_version: 5f075f1c328a15f6350bf75a5eeed63f2d7556be
 hypothesis_bouncer_version: f4c550e7d771077ee82d2aa1a5b9dadef6b79475
+# Pinned PKM/HPI dependency versions. promnesia, browserexport and cachew come
+# from PyPI; hypexport has no PyPI release, so it is pinned to the latest commit
+# of its default branch and tracked via the git-refs Renovate datasource.
+pkm_promnesia_version: 1.5.20251011
+pkm_browserexport_version: 0.4.4
+pkm_cachew_version: 0.24.20260815
+pkm_hypexport_version: d5547621a790efc734a0f0b8f3116d7f9ca868f8
 
 pkm_notes_foam_agent_context_dir: "{{ ansible_facts.env.HOME }}/data/notes/foam"
 pkm_notes_foam_agent_context_source_name: AGENTS.md

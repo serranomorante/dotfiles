@@ -15,6 +15,7 @@ set -euo pipefail
 # dotfiles-test-case: renovate-config-covers-music-production-release-assets
 # dotfiles-test-case: renovate-config-keeps-vscode-js-debug-install-scripts-disabled
 # dotfiles-test-case: renovate-config-covers-hypothesis-branch-pins
+# dotfiles-test-case: renovate-config-covers-pkm-dependency-pins
 # dotfiles-test-case: renovate-tool-is-installed-by-ansible
 # dotfiles-test-case: renovate-local-apply-helper-is-installed
 # dotfiles-test-case: renovate-local-apply-helper-is-exposed-in-lazygit
@@ -308,6 +309,44 @@ PY
     rg -Fq 'version: "{{ hypothesis_bouncer_version }}"' "$hpi_tasks"
     refute rg -Fq 'update_diff_git_version: main' "$hpi_tasks"
     rg -q 'h_setup_marker: "h:\{\{ hypothesis_h_version \}\}:bouncer:\{\{ hypothesis_bouncer_version \}\}:h-patches-v2"' "$hpi_tasks"
+    ;;
+renovate-config-covers-pkm-dependency-pins)
+    python3 - "$config_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    config = json.load(handle)
+
+pypi_manager = None
+hypexport_manager = None
+for manager in config["customManagers"]:
+    package = manager.get("packageNameTemplate")
+    if manager.get("datasourceTemplate") == "pypi" and "promnesia" in manager["matchStrings"][0]:
+        pypi_manager = manager
+    if package == "karlicoss/hypexport":
+        hypexport_manager = manager
+
+assert pypi_manager is not None, "missing PKM pypi manager"
+assert pypi_manager["datasourceTemplate"] == "pypi"
+assert pypi_manager["versioningTemplate"] == "pep440"
+for name in ("promnesia", "browserexport", "cachew"):
+    assert name in pypi_manager["matchStrings"][0], f"pypi manager missing {name}"
+
+assert hypexport_manager is not None, "missing hypexport git-refs manager"
+assert hypexport_manager["datasourceTemplate"] == "git-refs"
+assert hypexport_manager["depTypeTemplate"] == "github-branch"
+PY
+    rg -q '^pkm_promnesia_version: [0-9][0-9.]*$' "$pkm_defaults"
+    rg -q '^pkm_browserexport_version: [0-9][0-9.]*$' "$pkm_defaults"
+    rg -q '^pkm_cachew_version: [0-9][0-9.]*$' "$pkm_defaults"
+    rg -q '^pkm_hypexport_version: [0-9a-f]{40}$' "$pkm_defaults"
+    rg -Fq 'version: "{{ pkm_promnesia_version }}"' "$hpi_tasks"
+    rg -Fq 'version: "{{ pkm_browserexport_version }}"' "$hpi_tasks"
+    rg -Fq 'version: "{{ pkm_cachew_version }}"' "$hpi_tasks"
+    rg -Fq 'git+https://github.com/karlicoss/hypexport@{{ pkm_hypexport_version }}' "$hpi_tasks"
+    rg -Fq 'lookup_name: HPI' "$hpi_tasks"
+    rg -Fq 'state: latest' "$hpi_tasks"
     ;;
 renovate-tool-is-installed-by-ansible)
     rg -q 'node_dependency_update_npm_packages:' "$dev_defaults"

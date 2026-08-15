@@ -28,7 +28,7 @@ piper_tts_setup:
     - es_ES-sharvard-medium
 whisper_cpp_setup:
   repo_path: "{{ ansible_facts.env.HOME }}/data/repos/whisper.cpp"
-  version: v1.9.1
+  version: v1.9.2
   model_dir: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/whisper.cpp/models"
   model_name: medium
   model_file: ggml-medium.bin
@@ -59,28 +59,28 @@ node_ai_npm_packages:
     bins:
       - figma-developer-mcp
   - name: "@anthropic-ai/claude-code"
-    version: 2.1.220
+    version: 2.1.228
     bins:
       - claude
   - name: "@google/gemini-cli"
-    version: 0.53.0
+    version: 0.55.1
     bins:
       - gemini
   - name: opencode-ai
-    version: 1.18.9
+    version: 1.18.16
     bins:
       - opencode
   - name: chrome-devtools-mcp
-    version: 1.6.0
+    version: 1.7.0
     bins:
       - chrome-devtools-mcp
       - chrome-devtools
   - name: playwright
-    version: 1.62.0
+    version: 1.62.1
     bins:
       - playwright
   - name: "@playwright/mcp"
-    version: 0.0.78
+    version: 0.0.79
     bins:
       - playwright-mcp
   - name: mcp-figma-comment-summary
@@ -88,7 +88,7 @@ node_ai_npm_packages:
     bins:
       - mcp-figma-comment-summary
   - name: "@upstash/context7-mcp"
-    version: 3.2.5
+    version: 4.0.2
     bins:
       - context7-mcp
   - name: cloudframework-projects-mcp
@@ -104,7 +104,7 @@ node_ai_npm_packages:
     bins:
       - codex-acp
   - name: postman-cli
-    version: 1.44.0
+    version: 1.46.0
     bins:
       - postman
 
