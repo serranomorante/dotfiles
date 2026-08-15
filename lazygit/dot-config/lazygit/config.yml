@@ -138,3 +138,21 @@ customCommands:
     description: 'Custom: Compare (difftool) with local copy'
     command: 'open_in_nvim lazygit_diff_with_local_copy "$(printf %q {{.SelectedCommitFile.Name}})" "{{.SelectedCommit.Sha}}"'
     context: 'commitFiles'
+    # From commits, reset author AND committer of the selected commit to the
+    # gitconfig global user, so GitHub shows a single author. The native "Reset
+    # author" uses the repo-resolved identity, which may keep the old one when a
+    # local/includeIf override exists. Uses --reset-author directly for HEAD and
+    # an interactive rebase (edit + amend + continue) for any other commit.
+  - key: 'U'
+    description: 'Custom: Reset author/committer of selected commit to gitconfig user'
+    context: 'commits'
+    command: 'sha="{{.SelectedCommit.Sha}}"; name="$(git config --global user.name)"; email="$(git config --global user.email)"; if [ "$(git rev-parse HEAD)" = "$sha" ]; then git -c user.name="$name" -c user.email="$email" commit --allow-empty --allow-empty-message --only --no-edit --amend --reset-author; else short="$(git rev-parse --short "$sha")"; if git rev-parse -q --verify "$sha^" >/dev/null 2>&1; then base="$sha^"; else base="--root"; fi; GIT_SEQUENCE_EDITOR="sed -i \"s/^pick ${short}/edit ${short}/\" \"\$1\"" git rebase -i "$base"; git -c user.name="$name" -c user.email="$email" commit --allow-empty --allow-empty-message --only --no-edit --amend --reset-author; GIT_EDITOR=true git rebase --continue; fi'
+    loadingText: 'Resetting author/committer...'
+    prompts:
+      - type: "confirm"
+        key: "Confirm"
+        title: "Reset author/committer"
+        body: "Reset author and committer of the selected commit to your gitconfig global user?"
+    after:
+      checkForConflicts: true
+    output: log
