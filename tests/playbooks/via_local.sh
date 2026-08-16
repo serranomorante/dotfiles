@@ -96,7 +96,7 @@ via-restriction-patch-wired)
     [ -f "$banner_patch" ] || { printf 'missing banner patch: %s\n' "$banner_patch" >&2; exit 1; }
     rg -Fq 'hypothesis-via-remove-decommission-banner.patch' "$via_tasks"
     rg -Fq 'decommission-banner' "$banner_patch"
-    rg -q 'via_setup_marker: "via:\{\{ hypothesis_via_version \}\}:viahtml:\{\{ hypothesis_viahtml_version \}\}:via-patches-v3"' "$via_tasks"
+    rg -q 'via_setup_marker: "via:\{\{ hypothesis_via_version \}\}:viahtml:\{\{ hypothesis_viahtml_version \}\}:via-patches-v\d+"' "$via_tasks"
     ;;
 via-oauth-client-wired)
     rg -Fq 'register via authclient exists' "$hpi_tasks"

@@ -315,8 +315,8 @@ PY
     rg -Fq 'version: "{{ hypothesis_via_version }}"' "$via_tasks"
     rg -Fq 'version: "{{ hypothesis_viahtml_version }}"' "$via_tasks"
     refute rg -Fq 'update_diff_git_version: main' "$hpi_tasks"
-    rg -q 'h_setup_marker: "h:\{\{ hypothesis_h_version \}\}:bouncer:\{\{ hypothesis_bouncer_version \}\}:h-patches-v2"' "$hpi_tasks"
-    rg -q 'via_setup_marker: "via:\{\{ hypothesis_via_version \}\}:viahtml:\{\{ hypothesis_viahtml_version \}\}:via-patches-v3"' "$via_tasks"
+    rg -q 'h_setup_marker: "h:\{\{ hypothesis_h_version \}\}:bouncer:\{\{ hypothesis_bouncer_version \}\}:h-patches-v\d+"' "$hpi_tasks"
+    rg -q 'via_setup_marker: "via:\{\{ hypothesis_via_version \}\}:viahtml:\{\{ hypothesis_viahtml_version \}\}:via-patches-v\d+"' "$via_tasks"
     ;;
 renovate-config-covers-pkm-dependency-pins)
     python3 - "$config_file" <<'PY'

@@ -91,7 +91,7 @@ hypothesis-pdf-fixes-patch-covers-null-guard)
 hypothesis-pdf-fixes-marker-contract-version-pinned)
     task_has "set hypothesis client marker facts" \
         "ansible.builtin.set_fact:hypothesis_client_marker=re:v\{\{ hypothesis_client_version \}\}:\{\{ hypothesis_client_contract \}\}"
-    refute rg -n 'pdf-fixes-v1\b|pdf-fixes-v2\b' "$hp_tasks"
+    refute rg -n 'pdf-fixes-v1\b|pdf-fixes-v\d+\b' "$hp_tasks"
     rg -q 'hypothesis_client_version: "\{\{ hypothesis_browser_extension_version \}\}"' "$hp_defaults"
     rg -q 'hypothesis_client_contract: pdf-fixes-v[0-9]+' "$hp_defaults"
     ;;
