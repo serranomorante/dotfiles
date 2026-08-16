@@ -1,0 +1,15 @@
+diff --git a/docker-compose.yml b/docker-compose.yml
+index a4a1e18..aa64d23 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -5,7 +5,7 @@ services:
+   nginx-proxy:
+     image: nginx:1.17.6-alpine
+     ports:
+-      - '127.0.0.1:9085:9085'
+-      - '127.0.0.1:9086:9086'
++      - '9085:9085'
++      - '9086:9086'
+     volumes:
+       - ./conf/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+       - ./conf/nginx/viahtml/uwsgi_proxy.conf:/etc/nginx/viahtml/uwsgi_proxy.conf:ro

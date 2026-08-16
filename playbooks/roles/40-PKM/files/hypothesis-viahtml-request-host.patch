@@ -1,0 +1,71 @@
+diff --git a/viahtml/hooks/hooks.py b/viahtml/hooks/hooks.py
+--- a/viahtml/hooks/hooks.py
++++ b/viahtml/hooks/hooks.py
+@@ -1,6 +1,7 @@
+ """The majority of configuration options."""
+ 
+ from h_vialib import Configuration
++from werkzeug import wsgi
+ 
+ from viahtml.context import Context
+ from viahtml.hooks._headers import Headers
+@@ -44,6 +45,12 @@
+ 
+         self.context = context
+ 
++    def _h_embed_url(self, http_env):
++        """Return the h client embed URL on the host of the current request."""
++        host = wsgi.get_host(http_env).split(":")[0]
++        scheme = http_env.get("wsgi.url_scheme", "http")
++        return f"{scheme}://{host}:5000/embed.js"
++
+     @property
+     def template_vars(self):
+         """Get variables to make available in the global Jinja2 environment.
+@@ -61,7 +68,7 @@
+             "client_params": lambda http_env: self.get_config(http_env)[1],
+             "external_link_mode": external_link_mode,
+             "ignore_prefixes": self.ignore_prefixes,
+-            "h_embed_url": self.config["h_embed_url"],
++            "h_embed_url": self._h_embed_url,
+         }
+ 
+     @property
+diff --git a/viahtml/templates/custom_banner.html b/viahtml/templates/custom_banner.html
+--- a/viahtml/templates/custom_banner.html
++++ b/viahtml/templates/custom_banner.html
+@@ -177,7 +177,7 @@
+         }});
+ 
+         var embed_script = document.createElement("script");
+-        embed_script.src = "{{ h_embed_url }}";
++        embed_script.src = "{{ h_embed_url(env) }}";
+         document.head.appendChild(embed_script);
+ 
+         setupExternalLinkHandler({{external_link_mode(env) | tojson}});
+diff --git a/viahtml/views/routing.py b/viahtml/views/routing.py
+--- a/viahtml/views/routing.py
++++ b/viahtml/views/routing.py
+@@ -2,6 +2,8 @@
+ 
+ from http import HTTPStatus
+ 
++from werkzeug import wsgi
++
+ 
+ class RoutingView:
+     """A view for routing content (by handing it off to Via proper)."""
+@@ -30,7 +32,12 @@
+         if context.path != "/":
+             return None
+ 
+-        location = f"{self._routing_host.rstrip('/')}/"
++        # Route to via on the same host the user is using, so the redirect
++        # stays on the same site.
++        host = wsgi.get_host(context.http_environ)
++        hostname = host.split(":")[0]
++        scheme = context.http_environ.get("wsgi.url_scheme", "http")
++        location = f"{scheme}://{hostname}:9083/"
+         cache_control = ", ".join(
+             [
+                 "public",

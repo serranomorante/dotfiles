@@ -10,6 +10,7 @@ set -euo pipefail
 # dotfiles-test-case: hypothesis-pdf-fixes-verification-gates-marker
 # dotfiles-test-case: hypothesis-pdf-fixes-alerts-nonfatally
 # dotfiles-test-case: hypothesis-shortcuts-patch-wired
+# dotfiles-test-case: hypothesis-local-asset-root-patch-wired
 
 # Purpose: Verify the hypothesis client PDF-fixes and keyboard-shortcut patch
 # pipelines stay wired across extension version bumps: version-agnostic patch,
@@ -143,6 +144,20 @@ hypothesis-shortcuts-patch-wired)
     # toggleSidebar is typed in both the guest->sidebar and sidebar->host channels.
     [[ $(rg -c "toggleSidebar\(\): void;" "$shortcuts_patch") -eq 2 ]]
     rg -q 'hypothesis_client_contract: pdf-fixes-v[0-9]+-shortcuts-v[0-9]+' "$hp_defaults"
+    ;;
+hypothesis-local-asset-root-patch-wired)
+    asset_root_patch="${hp_files}/hypothesis-client-local-asset-root.patch"
+    [ -f "$asset_root_patch" ]
+    rg -q "localhost\}:3001/hypothesis" "$asset_root_patch"
+    rg -q "^-.*cdn\.hypothes\.is" "$asset_root_patch"
+    rg -q "^\+.*localhost\}:3001/hypothesis" "$asset_root_patch"
+    task_has "patch hypothesis client local asset root" \
+        "ansible.posix.patch:src=hypothesis-client-local-asset-root.patch" \
+        "failed_when=false"
+    task_has "check hypothesis client local asset root applied" \
+        "ansible.builtin.command:argv=re:render-boot-template\.js" \
+        "failed_when=false"
+    rg -q 'hypothesis_client_contract: pdf-fixes-v[0-9]+-shortcuts-v[0-9]+-local-asset-root-v[0-9]+' "$hp_defaults"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

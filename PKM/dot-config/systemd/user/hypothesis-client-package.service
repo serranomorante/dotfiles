@@ -1,0 +1,16 @@
+[Unit]
+Description=Hypothesis client package
+After=graphical-session.target
+
+[Service]
+WorkingDirectory=%h/data/repos/client
+Environment="FJ_NODE_PROFILE=fj-node-hypothesis.profile"
+Environment="NPM_CONFIG_IGNORE_SCRIPTS=false"
+ExecStart=%h/bin/fj-node online %h/data/repos/client -- node_modules/.bin/gulp serve-package
+Restart=always
+MemoryAccounting=yes
+MemoryHigh=512M
+MemoryMax=1G
+
+[Install]
+WantedBy=graphical-session.target

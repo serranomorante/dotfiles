@@ -397,6 +397,24 @@
     {
       "customType": "regex",
       "managerFilePatterns": ["/^playbooks\\/roles\\/40-PKM\\/defaults\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)hypothesis_via_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "hypothesis-via",
+      "packageNameTemplate": "hypothesis/via",
+      "datasourceTemplate": "git-refs",
+      "depTypeTemplate": "github-branch"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/40-PKM\\/defaults\\/main\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)hypothesis_viahtml_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "hypothesis-viahtml",
+      "packageNameTemplate": "hypothesis/viahtml",
+      "datasourceTemplate": "git-refs",
+      "depTypeTemplate": "github-branch"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/40-PKM\\/defaults\\/main\\.yml$/"],
       "matchStrings": ["(?:^|\\n)pkm_(?<depName>promnesia|browserexport|cachew)_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
       "datasourceTemplate": "pypi",
       "versioningTemplate": "pep440",

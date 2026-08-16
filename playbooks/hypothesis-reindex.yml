@@ -1,0 +1,110 @@
+---
+# Rebuild the self-hosted h search index from Postgres using only h's native
+# services. Run after restoring a backup or when annotations disappear from the
+# UI because the Elasticsearch index is missing or was auto-created with the
+# wrong mapping.
+#
+# Usage:
+#   cd ~/dotfiles/playbooks && ansible-playbook hypothesis-reindex.yml
+#
+# The index itself is recreated with the mapping expected by the pinned h
+# version when needed; data always comes from Postgres via h's job queue
+# (`h.tasks.job_queue.*` and `h.tasks.indexer.sync_annotations`), never from
+# direct SQL.
+- name: Reindex the self-hosted h search index
+  hosts: localhost
+  gather_facts: false
+  vars:
+    is_x_display_session: false
+    python_firejail_executable: "{{ ansible_facts.env.HOME }}/bin/fj-py"
+    h_repo: "{{ ansible_facts.env.HOME }}/data/repos/h"
+
+  pre_tasks:
+    - name: "Reindex h: get command arguments used to invoke ansible"
+      get_argv:
+      register: var_argv
+      tags: always
+
+    - name: "Reindex h: gather facts"
+      ansible.builtin.gather_facts:
+      when:
+        - inventory_hostname == 'localhost' or inventory_hostname == 'phone2' or 'arch_user' in group_names
+      tags: always
+
+    - name: "Reindex h: set user_os"
+      ansible.builtin.set_fact:
+        user_os: "{{ ansible_facts.distribution | lower | replace(' ', '') }}"
+        ansible_managed: "Ansible managed: this file was modified on {{ '%Y-%m-%d %H:%M:%S' | strftime }} by {{ ansible_facts.user_id }} on {{ ansible_facts.hostname
+          }}"
+      when: ansible_facts.distribution is defined
+      tags: always
+
+    - name: "Reindex h: only run on archlinux"
+      ansible.builtin.meta: end_host
+      when: user_os is defined and user_os != 'archlinux'
+
+  tasks:
+    - name: "Reindex h: get python version from h repo"
+      ansible.builtin.command: cat .python-version
+      register: var_h_python_version
+      changed_when: false
+      args:
+        chdir: "{{ h_repo }}"
+
+    - name: "Reindex h: ensure h services"
+      ansible.builtin.command:
+        argv:
+          - newgrp
+          - docker
+          - -c
+          - >-
+            FJ_PY_FORWARD_ENV=VIRTUALENV_PIP
+            PYENV_VERSION={{ var_h_python_version.stdout }}
+            VIRTUALENV_PIP=24.0
+            {{ python_firejail_executable }} online {{ h_repo }} --
+            bash -lc 'export DOCKER_CONFIG={{ ansible_facts.env.HOME }}/.config/ansible-docker && export PATH={{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH
+            && make services'
+      environment:
+        PYENV_VERSION: "{{ var_h_python_version.stdout }}"
+        VIRTUALENV_PIP: "24.0"
+        FJ_PY_FORWARD_ENV: VIRTUALENV_PIP
+      changed_when: false
+      timeout: 0
+
+    - name: "Reindex h: copy helper script into sandbox-visible h repo"
+      ansible.builtin.copy:
+        src: roles/40-PKM/files/hypothesis-reindex.py
+        dest: "{{ h_repo }}/.tox/hypothesis-reindex.py"
+        mode: "0644"
+
+    - name: "Reindex h: rebuild search index"
+      ansible.builtin.command:
+        argv:
+          - "{{ python_firejail_executable }}"
+          - online
+          - "{{ h_repo }}"
+          - --
+          - pyenv
+          - exec
+          - tox
+          - -qe
+          - dev
+          - --
+          - python3
+          - .tox/hypothesis-reindex.py
+      args:
+        chdir: "{{ h_repo }}"
+      environment:
+        PYENV_VERSION: "{{ var_h_python_version.stdout }}"
+        VIRTUALENV_PIP: "24.0"
+        FJ_PY_FORWARD_ENV: "VIRTUALENV_PIP\nPYTHONPATH\nTOX_TESTENV_PASSENV"
+        TOX_TESTENV_PASSENV: PYTHONPATH
+        PYTHONPATH: "{{ h_repo }}"
+      changed_when: "'Search index is now in sync' in rebuild_search_index_result.stdout"
+      register: rebuild_search_index_result
+      timeout: 0
+
+    - name: "Reindex h: remove helper script"
+      ansible.builtin.file:
+        path: "{{ h_repo }}/.tox/hypothesis-reindex.py"
+        state: absent

@@ -1,0 +1,44 @@
+---
+# Allow the self-hosted via stack to annotate calibre-web PDFs with the
+# Hypothesis client. Via's server-side fetch (content-type detection) and its
+# nginx proxy fetch the raw PDF anonymously, so calibre-web must serve its
+# download endpoint without a login session: enable anonymous browsing
+# (`config_anonbrowse`) and give the built-in Guest user the download role
+# (`ROLE_DOWNLOAD = 2`), otherwise the anonymous user gets a 403 on downloads.
+#
+# NOTE: this makes the whole calibre-web library browsable and downloadable
+# without a password on the LAN. Toggle `config_anonbrowse` off to restore
+# login-only access.
+#
+# The settings live in calibre-web's sqlite config DB (`/config/app.db`), which
+# is a persistent volume, so this only needs to run once (or after that volume
+# is recreated).
+
+- name: "[{{ user_os }}] Setup calibre-web annotation - check container"
+  ansible.builtin.shell: docker ps --format '{{ "{{.Names}}" }}'
+  register: calibre_container_list
+  changed_when: false
+  failed_when: false
+
+- name: "[{{ user_os }}] Setup calibre-web annotation - enable anonymous downloads"
+  ansible.builtin.shell: |
+    set -e
+    anon=$(docker exec calibre-web sqlite3 /config/app.db "SELECT config_anonbrowse FROM settings LIMIT 1;" 2>/dev/null || echo 0)
+    role=$(docker exec calibre-web sqlite3 /config/app.db "SELECT role FROM user WHERE name='Guest' LIMIT 1;" 2>/dev/null || echo 0)
+    changed=0
+    if [ "$anon" != "1" ]; then
+      docker exec calibre-web sqlite3 /config/app.db "UPDATE settings SET config_anonbrowse=1;"
+      changed=1
+    fi
+    if [ $(( role & 2 )) -eq 0 ]; then
+      docker exec calibre-web sqlite3 /config/app.db "UPDATE user SET role = role | 2 WHERE name='Guest';"
+      changed=1
+    fi
+    if [ "$changed" = "1" ]; then
+      docker restart calibre-web >/dev/null
+    fi
+    echo "changed=$changed"
+  register: calibre_anonbrowse_result
+  changed_when: "'changed=1' in calibre_anonbrowse_result.stdout"
+  failed_when: calibre_anonbrowse_result.rc not in [0, 1]
+  when: "'calibre-web' in calibre_container_list.stdout"

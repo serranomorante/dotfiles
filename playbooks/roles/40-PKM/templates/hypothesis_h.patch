@@ -10,18 +10,22 @@ index 3391c7b..a7690e0 100644
      networks:
        - dbs
    elasticsearch:
-@@ -20,11 +21,14 @@ services:
+@@ -20,11 +21,18 @@ services:
          start_period: 1m
      environment:
        - discovery.type=single-node
 +      - ES_JAVA_OPTS=-Xms512m -Xmx512m
 +    restart: always
++    volumes:
++      - esdata:/usr/share/elasticsearch/data
    rabbit:
      image: rabbitmq:3.12-management-alpine
      ports:
        - '127.0.0.1:5672:5672'
        - '127.0.0.1:15672:15672'
 +    restart: always
++volumes:
++  esdata:
  networks:
    # This external network allows FDW connections between H, LMS and report DBs.
    # To avoid having unnecessary dependencies between the projects
@@ -55,3 +59,47 @@ index 16a8eb4..0e23fa2 100644
  
  
  def _client_url(request):
+diff --git a/h/views/api/auth.py b/h/views/api/auth.py
+index 4a99e1b..aaaaaaaa 100644
+--- a/h/views/api/auth.py
++++ b/h/views/api/auth.py
+@@ -81,7 +81,9 @@
+             self.request.override_renderer = (
+                 "h:templates/oauth/authorize_web_message.html.jinja2"
+             )
+-            return self._render_web_message_response(response.location)
++            return self._render_web_message_response(
++                response.location, self.request.params.get("origin")
++            )
+ 
+         return response
+ 
+@@ -116,7 +118,9 @@
+         .. _draft-sakimura-oauth: https://tools.ietf.org/html/draft-sakimura-oauth-wmrm-00
+         """
+         found = self._authorized_response()
+-        return self._render_web_message_response(found.location)
++        return self._render_web_message_response(
++            found.location, self.request.params.get("origin")
++        )
+ 
+     def _authorize(self):
+         try:
+@@ -182,10 +186,15 @@
+             ) from err
+ 
+     @classmethod
+-    def _render_web_message_response(cls, redirect_uri):
++    def _render_web_message_response(cls, redirect_uri, origin=None):
+         location = urlparse(redirect_uri)
+         params = parse_qs(location.query)
+-        origin = f"{location.scheme}://{location.netloc}"
++        # The client carries its own origin in the authorization request so
++        # the authorization code is delivered (via postMessage) to the origin
++        # the client is actually served from, which may differ from the OAuth
++        # redirect_uri host (eg. localhost vs the LAN IP a phone sees).
++        if origin is None:
++            origin = f"{location.scheme}://{location.netloc}"
+ 
+         state = None
+         states = params.get("state", [])

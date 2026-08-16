@@ -1,0 +1,24 @@
+diff --git a/bouncer/views.py b/bouncer/views.py
+--- a/bouncer/views.py
++++ b/bouncer/views.py
+@@ -22,6 +22,11 @@
+     def __init__(self, request):
+         self.request = request
+ 
++    def _via_base_url(self):
++        """Return the Via URL on the host the user is accessing bouncer through."""
++        parts = parse.urlparse(self.request.host_url)
++        return f"{parts.scheme}://{parts.hostname}:9083"
++
+     @view.view_config(route_name="annotation_with_url")
+     @view.view_config(route_name="annotation_without_url")
+     def annotation(self):
+@@ -75,7 +80,7 @@
+             document_uri
+         ):
+             via_url = "{via_base_url}/{uri}#annotations:{id}".format(
+-                via_base_url=settings["via_base_url"],
++                via_base_url=self._via_base_url(),
+                 uri=document_uri,
+                 id=annotation_id,
+             )

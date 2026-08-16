@@ -1,0 +1,131 @@
+---
+# Run a local dnsmasq that resolves the self-hosted `.local` aliases (from
+# /etc/hosts, managed by the media-proxy role) to the machine's current LAN
+# address. This makes the aliases work from any LAN device and from via's
+# nginx (which is pointed at this dnsmasq as its resolver), and keeps them
+# working across DHCP IP changes thanks to the refresh service + timer +
+# NetworkManager dispatcher hook.
+#
+# The alias list and LAN address are regenerated on the fly by
+# /usr/local/bin/dotfiles-lan-dns, so there is no IP baked into this role.
+
+- name: "[{{ user_os }}] Setup LAN DNS - install dnsmasq"
+  ansible.builtin.package:
+    state: present
+    name:
+      - dnsmasq
+  become: true
+
+- name: "[{{ user_os }}] Setup LAN DNS - install refresh script"
+  ansible.builtin.copy:
+    src: dotfiles-lan-dns
+    dest: /usr/local/bin/dotfiles-lan-dns
+    mode: "0755"
+  become: true
+
+- name: "[{{ user_os }}] Setup LAN DNS - ensure dnsmasq reads the conf dir"
+  ansible.builtin.copy:
+    dest: /etc/dnsmasq.conf
+    mode: "0644"
+    content: |
+      conf-dir=/etc/dnsmasq.d,*.conf
+  become: true
+
+- name: "[{{ user_os }}] Setup LAN DNS - ensure conf dir exists"
+  ansible.builtin.file:
+    path: /etc/dnsmasq.d
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: "[{{ user_os }}] Setup LAN DNS - generate initial dnsmasq config"
+  ansible.builtin.command: /usr/local/bin/dotfiles-lan-dns
+  become: true
+  register: lan_dns_initial_result
+  changed_when: "'changed=1' in lan_dns_initial_result.stdout"
+
+- name: "[{{ user_os }}] Setup LAN DNS - enable dnsmasq"
+  ansible.builtin.systemd_service:
+    scope: system
+    name: dnsmasq.service
+    state: started
+    enabled: true
+    masked: false
+    daemon_reload: true
+  become: true
+
+- name: "[{{ user_os }}] Setup LAN DNS - install refresh service"
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/dotfiles-lan-dns.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Refresh dnsmasq local-domain config
+      After=network-online.target NetworkManager.service dnsmasq.service
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/dotfiles-lan-dns
+  become: true
+
+- name: "[{{ user_os }}] Setup LAN DNS - install refresh timer"
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/dotfiles-lan-dns.timer
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Refresh dnsmasq local-domain config periodically
+
+      [Timer]
+      OnBootSec=2min
+      OnUnitActiveSec=1h
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+  become: true
+
+- name: "[{{ user_os }}] Setup LAN DNS - enable refresh timer"
+  ansible.builtin.systemd_service:
+    scope: system
+    name: dotfiles-lan-dns.timer
+    state: started
+    enabled: true
+    masked: false
+    daemon_reload: true
+  become: true
+
+- name: "[{{ user_os }}] Setup LAN DNS - install NetworkManager dispatcher hook"
+  ansible.builtin.copy:
+    src: nm-dispatcher-dotfiles-lan-dns
+    dest: /etc/NetworkManager/dispatcher.d/10-dotfiles-lan-dns
+    mode: "0755"
+  become: true
+
+- name: "[{{ user_os }}] Setup LAN DNS - allow DNS from LAN and docker bridge through ufw"
+  become: true
+  community.general.ufw:
+    rule: allow
+    direction: in
+    from_ip: "{{ item.from_ip }}"
+    to_port: "53"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop:
+    - { from_ip: "192.168.1.0/24", proto: tcp, comment: "Hypothesis LAN DNS tcp" }
+    - { from_ip: "192.168.1.0/24", proto: udp, comment: "Hypothesis LAN DNS udp" }
+    - { from_ip: "172.16.0.0/12", proto: tcp, comment: "Hypothesis docker DNS tcp" }
+    - { from_ip: "172.16.0.0/12", proto: udp, comment: "Hypothesis docker DNS udp" }
+
+- name: "[{{ user_os }}] Setup LAN DNS - allow media-proxy port 80 from docker bridge"
+  # via's nginx resolves `.local` aliases to the LAN IP and connects to them on
+  # port 80, where the media-proxy nginx routes them to the real services.
+  become: true
+  community.general.ufw:
+    rule: allow
+    direction: in
+    from_ip: "172.16.0.0/12"
+    to_port: "80"
+    proto: tcp
+    comment: "Hypothesis docker to media-proxy"

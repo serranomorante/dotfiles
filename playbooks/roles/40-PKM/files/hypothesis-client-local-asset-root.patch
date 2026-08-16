@@ -1,0 +1,18 @@
+--- a/scripts/render-boot-template.js
++++ b/scripts/render-boot-template.js
+@@ -24,12 +24,9 @@
+ 
+   const { version } = JSON.parse(readFileSync('./package.json').toString());
+ 
+-  // nb. Replace `isProd` with `false` here to test a production build of the client
+-  // served locally.
+-  const isProd = process.env.NODE_ENV === 'production';
+-  const assetRoot = isProd
+-    ? `https://cdn.hypothes.is/hypothesis/${version}/`
+-    : `${localhost}:3001/hypothesis/${version}/`;
++  // Self-hosted instance: serve client assets from the local package server
++  // rather than the public CDN.
++  const assetRoot = `${localhost}:3001/hypothesis/${version}/`;
+ 
+   const replacements = {
+     __ASSET_ROOT__: assetRoot,

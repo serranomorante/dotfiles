@@ -17,6 +17,33 @@
     masked: false
     daemon_reload: true
 
+- name: handler_ensure_hypothesis_via_self_hosted_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: via-self-hosted.service
+    enabled: true
+    state: restarted
+    masked: false
+    daemon_reload: true
+
+- name: handler_ensure_hypothesis_viahtml_self_hosted_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: viahtml-self-hosted.service
+    enabled: true
+    state: restarted
+    masked: false
+    daemon_reload: true
+
+- name: handler_ensure_hypothesis_client_package_service
+  ansible.builtin.systemd_service:
+    scope: user
+    name: hypothesis-client-package.service
+    enabled: true
+    state: restarted
+    masked: false
+    daemon_reload: true
+
 - name: handler_ensure_backup_hypothesis_sql_service
   ansible.builtin.systemd_service:
     scope: user

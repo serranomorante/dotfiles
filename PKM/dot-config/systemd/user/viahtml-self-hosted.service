@@ -1,0 +1,16 @@
+[Unit]
+Description=Hypothesis viahtml self hosted
+After=graphical-session.target
+
+[Service]
+WorkingDirectory=%h/data/repos/viahtml
+Environment="FJ_NODE_PROFILE=fj-node-hypothesis.profile"
+Environment="NPM_CONFIG_IGNORE_SCRIPTS=false"
+ExecStart=%h/bin/fj-node online %h/data/repos/viahtml -- /usr/bin/env VIA_DISABLE_AUTHENTICATION=1 make dev
+Restart=always
+MemoryAccounting=yes
+MemoryHigh=1G
+MemoryMax=2G
+
+[Install]
+WantedBy=graphical-session.target

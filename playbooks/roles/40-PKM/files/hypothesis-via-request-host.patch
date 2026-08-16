@@ -1,0 +1,121 @@
+diff --git a/via/services/via_client.py b/via/services/via_client.py
+--- a/via/services/via_client.py
++++ b/via/services/via_client.py
+@@ -1,5 +1,7 @@
+ """A thin wrapper around ViaClient to make it a service."""
+ 
++from urllib.parse import urlparse
++
+ from h_vialib import ContentType, ViaClient
+ 
+ 
+@@ -27,11 +29,21 @@
+         )
+ 
+ 
++_VIAHTML_PORT = 9085
++
++
+ def factory(_context, request):
++    # Use the host the user accesses via through for the HTML service URL too,
++    # so the proxied content stays on the same site as the requesting page.
++    # Cookie-based logins (e.g. calibre-web) are otherwise rejected in a
++    # cross-site context.
++    parts = urlparse(request.host_url)
++    html_service_url = f"{parts.scheme}://{parts.hostname}:{_VIAHTML_PORT}/proxy"
++
+     return ViaClientService(
+         via_client=ViaClient(
+             service_url=request.host_url,
+-            html_service_url=request.registry.settings["via_html_url"],
++            html_service_url=html_service_url,
+             secret=request.registry.settings["via_secret"],
+         )
+     )
+diff --git a/via/services/pdf_url.py b/via/services/pdf_url.py
+--- a/via/services/pdf_url.py
++++ b/via/services/pdf_url.py
+@@ -144,7 +144,9 @@
+         secure_link_service=request.find_service(SecureLinkService),
+         route_url=request.route_url,
+         nginx_signer=_NGINXSigner(
+-            nginx_server=request.registry.settings["nginx_server"],
++            # Sign URLs against the host the user is accessing via through, so
++            # the PDF is served from the same site.
++            nginx_server=request.host_url,
+             secret=request.registry.settings["nginx_secure_link_secret"],
+         ),
+     )
+diff --git a/via/views/view_pdf.py b/via/views/view_pdf.py
+--- a/via/views/view_pdf.py
++++ b/via/views/view_pdf.py
+@@ -1,6 +1,7 @@
+ """View presenting the PDF viewer."""
+ 
+ from itertools import chain
++from urllib.parse import urlparse
+ 
+ from h_vialib import Configuration
+ from h_vialib.secure import Encryption
+@@ -17,6 +18,12 @@
+ from via.services.pdf_url import PDFURLBuilder
+ 
+ 
++def _client_embed_url(request):
++    """Return the h client embed URL on the host the user is using."""
++    parts = urlparse(request.host_url)
++    return f"{parts.scheme}://{parts.hostname}:5000/embed.js"
++
++
+ def _is_lms_request(request):
+     """Check if request comes from LMS (has a valid signed URL)."""
+     return request.find_service(SecureLinkService).request_has_valid_token(request)
+@@ -56,7 +63,7 @@
+     return {
+         "pdf_url": url,
+         "proxy_pdf_url": request.find_service(PDFURLBuilder).get_pdf_url(url),
+-        "client_embed_url": request.registry.settings["client_embed_url"],
++        "client_embed_url": _client_embed_url(request),
+         "static_url": request.static_url,
+         "hypothesis_config": h_config,
+     }
+diff --git a/via/views/view_video.py b/via/views/view_video.py
+--- a/via/views/view_video.py
++++ b/via/views/view_video.py
+@@ -1,4 +1,5 @@
+ import marshmallow
++from urllib.parse import urlparse
+ from h_vialib import Configuration
+ from pyramid.httpexceptions import HTTPUnauthorized
+ from pyramid.view import view_config
+@@ -10,6 +11,12 @@
+ from via.services import SecureLinkService, YouTubeService
+ 
+ 
++def _client_embed_url(request):
++    """Return the h client embed URL on the host the user is using."""
++    parts = urlparse(request.host_url)
++    return f"{parts.scheme}://{parts.hostname}:5000/embed.js"
++
++
+ def _is_lms_request(request):
+     """Check if request comes from LMS (has a valid signed URL)."""
+     return request.find_service(SecureLinkService).request_has_valid_token(request)
+@@ -55,7 +62,7 @@
+     _, client_config = Configuration.extract_from_params(kwargs)
+ 
+     return {
+-        "client_embed_url": request.registry.settings["client_embed_url"],
++        "client_embed_url": _client_embed_url(request),
+         "client_config": client_config,
+         "player": "youtube",
+         "title": video_title,
+@@ -107,7 +114,7 @@
+     _, client_config = Configuration.extract_from_params(kwargs)
+ 
+     return {
+-        "client_embed_url": request.registry.settings["client_embed_url"],
++        "client_embed_url": _client_embed_url(request),
+         "client_config": client_config,
+         "player": "html-video",
+         "title": video_title,

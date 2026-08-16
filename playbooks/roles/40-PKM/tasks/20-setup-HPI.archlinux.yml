@@ -74,13 +74,13 @@
   ansible.builtin.set_fact:
     # The marker contract embeds the pinned h and bouncer revisions so a
     # Renovate git-refs bump of either checkout forces a re-clone and re-patch.
-    h_setup_marker: "h:{{ hypothesis_h_version }}:bouncer:{{ hypothesis_bouncer_version }}:h-patches-v2"
+    h_setup_marker: "h:{{ hypothesis_h_version }}:bouncer:{{ hypothesis_bouncer_version }}:h-patches-v5"
     h_setup_refresh_required: >-
       {{
         not h_setup_marker_result.stat.exists
         or not h_bouncer_checkout_result.stat.exists
         or ((h_setup_marker_result.content | default('') | b64decode | trim)
-            != ('h:' ~ hypothesis_h_version ~ ':bouncer:' ~ hypothesis_bouncer_version ~ ':h-patches-v2'))
+            != ('h:' ~ hypothesis_h_version ~ ':bouncer:' ~ hypothesis_bouncer_version ~ ':h-patches-v5'))
       }}
 
 - name: "[{{ user_os }}] Setup HPI - clone h"
@@ -174,6 +174,16 @@
     remote_src: true
   loop:
     - "{{ var_hypothesis_tempdir.path }}/hypothesis_h.patch"
+  when: h_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup HPI - patch bouncer to derive the via URL from the request host"
+  # Bouncer builds the redirect to via from a hardcoded base URL (VIA_BASE_URL
+  # defaults to localhost:9083), which is cross-site with the proxied content
+  # and useless from other devices. Derive it from each request's host instead.
+  ansible.posix.patch:
+    src: hypothesis-bouncer-request-host.patch
+    basedir: ~/data/repos/bouncer
+    strip: 1
   when: h_setup_refresh_required
 
 - name: "[{{ user_os }}] Setup HPI - ensure authclient find command"
@@ -630,6 +640,112 @@
     cacheable: true
   when: hpi_self_hosted_available
 
+- name: "[{{ user_os }}] Setup HPI - register via authclient exists"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/repos/h"
+      - --
+      - pyenv
+      - exec
+      - tox
+      - -qe
+      - dev
+      - --
+      - sh
+      - bin/hypothesis
+      - --dev
+      - authclient
+      - find
+      - --name
+      - Via
+      - --authority
+      - localhost
+      - --redirect-uri
+      - http://localhost:5000
+  register: register_via_auth_client_exists_result
+  args:
+    chdir: ~/data/repos/h
+  environment:
+    PYENV_VERSION: "{{ var_h_python_version.stdout }}"
+    VIRTUALENV_PIP: "24.0"
+    FJ_PY_FORWARD_ENV: VIRTUALENV_PIP
+  changed_when: false
+  when: hpi_self_hosted_available
+
+- name: "[{{ user_os }}] Setup HPI - create via OAuth client"
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/repos/h"
+      - --
+      - pyenv
+      - exec
+      - tox
+      - -qe
+      - dev
+      - --
+      - sh
+      - bin/hypothesis
+      - --dev
+      - authclient
+      - add
+      - --name
+      - Via
+      - --authority
+      - localhost
+      - --type
+      - public
+      - --redirect-uri
+      - http://localhost:5000
+      - --grant-type
+      - authorization_code
+  register: create_via_oauth_client_result
+  args:
+    chdir: ~/data/repos/h
+  environment:
+    PYENV_VERSION: "{{ var_h_python_version.stdout }}"
+    VIRTUALENV_PIP: "24.0"
+    FJ_PY_FORWARD_ENV: VIRTUALENV_PIP
+  when:
+    - hpi_self_hosted_available
+    - "'Auth client not found' in register_via_auth_client_exists_result.stdout"
+  changed_when: "'commands succeeded' in create_via_oauth_client_result.stdout"
+
+- name: "[{{ user_os }}] Setup HPI - set_fact via client id"
+  ansible.builtin.set_fact:
+    via_oauth_client_id: "{{ create_via_oauth_client_result.stdout | default(register_via_auth_client_exists_result.stdout) | regex_search('Client ID: ([\\w-]*)', '\\1') | first }}"
+    cacheable: true
+  when: hpi_self_hosted_available
+
+- name: "[{{ user_os }}] Setup HPI - set via authclient response type"
+  # The `authclient add` CLI does not set `response_type` or `trusted`, but h's
+  # OAuth validator requires `response_type` to match the request's `code`, and
+  # the extension client is `trusted` so it skips the consent screen.
+  ansible.builtin.command:
+    argv:
+      - newgrp
+      - docker
+      - -c
+      - >-
+        docker exec h-postgres-1 psql -U postgres -c "UPDATE authclient SET response_type = 'code', trusted = true WHERE id = '{{ via_oauth_client_id }}'"
+  changed_when: false
+  when: hpi_self_hosted_available
+
+- name: "[{{ user_os }}] Setup HPI - set h client oauth id"
+  # The via client (served by h's sidebar app) reads `h.client_oauth_id` to know
+  # which OAuth client to authenticate with; without it the client sends
+  # `client_id=null` and h rejects the authorize request.
+  ansible.builtin.lineinfile:
+    path: ~/data/repos/h/conf/development.ini
+    regexp: "^h.client_oauth_id:"
+    insertafter: "^h.websocket_url:"
+    line: "h.client_oauth_id: {{ via_oauth_client_id }}"
+  when: hpi_self_hosted_available
+  notify: "40-PKM : handler_ensure_hypothesis_self_hosted_service"
+
 - name: "[{{ user_os }}] Setup HPI: stat hypothesis client marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
@@ -688,6 +804,17 @@
   failed_when: false
   when: hypothesis_client_refresh_required
 
+- name: "[{{ user_os }}] Setup HPI: patch hypothesis client local asset root"
+  ansible.posix.patch:
+    # Serve the built client's assets from the local package server instead of
+    # the public CDN, so via can embed the self-hosted client.
+    src: hypothesis-client-local-asset-root.patch
+    basedir: ~/data/repos/client
+    strip: 1
+  register: hypothesis_client_asset_root_patch_result
+  failed_when: false
+  when: hypothesis_client_refresh_required
+
 - name: "[{{ user_os }}] Setup HPI: check hypothesis client PDF fixes applied"
   ansible.builtin.command:
     argv:
@@ -724,6 +851,18 @@
   failed_when: false
   when: hypothesis_client_refresh_required
 
+- name: "[{{ user_os }}] Setup HPI: check hypothesis client local asset root applied"
+  ansible.builtin.command:
+    argv:
+      - rg
+      - -qF
+      - "const assetRoot = `${localhost}:3001/hypothesis/${version}/`;"
+      - ~/data/repos/client/scripts/render-boot-template.js
+  register: hypothesis_client_asset_root_check_result
+  changed_when: false
+  failed_when: false
+  when: hypothesis_client_refresh_required
+
 - name: "[{{ user_os }}] Setup HPI: set hypothesis client patches state"
   ansible.builtin.set_fact:
     hypothesis_client_patches_ok: >-
@@ -733,6 +872,8 @@
         and (not hypothesis_client_shortcuts_patch_result.failed | default(false))
         and (hypothesis_client_shortcuts_check_result.rc | default(1) | int == 0)
         and (hypothesis_client_shortcuts_forward_check_result.rc | default(1) | int == 0)
+        and (not hypothesis_client_asset_root_patch_result.failed | default(false))
+        and (hypothesis_client_asset_root_check_result.rc | default(1) | int == 0)
       }}
   when: hypothesis_client_refresh_required
 
@@ -1007,4 +1148,6 @@
 - name: "[{{ user_os }}] Setup HPI: run handlers"
   ansible.builtin.command: echo
   changed_when: true
-  notify: handler_ensure_backup_hypothesis_sql_service
+  notify:
+    - handler_ensure_backup_hypothesis_sql_service
+    - handler_ensure_hypothesis_client_package_service

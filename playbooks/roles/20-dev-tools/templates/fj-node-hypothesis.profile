@@ -9,3 +9,5 @@ whitelist-ro ${HOME}/data/repos/client
 whitelist-ro ${HOME}/data/repos/hypothesis-extension
 whitelist ${HOME}/data/repos/h
 whitelist ${HOME}/data/repos/bouncer
+whitelist ${HOME}/data/repos/via
+whitelist ${HOME}/data/repos/viahtml

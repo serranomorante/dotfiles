@@ -34,6 +34,7 @@ dev_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/20-dev-tools/tasks/175-setup-de
 dev_main_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/20-dev-tools/tasks/main.yml"
 pkm_defaults="${DOTFILES_TEST_ROOT}/playbooks/roles/40-PKM/defaults/main.yml"
 hpi_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/40-PKM/tasks/20-setup-HPI.archlinux.yml"
+via_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/40-PKM/tasks/25-setup-via.archlinux.yml"
 local_apply_helper="${DOTFILES_TEST_ROOT}/playbooks/roles/20-dev-tools/files/dotfiles-renovate-apply"
 lazygit_config="${DOTFILES_TEST_ROOT}/lazygit/dot-config/lazygit/config.yml"
 
@@ -279,10 +280,12 @@ import sys
 with open(sys.argv[1], encoding="utf-8") as handle:
     config = json.load(handle)
 
-expected = {
-    "hypothesis/h": ("hypothesis-h", "git-refs", "github-branch"),
-    "hypothesis/bouncer": ("hypothesis-bouncer", "git-refs", "github-branch"),
-}
+    expected = {
+        "hypothesis/h": ("hypothesis-h", "git-refs", "github-branch"),
+        "hypothesis/bouncer": ("hypothesis-bouncer", "git-refs", "github-branch"),
+        "hypothesis/via": ("hypothesis-via", "git-refs", "github-branch"),
+        "hypothesis/viahtml": ("hypothesis-viahtml", "git-refs", "github-branch"),
+    }
 found = {}
 for manager in config["customManagers"]:
     package = manager.get("packageNameTemplate")
@@ -305,10 +308,15 @@ else:
 PY
     rg -q '^hypothesis_h_version: [0-9a-f]{40}$' "$pkm_defaults"
     rg -q '^hypothesis_bouncer_version: [0-9a-f]{40}$' "$pkm_defaults"
+    rg -q '^hypothesis_via_version: [0-9a-f]{40}$' "$pkm_defaults"
+    rg -q '^hypothesis_viahtml_version: [0-9a-f]{40}$' "$pkm_defaults"
     rg -Fq 'version: "{{ hypothesis_h_version }}"' "$hpi_tasks"
     rg -Fq 'version: "{{ hypothesis_bouncer_version }}"' "$hpi_tasks"
+    rg -Fq 'version: "{{ hypothesis_via_version }}"' "$via_tasks"
+    rg -Fq 'version: "{{ hypothesis_viahtml_version }}"' "$via_tasks"
     refute rg -Fq 'update_diff_git_version: main' "$hpi_tasks"
     rg -q 'h_setup_marker: "h:\{\{ hypothesis_h_version \}\}:bouncer:\{\{ hypothesis_bouncer_version \}\}:h-patches-v2"' "$hpi_tasks"
+    rg -q 'via_setup_marker: "via:\{\{ hypothesis_via_version \}\}:viahtml:\{\{ hypothesis_viahtml_version \}\}:via-patches-v3"' "$via_tasks"
     ;;
 renovate-config-covers-pkm-dependency-pins)
     python3 - "$config_file" <<'PY'

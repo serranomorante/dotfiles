@@ -1,0 +1,367 @@
+---
+# Self-host Via (hypothesis/via) and Via HTML (hypothesis/viahtml) so third-party
+# PDFs and web pages can be annotated with the local Hypothesis client. This
+# mirrors the h/bouncer self-hosting in 20-setup-HPI: source checkouts pinned by
+# Renovate, a dev-mode `make dev` run under fj-node, and nginx `.local` aliases
+# exposed by the private media-proxy role.
+
+- name: "[{{ user_os }}] Setup via - stat via setup marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: via-setup
+    dotfiles_marker_register: via_setup_marker_result
+    dotfiles_marker_read: true
+
+- name: "[{{ user_os }}] Setup via - stat via checkout"
+  ansible.builtin.stat:
+    path: ~/data/repos/via/.git
+  register: via_checkout_result
+
+- name: "[{{ user_os }}] Setup via - stat viahtml checkout"
+  ansible.builtin.stat:
+    path: ~/data/repos/viahtml/.git
+  register: viahtml_checkout_result
+
+- name: "[{{ user_os }}] Setup via - set via setup marker facts"
+  ansible.builtin.set_fact:
+    # The marker contract embeds the pinned via and viahtml revisions so a
+    # Renovate git-refs bump of either checkout forces a re-clone and re-patch.
+    via_setup_marker: "via:{{ hypothesis_via_version }}:viahtml:{{ hypothesis_viahtml_version }}:via-patches-v8"
+    via_setup_refresh_required: >-
+      {{
+        not via_setup_marker_result.stat.exists
+        or not via_checkout_result.stat.exists
+        or not viahtml_checkout_result.stat.exists
+        or ((via_setup_marker_result.content | default('') | b64decode | trim)
+            != ('via:' ~ hypothesis_via_version ~ ':viahtml:' ~ hypothesis_viahtml_version ~ ':via-patches-v8'))
+      }}
+
+- name: "[{{ user_os }}] Setup via - clone via and viahtml"
+  ansible.builtin.include_role:
+    name: update-diff-capture
+    tasks_from: git
+  vars:
+    update_diff_capture_scope: hpi-tools
+    update_diff_git_repo: "{{ item.repo }}"
+    update_diff_git_dest: "{{ ansible_facts.env.HOME }}/data/repos/{{ item.repo | basename }}"
+    update_diff_git_version: "{{ item.version }}"
+    update_diff_git_force: true
+    update_diff_git_single_branch: true
+  loop:
+    - repo: https://github.com/hypothesis/via
+      version: "{{ hypothesis_via_version }}"
+    - repo: https://github.com/hypothesis/viahtml
+      version: "{{ hypothesis_viahtml_version }}"
+  when: via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - patch via docker-compose restart policy"
+  # The via postgres container needs a restart policy so it survives reboot,
+  # matching the h stack containers.
+  ansible.posix.patch:
+    src: hypothesis-via.patch
+    basedir: ~/data/repos/via
+    strip: 1
+  when: via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - patch via to derive service URLs from the request host"
+  # The proxied content (viahtml) and the h client embed must use the same host
+  # as the page the user is on, otherwise cookie-based logins (e.g. calibre-web)
+  # are rejected in a cross-site context. via now derives html_service_url,
+  # nginx_server and client_embed_url from the request's host instead of a
+  # hardcoded address.
+  #
+  # This patch must be applied before the "disable the restricted access page"
+  # patch: both touch via/views/view_pdf.py and view_video.py.
+  ansible.posix.patch:
+    src: hypothesis-via-request-host.patch
+    basedir: ~/data/repos/via
+    strip: 1
+  when: via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - patch via nginx resolver to use the host dnsmasq"
+  # via's nginx resolves proxied hostnames itself; point it at the host's
+  # dnsmasq (see 46-setup-lan-dns) so `.local` aliases resolve to the current
+  # LAN address and the annotation URIs can stay stable hostnames.
+  ansible.posix.patch:
+    src: hypothesis-via-nginx-resolver.patch
+    basedir: ~/data/repos/via
+    strip: 1
+  when: via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - patch via to rewrite calibre-web reader URLs"
+  # calibre-web serves `/show/<id>/pdf` and `/read/<id>/pdf` as HTML readers,
+  # so via would proxy them as HTML and the document would render in the
+  # browser's native viewer without the Hypothesis sidebar. Rewrite them to
+  # `/download/<id>/pdf` at content detection so via serves its own PDF viewer.
+  ansible.posix.patch:
+    src: hypothesis-via-calibre-reader-rewrite.patch
+    basedir: ~/data/repos/via
+    strip: 1
+  when: via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - patch via to disable the restricted access page"
+  # Upstream shut down public Via by hard-coding a `request_has_valid_token`
+  # check on every view, which ignores `signed_urls_required`. A self-hosted
+  # instance should not be restricted, so switch the views to `request_is_valid`,
+  # which passes when URL signing is disabled.
+  ansible.posix.patch:
+    src: hypothesis-via-disable-restriction.patch
+    basedir: ~/data/repos/via
+    strip: 1
+  when: via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - patch via to remove the decommission banner"
+  # The decommission banner advertises the public Via shutdown on the front
+  # page and the HTML proxy wrapper. Drop it (and its iframe offset / resize
+  # observer) so a self-hosted instance renders cleanly.
+  ansible.posix.patch:
+    src: hypothesis-via-remove-decommission-banner.patch
+    basedir: ~/data/repos/via
+    strip: 1
+  when: via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - patch viahtml docker compose to expose ports on the LAN"
+  # viahtml's nginx-proxy must be reachable from LAN devices (the phone), not
+  # just loopback, or the viahtml.local content URL fails to resolve off-host.
+  ansible.posix.patch:
+    src: hypothesis-viahtml.patch
+    basedir: ~/data/repos/viahtml
+    strip: 1
+  when: via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - patch via to never block URLs"
+  # Checkmate's client-side URL cleaning rejects local and private hosts
+  # (eg. *.local aliases and LAN addresses) as "not publicly accessible",
+  # which makes via refuse to proxy local services. A self-hosted instance
+  # proxies anything it can reach, so never block.
+  ansible.posix.patch:
+    src: hypothesis-via-no-restrictions.patch
+    basedir: ~/data/repos/via
+    strip: 1
+  when: via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - patch viahtml to never block URLs"
+  # Same as the via patch: viahtml must proxy local/private URLs (calibre-web
+  # etc.) that Checkmate's cleaning would reject.
+  ansible.posix.patch:
+    src: hypothesis-viahtml-no-restrictions.patch
+    basedir: ~/data/repos/viahtml
+    strip: 1
+  when: via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - patch viahtml to derive service URLs from the request host"
+  # Same as the via patch: viahtml derives the h embed URL and the routing host
+  # from each request's host, so it works on localhost, a LAN IP or a domain.
+  ansible.posix.patch:
+    src: hypothesis-viahtml-request-host.patch
+    basedir: ~/data/repos/viahtml
+    strip: 1
+  when: via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - get python version from via repo"
+  ansible.builtin.command: cat .python-version
+  register: var_via_python_version
+  args:
+    chdir: ~/data/repos/via
+  changed_when: false
+
+- name: "[{{ user_os }}] Setup via - get python version from viahtml repo"
+  ansible.builtin.command: cat .python-version
+  register: var_viahtml_python_version
+  args:
+    chdir: ~/data/repos/viahtml
+  changed_when: false
+
+- name: "[{{ user_os }}] Setup via - install python runtimes"
+  # `make python` installs each repo's pinned Python and tox into pyenv. The
+  # default fj-py profile keeps ~/.pyenv read-only, so expose it writable here,
+  # mirroring the public python-version setup task.
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/repos/{{ item }}"
+      - --
+      - make
+      - python
+  environment:
+    FJ_PY_WRITABLE_PATHS: |
+      {{ ansible_facts.env.HOME }}/.pyenv
+      {{ ansible_facts.env.HOME }}/.pyenv/versions
+      {{ ansible_facts.env.HOME }}/.pyenv/shims
+  loop:
+    - via
+    - viahtml
+  changed_when: true
+  timeout: 0
+  when: via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - install via frontend dependencies"
+  # `make dev` starts `gulp watch`, which needs node_modules present. Install
+  # them here so the service's first run can build the PDF viewer assets.
+  ansible.builtin.command:
+    argv:
+      - "{{ node_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/repos/via"
+      - --
+      - ./.yarn/releases/yarn-3.6.1.cjs
+      - install
+      - --mode=skip-build
+  args:
+    chdir: "{{ ansible_facts.env.HOME }}/data/repos/via"
+  environment:
+    NPM_CONFIG_IGNORE_SCRIPTS: "false"
+  when: via_setup_refresh_required
+  changed_when: true
+
+- name: "[{{ user_os }}] Setup via - build viahtml static assets"
+  # viahtml's nginx serves the pywb static tree copied by `make build`; without
+  # it the proxied pages render without their assets.
+  ansible.builtin.command:
+    argv:
+      - "{{ python_firejail_executable }}"
+      - online
+      - "{{ ansible_facts.env.HOME }}/data/repos/viahtml"
+      - --
+      - make
+      - build
+  environment:
+    PYENV_VERSION: "{{ var_viahtml_python_version.stdout }}"
+    VIRTUALENV_PIP: "24.0"
+    FJ_PY_FORWARD_ENV: VIRTUALENV_PIP
+  when: via_setup_refresh_required
+  changed_when: true
+  timeout: 0
+
+- name: "[{{ user_os }}] Setup via - ensure via data directory"
+  ansible.builtin.file:
+    path: ~/data/repos/via/.devdata
+    state: directory
+    mode: "755"
+
+- name: "[{{ user_os }}] Setup via - ensure via google drive credentials placeholder"
+  # via refuses to boot without injected Google Drive JSON. A single
+  # `disable: true` credential makes the service construct with Google Drive
+  # proxying disabled, which is what a personal instance wants until real
+  # credentials are dropped in. `force: false` preserves user-provided data.
+  ansible.builtin.copy:
+    dest: ~/data/repos/via/.devdata/google_drive_credentials.json
+    mode: "644"
+    content: |
+      [{"disable": true}]
+    force: false
+
+- name: "[{{ user_os }}] Setup via - ensure via google drive resource keys placeholder"
+  ansible.builtin.copy:
+    dest: ~/data/repos/via/.devdata/google_drive_resource_keys.json
+    mode: "644"
+    content: |
+      {}
+    force: false
+
+- name: "[{{ user_os }}] Setup via - wait for docker daemon access"
+  ansible.builtin.shell: newgrp docker -c "docker info >/dev/null"
+  register: var_via_docker_info
+  changed_when: false
+  failed_when: false
+
+- name: "[{{ user_os }}] Setup via - set via self hosted availability fact"
+  ansible.builtin.set_fact:
+    via_self_hosted_available: "{{ var_via_docker_info.rc == 0 }}"
+
+- name: "[{{ user_os }}] Setup via - allow docker bridge to reach via backends through ufw"
+  # The nginx-proxy containers reach the host's gunicorn (9082) and uwsgi
+  # (3032) workers through the docker bridge gateway, which is not loopback and
+  # so is dropped by the default ufw input policy. Allow docker's private range
+  # to those backend ports only; the LAN still reaches via via.local on :80.
+  become: true
+  community.general.ufw:
+    rule: allow
+    direction: in
+    from_ip: "172.16.0.0/12"
+    to_port: "{{ item.port }}"
+    proto: tcp
+    comment: "{{ item.name }}"
+  loop:
+    - { port: "9082", name: "Hypothesis via gunicorn" }
+    - { port: "3032", name: "Hypothesis viahtml uwsgi" }
+
+- name: "[{{ user_os }}] Setup via - ensure via docker services"
+  ansible.builtin.command:
+    argv:
+      - newgrp
+      - docker
+      - -c
+      - >-
+        PYENV_VERSION={{ var_via_python_version.stdout }}
+        {{ python_firejail_executable }} online {{ ansible_facts.env.HOME }}/data/repos/via --
+        bash -lc 'export DOCKER_CONFIG={{ ansible_facts.env.HOME }}/.config/ansible-docker && export PATH={{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH
+        && make services'
+  environment:
+    PYENV_VERSION: "{{ var_via_python_version.stdout }}"
+  changed_when: false
+  timeout: 0
+  when: via_self_hosted_available
+
+- name: "[{{ user_os }}] Setup via - expose via stack ports on the LAN through ufw"
+  # The via reader spans several services (bouncer, h, via, viahtml and the
+  # client package) that the browser hits directly by port. Publish those ports
+  # like the media services so other LAN devices can use via.
+  become: true
+  community.general.ufw:
+    rule: allow
+    direction: in
+    port: "{{ item.port }}"
+    proto: tcp
+    comment: "{{ item.name }}"
+  loop:
+    - { port: "8000", name: "Hypothesis bouncer" }
+    - { port: "5000", name: "Hypothesis h" }
+    - { port: "9083", name: "Hypothesis via" }
+    - { port: "9085", name: "Hypothesis viahtml" }
+    - { port: "3001", name: "Hypothesis client package" }
+
+- name: "[{{ user_os }}] Setup via - ensure via db"
+  ansible.builtin.command:
+    argv:
+      - newgrp
+      - docker
+      - -c
+      - >-
+        FJ_PY_FORWARD_ENV=VIRTUALENV_PIP
+        PYENV_VERSION={{ var_via_python_version.stdout }}
+        VIRTUALENV_PIP=24.0
+        {{ python_firejail_executable }} online {{ ansible_facts.env.HOME }}/data/repos/via --
+        bash -lc 'export DOCKER_CONFIG={{ ansible_facts.env.HOME }}/.config/ansible-docker && export PATH={{ ansible_facts.env.HOME }}/.local/share/ansible-docker-bin:$PATH
+        && make db'
+  environment:
+    PYENV_VERSION: "{{ var_via_python_version.stdout }}"
+    VIRTUALENV_PIP: "24.0"
+    FJ_PY_FORWARD_ENV: VIRTUALENV_PIP
+  changed_when: true
+  timeout: 0
+  when:
+    - via_self_hosted_available
+    - via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - record via setup marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: via-setup
+    dotfiles_marker_content: "{{ via_setup_marker }}\n"
+  when: via_setup_refresh_required
+
+- name: "[{{ user_os }}] Setup via - run handlers"
+  # `include_role` does not accept `notify`, so trigger the service handlers
+  # from a regular task, mirroring the HPI setup.
+  ansible.builtin.command: echo
+  changed_when: true
+  notify:
+    - "40-PKM : handler_ensure_hypothesis_via_self_hosted_service"
+    - "40-PKM : handler_ensure_hypothesis_viahtml_self_hosted_service"
+  when: via_self_hosted_available

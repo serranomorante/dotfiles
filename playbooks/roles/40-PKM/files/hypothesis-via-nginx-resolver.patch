@@ -1,0 +1,11 @@
+diff --git a/conf/nginx/includes.dev/resolver.conf b/conf/nginx/includes.dev/resolver.conf
+--- a/conf/nginx/includes.dev/resolver.conf
++++ b/conf/nginx/includes.dev/resolver.conf
+@@ -1,3 +1,3 @@
+-# Use Cloudflare DNS (https://1.1.1.1/dns/) to resolve locally as the AWS
+-# resolver is not available
+-resolver 1.1.1.1 ipv6=off;
+\ No newline at end of file
++# Resolve through the host's dnsmasq (reached via the docker bridge gateway)
++# so `.local` aliases resolve to the machine's current LAN address.
++resolver host.docker.internal:53 ipv6=off;

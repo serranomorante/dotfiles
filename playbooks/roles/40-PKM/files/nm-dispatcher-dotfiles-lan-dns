@@ -1,0 +1,9 @@
+#!/bin/sh
+# NetworkManager dispatcher hook: refresh dnsmasq's local-domain config when the
+# machine (re)acquires an address, so `.local` aliases keep resolving to the
+# current LAN IP without waiting for the hourly timer.
+case "$2" in
+    up|dhcp4-change)
+        /usr/local/bin/dotfiles-lan-dns >/dev/null 2>&1 &
+        ;;
+esac

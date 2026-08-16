@@ -22,6 +22,17 @@
   tags: ["40-20"]
 
 - block:
+    - name: Setup via self-hosting
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 25-setup-via.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["40-25"]
+
+- block:
     - name: Setup PKM exports
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
@@ -42,6 +53,28 @@
       loop_control:
         loop_var: task_file
   tags: ["40-40"]
+
+- block:
+    - name: Setup calibre-web annotation
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 45-setup-calibre-annotation.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["40-45"]
+
+- block:
+    - name: Setup LAN DNS
+      ansible.builtin.include_tasks: "{{ task_file }}"
+      with_first_found:
+        - files: 46-setup-lan-dns.{{ user_os }}.yml
+          skip: true
+      when: "user_os in ['archlinux']"
+      loop_control:
+        loop_var: task_file
+  tags: ["40-46"]
 
 - block:
     - name: Setup notes agent context links

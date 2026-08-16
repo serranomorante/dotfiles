@@ -1,0 +1,10 @@
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 1111111..2222222 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -8,4 +8,5 @@ services:
+       interval: 1s
+     environment:
+       POSTGRES_HOST_AUTH_METHOD: trust
++    restart: always
+   nginx-proxy:

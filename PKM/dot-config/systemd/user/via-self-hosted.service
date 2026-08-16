@@ -1,0 +1,16 @@
+[Unit]
+Description=Hypothesis via self hosted
+After=graphical-session.target
+
+[Service]
+WorkingDirectory=%h/data/repos/via
+Environment="FJ_NODE_PROFILE=fj-node-hypothesis.profile"
+Environment="NPM_CONFIG_IGNORE_SCRIPTS=false"
+ExecStart=%h/bin/fj-node online %h/data/repos/via -- make dev
+Restart=always
+MemoryAccounting=yes
+MemoryHigh=1G
+MemoryMax=2G
+
+[Install]
+WantedBy=graphical-session.target

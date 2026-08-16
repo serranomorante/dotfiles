@@ -5,9 +5,14 @@ hypothesis_client_version: "{{ hypothesis_browser_extension_version }}"
 # client marker and in the packed tarball filename so that any change to the
 # local fixes forces the browser extension to re-fetch the tarball (Yarn does
 # not re-resolve a `file:` dependency whose specifier string is unchanged).
-hypothesis_client_contract: pdf-fixes-v3-shortcuts-v3
+hypothesis_client_contract: pdf-fixes-v3-shortcuts-v3-local-asset-root-v5
 hypothesis_h_version: 5f075f1c328a15f6350bf75a5eeed63f2d7556be
 hypothesis_bouncer_version: f4c550e7d771077ee82d2aa1a5b9dadef6b79475
+# The via and viahtml checkouts track their default branch HEAD via the
+# git-refs Renovate datasource, like h and bouncer, because neither repo cuts
+# release tags.
+hypothesis_via_version: 021ba0982963a27d95723763919452f8e9a5a5c6
+hypothesis_viahtml_version: 3d8fd9e36edc8fbcbf39d789aac41de57e43c501
 # Pinned PKM/HPI dependency versions. promnesia, browserexport and cachew come
 # from PyPI; hypexport has no PyPI release, so it is pinned to the latest commit
 # of its default branch and tracked via the git-refs Renovate datasource.

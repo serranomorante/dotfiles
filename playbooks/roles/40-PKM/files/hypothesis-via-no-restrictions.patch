@@ -1,0 +1,22 @@
+diff --git a/via/services/checkmate.py b/via/services/checkmate.py
+index deadbeef..aaaaaaaa 100644
+--- a/via/services/checkmate.py
++++ b/via/services/checkmate.py
+@@ -19,12 +19,11 @@
+         Return a BlockResponse object if the URL is blocked,
+         or None if the URL is not blocked.
+         """
+-        return self._checkmate_client.check_url(
+-            url,
+-            allow_all=self._allow_all,
+-            blocked_for=self._blocked_for,
+-            ignore_reasons=self._ignore_reasons,
+-        )
++        # A self-hosted instance never blocks: Checkmate's client-side URL
++        # cleaning rejects local and private hosts (eg. ``*.local`` aliases and
++        # LAN addresses) as "not publicly accessible", which breaks proxying
++        # local services entirely.
++        return None
+ 
+     def raise_if_blocked(self, url):
+         """Raise a redirect to Checkmate if the URL is blocked.

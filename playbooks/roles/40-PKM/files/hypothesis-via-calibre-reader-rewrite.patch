@@ -1,0 +1,51 @@
+diff --git a/via/services/url_details.py b/via/services/url_details.py
+--- a/via/services/url_details.py
++++ b/via/services/url_details.py
+@@ -1,7 +1,9 @@
+ """Retrieve details about a resource at a URL."""
+ 
++import re
+ from collections import OrderedDict
+ from email.message import Message
++from urllib.parse import urlparse
+ 
+ from via.requests_tools.headers import add_request_headers, clean_headers
+ from via.services.checkmate import CheckmateService
+@@ -10,6 +12,28 @@
+ from via.services.youtube import YouTubeService
+ 
+ 
++_CALIBRE_READER_URL = re.compile(r"^/(show|read)/(?P<id>[^/]+)/(?P<fmt>[^/?#]+)")
++
++
++def rewrite_calibre_reader_url(url):
++    """Rewrite calibre-web reader URLs to the raw download URL.
++
++    calibre-web serves `/show/<id>/<format>` and `/read/<id>/<format>` as HTML
++    reader pages, so via would proxy them as HTML and the document would render
++    in the browser's native viewer, without the Hypothesis sidebar. Rewriting
++    them to `/download/<id>/<format>` lets via detect the raw PDF and serve its
++    own viewer instead.
++    """
++    parts = urlparse(url)
++    if "calibre-web" not in (parts.hostname or ""):
++        return url
++    match = _CALIBRE_READER_URL.match(parts.path)
++    if not match:
++        return url
++    new_path = f"/download/{match.group('id')}/{match.group('fmt')}"
++    return parts._replace(path=new_path).geturl()
++
++
+ class URLDetailsService:
+     def __init__(
+         self,
+@@ -33,6 +57,8 @@
+         :raise UpstreamServiceError: if we get an error from the upstream server
+         :raise UnhandledException: if we get any other request-based error
+         """
++        url = rewrite_calibre_reader_url(url)
++
+         if self._youtube.enabled and self._youtube.get_video_id(url):
+             return "video/x-youtube", 200
+ 

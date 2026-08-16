@@ -1,0 +1,43 @@
+diff --git a/viahtml/views/security.py b/viahtml/views/security.py
+index deadbeef..aaaaaaaa 100644
+--- a/viahtml/views/security.py
++++ b/viahtml/views/security.py
+@@ -1,8 +1,7 @@
+-import logging
+ from http import HTTPStatus
+ from urllib.parse import urlparse
+ 
+-from checkmatelib import BadURL, CheckmateException
++from checkmatelib import BadURL
+ 
+ 
+ class SecurityView:
+@@ -128,23 +127,12 @@
+     def _is_blocked(self, url, blocked_for, allow_all):
+         """Return a BlockResponse if the requested URL is blocked by Checkmate.
+ 
+-        :rtype: checkmate.client.BlockResponse, or False if the URL isn't
+-            blocked
+-
+-        :raises BadURL: For malformed or private URLs
++        A self-hosted instance never blocks: Checkmate's client-side URL
++        cleaning rejects local and private hosts (eg. ``*.local`` aliases and
++        LAN addresses) as "not publicly accessible", which breaks proxying
++        local services.
+         """
+-        if not url:
+-            return False
+-
+-        try:
+-            return self._check_url(
+-                url=url, allow_all=allow_all, blocked_for=blocked_for
+-            )
+-        except BadURL:
+-            raise
+-        except CheckmateException:
+-            logging.exception("Failed to check URL against Checkmate")
+-            return False
++        return False
+ 
+     @staticmethod
+     def _error_template(exception):

@@ -1,0 +1,55 @@
+--- a/via/views/index.py
++++ b/via/views/index.py
+@@ -15,7 +15,7 @@
+ 
+     def _is_lms_request(self):
+         """Check if request comes from LMS (has a valid signed URL)."""
+-        return self.request.find_service(SecureLinkService).request_has_valid_token(
++        return self.request.find_service(SecureLinkService).request_is_valid(
+             self.request
+         )
+ 
+--- a/via/views/proxy.py
++++ b/via/views/proxy.py
+@@ -23,7 +23,7 @@
+     """
+     secure_link_service = request.find_service(SecureLinkService)
+ 
+-    if not secure_link_service.request_has_valid_token(request):
++    if not secure_link_service.request_is_valid(request):
+         try:
+             target_url = context.url_from_path()
+         except Exception:  # noqa: BLE001
+--- a/via/views/route_by_content.py
++++ b/via/views/route_by_content.py
+@@ -19,7 +19,7 @@
+     """
+     secure_link_service = request.find_service(SecureLinkService)
+ 
+-    if not secure_link_service.request_has_valid_token(request):
++    if not secure_link_service.request_is_valid(request):
+         try:
+             target_url = context.url_from_query()
+         except Exception:  # noqa: BLE001
+--- a/via/views/view_pdf.py
++++ b/via/views/view_pdf.py
+@@ -19,7 +19,7 @@
+ 
+ def _is_lms_request(request):
+     """Check if request comes from LMS (has a valid signed URL)."""
+-    return request.find_service(SecureLinkService).request_has_valid_token(request)
++    return request.find_service(SecureLinkService).request_is_valid(request)
+ 
+ 
+ def _restricted_response(request, context=None):
+--- a/via/views/view_video.py
++++ b/via/views/view_video.py
+@@ -12,7 +12,7 @@
+ 
+ def _is_lms_request(request):
+     """Check if request comes from LMS (has a valid signed URL)."""
+-    return request.find_service(SecureLinkService).request_has_valid_token(request)
++    return request.find_service(SecureLinkService).request_is_valid(request)
+ 
+ 
+ def _restricted_response(request, target_url=None):
