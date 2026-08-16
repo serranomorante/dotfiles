@@ -58,9 +58,12 @@ vim.keymap.set(
 -- Paste the html-local snippet directly (no picker), substituting the current
 -- agent session context into its {var:AGENT_NAME}/{var:CWD}/{var:CHAT_ID}
 -- placeholders.
-vim.keymap.set("n", "<leader>sP", function()
-  require("serranomorante.snippets").paste("html-local")
-end, { desc = "Paste html-local snippet with agent context" })
+vim.keymap.set(
+  "n",
+  "<leader>sP",
+  function() require("serranomorante.snippets").paste("html-local") end,
+  { desc = "Paste html-local snippet with agent context" }
+)
 
 ---Closing vim
 vim.keymap.set("n", "ZQ", function()
@@ -224,11 +227,11 @@ vim.keymap.set("n", "<leader>wb", function()
   end
 end, { desc = "Open current file in browser via local nginx" })
 
-vim.keymap.set("n", "<C-S-e>", "zl", { desc = "Scroll right horizontally" })
-vim.keymap.set("n", "<C-S-y>", "zh", { desc = "Scroll left horizontally" })
-vim.keymap.set("n", "<C-S-d>", "50zl", { desc = "Scroll right horizontally +50" })
-vim.keymap.set("n", "<C-S-u>", "50zh", { desc = "Scroll left horizontally +50" })
-vim.keymap.set("n", "z.", "<cmd>normal! zszH<CR>", { desc = "Horizontally center cursor position" })
+vim.keymap.set({ "n", "x" }, "<C-S-e>", "zl", { desc = "Scroll right horizontally" })
+vim.keymap.set({ "n", "x" }, "<C-S-y>", "zh", { desc = "Scroll left horizontally" })
+vim.keymap.set({ "n", "x" }, "<C-S-d>", "50zl", { desc = "Scroll right horizontally +50" })
+vim.keymap.set({ "n", "x" }, "<C-S-u>", "50zh", { desc = "Scroll left horizontally +50" })
+vim.keymap.set({ "n", "x" }, "z.", "<cmd>normal! zszH<CR>", { desc = "Horizontally center cursor position" })
 
 vim.keymap.set({ "n", "x", "o" }, "'", "`", { desc = "Make single quote act like backtick" })
 vim.keymap.set({ "n", "x", "o" }, "''", "``zz", { desc = "Go to `` mark and center view" })
