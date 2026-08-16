@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Markdown language: register texlive group" # exclude fontsextra to save disk space
+- name: "[{{ user_os }}] Markdown language: register texlive group" # exclude fontsextra to save disk space
   become: true
   ansible.builtin.shell: >
     set -o pipefail &&
@@ -7,7 +7,7 @@
   changed_when: false
   register: texlive_group_pkgs
 
-- name: "[archlinux] Markdown language: ensure packages"
+- name: "[{{ user_os }}] Markdown language: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -16,19 +16,19 @@
       - marksman
       - mathjax
 
-- name: "[archlinux] Markdown language: ensure aur texlive"
+- name: "[{{ user_os }}] Markdown language: ensure aur texlive"
   become: true
   ansible.builtin.package:
     state: present
     name: "{{ texlive_group_pkgs.stdout | regex_findall('(.*)\n') }}" # necessary to make pdflatex work
 
-- name: "[archlinux] Markdown language: ensure xelatex is installed"
+- name: "[{{ user_os }}] Markdown language: ensure xelatex is installed"
   become: true
   ansible.builtin.package:
     state: present
     name: texlive-xetex
 
-- name: "[archlinux] Markdown language: ensure npm packages with diff capture"
+- name: "[{{ user_os }}] Markdown language: ensure npm packages with diff capture"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: npm
@@ -39,14 +39,14 @@
     update_diff_npm_node_version: "{{ node_system_default_version }}"
     update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
 
-- name: "[archlinux] Markdown language: symlink npm binaries"
+- name: "[{{ user_os }}] Markdown language: symlink npm binaries"
   ansible.builtin.file:
     src: "{{ node_markdown_npm_prefix }}/bin/{{ item.1 }}"
     dest: "{{ node_user_bin_dir }}/{{ item.1 }}"
     state: link
   loop: "{{ node_markdown_npm_packages | subelements('bins') }}"
 
-- name: "[archlinux] Markdown language: ensure virtualenv packages"
+- name: "[{{ user_os }}] Markdown language: ensure virtualenv packages"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: pip
@@ -64,7 +64,7 @@
       - name: mdformat-web
       - name: mdformat-wikilink
 
-- name: "[archlinux] Markdown language: symlink virtualenv packages"
+- name: "[{{ user_os }}] Markdown language: symlink virtualenv packages"
   ansible.builtin.file:
     src: ~/data/apps/note-taking-tools/utilities/.venv/bin/{{ item }}
     dest: ~/bin/{{ item }}

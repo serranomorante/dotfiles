@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Notification utilities: ensure several grep packages"
+- name: "[{{ user_os }}] Notification utilities: ensure several grep packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -11,33 +11,33 @@
       - libnotify
   notify: handler_restart_remind_service
 
-- name: "[archlinux] Notification utilities: ensure local AUR packages"
+- name: "[{{ user_os }}] Notification utilities: ensure local AUR packages"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages: tcllib
 
-- name: "[archlinux] Notification utilities: ensure dunst service"
+- name: "[{{ user_os }}] Notification utilities: ensure dunst service"
   ansible.builtin.systemd_service:
     scope: user
     name: dunst.service
     enabled: true
     masked: false
 
-- name: "[archlinux] Notification utilities: ensure remind state folder"
+- name: "[{{ user_os }}] Notification utilities: ensure remind state folder"
   ansible.builtin.file:
     path: ~/.local/state/remind
     state: directory
     mode: "755"
   notify: handler_restart_remind_service
 
-- name: "[archlinux] Notification utilities: ensure remind config folder"
+- name: "[{{ user_os }}] Notification utilities: ensure remind config folder"
   ansible.builtin.file:
     path: ~/.config/remind
     state: directory
     mode: "755"
   notify: handler_restart_remind_service
 
-- name: "[archlinux] Notification utilities: install remind helper file"
+- name: "[{{ user_os }}] Notification utilities: install remind helper file"
   ansible.builtin.copy:
     src: "{{ ansible_facts.env.HOME }}/dotfiles/PKM/remind/00-helpers.rem"
     dest: ~/.config/remind/00-helpers.rem
@@ -46,17 +46,17 @@
     mode: "644"
   notify: handler_restart_remind_service
 
-- name: "[archlinux] Notification utilities: check legacy remind oncefile"
+- name: "[{{ user_os }}] Notification utilities: check legacy remind oncefile"
   ansible.builtin.stat:
     path: ~/.config/remind/oncefile
   register: var_remind_legacy_oncefile
 
-- name: "[archlinux] Notification utilities: check remind state oncefile"
+- name: "[{{ user_os }}] Notification utilities: check remind state oncefile"
   ansible.builtin.stat:
     path: ~/.local/state/remind/oncefile
   register: var_remind_state_oncefile
 
-- name: "[archlinux] Notification utilities: migrate remind oncefile"
+- name: "[{{ user_os }}] Notification utilities: migrate remind oncefile"
   ansible.builtin.command:
     argv:
       - mv
@@ -67,7 +67,7 @@
     - not var_remind_state_oncefile.stat.exists
   notify: handler_restart_remind_service
 
-- name: "[archlinux] Notification utilities: remove legacy remind oncefile"
+- name: "[{{ user_os }}] Notification utilities: remove legacy remind oncefile"
   ansible.builtin.file:
     path: ~/.config/remind/oncefile
     state: absent
@@ -76,7 +76,7 @@
     - var_remind_state_oncefile.stat.exists
   notify: handler_restart_remind_service
 
-- name: "[archlinux] Notification utilities: ensure dbus-1 servics folder"
+- name: "[{{ user_os }}] Notification utilities: ensure dbus-1 servics folder"
   # See: https://dunst-project.org/faq/
   ansible.builtin.file:
     path: "{{ item }}"
@@ -86,7 +86,7 @@
     - ~/.local/share/dbus-1
     - ~/.local/share/dbus-1/services
 
-- name: "[archlinux] Notification utilities: ensure dunst as default notification daemon"
+- name: "[{{ user_os }}] Notification utilities: ensure dunst as default notification daemon"
   # See: https://dunst-project.org/faq/
   # And: https://github.com/dunst-project/dunst/issues/363
   ansible.builtin.file:

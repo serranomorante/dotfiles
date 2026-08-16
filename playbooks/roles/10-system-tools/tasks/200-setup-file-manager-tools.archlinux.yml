@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup file manager: clone packages"
+- name: "[{{ user_os }}] Setup file manager: clone packages"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: git
@@ -15,7 +15,7 @@
     - { repo: https://github.com/jarun/nnn, version: v5.2 }
   register: var_nnn_repo
 
-- name: "[archlinux] Setup file manager: ensure deps"
+- name: "[{{ user_os }}] Setup file manager: ensure deps"
   become: true
   ansible.builtin.package:
     state: present
@@ -42,7 +42,7 @@
       - usbmuxd
       - gnome-epub-thumbnailer
 
-- name: "[archlinux] Setup file manager: ensure local AUR deps"
+- name: "[{{ user_os }}] Setup file manager: ensure local AUR deps"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages:
@@ -51,12 +51,12 @@
     aur_local_package_notify:
       - handler_restart_xdg_desktop_portal_termfilechooser
 
-- name: "[archlinux] Setup file manager: check nnn binary"
+- name: "[{{ user_os }}] Setup file manager: check nnn binary"
   ansible.builtin.stat:
     path: ~/.local/bin/nnn
   register: var_nnn_binary
 
-- name: "[archlinux] Setup file manager: build nnn"
+- name: "[{{ user_os }}] Setup file manager: build nnn"
   ansible.builtin.command: make O_NERD=1 O_GITSTATUS=1 O_PCRE2=1 strip install
   environment:
     PREFIX: "{{ ansible_facts.env.HOME }}/.local"
@@ -64,7 +64,7 @@
     chdir: ~/data/repos/nnn
   when: var_nnn_repo is changed or not var_nnn_binary.stat.exists
 
-- name: "[archlinux] Setup file manager: ensure dest folder"
+- name: "[{{ user_os }}] Setup file manager: ensure dest folder"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -74,7 +74,7 @@
     - ~/.config/nnn/plugins
 
 # https://github.com/jarun/nnn/wiki/Advanced-use-cases#desktop-integration
-- name: "[archlinux] Setup file manager: install nnn plugins"
+- name: "[{{ user_os }}] Setup file manager: install nnn plugins"
   ansible.builtin.file:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
@@ -90,13 +90,13 @@
       dest: ~/.config/nnn/plugins/dragdrop
 
 # https://github.com/jarun/nnn/wiki/Advanced-use-cases#desktop-integration
-- name: "[archlinux] Setup file manager: install nnn plugins"
+- name: "[{{ user_os }}] Setup file manager: install nnn plugins"
   ansible.builtin.copy:
     src: ~/data/repos/nnn/misc/desktop/nnn.desktop
     dest: ~/.local/share/applications/nnn.desktop
     mode: "644"
 
-- name: "[archlinux] Setup file manager: get nnn external plugin"
+- name: "[{{ user_os }}] Setup file manager: get nnn external plugin"
   ansible.builtin.copy:
     dest: ~/.config/nnn/plugins/cdto
     content: |
@@ -109,7 +109,7 @@
 # Enforce persistent filesystem labels on connect. A udev rule matches the
 # configured UUIDs and hands off to dotfiles-fs-label@<uuid>.service, which
 # unmounts (if needed) and relabels the volume when its label drifted.
-- name: "[archlinux] Setup file manager: install fs-label helper"
+- name: "[{{ user_os }}] Setup file manager: install fs-label helper"
   become: true
   ansible.builtin.copy:
     src: ~/dotfiles/assets/scripts/storage/dotfiles-set-fs-label
@@ -117,7 +117,7 @@
     owner: root
     mode: "755"
 
-- name: "[archlinux] Setup file manager: ensure fs-label config dir"
+- name: "[{{ user_os }}] Setup file manager: ensure fs-label config dir"
   become: true
   ansible.builtin.file:
     path: /etc/dotfiles
@@ -125,7 +125,7 @@
     owner: root
     mode: "755"
 
-- name: "[archlinux] Setup file manager: write fs-label config"
+- name: "[{{ user_os }}] Setup file manager: write fs-label config"
   become: true
   ansible.builtin.copy:
     dest: /etc/dotfiles/fs-labels.conf
@@ -138,7 +138,7 @@
       {{ entry.uuid }} {{ entry.label }}
       {% endfor %}
 
-- name: "[archlinux] Setup file manager: install fs-label service unit"
+- name: "[{{ user_os }}] Setup file manager: install fs-label service unit"
   become: true
   ansible.builtin.template:
     src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/services/dotfiles-fs-label@.service"
@@ -147,7 +147,7 @@
     mode: "644"
   notify: "10-system-tools : handler_reload_systemd"
 
-- name: "[archlinux] Setup file manager: install fs-label udev rule"
+- name: "[{{ user_os }}] Setup file manager: install fs-label udev rule"
   become: true
   ansible.builtin.template:
     src: 70-dotfiles-fs-label.rules
@@ -161,7 +161,7 @@
 # dotfiles-automount@<uuid>.service, which mounts at the configured
 # /run/media/<user>/<label> path. Ordering after the fs-label service keeps a
 # relabel-triggered unmount from racing the mount.
-- name: "[archlinux] Setup file manager: install automount helper"
+- name: "[{{ user_os }}] Setup file manager: install automount helper"
   become: true
   ansible.builtin.copy:
     src: ~/dotfiles/assets/scripts/storage/dotfiles-automount
@@ -169,7 +169,7 @@
     owner: root
     mode: "755"
 
-- name: "[archlinux] Setup file manager: write automount config"
+- name: "[{{ user_os }}] Setup file manager: write automount config"
   become: true
   ansible.builtin.copy:
     dest: /etc/dotfiles/automounts.conf
@@ -182,7 +182,7 @@
       {{ entry.uuid }} {{ entry.mountpoint }} {{ entry.owner }}
       {% endfor %}
 
-- name: "[archlinux] Setup file manager: install automount service unit"
+- name: "[{{ user_os }}] Setup file manager: install automount service unit"
   become: true
   ansible.builtin.template:
     src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/services/dotfiles-automount@.service"
@@ -191,7 +191,7 @@
     mode: "644"
   notify: "10-system-tools : handler_reload_systemd"
 
-- name: "[archlinux] Setup file manager: install automount udev rule"
+- name: "[{{ user_os }}] Setup file manager: install automount udev rule"
   become: true
   ansible.builtin.template:
     src: 70-dotfiles-automount.rules
@@ -204,7 +204,7 @@
 # so the nmount plugin can toggle volumes (including pmount-created /media
 # mounts) the same way the desktop file manager does. polkitd auto-reloads
 # rules.d, so the rule takes effect on the next authorization check.
-- name: "[archlinux] Setup file manager: install udisks2 polkit rule"
+- name: "[{{ user_os }}] Setup file manager: install udisks2 polkit rule"
   become: true
   ansible.builtin.template:
     src: 49-dotfiles-udisks2.rules

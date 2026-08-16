@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Grep utilities: ensure several grep packages"
+- name: "[{{ user_os }}] Grep utilities: ensure several grep packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -8,7 +8,7 @@
       - fd
       - fzf
 
-- name: "[archlinux] Grep utilities: ensure .fzf_history"
+- name: "[{{ user_os }}] Grep utilities: ensure .fzf_history"
   ansible.builtin.template:
     src: .fzfrc
     dest: ~/

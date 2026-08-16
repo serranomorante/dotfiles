@@ -1,11 +1,11 @@
 ---
-- name: "[archlinux] Python tools: ensure virtualenv parent directory"
+- name: "[{{ user_os }}] Python tools: ensure virtualenv parent directory"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/data/apps/python-tools"
     state: directory
     mode: "755"
 
-- name: "[archlinux] Python tools: ensure virtualenv python packages"
+- name: "[{{ user_os }}] Python tools: ensure virtualenv python packages"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: pip
@@ -18,7 +18,7 @@
       - name: hatch
       - name: poetry
 
-- name: "[archlinux] Python tools: symlink python tools"
+- name: "[{{ user_os }}] Python tools: symlink python tools"
   ansible.builtin.file:
     src: ~/data/apps/python-tools/.venv/bin/{{ item }}
     dest: ~/bin/{{ item }}

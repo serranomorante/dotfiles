@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup ai tools: install packages"
+- name: "[{{ user_os }}] Setup ai tools: install packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -8,7 +8,7 @@
       - openai-codex
       - git
 
-- name: "[archlinux] Setup ai tools: ensure piper tts directories"
+- name: "[{{ user_os }}] Setup ai tools: ensure piper tts directories"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -18,7 +18,7 @@
     - "{{ piper_tts_setup.voice_dir }}"
     - "{{ piper_tts_setup.project_path }}/run"
 
-- name: "[archlinux] Setup ai tools: ensure piper tts venv packages"
+- name: "[{{ user_os }}] Setup ai tools: ensure piper tts venv packages"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: pip
@@ -32,11 +32,11 @@
       - name: piper-tts[http]
         version: "{{ piper_tts_setup.version }}"
 
-- name: "[archlinux] Setup ai tools: reset piper tts voice marker specs"
+- name: "[{{ user_os }}] Setup ai tools: reset piper tts voice marker specs"
   ansible.builtin.set_fact:
     var_piper_tts_voice_marker_specs: []
 
-- name: "[archlinux] Setup ai tools: build piper tts voice marker specs"
+- name: "[{{ user_os }}] Setup ai tools: build piper tts voice marker specs"
   ansible.builtin.set_fact:
     var_piper_tts_voice_marker_specs: "{{ var_piper_tts_voice_marker_specs + [var_piper_tts_voice_marker_spec] }}"
   vars:
@@ -45,7 +45,7 @@
       item: "{{ item }}"
   loop: "{{ piper_tts_setup.voices }}"
 
-- name: "[archlinux] Setup ai tools: stat piper tts voice markers"
+- name: "[{{ user_os }}] Setup ai tools: stat piper tts voice markers"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check-many
@@ -53,21 +53,21 @@
     dotfiles_marker_register: var_piper_tts_voice_markers
     dotfiles_marker_items: "{{ var_piper_tts_voice_marker_specs }}"
 
-- name: "[archlinux] Setup ai tools: remove stale piper tts voice model before refresh"
+- name: "[{{ user_os }}] Setup ai tools: remove stale piper tts voice model before refresh"
   ansible.builtin.file:
     path: "{{ piper_tts_setup.voice_dir }}/{{ item.item }}.onnx"
     state: absent
   loop: "{{ var_piper_tts_voice_markers.results }}"
   when: not item.stat.exists
 
-- name: "[archlinux] Setup ai tools: remove stale piper tts voice metadata before refresh"
+- name: "[{{ user_os }}] Setup ai tools: remove stale piper tts voice metadata before refresh"
   ansible.builtin.file:
     path: "{{ piper_tts_setup.voice_dir }}/{{ item.item }}.onnx.json"
     state: absent
   loop: "{{ var_piper_tts_voice_markers.results }}"
   when: not item.stat.exists
 
-- name: "[archlinux] Setup ai tools: download piper tts voices"
+- name: "[{{ user_os }}] Setup ai tools: download piper tts voices"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -86,7 +86,7 @@
   when: not item.stat.exists
   timeout: 0
 
-- name: "[archlinux] Setup ai tools: record piper tts voice markers"
+- name: "[{{ user_os }}] Setup ai tools: record piper tts voice markers"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -96,12 +96,12 @@
   loop: "{{ var_piper_tts_voice_markers.results }}"
   when: not item.stat.exists
 
-- name: "[archlinux] Setup ai tools: stat piper tts user service"
+- name: "[{{ user_os }}] Setup ai tools: stat piper tts user service"
   ansible.builtin.stat:
     path: ~/.config/systemd/user/{{ piper_tts_setup.service_name }}
   register: var_piper_tts_user_service
 
-- name: "[archlinux] Setup ai tools: ensure piper tts user service"
+- name: "[{{ user_os }}] Setup ai tools: ensure piper tts user service"
   ansible.builtin.systemd_service:
     scope: user
     name: "{{ piper_tts_setup.service_name }}"
@@ -110,7 +110,7 @@
     daemon_reload: true
   when: var_piper_tts_user_service.stat.exists
 
-- name: "[archlinux] Setup ai tools: ensure npm packages with diff capture"
+- name: "[{{ user_os }}] Setup ai tools: ensure npm packages with diff capture"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: npm
@@ -121,14 +121,14 @@
     update_diff_npm_node_version: "{{ node_system_default_version }}"
     update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
 
-- name: "[archlinux] Setup ai tools: symlink npm package binaries"
+- name: "[{{ user_os }}] Setup ai tools: symlink npm package binaries"
   ansible.builtin.file:
     state: link
     src: "{{ node_ai_npm_prefix }}/bin/{{ item.1 }}"
     dest: "{{ node_user_bin_dir }}/{{ item.1 }}"
   loop: "{{ node_ai_npm_packages | subelements('bins') }}"
 
-- name: "[archlinux] Setup ai tools: remove postman mcp from global npm prefix"
+- name: "[{{ user_os }}] Setup ai tools: remove postman mcp from global npm prefix"
   community.general.npm:
     name: "@postman/postman-mcp-server"
     global: true
@@ -138,27 +138,27 @@
     ANSIBLE_FIREJAIL_NPM_NODE_VERSION: "{{ node_system_default_version }}"
     ANSIBLE_FIREJAIL_NPM_PREFIX: "{{ node_ai_npm_prefix }}"
 
-- name: "[archlinux] Setup ai tools: remove postman mcp global symlink"
+- name: "[{{ user_os }}] Setup ai tools: remove postman mcp global symlink"
   ansible.builtin.file:
     path: "{{ node_user_bin_dir }}/postman-mcp-server"
     state: absent
 
-- name: "[archlinux] Setup ai tools: remove postman mcp project path"
+- name: "[{{ user_os }}] Setup ai tools: remove postman mcp project path"
   ansible.builtin.file:
     path: "{{ postman_mcp_legacy_project_path }}"
     state: absent
 
-- name: "[archlinux] Setup ai tools: ensure playwright browser cache"
+- name: "[{{ user_os }}] Setup ai tools: ensure playwright browser cache"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/.cache/ms-playwright"
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup ai tools: set playwright package version fact"
+- name: "[{{ user_os }}] Setup ai tools: set playwright package version fact"
   ansible.builtin.set_fact:
     playwright_package_version: "{{ node_ai_npm_packages | selectattr('name', 'equalto', 'playwright') | map(attribute='version') | first }}"
 
-- name: "[archlinux] Setup ai tools: stat playwright browser marker"
+- name: "[{{ user_os }}] Setup ai tools: stat playwright browser marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -166,7 +166,7 @@
     dotfiles_marker_name: "playwright-browsers-{{ playwright_package_version }}"
     dotfiles_marker_register: var_playwright_browser_marker
 
-- name: "[archlinux] Setup ai tools: execute playwright install"
+- name: "[{{ user_os }}] Setup ai tools: execute playwright install"
   ansible.builtin.command:
     argv:
       - "{{ node_firejail_executable }}"
@@ -181,7 +181,7 @@
       {{ ansible_facts.env.HOME }}/.cache/ms-playwright
   when: not var_playwright_browser_marker.stat.exists
 
-- name: "[archlinux] Setup ai tools: record playwright browser marker"
+- name: "[{{ user_os }}] Setup ai tools: record playwright browser marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -190,7 +190,7 @@
     dotfiles_marker_content: "{{ playwright_package_version }}\n"
   when: not var_playwright_browser_marker.stat.exists
 
-- name: "[archlinux] Setup ai tools: clone reaper mcp"
+- name: "[{{ user_os }}] Setup ai tools: clone reaper mcp"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: git
@@ -200,7 +200,7 @@
     update_diff_git_dest: "{{ reaper_mcp_server_setup.repo_path }}"
     update_diff_git_version: main
 
-- name: "[archlinux] Setup ai tools: ensure reaper-mcp-server"
+- name: "[{{ user_os }}] Setup ai tools: ensure reaper-mcp-server"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -215,7 +215,7 @@
     creates: "{{ reaper_mcp_server_setup.repo_path }}/.venv/bin/activate"
     chdir: "{{ reaper_mcp_server_setup.repo_path }}"
 
-- name: "[archlinux] Setup ai tools: install reaper-mcp-server"
+- name: "[{{ user_os }}] Setup ai tools: install reaper-mcp-server"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -232,7 +232,7 @@
     chdir: "{{ reaper_mcp_server_setup.repo_path }}"
   changed_when: true
 
-- name: "[archlinux] Setup ai tools: register figma api key"
+- name: "[{{ user_os }}] Setup ai tools: register figma api key"
   ansible.builtin.command: kwallet-query --folder {{ folder }} --read-password {{ passkey }} {{ wallet }}
   changed_when: false
   register: mcp_server_figma_key
@@ -243,31 +243,31 @@
     passkey: "{{ figma_mcp_server_setup.keyrings.passkey }}"
     wallet: "{{ figma_mcp_server_setup.keyrings.wallet }}"
 
-- name: "[archlinux] Setup ai tools: create dest folder"
+- name: "[{{ user_os }}] Setup ai tools: create dest folder"
   ansible.builtin.file:
     path: ~/.config/mcphub
     state: directory
     mode: "744"
 
-- name: "[archlinux] Setup ai tools: generate servers.json"
+- name: "[{{ user_os }}] Setup ai tools: generate servers.json"
   ansible.builtin.template:
     src: mcphub_servers.json
     dest: ~/.config/mcphub/servers.json
     mode: "644"
 
-- name: "[archlinux] Setup ai tools: generate MCPHub client config"
+- name: "[{{ user_os }}] Setup ai tools: generate MCPHub client config"
   ansible.builtin.template:
     src: mcphub_client_config.json.j2
     dest: ~/.config/mcphub/client.json
     mode: "644"
 
-- name: "[archlinux] Setup ai tools: install MCPHub runner"
+- name: "[{{ user_os }}] Setup ai tools: install MCPHub runner"
   ansible.builtin.template:
     src: mcphub-run.j2
     dest: "{{ node_user_bin_dir }}/mcphub-run"
     mode: "755"
 
-- name: "[archlinux] Setup ai tools: install MCP-aware agent launchers"
+- name: "[{{ user_os }}] Setup ai tools: install MCP-aware agent launchers"
   ansible.builtin.template:
     src: "{{ item.src }}"
     dest: "{{ node_user_bin_dir }}/{{ item.dest }}"
@@ -282,42 +282,42 @@
     - src: opencode-mcp.j2
       dest: opencode-mcp
 
-- name: "[archlinux] Setup ai tools: load mcphub servers.json"
+- name: "[{{ user_os }}] Setup ai tools: load mcphub servers.json"
   ansible.builtin.set_fact:
     mcphub_servers_json: "{{ lookup('file', '~/.config/mcphub/servers.json') | from_json }}"
 
-- name: "[archlinux] Setup ai tools: reset active mcphub server map"
+- name: "[{{ user_os }}] Setup ai tools: reset active mcphub server map"
   ansible.builtin.set_fact:
     mcphub_active_servers: {}
 
-- name: "[archlinux] Setup ai tools: collect active mcphub servers"
+- name: "[{{ user_os }}] Setup ai tools: collect active mcphub servers"
   ansible.builtin.set_fact:
     mcphub_active_servers: "{{ mcphub_active_servers | combine({item.key: item.value | dict2items | rejectattr('key', 'equalto', 'disabled') | items2dict}) }}"
   loop: "{{ mcphub_servers_json.mcpServers | dict2items }}"
   when: not (item.value.disabled | default(false) | bool)
 
-- name: "[archlinux] Setup ai tools: build active mcphub config"
+- name: "[{{ user_os }}] Setup ai tools: build active mcphub config"
   ansible.builtin.set_fact:
     mcphub_active_servers_json: "{{ mcphub_servers_json | combine({'mcpServers': mcphub_active_servers}) }}"
 
-- name: "[archlinux] Setup ai tools: stat gemini settings"
+- name: "[{{ user_os }}] Setup ai tools: stat gemini settings"
   ansible.builtin.stat:
     path: ~/.gemini/settings.json
   register: var_stat_gemini_settings
 
-- name: "[archlinux] Setup ai tools: get gemini settings file"
+- name: "[{{ user_os }}] Setup ai tools: get gemini settings file"
   ansible.builtin.set_fact:
     gemini_settings_json: "{{ lookup('file', '~/.gemini/settings.json') | default({}) | from_json }}"
   when: var_stat_gemini_settings.stat.exists
 
-- name: "[archlinux] Setup ai tools: combine gemini settings with mcphub servers"
+- name: "[{{ user_os }}] Setup ai tools: combine gemini settings with mcphub servers"
   ansible.builtin.set_fact:
     gemini_settings_json: "{{ gemini_settings_json | combine(mcphub_active_servers_json) }}"
   when:
     - var_stat_gemini_settings.stat.exists
     - gemini_settings_json.values() | length != 0
 
-- name: "[archlinux] Setup ai tools: override gemini settings file"
+- name: "[{{ user_os }}] Setup ai tools: override gemini settings file"
   ansible.builtin.copy:
     dest: ~/.gemini/settings.json
     content: "{{ gemini_settings_json }}"
@@ -326,37 +326,37 @@
     - var_stat_gemini_settings.stat.exists
     - gemini_settings_json.values() | length != 0
 
-- name: "[archlinux] Setup ai tools: stat claude settings"
+- name: "[{{ user_os }}] Setup ai tools: stat claude settings"
   ansible.builtin.stat:
     path: ~/.claude.json
   register: var_stat_claude_settings
 
-- name: "[archlinux] Setup ai tools: get claude settings file"
+- name: "[{{ user_os }}] Setup ai tools: get claude settings file"
   ansible.builtin.set_fact:
     claude_settings_json: "{{ lookup('file', '~/.claude.json') | default({}) | from_json }}"
   when: var_stat_claude_settings.stat.exists
 
-- name: "[archlinux] Setup ai tools: remove direct MCP servers from claude settings"
+- name: "[{{ user_os }}] Setup ai tools: remove direct MCP servers from claude settings"
   ansible.builtin.set_fact:
     claude_settings_json: "{{ claude_settings_json | dict2items | rejectattr('key', 'equalto', 'mcpServers') | items2dict }}"
   when:
     - var_stat_claude_settings.stat.exists
     - claude_settings_json.values() | length != 0
 
-- name: "[archlinux] Setup ai tools: override claude settings file"
+- name: "[{{ user_os }}] Setup ai tools: override claude settings file"
   ansible.builtin.copy:
     dest: ~/.claude.json
     content: "{{ claude_settings_json | to_nice_json }}\n"
     mode: "644"
   when: var_stat_claude_settings.stat.exists
 
-- name: "[archlinux] Setup ai tools: ensure claude config folder"
+- name: "[{{ user_os }}] Setup ai tools: ensure claude config folder"
   ansible.builtin.file:
     path: ~/.claude
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup ai tools: ensure agent sandbox state directories"
+- name: "[{{ user_os }}] Setup ai tools: ensure agent sandbox state directories"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -379,40 +379,40 @@
     - "{{ ansible_facts.env.HOME }}/.local/state/mcp-hub"
     - "{{ ansible_facts.env.HOME }}/.local/share/mcp-hub"
 
-- name: "[archlinux] Setup ai tools: stat claude global settings"
+- name: "[{{ user_os }}] Setup ai tools: stat claude global settings"
   ansible.builtin.stat:
     path: ~/.claude/settings.json
   register: var_stat_claude_global_settings
 
-- name: "[archlinux] Setup ai tools: get claude global settings file"
+- name: "[{{ user_os }}] Setup ai tools: get claude global settings file"
   ansible.builtin.set_fact:
     claude_global_settings_json: "{{ lookup('file', '~/.claude/settings.json') | default({}) | from_json }}"
   when: var_stat_claude_global_settings.stat.exists
 
-- name: "[archlinux] Setup ai tools: initialize claude global settings"
+- name: "[{{ user_os }}] Setup ai tools: initialize claude global settings"
   ansible.builtin.set_fact:
     claude_global_settings_json: {}
   when: not var_stat_claude_global_settings.stat.exists
 
-- name: "[archlinux] Setup ai tools: force claude global settings"
+- name: "[{{ user_os }}] Setup ai tools: force claude global settings"
   ansible.builtin.set_fact:
     claude_global_settings_json: "{{ claude_global_settings_json | combine(claude_global_settings_config) }}"
   when: claude_global_settings_config | default({}) | length != 0
 
-- name: "[archlinux] Setup ai tools: override claude global settings file"
+- name: "[{{ user_os }}] Setup ai tools: override claude global settings file"
   ansible.builtin.copy:
     dest: ~/.claude/settings.json
     content: "{{ claude_global_settings_json | to_nice_json }}\n"
     mode: "644"
   when: claude_global_settings_json.values() | length != 0
 
-- name: "[archlinux] Setup ai tools: create codex config folder"
+- name: "[{{ user_os }}] Setup ai tools: create codex config folder"
   ansible.builtin.file:
     path: ~/.codex
     state: directory
     mode: "744"
 
-- name: "[archlinux] Setup ai tools: remove direct codex mcp_servers from config.toml"
+- name: "[{{ user_os }}] Setup ai tools: remove direct codex mcp_servers from config.toml"
   ansible.builtin.blockinfile:
     path: ~/.codex/config.toml
     create: true
@@ -420,31 +420,31 @@
     marker: "# {mark} ANSIBLE MANAGED MCP SERVERS (mcphub -> codex)"
     state: absent
 
-- name: "[archlinux] Setup ai tools: write codex MCPHub profile"
+- name: "[{{ user_os }}] Setup ai tools: write codex MCPHub profile"
   ansible.builtin.template:
     src: codex_mcphub_profile.toml.j2
     dest: ~/.codex/mcphub.config.toml
     mode: "644"
 
-- name: "[archlinux] Setup ai tools: write opencode MCPHub config"
+- name: "[{{ user_os }}] Setup ai tools: write opencode MCPHub config"
   ansible.builtin.template:
     src: opencode_mcphub_config.json.j2
     dest: ~/.config/opencode/mcphub.json
     mode: "644"
 
-- name: "[archlinux] Setup ai tools: write opencode TUI config"
+- name: "[{{ user_os }}] Setup ai tools: write opencode TUI config"
   ansible.builtin.template:
     src: opencode_tui_config.json.j2
     dest: ~/.config/opencode/tui.json
     mode: "644"
 
-- name: "[archlinux] Setup ai tools: write opencode global config"
+- name: "[{{ user_os }}] Setup ai tools: write opencode global config"
   ansible.builtin.template:
     src: opencode_config.jsonc.j2
     dest: ~/.config/opencode/opencode.jsonc
     mode: "644"
 
-- name: "[archlinux] Setup ai tools: write opencode dotfiles system theme"
+- name: "[{{ user_os }}] Setup ai tools: write opencode dotfiles system theme"
   ansible.builtin.template:
     src: opencode_dotfiles_system_theme.json.j2
     dest: ~/.config/opencode/themes/dotfiles-system.json
@@ -455,7 +455,7 @@
 # all root-level keys to precede any table header, and Codex writes its own root
 # keys (model, ...) at the top of the file, so the `default_permissions` key is
 # injected at BOF while the profile table is appended at EOF.
-- name: "[archlinux] Setup ai tools: select codex default permissions profile in config.toml"
+- name: "[{{ user_os }}] Setup ai tools: select codex default permissions profile in config.toml"
   ansible.builtin.blockinfile:
     path: ~/.codex/config.toml
     create: true
@@ -465,7 +465,7 @@
     block: |
       default_permissions = "workspace-all-unix-sockets"
 
-- name: "[archlinux] Setup ai tools: write codex workspace network permissions profile into config.toml"
+- name: "[{{ user_os }}] Setup ai tools: write codex workspace network permissions profile into config.toml"
   ansible.builtin.blockinfile:
     path: ~/.codex/config.toml
     create: true

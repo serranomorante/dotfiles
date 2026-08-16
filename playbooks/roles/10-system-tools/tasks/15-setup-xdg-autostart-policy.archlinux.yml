@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] XDG autostart policy: ensure user generator mask directory"
+- name: "[{{ user_os }}] XDG autostart policy: ensure user generator mask directory"
   become: true
   ansible.builtin.file:
     path: /etc/systemd/user-generators
@@ -8,7 +8,7 @@
     group: root
     mode: "755"
 
-- name: "[archlinux] XDG autostart policy: mask systemd XDG autostart generator"
+- name: "[{{ user_os }}] XDG autostart policy: mask systemd XDG autostart generator"
   become: true
   ansible.builtin.file:
     src: /dev/null
@@ -19,7 +19,7 @@
     group: root
   notify: "10-system-tools : handler_reload_user_systemd"
 
-- name: "[archlinux] XDG autostart policy: remove stale user target mask"
+- name: "[{{ user_os }}] XDG autostart policy: remove stale user target mask"
   ansible.builtin.file:
     path: ~/.config/systemd/user/xdg-desktop-autostart.target
     state: absent

@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup audio tools: ensure no package conflicts"
+- name: "[{{ user_os }}] Setup audio tools: ensure no package conflicts"
   become: true
   ansible.builtin.package:
     state: absent
@@ -7,32 +7,32 @@
       - plasma-pa
       - pulseaudio
 
-- name: "[archlinux] Setup audio tools: install plexamp"
+- name: "[{{ user_os }}] Setup audio tools: install plexamp"
   community.general.flatpak:
     name: com.plexamp.Plexamp
     state: latest
   ignore_errors: true
 
-- name: "[archlinux] Setup audio tools: check plexamp desktop file"
+- name: "[{{ user_os }}] Setup audio tools: check plexamp desktop file"
   ansible.builtin.stat:
     path: /var/lib/flatpak/exports/share/applications/com.plexamp.Plexamp.desktop
   register: var_plexamp_desktop_file
 
-- name: "[archlinux] Setup audio tools: copy plexamp desktop file to user directory"
+- name: "[{{ user_os }}] Setup audio tools: copy plexamp desktop file to user directory"
   ansible.builtin.copy:
     src: /var/lib/flatpak/exports/share/applications/com.plexamp.Plexamp.desktop
     dest: ~/.local/share/applications/com.plexamp.Plexamp.desktop
     mode: "644"
   when: var_plexamp_desktop_file.stat.exists
 
-- name: "[archlinux] Setup audio tools: clean plexamp exec line"
+- name: "[{{ user_os }}] Setup audio tools: clean plexamp exec line"
   ansible.builtin.lineinfile:
     dest: ~/.local/share/applications/com.plexamp.Plexamp.desktop
     regexp: "^Exec=.*"
     state: absent
   when: var_plexamp_desktop_file.stat.exists
 
-- name: "[archlinux] Setup audio tools: ensure plexamp resource-limited desktop"
+- name: "[{{ user_os }}] Setup audio tools: ensure plexamp resource-limited desktop"
   ansible.builtin.blockinfile:
     dest: ~/.local/share/applications/com.plexamp.Plexamp.desktop
     marker: "# {mark} ANSIBLE MANAGED BLOCK"
@@ -42,14 +42,14 @@
   when: var_plexamp_desktop_file.stat.exists
   notify: handler_update_desktop_database
 
-- name: "[archlinux] Setup audio tools: ensure local AUR packages"
+- name: "[{{ user_os }}] Setup audio tools: ensure local AUR packages"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages:
       - patchance-git
       - nerd-dictation-git
 
-- name: "[archlinux] Setup audio tools: remove conflicting packages"
+- name: "[{{ user_os }}] Setup audio tools: remove conflicting packages"
   become: true
   ansible.builtin.package:
     force: true
@@ -58,7 +58,7 @@
       - jack
       - jack2
 
-- name: "[archlinux] Setup audio tools: ensure packages"
+- name: "[{{ user_os }}] Setup audio tools: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -88,7 +88,7 @@
       - reaper
   notify: handler_ensure_rtirq_service
 
-- name: "[archlinux] Setup audio tools: mask global ALSA state services"
+- name: "[{{ user_os }}] Setup audio tools: mask global ALSA state services"
   become: true
   ansible.builtin.systemd_service:
     name: "{{ item }}"
@@ -98,13 +98,13 @@
     - alsa-state.service
     - alsa-restore.service
 
-- name: "[archlinux] Setup audio tools: remove global ALSA state file"
+- name: "[{{ user_os }}] Setup audio tools: remove global ALSA state file"
   become: true
   ansible.builtin.file:
     path: /var/lib/alsa/asound.state
     state: absent
 
-- name: "[archlinux] Setup audio tools: prioritize USB IRQ handlers"
+- name: "[{{ user_os }}] Setup audio tools: prioritize USB IRQ handlers"
   become: true
   ansible.builtin.lineinfile:
     path: /etc/rtirq.conf
@@ -112,7 +112,7 @@
     line: 'RTIRQ_NAME_LIST="usb snd i8042"'
   notify: handler_restart_rtirq_service
 
-- name: "[archlinux] Setup audio tools: ensure STT Vosk model directories"
+- name: "[{{ user_os }}] Setup audio tools: ensure STT Vosk model directories"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -126,7 +126,7 @@
       ) | unique
     }}
 
-- name: "[archlinux] Setup audio tools: download STT Vosk model"
+- name: "[{{ user_os }}] Setup audio tools: download STT Vosk model"
   ansible.builtin.get_url:
     url: "{{ item.url }}"
     dest: "{{ item.archive_path | dirname }}/{{ item.url | basename | regex_replace('\\.zip$', '') }}-{{ item.url | hash('sha256') }}.zip"
@@ -135,11 +135,11 @@
     timeout: 300
   loop: "{{ arch_stt_vosk_models }}"
 
-- name: "[archlinux] Setup audio tools: reset STT Vosk model marker specs"
+- name: "[{{ user_os }}] Setup audio tools: reset STT Vosk model marker specs"
   ansible.builtin.set_fact:
     var_arch_stt_vosk_model_marker_specs: []
 
-- name: "[archlinux] Setup audio tools: build STT Vosk model marker specs"
+- name: "[{{ user_os }}] Setup audio tools: build STT Vosk model marker specs"
   ansible.builtin.set_fact:
     var_arch_stt_vosk_model_marker_specs: "{{ var_arch_stt_vosk_model_marker_specs + [var_arch_stt_vosk_model_marker_spec] }}"
   vars:
@@ -148,7 +148,7 @@
       item: "{{ item }}"
   loop: "{{ arch_stt_vosk_models }}"
 
-- name: "[archlinux] Setup audio tools: stat STT Vosk model markers"
+- name: "[{{ user_os }}] Setup audio tools: stat STT Vosk model markers"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check-many
@@ -156,7 +156,7 @@
     dotfiles_marker_register: var_arch_stt_vosk_model_markers
     dotfiles_marker_items: "{{ var_arch_stt_vosk_model_marker_specs }}"
 
-- name: "[archlinux] Setup audio tools: unpack STT Vosk model"
+- name: "[{{ user_os }}] Setup audio tools: unpack STT Vosk model"
   ansible.builtin.unarchive:
     src: "{{ item.item.archive_path | dirname }}/{{ item.item.url | basename | regex_replace('\\.zip$', '') }}-{{ item.item.url | hash('sha256') }}.zip"
     dest: "{{ item.item.parent_dir }}"
@@ -164,7 +164,7 @@
   loop: "{{ var_arch_stt_vosk_model_markers.results }}"
   when: not item.stat.exists
 
-- name: "[archlinux] Setup audio tools: record STT Vosk model marker"
+- name: "[{{ user_os }}] Setup audio tools: record STT Vosk model marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -174,7 +174,7 @@
   loop: "{{ var_arch_stt_vosk_model_markers.results }}"
   when: not item.stat.exists
 
-- name: "[archlinux] Setup audio tools: setup reaper-linux.desktop file"
+- name: "[{{ user_os }}] Setup audio tools: setup reaper-linux.desktop file"
   ansible.builtin.template:
     src: "{{ item }}"
     dest: ~/.local/share/applications/
@@ -184,25 +184,25 @@
     - reaper-linux-firejail.desktop
   notify: handler_update_desktop_database
 
-- name: "[archlinux] Setup audio tools: setup launch-reaper-linux file"
+- name: "[{{ user_os }}] Setup audio tools: setup launch-reaper-linux file"
   ansible.builtin.template:
     src: launch-reaper-linux
     dest: ~/.local/bin/launch-reaper-linux
     mode: "755"
 
-- name: "[archlinux] Setup audio tools: ensure dotfiles config directory"
+- name: "[{{ user_os }}] Setup audio tools: ensure dotfiles config directory"
   ansible.builtin.file:
     path: ~/.config/dotfiles
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup audio tools: setup audio latency defaults"
+- name: "[{{ user_os }}] Setup audio tools: setup audio latency defaults"
   ansible.builtin.template:
     src: audio-latency.defaults.env
     dest: ~/.config/dotfiles/audio-latency.defaults.env
     mode: "644"
 
-- name: "[archlinux] Setup audio tools: ensure user services"
+- name: "[{{ user_os }}] Setup audio tools: ensure user services"
   ansible.builtin.systemd_service:
     scope: user
     name: "{{ item.name }}"
@@ -213,12 +213,12 @@
     - { name: pipewire-pulse.socket, enabled: true, masked: false }
     - { name: wireplumber.service, enabled: true, masked: false }
 
-- name: "[archlinux] Setup audio tools: remove legacy Scarlett monitoring stow enablement"
+- name: "[{{ user_os }}] Setup audio tools: remove legacy Scarlett monitoring stow enablement"
   ansible.builtin.file:
     path: ~/.config/systemd/user/default.target.wants/configure-scarlett-monitoring.service
     state: absent
 
-- name: "[archlinux] Setup audio tools: ensure Scarlett monitoring service"
+- name: "[{{ user_os }}] Setup audio tools: ensure Scarlett monitoring service"
   ansible.builtin.systemd_service:
     scope: user
     name: configure-scarlett-monitoring.service
@@ -227,12 +227,12 @@
     state: started
     daemon_reload: true
 
-- name: "[archlinux] Setup audio tools: create pipewire group"
+- name: "[{{ user_os }}] Setup audio tools: create pipewire group"
   become: true
   ansible.builtin.group:
     name: pipewire
 
-- name: "[archlinux] Setup audio tools: add user to realtime and audio groups"
+- name: "[{{ user_os }}] Setup audio tools: add user to realtime and audio groups"
   become: true
   ansible.builtin.user:
     append: true
@@ -242,13 +242,13 @@
       - pipewire
     name: "{{ ansible_facts.env.USER }}"
 
-- name: "[archlinux] Setup audio tools: ensure path"
+- name: "[{{ user_os }}] Setup audio tools: ensure path"
   ansible.builtin.file:
     path: /etc/sysctl.d/
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup audio tools: max user freq"
+- name: "[{{ user_os }}] Setup audio tools: max user freq"
   # https://wiki.archlinux.org/title/Professional_audio#Optimizing_system_configuration
   become: true
   ansible.builtin.command: "{{ item }}"
@@ -259,34 +259,34 @@
     - setpci -v -d *:* latency_timer=b0
     - setpci -v -s 06:00.6 latency_timer=ff
 
-- name: "[archlinux] Setup audio tools: setup swappiness"
+- name: "[{{ user_os }}] Setup audio tools: setup swappiness"
   become: true
   ansible.builtin.copy:
     src: 90-swappiness.conf
     dest: /etc/sysctl.d/90-swappiness.conf
     mode: "644"
 
-- name: "[archlinux] Setup audio tools: setup max user watches"
+- name: "[{{ user_os }}] Setup audio tools: setup max user watches"
   become: true
   ansible.builtin.copy:
     src: 90-max_user_watches.conf
     dest: /etc/sysctl.d/90-max_user_watches.conf
     mode: "644"
 
-- name: "[archlinux] Setup audio tools: enable threadirqs"
+- name: "[{{ user_os }}] Setup audio tools: enable threadirqs"
   become: true
   ansible.builtin.copy:
     src: audio.conf
     dest: /etc/cmdline.d/audio.conf
     mode: "644"
 
-- name: "[archlinux] Setup audio tools: stat cpupower config file"
+- name: "[{{ user_os }}] Setup audio tools: stat cpupower config file"
   become: true
   ansible.builtin.stat:
     path: /etc/default/cpupower-service.conf
   register: var_cpupower
 
-- name: "[archlinux] Setup audio tools: check cpupower idle governor support"
+- name: "[{{ user_os }}] Setup audio tools: check cpupower idle governor support"
   # Idle/default governor applied at boot. REAPER raises this to 'performance'
   # on demand via cpu-governor-boost.service (see tasks below).
   ansible.builtin.command:
@@ -299,7 +299,7 @@
   changed_when: false
   failed_when: false
 
-- name: "[archlinux] Setup audio tools: governor schedutil"
+- name: "[{{ user_os }}] Setup audio tools: governor schedutil"
   become: true
   ansible.builtin.lineinfile:
     path: "{{ var_cpupower.stat.path }}"
@@ -309,7 +309,7 @@
     - var_cpupower.stat.exists
     - var_cpupower_idle_governor.rc == 0
 
-- name: "[archlinux] Setup audio tools: ensure cpupower service"
+- name: "[{{ user_os }}] Setup audio tools: ensure cpupower service"
   become: true
   ansible.builtin.systemd_service:
     scope: system
@@ -318,21 +318,21 @@
     masked: false
     state: "{{ (var_cpupower_idle_governor.rc == 0) | ternary('started', 'stopped') }}"
 
-- name: "[archlinux] Setup audio tools: install cpu-governor-boost helper"
+- name: "[{{ user_os }}] Setup audio tools: install cpu-governor-boost helper"
   become: true
   ansible.builtin.copy:
     src: cpu-governor-boost
     dest: /usr/local/bin/cpu-governor-boost
     mode: "755"
 
-- name: "[archlinux] Setup audio tools: install cpu-governor-boost service unit"
+- name: "[{{ user_os }}] Setup audio tools: install cpu-governor-boost service unit"
   become: true
   ansible.builtin.copy:
     src: cpu-governor-boost.service
     dest: /etc/systemd/system/cpu-governor-boost.service
     mode: "644"
 
-- name: "[archlinux] Setup audio tools: ensure cpu-governor-boost service (on-demand only)"
+- name: "[{{ user_os }}] Setup audio tools: ensure cpu-governor-boost service (on-demand only)"
   become: true
   ansible.builtin.systemd_service:
     scope: system
@@ -341,14 +341,14 @@
     masked: false
     daemon_reload: true
 
-- name: "[archlinux] Setup audio tools: allow realtime group to toggle cpu-governor-boost"
+- name: "[{{ user_os }}] Setup audio tools: allow realtime group to toggle cpu-governor-boost"
   become: true
   ansible.builtin.copy:
     src: 49-cpu-governor-boost.rules
     dest: /etc/polkit-1/rules.d/49-cpu-governor-boost.rules
     mode: "644"
 
-- name: "[archlinux] Setup audio tools: ensure system services"
+- name: "[{{ user_os }}] Setup audio tools: ensure system services"
   become: true
   ansible.builtin.systemd_service:
     scope: system

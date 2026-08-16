@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup reading tools: ensure packages"
+- name: "[{{ user_os }}] Setup reading tools: ensure packages"
   become: true
   ansible.builtin.package:
     state: present

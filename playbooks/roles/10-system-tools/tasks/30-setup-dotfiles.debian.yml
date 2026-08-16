@@ -1,11 +1,11 @@
 ---
-- name: "[debian] Dotfiles: register stow exists"
+- name: "[{{ user_os }}] Dotfiles: register stow exists"
   ansible.builtin.command: ~/.local/bin/stow --version
   register: stow_executable
   ignore_errors: true
   changed_when: false
 
-- name: "[debian] Dotfiles: ensure stow folder exists"
+- name: "[{{ user_os }}] Dotfiles: ensure stow folder exists"
   ansible.builtin.file:
     state: directory
     path: "{{ item }}"
@@ -15,35 +15,35 @@
     - ~/data/apps/stow
   when: stow_executable is failed
 
-- name: "[debian] Dotfiles: unzip, unrar, unarchive stow"
+- name: "[{{ user_os }}] Dotfiles: unzip, unrar, unarchive stow"
   ansible.builtin.unarchive:
     src: https://ftp.gnu.org/gnu/stow/stow-{{ debian_stow_version }}.tar.gz
     dest: ~/data/apps/stow
     remote_src: true
   when: stow_executable is failed
 
-- name: "[debian] Dotfiles: configure stow"
+- name: "[{{ user_os }}] Dotfiles: configure stow"
   ansible.builtin.shell: ./configure --prefix="$HOME/.local"
   args:
     chdir: ~/data/apps/stow/stow-{{ debian_stow_version }}
   when: stow_executable is failed
   changed_when: false
 
-- name: "[debian] Dotfiles: build stow"
+- name: "[{{ user_os }}] Dotfiles: build stow"
   ansible.builtin.command: make
   args:
     chdir: ~/data/apps/stow/stow-{{ debian_stow_version }}
   when: stow_executable is failed
   changed_when: false
 
-- name: "[debian] Dotfiles: install stow"
+- name: "[{{ user_os }}] Dotfiles: install stow"
   ansible.builtin.command: make install
   args:
     chdir: ~/data/apps/stow/stow-{{ debian_stow_version }}
   when: stow_executable is failed
   changed_when: false
 
-- name: "[debian] Dotfiles: apply stow"
+- name: "[{{ user_os }}] Dotfiles: apply stow"
   ansible.builtin.command:
     argv:
       - "{{ dotfiles_stow_wrapper_path }}"

@@ -1,10 +1,10 @@
 ---
-- name: "[archlinux] Dotfiles: ensure local AUR packages"
+- name: "[{{ user_os }}] Dotfiles: ensure local AUR packages"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages: downgrade
 
-- name: "[archlinux] Dotfiles: ensure package dependencies"
+- name: "[{{ user_os }}] Dotfiles: ensure package dependencies"
   become: true
   ansible.builtin.package:
     state: present
@@ -14,7 +14,7 @@
       - rsync
       - stow
 
-- name: "[archlinux] Dotfiles: download dotfiles"
+- name: "[{{ user_os }}] Dotfiles: download dotfiles"
   ansible.builtin.git:
     repo: https://github.com/serranomorante/dotfiles.git
     dest: ~/dotfiles
@@ -24,14 +24,14 @@
     version: main
   when: inventory_hostname != 'localhost'
 
-- name: "[archlinux] Dotfiles: stat local private dotfiles"
+- name: "[{{ user_os }}] Dotfiles: stat local private dotfiles"
   delegate_to: localhost
   ansible.builtin.stat:
     path: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/../for-my-eyes-only"
   register: var_arch_local_private_dotfiles
   when: inventory_hostname != 'localhost'
 
-- name: "[archlinux] Dotfiles: ensure remote private dotfiles dir"
+- name: "[{{ user_os }}] Dotfiles: ensure remote private dotfiles dir"
   ansible.builtin.file:
     path: ~/dotfiles/for-my-eyes-only
     state: directory
@@ -40,7 +40,7 @@
     - inventory_hostname != 'localhost'
     - var_arch_local_private_dotfiles.stat.exists
 
-- name: "[archlinux] Dotfiles: sync private dotfiles from controller"
+- name: "[{{ user_os }}] Dotfiles: sync private dotfiles from controller"
   delegate_to: localhost
   ansible.posix.synchronize:
     src: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/../for-my-eyes-only/"
@@ -52,7 +52,7 @@
     - inventory_hostname != 'localhost'
     - var_arch_local_private_dotfiles.stat.exists
 
-- name: "[archlinux] Dotfiles: list problematic regular files"
+- name: "[{{ user_os }}] Dotfiles: list problematic regular files"
   ansible.builtin.command:
     argv:
       - bash
@@ -87,30 +87,30 @@
   register: var_arch_problematic_files
   changed_when: false
 
-- name: "[archlinux] Dotfiles: remove problematic files"
+- name: "[{{ user_os }}] Dotfiles: remove problematic files"
   ansible.builtin.file:
     state: absent
     path: "{{ item }}"
   loop: "{{ var_arch_problematic_files.stdout_lines }}"
 
-- name: "[archlinux] Setup browser tools: setup ktrashrc"
+- name: "[{{ user_os }}] Setup browser tools: setup ktrashrc"
   ansible.builtin.template:
     src: ktrashrc
     dest: ~/.config/
     mode: "644"
 
-- name: "[archlinux] Dotfiles: stat private stow packages"
+- name: "[{{ user_os }}] Dotfiles: stat private stow packages"
   ansible.builtin.stat:
     path: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item }}"
   register: var_arch_private_dotfiles
   loop: "{{ dotfiles_private_stow_packages }}"
 
-- name: "[archlinux] Dotfiles: apply stow public packages"
+- name: "[{{ user_os }}] Dotfiles: apply stow public packages"
   ansible.builtin.command:
     argv: "{{ [dotfiles_stow_wrapper_path, '--recreate'] + dotfiles_public_stow_packages }}"
   changed_when: false
 
-- name: "[archlinux] Dotfiles: apply stow private package"
+- name: "[{{ user_os }}] Dotfiles: apply stow private package"
   ansible.builtin.command:
     argv: "{{ [dotfiles_stow_wrapper_path, '--recreate'] + (var_arch_private_dotfiles.results | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir') | map(attribute='item')
       | list) }}"
@@ -124,7 +124,7 @@
       | length
     ) > 0
 
-- name: "[archlinux] Dotfiles: ensure feh wallpaper service"
+- name: "[{{ user_os }}] Dotfiles: ensure feh wallpaper service"
   ansible.builtin.systemd_service:
     scope: user
     name: feh.service
@@ -133,13 +133,13 @@
     state: started
     daemon_reload: true
 
-- name: "[archlinux] Dotfiles: stat KDE global shortcuts"
+- name: "[{{ user_os }}] Dotfiles: stat KDE global shortcuts"
   ansible.builtin.stat:
     path: ~/dotfiles/utilities/dot-config/kglobalshortcutsrc
     checksum_algorithm: sha256
   register: var_arch_kglobalshortcutsrc
 
-- name: "[archlinux] Dotfiles: record applied KDE global shortcuts checksum"
+- name: "[{{ user_os }}] Dotfiles: record applied KDE global shortcuts checksum"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -150,13 +150,13 @@
       - "10-system-tools : handler_restart_kglobalaccel_service"
   when: var_arch_kglobalshortcutsrc.stat.exists
 
-- name: "[archlinux] Dotfiles: stat Plasma clipboard service"
+- name: "[{{ user_os }}] Dotfiles: stat Plasma clipboard service"
   ansible.builtin.stat:
     path: ~/dotfiles/utilities/dot-config/systemd/user/plasma-clipboard.service
     checksum_algorithm: sha256
   register: var_arch_plasma_clipboard_service
 
-- name: "[archlinux] Dotfiles: stat desktop state monitor files"
+- name: "[{{ user_os }}] Dotfiles: stat desktop state monitor files"
   ansible.builtin.stat:
     path: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item }}"
     checksum_algorithm: sha256
@@ -167,7 +167,7 @@
     - utilities/bin/obs-scene-toggle
     - utilities/dot-config/systemd/user/obs-scene-monitor.service
 
-- name: "[archlinux] Dotfiles: stat pedalboard MIDI action mapper files"
+- name: "[{{ user_os }}] Dotfiles: stat pedalboard MIDI action mapper files"
   ansible.builtin.stat:
     path: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item }}"
     checksum_algorithm: sha256
@@ -184,7 +184,7 @@
     - audio/dot-config/dotfiles/pedalboard-midi-actions.desktop.tsv
     - audio/dot-config/dotfiles/pedalboard-midi-actions.obs-mouseless-setup.tsv
 
-- name: "[archlinux] Dotfiles: ensure Plasma clipboard service"
+- name: "[{{ user_os }}] Dotfiles: ensure Plasma clipboard service"
   ansible.builtin.systemd_service:
     scope: user
     name: plasma-clipboard.service
@@ -193,7 +193,7 @@
     state: started
     daemon_reload: true
 
-- name: "[archlinux] Dotfiles: ensure desktop state monitor"
+- name: "[{{ user_os }}] Dotfiles: ensure desktop state monitor"
   ansible.builtin.systemd_service:
     scope: user
     name: desktop-state-monitor.service
@@ -202,7 +202,7 @@
     state: started
     daemon_reload: true
 
-- name: "[archlinux] Dotfiles: ensure OBS scene monitor"
+- name: "[{{ user_os }}] Dotfiles: ensure OBS scene monitor"
   ansible.builtin.systemd_service:
     scope: user
     name: obs-scene-monitor.service
@@ -211,7 +211,7 @@
     state: started
     daemon_reload: true
 
-- name: "[archlinux] Dotfiles: ensure pedalboard MIDI action mapper"
+- name: "[{{ user_os }}] Dotfiles: ensure pedalboard MIDI action mapper"
   ansible.builtin.systemd_service:
     scope: user
     name: pedalboard-midi-actions@desktop.service
@@ -220,7 +220,7 @@
     state: started
     daemon_reload: true
 
-- name: "[archlinux] Dotfiles: record applied pedalboard MIDI action mapper checksum"
+- name: "[{{ user_os }}] Dotfiles: record applied pedalboard MIDI action mapper checksum"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -230,7 +230,7 @@
     dotfiles_marker_notify:
       - "10-system-tools : handler_restart_pedalboard_midi_actions_service"
 
-- name: "[archlinux] Dotfiles: record applied desktop state monitor checksum"
+- name: "[{{ user_os }}] Dotfiles: record applied desktop state monitor checksum"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -241,7 +241,7 @@
       - "10-system-tools : handler_restart_desktop_state_monitor_service"
       - "10-system-tools : handler_restart_obs_scene_monitor_service"
 
-- name: "[archlinux] Dotfiles: record applied Plasma clipboard service checksum"
+- name: "[{{ user_os }}] Dotfiles: record applied Plasma clipboard service checksum"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -252,7 +252,7 @@
       - "10-system-tools : handler_restart_plasma_clipboard_service"
   when: var_arch_plasma_clipboard_service.stat.exists
 
-- name: "[archlinux] Dotfiles: compile agent session store"
+- name: "[{{ user_os }}] Dotfiles: compile agent session store"
   ansible.builtin.command:
     argv:
       - "{{ ansible_facts.env.HOME }}/bin/agent-session-store"
@@ -260,7 +260,7 @@
   register: var_agent_session_store_compile_cache
   changed_when: "'compiled' in var_agent_session_store_compile_cache.stdout_lines"
 
-- name: "[archlinux] Dotfiles: ensure system health timer"
+- name: "[{{ user_os }}] Dotfiles: ensure system health timer"
   ansible.builtin.systemd_service:
     scope: user
     name: dotfiles-health.timer
@@ -269,7 +269,7 @@
     state: started
     daemon_reload: true
 
-- name: "[archlinux] Dotfiles: compile system spike report generator"
+- name: "[{{ user_os }}] Dotfiles: compile system spike report generator"
   ansible.builtin.shell: |
     set -eu
     tmp=$(mktemp)
@@ -286,7 +286,7 @@
   register: var_dotfiles_spikes_build
   changed_when: "'installed' in var_dotfiles_spikes_build.stdout_lines"
 
-- name: "[archlinux] Dotfiles: compile system spike watcher"
+- name: "[{{ user_os }}] Dotfiles: compile system spike watcher"
   ansible.builtin.shell: |
     set -eu
     tmp=$(mktemp)
@@ -304,7 +304,7 @@
   changed_when: "'installed' in var_system_spike_watch_build.stdout_lines"
   notify: "10-system-tools : handler_restart_system_spike_watch_service"
 
-- name: "[archlinux] Dotfiles: compile system health notifier"
+- name: "[{{ user_os }}] Dotfiles: compile system health notifier"
   ansible.builtin.shell: |
     set -eu
     tmp=$(mktemp)
@@ -322,7 +322,7 @@
   changed_when: "'installed' in var_dotfiles_health_notify_build.stdout_lines"
   notify: "10-system-tools : handler_restart_dotfiles_health_notify_service"
 
-- name: "[archlinux] Dotfiles: compile browser task snapshot receiver"
+- name: "[{{ user_os }}] Dotfiles: compile browser task snapshot receiver"
   ansible.builtin.command:
     argv:
       - "{{ ansible_facts.env.HOME }}/bin/browser-task-snapshotd"
@@ -331,7 +331,7 @@
   changed_when: "'compiled' in var_browser_task_snapshotd_compile_cache.stdout_lines"
   notify: "10-system-tools : handler_restart_browser_task_snapshotd_service"
 
-- name: "[archlinux] Dotfiles: ensure browser task snapshot receiver"
+- name: "[{{ user_os }}] Dotfiles: ensure browser task snapshot receiver"
   ansible.builtin.systemd_service:
     scope: user
     name: browser-task-snapshotd.service
@@ -340,7 +340,7 @@
     state: started
     daemon_reload: true
 
-- name: "[archlinux] Dotfiles: ensure system spike watcher"
+- name: "[{{ user_os }}] Dotfiles: ensure system spike watcher"
   ansible.builtin.systemd_service:
     scope: user
     name: system-spike-watch.service
@@ -349,13 +349,13 @@
     state: started
     daemon_reload: true
 
-- name: "[archlinux] Dotfiles: stat system spike watcher service"
+- name: "[{{ user_os }}] Dotfiles: stat system spike watcher service"
   ansible.builtin.stat:
     path: ~/dotfiles/utilities/dot-config/systemd/user/system-spike-watch.service
     checksum_algorithm: sha256
   register: var_system_spike_watch_service
 
-- name: "[archlinux] Dotfiles: record applied system spike watcher service checksum"
+- name: "[{{ user_os }}] Dotfiles: record applied system spike watcher service checksum"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -366,7 +366,7 @@
       - "10-system-tools : handler_restart_system_spike_watch_service"
   when: var_system_spike_watch_service.stat.exists
 
-- name: "[archlinux] Dotfiles: ensure system spike report timer"
+- name: "[{{ user_os }}] Dotfiles: ensure system spike report timer"
   ansible.builtin.systemd_service:
     scope: user
     name: dotfiles-spikes.timer
@@ -375,13 +375,13 @@
     state: started
     daemon_reload: true
 
-- name: "[archlinux] Dotfiles: stat system health notifier service"
+- name: "[{{ user_os }}] Dotfiles: stat system health notifier service"
   ansible.builtin.stat:
     path: ~/dotfiles/utilities/dot-config/systemd/user/dotfiles-health-notify.service
     checksum_algorithm: sha256
   register: var_dotfiles_health_notify_service
 
-- name: "[archlinux] Dotfiles: disable retired system spike notifier"
+- name: "[{{ user_os }}] Dotfiles: disable retired system spike notifier"
   ansible.builtin.systemd_service:
     scope: user
     name: system-spike-notify.service
@@ -391,12 +391,12 @@
     daemon_reload: true
   failed_when: false
 
-- name: "[archlinux] Dotfiles: remove retired system spike notifier binary"
+- name: "[{{ user_os }}] Dotfiles: remove retired system spike notifier binary"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/bin/system-spike-notify"
     state: absent
 
-- name: "[archlinux] Dotfiles: ensure system health notifier"
+- name: "[{{ user_os }}] Dotfiles: ensure system health notifier"
   ansible.builtin.systemd_service:
     scope: user
     name: dotfiles-health-notify.service
@@ -405,7 +405,7 @@
     state: started
     daemon_reload: true
 
-- name: "[archlinux] Dotfiles: record applied system health notifier checksum"
+- name: "[{{ user_os }}] Dotfiles: record applied system health notifier checksum"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -416,7 +416,7 @@
       - "10-system-tools : handler_restart_dotfiles_health_notify_service"
   when: var_dotfiles_health_notify_service.stat.exists
 
-- name: "[archlinux] Dotfiles: install laptop LAN NetworkManager dispatcher"
+- name: "[{{ user_os }}] Dotfiles: install laptop LAN NetworkManager dispatcher"
   become: true
   ansible.builtin.template:
     src: send-ifconfig-networkmanager-dispatcher

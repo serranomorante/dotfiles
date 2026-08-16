@@ -9,6 +9,7 @@ local HOST_TO_SSHD_CONFIG = {
   phone = "phone",
   phone2 = "phone2",
   macos = "macos",
+  ["localhost,phone2"] = "localhost,phone2",
 }
 
 local function trim(value) return (value:gsub("^%s+", ""):gsub("%s+$", "")) end

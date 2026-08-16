@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup exports: ensure export & index timers"
+- name: "[{{ user_os }}] Setup exports: ensure export & index timers"
   ansible.builtin.systemd_service:
     scope: user
     name: "{{ item }}.timer"
@@ -10,7 +10,7 @@
     - promnesia-index
     - browserexport
 
-- name: "[archlinux] Setup exports: ensure services"
+- name: "[{{ user_os }}] Setup exports: ensure services"
   ansible.builtin.systemd_service:
     scope: user
     name: promnesia.service

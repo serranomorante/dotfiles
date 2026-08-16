@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup last: remove conflicting packages"
+- name: "[{{ user_os }}] Setup last: remove conflicting packages"
   become: true
   ansible.builtin.package:
     force: true

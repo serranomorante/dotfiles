@@ -1,23 +1,23 @@
 ---
-- name: "[archlinux] Compositor: remove packages"
+- name: "[{{ user_os }}] Compositor: remove packages"
   become: true
   ansible.builtin.package:
     name: kwin
     state: absent
     force: true
 
-- name: "[archlinux] Compositor: ensure mask kwin service"
+- name: "[{{ user_os }}] Compositor: ensure mask kwin service"
   ansible.builtin.systemd_service:
     scope: user
     name: plasma-kwin_x11.service
     enabled: false
     masked: true
 
-- name: "[archlinux] Compositor: kwriteconfig6"
+- name: "[{{ user_os }}] Compositor: kwriteconfig6"
   ansible.builtin.command: kwriteconfig6 --file startkderc --group General --key systemdBoot true
   changed_when: false
 
-- name: "[archlinux] Compositor: ensure packages"
+- name: "[{{ user_os }}] Compositor: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -26,7 +26,7 @@
       - wmctrl
   notify: "10-system-tools : handler_ensure_compositor_service"
 
-- name: "[archlinux] Compositor: clone picom shaders"
+- name: "[{{ user_os }}] Compositor: clone picom shaders"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: git
@@ -40,13 +40,13 @@
   loop:
     - repo: https://github.com/ikz87/picom-shaders
 
-- name: "[archlinux] Setup browser tools: setup picom conf"
+- name: "[{{ user_os }}] Setup browser tools: setup picom conf"
   ansible.builtin.template:
     src: picom.conf
     dest: ~/.config/picom/
     mode: "644"
 
-- name: "[archlinux] Compositor: inspect dwm remote commit"
+- name: "[{{ user_os }}] Compositor: inspect dwm remote commit"
   ansible.builtin.command:
     argv:
       - git
@@ -56,11 +56,11 @@
   register: var_dwm_remote_commit
   changed_when: false
 
-- name: "[archlinux] Compositor: set dwm patch marker fact"
+- name: "[{{ user_os }}] Compositor: set dwm patch marker fact"
   ansible.builtin.set_fact:
     dwm_patch_marker: "dwm-{{ var_dwm_remote_commit.stdout.split()[0] }}-patch-stack-v9"
 
-- name: "[archlinux] Compositor: stat dwm patch marker"
+- name: "[{{ user_os }}] Compositor: stat dwm patch marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -68,14 +68,14 @@
     dotfiles_marker_name: "{{ dwm_patch_marker }}"
     dotfiles_marker_register: var_dwm_patch_marker
 
-- name: "[archlinux] Compositor: clean dwm checkout for new remote commit"
+- name: "[{{ user_os }}] Compositor: clean dwm checkout for new remote commit"
   become: true
   ansible.builtin.file:
     path: ~/data/repos/dwm
     state: absent
   when: not var_dwm_patch_marker.stat.exists
 
-- name: "[archlinux] Compositor: clone latest dwm"
+- name: "[{{ user_os }}] Compositor: clone latest dwm"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: git
@@ -88,20 +88,20 @@
   register: var_dwm_clone
   when: not var_dwm_patch_marker.stat.exists
 
-- name: "[archlinux] Compositor: perform sudo make to generate config.h"
+- name: "[{{ user_os }}] Compositor: perform sudo make to generate config.h"
   become: true
   ansible.builtin.command: make
   args:
     chdir: "{{ ansible_facts.env.HOME }}/data/repos/dwm"
     creates: "{{ ansible_facts.env.HOME }}/data/repos/dwm/config.h"
 
-- name: "[archlinux] Compositor: prepare patches folder"
+- name: "[{{ user_os }}] Compositor: prepare patches folder"
   ansible.builtin.file:
     path: ~/data/repos/dwm/patches
     state: directory
     mode: "755"
 
-- name: "[archlinux] Compositor: inspect downloaded dwm patches"
+- name: "[{{ user_os }}] Compositor: inspect downloaded dwm patches"
   ansible.builtin.stat:
     path: ~/data/repos/dwm/patches/{{ item | basename }}
   loop:
@@ -116,7 +116,7 @@
     - https://dwm.suckless.org/patches/canfocusfloating/dwm-canfocusfloating-20210724-b914109.diff
   register: var_dwm_patch_files
 
-- name: "[archlinux] Compositor: download missing dwm patches"
+- name: "[{{ user_os }}] Compositor: download missing dwm patches"
   ansible.builtin.get_url:
     url: "{{ item }}"
     dest: ~/data/repos/dwm/patches/{{ item | basename }}
@@ -126,7 +126,7 @@
     label: "{{ item | basename }}"
     pause: 1
 
-- name: "[archlinux] Compositor: apply dwm patches"
+- name: "[{{ user_os }}] Compositor: apply dwm patches"
   ansible.posix.patch:
     src: "{{ item }}"
     strip: 1
@@ -173,7 +173,7 @@
     - custom.patch
   when: not var_dwm_patch_marker.stat.exists
 
-- name: "[archlinux] Compositor: validate dwm FULLMON rules support"
+- name: "[{{ user_os }}] Compositor: validate dwm FULLMON rules support"
   ansible.builtin.command:
     argv:
       - grep
@@ -183,7 +183,7 @@
   changed_when: false
   when: not var_dwm_patch_marker.stat.exists
 
-- name: "[archlinux] Compositor: record dwm patch marker"
+- name: "[{{ user_os }}] Compositor: record dwm patch marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -192,12 +192,12 @@
     dotfiles_marker_content: "{{ var_dwm_remote_commit.stdout.split()[0] }}:patch-stack-v9\n"
   when: not var_dwm_patch_marker.stat.exists
 
-- name: "[archlinux] Compositor: stat installed dwm"
+- name: "[{{ user_os }}] Compositor: stat installed dwm"
   ansible.builtin.stat:
     path: /usr/local/bin/dwm
   register: var_installed_dwm
 
-- name: "[archlinux] Compositor: install dwm"
+- name: "[{{ user_os }}] Compositor: install dwm"
   become: true
   ansible.builtin.command: make install
   args:
@@ -206,7 +206,7 @@
   changed_when: var_dwm_result.rc == 0
   when: not var_dwm_patch_marker.stat.exists or not var_installed_dwm.stat.exists
 
-- name: "[archlinux] Compositor: ensure dwm service"
+- name: "[{{ user_os }}] Compositor: ensure dwm service"
   ansible.builtin.systemd_service:
     scope: user
     name: plasma-wm.service

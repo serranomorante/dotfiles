@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup HPI - clone packages"
+- name: "[{{ user_os }}] Setup HPI - clone packages"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: git
@@ -13,7 +13,7 @@
     - { repo: https://github.com/karlicoss/open-in-editor }
     - { repo: https://github.com/karlicoss/HPI }
 
-- name: "[archlinux] Setup HPI - ensure packages"
+- name: "[{{ user_os }}] Setup HPI - ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -21,7 +21,7 @@
       - sqlitebrowser
       - rsync
 
-- name: "[archlinux] Setup HPI - ensure virtualenv packages"
+- name: "[{{ user_os }}] Setup HPI - ensure virtualenv packages"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: pip
@@ -56,7 +56,7 @@
       - name: cachew
         version: "{{ pkm_cachew_version }}"
 
-- name: "[archlinux] Setup HPI - stat h setup marker"
+- name: "[{{ user_os }}] Setup HPI - stat h setup marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -65,12 +65,12 @@
     dotfiles_marker_register: h_setup_marker_result
     dotfiles_marker_read: true
 
-- name: "[archlinux] Setup HPI - stat bouncer checkout"
+- name: "[{{ user_os }}] Setup HPI - stat bouncer checkout"
   ansible.builtin.stat:
     path: ~/data/repos/bouncer/.git
   register: h_bouncer_checkout_result
 
-- name: "[archlinux] Setup HPI - set h setup marker facts"
+- name: "[{{ user_os }}] Setup HPI - set h setup marker facts"
   ansible.builtin.set_fact:
     # The marker contract embeds the pinned h and bouncer revisions so a
     # Renovate git-refs bump of either checkout forces a re-clone and re-patch.
@@ -83,7 +83,7 @@
             != ('h:' ~ hypothesis_h_version ~ ':bouncer:' ~ hypothesis_bouncer_version ~ ':h-patches-v2'))
       }}
 
-- name: "[archlinux] Setup HPI - clone h"
+- name: "[{{ user_os }}] Setup HPI - clone h"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: git
@@ -100,38 +100,38 @@
       version: "{{ hypothesis_bouncer_version }}"
   when: h_setup_refresh_required
 
-- name: "[archlinux] Setup HPI - get python version from h repo"
+- name: "[{{ user_os }}] Setup HPI - get python version from h repo"
   ansible.builtin.command: cat .python-version
   register: var_h_python_version
   args:
     chdir: ~/data/repos/h
   changed_when: false
 
-- name: "[archlinux] Setup HPI - get python version from PKM venv"
+- name: "[{{ user_os }}] Setup HPI - get python version from PKM venv"
   ansible.builtin.command: "{{ ansible_facts.env.HOME }}/data/apps/PKM/.venv/bin/python -c \"import sys; print('%d.%d' % (sys.version_info.major, sys.version_info.minor))\""
   register: var_pkm_python_version
   changed_when: false
 
-- name: "[archlinux] Setup HPI - stat hypothesis py file"
+- name: "[{{ user_os }}] Setup HPI - stat hypothesis py file"
   ansible.builtin.stat:
     path: ~/data/apps/PKM/.venv/lib/python{{ var_pkm_python_version.stdout }}/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
   register: var_stat_hypothesis_file
 
-- name: "[archlinux] Setup HPI - ensure hypothesis domain points to local instance"
+- name: "[{{ user_os }}] Setup HPI - ensure hypothesis domain points to local instance"
   ansible.builtin.replace:
     path: ~/data/apps/PKM/.venv/lib/python{{ var_pkm_python_version.stdout }}/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
     regexp: "(domain=)None\\,"
     replace: '\1"hypothesis.local",'
   when: var_stat_hypothesis_file.stat.exists
 
-- name: "[archlinux] Setup HPI - replace https"
+- name: "[{{ user_os }}] Setup HPI - replace https"
   ansible.builtin.replace:
     path: ~/data/apps/PKM/.venv/lib/python{{ var_pkm_python_version.stdout }}/site-packages/hypexport/Hypothesis/hypothesis/hypothesis.py
     regexp: "https"
     replace: "http"
   when: var_stat_hypothesis_file.stat.exists
 
-- name: "[archlinux] Setup HPI - symlink virtualenv packages"
+- name: "[{{ user_os }}] Setup HPI - symlink virtualenv packages"
   ansible.builtin.file:
     src: ~/data/apps/PKM/.venv/bin/{{ item }}
     dest: ~/bin/{{ item }}
@@ -141,7 +141,7 @@
     - promnesia
     - browserexport
 
-- name: "[archlinux] Setup HPI - register open_in_editor MIME handler"
+- name: "[{{ user_os }}] Setup HPI - register open_in_editor MIME handler"
   ansible.builtin.shell: |
     current="$(xdg-mime query default x-scheme-handler/editor 2>/dev/null || true)"
     if [ "$current" != "nvr_nvim_open.desktop" ]; then
@@ -152,13 +152,13 @@
   register: var_register_open_in_editor_mime_handler
   notify: handler_update_desktop_database
 
-- name: "[archlinux] Setup HPI - generate patch tempdir"
+- name: "[{{ user_os }}] Setup HPI - generate patch tempdir"
   ansible.builtin.tempfile:
     state: directory
     suffix: hypothesis
   register: var_hypothesis_tempdir
 
-- name: "[archlinux] Setup HPI - apply vars to patches"
+- name: "[{{ user_os }}] Setup HPI - apply vars to patches"
   ansible.builtin.template:
     src: "{{ item }}"
     dest: "{{ var_hypothesis_tempdir.path }}/{{ item }}"
@@ -166,7 +166,7 @@
   loop:
     - hypothesis_h.patch
 
-- name: "[archlinux] Setup HPI - patch hypothesis h"
+- name: "[{{ user_os }}] Setup HPI - patch hypothesis h"
   ansible.posix.patch:
     src: "{{ item }}"
     basedir: ~/data/repos/h
@@ -176,7 +176,7 @@
     - "{{ var_hypothesis_tempdir.path }}/hypothesis_h.patch"
   when: h_setup_refresh_required
 
-- name: "[archlinux] Setup HPI - ensure authclient find command"
+- name: "[{{ user_os }}] Setup HPI - ensure authclient find command"
   ansible.builtin.blockinfile:
     path: ~/data/repos/h/h/cli/commands/authclient.py
     insertafter: "^    click\\.echo\\(message\\)$"
@@ -214,7 +214,7 @@
           click.echo(f"Client ID: {exists.id}")
   when: h_setup_refresh_required
 
-- name: "[archlinux] Setup HPI - record h setup marker"
+- name: "[{{ user_os }}] Setup HPI - record h setup marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -223,13 +223,13 @@
     dotfiles_marker_content: "{{ h_setup_marker }}\n"
   when: h_setup_refresh_required
 
-- name: "[archlinux] Setup HPI - remove tempdir"
+- name: "[{{ user_os }}] Setup HPI - remove tempdir"
   ansible.builtin.file:
     path: "{{ var_hypothesis_tempdir.path }}"
     state: absent
   when: var_hypothesis_tempdir.path is defined
 
-- name: "[archlinux] Setup HPI - ensure docker config directory"
+- name: "[{{ user_os }}] Setup HPI - ensure docker config directory"
   become: true
   ansible.builtin.file:
     path: /etc/docker
@@ -237,7 +237,7 @@
     mode: "755"
   when: inventory_hostname != 'localhost'
 
-- name: "[archlinux] Setup HPI - configure docker for guest networking"
+- name: "[{{ user_os }}] Setup HPI - configure docker for guest networking"
   become: true
   ansible.builtin.copy:
     dest: /etc/docker/daemon.json
@@ -249,13 +249,13 @@
       }
   when: inventory_hostname != 'localhost'
 
-- name: "[archlinux] Setup HPI - ensure docker service"
+- name: "[{{ user_os }}] Setup HPI - ensure docker service"
   become: true
   ansible.builtin.command: systemctl reset-failed docker.service
   changed_when: false
   failed_when: false
 
-- name: "[archlinux] Setup HPI - start docker service"
+- name: "[{{ user_os }}] Setup HPI - start docker service"
   become: true
   ansible.builtin.systemd_service:
     scope: system
@@ -270,13 +270,13 @@
   until: var_hpi_docker_service is succeeded
   failed_when: false
 
-- name: "[archlinux] Setup HPI - ensure ansible docker config directory"
+- name: "[{{ user_os }}] Setup HPI - ensure ansible docker config directory"
   ansible.builtin.file:
     path: ~/.config/ansible-docker
     state: directory
     mode: "700"
 
-- name: "[archlinux] Setup HPI - configure ansible docker credential helper"
+- name: "[{{ user_os }}] Setup HPI - configure ansible docker credential helper"
   ansible.builtin.copy:
     dest: ~/.config/ansible-docker/config.json
     mode: "600"
@@ -286,18 +286,18 @@
         "credsStore": "hpi-noop"
       }
 
-- name: "[archlinux] Setup HPI - ensure ansible docker credential helper directory"
+- name: "[{{ user_os }}] Setup HPI - ensure ansible docker credential helper directory"
   ansible.builtin.file:
     path: ~/.local/share/ansible-docker-bin
     state: directory
     mode: "700"
 
-- name: "[archlinux] Setup HPI - remove old ansible docker wrapper"
+- name: "[{{ user_os }}] Setup HPI - remove old ansible docker wrapper"
   ansible.builtin.file:
     path: ~/.local/share/ansible-docker-bin/docker
     state: absent
 
-- name: "[archlinux] Setup HPI - configure ansible docker credential helper"
+- name: "[{{ user_os }}] Setup HPI - configure ansible docker credential helper"
   ansible.builtin.copy:
     dest: ~/.local/share/ansible-docker-bin/docker-credential-hpi-noop
     mode: "700"
@@ -323,7 +323,7 @@
           ;;
       esac
 
-- name: "[archlinux] Setup HPI - inspect docker credential config"
+- name: "[{{ user_os }}] Setup HPI - inspect docker credential config"
   ansible.builtin.shell: |
     source "{{ ansible_facts.env.HOME }}/dotfiles/home/lib/session-env.bash"
     export DOCKER_CONFIG="{{ ansible_facts.env.HOME }}/.config/ansible-docker"
@@ -344,7 +344,7 @@
   changed_when: false
   failed_when: hpi_docker_credential_config.rc not in [0, 42]
 
-- name: "[archlinux] Setup HPI - inspect docker credential config in docker group"
+- name: "[{{ user_os }}] Setup HPI - inspect docker credential config in docker group"
   ansible.builtin.shell: |
     newgrp docker -c 'source "{{ ansible_facts.env.HOME }}/dotfiles/home/lib/session-env.bash"
     export DOCKER_CONFIG="{{ ansible_facts.env.HOME }}/.config/ansible-docker"
@@ -366,7 +366,7 @@
   changed_when: false
   failed_when: hpi_docker_group_credential_config.rc not in [0, 42]
 
-- name: "[archlinux] Setup HPI - wait for docker daemon access"
+- name: "[{{ user_os }}] Setup HPI - wait for docker daemon access"
   ansible.builtin.shell: >
     newgrp docker -c "docker info >/dev/null"
   register: var_hpi_docker_info
@@ -376,11 +376,11 @@
   until: var_hpi_docker_info.rc == 0
   failed_when: false
 
-- name: "[archlinux] Setup HPI - set self hosted availability fact"
+- name: "[{{ user_os }}] Setup HPI - set self hosted availability fact"
   ansible.builtin.set_fact:
     hpi_self_hosted_available: "{{ var_hpi_docker_info.rc == 0 }}"
 
-- name: "[archlinux] Setup HPI - register docker dbs network exists"
+- name: "[{{ user_os }}] Setup HPI - register docker dbs network exists"
   # The docker-compose file of the h repo needs this network to exist
   ansible.builtin.shell: >
     set -o pipefail &&
@@ -389,20 +389,20 @@
   changed_when: false
   when: hpi_self_hosted_available
 
-- name: "[archlinux] Setup HPI - create dbs network"
+- name: "[{{ user_os }}] Setup HPI - create dbs network"
   ansible.builtin.command: newgrp docker -c "docker network create dbs"
   changed_when: false
   when:
     - hpi_self_hosted_available
     - docker_network_dbs_exists.stdout == "0"
 
-- name: "[archlinux] Setup HPI - clean dependencies"
+- name: "[{{ user_os }}] Setup HPI - clean dependencies"
   ansible.builtin.file:
     path: ~/data/repos/h/.tox
     state: absent
   when: h_setup_refresh_required
 
-- name: "[archlinux] Setup HPI - ensure h services"
+- name: "[{{ user_os }}] Setup HPI - ensure h services"
   ansible.builtin.command:
     argv:
       - newgrp
@@ -427,7 +427,7 @@
     - "40-PKM : handler_ensure_hypothesis_self_hosted_service"
   when: hpi_self_hosted_available
 
-- name: "[archlinux] Setup HPI - stat h db marker"
+- name: "[{{ user_os }}] Setup HPI - stat h db marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -436,7 +436,7 @@
     dotfiles_marker_register: h_db_marker_result
   when: hpi_self_hosted_available
 
-- name: "[archlinux] Setup HPI - ensure h db"
+- name: "[{{ user_os }}] Setup HPI - ensure h db"
   ansible.builtin.command:
     argv:
       - newgrp
@@ -462,7 +462,7 @@
     - hpi_self_hosted_available
     - h_setup_refresh_required or not (h_db_marker_result.stat.exists | default(false))
 
-- name: "[archlinux] Setup HPI - record h db marker"
+- name: "[{{ user_os }}] Setup HPI - record h db marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -473,7 +473,7 @@
     - hpi_self_hosted_available
     - ensure_h_db_result.rc | default(1) == 0
 
-- name: "[archlinux] Setup HPI - add CHROME_EXTENSION_ID env to bouncer"
+- name: "[{{ user_os }}] Setup HPI - add CHROME_EXTENSION_ID env to bouncer"
   ansible.builtin.template:
     src: hypothesis-bouncer-self-hosted.service
     dest: ~/.config/systemd/user/
@@ -481,7 +481,7 @@
   notify: "40-PKM : handler_ensure_hypothesis_bouncer_self_hosted_service"
   when: hpi_self_hosted_available
 
-- name: "[archlinux] Setup HPI - ensure hypothesis user"
+- name: "[{{ user_os }}] Setup HPI - ensure hypothesis user"
   # These credentials will not be used on production environments
   ansible.builtin.command:
     argv:
@@ -520,7 +520,7 @@
     - "'commands succeeded' not in ensure_hypothesis_user_result.stdout"
   when: hpi_self_hosted_available
 
-- name: "[archlinux] Setup HPI - ensure admin user"
+- name: "[{{ user_os }}] Setup HPI - ensure admin user"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -549,7 +549,7 @@
     FJ_PY_FORWARD_ENV: VIRTUALENV_PIP
   when: hpi_self_hosted_available
 
-- name: "[archlinux] Setup HPI - register authclient exists"
+- name: "[{{ user_os }}] Setup HPI - register authclient exists"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -583,7 +583,7 @@
   changed_when: false
   when: hpi_self_hosted_available
 
-- name: "[archlinux] Setup HPI - create new OAuth client"
+- name: "[{{ user_os }}] Setup HPI - create new OAuth client"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -623,14 +623,14 @@
     - "'Auth client not found' in register_auth_client_exists_result.stdout"
   changed_when: "'commands succeeded' in create_new_oauth_client_result.stdout"
 
-- name: "[archlinux] Setup HPI - set_fact hypothesis client id"
+- name: "[{{ user_os }}] Setup HPI - set_fact hypothesis client id"
   ansible.builtin.set_fact:
     hypothesis_oauth_client_id: "{{ create_new_oauth_client_result.stdout | default(register_auth_client_exists_result.stdout) | regex_search('Client ID: ([\\w-]*)',
       '\\1') | first }}"
     cacheable: true
   when: hpi_self_hosted_available
 
-- name: "[archlinux] Setup HPI: stat hypothesis client marker"
+- name: "[{{ user_os }}] Setup HPI: stat hypothesis client marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -639,7 +639,7 @@
     dotfiles_marker_register: hypothesis_client_marker_result
     dotfiles_marker_read: true
 
-- name: "[archlinux] Setup HPI: set hypothesis client marker facts"
+- name: "[{{ user_os }}] Setup HPI: set hypothesis client marker facts"
   ansible.builtin.set_fact:
     # The marker contract embeds the client version and the local patch/build
     # contract so extension bumps and local fix changes both rebuild the client
@@ -652,7 +652,7 @@
         or ((hypothesis_client_marker_result.content | default('') | b64decode | trim) != ('v' ~ hypothesis_client_version ~ ':' ~ hypothesis_client_contract))
       }}
 
-- name: "[archlinux] Setup HPI: clone hypothesis client"
+- name: "[{{ user_os }}] Setup HPI: clone hypothesis client"
   ansible.builtin.git:
     repo: https://github.com/hypothesis/client
     executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
@@ -664,7 +664,7 @@
   register: hypothesis_client_clone_result
   when: hypothesis_client_refresh_required
 
-- name: "[archlinux] Setup HPI: patch hypothesis client PDF source fixes"
+- name: "[{{ user_os }}] Setup HPI: patch hypothesis client PDF source fixes"
   ansible.posix.patch:
     # Version-agnostic name: the same patch must survive extension version bumps.
     # If the client source drifts so the patch no longer applies, fail softly and
@@ -676,7 +676,7 @@
   failed_when: false
   when: hypothesis_client_refresh_required
 
-- name: "[archlinux] Setup HPI: patch hypothesis client keyboard shortcut defaults"
+- name: "[{{ user_os }}] Setup HPI: patch hypothesis client keyboard shortcut defaults"
   ansible.posix.patch:
     # Default keyboard shortcut for toggling the sidebar must not collide with
     # the promnesia extension shortcuts. Version-agnostic like the PDF fixes
@@ -688,7 +688,7 @@
   failed_when: false
   when: hypothesis_client_refresh_required
 
-- name: "[archlinux] Setup HPI: check hypothesis client PDF fixes applied"
+- name: "[{{ user_os }}] Setup HPI: check hypothesis client PDF fixes applied"
   ansible.builtin.command:
     argv:
       - rg
@@ -700,7 +700,7 @@
   failed_when: false
   when: hypothesis_client_refresh_required
 
-- name: "[archlinux] Setup HPI: check hypothesis client keyboard shortcut patch applied"
+- name: "[{{ user_os }}] Setup HPI: check hypothesis client keyboard shortcut patch applied"
   ansible.builtin.command:
     argv:
       - rg
@@ -712,7 +712,7 @@
   failed_when: false
   when: hypothesis_client_refresh_required
 
-- name: "[archlinux] Setup HPI: check hypothesis client keyboard shortcut RPC forward applied"
+- name: "[{{ user_os }}] Setup HPI: check hypothesis client keyboard shortcut RPC forward applied"
   ansible.builtin.command:
     argv:
       - rg
@@ -724,7 +724,7 @@
   failed_when: false
   when: hypothesis_client_refresh_required
 
-- name: "[archlinux] Setup HPI: set hypothesis client patches state"
+- name: "[{{ user_os }}] Setup HPI: set hypothesis client patches state"
   ansible.builtin.set_fact:
     hypothesis_client_patches_ok: >-
       {{
@@ -736,7 +736,7 @@
       }}
   when: hypothesis_client_refresh_required
 
-- name: "[archlinux] Setup HPI: alert hypothesis client patches missing"
+- name: "[{{ user_os }}] Setup HPI: alert hypothesis client patches missing"
   ansible.builtin.shell: >
     summary={{ 'Arreglos del cliente de Hypothesis faltantes' | quote }};
     body={{ ('El cliente v' ~ hypothesis_client_version
@@ -757,12 +757,12 @@
     - not hypothesis_client_patches_ok | default(false) | bool
     - is_x_display_session | default(false) | bool
 
-- name: "[archlinux] Setup HPI: check hypothesis client dependency install"
+- name: "[{{ user_os }}] Setup HPI: check hypothesis client dependency install"
   ansible.builtin.stat:
     path: ~/data/repos/client/node_modules/@hypothesis/frontend-build/package.json
   register: hypothesis_client_dependency_install_result
 
-- name: "[archlinux] Setup HPI: install hypothesis client dependencies"
+- name: "[{{ user_os }}] Setup HPI: install hypothesis client dependencies"
   ansible.builtin.command:
     argv:
       - "{{ node_firejail_executable }}"
@@ -781,12 +781,12 @@
     - hypothesis_client_refresh_required or not hypothesis_client_dependency_install_result.stat.exists
   changed_when: true
 
-- name: "[archlinux] Setup HPI: check hypothesis client build"
+- name: "[{{ user_os }}] Setup HPI: check hypothesis client build"
   ansible.builtin.stat:
     path: ~/data/repos/client/build/manifest.json
   register: hypothesis_client_build_result
 
-- name: "[archlinux] Setup HPI: build hypothesis client"
+- name: "[{{ user_os }}] Setup HPI: build hypothesis client"
   ansible.builtin.command:
     argv:
       - "{{ node_firejail_executable }}"
@@ -805,18 +805,18 @@
       hypothesis_client_build_result.stat.exists
   changed_when: true
 
-- name: "[archlinux] Setup HPI: ensure hypothesis client dist dir"
+- name: "[{{ user_os }}] Setup HPI: ensure hypothesis client dist dir"
   ansible.builtin.file:
     path: ~/data/repos/client/dist
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup HPI: check hypothesis client tarball"
+- name: "[{{ user_os }}] Setup HPI: check hypothesis client tarball"
   ansible.builtin.stat:
     path: ~/data/repos/client/dist/hypothesis-{{ hypothesis_client_version }}-{{ hypothesis_client_contract }}-local.tgz
   register: hypothesis_client_tarball_result
 
-- name: "[archlinux] Setup HPI: pack hypothesis client tarball"
+- name: "[{{ user_os }}] Setup HPI: pack hypothesis client tarball"
   ansible.builtin.command:
     argv:
       - "{{ node_firejail_executable }}"
@@ -836,7 +836,7 @@
     - hypothesis_client_refresh_required or build_hypothesis_client_result.changed | default(false) or not hypothesis_client_tarball_result.stat.exists
   changed_when: true
 
-- name: "[archlinux] Setup HPI: record hypothesis client marker"
+- name: "[{{ user_os }}] Setup HPI: record hypothesis client marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -847,7 +847,7 @@
     - hypothesis_client_refresh_required
     - hypothesis_client_patches_ok | default(false) | bool
 
-- name: "[archlinux] Setup HPI: stat hypothesis extension marker"
+- name: "[{{ user_os }}] Setup HPI: stat hypothesis extension marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -856,7 +856,7 @@
     dotfiles_marker_register: hypothesis_extension_marker_result
     dotfiles_marker_read: true
 
-- name: "[archlinux] Setup HPI: set hypothesis extension marker facts"
+- name: "[{{ user_os }}] Setup HPI: set hypothesis extension marker facts"
   ansible.builtin.set_fact:
     hypothesis_extension_marker: "v{{ hypothesis_browser_extension_version }}:extension-patches-v1"
     hypothesis_extension_refresh_required: >-
@@ -865,7 +865,7 @@
         or ((hypothesis_extension_marker_result.content | default('') | b64decode | trim) != ('v' ~ hypothesis_browser_extension_version ~ ':extension-patches-v1'))
       }}
 
-- name: "[archlinux] Setup HPI: clone hypothesis browser extension"
+- name: "[{{ user_os }}] Setup HPI: clone hypothesis browser extension"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: git
@@ -880,7 +880,7 @@
   register: hypothesis_extension_clone_result
   when: hypothesis_extension_refresh_required
 
-- name: "[archlinux] Setup HPI: patch hypothesis extension"
+- name: "[{{ user_os }}] Setup HPI: patch hypothesis extension"
   ansible.posix.patch:
     src: ~/dotfiles/assets/patches/chrome_extensions/{{ item }}
     basedir: ~/data/repos/hypothesis-extension
@@ -892,7 +892,7 @@
     - extension_hypothesis_active_by_default.patch
     - extension_hypothesis_skip_playwright_browser_install.patch
 
-- name: "[archlinux] Setup HPI: generate hypothesis extension custom-dev.json"
+- name: "[{{ user_os }}] Setup HPI: generate hypothesis extension custom-dev.json"
   ansible.builtin.copy:
     src: ~/data/repos/hypothesis-extension/settings/chrome-dev.json
     dest: ~/data/repos/hypothesis-extension/settings/custom-dev.json
@@ -900,29 +900,29 @@
   register: hypothesis_extension_custom_settings_result
   notify: handler_ensure_hypothesis_oauth_client_id
 
-- name: "[archlinux] Setup HPI: force handler_ensure_hypothesis_oauth_client_id trigger"
+- name: "[{{ user_os }}] Setup HPI: force handler_ensure_hypothesis_oauth_client_id trigger"
   ansible.builtin.meta: flush_handlers
 
-- name: "[archlinux] Setup HPI: remove old hypothesis client patch resolution"
+- name: "[{{ user_os }}] Setup HPI: remove old hypothesis client patch resolution"
   ansible.builtin.replace:
     path: ~/data/repos/hypothesis-extension/package.json
     regexp: ',\n  "resolutions": \{\n    "hypothesis@\^[^"]+": "patch:[^"]+"\n  \}'
     replace: ""
   register: hypothesis_extension_remove_patch_resolution_result
 
-- name: "[archlinux] Setup HPI: use local hypothesis client tarball in extension"
+- name: "[{{ user_os }}] Setup HPI: use local hypothesis client tarball in extension"
   ansible.builtin.replace:
     path: ~/data/repos/hypothesis-extension/package.json
     regexp: '"hypothesis": "[^"]+"'
     replace: '"hypothesis": "file:../client/dist/hypothesis-{{ hypothesis_client_version }}-{{ hypothesis_client_contract }}-local.tgz"'
   register: hypothesis_extension_local_client_dependency_result
 
-- name: "[archlinux] Setup HPI: check hypothesis extension dependency install"
+- name: "[{{ user_os }}] Setup HPI: check hypothesis extension dependency install"
   ansible.builtin.stat:
     path: ~/data/repos/hypothesis-extension/node_modules/hypothesis/build/manifest.json
   register: hypothesis_extension_dependency_manifest_result
 
-- name: "[archlinux] Setup HPI: install hypothesis extension dependencies"
+- name: "[{{ user_os }}] Setup HPI: install hypothesis extension dependencies"
   ansible.builtin.command:
     argv:
       - "{{ node_firejail_executable }}"
@@ -944,12 +944,12 @@
       hypothesis_extension_dependency_manifest_result.stat.exists
   changed_when: true
 
-- name: "[archlinux] Setup HPI: check hypothesis extension build"
+- name: "[{{ user_os }}] Setup HPI: check hypothesis extension build"
   ansible.builtin.stat:
     path: ~/data/repos/hypothesis-extension/build/manifest.json
   register: hypothesis_extension_build_result
 
-- name: "[archlinux] Setup HPI: prepare hypothesis extension"
+- name: "[{{ user_os }}] Setup HPI: prepare hypothesis extension"
   ansible.builtin.command:
     argv:
       - "{{ node_firejail_executable }}"
@@ -973,7 +973,7 @@
     - "'Nothing to be done' not in prepare_hypothesis_extension_result.stdout"
     - "'Nothing to be done' not in prepare_hypothesis_extension_result.stderr"
 
-- name: "[archlinux] Setup HPI: record hypothesis extension marker"
+- name: "[{{ user_os }}] Setup HPI: record hypothesis extension marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -982,17 +982,17 @@
     dotfiles_marker_content: "{{ hypothesis_extension_marker }}\n"
   when: hypothesis_extension_refresh_required
 
-- name: "[archlinux] Setup HPI: version to extensionator path"
+- name: "[{{ user_os }}] Setup HPI: version to extensionator path"
   ansible.builtin.shell: set -o pipefail && fd 'extensionator' ~/.local/share/gem/ruby -t x -1 | grep -oP "\/\K\d[^/]+" -m 1
   register: var_ruby_version
   changed_when: true
 
-- name: "[archlinux] Setup HPI: check hypothesis crx"
+- name: "[{{ user_os }}] Setup HPI: check hypothesis crx"
   ansible.builtin.stat:
     path: ~/data/repos/hypothesis-extension/build/hypothesis.crx
   register: hypothesis_extension_crx_result
 
-- name: "[archlinux] Setup HPI: build hypothesis external crx"
+- name: "[{{ user_os }}] Setup HPI: build hypothesis external crx"
   # We have to do this because the `manifest.json` file is not on the root of the repo
   # Important: the `*.crx` file has to be at the same level of the `manifest.json` file
   ansible.builtin.shell: >
@@ -1004,7 +1004,7 @@
     - hypothesis_extension_refresh_required or prepare_hypothesis_extension_result.changed | default(false) or not hypothesis_extension_crx_result.stat.exists
   changed_when: true
 
-- name: "[archlinux] Setup HPI: run handlers"
+- name: "[{{ user_os }}] Setup HPI: run handlers"
   ansible.builtin.command: echo
   changed_when: true
   notify: handler_ensure_backup_hypothesis_sql_service

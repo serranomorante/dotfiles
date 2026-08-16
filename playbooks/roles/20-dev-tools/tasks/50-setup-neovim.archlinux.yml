@@ -1,41 +1,41 @@
 ---
-- name: "[archlinux] Neovim: ensure user bin directory"
+- name: "[{{ user_os }}] Neovim: ensure user bin directory"
   ansible.builtin.file:
     path: "{{ node_user_bin_dir }}"
     state: directory
     mode: "755"
 
-- name: "[archlinux] Neovim: ensure firejail profile directory"
+- name: "[{{ user_os }}] Neovim: ensure firejail profile directory"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/.config/firejail"
     state: directory
     mode: "755"
 
-- name: "[archlinux] Neovim: install firejail profile"
+- name: "[{{ user_os }}] Neovim: install firejail profile"
   ansible.builtin.template:
     src: fj-dev-nvim.profile
     dest: "{{ ansible_facts.env.HOME }}/.config/firejail/fj-dev-nvim.profile"
     mode: "644"
 
-- name: "[archlinux] Neovim: install firejail wrapper helper"
+- name: "[{{ user_os }}] Neovim: install firejail wrapper helper"
   ansible.builtin.copy:
     src: firejail-wrapper-common.bash
     dest: "{{ node_user_bin_dir }}/firejail-wrapper-common.bash"
     mode: "755"
 
-- name: "[archlinux] Neovim: install firejail Neovim wrapper"
+- name: "[{{ user_os }}] Neovim: install firejail Neovim wrapper"
   ansible.builtin.copy:
     src: fj-dev-nvim
     dest: "{{ nvim_firejail_executable }}"
     mode: "755"
 
-- name: "[archlinux] Neovim: install firejail profile checker"
+- name: "[{{ user_os }}] Neovim: install firejail profile checker"
   ansible.builtin.copy:
     src: fj-profile-checker
     dest: "{{ node_user_bin_dir }}/fj-profile-checker"
     mode: "755"
 
-- name: "[archlinux] Neovim: remove old firejail dev wrappers"
+- name: "[{{ user_os }}] Neovim: remove old firejail dev wrappers"
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
@@ -46,7 +46,7 @@
     - "{{ node_user_bin_dir }}/fj-dev-python"
     - "{{ node_user_bin_dir }}/fj-dev-nvim-checker"
 
-- name: "[archlinux] Neovim: ensure Neovim - clone"
+- name: "[{{ user_os }}] Neovim: ensure Neovim - clone"
   ansible.builtin.git:
     repo: https://github.com/neovim/neovim
     executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
@@ -56,7 +56,7 @@
     version: "{{ archlinux_neovim_version }}"
   register: var_neovim_repo
 
-- name: "[archlinux] Neovim: ensure neovim build dependencies"
+- name: "[{{ user_os }}] Neovim: ensure neovim build dependencies"
   become: true
   ansible.builtin.package:
     state: present
@@ -65,22 +65,22 @@
       - ninja
       - ccache # recommended here: https://github.com/neovim/neovim/issues/26979#issuecomment-1885240317
 
-- name: "[archlinux] Neovim: check build binary"
+- name: "[{{ user_os }}] Neovim: check build binary"
   ansible.builtin.stat:
     path: "{{ ansible_facts.env.HOME }}/data/repos/neovim/build/bin/nvim"
   register: var_neovim_build_binary
 
-- name: "[archlinux] Neovim: check installed binary"
+- name: "[{{ user_os }}] Neovim: check installed binary"
   ansible.builtin.stat:
     path: "{{ ansible_facts.env.HOME }}/.local/bin/nvim"
   register: var_neovim_installed_binary
 
-- name: "[archlinux] Neovim: check installed runtime"
+- name: "[{{ user_os }}] Neovim: check installed runtime"
   ansible.builtin.stat:
     path: "{{ ansible_facts.env.HOME }}/.local/share/nvim/runtime/filetype.lua"
   register: var_neovim_installed_runtime
 
-- name: "[archlinux] Neovim: check installed revision marker"
+- name: "[{{ user_os }}] Neovim: check installed revision marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -89,7 +89,7 @@
     dotfiles_marker_register: var_neovim_installed_revision_marker
     dotfiles_marker_read: true
 
-- name: "[archlinux] Neovim: decide if build/install is required"
+- name: "[{{ user_os }}] Neovim: decide if build/install is required"
   ansible.builtin.set_fact:
     var_neovim_needs_install: >-
       {{
@@ -101,13 +101,13 @@
         or ((var_neovim_installed_revision_marker.content | default('') | b64decode | trim) != (var_neovim_repo.after | trim))
       }}
 
-- name: "[archlinux] Neovim: remove stale installed runtime"
+- name: "[{{ user_os }}] Neovim: remove stale installed runtime"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/.local/share/nvim/runtime"
     state: absent
   when: var_neovim_needs_install
 
-- name: "[archlinux] Neovim: ensure neovim - build"
+- name: "[{{ user_os }}] Neovim: ensure neovim - build"
   ansible.builtin.shell: >
     make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_INSTALL_PREFIX={{ ansible_facts.env.HOME }}/.local &&
     make install
@@ -120,7 +120,7 @@
   until: var_neovim_build_install is succeeded
   timeout: 0
 
-- name: "[archlinux] Neovim: record installed revision"
+- name: "[{{ user_os }}] Neovim: record installed revision"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record

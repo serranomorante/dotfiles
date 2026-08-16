@@ -5,7 +5,7 @@
       with_first_found:
         - files: 10-setup-desktop.{{ user_os }}.yml
           skip: true
-      when: "user_os in ['archlinux', 'debian', 'otherlinux']"
+      when: "user_os in ['archlinux', 'debian', 'android']"
       loop_control:
         loop_var: task_file
   tags: [setup, "10-10"]
@@ -33,14 +33,14 @@
 - block:
     - name: Setup dotfiles stow wrapper
       ansible.builtin.include_tasks: 30-setup-dotfiles-wrapper.yml
-      when: "user_os in ['archlinux', 'debian', 'otherlinux', 'macosx']"
+      when: "user_os in ['archlinux', 'debian', 'android', 'macosx']"
 
     - name: Setup dotfiles are setup
       ansible.builtin.include_tasks: "{{ task_file }}"
       with_first_found:
         - files: 30-setup-dotfiles.{{ user_os }}.yml
           skip: true
-      when: "user_os in ['archlinux', 'debian', 'otherlinux', 'macosx']"
+      when: "user_os in ['archlinux', 'debian', 'android', 'macosx']"
       loop_control:
         loop_var: task_file
   tags: [setup, "10-30"]
@@ -48,7 +48,7 @@
 - block:
     - name: Setup agent context symlinks
       ansible.builtin.include_tasks: 31-setup-agent-context-links.yml
-      when: "user_os in ['archlinux', 'debian', 'otherlinux', 'macosx']"
+      when: "user_os in ['archlinux', 'debian', 'android', 'macosx']"
   tags: [setup, "10-31"]
 
 - block:
@@ -280,7 +280,7 @@
       with_first_found:
         - files: 180-setup-backup-tools.{{ user_os }}.yml
           skip: true
-      when: "user_os in ['debian', 'archlinux', 'otherlinux']" # debian should be first
+      when: "user_os in ['debian', 'archlinux', 'android']" # debian should be first
       loop_control:
         loop_var: task_file
   tags: ["10-180"]

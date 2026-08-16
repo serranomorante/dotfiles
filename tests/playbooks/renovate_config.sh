@@ -263,9 +263,9 @@ import sys
 with open(sys.argv[1], encoding="utf-8") as handle:
     text = handle.read()
 
-needle = '- name: "[archlinux] Javascript language: install vscode-js-debug npm packages"'
+needle = '- name: "[{{ user_os }}] Javascript language: install vscode-js-debug npm packages"'
 start = text.index(needle)
-end = text.index('- name: "[archlinux] Javascript language: build vscode-js-debug"', start)
+end = text.index('- name: "[{{ user_os }}] Javascript language: build vscode-js-debug"', start)
 block = text[start:end]
 
 assert 'NPM_CONFIG_IGNORE_SCRIPTS: "true"' in block

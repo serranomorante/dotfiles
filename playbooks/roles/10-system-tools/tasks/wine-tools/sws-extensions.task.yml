@@ -1,11 +1,11 @@
 ---
-- name: "[archlinux] Wine tools: install arch sws extension"
+- name: "[{{ user_os }}] Wine tools: install arch sws extension"
   become: true
   ansible.builtin.package:
     name: sws
     state: present
 
-- name: "[archlinux] Wine tools: ensure native reaper sws folders"
+- name: "[{{ user_os }}] Wine tools: ensure native reaper sws folders"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -17,7 +17,7 @@
     - ~/.config/REAPER/Data/helgoboss/realearn/presets/main
     - ~/.vst
 
-- name: "[archlinux] Wine tools: get native Helgobox/ReaLearn"
+- name: "[{{ user_os }}] Wine tools: get native Helgobox/ReaLearn"
   ansible.builtin.get_url:
     url: "https://github.com/helgoboss/helgobox/releases/download/v{{ arch_helgobox_setup.version }}/{{ item.name }}"
     dest: "{{ arch_helgobox_setup.backup_path }}/{{ item.name }}"
@@ -29,38 +29,38 @@
     - name: "{{ arch_helgobox_setup.linux_reaper_extension_name }}"
       checksum: "{{ arch_helgobox_setup.linux_reaper_extension_checksum }}"
 
-- name: "[archlinux] Wine tools: install native Helgobox/ReaLearn VST"
+- name: "[{{ user_os }}] Wine tools: install native Helgobox/ReaLearn VST"
   ansible.builtin.copy:
     src: "{{ arch_helgobox_setup.backup_path }}/{{ arch_helgobox_setup.linux_vst_name }}"
     dest: "~/.vst/{{ arch_helgobox_setup.linux_vst_name }}"
     mode: "755"
     remote_src: true
 
-- name: "[archlinux] Wine tools: check native Helgobox/ReaLearn xdo ABI"
+- name: "[{{ user_os }}] Wine tools: check native Helgobox/ReaLearn xdo ABI"
   ansible.builtin.command: patchelf --print-needed "{{ ansible_facts.env.HOME }}/.vst/{{ arch_helgobox_setup.linux_vst_name }}"
   changed_when: false
   register: var_native_helgobox_needed
 
-- name: "[archlinux] Wine tools: patch native Helgobox/ReaLearn xdo ABI"
+- name: "[{{ user_os }}] Wine tools: patch native Helgobox/ReaLearn xdo ABI"
   ansible.builtin.command: >
     patchelf --replace-needed libxdo.so.3 libxdo.so.4
     "{{ ansible_facts.env.HOME }}/.vst/{{ arch_helgobox_setup.linux_vst_name }}"
   changed_when: true
   when: "'libxdo.so.3' in var_native_helgobox_needed.stdout_lines"
 
-- name: "[archlinux] Wine tools: stat native reaper ini"
+- name: "[{{ user_os }}] Wine tools: stat native reaper ini"
   ansible.builtin.stat:
     path: ~/.config/REAPER/REAPER.ini
   register: var_native_reaper_ini
 
-- name: "[archlinux] Wine tools: check native reaper VST path key"
+- name: "[{{ user_os }}] Wine tools: check native reaper VST path key"
   ansible.builtin.command: grep -Eq "^vstpath64=" "{{ ansible_facts.env.HOME }}/.config/REAPER/REAPER.ini"
   changed_when: false
   failed_when: false
   register: var_native_reaper_vstpath64_key
   when: var_native_reaper_ini.stat.exists
 
-- name: "[archlinux] Wine tools: check native reaper user VST path"
+- name: "[{{ user_os }}] Wine tools: check native reaper user VST path"
   ansible.builtin.command: grep -Eq "^vstpath64=.*(^|;){{ ansible_facts.env.HOME | regex_escape }}/\\.vst(;|$)" "{{ ansible_facts.env.HOME
     }}/.config/REAPER/REAPER.ini"
   changed_when: false
@@ -68,7 +68,7 @@
   register: var_native_reaper_user_vst_path
   when: var_native_reaper_ini.stat.exists
 
-- name: "[archlinux] Wine tools: add native reaper VST path key"
+- name: "[{{ user_os }}] Wine tools: add native reaper VST path key"
   ansible.builtin.lineinfile:
     path: ~/.config/REAPER/REAPER.ini
     insertafter: "^\\[reaper\\]"
@@ -78,7 +78,7 @@
     - var_native_reaper_ini.stat.exists
     - var_native_reaper_vstpath64_key.rc != 0
 
-- name: "[archlinux] Wine tools: prepend native reaper user VST path"
+- name: "[{{ user_os }}] Wine tools: prepend native reaper user VST path"
   ansible.builtin.lineinfile:
     path: ~/.config/REAPER/REAPER.ini
     regexp: "^vstpath64=(.*)$"
@@ -89,14 +89,14 @@
     - var_native_reaper_vstpath64_key.rc == 0
     - var_native_reaper_user_vst_path.rc != 0
 
-- name: "[archlinux] Wine tools: install native Helgobox/ReaLearn extension"
+- name: "[{{ user_os }}] Wine tools: install native Helgobox/ReaLearn extension"
   ansible.builtin.copy:
     src: "{{ arch_helgobox_setup.backup_path }}/{{ arch_helgobox_setup.linux_reaper_extension_name }}"
     dest: "~/.config/REAPER/UserPlugins/{{ arch_helgobox_setup.linux_reaper_extension_name }}"
     mode: "755"
     remote_src: true
 
-- name: "[archlinux] Wine tools: get wine Helgobox/ReaLearn"
+- name: "[{{ user_os }}] Wine tools: get wine Helgobox/ReaLearn"
   ansible.builtin.get_url:
     url: "https://github.com/helgoboss/helgobox/releases/download/v{{ arch_helgobox_setup.version }}/{{ item.name }}"
     dest: "{{ arch_helgobox_setup.backup_path }}/{{ item.name }}"
@@ -108,7 +108,7 @@
     - name: "{{ arch_helgobox_setup.windows_reaper_extension_name }}"
       checksum: "{{ arch_helgobox_setup.windows_reaper_extension_checksum }}"
 
-- name: "[archlinux] Wine tools: ensure wine Helgobox/ReaLearn folders"
+- name: "[{{ user_os }}] Wine tools: ensure wine Helgobox/ReaLearn folders"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -120,40 +120,40 @@
     - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER"
     - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/UserPlugins"
 
-- name: "[archlinux] Wine tools: install wine Helgobox/ReaLearn VST"
+- name: "[{{ user_os }}] Wine tools: install wine Helgobox/ReaLearn VST"
   ansible.builtin.copy:
     src: "{{ arch_helgobox_setup.backup_path }}/{{ arch_helgobox_setup.windows_vst_name }}"
     dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/Program Files/VSTPlugins/{{ arch_helgobox_setup.windows_vst_name }}"
     mode: "755"
     remote_src: true
 
-- name: "[archlinux] Wine tools: install wine Helgobox/ReaLearn extension"
+- name: "[{{ user_os }}] Wine tools: install wine Helgobox/ReaLearn extension"
   ansible.builtin.copy:
     src: "{{ arch_helgobox_setup.backup_path }}/{{ arch_helgobox_setup.windows_reaper_extension_name }}"
     dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/UserPlugins/{{ arch_helgobox_setup.windows_reaper_extension_name }}"
     mode: "755"
     remote_src: true
 
-- name: "[archlinux] Wine tools: stat wine reaper ini for Helgobox/ReaLearn"
+- name: "[{{ user_os }}] Wine tools: stat wine reaper ini for Helgobox/ReaLearn"
   ansible.builtin.stat:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
   register: var_wine_reaper_helgobox_ini
 
-- name: "[archlinux] Wine tools: check wine reaper VST path key"
+- name: "[{{ user_os }}] Wine tools: check wine reaper VST path key"
   ansible.builtin.command: grep -Eq "^vstpath64=" "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
   changed_when: false
   failed_when: false
   register: var_wine_reaper_vstpath64_key
   when: var_wine_reaper_helgobox_ini.stat.exists
 
-- name: "[archlinux] Wine tools: check wine reaper Helgobox/ReaLearn VST path"
+- name: "[{{ user_os }}] Wine tools: check wine reaper Helgobox/ReaLearn VST path"
   ansible.builtin.command: grep -Eq "^vstpath64=.*(%PROGRAMFILES%\\\\\\\\VSTPlugins|C:\\\\\\\\Program Files\\\\\\\\VSTPlugins)(;|$)" "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
   changed_when: false
   failed_when: false
   register: var_wine_reaper_helgobox_vst_path
   when: var_wine_reaper_helgobox_ini.stat.exists
 
-- name: "[archlinux] Wine tools: add wine reaper Helgobox/ReaLearn VST path key"
+- name: "[{{ user_os }}] Wine tools: add wine reaper Helgobox/ReaLearn VST path key"
   ansible.builtin.lineinfile:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
     insertafter: "^\\[reaper\\]"
@@ -163,7 +163,7 @@
     - var_wine_reaper_helgobox_ini.stat.exists
     - var_wine_reaper_vstpath64_key.rc != 0
 
-- name: "[archlinux] Wine tools: prepend wine reaper Helgobox/ReaLearn VST path"
+- name: "[{{ user_os }}] Wine tools: prepend wine reaper Helgobox/ReaLearn VST path"
   ansible.builtin.lineinfile:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
     regexp: "^vstpath64=(.*)$"
@@ -174,7 +174,7 @@
     - var_wine_reaper_vstpath64_key.rc == 0
     - var_wine_reaper_helgobox_vst_path.rc != 0
 
-- name: "[archlinux] Wine tools: symlink native reaper sws extension"
+- name: "[{{ user_os }}] Wine tools: symlink native reaper sws extension"
   ansible.builtin.file:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
@@ -186,13 +186,13 @@
     - src: /usr/lib/sws/sws_python64.py
       dest: ~/.config/REAPER/Scripts/sws_python64.py
 
-- name: "[archlinux] Wine tools: copy native reaper startup script"
+- name: "[{{ user_os }}] Wine tools: copy native reaper startup script"
   ansible.builtin.copy:
     src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/scripts/reaper/__startup.lua"
     dest: ~/.config/REAPER/Scripts/__startup.lua
     mode: "644"
 
-- name: "[archlinux] Wine tools: copy native reaper custom scripts"
+- name: "[{{ user_os }}] Wine tools: copy native reaper custom scripts"
   ansible.builtin.copy:
     src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/scripts/reaper/{{ item }}"
     dest: "~/.config/REAPER/Scripts/custom/{{ item }}"
@@ -204,12 +204,12 @@
     - project_transport_state_feedback.lua
     - yabridge_focus_repair.lua
 
-- name: "[archlinux] Wine tools: stat sws extension installer"
+- name: "[{{ user_os }}] Wine tools: stat sws extension installer"
   ansible.builtin.stat:
     path: "{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe"
   register: var_sws_extension_installer
 
-- name: "[archlinux] Wine tools: get sws extension"
+- name: "[{{ user_os }}] Wine tools: get sws extension"
   ansible.builtin.get_url:
     url: https://www.sws-extension.org/download/featured/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe
     dest: "{{ arch_reaper_sws_extension_setup.backup_path }}/sws-{{ arch_reaper_sws_extension_setup.version }}-Windows-x64.exe"
@@ -218,12 +218,12 @@
   register: var_new_sws_extension_version_downloaded
   when: not var_sws_extension_installer.stat.exists
 
-- name: "[archlinux] Wine tools: stat installed sws extension"
+- name: "[{{ user_os }}] Wine tools: stat installed sws extension"
   ansible.builtin.stat:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/UserPlugins/reaper_sws-x64.dll"
   register: var_sws_extension_installed
 
-- name: "[archlinux] Wine tools: install sws extension"
+- name: "[{{ user_os }}] Wine tools: install sws extension"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
     wine start /wait /unix
@@ -240,7 +240,7 @@
       (var_new_sws_extension_version_downloaded.changed | default(false))
   register: var_sws_install
 
-- name: "[archlinux] Wine tools: close stale SWS installer Wine processes"
+- name: "[{{ user_os }}] Wine tools: close stale SWS installer Wine processes"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper kill-prefix
   timeout: 60
@@ -249,7 +249,7 @@
   no_log: true
   when: var_sws_install.changed | default(false)
 
-- name: "[archlinux] Wine tools: ensure custom script folder"
+- name: "[{{ user_os }}] Wine tools: ensure custom script folder"
   ansible.builtin.file:
     state: directory
     path: "{{ item }}"
@@ -263,13 +263,13 @@
     - "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Data/helgoboss/realearn/presets/main"
     - "{{ ansible_facts.env.XDG_STATE_HOME | default(ansible_facts.env.HOME ~ '/.local/state') }}/dotfiles/reaper-track-lock-sync"
 
-- name: "[archlinux] Wine tools: ensure canonical ReaLearn main preset folder"
+- name: "[{{ user_os }}] Wine tools: ensure canonical ReaLearn main preset folder"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/dotfiles/assets/reaper/realearn/presets/main/{{ ansible_facts.env.USER }}"
     state: directory
     mode: "755"
 
-- name: "[archlinux] Wine tools: stat ReaLearn main preset folders"
+- name: "[{{ user_os }}] Wine tools: stat ReaLearn main preset folders"
   ansible.builtin.stat:
     path: "{{ item.path }}"
     follow: false
@@ -280,7 +280,7 @@
       path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Data/helgoboss/realearn/presets/main/{{ ansible_facts.env.USER }}"
   register: var_reaper_reallearn_main_preset_folders
 
-- name: "[archlinux] Wine tools: migrate existing ReaLearn main preset folders"
+- name: "[{{ user_os }}] Wine tools: migrate existing ReaLearn main preset folders"
   ansible.builtin.command:
     argv:
       - cp
@@ -304,7 +304,7 @@
     - item.stat.isdir | default(false)
     - not (item.stat.islnk | default(false))
 
-- name: "[archlinux] Wine tools: remove migrated ReaLearn main preset folders"
+- name: "[{{ user_os }}] Wine tools: remove migrated ReaLearn main preset folders"
   ansible.builtin.file:
     path: "{{ item.item.path }}"
     state: absent
@@ -313,7 +313,7 @@
     - item.stat.exists
     - item.stat.islnk | default(false) or item.stat.isdir | default(false)
 
-- name: "[archlinux] Wine tools: ensure ReaLearn main preset folders"
+- name: "[{{ user_os }}] Wine tools: ensure ReaLearn main preset folders"
   ansible.builtin.file:
     path: "{{ item.path }}"
     state: directory
@@ -324,7 +324,7 @@
     - name: wine
       path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Data/helgoboss/realearn/presets/main/{{ ansible_facts.env.USER }}"
 
-- name: "[archlinux] Wine tools: hardlink ReaLearn main preset files"
+- name: "[{{ user_os }}] Wine tools: hardlink ReaLearn main preset files"
   ansible.builtin.file:
     src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/reaper/realearn/presets/main/{{ ansible_facts.env.USER }}/{{ item.file }}"
     dest: "{{ item.dest }}/{{ item.file }}"
@@ -336,7 +336,7 @@
     - file: beatstep.json
       dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Data/helgoboss/realearn/presets/main/{{ ansible_facts.env.USER }}"
 
-- name: "[archlinux] Wine tools: copy wine reaper startup script"
+- name: "[{{ user_os }}] Wine tools: copy wine reaper startup script"
   ansible.builtin.copy:
     dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts/__startup.lua"
     mode: "644"
@@ -361,7 +361,7 @@
           end
       end
 
-- name: "[archlinux] Wine tools: copy wine reaper custom scripts"
+- name: "[{{ user_os }}] Wine tools: copy wine reaper custom scripts"
   ansible.builtin.copy:
     src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/scripts/reaper/{{ item }}"
     dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/Scripts/custom/{{ item }}"

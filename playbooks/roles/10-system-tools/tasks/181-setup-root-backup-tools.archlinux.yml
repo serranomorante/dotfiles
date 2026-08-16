@@ -3,7 +3,7 @@
     # The sx borg shortcut derives the KWallet key from the repo basename, so
     # both must agree. Fail fast here rather than letting a renamed passkey
     # silently authenticate the wrong repo.
-    - name: "[archlinux] Setup root backup tools: validate repo basename matches KWallet passkey"
+    - name: "[{{ user_os }}] Setup root backup tools: validate repo basename matches KWallet passkey"
       ansible.builtin.assert:
         that:
           - item.borg_repo | basename == item.keyrings.passkey
@@ -15,7 +15,7 @@
       loop_control:
         label: "{{ item.keyrings.passkey }}"
 
-    - name: "[archlinux] Setup root backup tools: stat local backup drives"
+    - name: "[{{ user_os }}] Setup root backup tools: stat local backup drives"
       ansible.builtin.stat:
         path: "{{ item }}"
       loop:
@@ -24,11 +24,11 @@
         - /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev4 }}/data/backups
       register: var_local_backup_drives
 
-    - name: "[archlinux] Setup root backup tools: set available drives fact"
+    - name: "[{{ user_os }}] Setup root backup tools: set available drives fact"
       ansible.builtin.set_fact:
         available_drives: "{{ var_local_backup_drives.results | items2dict(key_name='item', value_name='stat') }}"
 
-    - name: "[archlinux] Setup root backup tools: ensure folder with right permissions"
+    - name: "[{{ user_os }}] Setup root backup tools: ensure folder with right permissions"
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
@@ -40,7 +40,7 @@
     # Confirm the user's KWallet holds a non-empty passphrase for each root repo
     # before borg init. Without this, a failed BORG_PASSCOMMAND leaves a
     # half-initialized repo (config + empty data/, no keyfile, no manifest).
-    - name: "[archlinux] Setup root backup tools: verify kwallet passphrase is present and non-empty"
+    - name: "[{{ user_os }}] Setup root backup tools: verify kwallet passphrase is present and non-empty"
       ansible.builtin.command:
         argv:
           - kwallet-query
@@ -57,7 +57,7 @@
       loop_control:
         label: "{{ item.keyrings.passkey }}"
 
-    - name: "[archlinux] Setup root backup tools: warn about repos skipped due to missing kwallet passphrase"
+    - name: "[{{ user_os }}] Setup root backup tools: warn about repos skipped due to missing kwallet passphrase"
       ansible.builtin.debug:
         msg: >-
           Skipping borg init for '{{ item.0.keyrings.passkey }}' ({{ item.0.borg_repo }}):
@@ -69,7 +69,7 @@
       loop_control:
         label: "{{ item.0.keyrings.passkey }}"
 
-    - name: "[archlinux] Setup root backup tools: init borg root repos (only with a valid kwallet passphrase)"
+    - name: "[{{ user_os }}] Setup root backup tools: init borg root repos (only with a valid kwallet passphrase)"
       become: true
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.0.borg_repo }}'
       environment:
@@ -93,7 +93,7 @@
       loop_control:
         label: "{{ item.0.keyrings.passkey }} -> {{ item.0.borg_repo }}"
 
-    - name: "[archlinux] Setup root backup tools: create backup scripts from template"
+    - name: "[{{ user_os }}] Setup root backup tools: create backup scripts from template"
       become: true
       ansible.builtin.template:
         src: borg_backup_jinja_template.backup.sh
@@ -107,7 +107,7 @@
         borg_keys_dir: "{{ ansible_facts.env.HOME }}/.config/borg-root/keys"
       loop: "{{ archlinux_borg_root_repos_env }}"
 
-    - name: "[archlinux] Setup root backup tools: copy root timers & services"
+    - name: "[{{ user_os }}] Setup root backup tools: copy root timers & services"
       become: true
       ansible.builtin.copy:
         src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/other/{{ item }}"
@@ -119,7 +119,7 @@
         - borg-root-backup@.service
         - every-8-hours-backup@.timer
 
-    - name: "[archlinux] Setup root backup tools: ensure borg backup timer"
+    - name: "[{{ user_os }}] Setup root backup tools: ensure borg backup timer"
       become: true
       ansible.builtin.systemd_service:
         scope: system
@@ -131,13 +131,13 @@
         - { service: every-8-hours-backup@dev2-root }
         - { service: every-8-hours-backup@dev3-root }
 
-    - name: "[archlinux] Setup database tools: ensure root-keyfiles backup folder"
+    - name: "[{{ user_os }}] Setup database tools: ensure root-keyfiles backup folder"
       ansible.builtin.file:
         path: ~/data/secrets/backup-borg-root-keyfiles
         state: directory
         mode: "755"
 
-    - name: "[archlinux] Setup root backup tools: backup keyfile"
+    - name: "[{{ user_os }}] Setup root backup tools: backup keyfile"
       become: true
       ansible.builtin.command: borg key export "{{ item.borg_repo }}" "{{ ansible_facts.env.HOME }}/data/secrets/backup-borg-root-keyfiles/{{ keyfilename }}"
       environment:
@@ -152,12 +152,12 @@
       changed_when: true
       loop: "{{ archlinux_borg_root_repos_env }}"
 
-    - name: "[archlinux] Setup root backup tools: register timestamp"
+    - name: "[{{ user_os }}] Setup root backup tools: register timestamp"
       ansible.builtin.command: date +%Y-%m-%d%H-%M-%S
       changed_when: true
       register: var_tstamp
 
-    - name: "[archlinux] Setup root backup tools: archive the keyfiles"
+    - name: "[{{ user_os }}] Setup root backup tools: archive the keyfiles"
       become: true
       ansible.builtin.command: tar -czvf ../root_keyfiles-{{ user_os }}-{{ var_tstamp.stdout }}.tar.gz * --remove-files
       args:

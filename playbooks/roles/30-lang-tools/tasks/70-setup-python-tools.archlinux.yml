@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Python language: ensure pylsp venv"
+- name: "[{{ user_os }}] Python language: ensure pylsp venv"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: pip
@@ -14,7 +14,7 @@
       - name: pylsp-mypy
       - name: python-lsp-ruff
 
-- name: "[archlinux] Python language: ensure debugpy venv"
+- name: "[{{ user_os }}] Python language: ensure debugpy venv"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: pip
@@ -26,7 +26,7 @@
       - name: pip
       - name: debugpy
 
-- name: "[archlinux] Python language: ensure python tools"
+- name: "[{{ user_os }}] Python language: ensure python tools"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: pip
@@ -38,7 +38,7 @@
       - name: pip
       - name: cookiecutter
 
-- name: "[archlinux] Python language: ensure symlinks"
+- name: "[{{ user_os }}] Python language: ensure symlinks"
   ansible.builtin.file:
     src: ~/data/apps/lang-tools/{{ item.dir }}/.venv/bin/{{ item.bin }}
     dest: ~/bin/{{ item.bin }}
@@ -48,7 +48,7 @@
     - { dir: debugpy, bin: debugpy }
     - { dir: pylsp, bin: pylsp }
 
-- name: "[archlinux] Python language: ensure ML dependencies"
+- name: "[{{ user_os }}] Python language: ensure ML dependencies"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: pip

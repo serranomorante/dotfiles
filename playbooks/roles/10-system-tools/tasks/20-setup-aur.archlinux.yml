@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] AUR: ensure local review/build dependencies"
+- name: "[{{ user_os }}] AUR: ensure local review/build dependencies"
   become: true
   ansible.builtin.package:
     state: present
@@ -8,13 +8,13 @@
       - devtools
       - git
 
-- name: "[archlinux] AUR: remove legacy aur_builder passwordless pacman rule"
+- name: "[{{ user_os }}] AUR: remove legacy aur_builder passwordless pacman rule"
   become: true
   ansible.builtin.file:
     path: /etc/sudoers.d/11-install-aur_builder
     state: absent
 
-- name: "[archlinux] AUR: ensure local package repository directory"
+- name: "[{{ user_os }}] AUR: ensure local package repository directory"
   become: true
   ansible.builtin.file:
     path: "{{ arch_aur_local_repo_path }}"
@@ -23,7 +23,7 @@
     group: wheel
     mode: "2775"
 
-- name: "[archlinux] AUR: ensure clean chroot parent directory"
+- name: "[{{ user_os }}] AUR: ensure clean chroot parent directory"
   become: true
   ansible.builtin.file:
     path: "{{ arch_aur_local_chroot_path }}"
@@ -32,7 +32,7 @@
     group: wheel
     mode: "2775"
 
-- name: "[archlinux] AUR: check makepkg PGP keys"
+- name: "[{{ user_os }}] AUR: check makepkg PGP keys"
   ansible.builtin.command:
     argv:
       - gpg
@@ -46,7 +46,7 @@
   loop_control:
     label: "{{ item.fingerprint }} ({{ item.packages | join(', ') }})"
 
-- name: "[archlinux] AUR: import missing makepkg PGP keys"
+- name: "[{{ user_os }}] AUR: import missing makepkg PGP keys"
   ansible.builtin.command:
     argv:
       - gpg
@@ -60,12 +60,12 @@
     label: "{{ item.item.fingerprint }} ({{ item.item.packages | join(', ') }})"
   when: item.rc != 0
 
-- name: "[archlinux] AUR: check local package repository database"
+- name: "[{{ user_os }}] AUR: check local package repository database"
   ansible.builtin.stat:
     path: "{{ arch_aur_local_repo_path }}/{{ arch_aur_local_repo_name }}.db.tar.gz"
   register: var_arch_aur_local_repo_db
 
-- name: "[archlinux] AUR: initialize empty local package repository database"
+- name: "[{{ user_os }}] AUR: initialize empty local package repository database"
   become: true
   ansible.builtin.command:
     argv:
@@ -74,7 +74,7 @@
   when: not var_arch_aur_local_repo_db.stat.exists
   changed_when: true
 
-- name: "[archlinux] AUR: ensure local package repository files are group writable"
+- name: "[{{ user_os }}] AUR: ensure local package repository files are group writable"
   become: true
   ansible.builtin.file:
     path: "{{ item }}"
@@ -88,7 +88,7 @@
     - "{{ arch_aur_local_repo_path }}/{{ arch_aur_local_repo_name }}.files.tar.gz"
   when: not var_arch_aur_local_repo_db.stat.exists
 
-- name: "[archlinux] AUR: configure pacman local package repository"
+- name: "[{{ user_os }}] AUR: configure pacman local package repository"
   become: true
   ansible.builtin.blockinfile:
     dest: /etc/pacman.conf

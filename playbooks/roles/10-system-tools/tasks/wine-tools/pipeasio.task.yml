@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Wine tools: check pipeasio package"
+- name: "[{{ user_os }}] Wine tools: check pipeasio package"
   ansible.builtin.command:
     argv:
       - pacman
@@ -9,7 +9,7 @@
   failed_when: false
   register: var_pipeasio_package
 
-- name: "[archlinux] Wine tools: check pipeasio registration marker"
+- name: "[{{ user_os }}] Wine tools: check pipeasio registration marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -19,14 +19,14 @@
     dotfiles_marker_read: true
   when: var_pipeasio_package.rc == 0
 
-- name: "[archlinux] Wine tools: require reaper system wine profile for pipeasio"
+- name: "[{{ user_os }}] Wine tools: require reaper system wine profile for pipeasio"
   ansible.builtin.assert:
     that:
       - (wwine_prefix_aliases.reaper.wine_profile | default('system')) == 'system'
     fail_msg: "PipeASIO is only managed for arch_reaper_wine_setup with the reaper alias on the system Wine profile."
   when: var_pipeasio_package.rc == 0
 
-- name: "[archlinux] Wine tools: set pipeasio registration profile"
+- name: "[{{ user_os }}] Wine tools: set pipeasio registration profile"
   ansible.builtin.set_fact:
     var_pipeasio_reaper_wine_profile: system
     var_pipeasio_reaper_pipeasio_prefix: /usr
@@ -34,36 +34,36 @@
     var_pipeasio_registration_marker_content: "{{ var_pipeasio_package.stdout }} reaper {{ arch_reaper_wine_setup.wine_prefix }} profile system pipeasio-prefix /usr\n"
   when: var_pipeasio_package.rc == 0
 
-- name: "[archlinux] Wine tools: parse installed pipeasio package version"
+- name: "[{{ user_os }}] Wine tools: parse installed pipeasio package version"
   ansible.builtin.set_fact:
     var_pipeasio_package_version: "{{ (var_pipeasio_package.stdout | regex_search('^pipeasio\\s+([^\\s]+)', '\\1') | default([''], true) | first) }}"
   when: var_pipeasio_package.rc == 0
 
-- name: "[archlinux] Wine tools: read pipeasio registration marker content"
+- name: "[{{ user_os }}] Wine tools: read pipeasio registration marker content"
   ansible.builtin.set_fact:
     var_pipeasio_registration_marker_text: "{{ (var_pipeasio_registration_marker.content | default('') | b64decode) if var_pipeasio_registration_marker.stat.exists else '' }}"
   when: var_pipeasio_package.rc == 0
 
-- name: "[archlinux] Wine tools: parse registered pipeasio package version"
+- name: "[{{ user_os }}] Wine tools: parse registered pipeasio package version"
   ansible.builtin.set_fact:
     var_pipeasio_registered_package_version: "{{ (var_pipeasio_registration_marker_text | regex_search('^pipeasio\\s+([^\\s]+)', '\\1') | default([''], true) | first) }}"
   when: var_pipeasio_package.rc == 0
 
-- name: "[archlinux] Wine tools: stat arch pipeasio dll"
+- name: "[{{ user_os }}] Wine tools: stat arch pipeasio dll"
   ansible.builtin.stat:
     path: "{{ var_pipeasio_reaper_pipeasio_lib }}/x86_64-windows/pipeasio64.dll"
     checksum_algorithm: sha256
   register: var_pipeasio_arch_dll
   when: var_pipeasio_package.rc == 0
 
-- name: "[archlinux] Wine tools: stat reaper prefix pipeasio dll"
+- name: "[{{ user_os }}] Wine tools: stat reaper prefix pipeasio dll"
   ansible.builtin.stat:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/windows/system32/pipeasio64.dll"
     checksum_algorithm: sha256
   register: var_pipeasio_prefix_dll
   when: var_pipeasio_package.rc == 0
 
-- name: "[archlinux] Wine tools: warn when reaper prefix pipeasio is stale"
+- name: "[{{ user_os }}] Wine tools: warn when reaper prefix pipeasio is stale"
   dotfiles_health_event:
     severity: warning
     event_type: pipeasio_prefix_stale
@@ -88,19 +88,19 @@
         and var_pipeasio_arch_dll.stat.checksum != var_pipeasio_prefix_dll.stat.checksum
       )
 
-- name: "[archlinux] Wine tools: set pipeasio registration environment"
+- name: "[{{ user_os }}] Wine tools: set pipeasio registration environment"
   ansible.builtin.set_fact:
     var_pipeasio_registration_env: "{{ wine_env_profiles.get(var_pipeasio_reaper_wine_profile, wine_env_vars) | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix, 'WINEARCH': arch_reaper_wine_setup.architecture | default('win64'), 'PIPEASIO_PREFIX': var_pipeasio_reaper_pipeasio_prefix, 'WINEDLLPATH': var_pipeasio_reaper_pipeasio_lib ~ (((wine_env_profiles.get(var_pipeasio_reaper_wine_profile, wine_env_vars).WINEDLLPATH | default('')) | length > 0) | ternary(':' ~ wine_env_profiles.get(var_pipeasio_reaper_wine_profile, wine_env_vars).WINEDLLPATH, '')) }) }}"
   when: var_pipeasio_package.rc == 0
 
-- name: "[archlinux] Wine tools: ensure pipeasio config directory"
+- name: "[{{ user_os }}] Wine tools: ensure pipeasio config directory"
   ansible.builtin.file:
     path: ~/.config/pipeasio
     state: directory
     mode: "755"
   when: var_pipeasio_package.rc == 0
 
-- name: "[archlinux] Wine tools: configure pipeasio defaults"
+- name: "[{{ user_os }}] Wine tools: configure pipeasio defaults"
   ansible.builtin.template:
     src: pipeasio-config.ini
     dest: ~/.config/pipeasio/config.ini
@@ -108,7 +108,7 @@
     follow: false
   when: var_pipeasio_package.rc == 0
 
-- name: "[archlinux] Wine tools: stage pipeasio in reaper prefix"
+- name: "[{{ user_os }}] Wine tools: stage pipeasio in reaper prefix"
   ansible.builtin.copy:
     src: "{{ var_pipeasio_reaper_pipeasio_lib }}/x86_64-windows/pipeasio64.dll"
     dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/windows/system32/pipeasio64.dll"
@@ -116,7 +116,7 @@
     mode: "0644"
   when: var_pipeasio_package.rc == 0
 
-- name: "[archlinux] Wine tools: register pipeasio silently in reaper prefix"
+- name: "[{{ user_os }}] Wine tools: register pipeasio silently in reaper prefix"
   ansible.builtin.command:
     argv:
       - wine
@@ -133,7 +133,7 @@
       (not var_pipeasio_registration_marker.stat.exists) or
       ((var_pipeasio_registration_marker.content | default('') | b64decode) != var_pipeasio_registration_marker_content)
 
-- name: "[archlinux] Wine tools: set pipeasio registration state"
+- name: "[{{ user_os }}] Wine tools: set pipeasio registration state"
   ansible.builtin.set_fact:
     var_pipeasio_registration_active: >-
       {{
@@ -147,7 +147,7 @@
       }}
   when: var_pipeasio_package.rc == 0
 
-- name: "[archlinux] Wine tools: mark pipeasio registered"
+- name: "[{{ user_os }}] Wine tools: mark pipeasio registered"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -162,7 +162,7 @@
       (not var_pipeasio_registration_marker.stat.exists) or
       ((var_pipeasio_registration_marker.content | default('') | b64decode) != var_pipeasio_registration_marker_content)
 
-- name: "[archlinux] Wine tools: stat wine reaper ini for pipeasio"
+- name: "[{{ user_os }}] Wine tools: stat wine reaper ini for pipeasio"
   ansible.builtin.stat:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
   register: var_pipeasio_reaper_ini
@@ -171,7 +171,7 @@
     - var_pipeasio_registration_active | default(false)
     - arch_pipeasio_setup.configure_reaper | default(false) | bool
 
-- name: "[archlinux] Wine tools: configure wine reaper for pipeasio"
+- name: "[{{ user_os }}] Wine tools: configure wine reaper for pipeasio"
   ansible.builtin.lineinfile:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
     regexp: "^{{ item.key }}=.*"

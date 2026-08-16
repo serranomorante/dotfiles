@@ -1,11 +1,11 @@
 ---
-- name: "[archlinux] C language: ensure packages"
+- name: "[{{ user_os }}] C language: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
     name: clang
 
-- name: "[archlinux] C language: ensure DAP - cpptools folder exists"
+- name: "[{{ user_os }}] C language: ensure DAP - cpptools folder exists"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -14,7 +14,7 @@
     - "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/cpptools"
     - "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/cpptools-downloads"
 
-- name: "[archlinux] C language: ensure DAP - stat cpptools marker"
+- name: "[{{ user_os }}] C language: ensure DAP - stat cpptools marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -22,7 +22,7 @@
     dotfiles_marker_name: "cpptools-{{ cpptools_version }}"
     dotfiles_marker_register: var_cpptools_marker
 
-- name: "[archlinux] C language: ensure DAP - download cpptools"
+- name: "[{{ user_os }}] C language: ensure DAP - download cpptools"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -41,7 +41,7 @@
     creates: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/cpptools-downloads/cpptools-linux-x64-{{ cpptools_version }}.vsix"
   when: not var_cpptools_marker.stat.exists
 
-- name: "[archlinux] C language: ensure DAP - install cpptools"
+- name: "[{{ user_os }}] C language: ensure DAP - install cpptools"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -60,7 +60,7 @@
   when: not var_cpptools_marker.stat.exists
   changed_when: true
 
-- name: "[archlinux] C language: ensure DAP - record cpptools marker"
+- name: "[{{ user_os }}] C language: ensure DAP - record cpptools marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -69,7 +69,7 @@
     dotfiles_marker_content: "{{ cpptools_version }}\n"
   when: not var_cpptools_marker.stat.exists
 
-- name: "[archlinux] C language: ensure DAP - set cpptools as executable"
+- name: "[{{ user_os }}] C language: ensure DAP - set cpptools as executable"
   ansible.builtin.file:
     path: ~/data/apps/lang-tools/cpptools/extension/debugAdapters/bin/OpenDebugAD7
     mode: "755"

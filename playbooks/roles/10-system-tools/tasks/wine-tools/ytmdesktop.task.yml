@@ -1,10 +1,10 @@
 ---
-- name: "[archlinux] Wine tools: stat ytmdesktop installer"
+- name: "[{{ user_os }}] Wine tools: stat ytmdesktop installer"
   ansible.builtin.stat:
     path: "{{ arch_ytmdesktop_wine_setup.backup_path }}/YouTube.Music.Desktop.App-{{ arch_ytmdesktop_wine_setup.version }}.Setup.exe"
   register: var_ytmdesktop_installer
 
-- name: "[archlinux] Wine tools: get ytmdesktop"
+- name: "[{{ user_os }}] Wine tools: get ytmdesktop"
   ansible.builtin.get_url:
     url: https://github.com/ytmdesktop/ytmdesktop/releases/download/v{{ arch_ytmdesktop_wine_setup.version }}/YouTube.Music.Desktop.App-{{
       arch_ytmdesktop_wine_setup.version }}.Setup.exe
@@ -12,7 +12,7 @@
     mode: "755"
   when: not var_ytmdesktop_installer.stat.exists
 
-- name: "[archlinux] Wine tools: install ytmdesktop"
+- name: "[{{ user_os }}] Wine tools: install ytmdesktop"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ arch_ytmdesktop_wine_setup.wine_prefix }}'
     wine start /unix '{{ arch_ytmdesktop_wine_setup.backup_path }}/YouTube.Music.Desktop.App-{{ arch_ytmdesktop_wine_setup.version }}.Setup.exe'

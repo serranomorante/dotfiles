@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Javascript language: ensure npm packages with diff capture"
+- name: "[{{ user_os }}] Javascript language: ensure npm packages with diff capture"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: npm
@@ -10,20 +10,20 @@
     update_diff_npm_node_version: "{{ node_system_default_version }}"
     update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
 
-- name: "[archlinux] Javascript language: symlink npm binaries"
+- name: "[{{ user_os }}] Javascript language: symlink npm binaries"
   ansible.builtin.file:
     src: "{{ node_javascript_npm_prefix }}/bin/{{ item.1 }}"
     dest: "{{ node_user_bin_dir }}/{{ item.1 }}"
     state: link
   loop: "{{ node_javascript_npm_packages | subelements('bins') }}"
 
-- name: "[archlinux] Javascript language: stat obsolete tsserver symlink"
+- name: "[{{ user_os }}] Javascript language: stat obsolete tsserver symlink"
   ansible.builtin.stat:
     path: "{{ node_user_bin_dir }}/tsserver"
     follow: false
   register: var_stat_obsolete_tsserver_symlink
 
-- name: "[archlinux] Javascript language: remove obsolete tsserver symlink"
+- name: "[{{ user_os }}] Javascript language: remove obsolete tsserver symlink"
   ansible.builtin.file:
     path: "{{ node_user_bin_dir }}/tsserver"
     state: absent
@@ -31,7 +31,7 @@
     - var_stat_obsolete_tsserver_symlink.stat.islnk | default(false)
     - (var_stat_obsolete_tsserver_symlink.stat.lnk_source | default("")) == node_javascript_npm_prefix ~ "/bin/tsserver"
 
-- name: "[archlinux] Javascript language: ensure unpinned npm packages with diff capture"
+- name: "[{{ user_os }}] Javascript language: ensure unpinned npm packages with diff capture"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: npm
@@ -43,13 +43,13 @@
     update_diff_npm_node_version: "{{ node_system_default_version }}"
     update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
 
-- name: "[archlinux] Javascript language: symlink prettierd"
+- name: "[{{ user_os }}] Javascript language: symlink prettierd"
   ansible.builtin.file:
     src: "{{ node_javascript_npm_prefix }}/bin/prettierd"
     dest: "{{ node_user_bin_dir }}/prettierd"
     state: link
 
-- name: "[archlinux] Javascript language: stat vscode-js-debug marker"
+- name: "[{{ user_os }}] Javascript language: stat vscode-js-debug marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -58,7 +58,7 @@
     dotfiles_marker_register: var_vscode_js_debug_marker_result
     dotfiles_marker_read: true
 
-- name: "[archlinux] Javascript language: set vscode-js-debug marker facts"
+- name: "[{{ user_os }}] Javascript language: set vscode-js-debug marker facts"
   ansible.builtin.set_fact:
     var_vscode_js_debug_marker: "v{{ vscode_js_debug_version }}:stderr-patch-v1"
     var_vscode_js_debug_needs_refresh: >-
@@ -67,7 +67,7 @@
         or ((var_vscode_js_debug_marker_result.content | default('') | b64decode | trim) != ('v' ~ vscode_js_debug_version ~ ':stderr-patch-v1'))
       }}
 
-- name: "[archlinux] Javascript language: clone vscode-js-debug with diff capture"
+- name: "[{{ user_os }}] Javascript language: clone vscode-js-debug with diff capture"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: git
@@ -81,19 +81,19 @@
     update_diff_git_single_branch: true
   when: var_vscode_js_debug_needs_refresh
 
-- name: "[archlinux] Javascript language: apply custom patch"
+- name: "[{{ user_os }}] Javascript language: apply custom patch"
   ansible.builtin.command: git apply ~/dotfiles/assets/patches/vscode_js_debug_stderr.patch
   args:
     chdir: ~/data/repos/vscode-js-debug
   changed_when: false
   when: var_vscode_js_debug_needs_refresh
 
-- name: "[archlinux] Javascript language: stat vscode-js-debug build"
+- name: "[{{ user_os }}] Javascript language: stat vscode-js-debug build"
   ansible.builtin.stat:
     path: ~/data/repos/vscode-js-debug/dist/src/dapDebugServer.js
   register: var_stat_vscode_js_debug
 
-- name: "[archlinux] Javascript language: install vscode-js-debug npm packages"
+- name: "[{{ user_os }}] Javascript language: install vscode-js-debug npm packages"
   community.general.npm:
     path: "{{ ansible_facts.env.HOME }}/data/repos/vscode-js-debug"
     ci: true
@@ -103,7 +103,7 @@
     NPM_CONFIG_IGNORE_SCRIPTS: "true"
   when: var_vscode_js_debug_needs_refresh or not var_stat_vscode_js_debug.stat.exists
 
-- name: "[archlinux] Javascript language: build vscode-js-debug"
+- name: "[{{ user_os }}] Javascript language: build vscode-js-debug"
   ansible.builtin.command:
     argv:
       - "{{ node_firejail_executable }}"
@@ -121,7 +121,7 @@
     chdir: ~/data/repos/vscode-js-debug
   when: var_vscode_js_debug_needs_refresh or not var_stat_vscode_js_debug.stat.exists
 
-- name: "[archlinux] Javascript language: record vscode-js-debug marker"
+- name: "[{{ user_os }}] Javascript language: record vscode-js-debug marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record

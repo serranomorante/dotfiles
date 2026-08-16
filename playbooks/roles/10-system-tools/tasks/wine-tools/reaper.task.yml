@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Wine tools: stat reaper gecko plugins"
+- name: "[{{ user_os }}] Wine tools: stat reaper gecko plugins"
   ansible.builtin.stat:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/windows/{{ item }}/gecko/plugin/npmshtml.dll"
   loop:
@@ -7,7 +7,7 @@
     - syswow64
   register: var_reaper_gecko_plugins
 
-- name: "[archlinux] Wine tools: ensure gecko in reaper prefix"
+- name: "[{{ user_os }}] Wine tools: ensure gecko in reaper prefix"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
     wineboot -u
@@ -19,12 +19,12 @@
     | list
     | length > 0
 
-- name: "[archlinux] Wine tools: stat reaper installer"
+- name: "[{{ user_os }}] Wine tools: stat reaper installer"
   ansible.builtin.stat:
     path: "{{ arch_reaper_wine_setup.backup_path }}/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe"
   register: var_reaper_installer
 
-- name: "[archlinux] Wine tools: get reaper"
+- name: "[{{ user_os }}] Wine tools: get reaper"
   ansible.builtin.get_url:
     url: https://www.reaper.fm/files/7.x/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe
     dest: "{{ arch_reaper_wine_setup.backup_path }}/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe"
@@ -33,12 +33,12 @@
   register: var_new_reaper_version_downloaded
   when: not var_reaper_installer.stat.exists
 
-- name: "[archlinux] Wine tools: stat reaper executable"
+- name: "[{{ user_os }}] Wine tools: stat reaper executable"
   ansible.builtin.stat:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/Program Files/REAPER (x64)/reaper.exe"
   register: var_reaper_executable
 
-- name: "[archlinux] Wine tools: install reaper"
+- name: "[{{ user_os }}] Wine tools: install reaper"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
     wine start /wait /unix '{{ arch_reaper_wine_setup.backup_path }}/reaper{{ arch_reaper_wine_setup.version }}_x64-install.exe'
@@ -54,7 +54,7 @@
       or
       (var_new_reaper_version_downloaded.changed | default(false))
 
-- name: "[archlinux] Wine tools: ensure config folder"
+- name: "[{{ user_os }}] Wine tools: ensure config folder"
   ansible.builtin.file:
     path: ~/.config/REAPER
     state: directory
@@ -67,7 +67,7 @@
       or
       (var_new_reaper_version_downloaded.changed | default(false))
 
-- name: "[archlinux] Wine tools: close stale Reaper installer Wine processes"
+- name: "[{{ user_os }}] Wine tools: close stale Reaper installer Wine processes"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper kill-prefix
   timeout: 60
@@ -76,25 +76,25 @@
   no_log: true
   when: var_install_reaper.changed | default(false)
 
-- name: "[archlinux] Wine tools: setup reaper.desktop file"
+- name: "[{{ user_os }}] Wine tools: setup reaper.desktop file"
   ansible.builtin.template:
     src: reaper.desktop
     dest: ~/.local/share/applications/
     mode: "644"
   notify: handler_update_desktop_database
 
-- name: "[archlinux] Wine tools: setup launch-reaper-wine file"
+- name: "[{{ user_os }}] Wine tools: setup launch-reaper-wine file"
   ansible.builtin.template:
     src: launch-reaper-wine
     dest: ~/.local/bin/launch-reaper-wine
     mode: "755"
 
-- name: "[archlinux] Wine tools: check file exists"
+- name: "[{{ user_os }}] Wine tools: check file exists"
   ansible.builtin.stat:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
   register: var_reaper_ini_file
 
-- name: "[archlinux] Wine tools: clean some reaper settings"
+- name: "[{{ user_os }}] Wine tools: clean some reaper settings"
   ansible.builtin.lineinfile:
     dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
     regexp: "^{{ item }}.*"
@@ -106,7 +106,7 @@
     - win32hidpi=
   when: var_reaper_ini_file.stat.exists
 
-- name: "[archlinux] Wine tools: ensure reaper UI scale"
+- name: "[{{ user_os }}] Wine tools: ensure reaper UI scale"
   ansible.builtin.blockinfile:
     dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
     marker: "; {mark} ANSIBLE MANAGED BLOCK"
@@ -118,7 +118,7 @@
       win32hidpi=2
   when: var_reaper_ini_file.stat.exists
 
-- name: "[archlinux] Wine tools: ensure reaper VEPro bridge folders"
+- name: "[{{ user_os }}] Wine tools: ensure reaper VEPro bridge folders"
   ansible.builtin.file:
     path: "{{ arch_reaper_wine_vepro_bridge_path }}/{{ item }}"
     state: directory
@@ -127,7 +127,7 @@
     - VST2
     - VST3
 
-- name: "[archlinux] Wine tools: link VEPro plugins into reaper prefix"
+- name: "[{{ user_os }}] Wine tools: link VEPro plugins into reaper prefix"
   ansible.builtin.file:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
@@ -135,7 +135,7 @@
     force: true
   loop: "{{ arch_reaper_wine_vepro_plugin_links }}"
 
-- name: "[archlinux] Wine tools: link VEPro runtime DLLs into reaper prefix"
+- name: "[{{ user_os }}] Wine tools: link VEPro runtime DLLs into reaper prefix"
   ansible.builtin.file:
     src: "{{ arch_music_plugins_wine_prefix }}/drive_c/windows/system32/{{ item }}"
     dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/windows/system32/{{ item }}"
@@ -143,21 +143,21 @@
     force: true
   loop: "{{ arch_reaper_wine_vepro_runtime_dlls }}"
 
-- name: "[archlinux] Wine tools: read reaper VST path"
+- name: "[{{ user_os }}] Wine tools: read reaper VST path"
   ansible.builtin.command: grep -m1 "^vstpath64=" "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
   changed_when: false
   failed_when: false
   register: var_reaper_vstpath64_line
   when: var_reaper_ini_file.stat.exists
 
-- name: "[archlinux] Wine tools: prepare reaper VST paths"
+- name: "[{{ user_os }}] Wine tools: prepare reaper VST paths"
   ansible.builtin.set_fact:
     var_reaper_desired_vst_paths: "{{ (arch_reaper_wine_vepro_vst_paths + ((var_reaper_vstpath64_line.stdout | regex_replace('^vstpath64=', '')).split(';') if var_reaper_vstpath64_line.rc == 0 else [])) | reject('equalto', '') | reject('search', arch_reaper_wine_obsolete_vst_path_regexes | default([]) | join('|')) | unique | join(';') }}"
   when:
     - var_reaper_ini_file.stat.exists
     - arch_reaper_wine_vepro_vst_paths | length > 0
 
-- name: "[archlinux] Wine tools: ensure reaper VEPro VST paths"
+- name: "[{{ user_os }}] Wine tools: ensure reaper VEPro VST paths"
   ansible.builtin.lineinfile:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
     regexp: "^vstpath64="
@@ -169,12 +169,12 @@
     - arch_reaper_wine_vepro_vst_paths | length > 0
     - var_reaper_desired_vst_paths != (var_reaper_vstpath64_line.stdout | default('') | regex_replace('^vstpath64=', ''))
 
-- name: "[archlinux] Wine tools: stat reaper VST cache"
+- name: "[{{ user_os }}] Wine tools: stat reaper VST cache"
   ansible.builtin.stat:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/reaper-vstplugins64.ini"
   register: var_reaper_vst_cache
 
-- name: "[archlinux] Wine tools: clear stale VEPro VST cache"
+- name: "[{{ user_os }}] Wine tools: clear stale VEPro VST cache"
   ansible.builtin.lineinfile:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/reaper-vstplugins64.ini"
     regexp: "^Vienna_Ensemble_Pro_.*\\.(dll|vst3)="

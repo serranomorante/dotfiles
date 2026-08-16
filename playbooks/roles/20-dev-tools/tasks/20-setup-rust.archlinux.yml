@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup rust: check rustup marker"
+- name: "[{{ user_os }}] Setup rust: check rustup marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -7,14 +7,14 @@
     dotfiles_marker_name: "rust-{{ rust_version }}"
     dotfiles_marker_register: var_rust_marker
 
-- name: "[archlinux] Setup rust: ensure rustup"
+- name: "[{{ user_os }}] Setup rust: ensure rustup"
   ansible.builtin.shell: >
     set -o pipefail &&
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain {{ rust_version }}-x86_64-unknown-linux-gnu
   changed_when: true
   when: not var_rust_marker.stat.exists
 
-- name: "[archlinux] Setup rust: update default toolchain"
+- name: "[{{ user_os }}] Setup rust: update default toolchain"
   ansible.builtin.command:
     argv:
       - "{{ ansible_facts.env.HOME }}/.cargo/bin/rustup"
@@ -23,7 +23,7 @@
   when: not var_rust_marker.stat.exists
   changed_when: true
 
-- name: "[archlinux] Setup rust: record rust marker"
+- name: "[{{ user_os }}] Setup rust: record rust marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record

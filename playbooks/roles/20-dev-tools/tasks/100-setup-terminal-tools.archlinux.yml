@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup terminal tools: ensure packages"
+- name: "[{{ user_os }}] Setup terminal tools: ensure packages"
   become: true
   ansible.builtin.package:
     name:
@@ -17,12 +17,12 @@
       - fastfetch
     state: present
 
-- name: "[archlinux] Setup terminal tools: ensure ble.sh local AUR package"
+- name: "[{{ user_os }}] Setup terminal tools: ensure ble.sh local AUR package"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages: blesh-git
 
-- name: "[archlinux] Setup terminal tools: ensure uv tool writable paths"
+- name: "[{{ user_os }}] Setup terminal tools: ensure uv tool writable paths"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -32,13 +32,13 @@
     - "{{ ansible_facts.env.HOME }}/.local/share/uv"
     - "{{ ansible_facts.env.HOME }}/.local/share/uv/tools"
 
-- name: "[archlinux] Setup terminal tools: ensure uv tool project dir"
+- name: "[{{ user_os }}] Setup terminal tools: ensure uv tool project dir"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/uv-tools"
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup terminal tools: stat isd-tui marker"
+- name: "[{{ user_os }}] Setup terminal tools: stat isd-tui marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -46,7 +46,7 @@
     dotfiles_marker_name: "uv-tool-isd-tui-{{ isd_tui_version }}"
     dotfiles_marker_register: var_isd_tui_marker
 
-- name: "[archlinux] Setup terminal tools: inspect isd-tui Python interpreter"
+- name: "[{{ user_os }}] Setup terminal tools: inspect isd-tui Python interpreter"
   ansible.builtin.command:
     argv:
       - readlink
@@ -56,7 +56,7 @@
   changed_when: false
   failed_when: false
 
-- name: "[archlinux] Setup terminal tools: ensure isd-tui"
+- name: "[{{ user_os }}] Setup terminal tools: ensure isd-tui"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -81,7 +81,7 @@
     or not var_isd_tui_python_interpreter.stdout.startswith(ansible_facts.env.HOME + '/.local/share/uv/python/')
   changed_when: true
 
-- name: "[archlinux] Setup terminal tools: record isd-tui marker"
+- name: "[{{ user_os }}] Setup terminal tools: record isd-tui marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -92,12 +92,12 @@
     not var_isd_tui_marker.stat.exists
     or not var_isd_tui_python_interpreter.stdout.startswith(ansible_facts.env.HOME + '/.local/share/uv/python/')
 
-- name: "[archlinux] Setup terminal tools: stat kitty nightly binary"
+- name: "[{{ user_os }}] Setup terminal tools: stat kitty nightly binary"
   ansible.builtin.stat:
     path: "{{ ansible_facts.env.HOME }}/.local/kitty.app/bin/kitty"
   register: var_kitty_nightly_binary
 
-- name: "[archlinux] Setup terminal tools: check kitty nightly asset revision"
+- name: "[{{ user_os }}] Setup terminal tools: check kitty nightly asset revision"
   ansible.builtin.shell: |
     set -o pipefail
     api_url=https://api.github.com/repos/kovidgoyal/kitty/releases/tags/nightly
@@ -132,14 +132,14 @@
     - var_kitty_nightly_asset_revision.rc != 0
     - not var_kitty_nightly_binary.stat.exists
 
-- name: "[archlinux] Setup terminal tools: fail when kitty nightly Linux asset is unavailable"
+- name: "[{{ user_os }}] Setup terminal tools: fail when kitty nightly Linux asset is unavailable"
   ansible.builtin.fail:
     msg: "kitty nightly currently has no Linux x86_64 asset published upstream; cannot install it on a clean machine."
   when:
     - var_kitty_nightly_asset_revision.stdout | trim | length == 0
     - not var_kitty_nightly_binary.stat.exists
 
-- name: "[archlinux] Setup terminal tools: stat kitty nightly marker"
+- name: "[{{ user_os }}] Setup terminal tools: stat kitty nightly marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -148,7 +148,7 @@
     dotfiles_marker_register: var_kitty_nightly_marker
   when: var_kitty_nightly_asset_revision.stdout | trim | length > 0
 
-- name: "[archlinux] Setup terminal tools: install kitty nightly"
+- name: "[{{ user_os }}] Setup terminal tools: install kitty nightly"
   ansible.builtin.shell: >
     set -o pipefail &&
     curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin \
@@ -160,7 +160,7 @@
     - not var_kitty_nightly_marker.stat.exists
   changed_when: true
 
-- name: "[archlinux] Setup terminal tools: record kitty nightly marker"
+- name: "[{{ user_os }}] Setup terminal tools: record kitty nightly marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -171,7 +171,7 @@
     - var_kitty_nightly_asset_revision.stdout | trim | length > 0
     - not var_kitty_nightly_marker.stat.exists
 
-- name: "[archlinux] Setup terminal tools: symlink kitty nightly"
+- name: "[{{ user_os }}] Setup terminal tools: symlink kitty nightly"
   ansible.builtin.file:
     src: ~/.local/kitty.app/bin/{{ item }}
     dest: ~/bin/{{ item }}
@@ -185,17 +185,17 @@
       and not var_kitty_nightly_marker.stat.exists
     )
 
-- name: "[archlinux] Setup terminal tools: ensure automatic start-up of systemd user instances"
+- name: "[{{ user_os }}] Setup terminal tools: ensure automatic start-up of systemd user instances"
   ansible.builtin.command: loginctl enable-linger
   changed_when: false
 
-- name: "[archlinux] Setup terminal tools: register default shell"
+- name: "[{{ user_os }}] Setup terminal tools: register default shell"
   ansible.builtin.command: which bash
   register: shell_executable
   ignore_errors: true
   changed_when: false
 
-- name: "[archlinux] Setup terminal tools: change tools configs"
+- name: "[{{ user_os }}] Setup terminal tools: change tools configs"
   ansible.builtin.blockinfile:
     dest: "{{ item.script }}"
     create: true
@@ -211,12 +211,12 @@
     - { script: ~/dotfiles/term/dot-config/tmux/tmux.conf }
     - { script: ~/dotfiles/term/dot-config/tmux/tmuxnvim.conf }
 
-- name: "[archlinux] Setup terminal tools: clone tmux"
+- name: "[{{ user_os }}] Setup terminal tools: clone tmux"
   ansible.builtin.stat:
     path: ~/.config/kdeglobals
   register: var_stat_kdeglobals
 
-- name: "[archlinux] Setup terminal tools: fix kdeglobals"
+- name: "[{{ user_os }}] Setup terminal tools: fix kdeglobals"
   ansible.builtin.blockinfile:
     dest: ~/.config/kdeglobals
     insertafter: "^\\[General\\]"

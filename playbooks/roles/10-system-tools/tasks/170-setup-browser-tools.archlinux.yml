@@ -1,11 +1,11 @@
 ---
-- name: "[archlinux] Setup browser tools: set fact"
+- name: "[{{ user_os }}] Setup browser tools: set fact"
   ansible.builtin.set_fact:
     fact_filtered_browser_extensions: "{{ (fact_filtered_browser_extensions | default([])) + [item] }}"
   loop: "{{ browser_local_extensions }}"
   when: item.hide is not defined or not item.hide
 
-- name: "[archlinux] Setup browser tools: ensure packages"
+- name: "[{{ user_os }}] Setup browser tools: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -14,13 +14,13 @@
       - firefox
       - chromium
 
-- name: "[archlinux] Setup browser tools: ensure local AUR packages"
+- name: "[{{ user_os }}] Setup browser tools: ensure local AUR packages"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages:
       - brave-bin
 
-- name: "[archlinux] Setup browser tools: ensure folder exists"
+- name: "[{{ user_os }}] Setup browser tools: ensure folder exists"
   ansible.builtin.file:
     state: directory
     path: "{{ item }}"
@@ -30,12 +30,12 @@
     - ~/data/apps/browser-tools/chrome
     - ~/data/apps/browser-tools/chrome/extensions
 
-- name: "[archlinux] Setup browser tools: stat chrome-session-dump"
+- name: "[{{ user_os }}] Setup browser tools: stat chrome-session-dump"
   ansible.builtin.stat:
     path: ~/data/apps/browser-tools/chrome/chrome-session-dump-linux-v{{ chrome_session_dump_version }}
   register: var_chrome_session_dump_stat
 
-- name: "[archlinux] Setup browser tools: get chrome-session-dump"
+- name: "[{{ user_os }}] Setup browser tools: get chrome-session-dump"
   ansible.builtin.get_url:
     url: https://github.com/lemnos/chrome-session-dump/releases/download/v{{ chrome_session_dump_version }}/chrome-session-dump-linux
     dest: ~/data/apps/browser-tools/chrome/chrome-session-dump-linux-v{{ chrome_session_dump_version }}
@@ -45,14 +45,14 @@
   failed_when: false
   when: not var_chrome_session_dump_stat.stat.exists
 
-- name: "[archlinux] Setup browser tools: symlink chrome-session-dump"
+- name: "[{{ user_os }}] Setup browser tools: symlink chrome-session-dump"
   ansible.builtin.file:
     src: ~/data/apps/browser-tools/chrome/chrome-session-dump-linux-v{{ chrome_session_dump_version }}
     dest: ~/bin/chrome-session-dump
     state: link
     force: true
 
-- name: "[archlinux] Setup browser tools: ensure ruby packages"
+- name: "[{{ user_os }}] Setup browser tools: ensure ruby packages"
   community.general.gem:
     name: "{{ item }}"
     state: latest
@@ -60,16 +60,16 @@
     - base64
     - extensionator
 
-- name: "[archlinux] Setup browser tools: version to extensionator path"
+- name: "[{{ user_os }}] Setup browser tools: version to extensionator path"
   ansible.builtin.shell: set -o pipefail && fd 'extensionator' ~/.local/share/gem/ruby -t x -1 | grep -oP "\/\K\d[^/]+" -m 1
   register: var_ruby_version
   changed_when: false
 
-- name: "[archlinux] Setup browser tools: reset chrome extension marker specs"
+- name: "[{{ user_os }}] Setup browser tools: reset chrome extension marker specs"
   ansible.builtin.set_fact:
     var_chrome_extension_marker_specs: []
 
-- name: "[archlinux] Setup browser tools: build chrome extension marker specs"
+- name: "[{{ user_os }}] Setup browser tools: build chrome extension marker specs"
   ansible.builtin.set_fact:
     var_chrome_extension_marker_specs: "{{ var_chrome_extension_marker_specs + [var_chrome_extension_marker_spec] }}"
   vars:
@@ -89,7 +89,7 @@
     - repo: https://github.com/karlicoss/promnesia
       marker: HEAD:plain-v1
 
-- name: "[archlinux] Setup browser tools: stat chrome extension checkout markers"
+- name: "[{{ user_os }}] Setup browser tools: stat chrome extension checkout markers"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check-many
@@ -97,7 +97,7 @@
     dotfiles_marker_register: var_chrome_extension_markers
     dotfiles_marker_items: "{{ var_chrome_extension_marker_specs }}"
 
-- name: "[archlinux] Setup browser tools: clone chrome extensions"
+- name: "[{{ user_os }}] Setup browser tools: clone chrome extensions"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: git
@@ -126,21 +126,21 @@
     - repo: https://github.com/karlicoss/promnesia
       marker: HEAD:plain-v1
 
-- name: "[archlinux] Setup browser tools: set fact fact_changed_extensions"
+- name: "[{{ user_os }}] Setup browser tools: set fact fact_changed_extensions"
   ansible.builtin.set_fact:
     fact_changed_extensions: "{{ fact_changed_extensions | default({}) | combine({extension_name: item.changed | default(false)}) }}"
   vars:
     extension_name: "{{ item.item.repo | basename }}"
   loop: "{{ var_clone_chrome_extensions.results }}"
 
-- name: "[archlinux] Setup browser tools: patch NewTab-Redirect extension"
+- name: "[{{ user_os }}] Setup browser tools: patch NewTab-Redirect extension"
   ansible.posix.patch:
     src: extension_new_tab_redirect_tab.patch
     basedir: ~/data/repos/NewTab-Redirect
     strip: 1
   when: not var_chrome_extension_markers.results[0].stat.exists
 
-- name: "[archlinux] Setup browser tools: patch vimium extension"
+- name: "[{{ user_os }}] Setup browser tools: patch vimium extension"
   ansible.posix.patch:
     src: ~/dotfiles/assets/patches/chrome_extensions/extension_vimium_config.patch
     basedir: ~/data/repos/vimium
@@ -148,7 +148,7 @@
   ignore_errors: true
   when: not var_chrome_extension_markers.results[1].stat.exists
 
-- name: "[archlinux] Setup browser tools: record chrome extension checkout markers"
+- name: "[{{ user_os }}] Setup browser tools: record chrome extension checkout markers"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -158,18 +158,18 @@
   loop: "{{ var_clone_chrome_extensions.results }}"
   when: not item.skipped | default(false)
 
-- name: "[archlinux] Setup browser tools: generate key file"
+- name: "[{{ user_os }}] Setup browser tools: generate key file"
   ansible.builtin.shell: |
     openssl genrsa -out ~/data/apps/browser-tools/chrome/extensions/identity.pem 2048
   args:
     creates: ~/data/apps/browser-tools/chrome/extensions/identity.pem
 
-- name: "[archlinux] Setup browser tools: stat promnesia build"
+- name: "[{{ user_os }}] Setup browser tools: stat promnesia build"
   ansible.builtin.stat:
     path: ~/data/repos/promnesia/extension/dist/chrome/manifest.json
   register: var_stat_promnesia_build
 
-- name: "[archlinux] Setup browser tools: install promnesia npm packages"
+- name: "[{{ user_os }}] Setup browser tools: install promnesia npm packages"
   community.general.npm:
     path: "{{ ansible_facts.env.HOME }}/data/repos/promnesia/extension"
     ci: true
@@ -179,7 +179,7 @@
   when: not var_stat_promnesia_build.stat.exists
   ignore_errors: true
 
-- name: "[archlinux] Setup browser tools: build promnesia"
+- name: "[{{ user_os }}] Setup browser tools: build promnesia"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -196,7 +196,7 @@
   when: not var_stat_promnesia_build.stat.exists
   ignore_errors: true
 
-- name: "[archlinux] Setup browser tools: register build dirs exists"
+- name: "[{{ user_os }}] Setup browser tools: register build dirs exists"
   ansible.builtin.stat:
     path: "{{ item.path | default(var_default_d) }}"
   vars:
@@ -204,14 +204,14 @@
   register: var_build_dirs_exists
   loop: "{{ browser_local_extensions }}"
 
-- name: "[archlinux] Setup browser tools: set build dir facts"
+- name: "[{{ user_os }}] Setup browser tools: set build dir facts"
   ansible.builtin.set_fact:
     fact_build_dirs_exists: "{{ fact_build_dirs_exists | default({}) | combine({file: item.stat.isdir is defined and item.stat.isdir}) }}"
   vars:
     file: "{{ item.item.path }}"
   loop: "{{ var_build_dirs_exists.results }}"
 
-- name: "[archlinux] Setup browser tools: build external crx"
+- name: "[{{ user_os }}] Setup browser tools: build external crx"
   ansible.builtin.shell: >
     ~/.local/share/gem/ruby/{{ var_ruby_version.stdout }}/bin/extensionator
     -d {{ item.path | default(var_default_d) }}
@@ -227,7 +227,7 @@
     - fact_build_dirs_exists[item.path | default(var_default_d)] | default(false)
   loop: "{{ fact_filtered_browser_extensions }}"
 
-- name: "[archlinux] Setup browser tools: create browser policy directory for all users"
+- name: "[{{ user_os }}] Setup browser tools: create browser policy directory for all users"
   become: true
   ansible.builtin.file:
     path: "{{ item }}"
@@ -246,7 +246,7 @@
     - /etc/firefox
     - /etc/firefox/policies
 
-- name: "[archlinux] Setup browser tools: create browser policy file for all users"
+- name: "[{{ user_os }}] Setup browser tools: create browser policy file for all users"
   become: true
   ansible.builtin.template:
     src: browser-custom-policy.json
@@ -263,7 +263,7 @@
   vars:
     browser_enable_aggressive_memory_saver: "{{ item.browser_enable_aggressive_memory_saver }}"
 
-- name: "[archlinux] Setup browser tools: create browser initial preferences"
+- name: "[{{ user_os }}] Setup browser tools: create browser initial preferences"
   become: true
   ansible.builtin.template:
     src: browser-initial-preferences.json
@@ -274,7 +274,7 @@
     - /opt/brave-bin/initial_preferences
     - /usr/lib/chromium/initial_preferences
 
-- name: "[archlinux] Setup browser tools: create firefox policy file for all users"
+- name: "[{{ user_os }}] Setup browser tools: create firefox policy file for all users"
   become: true
   ansible.builtin.template:
     src: firefox-policies.json
@@ -282,7 +282,7 @@
     owner: root
     mode: "644"
 
-- name: "[archlinux] Setup browser tools: create extensions directory for all users"
+- name: "[{{ user_os }}] Setup browser tools: create extensions directory for all users"
   become: true
   ansible.builtin.file:
     path: "{{ item }}"
@@ -294,7 +294,7 @@
     - /usr/share/microsoft-edge
     - /usr/share/microsoft-edge/extensions
 
-- name: "[archlinux] Setup browser tools: create extension files"
+- name: "[{{ user_os }}] Setup browser tools: create extension files"
   become: true
   ansible.builtin.command:
     argv:
@@ -318,7 +318,7 @@
       - "{{ extension_floccus }}"
   changed_when: false
 
-- name: "[archlinux] Setup browser tools: copy brave desktop file to user directory"
+- name: "[{{ user_os }}] Setup browser tools: copy brave desktop file to user directory"
   become: true
   ansible.builtin.copy:
     src: /usr/share/applications/brave-browser.desktop
@@ -326,13 +326,13 @@
     owner: "{{ ansible_facts.env.USER }}"
     mode: "644"
 
-- name: "[archlinux] Setup browser tools: clean exec line"
+- name: "[{{ user_os }}] Setup browser tools: clean exec line"
   ansible.builtin.lineinfile:
     dest: "{{ ansible_facts.env.HOME }}/.local/share/applications/brave-browser.desktop"
     regexp: "^Exec=.*"
     state: absent
 
-- name: "[archlinux] Setup browser tools: ensure brave scale"
+- name: "[{{ user_os }}] Setup browser tools: ensure brave scale"
   ansible.builtin.blockinfile:
     dest: "{{ ansible_facts.env.HOME }}/.local/share/applications/brave-browser.desktop"
     marker: "# {mark} ANSIBLE MANAGED BLOCK"
@@ -345,7 +345,7 @@
       %U
   notify: handler_update_desktop_database
 
-- name: "[archlinux] Setup browser tools: copy chromium desktop file to user directory"
+- name: "[{{ user_os }}] Setup browser tools: copy chromium desktop file to user directory"
   become: true
   ansible.builtin.copy:
     src: /usr/share/applications/chromium.desktop
@@ -353,13 +353,13 @@
     owner: "{{ ansible_facts.env.USER }}"
     mode: "644"
 
-- name: "[archlinux] Setup browser tools: clean exec line in chromium desktop file"
+- name: "[{{ user_os }}] Setup browser tools: clean exec line in chromium desktop file"
   ansible.builtin.lineinfile:
     dest: "{{ ansible_facts.env.HOME }}/.local/share/applications/chromium.desktop"
     regexp: "^Exec=.*"
     state: absent
 
-- name: "[archlinux] Setup browser tools: ensure chromium desktop"
+- name: "[{{ user_os }}] Setup browser tools: ensure chromium desktop"
   ansible.builtin.blockinfile:
     dest: "{{ ansible_facts.env.HOME }}/.local/share/applications/chromium.desktop"
     marker: "# {mark} ANSIBLE MANAGED BLOCK"
@@ -372,7 +372,7 @@
       %U
   notify: handler_update_desktop_database
 
-- name: "[archlinux] Setup browser tools: clean packages"
+- name: "[{{ user_os }}] Setup browser tools: clean packages"
   become: true
   ansible.builtin.package:
     force: true

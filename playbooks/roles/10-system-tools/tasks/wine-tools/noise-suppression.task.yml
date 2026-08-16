@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Wine tools: stat noise suppression marker"
+- name: "[{{ user_os }}] Wine tools: stat noise suppression marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -7,14 +7,14 @@
     dotfiles_marker_name: "win-rnnoise-{{ noise_suppression_for_voice_version }}"
     dotfiles_marker_register: var_noise_suppression_marker
 
-- name: "[archlinux] Wine tools: get noise suppression for voice"
+- name: "[{{ user_os }}] Wine tools: get noise suppression for voice"
   ansible.builtin.unarchive:
     src: https://github.com/werman/noise-suppression-for-voice/releases/download/v{{ noise_suppression_for_voice_version }}/win-rnnoise.zip
     dest: ~/data/Downloads/music-production
     remote_src: true
   when: not var_noise_suppression_marker.stat.exists
 
-- name: "[archlinux] Wine tools: record noise suppression marker"
+- name: "[{{ user_os }}] Wine tools: record noise suppression marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record

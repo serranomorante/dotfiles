@@ -1,18 +1,18 @@
 ---
-- name: "[archlinux] Persistence tools: ensure valkey packages"
+- name: "[{{ user_os }}] Persistence tools: ensure valkey packages"
   become: true
   ansible.builtin.package:
     state: present
     name: valkey
 
-- name: "[archlinux] Persistence tools: enable valkey service and ensure is not masked"
+- name: "[{{ user_os }}] Persistence tools: enable valkey service and ensure is not masked"
   become: true
   ansible.builtin.systemd_service:
     name: valkey.service
     enabled: true
     masked: false
 
-- name: "[archlinux] Persistence tools: ensure virtualenv packages"
+- name: "[{{ user_os }}] Persistence tools: ensure virtualenv packages"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: pip
@@ -26,7 +26,7 @@
       - name: redis
       - name: ansible
 
-- name: "[archlinux] Persistence tools: symlink virtualenv ansible"
+- name: "[{{ user_os }}] Persistence tools: symlink virtualenv ansible"
   ansible.builtin.file:
     src: ~/data/apps/persistence-tools/.venv/bin/{{ item.bin_name }}
     dest: ~/bin/{{ item.symlink_name }}

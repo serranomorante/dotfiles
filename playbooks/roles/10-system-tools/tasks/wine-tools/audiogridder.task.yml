@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Wine tools: get audiogridder server"
+- name: "[{{ user_os }}] Wine tools: get audiogridder server"
   ansible.builtin.unarchive:
     src: https://github.com/apohl79/audiogridder/releases/download/release_{{ arch_audiogridder_wine_setup.version_slug |
       default(arch_audiogridder_wine_setup.version) }}/AudioGridder_{{ arch_audiogridder_wine_setup.version }}-Windows-Installers.zip
@@ -9,7 +9,7 @@
   ignore_errors: true
   register: var_get_audiogridder_server
 
-- name: "[archlinux] Wine tools: install audiogridder server"
+- name: "[{{ user_os }}] Wine tools: install audiogridder server"
   ansible.builtin.include_role:
     name: wine-installer-poll
   vars:
@@ -31,7 +31,7 @@
     - is_x_display_session
     - var_get_audiogridder_server is success
 
-- name: "[archlinux] Wine tools: stat audiogridder client marker"
+- name: "[{{ user_os }}] Wine tools: stat audiogridder client marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -39,7 +39,7 @@
     dotfiles_marker_name: "audiogridder-client-{{ arch_audiogridder_wine_setup.plugin_version }}"
     dotfiles_marker_register: var_audiogridder_client_marker
 
-- name: "[archlinux] Wine tools: get audiogridder client"
+- name: "[{{ user_os }}] Wine tools: get audiogridder client"
   ansible.builtin.unarchive:
     src: https://audiogridder.com/github/releases/download/release_{{ arch_audiogridder_wine_setup.plugin_version_slug |
       default(arch_audiogridder_wine_setup.plugin_version) }}/AudioGridder_{{ arch_audiogridder_wine_setup.plugin_version }}-Linux.zip
@@ -49,7 +49,7 @@
   register: var_get_audiogridder_client
   when: not var_audiogridder_client_marker.stat.exists
 
-- name: "[archlinux] Wine tools: record audiogridder client marker"
+- name: "[{{ user_os }}] Wine tools: record audiogridder client marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -58,14 +58,14 @@
     dotfiles_marker_content: "{{ arch_audiogridder_wine_setup.plugin_version }}\n"
   when: var_get_audiogridder_client is success and var_get_audiogridder_client.changed | default(false)
 
-- name: "[archlinux] Wine tools: setup audiogridder.desktop file"
+- name: "[{{ user_os }}] Wine tools: setup audiogridder.desktop file"
   ansible.builtin.template:
     src: audiogridder.desktop
     dest: ~/.local/share/applications/wine/Programs/AudioGridderServer.desktop
     mode: "644"
   notify: handler_update_desktop_database
 
-- name: "[archlinux] Wine tools: setup launch-audiogridder-wine file"
+- name: "[{{ user_os }}] Wine tools: setup launch-audiogridder-wine file"
   ansible.builtin.template:
     src: launch-audiogridder-wine
     dest: ~/.local/bin/launch-audiogridder-wine

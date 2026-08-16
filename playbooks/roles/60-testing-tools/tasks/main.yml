@@ -1,6 +1,6 @@
 ---
 - block:
-    - name: "[archlinux] Testing tools: ensure packages"
+    - name: "[{{ user_os }}] Testing tools: ensure packages"
       become: true
       ansible.builtin.package:
         state: present

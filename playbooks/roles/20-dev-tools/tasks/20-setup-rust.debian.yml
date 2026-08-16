@@ -1,5 +1,5 @@
 ---
-- name: "[debian] Setup rust: ensure folder exists"
+- name: "[{{ user_os }}] Setup rust: ensure folder exists"
   ansible.builtin.file:
     state: directory
     path: "{{ item }}"
@@ -9,14 +9,14 @@
     - ~/data/apps/lang-tools
     - ~/data/apps/lang-tools/rust
 
-- name: "[debian] Setup rust: unzip, unrar, unarchive rust"
+- name: "[{{ user_os }}] Setup rust: unzip, unrar, unarchive rust"
   ansible.builtin.unarchive:
     src: https://static.rust-lang.org/dist/rust-{{ rust_version }}-x86_64-unknown-linux-gnu.tar.gz
     dest: ~/data/apps/lang-tools/rust
     remote_src: true
     creates: ~/data/apps/lang-tools/rust/rust-{{ rust_version }}-x86_64-unknown-linux-gnu
 
-# - name: "[debian] Setup rust: symlink rust tools"
+# - name: "[{{ user_os }}] Setup rust: symlink rust tools"
 #   ansible.builtin.file:
 #     src: ~/data/apps/lang-tools/rust/rust-{{ rust_version }}-x86_64-unknown-linux-gnu/{{ item }}/bin/{{ item }}
 #     dest: ~/bin/{{ item }}
@@ -25,7 +25,7 @@
 #     - rustc
 #     - cargo
 
-- name: "[debian] Setup rust: add rust to console startup scripts"
+- name: "[{{ user_os }}] Setup rust: add rust to console startup scripts"
   ansible.builtin.blockinfile:
     dest: "{{ item.script }}"
     create: true

@@ -1,11 +1,11 @@
 ---
-- name: "[archlinux] Nvidia display profile: validate profile"
+- name: "[{{ user_os }}] Nvidia display profile: validate profile"
   ansible.builtin.assert:
     that:
       - arch_nvidia_display_profile in ['offload_only', 'reverse_prime']
     fail_msg: "arch_nvidia_display_profile must be either offload_only or reverse_prime."
 
-- name: "[archlinux] Nvidia display profile: refresh SDDM Xsetup"
+- name: "[{{ user_os }}] Nvidia display profile: refresh SDDM Xsetup"
   become: true
   ansible.builtin.template:
     src: sddm/Xsetup
@@ -14,14 +14,14 @@
     mode: "744"
   when: arch_has_nvidia_gpu
 
-- name: "[archlinux] Nvidia display profile: check nvidia-persistenced service"
+- name: "[{{ user_os }}] Nvidia display profile: check nvidia-persistenced service"
   ansible.builtin.command: systemctl list-unit-files nvidia-persistenced.service
   changed_when: true
   ignore_errors: true
   register: var_nvidia_persistenced_service
   when: arch_has_nvidia_gpu
 
-- name: "[archlinux] Nvidia display profile: manage nvidia-persistenced service"
+- name: "[{{ user_os }}] Nvidia display profile: manage nvidia-persistenced service"
   become: true
   ansible.builtin.systemd_service:
     scope: system
@@ -33,7 +33,7 @@
     - arch_has_nvidia_gpu
     - "'nvidia-persistenced.service' in var_nvidia_persistenced_service.stdout"
 
-- name: "[archlinux] Nvidia display profile: add reverse PRIME config"
+- name: "[{{ user_os }}] Nvidia display profile: add reverse PRIME config"
   become: true
   ansible.builtin.copy:
     src: nvidia/80-igpu-primary-egpu-offload.conf
@@ -43,7 +43,7 @@
     - arch_has_nvidia_gpu
     - arch_nvidia_display_profile == 'reverse_prime'
 
-- name: "[archlinux] Nvidia display profile: remove reverse PRIME config outside reverse PRIME profile"
+- name: "[{{ user_os }}] Nvidia display profile: remove reverse PRIME config outside reverse PRIME profile"
   become: true
   ansible.builtin.file:
     path: /etc/X11/xorg.conf.d/80-igpu-primary-egpu-offload.conf

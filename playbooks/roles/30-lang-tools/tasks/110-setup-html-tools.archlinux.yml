@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] HTML language: ensure npm packages with diff capture"
+- name: "[{{ user_os }}] HTML language: ensure npm packages with diff capture"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: npm
@@ -10,20 +10,20 @@
     update_diff_npm_node_version: "{{ node_system_default_version }}"
     update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
 
-- name: "[archlinux] HTML language: symlink npm binaries"
+- name: "[{{ user_os }}] HTML language: symlink npm binaries"
   ansible.builtin.file:
     src: "{{ node_html_npm_prefix }}/bin/{{ item.1 }}"
     dest: "{{ node_user_bin_dir }}/{{ item.1 }}"
     state: link
   loop: "{{ node_html_npm_packages | subelements('bins') }}"
 
-- name: "[archlinux] HTML language: ensure superhtml download directory"
+- name: "[{{ user_os }}] HTML language: ensure superhtml download directory"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/superhtml"
     state: directory
     mode: "755"
 
-- name: "[archlinux] HTML language: stat superhtml marker"
+- name: "[{{ user_os }}] HTML language: stat superhtml marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -31,7 +31,7 @@
     dotfiles_marker_name: "superhtml-{{ arch_superhtml_version }}"
     dotfiles_marker_register: var_superhtml_marker
 
-- name: "[archlinux] HTML language: download superhtml"
+- name: "[{{ user_os }}] HTML language: download superhtml"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -50,7 +50,7 @@
     creates: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/superhtml/superhtml-{{ arch_superhtml_version }}.tar.gz"
   when: not var_superhtml_marker.stat.exists
 
-- name: "[archlinux] HTML language: install superhtml"
+- name: "[{{ user_os }}] HTML language: install superhtml"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -70,7 +70,7 @@
   when: not var_superhtml_marker.stat.exists
   changed_when: true
 
-- name: "[archlinux] HTML language: record superhtml marker"
+- name: "[{{ user_os }}] HTML language: record superhtml marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record

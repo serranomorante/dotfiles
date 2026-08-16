@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Other tools: ensure packages"
+- name: "[{{ user_os }}] Other tools: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -7,20 +7,20 @@
       - yt-dlp
       - noto-fonts-cjk
 
-- name: "[archlinux] Other tools: ensure local AUR packages"
+- name: "[{{ user_os }}] Other tools: ensure local AUR packages"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages:
       - ccze
 
-- name: "[archlinux] Other tools: install jdownloader"
+- name: "[{{ user_os }}] Other tools: install jdownloader"
   community.general.flatpak:
     name: org.jdownloader.JDownloader
     state: latest
   register: var_jdownloader_install
   ignore_errors: true
 
-- name: "[archlinux] Other tools: ensure custom jdownloader desktop"
+- name: "[{{ user_os }}] Other tools: ensure custom jdownloader desktop"
   become: true
   ansible.builtin.copy:
     src: flatpak-jdownloader.desktop
@@ -30,18 +30,18 @@
   when: var_jdownloader_install.changed and var_jdownloader_install is success
   notify: handler_update_desktop_database
 
-- name: "[archlinux] Other tools: ensure font directory exists"
+- name: "[{{ user_os }}] Other tools: ensure font directory exists"
   ansible.builtin.file:
     path: ~/.local/share/fonts/{{ item | basename | splitext | first }}
     state: directory
     mode: "775"
   loop: "{{ arch_fonts }}"
 
-- name: "[archlinux] Other tools: reset font marker specs"
+- name: "[{{ user_os }}] Other tools: reset font marker specs"
   ansible.builtin.set_fact:
     var_arch_font_marker_specs: []
 
-- name: "[archlinux] Other tools: build font marker specs"
+- name: "[{{ user_os }}] Other tools: build font marker specs"
   ansible.builtin.set_fact:
     var_arch_font_marker_specs: "{{ var_arch_font_marker_specs + [var_arch_font_marker_spec] }}"
   vars:
@@ -50,7 +50,7 @@
       item: "{{ item }}"
   loop: "{{ arch_fonts }}"
 
-- name: "[archlinux] Other tools: stat font markers"
+- name: "[{{ user_os }}] Other tools: stat font markers"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check-many
@@ -58,7 +58,7 @@
     dotfiles_marker_register: var_arch_font_markers
     dotfiles_marker_items: "{{ var_arch_font_marker_specs }}"
 
-- name: "[archlinux] Other tools: install font"
+- name: "[{{ user_os }}] Other tools: install font"
   ansible.builtin.unarchive:
     src: "{{ item }}"
     dest: ~/.local/share/fonts/{{ item | basename | splitext | first }}
@@ -70,7 +70,7 @@
   register: var_arch_font_installs
   notify: handler_ensure_fc_cache
 
-- name: "[archlinux] Other tools: record font markers"
+- name: "[{{ user_os }}] Other tools: record font markers"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -80,20 +80,20 @@
   loop: "{{ var_arch_font_installs.results }}"
   when: item.changed | default(false)
 
-- name: "[archlinux] Other tools: ensure security tools folder"
+- name: "[{{ user_os }}] Other tools: ensure security tools folder"
   ansible.builtin.file:
     path: ~/data/apps/security-tools
     state: directory
     mode: "755"
 
-- name: "[archlinux] Other tools: install bitwarden"
+- name: "[{{ user_os }}] Other tools: install bitwarden"
   community.general.flatpak:
     name: com.bitwarden.desktop
     state: latest
   ignore_errors: true
   register: var_bitwarden_install
 
-- name: "[archlinux] Other tools: prepare bitwarden .desktop and mimetype"
+- name: "[{{ user_os }}] Other tools: prepare bitwarden .desktop and mimetype"
   ansible.builtin.shell: |
     update-desktop-database ~/.local/share/applications
     xdg-mime default bitwarden.desktop x-scheme-handler/bitwarden
@@ -101,7 +101,7 @@
   when: var_bitwarden_install.changed and var_bitwarden_install is success
   notify: "10-system-tools : handler_update_desktop_database"
 
-- name: "[archlinux] Other tools: install packages"
+- name: "[{{ user_os }}] Other tools: install packages"
   become: true
   ansible.builtin.package:
     name:

@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Editor tools: ensure packages"
+- name: "[{{ user_os }}] Editor tools: ensure packages"
   become: true
   ansible.builtin.package:
     name:
@@ -7,7 +7,7 @@
       - ctags
     state: present
 
-- name: "[archlinux] Editor tools: check overseer local patch marker"
+- name: "[{{ user_os }}] Editor tools: check overseer local patch marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -15,12 +15,12 @@
     dotfiles_marker_name: nvim-plugin-overseer-local-patches-v2
     dotfiles_marker_register: var_overseer_local_patch_marker
 
-- name: "[archlinux] Editor tools: check overseer checkout"
+- name: "[{{ user_os }}] Editor tools: check overseer checkout"
   ansible.builtin.stat:
     path: ~/.local/share/nvim/site/pack/plugins/start/overseer/.git
   register: var_overseer_checkout
 
-- name: "[archlinux] Editor tools: ensure nvim plugins"
+- name: "[{{ user_os }}] Editor tools: ensure nvim plugins"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: git
@@ -34,7 +34,7 @@
   loop: "{{ neovim_plugins | rejectattr('repo', 'equalto', 'stevearc/overseer.nvim') | list }}"
   register: var_clone_nvim_plugins
 
-- name: "[archlinux] Editor tools: refresh overseer.nvim for local patch contract"
+- name: "[{{ user_os }}] Editor tools: refresh overseer.nvim for local patch contract"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: git
@@ -49,7 +49,7 @@
   register: var_overseer_nvim_plugin_result
   when: not var_overseer_local_patch_marker.stat.exists or not var_overseer_checkout.stat.exists
 
-- name: "[archlinux] Editor tools: apply overseer local patches"
+- name: "[{{ user_os }}] Editor tools: apply overseer local patches"
   ansible.posix.patch:
     src: "{{ item }}"
     basedir: ~/.local/share/nvim/site/pack/plugins/start/overseer
@@ -60,7 +60,7 @@
     - overseer-terminal-normal-output.patch
   when: not var_overseer_local_patch_marker.stat.exists or not var_overseer_checkout.stat.exists
 
-- name: "[archlinux] Editor tools: record overseer local patch marker"
+- name: "[{{ user_os }}] Editor tools: record overseer local patch marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -69,21 +69,21 @@
     dotfiles_marker_content: "overseer-local-patches-v2\n"
   when: not var_overseer_local_patch_marker.stat.exists or not var_overseer_checkout.stat.exists
 
-- name: "[archlinux] Editor tools: build lookup of nvim plugin results by repo (init)"
+- name: "[{{ user_os }}] Editor tools: build lookup of nvim plugin results by repo (init)"
   ansible.builtin.set_fact:
     nvim_plugin_result_by_repo: {}
 
-- name: "[archlinux] Editor tools: build lookup of nvim plugin results by repo"
+- name: "[{{ user_os }}] Editor tools: build lookup of nvim plugin results by repo"
   ansible.builtin.set_fact:
     nvim_plugin_result_by_repo: "{{ nvim_plugin_result_by_repo | default({}) | combine({item.item.repo: item}) }}"
   loop: "{{ var_clone_nvim_plugins.results }}"
 
-- name: "[archlinux] Editor tools: add overseer result to nvim plugin lookup"
+- name: "[{{ user_os }}] Editor tools: add overseer result to nvim plugin lookup"
   ansible.builtin.set_fact:
     nvim_plugin_result_by_repo: "{{ nvim_plugin_result_by_repo | combine({'stevearc/overseer.nvim': var_overseer_nvim_plugin_result | default({'changed': false})})
       }}"
 
-- name: "[archlinux] Editor tools: remove stale nvim plugins"
+- name: "[{{ user_os }}] Editor tools: remove stale nvim plugins"
   ansible.builtin.file:
     path: ~/.local/share/nvim/site/pack/plugins/start/{{ item }}
     state: absent
@@ -91,32 +91,32 @@
     - coc.nvim
     - plenary
 
-- name: "[archlinux] Editor tools: stat treesitter CLI"
+- name: "[{{ user_os }}] Editor tools: stat treesitter CLI"
   ansible.builtin.stat:
     path: ~/bin/tree-sitter
   register: var_tree_sitter_cli
 
-- name: "[archlinux] Editor tools: create treesitter tempdir"
+- name: "[{{ user_os }}] Editor tools: create treesitter tempdir"
   ansible.builtin.tempfile:
     state: directory
     suffix: treesitter_tempdir
   register: treesitter_tempdir
   when: not var_tree_sitter_cli.stat.exists
 
-- name: "[archlinux] Editor tools: download treesitter CLI"
+- name: "[{{ user_os }}] Editor tools: download treesitter CLI"
   ansible.builtin.get_url:
     url: https://github.com/tree-sitter/tree-sitter/releases/download/v{{ archlinux_treesitter_version }}/tree-sitter-linux-x64.gz
     dest: "{{ treesitter_tempdir.path }}/"
     mode: "755"
   when: not var_tree_sitter_cli.stat.exists
 
-- name: "[archlinux] Editor tools: uncompress treesitter (.gz no supported)"
+- name: "[{{ user_os }}] Editor tools: uncompress treesitter (.gz no supported)"
   ansible.builtin.command: gunzip -d {{ treesitter_tempdir.path }}/tree-sitter-linux-x64.gz
   args:
     creates: "{{ treesitter_tempdir.path }}/tree-sitter-linux-x64"
   when: not var_tree_sitter_cli.stat.exists
 
-- name: "[archlinux] Editor tools: install treesitter CLI"
+- name: "[{{ user_os }}] Editor tools: install treesitter CLI"
   ansible.builtin.copy:
     src: "{{ treesitter_tempdir.path }}/tree-sitter-linux-x64"
     dest: ~/bin/tree-sitter
@@ -124,7 +124,7 @@
     mode: "755"
   when: not var_tree_sitter_cli.stat.exists
 
-- name: "[archlinux] Editor tools: clone treesitter parsers"
+- name: "[{{ user_os }}] Editor tools: clone treesitter parsers"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: git
@@ -138,7 +138,7 @@
   register: var_clone_treesitter_parsers
   loop: "{{ treesitter_parsers | unique(attribute='repo') | list }}"
 
-- name: "[archlinux] Editor tools: clone treesitter queries source"
+- name: "[{{ user_os }}] Editor tools: clone treesitter queries source"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: git
@@ -151,30 +151,30 @@
     update_diff_git_recursive: false
     update_diff_git_single_branch: true
 
-- name: "[archlinux] Editor tools: build lookup of treesitter clone results by repo (init)"
+- name: "[{{ user_os }}] Editor tools: build lookup of treesitter clone results by repo (init)"
   ansible.builtin.set_fact:
     treesitter_clone_result_by_repo: {}
 
-- name: "[archlinux] Editor tools: build lookup of treesitter clone results by repo"
+- name: "[{{ user_os }}] Editor tools: build lookup of treesitter clone results by repo"
   ansible.builtin.set_fact:
     treesitter_clone_result_by_repo: "{{ treesitter_clone_result_by_repo | combine({item.item.repo: item}) }}"
   loop: "{{ var_clone_treesitter_parsers.results }}"
 
-- name: "[archlinux] Editor tools: remove stale built treesitter parsers after repo updates"
+- name: "[{{ user_os }}] Editor tools: remove stale built treesitter parsers after repo updates"
   ansible.builtin.file:
     path: ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
     state: absent
   when: "(treesitter_clone_result_by_repo[item.repo] | default({})).changed | default(false)"
   loop: "{{ treesitter_parsers }}"
 
-- name: "[archlinux] Editor tools: build treesitter parsers"
+- name: "[{{ user_os }}] Editor tools: build treesitter parsers"
   ansible.builtin.command: ~/bin/tree-sitter build -o ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
   args:
     creates: ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
     chdir: ~/data/repos/{{ item.repo | basename }}/{{ item.location | default('') }}
   loop: "{{ treesitter_parsers }}"
 
-- name: "[archlinux] Editor tools: ensure nvim treesitter folders"
+- name: "[{{ user_os }}] Editor tools: ensure nvim treesitter folders"
   ansible.builtin.file:
     path: ~/.config/nvim/{{ item }}
     state: directory
@@ -183,7 +183,7 @@
     - parser
     - queries
 
-- name: "[archlinux] Editor tools: list installed treesitter parsers"
+- name: "[{{ user_os }}] Editor tools: list installed treesitter parsers"
   ansible.builtin.command:
     argv:
       - find
@@ -199,7 +199,7 @@
   register: treesitter_installed_parser_files
   changed_when: false
 
-- name: "[archlinux] Editor tools: copy treesitter parsers to nvim"
+- name: "[{{ user_os }}] Editor tools: copy treesitter parsers to nvim"
   ansible.builtin.copy:
     src: ~/data/repos/{{ item.repo | basename }}/{{ item.filetype }}.so
     dest: ~/.config/nvim/parser/{{ item.filetype }}.so
@@ -209,7 +209,7 @@
       (treesitter_installed_parser_files.stdout_lines | default([]))
   loop: "{{ treesitter_parsers }}"
 
-- name: "[archlinux] Editor tools: copy nvim-treesitter runtime queries to nvim"
+- name: "[{{ user_os }}] Editor tools: copy nvim-treesitter runtime queries to nvim"
   ansible.builtin.command:
     argv:
       - /usr/bin/rsync
@@ -219,7 +219,7 @@
       - ~/.config/nvim/queries/
   changed_when: true
 
-- name: "[archlinux] Editor tools: copy custom treesitter queries to nvim"
+- name: "[{{ user_os }}] Editor tools: copy custom treesitter queries to nvim"
   ansible.builtin.copy:
     src: ~/data/repos/{{ item.repo | basename }}/{{ item.location | default('') }}/queries/
     dest: ~/.config/nvim/queries/{{ item.filetype }}/
@@ -227,12 +227,12 @@
   when: "(item.query_source | default('parser')) == 'parser'"
   loop: "{{ treesitter_parsers }}"
 
-- name: "[archlinux] Editor tools: remove nvim-treesitter plugin"
+- name: "[{{ user_os }}] Editor tools: remove nvim-treesitter plugin"
   ansible.builtin.file:
     path: ~/.local/share/nvim/site/pack/plugins/start/nvim-treesitter
     state: absent
 
-- name: "[archlinux] Editor tools: setup intelephense key if available"
+- name: "[{{ user_os }}] Editor tools: setup intelephense key if available"
   ansible.builtin.shell: |
     mkdir -p ~/data/intelephense
     {{ kwallet_query_cmd }} && echo "$({{ kwallet_query_cmd }})" > ~/data/intelephense/licence.txt
@@ -242,11 +242,11 @@
     creates: ~/data/intelephense/licence.txt
   ignore_errors: true
 
-- name: "[archlinux] Editor tools: generate helptags"
+- name: "[{{ user_os }}] Editor tools: generate helptags"
   ansible.builtin.command: ~/bin/nvim --headless -c "helptags ALL" -c "quit"
   changed_when: false
 
-- name: "[archlinux] Editor tools: sync colorscheme with system"
+- name: "[{{ user_os }}] Editor tools: sync colorscheme with system"
   ansible.builtin.command: echo
   changed_when: true
   notify: handler_ensure_color_change_dbus_subscription

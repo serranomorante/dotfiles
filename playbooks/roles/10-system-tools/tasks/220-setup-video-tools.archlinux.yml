@@ -1,11 +1,11 @@
 ---
-- name: "[archlinux] Setup video tools: ensure video-tools folder"
+- name: "[{{ user_os }}] Setup video tools: ensure video-tools folder"
   ansible.builtin.file:
     path: ~/data/apps/video-tools
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup video tools: fix permission denied issue with davinci install"
+- name: "[{{ user_os }}] Setup video tools: fix permission denied issue with davinci install"
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
@@ -13,19 +13,19 @@
     - ~/temp/makepkg/davinci-resolve
     - ~/makepkg/davinci-resolve
 
-- name: "[archlinux] Setup video tools: ensure davinci-resolve folder"
+- name: "[{{ user_os }}] Setup video tools: ensure davinci-resolve folder"
   ansible.builtin.file:
     path: ~/data/apps/video-tools/davinci-resolve
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup video tools: get installed davinci-resolve version"
+- name: "[{{ user_os }}] Setup video tools: get installed davinci-resolve version"
   ansible.builtin.command: pacman -Q davinci-resolve
   changed_when: false
   failed_when: false
   register: var_pacman_davinci_resolve
 
-- name: "[archlinux] Setup video tools: set installed davinci-resolve facts"
+- name: "[{{ user_os }}] Setup video tools: set installed davinci-resolve facts"
   ansible.builtin.set_fact:
     var_davinci_resolve_installed_version: >-
       {{
@@ -40,13 +40,13 @@
         var_pacman_davinci_resolve.stdout.split()[1].split('-')[0] == arch_davinci_resolve_version
       }}
 
-- name: "[archlinux] Setup video tools: stat davinci-resolve zip package before download"
+- name: "[{{ user_os }}] Setup video tools: stat davinci-resolve zip package before download"
   ansible.builtin.stat:
     path: ~/data/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
     get_checksum: false
   register: var_stat_davinci_zip_before_download
 
-- name: "[archlinux] Setup video tools: stat claude executable"
+- name: "[{{ user_os }}] Setup video tools: stat claude executable"
   ansible.builtin.stat:
     path: "{{ ansible_facts.env.HOME }}/bin/claude"
   register: var_stat_claude_executable
@@ -55,7 +55,7 @@
     - not var_davinci_resolve_version_installed
     - not var_stat_davinci_zip_before_download.stat.exists
 
-- name: "[archlinux] Setup video tools: stat claude firejail wrapper"
+- name: "[{{ user_os }}] Setup video tools: stat claude firejail wrapper"
   ansible.builtin.stat:
     path: "{{ ansible_facts.env.HOME }}/bin/fj-claude"
   register: var_stat_claude_firejail_wrapper
@@ -64,7 +64,7 @@
     - not var_davinci_resolve_version_installed
     - not var_stat_davinci_zip_before_download.stat.exists
 
-- name: "[archlinux] Setup video tools: stat mcp server config"
+- name: "[{{ user_os }}] Setup video tools: stat mcp server config"
   ansible.builtin.stat:
     path: "{{ ansible_facts.env.HOME }}/.config/mcphub/servers.json"
   register: var_stat_mcp_servers_json
@@ -73,7 +73,7 @@
     - not var_davinci_resolve_version_installed
     - not var_stat_davinci_zip_before_download.stat.exists
 
-- name: "[archlinux] Setup video tools: register davinci resolve blackmagic email"
+- name: "[{{ user_os }}] Setup video tools: register davinci resolve blackmagic email"
   ansible.builtin.command: >-
     kwallet-query --folder {{ davinci_resolve_blackmagic_email_keyring.folder }}
     --read-password {{ davinci_resolve_blackmagic_email_keyring.passkey }}
@@ -90,7 +90,7 @@
     - (var_stat_claude_firejail_wrapper.stat.exists | default(false))
     - (var_stat_mcp_servers_json.stat.exists | default(false))
 
-- name: "[archlinux] Setup video tools: register davinci resolve blackmagic password"
+- name: "[{{ user_os }}] Setup video tools: register davinci resolve blackmagic password"
   ansible.builtin.command: >-
     kwallet-query --folder {{ davinci_resolve_blackmagic_password_keyring.folder }}
     --read-password {{ davinci_resolve_blackmagic_password_keyring.passkey }}
@@ -107,7 +107,7 @@
     - (var_stat_claude_firejail_wrapper.stat.exists | default(false))
     - (var_stat_mcp_servers_json.stat.exists | default(false))
 
-- name: "[archlinux] Setup video tools: download davinci resolve with claude"
+- name: "[{{ user_os }}] Setup video tools: download davinci resolve with claude"
   ansible.builtin.command:
     argv:
       - "{{ ansible_facts.env.HOME }}/bin/fj-claude"
@@ -159,7 +159,7 @@
     - (var_davinci_resolve_blackmagic_password.rc | default(1)) == 0
     - (var_davinci_resolve_blackmagic_password.stdout | default('') | trim | length) > 0
 
-- name: "[archlinux] Setup video tools: wait for davinci to download"
+- name: "[{{ user_os }}] Setup video tools: wait for davinci to download"
   ansible.builtin.wait_for:
     path: ~/Downloads/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
     msg: Timeout waiting for davinci resolve to download
@@ -173,13 +173,13 @@
     - var_download_davinci_result is succeeded
     - var_download_davinci_result.changed | default(false)
 
-- name: "[archlinux] Setup video tools: stat downloaded davinci resolve file"
+- name: "[{{ user_os }}] Setup video tools: stat downloaded davinci resolve file"
   ansible.builtin.stat:
     path: ~/Downloads/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
     get_checksum: false
   register: var_stat_downloaded_davinci_resolve_file
 
-- name: "[archlinux] Setup video tools: move davinci resolve zip to expected location"
+- name: "[{{ user_os }}] Setup video tools: move davinci resolve zip to expected location"
   ansible.builtin.command: mv DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip ~/data/apps/video-tools/davinci-resolve/
   args:
     chdir: ~/Downloads
@@ -190,13 +190,13 @@
     - var_stat_downloaded_davinci_resolve_file.stat.exists
     - ((var_stat_downloaded_davinci_resolve_file.stat.size / 1024 / 1024) | int > 1000) # at least greater than 1G
 
-- name: "[archlinux] Setup video tools: stat davinci-resolve zip package"
+- name: "[{{ user_os }}] Setup video tools: stat davinci-resolve zip package"
   ansible.builtin.stat:
     path: ~/data/apps/video-tools/davinci-resolve/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip
     get_checksum: false
   register: var_stat_davinci_zip
 
-- name: "[archlinux] Setup video tools: download aur package"
+- name: "[{{ user_os }}] Setup video tools: download aur package"
   ansible.builtin.unarchive:
     src: https://aur.archlinux.org/cgit/aur.git/snapshot/davinci-resolve.tar.gz
     dest: ~/data/apps/video-tools/
@@ -207,7 +207,7 @@
     - not var_davinci_resolve_version_installed
     - var_stat_davinci_zip.stat.exists
 
-- name: "[archlinux] Setup video tools: ensure same davinci-resolve version"
+- name: "[{{ user_os }}] Setup video tools: ensure same davinci-resolve version"
   ansible.builtin.replace:
     path: ~/data/apps/video-tools/davinci-resolve/PKGBUILD
     regexp: "^pkgver=.*"
@@ -217,7 +217,7 @@
     - not var_davinci_resolve_version_installed
     - var_stat_davinci_zip.stat.exists
 
-- name: "[archlinux] Setup video tools: ensure packages"
+- name: "[{{ user_os }}] Setup video tools: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -226,19 +226,19 @@
       - expac
       - guvcview
 
-- name: "[archlinux] Setup video tools: ensure davinci-resolve local AUR dependencies"
+- name: "[{{ user_os }}] Setup video tools: ensure davinci-resolve local AUR dependencies"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages:
       - libpng12
   when: is_x_display_session
 
-- name: "[archlinux] Setup video tools: temporary give tmpfs more space"
+- name: "[{{ user_os }}] Setup video tools: temporary give tmpfs more space"
   become: true
   ansible.builtin.command: mount -o remount,size=80% /tmp
   changed_when: true
 
-- name: "[archlinux] Setup video tools: ensure davinci-resolve folder permissions"
+- name: "[{{ user_os }}] Setup video tools: ensure davinci-resolve folder permissions"
   become: true
   ansible.builtin.file:
     path: "{{ item }}"
@@ -258,7 +258,7 @@
     - not var_davinci_resolve_version_installed
     - var_stat_davinci_zip.stat.exists
 
-- name: "[archlinux] Setup video tools: stat pre-build qt5-webengine package"
+- name: "[{{ user_os }}] Setup video tools: stat pre-build qt5-webengine package"
   ansible.builtin.stat:
     path: ~/data/apps/video-tools/qt5/qt5-webengine-{{ qt5_webengine_version }}-x86_64.pkg.tar.zst
   register: var_qt5_webengine_pkg
@@ -267,7 +267,7 @@
     - not var_davinci_resolve_version_installed
     - var_stat_davinci_zip.stat.exists
 
-- name: "[archlinux] Setup video tools: get pre-build qt5-webengine package"
+- name: "[{{ user_os }}] Setup video tools: get pre-build qt5-webengine package"
   ansible.builtin.get_url:
     url: https://sourceforge.net/projects/fabiololix-os-archive/files/Packages/qt5-webengine-{{ qt5_webengine_version }}-x86_64.pkg.tar.zst/download
     dest: ~/data/apps/video-tools/qt5/qt5-webengine-{{ qt5_webengine_version }}-x86_64.pkg.tar.zst
@@ -280,7 +280,7 @@
     - var_stat_davinci_zip.stat.exists
     - not var_qt5_webengine_pkg.stat.exists
 
-- name: "[archlinux] Setup video tools: install pre-build qt5-webengine package"
+- name: "[{{ user_os }}] Setup video tools: install pre-build qt5-webengine package"
   become: true
   ansible.builtin.command: >
     pacman -U --needed --noconfirm "{{ ansible_facts.env.HOME }}/data/apps/video-tools/qt5/qt5-webengine-{{ qt5_webengine_version }}-x86_64.pkg.tar.zst"
@@ -292,7 +292,7 @@
     - var_stat_davinci_zip.stat.exists
     - var_qt5_webengine_pkg.stat.exists
 
-- name: "[archlinux] Setup video tools: ensure packages (needs display)"
+- name: "[{{ user_os }}] Setup video tools: ensure packages (needs display)"
   # https://github.com/Ashark/davinci-resolve-checker?tab=readme-ov-file#installation
   become: true
   ansible.builtin.package:
@@ -308,7 +308,7 @@
       - blender
   when: is_x_display_session
 
-- name: "[archlinux] Setup video tools: ensure absent packages"
+- name: "[{{ user_os }}] Setup video tools: ensure absent packages"
   # this also makes CUDA work on davinci-resolve
   become: true
   ansible.builtin.package:
@@ -316,7 +316,7 @@
     name: opencl-mesa
   when: is_x_display_session
 
-- name: "[archlinux] Setup video tools: ensure pip deps for davinci-resolve-checker"
+- name: "[{{ user_os }}] Setup video tools: ensure pip deps for davinci-resolve-checker"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: pip
@@ -328,7 +328,7 @@
       - name: distro
       - name: pylspci
 
-- name: "[archlinux] Setup video tools: clone davinci-resolve-checker repo"
+- name: "[{{ user_os }}] Setup video tools: clone davinci-resolve-checker repo"
   ansible.builtin.git:
     repo: https://github.com/Ashark/davinci-resolve-checker
     executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
@@ -337,7 +337,7 @@
     single_branch: true
     depth: 1
 
-- name: "[archlinux] Setup video tools: install davinci-resolve from local AUR repository"
+- name: "[{{ user_os }}] Setup video tools: install davinci-resolve from local AUR repository"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages: davinci-resolve
@@ -346,7 +346,7 @@
     - not var_davinci_resolve_version_installed
     - var_stat_davinci_zip.stat.exists
 
-- name: "[archlinux] Setup video tools: remove faulty wine .dekstop"
+- name: "[{{ user_os }}] Setup video tools: remove faulty wine .dekstop"
   ansible.builtin.file:
     state: absent
     path: ~/.local/share/applications/wine-extension-braw.desktop

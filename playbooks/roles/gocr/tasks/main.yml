@@ -1,6 +1,6 @@
 ---
 - block:
-    - name: "[archlinux] GOCR: ensure system dependencies"
+    - name: "[{{ user_os }}] GOCR: ensure system dependencies"
       become: true
       ansible.builtin.package:
         state: present

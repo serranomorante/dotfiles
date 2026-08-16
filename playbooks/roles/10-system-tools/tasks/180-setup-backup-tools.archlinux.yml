@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup backup tools: ensure packages"
+- name: "[{{ user_os }}] Setup backup tools: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -7,7 +7,7 @@
       - borg
       - python-pyfuse3
 
-- name: "[archlinux] Setup backup tools: ensure borg env variables in sudoers file"
+- name: "[{{ user_os }}] Setup backup tools: ensure borg env variables in sudoers file"
   become: true
   ansible.builtin.blockinfile:
     dest: /etc/sudoers
@@ -19,7 +19,7 @@
     # The sx borg shortcut derives the KWallet key from the repo basename, so
     # both must agree. Fail fast here rather than letting a renamed passkey
     # silently authenticate the wrong repo.
-    - name: "[archlinux] Setup backup tools: validate repo basename matches KWallet passkey"
+    - name: "[{{ user_os }}] Setup backup tools: validate repo basename matches KWallet passkey"
       ansible.builtin.assert:
         that:
           - item.repo | basename == item.keyrings.passkey
@@ -31,18 +31,18 @@
       loop_control:
         label: "{{ item.keyrings.passkey }}"
 
-    - name: "[archlinux] Setup backup tools: stat private browser defaults"
+    - name: "[{{ user_os }}] Setup backup tools: stat private browser defaults"
       ansible.builtin.stat:
         path: ~/dotfiles/for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/defaults/main/main.vars.yml
       register: var_stat_private_browser_defaults
 
-    - name: "[archlinux] Setup backup tools: load private browser defaults"
+    - name: "[{{ user_os }}] Setup backup tools: load private browser defaults"
       ansible.builtin.include_vars:
         file: ../../../../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/defaults/main/main.vars.yml
         name: private_browser_defaults
       when: var_stat_private_browser_defaults.stat.exists
 
-    - name: "[archlinux] Setup backup tools: set managed browser profile backup candidates"
+    - name: "[{{ user_os }}] Setup backup tools: set managed browser profile backup candidates"
       ansible.builtin.set_fact:
         managed_browser_profile_backup_candidates: >-
           {{
@@ -70,13 +70,13 @@
           profiles: "{{ ((private_browser_defaults | default({})).chromium_profiles) | default([]) }}"
       when: var_stat_private_browser_defaults.stat.exists
 
-    - name: "[archlinux] Setup backup tools: stat managed browser profile backup candidates"
+    - name: "[{{ user_os }}] Setup backup tools: stat managed browser profile backup candidates"
       ansible.builtin.stat:
         path: "{{ item }}"
       loop: "{{ managed_browser_profile_backup_candidates | default([]) }}"
       register: var_managed_browser_profile_backup_candidates
 
-    - name: "[archlinux] Setup backup tools: extend user-data backup paths with managed browser profiles"
+    - name: "[{{ user_os }}] Setup backup tools: extend user-data backup paths with managed browser profiles"
       ansible.builtin.set_fact:
         user_data_backup_env: >-
           {{
@@ -90,7 +90,7 @@
           }}
       when: (var_managed_browser_profile_backup_candidates.results | default([]) | length) > 0
 
-    - name: "[archlinux] Setup backup tools: stat local backup drives"
+    - name: "[{{ user_os }}] Setup backup tools: stat local backup drives"
       ansible.builtin.stat:
         path: "{{ item }}"
       loop:
@@ -99,11 +99,11 @@
         - /run/media/{{ ansible_facts.env.USER }}/{{ arch_external_dev4 }}/data/backups
       register: var_local_backup_drives
 
-    - name: "[archlinux] Setup backup tools: set available drives fact"
+    - name: "[{{ user_os }}] Setup backup tools: set available drives fact"
       ansible.builtin.set_fact:
         available_drives: "{{ var_local_backup_drives.results | items2dict(key_name='item', value_name='stat') }}"
 
-    - name: "[archlinux] Setup backup tools: ensure borg folders"
+    - name: "[{{ user_os }}] Setup backup tools: ensure borg folders"
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
@@ -120,7 +120,7 @@
     # Read each repo's passphrase from KWallet *before* attempting borg init. A
     # missing or empty passphrase here is what leaves a half-initialized repo
     # (config + empty data/, no keyfile, no manifest), so we gate init on it.
-    - name: "[archlinux] Setup backup tools: verify kwallet passphrase is present and non-empty"
+    - name: "[{{ user_os }}] Setup backup tools: verify kwallet passphrase is present and non-empty"
       ansible.builtin.command:
         argv:
           - kwallet-query
@@ -137,7 +137,7 @@
       loop_control:
         label: "{{ item.keyrings.passkey }}"
 
-    - name: "[archlinux] Setup backup tools: warn about repos skipped due to missing kwallet passphrase"
+    - name: "[{{ user_os }}] Setup backup tools: warn about repos skipped due to missing kwallet passphrase"
       ansible.builtin.debug:
         msg: >-
           Skipping borg init for '{{ item.0.keyrings.passkey }}' ({{ item.0.repo }}):
@@ -149,7 +149,7 @@
       loop_control:
         label: "{{ item.0.keyrings.passkey }}"
 
-    - name: "[archlinux] Setup backup tools: init borg repos (only with a valid kwallet passphrase)"
+    - name: "[{{ user_os }}] Setup backup tools: init borg repos (only with a valid kwallet passphrase)"
       ansible.builtin.command: borg init --encryption=keyfile '{{ item.0.repo }}'
       environment:
         BORG_PASSCOMMAND: kwallet-query --folder {{ item.0.keyrings.folder }} --read-password {{ item.0.keyrings.passkey }} {{ item.0.keyrings.wallet }}
@@ -167,7 +167,7 @@
       loop_control:
         label: "{{ item.0.keyrings.passkey }} -> {{ item.0.repo }}"
 
-    - name: "[archlinux] Setup backup tools: create backup scripts from template"
+    - name: "[{{ user_os }}] Setup backup tools: create backup scripts from template"
       ansible.builtin.template:
         src: borg_backup_jinja_template.backup.sh
         dest: ~/bin/{{ item.sh_template }}.backup.sh
@@ -179,7 +179,7 @@
         excludes: "{{ item.excludes | default([]) }}"
       loop: "{{ archlinux_borg_repos_env }}"
 
-    - name: "[archlinux] Setup backup tools: ensure borg backup timer"
+    - name: "[{{ user_os }}] Setup backup tools: ensure borg backup timer"
       ansible.builtin.command:
         argv:
           - /bin/sh
@@ -211,20 +211,20 @@
           - every-8-hours-backup@dev3-ai-conversations.timer
       changed_when: false
 
-    - name: "[archlinux] Setup backup tools: ensure keyfiles backup folder"
+    - name: "[{{ user_os }}] Setup backup tools: ensure keyfiles backup folder"
       ansible.builtin.file:
         path: ~/data/secrets/backup-borg-keyfiles
         state: directory
         mode: "755"
 
-    - name: "[archlinux] Setup backup tools: ensure borg backup keys script"
+    - name: "[{{ user_os }}] Setup backup tools: ensure borg backup keys script"
       ansible.builtin.template:
         src: backup_borg_keys
         dest: ~/bin/backup_borg_keys
         mode: "755"
   ignore_errors: true
 
-- name: "[archlinux] Setup backup tools: generate sx borg shortcut"
+- name: "[{{ user_os }}] Setup backup tools: generate sx borg shortcut"
   ansible.builtin.template:
     src: ../../../../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/templates/sx-borg
     dest: ~/.local/libexec/sx/borg

@@ -1,16 +1,16 @@
 ---
-- name: "[archlinux] Setup desktop: ensure reflector"
+- name: "[{{ user_os }}] Setup desktop: ensure reflector"
   become: true
   ansible.builtin.package:
     name: reflector
     state: present
 
-- name: "[archlinux] Setup desktop: stat pacman mirrorlist"
+- name: "[{{ user_os }}] Setup desktop: stat pacman mirrorlist"
   ansible.builtin.stat:
     path: /etc/pacman.d/mirrorlist
   register: var_pacman_mirrorlist
 
-- name: "[archlinux] Setup desktop: setup reflector"
+- name: "[{{ user_os }}] Setup desktop: setup reflector"
   become: true
   ansible.builtin.command: reflector --verbose --cache-timeout 604800 --sort rate -l 20 -c Netherlands -c France --save /etc/pacman.d/mirrorlist
   ignore_errors: true
@@ -19,7 +19,7 @@
     not var_pacman_mirrorlist.stat.exists or
     ((ansible_facts.date_time.epoch | int) - (var_pacman_mirrorlist.stat.mtime | int)) > 604800
 
-- name: "[archlinux] Setup desktop: ensure packages"
+- name: "[{{ user_os }}] Setup desktop: ensure packages"
   # How to Dual Boot Arch Linux and Windows 11/10 [ 2022 ]
   # https://www.youtube.com/watch?v=JRdYSGh-g3s
   become: true
@@ -72,19 +72,19 @@
     - "10-system-tools : handler_ensure_docker_service"
     - "10-system-tools : handler_ensure_bluetooth_service"
 
-- name: "[archlinux] Setup desktop: remove docker kernel modules file"
+- name: "[{{ user_os }}] Setup desktop: remove docker kernel modules file"
   become: true
   ansible.builtin.file:
     path: /etc/modules-load.d/docker.conf
     state: absent
 
-- name: "[archlinux] Setup desktop: ensure wallpaper directory"
+- name: "[{{ user_os }}] Setup desktop: ensure wallpaper directory"
   ansible.builtin.file:
     path: ~/.wallpapers
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup desktop: download NASA space wallpapers"
+- name: "[{{ user_os }}] Setup desktop: download NASA space wallpapers"
   ansible.builtin.get_url:
     url: "{{ item.url }}"
     dest: "~/.wallpapers/{{ item.dest }}"
@@ -114,14 +114,14 @@
 - name: flush_handlers
   ansible.builtin.meta: flush_handlers
 
-- name: "[archlinux] Setup desktop: add user to docker group"
+- name: "[{{ user_os }}] Setup desktop: add user to docker group"
   become: true
   ansible.builtin.user:
     append: true
     groups: docker
     name: "{{ ansible_facts.env.USER }}"
 
-- name: "[archlinux] Setup desktop: set bell sound off"
+- name: "[{{ user_os }}] Setup desktop: set bell sound off"
   # https://wiki.archlinux.org/index.php?title=PC_speaker&oldid=740440#Globally
   become: true
   ansible.builtin.copy:
@@ -129,7 +129,7 @@
     content: blacklist pcspkr
     mode: "755"
 
-- name: "[archlinux] Setup desktop: remove packages"
+- name: "[{{ user_os }}] Setup desktop: remove packages"
   become: true
   ansible.builtin.package:
     state: absent
@@ -138,7 +138,7 @@
       - vlc-plugins-all
       - wacomtablet
 
-- name: "[archlinux] Setup desktop: register mpv MIME handlers"
+- name: "[{{ user_os }}] Setup desktop: register mpv MIME handlers"
   ansible.builtin.shell: |
     changed=0
     for mime in \
@@ -172,14 +172,14 @@
   register: var_register_mpv_mime_handlers
   notify: "10-system-tools : handler_update_desktop_database"
 
-- name: "[archlinux] Setup desktop: ensure sddm config folder"
+- name: "[{{ user_os }}] Setup desktop: ensure sddm config folder"
   become: true
   ansible.builtin.file:
     path: /etc/sddm.conf.d
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup desktop: setup sddm files"
+- name: "[{{ user_os }}] Setup desktop: setup sddm files"
   become: true
   ansible.builtin.template:
     src: "{{ item.src }}"
@@ -192,7 +192,7 @@
     - src: sddm/autologin.conf
       dest: /etc/sddm.conf.d/autologin.conf
 
-- name: "[archlinux] Setup desktop: ensure sddm service"
+- name: "[{{ user_os }}] Setup desktop: ensure sddm service"
   become: true
   ansible.builtin.systemd_service:
     scope: system
@@ -203,25 +203,25 @@
     - { name: sddm.service, enabled: true, masked: false }
     - { name: NetworkManager-wait-online.service, state: stopped, enabled: false, masked: true }
 
-- name: "[archlinux] Setup desktop: register pinentry"
+- name: "[{{ user_os }}] Setup desktop: register pinentry"
   # Use pinentry-qt on desktop to store passwords in kwallet
   ansible.builtin.command: which pinentry-qt
   register: var_pinentry_path
   changed_when: false
 
-- name: "[archlinux] Setup desktop: ensure ~/.gnupg"
+- name: "[{{ user_os }}] Setup desktop: ensure ~/.gnupg"
   ansible.builtin.file:
     path: ~/.gnupg
     state: directory
     mode: "700"
 
-- name: "[archlinux] Setup desktop: ensure gpg-agent.conf"
+- name: "[{{ user_os }}] Setup desktop: ensure gpg-agent.conf"
   ansible.builtin.template:
     src: gpg-agent.conf
     dest: ~/.gnupg/gpg-agent.conf
     mode: "700"
 
-- name: "[archlinux] Setup desktop: ignore packages from pacman"
+- name: "[{{ user_os }}] Setup desktop: ignore packages from pacman"
   become: true
   ansible.builtin.blockinfile:
     dest: /etc/pacman.conf
@@ -231,7 +231,7 @@
       # IgnorePkg = davinci-resolve
       IgnorePkg = davinci-resolve
 
-- name: "[archlinux] Setup desktop: disable baloo indexing"
+- name: "[{{ user_os }}] Setup desktop: disable baloo indexing"
   # https://wiki.archlinux.org/title/Baloo#Disabling_the_indexer
   ansible.builtin.command: "{{ item }}"
   changed_when: true
@@ -241,7 +241,7 @@
     - balooctl6 purge
   ignore_errors: true
 
-- name: "[archlinux] Setup desktop: ensure folders"
+- name: "[{{ user_os }}] Setup desktop: ensure folders"
   become: true
   ansible.builtin.file:
     path: "{{ item }}"
@@ -251,31 +251,31 @@
     - /etc/polkit-1
     - /etc/polkit-1/rules.d/
 
-- name: "[archlinux] Setup desktop: disable hibernation for all users"
+- name: "[{{ user_os }}] Setup desktop: disable hibernation for all users"
   become: true
   ansible.builtin.copy:
     src: 99-disable-hibernate.rules
     dest: /etc/polkit-1/rules.d/99-disable-hibernate.rules
     mode: "600"
 
-- name: "[archlinux] Setup desktop: set timezone to Europe/Madrid"
+- name: "[{{ user_os }}] Setup desktop: set timezone to Europe/Madrid"
   become: true
   community.general.timezone:
     name: Europe/Madrid
 
-- name: "[archlinux] Setup desktop: sync hardware clock"
+- name: "[{{ user_os }}] Setup desktop: sync hardware clock"
   become: true
   ansible.builtin.command: hwclock --systohc
   changed_when: true
 
-- name: "[archlinux] Setup desktop: enable ntp (systemd-timesyncd)"
+- name: "[{{ user_os }}] Setup desktop: enable ntp (systemd-timesyncd)"
   become: true
   ansible.builtin.systemd_service:
     name: systemd-timesyncd
     enabled: true
     state: started
 
-- name: "[archlinux] Setup desktop: configure locales"
+- name: "[{{ user_os }}] Setup desktop: configure locales"
   become: true
   ansible.builtin.lineinfile:
     path: /etc/locale.gen
@@ -287,7 +287,7 @@
     - es_ES.UTF-8 UTF-8
   register: var_locales
 
-- name: "[archlinux] Setup desktop: generate locales"
+- name: "[{{ user_os }}] Setup desktop: generate locales"
   become: true
   ansible.builtin.command: locale-gen
   when: var_locales.changed

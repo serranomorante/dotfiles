@@ -1,17 +1,17 @@
 ---
-- name: "[archlinux] Setup node: ensure user bin directory"
+- name: "[{{ user_os }}] Setup node: ensure user bin directory"
   ansible.builtin.file:
     path: "{{ node_user_bin_dir }}"
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup node: ensure firejail profile directory"
+- name: "[{{ user_os }}] Setup node: ensure firejail profile directory"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/.config/firejail"
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup node: ensure AI agent Stow target include fallback"
+- name: "[{{ user_os }}] Setup node: ensure AI agent Stow target include fallback"
   ansible.builtin.copy:
     dest: "{{ ansible_facts.env.HOME }}/.config/firejail/ai-agent-stow-targets.inc"
     content: |
@@ -20,7 +20,7 @@
     mode: "644"
     force: false
 
-- name: "[archlinux] Setup node: install firejail profiles"
+- name: "[{{ user_os }}] Setup node: install firejail profiles"
   ansible.builtin.template:
     src: "{{ item }}"
     dest: "{{ ansible_facts.env.HOME }}/.config/firejail/{{ item }}"
@@ -39,13 +39,13 @@
     - fj-node-mcp.profile
     - fj-node-hypothesis.profile
 
-- name: "[archlinux] Setup node: ensure AI agent profile checker snapshot directory"
+- name: "[{{ user_os }}] Setup node: ensure AI agent profile checker snapshot directory"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/.local/share/firejail-wrapper/ai-agent-profiles"
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup node: ensure AI agent Stow target snapshot fallback"
+- name: "[{{ user_os }}] Setup node: ensure AI agent Stow target snapshot fallback"
   ansible.builtin.copy:
     dest: "{{ ansible_facts.env.HOME }}/.local/share/firejail-wrapper/ai-agent-profiles/ai-agent-stow-targets.inc"
     content: |
@@ -54,7 +54,7 @@
     mode: "644"
     force: false
 
-- name: "[archlinux] Setup node: install AI agent profile checker snapshots"
+- name: "[{{ user_os }}] Setup node: install AI agent profile checker snapshots"
   ansible.builtin.template:
     src: "{{ item }}"
     dest: "{{ ansible_facts.env.HOME }}/.local/share/firejail-wrapper/ai-agent-profiles/{{ item }}"
@@ -67,12 +67,12 @@
     - gemini.profile
     - opencode.profile
 
-- name: "[archlinux] Setup node: stat AI agent Stow target generator"
+- name: "[{{ user_os }}] Setup node: stat AI agent Stow target generator"
   ansible.builtin.stat:
     path: "{{ node_user_bin_dir }}/dotfiles-ai-agent-stow-targets"
   register: var_ai_agent_stow_targets_generator
 
-- name: "[archlinux] Setup node: refresh AI agent Stow target includes"
+- name: "[{{ user_os }}] Setup node: refresh AI agent Stow target includes"
   ansible.builtin.command:
     argv:
       - "{{ node_user_bin_dir }}/dotfiles-ai-agent-stow-targets"
@@ -80,25 +80,25 @@
   changed_when: "'updated ' in var_ai_agent_stow_targets_refresh.stdout"
   when: var_ai_agent_stow_targets_generator.stat.exists
 
-- name: "[archlinux] Setup node: install firejail wrapper helper"
+- name: "[{{ user_os }}] Setup node: install firejail wrapper helper"
   ansible.builtin.copy:
     src: firejail-wrapper-common.bash
     dest: "{{ node_user_bin_dir }}/firejail-wrapper-common.bash"
     mode: "755"
 
-- name: "[archlinux] Setup node: install firejail profile checker"
+- name: "[{{ user_os }}] Setup node: install firejail profile checker"
   ansible.builtin.copy:
     src: fj-profile-checker
     dest: "{{ node_user_bin_dir }}/fj-profile-checker"
     mode: "755"
 
-- name: "[archlinux] Setup node: ensure volta home exists"
+- name: "[{{ user_os }}] Setup node: ensure volta home exists"
   ansible.builtin.file:
     path: "{{ node_volta_home }}"
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup node: ensure scoped node wrapper state dirs"
+- name: "[{{ user_os }}] Setup node: ensure scoped node wrapper state dirs"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -108,13 +108,13 @@
     - "{{ ansible_facts.env.HOME }}/.local/state/firejail-wrapper/node"
     - "{{ ansible_facts.env.HOME }}/.local/share/firejail-wrapper/node"
 
-- name: "[archlinux] Setup node: ensure volta tool project dir"
+- name: "[{{ user_os }}] Setup node: ensure volta tool project dir"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/volta-tools"
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup node: stat volta marker"
+- name: "[{{ user_os }}] Setup node: stat volta marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -122,7 +122,7 @@
     dotfiles_marker_name: "volta-{{ volta_version }}"
     dotfiles_marker_register: var_volta_marker
 
-- name: "[archlinux] Setup node: install volta"
+- name: "[{{ user_os }}] Setup node: install volta"
   ansible.builtin.command:
     argv:
       - /usr/bin/firejail
@@ -140,7 +140,7 @@
   changed_when: true
   when: not var_volta_marker.stat.exists
 
-- name: "[archlinux] Setup node: record volta marker"
+- name: "[{{ user_os }}] Setup node: record volta marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -149,19 +149,19 @@
     dotfiles_marker_content: "{{ volta_version }}\n"
   when: not var_volta_marker.stat.exists
 
-- name: "[archlinux] Setup node: install generic firejail node wrapper"
+- name: "[{{ user_os }}] Setup node: install generic firejail node wrapper"
   ansible.builtin.copy:
     src: fj-node
     dest: "{{ node_firejail_executable }}"
     mode: "755"
 
-- name: "[archlinux] Setup node: install MCP inherited sandbox wrapper"
+- name: "[{{ user_os }}] Setup node: install MCP inherited sandbox wrapper"
   ansible.builtin.copy:
     src: fj-mcp-inherit
     dest: "{{ node_user_bin_dir }}/fj-mcp-inherit"
     mode: "755"
 
-- name: "[archlinux] Setup node: install AI agent firejail wrapper"
+- name: "[{{ user_os }}] Setup node: install AI agent firejail wrapper"
   ansible.builtin.copy:
     src: fj-ai-agent
     dest: "{{ node_user_bin_dir }}/{{ item }}"
@@ -172,25 +172,25 @@
     - fj-gemini
     - fj-opencode
 
-- name: "[archlinux] Setup node: install OpenCode mini readability wrapper"
+- name: "[{{ user_os }}] Setup node: install OpenCode mini readability wrapper"
   ansible.builtin.copy:
     src: opencode-mini-readable
     dest: "{{ node_user_bin_dir }}/opencode-mini-readable"
     mode: "755"
 
-- name: "[archlinux] Setup node: install ansible firejail npm wrapper"
+- name: "[{{ user_os }}] Setup node: install ansible firejail npm wrapper"
   ansible.builtin.copy:
     src: ansible-firejail-npm
     dest: "{{ ansible_firejail_npm_executable }}"
     mode: "755"
 
-- name: "[archlinux] Setup node: install ansible firejail pnpm wrapper"
+- name: "[{{ user_os }}] Setup node: install ansible firejail pnpm wrapper"
   ansible.builtin.copy:
     src: ansible-firejail-pnpm
     dest: "{{ ansible_firejail_pnpm_executable }}"
     mode: "755"
 
-- name: "[archlinux] Setup node: add volta to shared session environment"
+- name: "[{{ user_os }}] Setup node: add volta to shared session environment"
   ansible.builtin.blockinfile:
     dest: ~/dotfiles/home/lib/session-env.bash
     create: true
@@ -201,7 +201,7 @@
       dotfiles_path_prepend "$VOLTA_HOME/bin"
       dotfiles_path_prepend "$VOLTA_HOME/tools/image/node/{{ node_system_default_version }}/bin" # version is replaced by ansible
 
-- name: "[archlinux] Setup node: install node versions"
+- name: "[{{ user_os }}] Setup node: install node versions"
   ansible.builtin.command:
     argv:
       - "{{ node_firejail_executable }}"
@@ -219,11 +219,11 @@
   loop: "{{ node_managed_versions | unique }}"
   changed_when: true
 
-- name: "[archlinux] Setup node: reset package manager marker specs"
+- name: "[{{ user_os }}] Setup node: reset package manager marker specs"
   ansible.builtin.set_fact:
     var_node_package_manager_marker_specs: []
 
-- name: "[archlinux] Setup node: build package manager marker specs"
+- name: "[{{ user_os }}] Setup node: build package manager marker specs"
   ansible.builtin.set_fact:
     var_node_package_manager_marker_specs: "{{ var_node_package_manager_marker_specs + [var_node_package_manager_marker_spec] }}"
   vars:
@@ -232,7 +232,7 @@
       item: "{{ item }}"
   loop: "{{ node_package_manager_packages }}"
 
-- name: "[archlinux] Setup node: stat package manager markers"
+- name: "[{{ user_os }}] Setup node: stat package manager markers"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check-many
@@ -240,7 +240,7 @@
     dotfiles_marker_register: var_node_package_manager_markers
     dotfiles_marker_items: "{{ var_node_package_manager_marker_specs | default([]) }}"
 
-- name: "[archlinux] Setup node: ensure package managers"
+- name: "[{{ user_os }}] Setup node: ensure package managers"
   ansible.builtin.command:
     argv:
       - "{{ node_firejail_executable }}"
@@ -260,7 +260,7 @@
     extended: true
   register: var_node_package_manager_install
 
-- name: "[archlinux] Setup node: record package manager markers"
+- name: "[{{ user_os }}] Setup node: record package manager markers"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -270,7 +270,7 @@
   loop: "{{ var_node_package_manager_install.results }}"
   when: item.changed | default(false)
 
-- name: "[archlinux] Setup node: symlink package manager binaries"
+- name: "[{{ user_os }}] Setup node: symlink package manager binaries"
   ansible.builtin.file:
     src: "{{ node_volta_home }}/bin/{{ item.1 }}"
     dest: "{{ node_user_bin_dir }}/{{ item.1 }}"

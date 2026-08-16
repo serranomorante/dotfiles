@@ -22,7 +22,7 @@ Use this file to choose the source file that owns a behavior before editing gene
 ## Ansible
 
 - Main playbook: `playbooks/tools.yml`; roles use numeric task filenames and tags such as `10-40`.
-- OS variants use `.archlinux.yml`, `.debian.yml`, `.otherlinux.yml`, `.macosx.yml`; `with_first_found` means missing variants can be valid.
+- OS variants use `.archlinux.yml`, `.debian.yml`, `.android.yml`, `.macosx.yml`; `with_first_found` means missing variants can be valid.
 - Templates live under `playbooks/roles/<role>/templates/`; patches usually under role `files/` or `assets/patches/`.
 - Use `ansible_facts.*` for gathered facts, not auto-injected top-level fact vars.
 - Include `{{ ansible_managed }}` in templates when the format supports comments.
@@ -38,7 +38,7 @@ Use this file to choose the source file that owns a behavior before editing gene
 - New files under stowed packages are inactive until stowed; edited existing symlinked files update in place.
 - `dotfiles-stow` refreshes the generated Firejail include that exposes active Stow targets to sandboxed AI agents without opening all of `$HOME`.
 - Use `dotfiles-stow --recreate [--dir=...] <package>...` to migrate links between Stow directories; plain `--restow` does not migrate.
-- Termux packages are applied only by `otherlinux` tasks to `phone2`; widgets must be real executable files, not symlinks.
+- Termux packages are applied only by `android` tasks to `phone2`; widgets must be real executable files, not symlinks.
 
 ## Frequent Ownership
 

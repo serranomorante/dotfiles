@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Graphic tablet peripheral: ensure tools"
+- name: "[{{ user_os }}] Graphic tablet peripheral: ensure tools"
   become: true
   ansible.builtin.package:
     state: present
@@ -8,26 +8,26 @@
       - usbutils
       - gimp
 
-- name: "[archlinux] Graphic tablet peripheral: ensure local AUR tools"
+- name: "[{{ user_os }}] Graphic tablet peripheral: ensure local AUR tools"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages:
       - gromit-mpx
 
-- name: "[archlinux] Graphic tablet peripheral: ensure app directory"
+- name: "[{{ user_os }}] Graphic tablet peripheral: ensure app directory"
   ansible.builtin.file:
     path: ~/data/apps/graphic-tablet-tools
     state: directory
     mode: "755"
 
-- name: "[archlinux] Graphic tablet peripheral: enable gromit-mpx service"
+- name: "[{{ user_os }}] Graphic tablet peripheral: enable gromit-mpx service"
   ansible.builtin.systemd_service:
     scope: user
     name: gromit-mpx.service
     enabled: true
     masked: false
 
-- name: "[archlinux] Graphic tablet peripheral: copy sudo files"
+- name: "[{{ user_os }}] Graphic tablet peripheral: copy sudo files"
   become: true
   ansible.builtin.template:
     src: "{{ item.source }}"
@@ -38,14 +38,14 @@
     - { source: ~/dotfiles/assets/udev-rules/99-wacom.rules, dest: /etc/udev/rules.d/99-wacom.rules }
   notify: "10-system-tools : handler_reload_udev_rules"
 
-- name: "[archlinux] Graphic tablet peripheral: remove automatic display health udev trigger"
+- name: "[{{ user_os }}] Graphic tablet peripheral: remove automatic display health udev trigger"
   become: true
   ansible.builtin.file:
     path: /etc/udev/rules.d/95-monitor-hotplug.rules
     state: absent
   notify: "10-system-tools : handler_reload_udev_rules"
 
-- name: "[archlinux] Graphic tablet peripheral: copy display udev rules"
+- name: "[{{ user_os }}] Graphic tablet peripheral: copy display udev rules"
   become: true
   ansible.builtin.template:
     src: "{{ item.source }}"
@@ -56,35 +56,35 @@
     - { source: ~/dotfiles/assets/udev-rules/90-internal-backlight.rules, dest: /etc/udev/rules.d/90-internal-backlight.rules }
   notify: "10-system-tools : handler_reload_udev_rules"
 
-- name: "[archlinux] Graphic tablet peripheral: ensure Xorg config dir"
+- name: "[{{ user_os }}] Graphic tablet peripheral: ensure Xorg config dir"
   become: true
   ansible.builtin.file:
     state: directory
     path: /etc/X11/xorg.conf.d
     mode: "755"
 
-- name: "[archlinux] Graphic tablet peripheral: copy Xorg config"
+- name: "[{{ user_os }}] Graphic tablet peripheral: copy Xorg config"
   become: true
   ansible.builtin.copy:
     src: wacom/71-intuos-s-relative.conf
     dest: /etc/X11/xorg.conf.d/71-intuos-s-relative.conf
     mode: "644"
 
-- name: "[archlinux] Graphic tablet peripheral: ensure wacom service"
+- name: "[{{ user_os }}] Graphic tablet peripheral: ensure wacom service"
   ansible.builtin.systemd_service:
     scope: user
     name: wacom.service
     enabled: true
     masked: false
 
-- name: "[archlinux] Graphic tablet: ensure setup-displays service"
+- name: "[{{ user_os }}] Graphic tablet: ensure setup-displays service"
   ansible.builtin.systemd_service:
     scope: user
     name: setup-displays.service
     enabled: false
     masked: false
 
-- name: "[archlinux] Graphic tablet: remove automatic display health units"
+- name: "[{{ user_os }}] Graphic tablet: remove automatic display health units"
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
@@ -94,12 +94,12 @@
     - ~/.config/systemd/user/timers.target.wants/display-health-check.timer
   notify: "10-system-tools : handler_reload_user_systemd"
 
-- name: "[archlinux] Graphic tablet: stat mypaint appimage"
+- name: "[{{ user_os }}] Graphic tablet: stat mypaint appimage"
   ansible.builtin.stat:
     path: ~/data/apps/graphic-tablet-tools/mypaint-{{ arch_mypaint_version }}.AppImage
   register: var_mypaint_appimage
 
-- name: "[archlinux] Graphic tablet: ensure mypaint"
+- name: "[{{ user_os }}] Graphic tablet: ensure mypaint"
   # Mypaint from arch repos was failing for me
   ansible.builtin.get_url:
     url: https://github.com/mypaint/mypaint-appimage/releases/download/continuous/MyPaint-v{{ arch_mypaint_version }}-no-translations.AppImage
@@ -108,7 +108,7 @@
   when: not var_mypaint_appimage.stat.exists
   notify: "10-system-tools : handler_ensure_mypaint_service"
 
-- name: "[archlinux] Graphic tablet: link mypaint"
+- name: "[{{ user_os }}] Graphic tablet: link mypaint"
   ansible.builtin.file:
     src: ~/data/apps/graphic-tablet-tools/mypaint-{{ arch_mypaint_version }}.AppImage
     dest: ~/bin/mypaint
@@ -116,7 +116,7 @@
     force: true
   notify: "10-system-tools : handler_ensure_mypaint_service"
 
-- name: "[archlinux] Graphic tablet peripheral: ensure services"
+- name: "[{{ user_os }}] Graphic tablet peripheral: ensure services"
   ansible.builtin.command: echo
   changed_when: true
   notify: handler_ensure_send_ifconfig_service

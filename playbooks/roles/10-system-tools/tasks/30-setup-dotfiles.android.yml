@@ -1,5 +1,5 @@
 ---
-- name: "[otherlinux] Dotfiles: check missing dotfile support packages"
+- name: "[{{ user_os }}] Dotfiles: check missing dotfile support packages"
   ansible.builtin.command:
     argv:
       - sh
@@ -17,38 +17,38 @@
   register: var_otherlinux_dotfiles_missing_packages
   changed_when: false
 
-- name: "[otherlinux] Dotfiles: install missing dotfile support packages"
+- name: "[{{ user_os }}] Dotfiles: install missing dotfile support packages"
   ansible.builtin.command:
     argv: "{{ ['pkg', 'install', '-y'] + var_otherlinux_dotfiles_missing_packages.stdout_lines }}"
   changed_when: true
   when: var_otherlinux_dotfiles_missing_packages.stdout_lines | length > 0
 
-- name: "[otherlinux] Dotfiles: sync stow packages from controller"
+- name: "[{{ user_os }}] Dotfiles: sync stow packages from controller"
   ansible.builtin.copy:
-    src: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/{{ item }}/"
+    src: "{{ playbook_dir }}/../{{ item }}/"
     dest: "{{ ansible_facts.env.HOME }}/dotfiles/{{ item }}/"
     mode: preserve
   loop: "{{ dotfiles_otherlinux_stow_packages }}"
 
-- name: "[otherlinux] Dotfiles: ensure PKM helper directory"
+- name: "[{{ user_os }}] Dotfiles: ensure PKM helper directory"
   ansible.builtin.file:
     path: "{{ ansible_facts.env.HOME }}/dotfiles/PKM/bin"
     state: directory
     mode: "700"
 
-- name: "[otherlinux] Dotfiles: install Remind agenda helper"
+- name: "[{{ user_os }}] Dotfiles: install Remind agenda helper"
   ansible.builtin.copy:
-    src: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/PKM/bin/remind-agenda"
+    src: "{{ playbook_dir }}/../PKM/bin/remind-agenda"
     dest: "{{ ansible_facts.env.HOME }}/dotfiles/PKM/bin/remind-agenda"
     mode: "700"
 
-- name: "[otherlinux] Dotfiles: ensure Termux widget task directory"
+- name: "[{{ user_os }}] Dotfiles: ensure Termux widget task directory"
   ansible.builtin.file:
     path: ~/.shortcuts/tasks
     state: directory
     mode: "700"
 
-- name: "[otherlinux] Dotfiles: install Termux widget task scripts"
+- name: "[{{ user_os }}] Dotfiles: install Termux widget task scripts"
   ansible.builtin.copy:
     src: "{{ item }}"
     dest: "{{ ansible_facts.env.HOME }}/.shortcuts/tasks/{{ item | basename }}"

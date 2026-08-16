@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Go language: ensure packages"
+- name: "[{{ user_os }}] Go language: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -7,7 +7,7 @@
       - gopls
       - delve
 
-- name: "[archlinux] Go language: clone vscode-go"
+- name: "[{{ user_os }}] Go language: clone vscode-go"
   ansible.builtin.git:
     repo: https://github.com/golang/vscode-go
     executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
@@ -17,7 +17,7 @@
     version: v{{ vscode_go_version }}
   register: var_clone_vscode_go
 
-- name: "[archlinux] Go language: stat vscode-go build marker"
+- name: "[{{ user_os }}] Go language: stat vscode-go build marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -25,7 +25,7 @@
     dotfiles_marker_name: vscode-go-build
     dotfiles_marker_register: var_vscode_go_build_marker
 
-- name: "[archlinux] Go language: install vscode-go npm packages"
+- name: "[{{ user_os }}] Go language: install vscode-go npm packages"
   community.general.npm:
     path: "{{ ansible_facts.env.HOME }}/data/repos/vscode-go/extension"
     ci: true
@@ -35,7 +35,7 @@
   changed_when: false
   when: var_clone_vscode_go.changed or not var_vscode_go_build_marker.stat.exists
 
-- name: "[archlinux] Go language: build vscode-go"
+- name: "[{{ user_os }}] Go language: build vscode-go"
   ansible.builtin.command:
     argv:
       - "{{ node_firejail_executable }}"
@@ -53,7 +53,7 @@
   changed_when: false
   when: var_clone_vscode_go.changed or not var_vscode_go_build_marker.stat.exists
 
-- name: "[archlinux] Go language: record vscode-go build marker"
+- name: "[{{ user_os }}] Go language: record vscode-go build marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record

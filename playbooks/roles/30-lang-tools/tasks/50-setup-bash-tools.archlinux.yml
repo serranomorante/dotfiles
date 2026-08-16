@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Bash language: ensure packages"
+- name: "[{{ user_os }}] Bash language: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -7,19 +7,19 @@
       - shfmt
       - bash-language-server
 
-- name: "[archlinux] Bash language: ensure DAP - bash-debug-adapter folder exists"
+- name: "[{{ user_os }}] Bash language: ensure DAP - bash-debug-adapter folder exists"
   ansible.builtin.file:
     path: ~/data/apps/lang-tools/bash-debug-adapter
     state: directory
     mode: "755"
 
-- name: "[archlinux] Bash language: ensure DAP - install bash-debug-adapter"
+- name: "[{{ user_os }}] Bash language: ensure DAP - install bash-debug-adapter"
   ansible.builtin.unarchive:
     src: https://github.com/rogalmic/vscode-bash-debug/releases/download/v{{ bash_debug_adapter_version }}/bash-debug-{{ bash_debug_adapter_version }}.vsix
     dest: ~/data/apps/lang-tools/bash-debug-adapter
     remote_src: true
 
-- name: "[archlinux] Bash language: ensure DAP - bashdb is executable"
+- name: "[{{ user_os }}] Bash language: ensure DAP - bashdb is executable"
   ansible.builtin.file:
     path: ~/data/apps/lang-tools/bash-debug-adapter/extension/bashdb_dir/bashdb
     mode: "755"

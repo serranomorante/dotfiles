@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup other tools: ensure local AUR packages"
+- name: "[{{ user_os }}] Setup other tools: ensure local AUR packages"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages: postman-bin

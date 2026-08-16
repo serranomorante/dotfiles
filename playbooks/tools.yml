@@ -60,14 +60,14 @@
       loop: "{{ var_role_exists.results }}"
       tags: always
 
-    - name: "[archlinux] Nvidia tools: check valid x session"
+    - name: "[{{ user_os }}] Nvidia tools: check valid x session"
       ansible.builtin.shell: xhost >& /dev/null
       register: var_is_x_display_session
       changed_when: true
       ignore_errors: true
       tags: always
 
-    - name: "[archlinux] Nvidia tools: set x display fact"
+    - name: "[{{ user_os }}] Nvidia tools: set x display fact"
       ansible.builtin.set_fact:
         is_x_display_session: "{{ var_is_x_display_session.rc == 0 }}"
       tags: always

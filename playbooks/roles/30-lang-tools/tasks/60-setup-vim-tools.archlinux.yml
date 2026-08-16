@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Vim language: ensure npm packages with diff capture"
+- name: "[{{ user_os }}] Vim language: ensure npm packages with diff capture"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: npm
@@ -10,7 +10,7 @@
     update_diff_npm_node_version: "{{ node_system_default_version }}"
     update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
 
-- name: "[archlinux] Vim language: symlink npm binaries"
+- name: "[{{ user_os }}] Vim language: symlink npm binaries"
   ansible.builtin.file:
     src: "{{ node_vim_npm_prefix }}/bin/{{ item.1 }}"
     dest: "{{ node_user_bin_dir }}/{{ item.1 }}"

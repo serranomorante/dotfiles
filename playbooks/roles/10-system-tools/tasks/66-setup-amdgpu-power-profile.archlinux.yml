@@ -1,19 +1,19 @@
 ---
-- name: "[archlinux] AMDGPU power profile: install helper"
+- name: "[{{ user_os }}] AMDGPU power profile: install helper"
   become: true
   ansible.builtin.copy:
     src: amdgpu-power-profile
     dest: /usr/local/bin/amdgpu-power-profile
     mode: "755"
 
-- name: "[archlinux] AMDGPU power profile: install service unit"
+- name: "[{{ user_os }}] AMDGPU power profile: install service unit"
   become: true
   ansible.builtin.template:
     src: amdgpu-power-profile.service
     dest: /etc/systemd/system/amdgpu-power-profile.service
     mode: "644"
 
-- name: "[archlinux] AMDGPU power profile: ensure boot service"
+- name: "[{{ user_os }}] AMDGPU power profile: ensure boot service"
   become: true
   ansible.builtin.systemd_service:
     scope: system

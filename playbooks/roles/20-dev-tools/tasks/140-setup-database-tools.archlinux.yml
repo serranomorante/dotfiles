@@ -1,11 +1,11 @@
 ---
-- name: "[archlinux] Setup database tools: ensure packages"
+- name: "[{{ user_os }}] Setup database tools: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
     name: postgresql
 
-- name: "[archlinux] Setup database tools: ensure database cluster folder"
+- name: "[{{ user_os }}] Setup database tools: ensure database cluster folder"
   become: true
   ansible.builtin.file:
     state: directory
@@ -18,13 +18,13 @@
     - "{{ ansible_facts.env.HOME }}/data/apps/db/postgresql"
     - "{{ ansible_facts.env.HOME }}/data/apps/db/postgresql/data"
 
-- name: "[archlinux] Setup database tools: register if initialized"
+- name: "[{{ user_os }}] Setup database tools: register if initialized"
   become: true
   ansible.builtin.stat:
     path: /var/lib/postgres/data/pg_hba.conf
   register: postgres_cluster_data
 
-- name: "[archlinux] Setup database tools: initdb"
+- name: "[{{ user_os }}] Setup database tools: initdb"
   become: true
   become_user: postgres
   ansible.builtin.command: initdb --locale=C.UTF-8 --encoding=UTF8 -D /var/lib/postgres/data --data-checksums

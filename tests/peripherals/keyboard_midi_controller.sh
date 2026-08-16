@@ -565,8 +565,8 @@ keyboard-midi-controller-dotfiles-contract)
 import sys
 
 text = open(sys.argv[1], encoding="utf-8").read()
-start = text.index('- name: "[archlinux] Wine tools: copy wine reaper startup script"')
-end = text.index('- name: "[archlinux] Wine tools: copy wine reaper custom scripts"', start)
+start = text.index('- name: "[{{ user_os }}] Wine tools: copy wine reaper startup script"')
+end = text.index('- name: "[{{ user_os }}] Wine tools: copy wine reaper custom scripts"', start)
 block = text[start:end]
 assert "track_lock_sync.lua" in block
 assert "project_transport_state_feedback.lua" in block

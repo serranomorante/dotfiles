@@ -1,6 +1,6 @@
 ---
 # https://wiki.archlinux.org/title/Official_repositories#Enabling_multilib
-- name: "[archlinux] Wine tools: enable multilib repository"
+- name: "[{{ user_os }}] Wine tools: enable multilib repository"
   become: true
   ansible.builtin.blockinfile:
     dest: /etc/pacman.conf
@@ -10,19 +10,19 @@
       Include = /etc/pacman.d/mirrorlist
   register: var_multilib_enabled
 
-- name: "[archlinux] Wine tools: ensure wine programs folder"
+- name: "[{{ user_os }}] Wine tools: ensure wine programs folder"
   ansible.builtin.file:
     path: ~/.local/share/applications/wine/Programs/
     state: directory
     mode: "755"
 
-- name: "[archlinux] Wine tools: ensure .vst3 folder"
+- name: "[{{ user_os }}] Wine tools: ensure .vst3 folder"
   ansible.builtin.file:
     path: ~/.vst3
     state: directory
     mode: "755"
 
-- name: "[archlinux] Wine tools: ensure system wine-staging is latest"
+- name: "[{{ user_os }}] Wine tools: ensure system wine-staging is latest"
   become: true
   community.general.pacman:
     name: wine-staging
@@ -30,7 +30,7 @@
     update_cache: true
   timeout: 0
 
-- name: "[archlinux] Wine tools: ensure wine support packages are installed"
+- name: "[{{ user_os }}] Wine tools: ensure wine support packages are installed"
   become: true
   ansible.builtin.package:
     state: present
@@ -47,7 +47,7 @@
       - lib32-vulkan-radeon
       - patchelf
 
-- name: "[archlinux] Wine tools: ensure wine 32bit drivers"
+- name: "[{{ user_os }}] Wine tools: ensure wine 32bit drivers"
   # https://wiki.archlinux.org/title/Steam#Installation
   become: true
   ansible.builtin.package:
@@ -58,14 +58,14 @@
       - lib32-libxcomposite
       - steam
 
-- name: "[archlinux] Wine tools: ensure local AUR packages"
+- name: "[{{ user_os }}] Wine tools: ensure local AUR packages"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages:
       - protonplus
       - pipeasio
 
-- name: "[archlinux] Wine tools: ensure sysctl conf"
+- name: "[{{ user_os }}] Wine tools: ensure sysctl conf"
   become: true
   ansible.builtin.copy:
     src: ~/dotfiles/assets/other/sysctl-80-gamecompatibility.conf
@@ -73,7 +73,7 @@
     owner: root
     mode: "644"
 
-- name: "[archlinux] Wine tools: ensure path"
+- name: "[{{ user_os }}] Wine tools: ensure path"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -83,19 +83,19 @@
     - ~/data/apps/virt-tools
     - ~/data/apps/virt-tools/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64
 
-- name: "[archlinux] Wine tools: unarchive"
+- name: "[{{ user_os }}] Wine tools: unarchive"
   ansible.builtin.unarchive:
     src: https://github.com/Kron4ek/Wine-Builds/releases/download/{{ arch_wine_staging_version }}/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64.tar.xz
     dest: ~/data/apps/virt-tools/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64
     remote_src: true
     creates: ~/data/apps/virt-tools/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64
 
-- name: "[archlinux] Wine tools: apply sysctl changes without rebooting"
+- name: "[{{ user_os }}] Wine tools: apply sysctl changes without rebooting"
   become: true
   ansible.builtin.command: sysctl --system
   changed_when: false
 
-- name: "[archlinux] Wine tools: ensure music-production folder"
+- name: "[{{ user_os }}] Wine tools: ensure music-production folder"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -106,7 +106,7 @@
     - ~/data/Downloads
     - ~/data/Downloads/music-production
 
-- name: "[archlinux] Wine tools: install wwine wrappers"
+- name: "[{{ user_os }}] Wine tools: install wwine wrappers"
   ansible.builtin.template:
     src: wwine
     dest: "~/bin/{{ item }}"
@@ -115,19 +115,19 @@
     - wwine
     - wwine-wine-loader
 
-- name: "[archlinux] Wine tools: ensure logrotate config directory"
+- name: "[{{ user_os }}] Wine tools: ensure logrotate config directory"
   ansible.builtin.file:
     path: ~/.config/logrotate
     state: directory
     mode: "755"
 
-- name: "[archlinux] Wine tools: install wine app logrotate config"
+- name: "[{{ user_os }}] Wine tools: install wine app logrotate config"
   ansible.builtin.template:
     src: wine-apps.logrotate
     dest: ~/.config/logrotate/wine-apps.conf
     mode: "644"
 
-- name: "[archlinux] Wine tools: close stale Reaper Wine processes before setup"
+- name: "[{{ user_os }}] Wine tools: close stale Reaper Wine processes before setup"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper kill-prefix
   timeout: 60
@@ -135,40 +135,40 @@
   failed_when: false
   no_log: true
 
-- name: "[archlinux] Wine tools: setup prefixes"
+- name: "[{{ user_os }}] Wine tools: setup prefixes"
   ansible.builtin.include_role:
     name: wine-prefix-setup
   vars:
     wine_prefix_setup_prefixes: "{{ arch_wine_prefix_setups }}"
 
-- name: "[archlinux] Wine tools: wineasio"
+- name: "[{{ user_os }}] Wine tools: wineasio"
   ansible.builtin.include_tasks:
     file: wine-tools/wineasio.task.yml
 
-- name: "[archlinux] Wine tools: pipeasio"
+- name: "[{{ user_os }}] Wine tools: pipeasio"
   ansible.builtin.include_tasks:
     file: wine-tools/pipeasio.task.yml
 
-- name: "[archlinux] Wine tools: reaper"
+- name: "[{{ user_os }}] Wine tools: reaper"
   ansible.builtin.include_tasks:
     file: wine-tools/reaper.task.yml
 
-- name: "[archlinux] Wine tools: sws extensions"
+- name: "[{{ user_os }}] Wine tools: sws extensions"
   ansible.builtin.include_tasks:
     file: wine-tools/sws-extensions.task.yml
 
-- name: "[archlinux] Wine tools: noise supression for voice"
+- name: "[{{ user_os }}] Wine tools: noise supression for voice"
   ansible.builtin.include_tasks:
     file: wine-tools/noise-suppression.task.yml
 
-- name: "[archlinux] Wine tools: gather town"
+- name: "[{{ user_os }}] Wine tools: gather town"
   ansible.builtin.include_tasks:
     file: wine-tools/gather-town.task.yml
 
-- name: "[archlinux] Wine tools: ytmdesktop"
+- name: "[{{ user_os }}] Wine tools: ytmdesktop"
   ansible.builtin.include_tasks:
     file: wine-tools/ytmdesktop.task.yml
 
-- name: "[archlinux] Wine tools: audiogridder"
+- name: "[{{ user_os }}] Wine tools: audiogridder"
   ansible.builtin.include_tasks:
     file: wine-tools/audiogridder.task.yml

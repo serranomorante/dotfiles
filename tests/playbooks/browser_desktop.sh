@@ -54,7 +54,7 @@ assert_line_contains() {
 
 case "${DOTFILES_TEST_CASE:-}" in
 brave-desktop-enables-experimental-processes-api)
-    block=$(task_block "$browser_tasks" "[archlinux] Setup browser tools: ensure brave scale")
+    block=$(task_block "$browser_tasks" "[{{ user_os }}] Setup browser tools: ensure brave scale")
     [ -n "$block" ] || {
         printf 'brave desktop task not found in %s\n' "$browser_tasks" >&2
         exit 1

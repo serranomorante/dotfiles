@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Yabridge tools: stat yabridge marker"
+- name: "[{{ user_os }}] Yabridge tools: stat yabridge marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -7,14 +7,14 @@
     dotfiles_marker_name: "yabridge-{{ arch_yabridge_version }}"
     dotfiles_marker_register: var_yabridge_marker
 
-- name: "[archlinux] Yabridge tools: ensure yabridge is installed"
+- name: "[{{ user_os }}] Yabridge tools: ensure yabridge is installed"
   ansible.builtin.unarchive:
     src: https://github.com/robbert-vdh/yabridge/releases/download/{{ arch_yabridge_version }}/yabridge-{{ arch_yabridge_version }}.tar.gz
     dest: ~/.local/share/
     remote_src: true
   when: not var_yabridge_marker.stat.exists
 
-- name: "[archlinux] Yabridge tools: record yabridge marker"
+- name: "[{{ user_os }}] Yabridge tools: record yabridge marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record

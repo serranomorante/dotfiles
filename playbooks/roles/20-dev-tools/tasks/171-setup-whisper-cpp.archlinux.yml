@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup whisper.cpp: install CUDA build packages"
+- name: "[{{ user_os }}] Setup whisper.cpp: install CUDA build packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -8,7 +8,7 @@
       - cuda
       - ninja
 
-- name: "[archlinux] Setup whisper.cpp: ensure directories"
+- name: "[{{ user_os }}] Setup whisper.cpp: ensure directories"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -17,7 +17,7 @@
     - "{{ whisper_cpp_setup.repo_path | dirname }}"
     - "{{ whisper_cpp_setup.model_dir }}"
 
-- name: "[archlinux] Setup whisper.cpp: clone repo"
+- name: "[{{ user_os }}] Setup whisper.cpp: clone repo"
   ansible.builtin.git:
     repo: https://github.com/ggml-org/whisper.cpp.git
     executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
@@ -26,13 +26,13 @@
     force: true
   register: var_whisper_cpp_repo
 
-- name: "[archlinux] Setup whisper.cpp: stat profile models"
+- name: "[{{ user_os }}] Setup whisper.cpp: stat profile models"
   ansible.builtin.stat:
     path: "{{ whisper_cpp_setup.model_dir }}/{{ item.model_file }}.{{ item.model_url | hash('sha256') }}"
   loop: "{{ whisper_cpp_setup.profiles }}"
   register: var_whisper_cpp_model_stats
 
-- name: "[archlinux] Setup whisper.cpp: download profile models"
+- name: "[{{ user_os }}] Setup whisper.cpp: download profile models"
   ansible.builtin.get_url:
     url: "{{ item.item.model_url }}"
     dest: "{{ whisper_cpp_setup.model_dir }}/{{ item.item.model_file }}.{{ item.item.model_url | hash('sha256') }}"
@@ -41,7 +41,7 @@
   loop: "{{ var_whisper_cpp_model_stats.results }}"
   when: not item.stat.exists
 
-- name: "[archlinux] Setup whisper.cpp: link profile models"
+- name: "[{{ user_os }}] Setup whisper.cpp: link profile models"
   ansible.builtin.file:
     src: "{{ whisper_cpp_setup.model_dir }}/{{ item.model_file }}.{{ item.model_url | hash('sha256') }}"
     dest: "{{ whisper_cpp_setup.model_dir }}/{{ item.model_file }}"
@@ -49,17 +49,17 @@
     force: true
   loop: "{{ whisper_cpp_setup.profiles }}"
 
-- name: "[archlinux] Setup whisper.cpp: check binary"
+- name: "[{{ user_os }}] Setup whisper.cpp: check binary"
   ansible.builtin.stat:
     path: "{{ whisper_cpp_setup.binary_path }}"
   register: var_whisper_cpp_binary
 
-- name: "[archlinux] Setup whisper.cpp: check server binary"
+- name: "[{{ user_os }}] Setup whisper.cpp: check server binary"
   ansible.builtin.stat:
     path: "{{ whisper_cpp_setup.server_binary_path }}"
   register: var_whisper_cpp_server_binary
 
-- name: "[archlinux] Setup whisper.cpp: remove stale build"
+- name: "[{{ user_os }}] Setup whisper.cpp: remove stale build"
   ansible.builtin.file:
     path: "{{ whisper_cpp_setup.repo_path }}/build"
     state: absent
@@ -69,7 +69,7 @@
       or not var_whisper_cpp_binary.stat.exists
       or not var_whisper_cpp_server_binary.stat.exists
 
-- name: "[archlinux] Setup whisper.cpp: configure CUDA build"
+- name: "[{{ user_os }}] Setup whisper.cpp: configure CUDA build"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -98,7 +98,7 @@
       or not var_whisper_cpp_server_binary.stat.exists
   changed_when: true
 
-- name: "[archlinux] Setup whisper.cpp: build CUDA binary"
+- name: "[{{ user_os }}] Setup whisper.cpp: build CUDA binary"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"

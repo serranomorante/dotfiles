@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Note-taking utilities: ensure packages"
+- name: "[{{ user_os }}] Note-taking utilities: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -9,7 +9,7 @@
       - jq
       - pandoc
 
-- name: "[archlinux] Note-taking utilities: ensure foam crypt watcher"
+- name: "[{{ user_os }}] Note-taking utilities: ensure foam crypt watcher"
   ansible.builtin.systemd_service:
     scope: user
     name: "{{ item }}"

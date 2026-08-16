@@ -1,22 +1,22 @@
 ---
-- name: "[archlinux] Setup google: ensure packages"
+- name: "[{{ user_os }}] Setup google: ensure packages"
   # You should do: `gcloud init` after
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages: google-cloud-cli
 
-- name: "[archlinux] Setup google: ensure app directory"
+- name: "[{{ user_os }}] Setup google: ensure app directory"
   ansible.builtin.file:
     path: ~/data/apps/dev-tools
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup google: stat firebase binary"
+- name: "[{{ user_os }}] Setup google: stat firebase binary"
   ansible.builtin.stat:
     path: ~/data/apps/dev-tools/firebase-{{ firebase_cli_version }}
   register: var_firebase_binary
 
-- name: "[archlinux] Setup google: ensure bin packages"
+- name: "[{{ user_os }}] Setup google: ensure bin packages"
   # You should do `firebase login` after
   ansible.builtin.get_url:
     url: https://firebase.tools/bin/linux/v{{ firebase_cli_version }}
@@ -24,7 +24,7 @@
     mode: "755"
   when: not var_firebase_binary.stat.exists
 
-- name: "[archlinux] Setup google: link firebase"
+- name: "[{{ user_os }}] Setup google: link firebase"
   ansible.builtin.file:
     src: ~/data/apps/dev-tools/firebase-{{ firebase_cli_version }}
     dest: ~/bin/firebase

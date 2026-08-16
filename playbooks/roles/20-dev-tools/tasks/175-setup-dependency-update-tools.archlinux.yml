@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup dependency update tools: ensure npm packages with diff capture"
+- name: "[{{ user_os }}] Setup dependency update tools: ensure npm packages with diff capture"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: npm
@@ -10,14 +10,14 @@
     update_diff_npm_node_version: "{{ node_dependency_update_node_version }}"
     update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
 
-- name: "[archlinux] Setup dependency update tools: inspect npm package binary wrappers"
+- name: "[{{ user_os }}] Setup dependency update tools: inspect npm package binary wrappers"
   ansible.builtin.stat:
     path: "{{ node_user_bin_dir }}/{{ item.1 }}"
     follow: false
   register: var_node_dependency_update_bin_wrappers
   loop: "{{ node_dependency_update_npm_packages | subelements('bins') }}"
 
-- name: "[archlinux] Setup dependency update tools: remove stale npm package binary symlinks"
+- name: "[{{ user_os }}] Setup dependency update tools: remove stale npm package binary symlinks"
   ansible.builtin.file:
     path: "{{ node_user_bin_dir }}/{{ item.1 }}"
     state: absent
@@ -26,7 +26,7 @@
     extended: true
   when: var_node_dependency_update_bin_wrappers.results[ansible_loop.index0].stat.islnk | default(false)
 
-- name: "[archlinux] Setup dependency update tools: install npm package binary wrappers"
+- name: "[{{ user_os }}] Setup dependency update tools: install npm package binary wrappers"
   ansible.builtin.copy:
     dest: "{{ node_user_bin_dir }}/{{ item.1 }}"
     mode: "755"
@@ -38,7 +38,7 @@
       exec "{{ node_dependency_update_npm_prefix }}/bin/{{ item.1 }}" --onboarding=false --require-config=required "$@"
   loop: "{{ node_dependency_update_npm_packages | subelements('bins') }}"
 
-- name: "[archlinux] Setup dependency update tools: install local apply helper"
+- name: "[{{ user_os }}] Setup dependency update tools: install local apply helper"
   ansible.builtin.copy:
     src: dotfiles-renovate-apply
     dest: "{{ node_user_bin_dir }}/dotfiles-renovate-apply"

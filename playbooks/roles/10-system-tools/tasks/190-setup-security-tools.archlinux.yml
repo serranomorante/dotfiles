@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup security tools: ensure packages"
+- name: "[{{ user_os }}] Setup security tools: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -13,19 +13,19 @@
       - libsecret
       - python-gobject
 
-- name: "[archlinux] Setup security tools: ensure local AUR packages"
+- name: "[{{ user_os }}] Setup security tools: ensure local AUR packages"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages:
       - cryptomator
 
-- name: "[archlinux] Setup security tools: setup kwallet password writer"
+- name: "[{{ user_os }}] Setup security tools: setup kwallet password writer"
   ansible.builtin.template:
     src: kwallet-write-password
     dest: ~/bin/kwallet-write-password
     mode: "755"
 
-- name: "[archlinux] Setup security tools: enable services"
+- name: "[{{ user_os }}] Setup security tools: enable services"
   ansible.builtin.systemd_service:
     scope: user
     name: ssh-agent.service
@@ -33,7 +33,7 @@
     masked: false
 
 # https://wiki.archlinux.org/title/SSH_keys#Start_ssh-agent_with_systemd_user
-- name: "[archlinux] Setup security tools: setup shell startup scripts"
+- name: "[{{ user_os }}] Setup security tools: setup shell startup scripts"
   ansible.builtin.blockinfile:
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP ENCRYPTION"
     dest: ~/dotfiles/home/lib/session-env.bash
@@ -44,21 +44,21 @@
           export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
       fi
 
-- name: "[archlinux] Setup security tools: default deny incoming"
+- name: "[{{ user_os }}] Setup security tools: default deny incoming"
   become: true
   community.general.ufw:
     default: deny
     direction: incoming
   ignore_errors: true
 
-- name: "[archlinux] Setup security tools: default allow outgoing"
+- name: "[{{ user_os }}] Setup security tools: default allow outgoing"
   become: true
   community.general.ufw:
     default: allow
     direction: outgoing
   ignore_errors: true
 
-- name: "[archlinux] Setup security tools: setup ufw"
+- name: "[{{ user_os }}] Setup security tools: setup ufw"
   # From: /etc/ufw/applications.d
   become: true
   community.general.ufw:
@@ -69,7 +69,7 @@
     - WWW Full
   ignore_errors: true
 
-- name: "[archlinux] Setup security tools: allow present-window LAN preview"
+- name: "[{{ user_os }}] Setup security tools: allow present-window LAN preview"
   become: true
   community.general.ufw:
     rule: allow
@@ -78,45 +78,45 @@
     comment: present-window LAN preview
   ignore_errors: true
 
-- name: "[archlinux] Setup security tools: enable ufw"
+- name: "[{{ user_os }}] Setup security tools: enable ufw"
   become: true
   community.general.ufw:
     state: enabled
   ignore_errors: true
   notify: handler_disable_iptables_service
 
-- name: "[archlinux] Setup security tools: get nvim keyrings"
+- name: "[{{ user_os }}] Setup security tools: get nvim keyrings"
   ansible.builtin.shell: >
     nvim --headless +'lua =io.stdout:write(vim.json.encode(require("serranomorante.constants").KEYRINGS) .. "\n")' +q 2>/dev/null
   changed_when: false
   ignore_errors: true
   register: var_nvim_keyrings
 
-- name: "[archlinux] Setup security tools: get private nvim keyrings"
+- name: "[{{ user_os }}] Setup security tools: get private nvim keyrings"
   ansible.builtin.shell: >
     nvim --headless +'lua =io.stdout:write(vim.json.encode(require("serranomorante.private-constants").KEYRINGS) .. "\n")' +q 2>/dev/null
   changed_when: false
   ignore_errors: true
   register: var_private_nvim_keyrings
 
-- name: "[archlinux] Setup security tools: set keyrings fact"
+- name: "[{{ user_os }}] Setup security tools: set keyrings fact"
   ansible.builtin.set_fact:
     keyrings: "{{ (keyrings | default([])) + ((var_nvim_keyrings.stdout | from_json).values() | list) }}"
   when: var_nvim_keyrings is success
 
-- name: "[archlinux] Setup security tools: set private keyrings fact"
+- name: "[{{ user_os }}] Setup security tools: set private keyrings fact"
   ansible.builtin.set_fact:
     keyrings: "{{ (keyrings | default([])) + ((var_private_nvim_keyrings.stdout | from_json).values() | list) }}"
   when: var_private_nvim_keyrings is success
 
-- name: "[archlinux] Setup security tools: set borg keyrings facts"
+- name: "[{{ user_os }}] Setup security tools: set borg keyrings facts"
   ansible.builtin.set_fact:
     keyrings: "{{ (keyrings | default([])) | union(item | map(attribute='keyrings')) }}"
   loop:
     - "{{ archlinux_borg_repos_env }}"
     - "{{ archlinux_borg_root_repos_env }}"
 
-- name: "[archlinux] Setup security tools: set dev-tools keyrings facts"
+- name: "[{{ user_os }}] Setup security tools: set dev-tools keyrings facts"
   ansible.builtin.set_fact:
     keyrings: "{{ keyrings | default([]) + [item.keyrings] }}"
   loop:
@@ -124,11 +124,11 @@
     - "{{ figma_mcp_commentary_server_setup }}"
     - "{{ intelephense_setup }}"
 
-- name: "[archlinux] Setup security tools: set dependency update keyrings facts"
+- name: "[{{ user_os }}] Setup security tools: set dependency update keyrings facts"
   ansible.builtin.set_fact:
     keyrings: "{{ (keyrings | default([])) | union([node_dependency_update_github_token_keyring]) }}"
 
-- name: "[archlinux] Setup security tools: set video tools keyrings facts"
+- name: "[{{ user_os }}] Setup security tools: set video tools keyrings facts"
   ansible.builtin.set_fact:
     keyrings: >-
       {{
@@ -139,7 +139,7 @@
         ])
       }}
 
-- name: "[archlinux] Setup security tools: set hypothesis keyrings facts"
+- name: "[{{ user_os }}] Setup security tools: set hypothesis keyrings facts"
   ansible.builtin.set_fact:
     keyrings: >-
       {{
@@ -150,24 +150,24 @@
         ])
       }}
 
-- name: "[archlinux] Setup security tools: stat private cloud tools defaults"
+- name: "[{{ user_os }}] Setup security tools: stat private cloud tools defaults"
   ansible.builtin.stat:
     path: ~/dotfiles/for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/defaults/main/main.vars.yml
   register: var_stat_private_cloud_tools_defaults
 
-- name: "[archlinux] Setup security tools: load private cloud tools defaults"
+- name: "[{{ user_os }}] Setup security tools: load private cloud tools defaults"
   ansible.builtin.include_vars:
     file: ../../../../for-my-eyes-only/playbooks/roles/70-for-my-eyes-only/defaults/main/main.vars.yml
   when: var_stat_private_cloud_tools_defaults.stat.exists
 
-- name: "[archlinux] Setup security tools: set private cloud tools keyrings facts"
+- name: "[{{ user_os }}] Setup security tools: set private cloud tools keyrings facts"
   ansible.builtin.set_fact:
     keyrings: "{{ (keyrings | default([])) | union([prowlarr_qbittorrent_plugin_setup.keyrings]) }}"
   when:
     - var_stat_private_cloud_tools_defaults.stat.exists
     - prowlarr_qbittorrent_plugin_setup is defined
 
-- name: "[archlinux] Setup security tools: set private sabnzbd keyrings facts"
+- name: "[{{ user_os }}] Setup security tools: set private sabnzbd keyrings facts"
   ansible.builtin.set_fact:
     keyrings: >-
       {{
@@ -189,12 +189,12 @@
     - var_stat_private_cloud_tools_defaults.stat.exists
     - sabnzbd_setup is defined
 
-- name: "[archlinux] Setup security tools: stat setup-kwallet"
+- name: "[{{ user_os }}] Setup security tools: stat setup-kwallet"
   ansible.builtin.stat:
     path: ~/dotfiles/for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/templates/setup-kwallet
   register: var_stat_setup_kwallet
 
-- name: "[archlinux] Setup security tools: setup-kwallet passwords"
+- name: "[{{ user_os }}] Setup security tools: setup-kwallet passwords"
   ansible.builtin.template:
     src: ../../../../for-my-eyes-only/playbooks/roles/80-for-my-eyes-only/templates/setup-kwallet
     dest: ~/bin/setup-kwallet
@@ -204,7 +204,7 @@
   when: var_stat_setup_kwallet.stat.exists
   register: var_setup_kwallet_template
 
-- name: "[archlinux] Setup security tools: prompt for new kwallet passwords"
+- name: "[{{ user_os }}] Setup security tools: prompt for new kwallet passwords"
   ansible.builtin.command:
     argv:
       - "{{ ansible_facts.user_dir }}/bin/setup-kwallet"
@@ -214,7 +214,7 @@
   when:
     - var_setup_kwallet_template is changed
 
-- name: "[archlinux] Setup security tools: ensure path"
+- name: "[{{ user_os }}] Setup security tools: ensure path"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -223,25 +223,25 @@
     - ~/.local/share/dbus-1
     - ~/.local/share/dbus-1/services/
 
-- name: "[archlinux] Setup security tools: setup secrets service"
+- name: "[{{ user_os }}] Setup security tools: setup secrets service"
   # https://wiki.archlinux.org/title/KDE_Wallet#Automatic_D-Bus_activation
   ansible.builtin.copy:
     src: org.freedesktop.secrets.service
     dest: ~/.local/share/dbus-1/services/org.freedesktop.secrets.service
     mode: "644"
 
-- name: "[archlinux] Setup security tools: ensure app cache folder"
+- name: "[{{ user_os }}] Setup security tools: ensure app cache folder"
   ansible.builtin.file:
     path: ~/data/apps/security-tools
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup security tools: stat docker credential secretservice helper"
+- name: "[{{ user_os }}] Setup security tools: stat docker credential secretservice helper"
   ansible.builtin.stat:
     path: ~/data/apps/security-tools/docker-credential-secretservice-v{{ arch_docker_credential_helpers_version }}
   register: var_docker_credential_secretservice_stat
 
-- name: "[archlinux] Setup security tools: get docker credential secretservice helper"
+- name: "[{{ user_os }}] Setup security tools: get docker credential secretservice helper"
   ansible.builtin.get_url:
     url: https://github.com/docker/docker-credential-helpers/releases/download/v{{ arch_docker_credential_helpers_version }}/docker-credential-secretservice-v{{
       arch_docker_credential_helpers_version }}.linux-amd64
@@ -249,40 +249,40 @@
     mode: "755"
   when: not var_docker_credential_secretservice_stat.stat.exists
 
-- name: "[archlinux] Setup security tools: link docker credential secretservice helper"
+- name: "[{{ user_os }}] Setup security tools: link docker credential secretservice helper"
   ansible.builtin.file:
     src: ~/data/apps/security-tools/docker-credential-secretservice-v{{ arch_docker_credential_helpers_version }}
     dest: ~/bin/docker-credential-secretservice
     state: link
     force: true
 
-- name: "[archlinux] Setup security tools: ensure docker config path"
+- name: "[{{ user_os }}] Setup security tools: ensure docker config path"
   ansible.builtin.file:
     path: ~/.docker
     state: directory
     mode: "700"
 
-- name: "[archlinux] Setup security tools: stat docker config"
+- name: "[{{ user_os }}] Setup security tools: stat docker config"
   ansible.builtin.stat:
     path: ~/.docker/config.json
   register: var_stat_docker_config
 
-- name: "[archlinux] Setup security tools: initialize docker config fact"
+- name: "[{{ user_os }}] Setup security tools: initialize docker config fact"
   ansible.builtin.set_fact:
     docker_config_json: {}
 
-- name: "[archlinux] Setup security tools: load docker config"
+- name: "[{{ user_os }}] Setup security tools: load docker config"
   ansible.builtin.set_fact:
     docker_config_json: "{{ lookup('file', '~/.docker/config.json') | from_json }}"
   when: var_stat_docker_config.stat.exists
   no_log: true
 
-- name: "[archlinux] Setup security tools: set docker auth entries fact"
+- name: "[{{ user_os }}] Setup security tools: set docker auth entries fact"
   ansible.builtin.set_fact:
     docker_auth_entries: "{{ docker_config_json.auths | default({}) | dict2items | selectattr('value.auth', 'defined') | list }}"
   no_log: true
 
-- name: "[archlinux] Setup security tools: migrate docker auths into secretservice"
+- name: "[{{ user_os }}] Setup security tools: migrate docker auths into secretservice"
   ansible.builtin.command:
     argv:
       - "{{ ansible_facts.env.HOME }}/bin/docker-credential-secretservice"
@@ -298,7 +298,7 @@
   changed_when: true
   no_log: true
 
-- name: "[archlinux] Setup security tools: set desired docker config fact"
+- name: "[{{ user_os }}] Setup security tools: set desired docker config fact"
   ansible.builtin.set_fact:
     desired_docker_config_json: >-
       {{
@@ -312,7 +312,7 @@
         )
       }}
 
-- name: "[archlinux] Setup security tools: write docker config"
+- name: "[{{ user_os }}] Setup security tools: write docker config"
   ansible.builtin.copy:
     dest: ~/.docker/config.json
     content: "{{ desired_docker_config_json | to_json }}"

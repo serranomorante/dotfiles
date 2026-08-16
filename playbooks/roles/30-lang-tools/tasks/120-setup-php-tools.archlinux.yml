@@ -3,7 +3,7 @@
 #   - `php` is the current major (8.5+); invoked as `php`.
 #   - `php-legacy` is 8.3.x for work projects pinned below 8.5; invoked as
 #     `php-legacy` with its own /etc/php-legacy tree and module dir.
-- name: "[archlinux] PHP language: ensure packages"
+- name: "[{{ user_os }}] PHP language: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -27,13 +27,13 @@
       - composer
       - xdebug
 
-- name: "[archlinux] PHP language: ensure local AUR packages"
+- name: "[{{ user_os }}] PHP language: ensure local AUR packages"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages:
       - php-legacy-xdebug
 
-- name: "[archlinux] PHP language: enable extensions"
+- name: "[{{ user_os }}] PHP language: enable extensions"
   become: true
   ansible.builtin.replace:
     path: "{{ item.0 }}"
@@ -44,7 +44,7 @@
 # redis depends on igbinary; igbinary must be loaded first or redis fails with
 # `undefined symbol: igbinary_serialize`. Both ship in conf.d with the extension
 # line commented out by default.
-- name: "[archlinux] PHP language: enable igbinary extension"
+- name: "[{{ user_os }}] PHP language: enable igbinary extension"
   become: true
   ansible.builtin.replace:
     path: "{{ item }}"
@@ -54,7 +54,7 @@
     - /etc/php/conf.d/igbinary.ini
     - /etc/php-legacy/conf.d/igbinary.ini
 
-- name: "[archlinux] PHP language: enable redis extension"
+- name: "[{{ user_os }}] PHP language: enable redis extension"
   become: true
   ansible.builtin.replace:
     path: "{{ item }}"
@@ -64,7 +64,7 @@
     - /etc/php/conf.d/redis.ini
     - /etc/php-legacy/conf.d/redis.ini
 
-- name: "[archlinux] PHP language: enable grpc extension"
+- name: "[{{ user_os }}] PHP language: enable grpc extension"
   become: true
   ansible.builtin.replace:
     path: "{{ item }}"
@@ -74,7 +74,7 @@
     - /etc/php/conf.d/grpc.ini
     - /etc/php-legacy/conf.d/grpc.ini
 
-- name: "[archlinux] PHP language: add xdebug options"
+- name: "[{{ user_os }}] PHP language: add xdebug options"
   become: true
   ansible.builtin.blockinfile:
     dest: "{{ item }}"
@@ -88,7 +88,7 @@
     - /etc/php/conf.d/xdebug.ini
     - /etc/php-legacy/conf.d/xdebug.ini
 
-- name: "[archlinux] PHP language: ensure local AUR tooling"
+- name: "[{{ user_os }}] PHP language: ensure local AUR tooling"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages:

@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Yaml language: ensure LSP"
+- name: "[{{ user_os }}] Yaml language: ensure LSP"
   become: true
   ansible.builtin.package:
     state: present
@@ -7,7 +7,7 @@
       - yamllint
       - yaml-language-server
 
-- name: "[archlinux] Yaml language: stat ansible-lint marker"
+- name: "[{{ user_os }}] Yaml language: stat ansible-lint marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -15,7 +15,7 @@
     dotfiles_marker_name: "uv-tool-ansible-lint-{{ ansible_lint_version }}"
     dotfiles_marker_register: var_ansible_lint_marker
 
-- name: "[archlinux] Yaml language: inspect ansible-lint Python interpreter"
+- name: "[{{ user_os }}] Yaml language: inspect ansible-lint Python interpreter"
   ansible.builtin.command:
     argv:
       - readlink
@@ -25,7 +25,7 @@
   changed_when: false
   failed_when: false
 
-- name: "[archlinux] Yaml language: ensure ansible-lint"
+- name: "[{{ user_os }}] Yaml language: ensure ansible-lint"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -50,7 +50,7 @@
     or not var_ansible_lint_python_interpreter.stdout.startswith(ansible_facts.env.HOME + '/.local/share/uv/python/')
   changed_when: true
 
-- name: "[archlinux] Yaml language: record ansible-lint marker"
+- name: "[{{ user_os }}] Yaml language: record ansible-lint marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record
@@ -61,13 +61,13 @@
     not var_ansible_lint_marker.stat.exists
     or not var_ansible_lint_python_interpreter.stdout.startswith(ansible_facts.env.HOME + '/.local/share/uv/python/')
 
-- name: "[archlinux] Yaml language: install unified ansible-lint firejail wrapper"
+- name: "[{{ user_os }}] Yaml language: install unified ansible-lint firejail wrapper"
   ansible.builtin.template:
     src: ansible-lint
     dest: "{{ node_user_bin_dir }}/ansible-lint"
     mode: "755"
 
-- name: "[archlinux] Yaml language: ensure ansible language server npm packages with diff capture"
+- name: "[{{ user_os }}] Yaml language: ensure ansible language server npm packages with diff capture"
   ansible.builtin.include_role:
     name: update-diff-capture
     tasks_from: npm
@@ -78,7 +78,7 @@
     update_diff_npm_node_version: "{{ node_ansible_language_server_version }}"
     update_diff_npm_executable: "{{ ansible_firejail_npm_executable }}"
 
-- name: "[archlinux] Yaml language: install ansible language server wrapper"
+- name: "[{{ user_os }}] Yaml language: install ansible language server wrapper"
   ansible.builtin.template:
     src: ansible-language-server
     dest: "{{ node_user_bin_dir }}/ansible-language-server"

@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Git tools: ensure diff tools"
+- name: "[{{ user_os }}] Git tools: ensure diff tools"
   become: true
   ansible.builtin.package:
     state: present
@@ -7,13 +7,13 @@
       - difftastic
       - git-delta
 
-- name: "[archlinux] Git tools: remove stable lazygit package"
+- name: "[{{ user_os }}] Git tools: remove stable lazygit package"
   become: true
   ansible.builtin.package:
     state: absent
     name: lazygit
 
-- name: "[archlinux] Git tools: ensure lazygit from master"
+- name: "[{{ user_os }}] Git tools: ensure lazygit from master"
   ansible.builtin.include_tasks: "{{ ansible_facts.env.HOME }}/dotfiles/playbooks/roles/10-system-tools/tasks/install-local-aur-packages.archlinux.yml"
   vars:
     aur_local_packages: lazygit-git

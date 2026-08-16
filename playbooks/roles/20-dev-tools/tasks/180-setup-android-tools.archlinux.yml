@@ -1,11 +1,11 @@
 ---
-- name: "[archlinux] Setup android tools: install packages"
+- name: "[{{ user_os }}] Setup android tools: install packages"
   become: true
   ansible.builtin.package:
     state: present
     name: android-tools
 
-- name: "[archlinux] Setup android tools: ensure folder"
+- name: "[{{ user_os }}] Setup android tools: ensure folder"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -14,7 +14,7 @@
     - "{{ ansible_facts.env.HOME }}/data/apps/android-tools"
     - "{{ ansible_facts.env.HOME }}/data/apps/android-tools/downloads"
 
-- name: "[archlinux] Setup android tools: stat gnirehtet marker"
+- name: "[{{ user_os }}] Setup android tools: stat gnirehtet marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: check
@@ -22,7 +22,7 @@
     dotfiles_marker_name: "gnirehtet-{{ arch_gnirehtet_version }}"
     dotfiles_marker_register: var_gnirehtet_marker
 
-- name: "[archlinux] Setup android tools: download gnirehtet rust version"
+- name: "[{{ user_os }}] Setup android tools: download gnirehtet rust version"
   # Make sure to enable developer mode and usb debugger in your device
   ansible.builtin.command:
     argv:
@@ -42,7 +42,7 @@
     creates: "{{ ansible_facts.env.HOME }}/data/apps/android-tools/downloads/gnirehtet-rust-linux64-v{{ arch_gnirehtet_version }}.zip"
   when: not var_gnirehtet_marker.stat.exists
 
-- name: "[archlinux] Setup android tools: install gnirehtet rust version"
+- name: "[{{ user_os }}] Setup android tools: install gnirehtet rust version"
   ansible.builtin.command:
     argv:
       - "{{ python_firejail_executable }}"
@@ -62,7 +62,7 @@
   changed_when: true
   notify: handler_ensure_gnirehtet_service
 
-- name: "[archlinux] Setup android tools: record gnirehtet marker"
+- name: "[{{ user_os }}] Setup android tools: record gnirehtet marker"
   ansible.builtin.include_role:
     name: dotfiles-markers
     tasks_from: record

@@ -33,19 +33,19 @@
     realtime_ntsync_load_unit: /etc/systemd/system/ntsync-load.service
 
   tasks:
-    - name: "[archlinux] Realtime migration: assert Arch Linux"
+    - name: "[{{ user_os }}] Realtime migration: assert Arch Linux"
       ansible.builtin.assert:
         that:
           - ansible_facts.distribution == "Archlinux"
         fail_msg: "This migration playbook is only for the Arch Linux workstation."
 
-    - name: "[archlinux] Realtime migration: check Secure Boot status"
+    - name: "[{{ user_os }}] Realtime migration: check Secure Boot status"
       become: true
       ansible.builtin.command: sbctl status
       register: var_realtime_sbctl_status
       changed_when: false
 
-    - name: "[archlinux] Realtime migration: fail when Secure Boot keys are not already enrolled"
+    - name: "[{{ user_os }}] Realtime migration: fail when Secure Boot keys are not already enrolled"
       ansible.builtin.assert:
         that:
           - "'Installed:' in var_realtime_sbctl_status.stdout"
@@ -53,13 +53,13 @@
           - "'Disabled' in (var_realtime_sbctl_status.stdout_lines | select('search', '^Setup Mode:') | first | default(''))"
         fail_msg: "sbctl does not report an enrolled Secure Boot setup. Do not run this migration until the existing Secure Boot keys are healthy."
 
-    - name: "[archlinux] Realtime migration: install realtime kernel and fallback headers"
+    - name: "[{{ user_os }}] Realtime migration: install realtime kernel and fallback headers"
       become: true
       ansible.builtin.package:
         name: "{{ realtime_kernel_packages }}"
         state: present
 
-    - name: "[archlinux] Realtime migration: check linux-rt ntsync module"
+    - name: "[{{ user_os }}] Realtime migration: check linux-rt ntsync module"
       become: true
       ansible.builtin.command:
         argv:
@@ -71,13 +71,13 @@
       register: var_realtime_linux_rt_ntsync_modules
       changed_when: false
 
-    - name: "[archlinux] Realtime migration: fail when linux-rt has no ntsync module"
+    - name: "[{{ user_os }}] Realtime migration: fail when linux-rt has no ntsync module"
       ansible.builtin.assert:
         that:
           - var_realtime_linux_rt_ntsync_modules.stdout_lines | length > 0
         fail_msg: "Installed linux-rt packages did not provide drivers/misc/ntsync.ko; do not switch Wine sync assumptions to ntsync."
 
-    - name: "[archlinux] Realtime migration: install ntsync module loader"
+    - name: "[{{ user_os }}] Realtime migration: install ntsync module loader"
       become: true
       ansible.builtin.copy:
         dest: "{{ realtime_ntsync_load_unit }}"
@@ -93,14 +93,14 @@
           [Install]
           WantedBy=multi-user.target
 
-    - name: "[archlinux] Realtime migration: enable ntsync module loader"
+    - name: "[{{ user_os }}] Realtime migration: enable ntsync module loader"
       become: true
       ansible.builtin.systemd_service:
         name: ntsync-load.service
         enabled: true
         daemon_reload: true
 
-    - name: "[archlinux] Realtime migration: point mkinitcpio UKIs at /boot"
+    - name: "[{{ user_os }}] Realtime migration: point mkinitcpio UKIs at /boot"
       become: true
       ansible.builtin.lineinfile:
         path: "{{ item.path }}"
@@ -108,25 +108,25 @@
         line: 'default_uki="/boot/EFI/Linux/arch-{{ item.pkgbase }}.efi"'
       loop: "{{ realtime_uki_presets }}"
 
-    - name: "[archlinux] Realtime migration: remove LTS-only NVIDIA modules"
+    - name: "[{{ user_os }}] Realtime migration: remove LTS-only NVIDIA modules"
       become: true
       ansible.builtin.package:
         name: "{{ realtime_nvidia_lts_module_packages }}"
         state: absent
 
-    - name: "[archlinux] Realtime migration: install DKMS module packages"
+    - name: "[{{ user_os }}] Realtime migration: install DKMS module packages"
       become: true
       ansible.builtin.package:
         name: "{{ realtime_dkms_packages }}"
         state: present
 
-    - name: "[archlinux] Realtime migration: remove LTS-only VirtualBox host modules"
+    - name: "[{{ user_os }}] Realtime migration: remove LTS-only VirtualBox host modules"
       become: true
       ansible.builtin.package:
         name: "{{ realtime_virtualbox_lts_module_packages }}"
         state: absent
 
-    - name: "[archlinux] Realtime migration: stop VirtualBox host modules from autoloading"
+    - name: "[{{ user_os }}] Realtime migration: stop VirtualBox host modules from autoloading"
       become: true
       ansible.builtin.file:
         src: /dev/null
@@ -134,33 +134,33 @@
         state: link
         force: true
 
-    - name: "[archlinux] Realtime migration: regenerate initramfs and UKIs"
+    - name: "[{{ user_os }}] Realtime migration: regenerate initramfs and UKIs"
       become: true
       ansible.builtin.command: mkinitcpio --allpresets
       changed_when: true
 
-    - name: "[archlinux] Realtime migration: check expected UKIs"
+    - name: "[{{ user_os }}] Realtime migration: check expected UKIs"
       become: true
       ansible.builtin.stat:
         path: "{{ item }}"
       register: var_realtime_uki_files
       loop: "{{ realtime_saved_uki_files }}"
 
-    - name: "[archlinux] Realtime migration: save UKIs in sbctl database"
+    - name: "[{{ user_os }}] Realtime migration: save UKIs in sbctl database"
       become: true
       ansible.builtin.command: sbctl sign -s {{ item.stat.path }}
       changed_when: true
       when: item.stat.exists
       loop: "{{ var_realtime_uki_files.results }}"
 
-    - name: "[archlinux] Realtime migration: verify Secure Boot signatures"
+    - name: "[{{ user_os }}] Realtime migration: verify Secure Boot signatures"
       become: true
       ansible.builtin.command: sbctl verify
       register: var_realtime_sbctl_verify
       changed_when: false
       failed_when: false
 
-    - name: "[archlinux] Realtime migration: collect unsigned boot files"
+    - name: "[{{ user_os }}] Realtime migration: collect unsigned boot files"
       ansible.builtin.set_fact:
         realtime_unsigned_boot_files: "{{ (realtime_unsigned_boot_files | default([])) + [item | regex_replace('^[^/]*(/boot/.*) is not signed$', '\\1')] }}"
       when:
@@ -168,25 +168,25 @@
         - "' is not signed' in item"
       loop: "{{ var_realtime_sbctl_verify.stdout_lines }}"
 
-    - name: "[archlinux] Realtime migration: save unsigned boot files in sbctl database"
+    - name: "[{{ user_os }}] Realtime migration: save unsigned boot files in sbctl database"
       become: true
       ansible.builtin.command: sbctl sign -s {{ item }}
       changed_when: true
       loop: "{{ realtime_unsigned_boot_files | default([]) }}"
 
-    - name: "[archlinux] Realtime migration: regenerate signed UKIs"
+    - name: "[{{ user_os }}] Realtime migration: regenerate signed UKIs"
       become: true
       ansible.builtin.command: mkinitcpio --allpresets
       changed_when: true
 
-    - name: "[archlinux] Realtime migration: verify final Secure Boot signatures"
+    - name: "[{{ user_os }}] Realtime migration: verify final Secure Boot signatures"
       become: true
       ansible.builtin.command: sbctl verify
       register: var_realtime_final_sbctl_verify
       changed_when: false
       failed_when: false
 
-    - name: "[archlinux] Realtime migration: fail when boot files remain unsigned"
+    - name: "[{{ user_os }}] Realtime migration: fail when boot files remain unsigned"
       ansible.builtin.assert:
         that:
           - >-
@@ -197,13 +197,13 @@
               | length) == 0
         fail_msg: "{{ var_realtime_final_sbctl_verify.stdout_lines | select('search', '/boot/') | select('search', ' is not signed') | list }}"
 
-    - name: "[archlinux] Realtime migration: check DKMS module state"
+    - name: "[{{ user_os }}] Realtime migration: check DKMS module state"
       become: true
       ansible.builtin.command: dkms status
       register: var_realtime_dkms_status
       changed_when: false
 
-    - name: "[archlinux] Realtime migration: install built-only DKMS modules"
+    - name: "[{{ user_os }}] Realtime migration: install built-only DKMS modules"
       become: true
       ansible.builtin.command:
         argv:
@@ -215,32 +215,32 @@
       changed_when: true
       loop: "{{ var_realtime_dkms_status.stdout_lines | select('search', realtime_dkms_module_pattern) | select('search', ': built$') | list }}"
 
-    - name: "[archlinux] Realtime migration: check final DKMS module state"
+    - name: "[{{ user_os }}] Realtime migration: check final DKMS module state"
       become: true
       ansible.builtin.command: dkms status
       register: var_realtime_final_dkms_status
       changed_when: false
 
-    - name: "[archlinux] Realtime migration: fail when DKMS modules remain built-only"
+    - name: "[{{ user_os }}] Realtime migration: fail when DKMS modules remain built-only"
       ansible.builtin.assert:
         that:
           - "(var_realtime_final_dkms_status.stdout_lines | select('search', realtime_dkms_module_pattern) | select('search', ': built$') | list | length) == 0"
         fail_msg: "{{ var_realtime_final_dkms_status.stdout_lines | select('search', realtime_dkms_module_pattern) | select('search', ': built$') | list }}"
 
-    - name: "[archlinux] Realtime migration: check systemd-boot default entry"
+    - name: "[{{ user_os }}] Realtime migration: check systemd-boot default entry"
       become: true
       ansible.builtin.command: bootctl get-default
       register: var_realtime_boot_default
       changed_when: false
       failed_when: false
 
-    - name: "[archlinux] Realtime migration: set realtime UKI as default boot entry"
+    - name: "[{{ user_os }}] Realtime migration: set realtime UKI as default boot entry"
       become: true
       ansible.builtin.command: "bootctl set-default {{ realtime_default_boot_entry }}"
       changed_when: true
       when: (var_realtime_boot_default.stdout | trim) != realtime_default_boot_entry
 
-    - name: "[archlinux] Realtime migration: show post-migration checks"
+    - name: "[{{ user_os }}] Realtime migration: show post-migration checks"
       ansible.builtin.debug:
         msg:
           - "Reboot into the default linux-rt UKI from systemd-boot."

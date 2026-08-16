@@ -1,12 +1,12 @@
 ---
-- name: "[debian] Grep utilities: ensure fzf bin"
+- name: "[{{ user_os }}] Grep utilities: ensure fzf bin"
   ansible.builtin.unarchive:
     src: https://github.com/junegunn/fzf/releases/download/v{{ debian_fzf_version }}/fzf-{{ debian_fzf_version }}-linux_amd64.tar.gz
     dest: ~/bin
     remote_src: true
     creates: ~/bin/fzf
 
-- name: "[debian] Grep utilities: ensure .fzf_history"
+- name: "[{{ user_os }}] Grep utilities: ensure .fzf_history"
   ansible.builtin.blockinfile:
     dest: ~/dotfiles/home/dot-fzfrc
     create: true
@@ -14,28 +14,28 @@
     block: |
       --history={{ ansible_facts.env.HOME }}/.fzf_history
 
-- name: "[debian] Grep utilities: ensure ripgrep"
+- name: "[{{ user_os }}] Grep utilities: ensure ripgrep"
   ansible.builtin.unarchive:
     src: https://github.com/BurntSushi/ripgrep/releases/download/{{ debian_rg_version }}/ripgrep-{{ debian_rg_version }}-x86_64-unknown-linux-musl.tar.gz
     dest: ~/bin
     remote_src: true
     creates: ~/bin/ripgrep-{{ debian_rg_version }}-x86_64-unknown-linux-musl
 
-- name: "[debian] Grep utilities: symlink ripgrep"
+- name: "[{{ user_os }}] Grep utilities: symlink ripgrep"
   ansible.builtin.file:
     src: ~/bin/ripgrep-{{ debian_rg_version }}-x86_64-unknown-linux-musl/rg
     dest: ~/bin/rg
     state: link
     mode: "744"
 
-- name: "[debian] Grep utilities: ensure fd"
+- name: "[{{ user_os }}] Grep utilities: ensure fd"
   ansible.builtin.unarchive:
     src: https://github.com/sharkdp/fd/releases/download/v{{ debian_fd_version }}/fd-v{{ debian_fd_version }}-x86_64-unknown-linux-musl.tar.gz
     dest: ~/bin
     remote_src: true
     creates: ~/bin/fd-v{{ debian_fd_version }}-x86_64-unknown-linux-musl
 
-- name: "[debian] Grep utilities: symlink fd"
+- name: "[{{ user_os }}] Grep utilities: symlink fd"
   ansible.builtin.file:
     src: ~/bin/fd-v{{ debian_fd_version }}-x86_64-unknown-linux-musl/fd
     dest: ~/bin/fd

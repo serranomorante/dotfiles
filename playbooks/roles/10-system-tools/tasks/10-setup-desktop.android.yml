@@ -1,5 +1,5 @@
 ---
-- name: "[otherlinux] Setup desktop: download dotfiles"
+- name: "[{{ user_os }}] Setup desktop: download dotfiles"
   ansible.builtin.git:
     repo: https://github.com/serranomorante/dotfiles.git
     dest: ~/dotfiles
@@ -10,7 +10,7 @@
 
 # https://superuser.com/a/1407685
 # https://forum.ansible.com/t/ansible-with-gpg-agent-prompts-for-private-key-password-constantly/30053/5
-- name: "[otherlinux] Setup desktop: setup .bashrc"
+- name: "[{{ user_os }}] Setup desktop: setup .bashrc"
   ansible.builtin.blockinfile:
     dest: "{{ item.script }}"
     create: true
@@ -26,7 +26,7 @@
   loop:
     - { script: ~/.bashrc }
 
-- name: "[otherlinux] Setup desktop: ensure packages"
+- name: "[{{ user_os }}] Setup desktop: ensure packages"
   vars:
     otherlinux_desktop_packages:
       # termux-api == termux-notification
@@ -41,7 +41,7 @@
       - ossp-uuid
       - ncdu
   block:
-    - name: "[otherlinux] Setup desktop: check missing packages"
+    - name: "[{{ user_os }}] Setup desktop: check missing packages"
       ansible.builtin.command:
         argv: "{{ ['sh', '-c', otherlinux_check_missing_packages_script, 'sh'] + otherlinux_desktop_packages }}"
       vars:
@@ -55,13 +55,13 @@
       register: var_otherlinux_desktop_missing_packages
       changed_when: false
 
-    - name: "[otherlinux] Setup desktop: install missing packages"
+    - name: "[{{ user_os }}] Setup desktop: install missing packages"
       ansible.builtin.command:
         argv: "{{ ['pkg', 'install', '-y'] + var_otherlinux_desktop_missing_packages.stdout_lines }}"
       changed_when: true
       when: var_otherlinux_desktop_missing_packages.stdout_lines | length > 0
 
-- name: "[otherlinux] Setup desktop: ensure folders"
+- name: "[{{ user_os }}] Setup desktop: ensure folders"
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -74,17 +74,17 @@
     - /data/data/com.termux/files/home/.config/remind/
     - /data/data/com.termux/files/home/.local/state/remind/
 
-- name: "[otherlinux] Setup desktop: check legacy remind oncefile"
+- name: "[{{ user_os }}] Setup desktop: check legacy remind oncefile"
   ansible.builtin.stat:
     path: /data/data/com.termux/files/home/.config/remind/oncefile
   register: var_remind_legacy_oncefile
 
-- name: "[otherlinux] Setup desktop: check remind state oncefile"
+- name: "[{{ user_os }}] Setup desktop: check remind state oncefile"
   ansible.builtin.stat:
     path: /data/data/com.termux/files/home/.local/state/remind/oncefile
   register: var_remind_state_oncefile
 
-- name: "[otherlinux] Setup desktop: migrate remind oncefile"
+- name: "[{{ user_os }}] Setup desktop: migrate remind oncefile"
   ansible.builtin.command:
     argv:
       - mv
@@ -94,7 +94,7 @@
     - var_remind_legacy_oncefile.stat.exists
     - not var_remind_state_oncefile.stat.exists
 
-- name: "[otherlinux] Setup desktop: remove legacy remind oncefile"
+- name: "[{{ user_os }}] Setup desktop: remove legacy remind oncefile"
   ansible.builtin.file:
     path: /data/data/com.termux/files/home/.config/remind/oncefile
     state: absent
@@ -102,7 +102,7 @@
     - var_remind_legacy_oncefile.stat.exists
     - var_remind_state_oncefile.stat.exists
 
-- name: "[otherlinux] Setup desktop: link remind"
+- name: "[{{ user_os }}] Setup desktop: link remind"
   ansible.builtin.file:
     src: /data/data/com.termux/files/usr/share/termux-services/svlogger
     dest: /data/data/com.termux/files/usr/var/service/{{ pkg }}/log/run
@@ -112,14 +112,14 @@
   vars:
     pkg: remind
 
-- name: "[otherlinux] Setup desktop: create reminders.rem file"
+- name: "[{{ user_os }}] Setup desktop: create reminders.rem file"
   ansible.builtin.copy:
     dest: /data/data/com.termux/files/home/.config/remind/reminders.rem
     content: "REM MSG Test"
     force: false
     mode: "700"
 
-- name: "[otherlinux] Setup desktop: create rem script"
+- name: "[{{ user_os }}] Setup desktop: create rem script"
   ansible.builtin.copy:
     dest: /data/data/com.termux/files/home/bin/{{ item.name }}
     content: |
@@ -143,13 +143,13 @@
         sleep 1
         termux-notification --content "$@"
 
-- name: "[otherlinux] Setup desktop: check package rem symlink"
+- name: "[{{ user_os }}] Setup desktop: check package rem symlink"
   ansible.builtin.stat:
     path: /data/data/com.termux/files/usr/bin/rem
     follow: false
   register: var_otherlinux_package_rem
 
-- name: "[otherlinux] Setup desktop: remove package rem symlink"
+- name: "[{{ user_os }}] Setup desktop: remove package rem symlink"
   ansible.builtin.file:
     path: /data/data/com.termux/files/usr/bin/rem
     state: absent
@@ -157,7 +157,7 @@
     - var_otherlinux_package_rem.stat.islnk | default(false)
     - var_otherlinux_package_rem.stat.lnk_source == "remind"
 
-- name: "[otherlinux] Setup desktop: create prefix rem wrapper"
+- name: "[{{ user_os }}] Setup desktop: create prefix rem wrapper"
   ansible.builtin.copy:
     dest: /data/data/com.termux/files/usr/bin/rem
     content: |
@@ -173,7 +173,7 @@
       exec /data/data/com.termux/files/usr/bin/remind '-i$OnceFile="/data/data/com.termux/files/home/.local/state/remind/oncefile"' '-k/data/data/com.termux/files/home/bin/notify %s' $default_flags "$@" /data/data/com.termux/files/home/.config/remind
     mode: "755"
 
-- name: "[otherlinux] Setup desktop: add remind service"
+- name: "[{{ user_os }}] Setup desktop: add remind service"
   ansible.builtin.copy:
     dest: /data/data/com.termux/files/usr/var/service/{{ pkg }}/run
     content: |
@@ -184,7 +184,7 @@
   vars:
     pkg: remind
 
-- name: "[otherlinux] Setup desktop: ensure services"
+- name: "[{{ user_os }}] Setup desktop: ensure services"
   ansible.builtin.command: sv-enable {{ item }}
   loop:
     - sshd
@@ -192,18 +192,18 @@
     - remind
   changed_when: false
 
-- name: "[otherlinux] Setup desktop: ensure boot folder"
+- name: "[{{ user_os }}] Setup desktop: ensure boot folder"
   ansible.builtin.file:
     path: /data/data/com.termux/files/home/.termux/boot
     state: directory
     mode: "755"
 
-- name: "[otherlinux] Setup desktop: register pinentry"
+- name: "[{{ user_os }}] Setup desktop: register pinentry"
   ansible.builtin.command: which pinentry-tty
   register: pinentry_tty_path
   changed_when: false
 
-- name: "[otherlinux] Setup desktop: setup gnupg"
+- name: "[{{ user_os }}] Setup desktop: setup gnupg"
   ansible.builtin.blockinfile:
     marker: "## {mark} ANSIBLE MANAGED BLOCK - SETUP GNUGP"
     dest: ~/dotfiles/gnupg/dot-gnupg/gpg-agent.conf
@@ -218,7 +218,7 @@
   when: pinentry_tty_path is succeeded
   notify: "10-system-tools : handlergroup_restart_gpg_services"
 
-- name: "[otherlinux] Setup desktop: ensure startup"
+- name: "[{{ user_os }}] Setup desktop: ensure startup"
   ansible.builtin.copy:
     dest: /data/data/com.termux/files/home/.termux/boot/10-start-sshd
     content: |

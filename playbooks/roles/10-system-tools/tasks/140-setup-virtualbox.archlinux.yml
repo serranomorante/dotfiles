@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Setup virtualbox: ensure packages"
+- name: "[{{ user_os }}] Setup virtualbox: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -7,7 +7,7 @@
       - meson
       - ninja
 
-- name: "[archlinux] Setup virtualbox: ensure packages"
+- name: "[{{ user_os }}] Setup virtualbox: ensure packages"
   become: true
   ansible.builtin.package:
     state: present
@@ -18,14 +18,14 @@
       - virtualbox-guest-utils
   timeout: 600
 
-- name: "[archlinux] Setup virtualbox: remove LTS-only host modules"
+- name: "[{{ user_os }}] Setup virtualbox: remove LTS-only host modules"
   become: true
   ansible.builtin.package:
     state: absent
     name:
       - virtualbox-host-modules-lts
 
-- name: "[archlinux] Setup virtualbox: mask host module autoload"
+- name: "[{{ user_os }}] Setup virtualbox: mask host module autoload"
   become: true
   ansible.builtin.file:
     src: /dev/null
@@ -35,26 +35,26 @@
     owner: root
     group: root
 
-- name: "[archlinux] Setup virtualbox: ensure user bin path"
+- name: "[{{ user_os }}] Setup virtualbox: ensure user bin path"
   ansible.builtin.file:
     path: ~/bin
     state: directory
     mode: "755"
 
-- name: "[archlinux] Setup virtualbox: install linux-lts module loader"
+- name: "[{{ user_os }}] Setup virtualbox: install linux-lts module loader"
   ansible.builtin.template:
     src: virtualbox-lts-load
     dest: ~/bin/virtualbox-lts-load
     mode: "755"
 
 # https://wiki.archlinux.org/title/VirtualBox#Accessing_host_USB_devices_in_guest
-- name: "[archlinux] Setup virtualbox: ensure vboxusers group"
+- name: "[{{ user_os }}] Setup virtualbox: ensure vboxusers group"
   become: true
   ansible.builtin.group:
     state: present
     name: vboxusers
 
-- name: "[archlinux] Setup virtualbox: append user to group"
+- name: "[{{ user_os }}] Setup virtualbox: append user to group"
   become: true
   ansible.builtin.user:
     append: true

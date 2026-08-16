@@ -1,5 +1,5 @@
 ---
-- name: "[archlinux] Automation utilities: ensure packages"
+- name: "[{{ user_os }}] Automation utilities: ensure packages"
   become: true
   ansible.builtin.pacman:
     state: present
@@ -8,7 +8,7 @@
       - ydotool
       - xdotool
 
-- name: "[archlinux] Automation utilities: ensure ydotoold service"
+- name: "[{{ user_os }}] Automation utilities: ensure ydotoold service"
   ansible.builtin.systemd_service:
     scope: user
     name: ydotool.service
