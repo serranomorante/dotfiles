@@ -62,6 +62,7 @@ SOURCES = [
             "*.lock",
             "*.scss",
             "*.err",
+            "*.db",
             "*.plist",
             "*/testing",
             "*/testing/*",
