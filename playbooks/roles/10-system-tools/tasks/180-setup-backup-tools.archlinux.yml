@@ -177,6 +177,7 @@
         keyrings: "{{ item.keyrings }}"
         files: "{{ item.files }}"
         excludes: "{{ item.excludes | default([]) }}"
+        pre_backup_hook: "{{ item.pre_backup_hook | default('') }}"
       loop: "{{ archlinux_borg_repos_env }}"
 
     - name: "[{{ user_os }}] Setup backup tools: ensure borg backup timer"

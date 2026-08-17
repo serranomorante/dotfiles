@@ -30,6 +30,16 @@ trap 'echo $( date ) Backup interrupted >&2; exit 2' INT TERM
 
 info "Starting backup"
 
+{% if pre_backup_hook | default('') %}
+# Pre-backup hook: refresh dependent data (e.g. the Calibre export) so this
+# backup picks up a fresh snapshot. Run only when the repo device is mounted,
+# so an expensive hook does not fire for a disconnected backup target, and do
+# not abort the backup if the hook fails.
+if [ -d "$(dirname "$BORG_REPO")" ]; then
+    {{ pre_backup_hook }} || info "Pre-backup hook failed (continuing)"
+fi
+{% endif %}
+
 # Backup the most important directories into an archive named after
 # the machine this script is currently running on:
 
