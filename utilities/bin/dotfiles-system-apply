@@ -1,0 +1,386 @@
+#!/usr/bin/env python3
+# Purpose: Print the Stow/Ansible commands needed to apply the changes in one or
+#          more dotfiles (or for-my-eyes-only) commits to this workstation.
+# Usage: dotfiles-system-apply [--run] [--repo DIR] <commit|range>...
+# Notes: Each argument may be a commit hash (public or private submodule) or a
+#        `A..B`/`A...B` range. Stow packages map to `dotfiles-stow <pkg>`;
+#        top-level playbooks map to their own ansible-playbook run; role task,
+#        template and file changes map to `tools.yml --tags` using the
+#        `<role>-<task>` tag convention. When a changed yml installs local AUR
+#        packages, tag `10-20` is prepended so the `[aur-local]` repo is prepared
+#        first. Pass --run to execute instead of print.
+
+import argparse
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+
+PROG = os.path.basename(sys.argv[0])
+DEFAULT_REPO = os.path.join(os.path.expanduser("~"), "dotfiles")
+PLAYBOOKS_CFG = "playbooks/roles/10-system-tools/defaults/main/main.vars.yml"
+
+ROLE_FILE_RE = re.compile(r"^playbooks/roles/([^/]+)/(tasks|templates|files|handlers|defaults|vars|meta)/(.+)$")
+TOPLEVEL_PLAYBOOK_RE = re.compile(r"^playbooks/([^/]+)\.yml$")
+
+AUR_PREP_TAG = "10-20"
+AUR_RELATED_RE = re.compile(r"(?i)\baur\b|\baur[_]|install-local-aur|arch_aur|aur_local|aur-review|\[aur-local\]")
+
+
+def die(message, code=2):
+    print(f"{PROG}: {message}", file=sys.stderr)
+    raise SystemExit(code)
+
+
+def run_git(repo, *args):
+    return subprocess.run(["git", "-C", str(repo), *args], text=True, capture_output=True)
+
+
+def resolve_commit(repo, rev):
+    result = run_git(repo, "rev-parse", "--verify", "--quiet", rev + "^{commit}")
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def repo_contains(repo, rev):
+    if ".." in rev:
+        separator = "..." if "..." in rev else ".."
+        left, right = rev.split(separator, 1)
+        return bool(resolve_commit(repo, left)) and bool(resolve_commit(repo, right))
+    return bool(resolve_commit(repo, rev))
+
+
+def changed_files(repo, rev):
+    if ".." in rev:
+        result = run_git(repo, "diff", "--name-status", "-M", rev)
+    else:
+        result = run_git(repo, "diff-tree", "--no-commit-id", "-r", "-M", "-m", "--name-status", rev)
+    if result.returncode != 0:
+        die(f"git failed for {rev}: {result.stderr.strip()}")
+    changed = {}
+    for line in result.stdout.splitlines():
+        if not line.strip():
+            continue
+        columns = line.split("\t")
+        changed[columns[-1]] = columns[0]
+    return changed
+
+
+def is_aur_related(repo, rel_path):
+    if not rel_path.endswith((".yml", ".yaml")):
+        return False
+    try:
+        text = (repo / rel_path).read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return False
+    return AUR_RELATED_RE.search(text) is not None
+
+
+def extract_yaml_list(path, key):
+    if not path.is_file():
+        return []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    start = None
+    for index, line in enumerate(lines):
+        if line.startswith(key + ":"):
+            start = index
+            break
+    if start is None:
+        return []
+    items = []
+    for line in lines[start + 1:]:
+        match = re.match(r"^\s+-\s+(.+)$", line)
+        if match:
+            value = match.group(1).split("#")[0].strip().strip("'\"")
+            if value:
+                items.append(value)
+        elif line.strip():
+            break
+    return items
+
+
+def role_number(role_name):
+    match = re.match(r"^(\d+)", role_name)
+    return match.group(1) if match else None
+
+
+def task_tag(role_num, rel_path):
+    base = rel_path.split("/")[-1]
+    match = re.match(r"^(\d+)-", base)
+    return f"{role_num}-{match.group(1)}" if match else None
+
+
+def build_indexes(repos):
+    task_index = []
+    playbook_index = {}
+    for repo in repos:
+        playbooks_dir = repo / "playbooks"
+        if not playbooks_dir.is_dir():
+            continue
+        for playbook in sorted(playbooks_dir.glob("*.yml")):
+            try:
+                playbook_index[playbook.stem] = playbook.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                pass
+        roles_dir = playbooks_dir / "roles"
+        if not roles_dir.is_dir():
+            continue
+        for role_dir in sorted(roles_dir.iterdir()):
+            if not role_dir.is_dir():
+                continue
+            rn = role_number(role_dir.name)
+            if rn is None:
+                continue
+            tasks_dir = role_dir / "tasks"
+            if not tasks_dir.is_dir():
+                continue
+            for task_file in sorted(tasks_dir.rglob("*.yml")):
+                match = re.match(r"^(\d+)-", task_file.name)
+                if not match:
+                    continue
+                try:
+                    text = task_file.read_text(encoding="utf-8", errors="ignore")
+                except OSError:
+                    text = ""
+                task_index.append((f"{rn}-{match.group(1)}", text))
+    return task_index, playbook_index
+
+
+def boundary_pattern(literal):
+    return re.compile(r"(?<![\w.-])" + re.escape(literal) + r"(?![\w.-])")
+
+
+def prefix_pattern(literal):
+    return re.compile(r"(?<![\w.-])" + re.escape(literal))
+
+
+def search_tags(task_index, pattern):
+    return {tag for tag, text in task_index if pattern.search(text)}
+
+
+def search_playbooks(playbook_index, pattern):
+    return {name for name, text in playbook_index.items() if pattern.search(text)}
+
+
+def tag_sort_key(tag):
+    return tuple(int(part) for part in tag.split("-") if part.isdigit())
+
+
+def summarize_paths(paths):
+    shown = sorted(set(paths))
+    if len(shown) <= 3:
+        return ", ".join(shown)
+    return ", ".join(shown[:3]) + f" (+{len(shown) - 3})"
+
+
+def shell_path(path):
+    path = os.path.abspath(path)
+    home = os.path.expanduser("~")
+    if path == home or path.startswith(home + os.sep):
+        return "~" + path[len(home):]
+    return path
+
+
+def run_commands(commands):
+    for command in commands:
+        print(f"$ {command}")
+        subprocess.run(["bash", "-c", command], check=True)
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(
+        prog=PROG,
+        description="Print the commands to apply dotfiles commits to this workstation.",
+    )
+    parser.add_argument("--run", action="store_true", help="execute the generated commands instead of printing them")
+    parser.add_argument("--repo", default=os.environ.get("DOTFILES_DIR") or DEFAULT_REPO,
+                        help=f"dotfiles repo root (default: {DEFAULT_REPO})")
+    parser.add_argument("commits", nargs="+", metavar="COMMIT", help="commit hash or A..B range")
+    args = parser.parse_args(argv)
+
+    public_repo = Path(args.repo).expanduser()
+    private_repo = public_repo / "for-my-eyes-only"
+
+    public_stow = extract_yaml_list(public_repo / PLAYBOOKS_CFG, "dotfiles_public_stow_packages")
+
+    public_changed = {}
+    private_changed = {}
+    submodule_note = False
+    for rev in args.commits:
+        if repo_contains(public_repo, rev):
+            public_changed.update(changed_files(public_repo, rev))
+        elif repo_contains(private_repo, rev):
+            private_changed.update(changed_files(private_repo, rev))
+        else:
+            die(f"cannot resolve '{rev}' in {public_repo} or {private_repo}")
+
+    task_index, playbook_index = build_indexes([public_repo, private_repo])
+
+    stow_sources = {}
+    playbook_sources = {}
+    tag_sources = {}
+    aur_related_paths = set()
+    ignored = []
+
+    def add_stow(package, path):
+        stow_sources.setdefault(package, []).append(path)
+
+    def add_playbook(name, path):
+        playbook_sources.setdefault(name, []).append(path)
+
+    def add_tags(tags, path):
+        for tag in tags:
+            tag_sources.setdefault(tag, []).append(path)
+
+    def map_asset(path):
+        pattern = boundary_pattern(path.split("/")[-1])
+        tags = search_tags(task_index, pattern)
+        playbooks = search_playbooks(playbook_index, pattern)
+        add_tags(tags, path)
+        for playbook in playbooks:
+            add_playbook(playbook, path)
+        if not tags and not playbooks:
+            ignored.append((path, "not referenced by any task or playbook"))
+
+    def map_task(role_num, rel_path, path):
+        tag = task_tag(role_num, rel_path)
+        if tag:
+            add_tags([tag], path)
+            return
+        if rel_path == "main.yml":
+            ignored.append((path, "role main.yml glue; specific task files carry the tags"))
+            return
+        tags = search_tags(task_index, boundary_pattern(rel_path))
+        if not tags and "/" in rel_path:
+            tags = search_tags(task_index, prefix_pattern(rel_path.split("/")[0] + "/"))
+        if not tags:
+            tags = search_tags(task_index, boundary_pattern(rel_path.split("/")[-1]))
+        if tags:
+            add_tags(tags, path)
+        else:
+            ignored.append((path, "no referencing numeric task found"))
+
+    def map_role_file(path, role, subdir, rel_path):
+        rn = role_number(role)
+        if rn is None:
+            ignored.append((path, f"non-numeric helper role '{role}'"))
+            return
+        if subdir == "tasks":
+            map_task(rn, rel_path, path)
+        elif subdir in ("templates", "files"):
+            map_asset(path)
+        else:
+            ignored.append((path, f"{subdir} change not auto-mapped"))
+
+    for path in sorted(public_changed):
+        if path == "for-my-eyes-only":
+            submodule_note = True
+            continue
+        if is_aur_related(public_repo, path):
+            aur_related_paths.add(path)
+        if path.startswith("playbooks/"):
+            match = TOPLEVEL_PLAYBOOK_RE.match(path)
+            if match:
+                add_playbook(match.group(1), path)
+                continue
+            match = ROLE_FILE_RE.match(path)
+            if match:
+                map_role_file(path, match.group(1), match.group(2), match.group(3))
+                continue
+            ignored.append((path, "playbooks support file"))
+            continue
+        if path.startswith("assets/"):
+            map_asset(path)
+            continue
+        first = path.split("/")[0]
+        if first in public_stow:
+            add_stow(first, path)
+        elif first == "termux":
+            ignored.append((path, "termux targets phone2, not localhost"))
+        else:
+            ignored.append((path, "unmanaged path"))
+
+    for path in sorted(private_changed):
+        if is_aur_related(private_repo, path):
+            aur_related_paths.add(path)
+        if path.startswith("playbooks/"):
+            if TOPLEVEL_PLAYBOOK_RE.match(path):
+                ignored.append((path, "private top-level playbook (no local ansible.cfg)"))
+                continue
+            match = ROLE_FILE_RE.match(path)
+            if match:
+                map_role_file(path, match.group(1), match.group(2), match.group(3))
+            else:
+                ignored.append((path, "playbooks support file"))
+            continue
+        if path.startswith("docs/") or path.startswith(".git") or path == "README.md" or path.endswith(".editorconfig"):
+            ignored.append((path, "not stowed"))
+            continue
+        add_stow("for-my-eyes-only", path)
+
+    suppress_tags = "tools" in playbook_sources
+
+    aur_tags = {tag for tag, paths in tag_sources.items() if any(p in aur_related_paths for p in paths)}
+
+    commands = []
+
+    for package in sorted(stow_sources):
+        commands.append(f"dotfiles-stow {package}  # {summarize_paths(stow_sources[package])}")
+
+    cd = f"cd {shell_path(public_repo / 'playbooks')}"
+
+    for name in sorted(playbook_sources):
+        commands.append(
+            f"{cd} && ansible-playbook {name}.yml -l localhost -K 2>&1 | tee /tmp/ansible-{name}.log"
+        )
+
+    if not suppress_tags:
+        groups = {}
+        for tag in tag_sources:
+            groups.setdefault(tag.split("-")[0], set()).add(tag)
+        for role in sorted(groups, key=int):
+            tags = sorted(groups[role], key=tag_sort_key)
+            if any(tag in aur_tags for tag in tags) and AUR_PREP_TAG not in tags:
+                tags.insert(0, AUR_PREP_TAG)
+            scope = "_".join(tags)
+            sources = []
+            for tag in tags:
+                sources.extend(tag_sources.get(tag, []))
+            commands.append(
+                f"{cd} && ansible-playbook tools.yml -l localhost -K --tags {','.join(tags)} "
+                f"2>&1 | tee /tmp/ansible-{scope}.log  # {summarize_paths(sources)}"
+            )
+
+    if submodule_note:
+        print(f"{PROG}: note: for-my-eyes-only submodule changed; pass its commit hash to generate private commands",
+              file=sys.stderr)
+    if suppress_tags:
+        print(f"{PROG}: note: tools.yml changed; running the full playbook instead of per-role tags",
+              file=sys.stderr)
+    if ignored:
+        examples = ", ".join(f"{path} [{reason}]" for path, reason in ignored[:5])
+        print(f"{PROG}: note: {len(ignored)} changed file(s) not mapped to a command: {examples}",
+              file=sys.stderr)
+
+    if not commands:
+        print(f"{PROG}: nothing to apply", file=sys.stderr)
+        return 0
+
+    if args.run:
+        run_commands(commands)
+    else:
+        for command in commands:
+            print(command)
+
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main(sys.argv[1:]))
+    except subprocess.CalledProcessError as error:
+        die(f"command failed: {error}", code=1)

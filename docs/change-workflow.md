@@ -37,7 +37,6 @@ Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 - When applying workstation Ansible from an agent session, limit the inventory to localhost with `-l localhost` unless the user explicitly asks to target other hosts.
 - Local Go helpers should be built by Ansible into final command paths; avoid self-compiling wrappers unless they provide real runtime behavior.
 - For patched upstream checkouts, gate clone/patch/build behind versioned central markers and bump marker contracts when local patch behavior changes.
-- If a commit hook reports that Stow or Ansible must apply a new tracked file first, stop and give the user the exact declarative command to run; do not bypass hooks with `--no-verify`.
 - Add durable conventions/workflows to focused docs when they will help future work, but keep startup context compact.
 
 ## Validation
@@ -54,6 +53,7 @@ Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 - Subject format: `<type>(<scope>): <imperative summary>`; use concrete scopes and types such as `fix`, `feat`, `docs`, `refactor`, `chore`, `test`.
 - Commit bodies explain context/intent/operational impact. For assistant-generated commits include `@agent <conversation id>` as its own line; never use placeholders. Resolve with `utilities/bin/agent-session-store ... current-id --cwd "$PWD"`.
 - Private submodule work is committed first inside `for-my-eyes-only`, then the parent gitlink is committed separately with a neutral parent message.
+- Immediately after committing, run `dotfiles-system-apply <commit>...` with the hash(es) of the commit(s) just created — including private `for-my-eyes-only` commits and their parent gitlink — and show the generated command block in the same reply.
 
 ## Active System Application
 
@@ -62,5 +62,5 @@ Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 - One-off fixes made directly on the host are acceptable only to debug or unblock, and must immediately be reflected in the tracked source or they will regress on the next run.
 - keyd templates require Ansible to install `/etc/keyd/default.conf`; systemd units require stowing plus the relevant task/handler; long-lived services need restart to pick up script changes.
 - When changing Ansible playbooks and suggesting application, provide a single-line command using `cd ~/dotfiles/playbooks && ansible-playbook tools.yml --tags <tag>`, include `-K` for become paths, and append `2>&1 | tee /tmp/ansible-<scope>.log`. Offer tags, not roles.
-- If applying a scope that installs local AUR packages, include tag `10-20` before the requested tag so `[aur-local]` is prepared.
+- If applying a scope that installs local AUR packages, include tag `10-20` before the requested tag so `[aur-local]` is prepared. `dotfiles-system-apply` does this automatically when a changed yml mentions AUR or sets `aur_local_packages`.
 - Inspect large Ansible logs with `tail`, `rg`, and narrow `sed -n` excerpts, not full-file dumps.
