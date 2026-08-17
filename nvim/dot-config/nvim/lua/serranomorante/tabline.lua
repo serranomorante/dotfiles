@@ -159,13 +159,64 @@ local function tab_label(tabnr)
   return (" %s%s%s "):format(prefix, name, suffix)
 end
 
+---@param tabnr integer
+---@return string
+local function tab_render_piece(tabnr)
+  return ("%%#%s#%%%dT%s"):format(tab_highlight(tabnr), tabnr, escaped_label(tab_label(tabnr)))
+end
+
+---@param tab_count integer
+---@param current_tab integer
+---@param widths integer[]
+---@param budget integer
+---@return integer first
+---@return integer last
+local function visible_tab_window(tab_count, current_tab, widths, budget)
+  local left, right = current_tab, current_tab
+  local used = widths[current_tab]
+  while true do
+    local left_add = left > 1 and widths[left - 1] or math.huge
+    local right_add = right < tab_count and widths[right + 1] or math.huge
+    local add = math.min(left_add, right_add)
+    if used + add > budget then break end
+    if left_add < right_add then
+      left = left - 1
+    elseif right_add < left_add then
+      right = right + 1
+    else
+      if left - 1 >= tab_count - right then left = left - 1 else right = right + 1 end
+    end
+    used = used + add
+  end
+  return left, right
+end
+
 function M.render()
   local pieces = {}
   local tab_count = vim.fn.tabpagenr("$")
+  local current_tab = vim.fn.tabpagenr()
 
+  local widths = {}
+  local total = 0
   for tabnr = 1, tab_count do
-    table.insert(pieces, ("%%#%s#%%%dT%s"):format(tab_highlight(tabnr), tabnr, escaped_label(tab_label(tabnr))))
+    widths[tabnr] = vim.fn.strdisplaywidth(tab_label(tabnr))
+    total = total + widths[tabnr]
   end
+
+  local columns = vim.o.columns
+  local close_button = tab_count > 1 and 2 or 0
+  local first, last = 1, tab_count
+
+  if total + close_button > columns then
+    local budget = math.max(1, columns - close_button - 2)
+    first, last = visible_tab_window(tab_count, current_tab, widths, budget)
+  end
+
+  if first > 1 then table.insert(pieces, ("%%#TabLine#%%%dT%s"):format(first - 1, "‹")) end
+  for tabnr = first, last do
+    table.insert(pieces, tab_render_piece(tabnr))
+  end
+  if last < tab_count then table.insert(pieces, ("%%#TabLine#%%%dT%s"):format(last + 1, "›")) end
 
   table.insert(pieces, "%#TabLineFill#%T")
   if tab_count > 1 then table.insert(pieces, "%=%#TabLine#%999X X") end
