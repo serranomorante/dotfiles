@@ -47,11 +47,11 @@ Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 
 ## Commits
 
-- Commit after implementation/validation unless the user asks not to, more work is planned, or the agent conversation id cannot be resolved.
+- Always commit after implementation/validation.
 - Always attempt the commit before finishing implementation work; if blocked by required user-side Stow/Ansible application, leave the index ready when appropriate and report the unblock command.
 - Re-check status, stage exact paths only, and verify staged filenames.
 - Subject format: `<type>(<scope>): <imperative summary>`; use concrete scopes and types such as `fix`, `feat`, `docs`, `refactor`, `chore`, `test`.
-- Commit bodies explain context/intent/operational impact. For assistant-generated commits include `@agent <conversation id>` as its own line; never use placeholders. Resolve with `utilities/bin/agent-session-store ... current-id --cwd "$PWD"`.
+- Commit bodies explain context/intent/operational impact. For assistant-generated commits include `@agent <conversation id>` as its own line; never use placeholders. Resolve with `utilities/bin/agent-session-store [--provider opencode|codex|claude|gemini] current-id --cwd "$PWD"`; pass `--provider opencode` when running under opencode.
 - Private submodule work is committed first inside `for-my-eyes-only`, then the parent gitlink is committed separately with a neutral parent message.
 - Immediately after committing, run `dotfiles-system-apply <commit>...` with the hash(es) of the commit(s) just created — including private `for-my-eyes-only` commits and their parent gitlink — and show the generated command block in the same reply.
 
