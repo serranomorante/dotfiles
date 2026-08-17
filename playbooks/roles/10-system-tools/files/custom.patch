@@ -16,7 +16,7 @@ index 56ee471..b306005 100644
  static const char *fonts[]          = { "monospace:size=10" };
  static const char dmenufont[]       = "monospace:size=10";
  static const char col_gray1[]       = "#222222";
-@@ -28,9 +29,43 @@ static const Rule rules[] = {
+@@ -28,9 +29,44 @@ static const Rule rules[] = {
  	 *	WM_CLASS(STRING) = instance, class
  	 *	WM_NAME(STRING) = title
  	 */
@@ -47,6 +47,7 @@ index 56ee471..b306005 100644
 +	{ "kitty-dmenu",          "kitty-dmenu",          NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,              0,           1 }, // float and size kitty-dmenu window
 +	{ "kitty-lazygit",        "kitty-lazygit",        NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,              0,           1 }, // float and size lazygit quick-access window
 +	{ "kitty-nnn",            "kitty-nnn",            NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,              0,           1 }, // float and size nnn quick-access window
++	{ "kitty-scratchpad",     "kitty-scratchpad",     NULL,                      0,            1,           -1,        FULLMON,FULLMON,FULLMON,FULLMON, -1,              0,           1 }, // float and size scratchpad quick-access window
 +	{ "jdownloader",          "jdownloader",          "JDownloader 2",           1 << 8,       0,           -1,        -1,-1,-1,-1,                     -1                              }, // send jdownloader to tag 9
 +	{ NULL,                   NULL,                   "is sharing your screen.", 1 << 8,       1,           -1,        -1,-1,-1,-1,                     -1                              }, // send screen-sharing popup to tag 9
 +	{ "kcalc",                "kcalc",                NULL,                      0,            1,           -1,        -1,-1,-1,-1,                     -1                              }, // make calculator floating by default
@@ -63,7 +64,7 @@ index 56ee471..b306005 100644
  };
  
  /* layout(s) */
-@@ -48,7 +83,7 @@ static const Layout layouts[] = {
+@@ -48,7 +84,7 @@ static const Layout layouts[] = {
  };
  
  /* key definitions */
@@ -72,21 +73,23 @@ index 56ee471..b306005 100644
  #define TAGKEYS(KEY,TAG) \
  	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
  	{ MODKEY|ControlMask,           KEY,      toggleview,     {.ui = 1 << TAG} }, \
-@@ -61,12 +96,11 @@ static const Layout layouts[] = {
+@@ -61,12 +97,13 @@ static const Layout layouts[] = {
  /* commands */
  static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
  static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
 -static const char *termcmd[]  = { "st", NULL };
 +static const char *termcmd[]  = { "kitty", NULL };
++static const char *scratchcmd[] = { "kitty-scratchpad-quick-access", NULL };
  
  static const Key keys[] = {
  	/* modifier                     key        function        argument */
  	{ MODKEY,                       XK_p,      spawn,          {.v = dmenucmd } },
 -	{ MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
++	{ MODKEY|ShiftMask,             XK_Return, spawn,          {.v = scratchcmd } },
  	{ MODKEY,                       XK_b,      togglebar,      {0} },
  	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
  	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
-@@ -82,7 +116,8 @@ static const Key keys[] = {
+@@ -82,7 +117,8 @@ static const Key keys[] = {
  	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} },
  	{ MODKEY,                       XK_space,  setlayout,      {0} },
  	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
@@ -96,7 +99,7 @@ index 56ee471..b306005 100644
  	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
  	{ MODKEY|ShiftMask,             XK_0,      tag,            {.ui = ~0 } },
  	{ MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },
-@@ -118,4 +153,3 @@ static const Button buttons[] = {
+@@ -118,4 +154,3 @@ static const Button buttons[] = {
  	{ ClkTagBar,            MODKEY,         Button1,        tag,            {0} },
  	{ ClkTagBar,            MODKEY,         Button3,        toggletag,      {0} },
  };

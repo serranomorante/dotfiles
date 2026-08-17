@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Toggle a global scratchpad Kitty panel running a plain shell.
+#
+# quick-access-terminal scopes panels by --instance-group. Unlike the
+# per-Kitty-window wrappers (kitty-lazygit-quick-access, kitty-nnn-quick-access),
+# this wrapper uses a fixed group so a single scratchpad is shared across the
+# desktop. It is meant to be bound to a dwm key (MODKEY+Return in
+# playbooks/roles/10-system-tools/files/custom.patch), so it can be toggled from
+# any application, and dwm floats the panel via the kitty-scratchpad WM_CLASS
+# rule. The panel runs no specific app: just the default shell, so it stays
+# loaded in the background between toggles.
+
+exec kitten quick-access-terminal \
+    --instance-group="scratchpad" \
+    --override app_id=kitty-scratchpad

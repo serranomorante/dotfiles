@@ -58,7 +58,7 @@
 
 - name: "[{{ user_os }}] Compositor: set dwm patch marker fact"
   ansible.builtin.set_fact:
-    dwm_patch_marker: "dwm-{{ var_dwm_remote_commit.stdout.split()[0] }}-patch-stack-v9"
+    dwm_patch_marker: "dwm-{{ var_dwm_remote_commit.stdout.split()[0] }}-patch-stack-v12"
 
 - name: "[{{ user_os }}] Compositor: stat dwm patch marker"
   ansible.builtin.include_role:
@@ -168,6 +168,8 @@
     # Skip some windows like quick-access-terminal from focus history
     - skipfocushistory.patch
     - full-monitor.patch
+    # Hide the kitty-scratchpad panel instead of killing it on dwm's killclient
+    - add-dwm-scratchpad-hide-on-close.patch
     # My changes. Always leave this last.
     - make-dwm-debuggable.patch
     - custom.patch
@@ -189,7 +191,7 @@
     tasks_from: record
   vars:
     dotfiles_marker_name: "{{ dwm_patch_marker }}"
-    dotfiles_marker_content: "{{ var_dwm_remote_commit.stdout.split()[0] }}:patch-stack-v9\n"
+    dotfiles_marker_content: "{{ var_dwm_remote_commit.stdout.split()[0] }}:patch-stack-v12\n"
   when: not var_dwm_patch_marker.stat.exists
 
 - name: "[{{ user_os }}] Compositor: stat installed dwm"

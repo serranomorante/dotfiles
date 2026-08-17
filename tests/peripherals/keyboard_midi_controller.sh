@@ -200,7 +200,8 @@ keyboard-midi-controller-dotfiles-contract)
     refute rg -q '^m = layer\(signal_toggle_keyboard_midi_controller\)$' "$keyd_template"
     refute rg -q '^m = command\(.*/bin/keyboard-midi-controller toggle\)$' "$keyd_template"
     refute rg -q '^\[signal_open_kitty\]$' "$keyd_template"
-    rg -q '^enter = command\(/usr/local/bin/run_as_user -u \{\{ ansible_facts\.env\.USER \}\} systemd-run --user \{\{ ansible_facts\.env\.HOME \}\}/bin/kitty\)$' "$keyd_template"
+    refute rg -q '^enter = command\(/usr/local/bin/run_as_user -u \{\{ ansible_facts\.env\.USER \}\} systemd-run --user \{\{ ansible_facts\.env\.HOME \}\}/bin/kitty\)$' "$keyd_template"
+    rg -q '^enter = M-S-enter$' "$keyd_template"
 
     rg -q 'showMIDIOSDCommand = "show_keyboard_midi_osd"' "${source_dir}/main.go"
     rg -q 'hideMIDIOSDCommand = "hide_keyboard_midi_osd"' "${source_dir}/main.go"

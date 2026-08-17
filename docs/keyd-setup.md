@@ -26,6 +26,10 @@ v = layer(signal_show_clipboard_history)
 v = layer(signal_show_clipboard_history)
 ```
 
+## DWM shortcut passthrough
+
+Keyd intercepts keys before the X server, so the `[meta]` and `[meta+shift]` layers must explicitly re-emit any chord that a dwm keymap owns. For example `Meta+Shift+Enter` toggles the scratchpad quick-access terminal through dwm (`MODKEY+Shift+Return`), so instead of launching kitty it is mapped as `enter = M-S-enter` in `[meta+shift]`, the same passthrough pattern as `c = M-S-c` for dwm's close-window shortcut.
+
 ## Readline-aware behavior
 
 Keyd is the right place to remap keys, but not to make decisions based on the current readline cursor position. If a shortcut needs to behave differently at the start or end of a shell edit buffer, put the stateful part in bash/readline itself with `bind -x` and the `READLINE_LINE` / `READLINE_POINT` variables, then let keyd keep emitting the same physical chord.

@@ -1,0 +1,31 @@
+diff --git a/dwm.c b/dwm.c
+--- a/dwm.c
++++ b/dwm.c
+@@ -1015,15 +1015,27 @@
+ void
+ killclient(const Arg *arg)
+ {
++	XClassHint ch = { NULL, NULL };
++
+ 	if (!selmon->sel)
+ 		return;
++	XGetClassHint(dpy, selmon->sel->win, &ch);
++	if (ch.res_class && strcmp(ch.res_class, "kitty-scratchpad") == 0) {
++		Arg a = {.v = scratchcmd};
++		XFree(ch.res_class);
++		XFree(ch.res_name);
++		spawn(&a);
++		return;
++	}
++	XFree(ch.res_class);
++	XFree(ch.res_name);
+ 	if (!sendevent(selmon->sel, wmatom[WMDelete])) {
+ 		XGrabServer(dpy);
+ 		XSetErrorHandler(xerrordummy);
+ 		XSetCloseDownMode(dpy, DestroyAll);
+ 		XKillClient(dpy, selmon->sel->win);
+ 		XSync(dpy, False);
+ 		XSetErrorHandler(xerror);
+ 		XUngrabServer(dpy);
+ 	}
+ }
