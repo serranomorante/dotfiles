@@ -17,6 +17,13 @@ REPLACEMENTS = (
     (b"\x1b[38;2;0;0;0m", b"\x1b[38;2;125;133;144m"),
 )
 MAX_PATTERN = max(len(pattern) for pattern, _ in REPLACEMENTS)
+# Full-screen apps like opencode leave terminal cursor state changes (e.g. the
+# final `ESC [ ? 2 5 h` that shows the cursor) at the tail of their output. The
+# pending buffer keeps the last MAX_PATTERN bytes to avoid splitting a rewrite
+# pattern across writes, but if that tail is only flushed on child exit it is
+# never delivered while the child stays alive, leaving the terminal cursor
+# stuck hidden. Flush the buffer once the child goes quiet for this long.
+IDLE_FLUSH_SECONDS = 0.05
 
 
 def readable(data: bytes) -> bytes:
@@ -60,14 +67,21 @@ def main() -> int:
         old_termios = termios.tcgetattr(stdin_fd)
         tty.setraw(stdin_fd)
 
+    def flush_pending() -> None:
+        nonlocal pending
+        if pending:
+            os.write(stdout_fd, readable(pending))
+            pending = b""
+
     try:
         while True:
             read_targets = [child_fd]
             if input_open:
                 read_targets.append(stdin_fd)
-            readable_fds, _, _ = select.select(read_targets, [], [])
+            readable_fds, _, _ = select.select(read_targets, [], [], IDLE_FLUSH_SECONDS)
 
-            if child_fd in readable_fds:
+            child_ready = child_fd in readable_fds
+            if child_ready:
                 try:
                     chunk = os.read(child_fd, 65536)
                 except OSError:
@@ -81,6 +95,9 @@ def main() -> int:
                     os.write(stdout_fd, readable(pending[:cut]))
                     pending = pending[cut:]
 
+            if not child_ready and pending:
+                flush_pending()
+
             if stdin_fd in readable_fds:
                 try:
                     chunk = os.read(stdin_fd, 65536)
@@ -91,8 +108,7 @@ def main() -> int:
                 else:
                     input_open = False
     finally:
-        if pending:
-            os.write(stdout_fd, readable(pending))
+        flush_pending()
         if old_termios is not None:
             termios.tcsetattr(stdin_fd, termios.TCSADRAIN, old_termios)
 
