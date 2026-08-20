@@ -55,6 +55,10 @@ whitelist-ro ${HOME}/.local/share/firejail-wrapper/ai-agent-profiles
 blacklist ${HOME}/.ssh
 blacklist ${HOME}/.gnupg
 blacklist ${HOME}/data/secrets
+# Mounted removable drives and media mirrors are outside $HOME and therefore
+# not hidden by the $HOME whitelist, so block them explicitly.
+blacklist /run/media
+blacklist /srv/media
 
 # AI agents and MCPHub need local HTTP plus internet access.
 protocol unix,inet,inet6,netlink
