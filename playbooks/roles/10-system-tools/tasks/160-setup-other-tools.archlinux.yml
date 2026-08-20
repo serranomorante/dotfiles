@@ -12,6 +12,7 @@
   vars:
     aur_local_packages:
       - ccze
+      - autofirma-bin
 
 - name: "[{{ user_os }}] Other tools: install jdownloader"
   community.general.flatpak:
