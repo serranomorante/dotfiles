@@ -8,6 +8,14 @@ Prefer discovering existing runtime state before adding parameters, environment 
 - Add new explicit state only after proving no stable existing source is available.
 - Document reusable resolution rules near the owning workflow doc so future fixes do not add per-tool exceptions.
 
+## Headless X Debugging
+
+`utilities/bin/xscreen` drives a throwaway Xvfb display so GUI/terminal bugs (cursor visibility, rendering, input routing) can be reproduced, screenshotted, OCR'd, and compared without touching a real desktop.
+
+- `xscreen start -D :98` starts Xvfb; `run` launches an app in the background, `shot` captures the screen, `ocr`/`blink`/`cursor` analyze it, `keys` injects input (prefers a kitty `--listen-on` socket, falls back to `xdotool`), and `stop` tears everything down.
+- `xscreen stack --mode tmux --wrapper` reproduces the kitty → nvim → tmux → opencode chain and reports whether a blinking cursor exists (the reliable signal; static-block and OCR results are secondary). Run it with `--expect-cursor` to fail when the cursor is missing.
+- In the agent sandbox the real `~/.local/kitty.app` and the nvim runtime are hidden; pass explicit `--kitty`/`--nvim` binaries (for example the copies under `/run/media/aaaa/dev4/arch-home-backup/`) and a self-contained nvim such as the nightly tarball when reproducing the stack here.
+
 ## Firejail Agent Orchestration
 
 - Terminal agents launched through `fj-claude`, `fj-codex`, `fj-gemini`, and `fj-opencode` must expose the real Stow symlink targets needed by runtime helpers, especially `~/dotfiles/utilities` for `agent-tasks` and `~/dotfiles/for-my-eyes-only` for private helper symlinks that the user has explicitly allowed.

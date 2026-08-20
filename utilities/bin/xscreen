@@ -1,0 +1,584 @@
+#!/usr/bin/env python3
+# Purpose: Drive a headless X display (Xvfb) so agents and humans can launch GUI
+#          and terminal apps, capture screenshots, inject input, and analyze
+#          frames (OCR, blinking cursor, static cursor block) without touching a
+#          real desktop.
+# Usage: xscreen <command> [options]
+# Commands:
+#   start  [--display :99] [--size WxH]        Start Xvfb (idempotent)
+#   stop   [--display :99]                     Stop Xvfb and kill launched apps
+#   run    [--display :99] [--name LABEL] [--wait S] -- CMD...   Launch app in background
+#   shot   [--display :99] [-o OUT.png] [--window NAME]          Capture screenshot
+#   keys   [--display :99] [--enter] TEXT      Inject text/keys into the focused app
+#   ocr    [--display :99] [--tsv] [FILE]      OCR a screenshot (default: fresh capture)
+#   blink  [--display :99] [--frames N] [--interval S] [--out DIR]   Find blinking regions
+#   cursor [--display :99] [FILE]              Find cursor-like solid blocks
+#   stack  [options]                           Reproduce the kitty -> nvim -> [tmux] -> opencode stack
+# Notes: Requires Xvfb, ImageMagick (import/convert/compare) and tesseract.
+#        Optional: xdotool (input fallback), kitty + kitten (preferred input),
+#        Pillow (frame analysis; falls back to ImageMagick).
+#        Analysis commands print JSON on stdout; diagnostics go to stderr.
+
+import argparse
+import json
+import os
+import shutil
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+try:
+    from PIL import Image, ImageChops
+    HAVE_PIL = True
+except Exception:  # pragma: no cover - graceful degradation
+    HAVE_PIL = False
+
+
+STATE_ROOT = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "xscreen")
+DEFAULT_DISPLAY = ":99"
+DEFAULT_SIZE = "1280x860"
+
+
+def die(msg, code=2):
+    print(f"xscreen: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def run(cmd, **kw):
+    return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kw)
+
+
+def display_num(display):
+    return display.lstrip(":")
+
+
+def state_dir(display):
+    d = os.path.join(STATE_ROOT, display_num(display))
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def state_path(display, name):
+    return os.path.join(state_dir(display), name)
+
+
+def write_state(display, key, value):
+    p = state_path(display, f"{key}.txt")
+    Path(p).write_text(str(value))
+    return p
+
+
+def read_state(display, key, default=None):
+    p = state_path(display, f"{key}.txt")
+    try:
+        return Path(p).read_text().strip()
+    except FileNotFoundError:
+        return default
+
+
+def have(prog):
+    return shutil.which(prog) is not None
+
+
+def require(prog):
+    if not have(prog):
+        die(f"required tool not found in PATH: {prog}")
+
+
+def xvfb_alive(display):
+    n = display_num(display)
+    if os.path.exists(f"/tmp/.X11-unix/X{n}"):
+        return True
+    # Xvfb may expose only an abstract socket (e.g. inside Firejail) with no
+    # filesystem node under /tmp/.X11-unix; probe the abstract namespace too.
+    try:
+        with open("/proc/net/unix") as f:
+            for line in f:
+                if f"@/tmp/.X11-unix/X{n}" in line:
+                    return True
+    except OSError:
+        pass
+    return False
+
+
+def start_xvfb(display, size):
+    require("Xvfb")
+    if xvfb_alive(display):
+        return read_state(display, "xvfb_pid")
+    pid = subprocess.Popen(
+        ["Xvfb", display, "-screen", "0", f"{size}x24", "-nolisten", "tcp"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
+    )
+    for _ in range(100):
+        if xvfb_alive(display):
+            write_state(display, "xvfb_pid", pid.pid)
+            write_state(display, "xvfb_size", size)
+            write_state(display, "display", display)
+            print(f"xscreen: Xvfb started on {display} (pid {pid.pid}, {size})", file=sys.stderr)
+            return pid.pid
+        if pid.poll() is not None:
+            die(f"Xvfb exited early on {display}")
+        time.sleep(0.05)
+    die(f"timed out waiting for Xvfb on {display}")
+
+
+def stop_xvfb(display):
+    for pid in (read_state(display, "xvfb_pid"),):
+        if pid and pid.isdigit():
+            try:
+                os.kill(int(pid), signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+    kill_state_children(display)
+    shutil.rmtree(state_dir(display), ignore_errors=True)
+    print(f"xscreen: stopped {display}", file=sys.stderr)
+
+
+def kill_state_children(display):
+    for name in ("kitty_pid", "app_pid"):
+        pid = read_state(display, name)
+        if pid and pid.isdigit():
+            pid = int(pid)
+            try:
+                os.killpg(pid, signal.SIGTERM)
+            except (ProcessLookupError, PermissionError):
+                pass
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+
+
+def find_free_display(preferred):
+    if preferred:
+        return preferred
+    for n in range(99, 200):
+        d = f":{n}"
+        if not xvfb_alive(d):
+            return d
+    die("no free display found")
+
+
+def screenshot(display, out, window=None):
+    require("import")
+    os.environ["DISPLAY"] = display
+    target = "root"
+    if window:
+        target = window
+    r = run(["import", "-window", target, out])
+    if r.returncode != 0:
+        die(f"import failed: {r.stderr.decode(errors='replace')}")
+    return out
+
+
+def capture_frames(display, frames, interval, outdir):
+    os.makedirs(outdir, exist_ok=True)
+    paths = []
+    for i in range(frames):
+        p = os.path.join(outdir, f"frame-{i:03d}.png")
+        screenshot(display, p)
+        paths.append(p)
+        if i < frames - 1 and interval:
+            time.sleep(interval)
+    return paths
+
+
+def load_image(path):
+    if HAVE_PIL:
+        return Image.open(path).convert("RGB")
+    die("Pillow is required for frame analysis")
+
+
+def diff_bbox(a, b):
+    diff = ImageChops.difference(a, b)
+    gray = diff.convert("L")
+    mask = gray.point(lambda v: 255 if v > 0 else 0)
+    bbox = mask.getbbox()
+    if not bbox:
+        return None, 0
+    changed = mask.histogram()[255]
+    return bbox, changed
+
+
+def analyze_blink(frames):
+    imgs = [load_image(f) for f in frames]
+    pairs = []
+    for i in range(len(imgs) - 1):
+        bbox, changed = diff_bbox(imgs[i], imgs[i + 1])
+        pairs.append({"pair": (i, i + 1), "bbox": list(bbox) if bbox else None, "changed": changed})
+
+    on_boxes = [p["bbox"] for p in pairs if p["bbox"]]
+    if not on_boxes:
+        return {"blinking": False, "regions": [], "pairs": pairs}
+
+    # A blinking cursor toggles every other pair; group by overlapping bbox.
+    regions = []
+    seen = set()
+    for i, box in enumerate(on_boxes):
+        if i in seen:
+            continue
+        group = [j for j, b in enumerate(on_boxes) if bboxes_overlap(box, b)]
+        seen.update(group)
+        xs = [on_boxes[j][0] for j in group] + [on_boxes[j][2] for j in group]
+        ys = [on_boxes[j][1] for j in group] + [on_boxes[j][3] for j in group]
+        # on pixels: sample color from an "on" frame pair
+        on_img = imgs[group[0] + 1]
+        cx, cy = (min(xs) + max(xs)) // 2, (min(ys) + max(ys)) // 2
+        regions.append({
+            "bbox": [min(xs), min(ys), max(xs), max(ys)],
+            "on_color": rgb_to_hex(on_img.getpixel((cx, cy))),
+            "pairs": [i for i, b in enumerate(on_boxes) if i in group],
+        })
+    return {"blinking": bool(regions), "regions": regions, "pairs": pairs}
+
+
+def bboxes_overlap(a, b):
+    return not (a[2] < b[0] or b[2] < a[0] or a[3] < b[1] or b[3] < a[1])
+
+
+def rgb_to_hex(c):
+    return "#%02x%02x%02x" % c
+
+
+def find_cursor_blocks(path, max_blocks=6):
+    im = load_image(path)
+    w, h = im.size
+    px = im.load()
+    blocks = []
+    visited = set()
+
+    def is_bright(x, y):
+        r, g, b = px[x, y]
+        return (r + g + b) / 3 > 150
+
+    for y in range(1, h - 1, 2):
+        for x in range(1, w - 1, 2):
+            if (x, y) in visited or not is_bright(x, y):
+                continue
+            c = px[x, y]
+            # grow right
+            x2 = x
+            while x2 + 1 < w and px[x2 + 1, y] == c:
+                x2 += 1
+            width = x2 - x + 1
+            if not (6 <= width <= 26):
+                continue
+            # grow down
+            y2 = y
+            while y2 + 1 < h and px[x, y2 + 1] == c:
+                y2 += 1
+            height = y2 - y + 1
+            if not (10 <= height <= 45):
+                continue
+            for yy in range(y, y2 + 1, 3):
+                for xx in range(x, x2 + 1, 3):
+                    visited.add((xx, yy))
+            blocks.append({"bbox": [x, y, x2, y2], "width": width, "height": height, "color": rgb_to_hex(c)})
+            if len(blocks) >= max_blocks:
+                break
+        if len(blocks) >= max_blocks:
+            break
+    blocks.sort(key=lambda b: -(b["width"] * b["height"]))
+    return blocks
+
+
+def ocr_image(path, tsv=False):
+    require("tesseract")
+    r = run(["tesseract", path, "stdout"] + (["tsv"] if tsv else []))
+    if r.returncode != 0:
+        die(f"tesseract failed: {r.stderr.decode(errors='replace')}")
+    return r.stdout.decode(errors="replace")
+
+
+def resolve_kitty():
+    cands = [os.path.expanduser("~/.local/kitty.app/bin/kitty"), shutil.which("kitty")]
+    for c in cands:
+        if c and os.path.exists(c):
+            return c
+    die("kitty not found (set --kitty or install kitty)")
+
+
+def resolve_kitten(kitty):
+    cands = [os.path.join(os.path.dirname(kitty), "kitten"), shutil.which("kitten")]
+    for c in cands:
+        if c and os.path.exists(c):
+            return c
+    return None
+
+
+def kitty_socket(display):
+    return state_path(display, "kitty.sock")
+
+
+def send_keys(display, text, enter=False):
+    sock = read_state(display, "kitty_socket")
+    kitty = read_state(display, "kitty_path")
+    if sock and os.path.exists(sock):
+        kitten = resolve_kitten(kitty or resolve_kitty())
+        if kitten:
+            if enter and not text.endswith("\r"):
+                text += "\r"
+            r = run([kitten, "@", "--to", f"unix:{sock}", "send-text", text])
+            if r.returncode == 0:
+                return "kitty"
+            print(f"xscreen: kitten send-text failed, falling back to xdotool: {r.stderr.decode(errors='replace').strip()}",
+                  file=sys.stderr)
+    require("xdotool")
+    os.environ["DISPLAY"] = display
+    parts = text.replace("\r", "\n").split("\n")
+    for i, part in enumerate(parts):
+        if part:
+            run(["xdotool", "type", "--clearmodifiers", part])
+        if i < len(parts) - 1:
+            run(["xdotool", "key", "Return"])
+    if enter:
+        run(["xdotool", "key", "Return"])
+    return "xdotool"
+
+
+def find_window_id(display, name):
+    require("xdotool")
+    os.environ["DISPLAY"] = display
+    r = run(["xdotool", "search", "--name", name])
+    if r.returncode != 0:
+        die(f"xdotool search failed: {r.stderr.decode(errors='replace')}")
+    ids = r.stdout.split()
+    return ids[0].decode() if ids else None
+
+
+def write_minimal_nvim_init(path):
+    Path(path).write_text(
+        "vim.opt.termguicolors = true\n"
+        "vim.opt.background = 'dark'\n"
+        "vim.opt.laststatus = 0\n"
+        "vim.opt.showtabline = 0\n"
+    )
+    return path
+
+
+def write_minimal_tmux_conf(path):
+    Path(path).write_text(
+        "set -g status off\n"
+        "set-option -g default-shell /usr/bin/bash\n"
+        "set-option -g default-terminal \"xterm-kitty\"\n"
+        "set-option -ag terminal-overrides \",xterm-kitty:RGB\"\n"
+        "set -as terminal-features 'xterm*:RGB'\n"
+        "set -g focus-events on\n"
+        "set -g allow-passthrough on\n"
+    )
+    return path
+
+
+def build_terminal_cmd(mode, wrapper, opencode, tmux_conf):
+    oc = opencode or "opencode"
+    if wrapper:
+        wrapper_bin = shutil.which("opencode-mini-readable") or die("opencode-mini-readable not in PATH")
+        oc = f"env OPENCODE_MINI_READABLE_TARGET={oc} {wrapper_bin}"
+    if mode == "tmux":
+        require("tmux")
+        return f"terminal tmux -f {tmux_conf} new-session {oc}"
+    return f"terminal {oc}"
+
+
+def cmd_stack(args):
+    display = args.display or find_free_display(None)
+    work = state_dir(display)
+    start_xvfb(display, args.size)
+
+    nvim = args.nvim or shutil.which("nvim") or die("nvim not found in PATH")
+    kitty = args.kitty or resolve_kitty()
+    opencode = args.opencode or shutil.which("opencode") or die("opencode not found in PATH")
+
+    if args.nvim_init:
+        init = args.nvim_init
+    else:
+        init = os.path.join(work, "nvim-init.lua")
+        write_minimal_nvim_init(init)
+    tmux_conf = os.path.join(work, "tmux-test.conf")
+    write_minimal_tmux_conf(tmux_conf)
+
+    sock = kitty_socket(display)
+    term_cmd = build_terminal_cmd(args.mode, args.wrapper, opencode, tmux_conf)
+
+    cmd = [
+        kitty, "--session", "none", "--listen-on", f"unix:{sock}",
+        "-o", "font_size=16", "-o", "allow_remote_control=socket",
+        "-e", nvim, "-u", init, "-c", term_cmd, "-c", "startinsert",
+    ]
+    log = os.path.join(work, "stack-kitty.log")
+    env = dict(os.environ, DISPLAY=display)
+    # Isolate Neovim from the user's real config/state so the generated minimal
+    # init is authoritative instead of the interactive plugin setup.
+    for var in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME"):
+        env[var] = os.path.join(work, var.replace("XDG_", "").lower())
+        os.makedirs(env[var], exist_ok=True)
+    with open(log, "w") as f:
+        proc = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, start_new_session=True, env=env)
+    write_state(display, "kitty_pid", proc.pid)
+    write_state(display, "kitty_socket", sock)
+    write_state(display, "kitty_path", kitty)
+    print(f"xscreen: launched {kitty} pid {proc.pid} on {display}", file=sys.stderr)
+
+    time.sleep(args.wait)
+    frame_dir = os.path.join(work, "frames")
+    frames = capture_frames(display, args.frames, args.interval, frame_dir)
+
+    result = {"display": display, "mode": args.mode, "wrapper": bool(args.wrapper)}
+    result.update(analyze_blink(frames))
+    base = os.path.join(frame_dir, "frame-000.png")
+    result["cursor_blocks"] = find_cursor_blocks(base)
+    text = ocr_image(base)
+    result["ocr"] = text[:400]
+
+    if not args.keep:
+        kill_state_children(display)
+    if args.stop:
+        stop_xvfb(display)
+
+    print(json.dumps(result, indent=2))
+    if args.expect_cursor and not result["blinking"]:
+        sys.exit(1)
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="xscreen", description="Headless X display driver for GUI/terminal testing.")
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("-D", "--display", default=None, help=f"X display (default auto or {DEFAULT_DISPLAY})")
+    ap.add_argument("-v", "--verbose", action="store_true")
+    sub = ap.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser("start", parents=[common], help="start Xvfb")
+    p.add_argument("--size", default=DEFAULT_SIZE)
+    p.set_defaults(func=lambda a: print(f"xvfb_pid={start_xvfb(a.display or DEFAULT_DISPLAY, a.size)}"))
+
+    p = sub.add_parser("stop", parents=[common], help="stop Xvfb and kill launched apps")
+    p.set_defaults(func=lambda a: stop_xvfb(a.display or DEFAULT_DISPLAY))
+
+    p = sub.add_parser("run", parents=[common], help="launch a background app on the display")
+    p.add_argument("--size", default=DEFAULT_SIZE)
+    p.add_argument("--name", default="app")
+    p.add_argument("--wait", type=float, default=0.0)
+    p.add_argument("--listen-on", help="unix socket to record for the kitty 'keys' path")
+    p.add_argument("cmd", nargs=argparse.REMAINDER)
+    p.set_defaults(func=cmd_run)
+
+    p = sub.add_parser("shot", parents=[common], help="capture a screenshot")
+    p.add_argument("-o", "--out")
+    p.add_argument("--window", help="window name pattern")
+    p.set_defaults(func=cmd_shot)
+
+    p = sub.add_parser("keys", parents=[common], help="inject text/keys")
+    p.add_argument("--enter", action="store_true")
+    p.add_argument("text")
+    p.set_defaults(func=cmd_keys)
+
+    p = sub.add_parser("ocr", parents=[common], help="OCR a screenshot")
+    p.add_argument("--tsv", action="store_true")
+    p.add_argument("file", nargs="?")
+    p.set_defaults(func=cmd_ocr)
+
+    p = sub.add_parser("blink", parents=[common], help="detect blinking regions across frames")
+    p.add_argument("--frames", type=int, default=6)
+    p.add_argument("--interval", type=float, default=0.2)
+    p.add_argument("--out")
+    p.add_argument("files", nargs="*")
+    p.set_defaults(func=cmd_blink)
+
+    p = sub.add_parser("cursor", parents=[common], help="find cursor-like solid blocks")
+    p.add_argument("file", nargs="?")
+    p.set_defaults(func=cmd_cursor)
+
+    p = sub.add_parser("stack", parents=[common], help="reproduce the kitty->nvim->[tmux]->opencode stack")
+    p.add_argument("--size", default=DEFAULT_SIZE)
+    p.add_argument("--mode", choices=["direct", "tmux"], default="tmux")
+    p.add_argument("--wrapper", action="store_true", help="run opencode through opencode-mini-readable")
+    p.add_argument("--kitty", help="kitty binary path")
+    p.add_argument("--opencode", help="opencode binary path")
+    p.add_argument("--nvim", help="nvim binary path")
+    p.add_argument("--nvim-init", help="nvim init file (default: minimal generated)")
+    p.add_argument("--wait", type=float, default=15.0)
+    p.add_argument("--frames", type=int, default=6)
+    p.add_argument("--interval", type=float, default=0.2)
+    p.add_argument("--expect-cursor", action="store_true", help="exit 1 if no blinking cursor found")
+    p.add_argument("--keep", action="store_true", help="leave kitty running after analysis")
+    p.add_argument("--stop", action="store_true", help="stop Xvfb after analysis")
+    p.set_defaults(func=cmd_stack)
+
+    args = ap.parse_args()
+    args.func(args)
+
+
+def cmd_run(args):
+    cmd = args.cmd
+    if cmd and cmd[0] == "--":
+        cmd = cmd[1:]
+    if not cmd:
+        die("run requires a command (use -- CMD...)")
+    display = args.display or find_free_display(None)
+    start_xvfb(display, args.size)
+    log = state_path(display, f"{args.name}.log")
+    with open(log, "w") as f:
+        env = dict(os.environ, DISPLAY=display)
+        proc = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, start_new_session=True, env=env)
+    write_state(display, "app_pid", proc.pid)
+    if args.listen_on:
+        write_state(display, "kitty_socket", args.listen_on)
+        write_state(display, "kitty_path", cmd[0])
+    print(f"xscreen: launched {cmd[0]} pid {proc.pid} on {display} (log {log})", file=sys.stderr)
+    if args.wait:
+        time.sleep(args.wait)
+
+
+def cmd_shot(args):
+    display = args.display or DEFAULT_DISPLAY
+    if not xvfb_alive(display):
+        die(f"no Xvfb on {display}; run 'xscreen start' first")
+    out = args.out or state_path(display, f"shot-{int(time.time())}.png")
+    window = find_window_id(display, args.window) if args.window else None
+    screenshot(display, out, window)
+    print(out)
+
+
+def cmd_keys(args):
+    display = args.display or DEFAULT_DISPLAY
+    if not xvfb_alive(display):
+        die(f"no Xvfb on {display}; run 'xscreen start' first")
+    print(send_keys(display, args.text, args.enter))
+
+
+def cmd_ocr(args):
+    display = args.display or DEFAULT_DISPLAY
+    if not args.file:
+        if not xvfb_alive(display):
+            die(f"no Xvfb on {display} and no image file given")
+        args.file = state_path(display, f"ocr-{int(time.time())}.png")
+        screenshot(display, args.file)
+    print(ocr_image(args.file, args.tsv))
+
+
+def cmd_blink(args):
+    if args.files:
+        frames = args.files
+    else:
+        display = args.display or DEFAULT_DISPLAY
+        if not xvfb_alive(display):
+            die(f"no Xvfb on {display}")
+        outdir = args.out or state_path(display, "blink")
+        frames = capture_frames(display, args.frames, args.interval, outdir)
+    print(json.dumps(analyze_blink(frames), indent=2))
+
+
+def cmd_cursor(args):
+    display = args.display or DEFAULT_DISPLAY
+    if not args.file:
+        if not xvfb_alive(display):
+            die(f"no Xvfb on {display} and no image file given")
+        args.file = state_path(display, f"cursor-{int(time.time())}.png")
+        screenshot(display, args.file)
+    print(json.dumps(find_cursor_blocks(args.file), indent=2))
+
+
+if __name__ == "__main__":
+    main()
