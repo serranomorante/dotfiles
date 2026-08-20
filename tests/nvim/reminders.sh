@@ -12,6 +12,9 @@ set -euo pipefail
 # dotfiles-test-case: reminders-ignore-agent-run-output
 # dotfiles-test-case: reminders-restart-remind-on-change
 # dotfiles-test-case: reminders-no-restart-when-unchanged
+# dotfiles-test-case: reminders-long-body-fence-found
+# dotfiles-test-case: reminders-long-body-intermediate-code-fence
+# dotfiles-test-case: reminders-execution-metadata-outside-fence
 
 # Purpose: Verify generated Remind RUN entries for @run agent TODOs.
 
@@ -174,6 +177,86 @@ reminders-no-restart-when-unchanged)
     PATH="${bin}:${PATH}" run_remind_update
 
     refute rg -q 'restart remind' "${DOTFILES_TEST_TMP}/systemctl.log"
+    ;;
+reminders-long-body-fence-found)
+    make_foam_note \
+        "# Sample | TODOS" \
+        "" \
+        "- [ ] **Review long body task**" \
+        "  @id todo-long-body-task" \
+        "" \
+        "  Body line 01" \
+        "  Body line 02" \
+        "  Body line 03" \
+        "  Body line 04" \
+        "  Body line 05" \
+        "  Body line 06" \
+        "  Body line 07" \
+        "  Body line 08" \
+        "  Body line 09" \
+        "  Body line 10" \
+        "  Body line 11" \
+        "  Body line 12" \
+        "  Body line 13" \
+        "" \
+        "  \`\`\`remind" \
+        "  @run agent" \
+        "  REM jun 1 2026 AT 10:00 UNTIL oct 1 2026 *3" \
+        "  \`\`\`"
+
+    run_remind_update
+
+    rg -q "MSG \\*\\*Review long body task\\*\\*" "${HOME}/.config/remind/reminders.rem"
+    rg -q "RUN '${HOME}/bin/remind-run' 'agent' 'todo-long-body-task'" "${HOME}/.config/remind/reminders.rem"
+    ;;
+reminders-long-body-intermediate-code-fence)
+    make_foam_note \
+        "# Sample | TODOS" \
+        "" \
+        "- [ ] **Review task with code block in body**" \
+        "" \
+        "  Body line 01" \
+        "  Body line 02" \
+        "  Body line 03" \
+        "" \
+        "  \`\`\`" \
+        "  https://example.com/a" \
+        "  https://example.com/b" \
+        "  https://example.com/c" \
+        "  \`\`\`" \
+        "" \
+        "  Body line 04" \
+        "  Body line 05" \
+        "" \
+        "  \`\`\`remind" \
+        "  REM jun 1 2026 AT 10:00" \
+        "  \`\`\`"
+
+    run_remind_update
+
+    rg -q "MSG \\*\\*Review task with code block in body\\*\\*" "${HOME}/.config/remind/reminders.rem"
+    refute rg -q "RUN .*remind-run" "${HOME}/.config/remind/reminders.rem"
+    ;;
+reminders-execution-metadata-outside-fence)
+    make_foam_note \
+        "# Sample | TODOS" \
+        "" \
+        "- [ ] **Review metadata task**" \
+        "  @id todo-metadata-task" \
+        "  @timeout 900" \
+        "  @model gpt-5" \
+        "" \
+        "  \`\`\`remind" \
+        "  @run agent" \
+        "  REM jun 1 2026 AT 10:00 UNTIL oct 1 2026 *3" \
+        "  \`\`\`"
+
+    run_remind_update
+
+    rg -q "MSG \\*\\*Review metadata task\\*\\*" "${HOME}/.config/remind/reminders.rem"
+    rg -q "RUN '${HOME}/bin/remind-run' 'agent' 'todo-metadata-task'" "${HOME}/.config/remind/reminders.rem"
+    refute rg -q "@timeout" "${HOME}/.config/remind/reminders.rem"
+    refute rg -q "@model" "${HOME}/.config/remind/reminders.rem"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

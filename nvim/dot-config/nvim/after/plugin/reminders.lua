@@ -177,7 +177,10 @@ local function remind_update()
           title = title:gsub("\\%s*$", "")
           local search_lnum = lnum + 1
 
-          while search_lnum <= math.min(#lines, lnum + 12) do
+          -- A TODO can have a long body before its remind fence, so keep scanning
+          -- until the next top-level checkbox or the end of the file instead of a
+          -- fixed window.
+          while search_lnum <= #lines do
             if lines[search_lnum]:match("^%s%s```remind%s*$") then
               local block, end_lnum = parse_remind_block(lines, search_lnum)
               vim.list_extend(items, reminder_items_for_block(title, block, todo_metadata(lines, lnum, search_lnum)))
