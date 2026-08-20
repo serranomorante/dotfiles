@@ -10,6 +10,8 @@ set -euo pipefail
 # dotfiles-test-case: reminders-update-reports-remind-warnings
 # dotfiles-test-case: reminders-ignore-remind-usage-doc
 # dotfiles-test-case: reminders-ignore-agent-run-output
+# dotfiles-test-case: reminders-restart-remind-on-change
+# dotfiles-test-case: reminders-no-restart-when-unchanged
 
 # Purpose: Verify generated Remind RUN entries for @run agent TODOs.
 
@@ -35,6 +37,17 @@ make_foam_note_at() {
 
     mkdir -p "$(dirname "${HOME}/data/notes/foam/${path}")" "${HOME}/.config/remind"
     printf '%s\n' "${lines[@]}" >"${HOME}/data/notes/foam/${path}"
+}
+
+make_fake_systemctl() {
+    local bin="${DOTFILES_TEST_TMP}/bin"
+    mkdir -p "$bin"
+    cat >"${bin}/systemctl" <<'BASH'
+#!/bin/sh
+printf 'systemctl %s\n' "$*" >>"${DOTFILES_TEST_TMP}/systemctl.log"
+BASH
+    chmod +x "${bin}/systemctl"
+    printf '%s\n' "$bin"
 }
 
 case "${DOTFILES_TEST_CASE:-}" in
@@ -120,7 +133,7 @@ reminders-ignore-agent-run-output)
     make_foam_note_at "misc/agent-runs/2026-05/sample.md" \
         "# Agent run sample" \
         "" \
-        "- [ ] **Example agent output task**" \
+        "- [ ] **Example agent output task" \
         "" \
         "  \`\`\`remind" \
         "  REM jun 1 2026 AT 10:00" \
@@ -129,6 +142,38 @@ reminders-ignore-agent-run-output)
     run_remind_update
 
     refute rg -q "Example agent output task" "${HOME}/.config/remind/reminders.rem"
+    ;;
+reminders-restart-remind-on-change)
+    bin=$(make_fake_systemctl)
+    make_foam_note \
+        "# Sample | TODOS" \
+        "" \
+        "- [ ] **Review sample task**" \
+        "" \
+        "  \`\`\`remind" \
+        "  REM jun 1 2026 AT 10:00" \
+        "  \`\`\`"
+
+    PATH="${bin}:${PATH}" run_remind_update
+
+    rg -q '^systemctl --user restart remind$' "${DOTFILES_TEST_TMP}/systemctl.log"
+    ;;
+reminders-no-restart-when-unchanged)
+    bin=$(make_fake_systemctl)
+    make_foam_note \
+        "# Sample | TODOS" \
+        "" \
+        "- [ ] **Review sample task**" \
+        "" \
+        "  \`\`\`remind" \
+        "  REM jun 1 2026 AT 10:00" \
+        "  \`\`\`"
+
+    PATH="${bin}:${PATH}" run_remind_update
+    : >"${DOTFILES_TEST_TMP}/systemctl.log"
+    PATH="${bin}:${PATH}" run_remind_update
+
+    refute rg -q 'restart remind' "${DOTFILES_TEST_TMP}/systemctl.log"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

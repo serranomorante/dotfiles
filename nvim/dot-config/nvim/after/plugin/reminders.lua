@@ -194,8 +194,15 @@ local function remind_update()
     end
   end
 
-  utils.write_file(GENERATED_PATH, vim.fn.join(items, "\n"))
+  local content = vim.fn.join(items, "\n")
+  local existing = vim.fn.filereadable(GENERATED_PATH) == 1 and table.concat(vim.fn.readfile(GENERATED_PATH), "\n") or nil
+  utils.write_file(GENERATED_PATH, content)
   validate_generated_reminders()
+  if existing ~= content and vim.fn.executable("systemctl") == 1 then
+    -- The remind -z daemon reloads the file on its minute wakeup and drops timed
+    -- reminders whose trigger is already past, so restart it right away.
+    vim.fn.system({ "systemctl", "--user", "restart", "remind" })
+  end
 end
 
 local function remind(args)
