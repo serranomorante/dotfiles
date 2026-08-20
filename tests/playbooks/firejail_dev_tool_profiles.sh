@@ -13,6 +13,7 @@ set -euo pipefail
 # dotfiles-test-case: firejail-ai-agent-orchestration-paths-visible
 # dotfiles-test-case: firejail-ai-agent-controls-foam-notes-exposure
 # dotfiles-test-case: firejail-ai-agent-stow-targets-visible
+# dotfiles-test-case: firejail-ai-agent-keeps-host-tmp
 
 # Purpose: Static guardrails for dev-tool Firejail profile path exposure.
 
@@ -251,6 +252,18 @@ firejail-ai-agent-stow-targets-visible)
             exit 1
         fi
     done
+    ;;
+firejail-ai-agent-keeps-host-tmp)
+    agent_profile="$root/playbooks/roles/20-dev-tools/templates/ai-agent-common.inc"
+    baseline="$root/playbooks/roles/20-dev-tools/templates/dev-tools-common.inc"
+    if ! grep -Fqx 'ignore private-tmp' "$agent_profile"; then
+        printf 'AI agent profile must keep the real host /tmp for agent/host handoffs\n' >&2
+        exit 1
+    fi
+    if ! grep -Fqx 'private-tmp' "$baseline"; then
+        printf 'dev-tools-common.inc must keep private-tmp for generic wrappers\n' >&2
+        exit 1
+    fi
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

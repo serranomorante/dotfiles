@@ -3,6 +3,10 @@
 # working directory; this profile exposes only agent state, MCP runtime state,
 # and host toolchains required by child MCP commands that inherit the sandbox.
 include dev-tools-common.inc
+# Agents are first-party interactive tools that hand files to the host through
+# /tmp, so keep the real host /tmp instead of the private one generic wrappers
+# get. host <-> agent temp-file handoffs and /tmp/tmux-$uid sockets stay shared.
+ignore private-tmp
 dbus-user none
 
 # Generated from active Stow targets so agents can resolve ~/.config, ~/bin,
