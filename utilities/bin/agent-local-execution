@@ -72,7 +72,7 @@ def execution_options(payload, args):
 
     model = args.model or execution.get("model") or None
     sandbox = args.sandbox or execution.get("sandbox") or "workspace-write"
-    unsandboxed = args.unsandboxed or bool(execution.get("unsandboxed"))
+    unfirejailed = args.unfirejailed or bool(execution.get("unfirejailed"))
     timeout = (
         args.timeout
         or execution.get("timeout_seconds")
@@ -93,7 +93,7 @@ def execution_options(payload, args):
         "cwd": cwd,
         "model": model,
         "sandbox": sandbox,
-        "unsandboxed": unsandboxed,
+        "unfirejailed": unfirejailed,
         "timeout": timeout,
     }
 
@@ -142,7 +142,7 @@ def build_prompt(payload):
 
 
 def launch_prefix(agent, opts):
-    if opts["unsandboxed"]:
+    if opts["unfirejailed"]:
         return [agent]
     return [f"fj-{agent}", "--exec", "--root", opts["cwd"], "--", agent]
 
@@ -218,7 +218,7 @@ def main():
     parser.add_argument("--model")
     parser.add_argument("--sandbox", default=None)
     parser.add_argument(
-        "--unsandboxed",
+        "--unfirejailed",
         action="store_true",
         help="launch the agent without the Firejail fj-* wrapper so it reads its own config",
     )
@@ -232,7 +232,7 @@ def main():
         payload.setdefault("execution", {})["model"] = opts["model"]
     payload.setdefault("execution", {})["cwd"] = opts["cwd"]
     payload.setdefault("execution", {})["sandbox"] = opts["sandbox"]
-    payload.setdefault("execution", {})["unsandboxed"] = opts["unsandboxed"]
+    payload.setdefault("execution", {})["unfirejailed"] = opts["unfirejailed"]
     raise SystemExit(run_agent(payload, opts))
 
 

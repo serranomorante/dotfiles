@@ -171,7 +171,7 @@ STT_DICTATE_FIREJAIL=0 stt-dictate toggle
 STT_DICTATE_BACKEND=nerd-dictation STT_DICTATE_LANG=es stt-dictate toggle
 ```
 
-`STT_DICTATE_FIREJAIL=0` is only for debugging sandbox or audio-device issues. Do not make unsandboxed recognizer execution the default.
+`STT_DICTATE_FIREJAIL=0` is only for debugging sandbox or audio-device issues. Do not make unfirejailed recognizer execution the default.
 
 Manage the resident Whisper servers with systemd user units. These units should be started on demand, not enabled by default:
 

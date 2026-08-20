@@ -26,12 +26,12 @@ local groups = {
     bg = background == "dark" and "#5a4100" or "#d6a90f",
     bold = true,
   },
-  CustomAgentUnsandboxedTabLine = {
+  CustomAgentUnfirejailedTabLine = {
     fg = background == "dark" and "White" or "Black",
     bg = background == "dark" and "#5c0000" or "#ff7a7a",
     bold = true,
   },
-  CustomAgentUnsandboxedTabLineSel = {
+  CustomAgentUnfirejailedTabLineSel = {
     fg = background == "dark" and "White" or "Black",
     bg = background == "dark" and "#8a0000" or "#e03636",
     bold = true,

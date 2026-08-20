@@ -211,7 +211,7 @@ For Python STT and dictation tools:
 - Keep model downloads outside the runtime command path; Ansible should fetch model assets explicitly, then runtime wrappers should use the local files.
 - Expose only the model directory, a small project directory, the runtime state directory, and the local PipeWire/Pulse sockets needed for microphone input.
 - Do clipboard and keyboard injection outside the Python sandbox where possible, so the recognizer only needs microphone access and local model files.
-- If a microphone or PipeWire limitation forces an unsandboxed debug run, gate it behind an explicit environment override and document it in the voice workflow notes.
+- If a microphone or PipeWire limitation forces an unfirejailed debug run, gate it behind an explicit environment override and document it in the voice workflow notes.
 
 For GPU-backed STT such as `whisper.cpp` with CUDA, keep runtime networking disabled and whitelist only the managed binary, selected model, and runtime audio file. If CUDA requires real `/dev/nvidia*` access, document the profile's device-boundary exception and disable unrelated desktop device classes instead of dropping the sandbox entirely.
 
@@ -228,3 +228,7 @@ Good reasons for a new profile:
 - A tool needs stable access to a nonstandard host path that should not be added to the generic Python or Node profiles.
 
 Do not add a new profile just to install another pip/npm package into a managed venv or prefix.
+
+## Terminology
+
+Use `unfirejailed` (not `unsandboxed`) to describe a process launched without the Firejail `fj-*` wrapper. It is unambiguous: it refers only to skipping the Firejail sandbox, not to any native sandbox an agent or tool may apply to itself. The agent launchers (`agent-local-execution`, `foam-remind-agent-run`, `agent-tasks detach-sandbox`, Neovim `agent_sessions`/`agent_tasks` modules) use the `unfirejailed` payload field, `--unfirejailed` flag, `agent_unfirejailed` task metadata, and `UNFIREJAILED-` tabline marker. Keep using the old term in git history; update all current code, comments, tests, and docs when a rename is accepted.

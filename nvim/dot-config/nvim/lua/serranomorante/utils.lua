@@ -1772,7 +1772,7 @@ function M.name_overseer_task_output(task, bufnr)
   -- untouched.
   if type(metadata.agent_provider) == "string" then
     local role_marker = metadata.agent_role == "sub" and "SUB-" or "MASTER-"
-    if metadata.agent_unsandboxed == true then role_marker = "UNSANDBOXED-" .. role_marker end
+    if metadata.agent_unfirejailed == true then role_marker = "UNFIREJAILED-" .. role_marker end
     task_name = role_marker .. task_name
   end
   task_name = "task://" .. task_name

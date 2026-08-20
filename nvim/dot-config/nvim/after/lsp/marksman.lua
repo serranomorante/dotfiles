@@ -4,7 +4,7 @@ local default_publish_diagnostics = vim.lsp.handlers[publish_diagnostics]
 
 if not constants.BINARIES.marksman then return {} end
 
--- marksman runs unsandboxed on the host, so launch it inside a systemd user
+-- marksman runs unfirejailed on the host, so launch it inside a systemd user
 -- scope to cap its CPU/memory via cgroup limits (see the `marksman` profile in
 -- app-resources.vars.yml). Fall back to a direct launch if the cgroup launcher
 -- isn't installed.

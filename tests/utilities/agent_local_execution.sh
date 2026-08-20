@@ -8,10 +8,10 @@ set -euo pipefail
 # dotfiles-test-case: agent-local-execution-claude-builds-noninteractive-command
 # dotfiles-test-case: agent-local-execution-gemini-builds-noninteractive-command
 # dotfiles-test-case: agent-local-execution-opencode-builds-noninteractive-command
-# dotfiles-test-case: agent-local-execution-codex-builds-unsandboxed-command
-# dotfiles-test-case: agent-local-execution-claude-builds-unsandboxed-command
-# dotfiles-test-case: agent-local-execution-gemini-builds-unsandboxed-command
-# dotfiles-test-case: agent-local-execution-opencode-builds-unsandboxed-command
+# dotfiles-test-case: agent-local-execution-codex-builds-unfirejailed-command
+# dotfiles-test-case: agent-local-execution-claude-builds-unfirejailed-command
+# dotfiles-test-case: agent-local-execution-gemini-builds-unfirejailed-command
+# dotfiles-test-case: agent-local-execution-opencode-builds-unfirejailed-command
 # dotfiles-test-case: agent-local-execution-rejects-unsupported-schema
 
 # Purpose: Verify the local agent wrapper contract without invoking real agents.
@@ -147,12 +147,12 @@ agent-local-execution-opencode-builds-noninteractive-command)
     rg -q "agent: opencode" "${DOTFILES_TEST_TMP}/agent.stdin"
     rg -q "model: gpt-5" "${DOTFILES_TEST_TMP}/agent.stdin"
     ;;
-agent-local-execution-opencode-builds-unsandboxed-command)
+agent-local-execution-opencode-builds-unfirejailed-command)
     bin=$(make_fake_path)
     write_fake_agent "$bin" opencode
     payload=$(write_payload)
 
-    run_wrapper_with_path "$bin" --agent opencode --unsandboxed --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+    run_wrapper_with_path "$bin" --agent opencode --unfirejailed --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
 
     rg -q "agent result" "${DOTFILES_TEST_TMP}/stdout"
     expected="run --dir ${DOTFILES_TEST_TMP}/work -m gpt-5"
@@ -161,12 +161,12 @@ agent-local-execution-opencode-builds-unsandboxed-command)
     rg -q "agent: opencode" "${DOTFILES_TEST_TMP}/agent.stdin"
     rg -q "model: gpt-5" "${DOTFILES_TEST_TMP}/agent.stdin"
     ;;
-agent-local-execution-codex-builds-unsandboxed-command)
+agent-local-execution-codex-builds-unfirejailed-command)
     bin=$(make_fake_path)
     write_fake_agent "$bin" codex
     payload=$(write_payload)
 
-    run_wrapper_with_path "$bin" --agent codex --unsandboxed --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+    run_wrapper_with_path "$bin" --agent codex --unfirejailed --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
 
     rg -q "agent result" "${DOTFILES_TEST_TMP}/stdout"
     expected="-a never -s read-only -m gpt-5 exec --skip-git-repo-check --color never -C ${DOTFILES_TEST_TMP}/work -"
@@ -175,12 +175,12 @@ agent-local-execution-codex-builds-unsandboxed-command)
     rg -q "agent: codex" "${DOTFILES_TEST_TMP}/agent.stdin"
     rg -q "model: gpt-5" "${DOTFILES_TEST_TMP}/agent.stdin"
     ;;
-agent-local-execution-claude-builds-unsandboxed-command)
+agent-local-execution-claude-builds-unfirejailed-command)
     bin=$(make_fake_path)
     write_fake_agent "$bin" claude
     payload=$(write_payload)
 
-    run_wrapper_with_path "$bin" --agent claude --unsandboxed --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+    run_wrapper_with_path "$bin" --agent claude --unfirejailed --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
 
     rg -q "agent result" "${DOTFILES_TEST_TMP}/stdout"
     expected="-p --permission-mode dontAsk --output-format text --model gpt-5"
@@ -189,12 +189,12 @@ agent-local-execution-claude-builds-unsandboxed-command)
     rg -q "agent: claude" "${DOTFILES_TEST_TMP}/agent.stdin"
     rg -q "model: gpt-5" "${DOTFILES_TEST_TMP}/agent.stdin"
     ;;
-agent-local-execution-gemini-builds-unsandboxed-command)
+agent-local-execution-gemini-builds-unfirejailed-command)
     bin=$(make_fake_path)
     write_fake_agent "$bin" gemini
     payload=$(write_payload)
 
-    run_wrapper_with_path "$bin" --agent gemini --unsandboxed --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+    run_wrapper_with_path "$bin" --agent gemini --unfirejailed --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
 
     rg -q "agent result" "${DOTFILES_TEST_TMP}/stdout"
     expected="--prompt  --model gpt-5"

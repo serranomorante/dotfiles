@@ -5,7 +5,7 @@ set -euo pipefail
 # dotfiles-test-tags: nvim headless tabline agent-session
 # dotfiles-test-firejail: disabled
 # dotfiles-test-case: agent-task-sub-tabline-highlight
-# dotfiles-test-case: agent-task-unsandboxed-tabline-highlight
+# dotfiles-test-case: agent-task-unfirejailed-tabline-highlight
 # dotfiles-test-case: tabline-ignores-current-float
 
 # Purpose: Guard custom tabline highlighting for sub-agent Overseer task tabs.
@@ -68,26 +68,26 @@ agent-task-sub-tabline-highlight)
         'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
     run_nvim_lua_file "$lua_file"
     ;;
-agent-task-unsandboxed-tabline-highlight)
-    lua_file="${DOTFILES_TEST_TMP}/agent-task-unsandboxed-tabline-highlight.lua"
+agent-task-unfirejailed-tabline-highlight)
+    lua_file="${DOTFILES_TEST_TMP}/agent-task-unfirejailed-tabline-highlight.lua"
     write_lua "$lua_file" \
         'local function main()' \
         '  vim.cmd.colorscheme("default")' \
         '  local tabline = require("serranomorante.tabline")' \
         '  tabline.setup()' \
         '  local master_bufnr = vim.api.nvim_get_current_buf()' \
-        '  vim.api.nvim_buf_set_name(master_bufnr, "task://UNSANDBOXED-MASTER-codex")' \
+        '  vim.api.nvim_buf_set_name(master_bufnr, "task://UNFIREJAILED-MASTER-codex")' \
         '  vim.cmd.tabnew()' \
         '  local sub_bufnr = vim.api.nvim_get_current_buf()' \
-        '  vim.api.nvim_buf_set_name(sub_bufnr, "task://UNSANDBOXED-SUB-codex")' \
+        '  vim.api.nvim_buf_set_name(sub_bufnr, "task://UNFIREJAILED-SUB-codex")' \
         '  local rendered = tabline.render()' \
-        '  assert(rendered:find("%#CustomAgentUnsandboxedTabLine#%1T 1:UNSANDBOXED-MASTER-codex ", 1, true), rendered)' \
-        '  assert(rendered:find("%#CustomAgentUnsandboxedTabLineSel#%2T 2:UNSANDBOXED-SUB-codex ", 1, true), rendered)' \
+        '  assert(rendered:find("%#CustomAgentUnfirejailedTabLine#%1T 1:UNFIREJAILED-MASTER-codex ", 1, true), rendered)' \
+        '  assert(rendered:find("%#CustomAgentUnfirejailedTabLineSel#%2T 2:UNFIREJAILED-SUB-codex ", 1, true), rendered)' \
         '  vim.cmd.tabprevious()' \
         '  rendered = tabline.render()' \
-        '  assert(rendered:find("%#CustomAgentUnsandboxedTabLineSel#%1T 1:UNSANDBOXED-MASTER-codex ", 1, true), rendered)' \
-        '  assert(rendered:find("%#CustomAgentUnsandboxedTabLine#%2T 2:UNSANDBOXED-SUB-codex ", 1, true), rendered)' \
-        '  assert(vim.api.nvim_get_hl(0, { name = "CustomAgentUnsandboxedTabLineSel" }).bg ~= nil, "unsandboxed selected highlight should be defined")' \
+        '  assert(rendered:find("%#CustomAgentUnfirejailedTabLineSel#%1T 1:UNFIREJAILED-MASTER-codex ", 1, true), rendered)' \
+        '  assert(rendered:find("%#CustomAgentUnfirejailedTabLine#%2T 2:UNFIREJAILED-SUB-codex ", 1, true), rendered)' \
+        '  assert(vim.api.nvim_get_hl(0, { name = "CustomAgentUnfirejailedTabLineSel" }).bg ~= nil, "unfirejailed selected highlight should be defined")' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
         'local ok, err = xpcall(main, debug.traceback)' \

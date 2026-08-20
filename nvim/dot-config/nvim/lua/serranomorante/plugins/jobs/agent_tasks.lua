@@ -20,7 +20,7 @@ local SESSION_ID_KEY = "agent_session_id"
 local ROLE_KEY = "agent_role"
 local ROLE_SUB = "sub"
 local ROLE_MASTER = "master"
-local UNSANDBOXED_KEY = "agent_unsandboxed"
+local UNFIREJAILED_KEY = "agent_unfirejailed"
 local PROMPT_MARKERS = {
   codex = "›",
   claude = "❯",
@@ -136,9 +136,9 @@ end
 
 ---@param t overseer.Task
 ---@return boolean
-local function task_unsandboxed(t)
+local function task_unfirejailed(t)
   local md = t.metadata or {}
-  return md[UNSANDBOXED_KEY] == true
+  return md[UNFIREJAILED_KEY] == true
 end
 
 ---Short uppercase badge for a role, for name/title listings.
@@ -275,7 +275,7 @@ local function task_summary(t)
     session_short_id = short_session_id(task_provider(t), task_session_id(t)),
     name = task_display_name(t),
     role = task_role(t),
-    unsandboxed = task_unsandboxed(t),
+    unfirejailed = task_unfirejailed(t),
     state = detect_state(task_provider(t), lines),
   }
 end
@@ -314,7 +314,7 @@ function M.read(ref, n)
     short_session_id(task_provider(t), task_session_id(t)) or "-",
     tostring(task_provider(t)),
     task_role(t),
-    task_unsandboxed(t) and " unsandboxed" or "",
+    task_unfirejailed(t) and " unfirejailed" or "",
     detect_state(task_provider(t), lines),
     tostring(t.status),
     start,
@@ -489,7 +489,7 @@ function M.state(ref)
     session_id = task_session_id(t),
     provider = provider,
     role = task_role(t),
-    unsandboxed = task_unsandboxed(t),
+    unfirejailed = task_unfirejailed(t),
     state = state,
     options = options,
     tail = tail,
@@ -536,9 +536,9 @@ end
 ---Whether an agent task was intentionally launched outside the Firejail sandbox.
 ---@param task overseer.Task
 ---@return boolean
-function M.task_unsandboxed(task)
+function M.task_unfirejailed(task)
   if type(task) ~= "table" then return false end
-  return task_unsandboxed(task)
+  return task_unfirejailed(task)
 end
 
 local AGENT_WATCH_COMPONENT = "serranomorante.agent_watch"
@@ -1273,12 +1273,12 @@ function M.detach_from_sandbox(ref)
   end
 
   result.detached = true
-  result.unsandboxed = true
+  result.unfirejailed = true
   result.session_id = session_id
   vim.schedule(function()
     local ok_as, agent_sessions = pcall(require, "serranomorante.plugins.jobs.agent_sessions")
     if ok_as and type(agent_sessions.resume_by_id) == "function" then
-      agent_sessions.resume_by_id(session_id, { role = role, start_win = start_win, unsandboxed = true })
+      agent_sessions.resume_by_id(session_id, { role = role, start_win = start_win, unfirejailed = true })
     end
   end)
 

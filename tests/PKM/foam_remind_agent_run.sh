@@ -131,7 +131,7 @@ assert payload["todo"]["tags"] == ["#sample"]
 assert payload["execution"]["agent"] == "opencode"
 assert payload["execution"]["model"] == "gpt-test"
 assert payload["execution"]["cwd"] == notes
-assert payload["execution"]["unsandboxed"] is True
+assert payload["execution"]["unfirejailed"] is True
 assert payload["source"]["relative_file"] == "misc/tasks/todos.sample.md"
 PY
     result=$(find "${notes}/misc/agent-runs" -type f -name 'todo-sample-agent-task-*.md' -print -quit)
@@ -190,7 +190,7 @@ payload = json.load(open(sys.argv[1], encoding="utf-8"))
 assert payload["todo"]["id"] == "todo-dotfiles-agent-task"
 assert payload["execution"]["cwd"] == sys.argv[2]
 assert payload["execution"]["sandbox"] == "workspace-write"
-assert payload["execution"]["unsandboxed"] is True
+assert payload["execution"]["unfirejailed"] is True
 PY
     ;;
 foam-remind-agent-run-honors-agent-metadata)

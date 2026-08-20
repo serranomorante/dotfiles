@@ -39,7 +39,7 @@ if is_inside_firejail; then
     exec "$real_bin" "$@"
 fi
 
-# Unsandboxed entry (conform from a plain Neovim, or a terminal): sandbox it
+# Unfirejailed entry (conform from a plain Neovim, or a terminal): sandbox it
 # ourselves. Caps are applied here on the host and inherited into the sandbox,
 # so we never run the cap tools inside Firejail (where ioprio_set is denied).
 # Use the project dir conform passes via --project-dir as the Firejail work root
