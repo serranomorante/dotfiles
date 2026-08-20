@@ -18,6 +18,8 @@ local function serializable_item(item)
   return copy
 end
 
+local MAX_QF_ITEMS_PER_LIST = 1000
+
 local function save_history()
   local file = history_file()
   if not file then return end
@@ -25,7 +27,7 @@ local function save_history()
   local data = { version = 1, current = vim.fn.getqflist({ nr = 0 }).nr, lists = {} }
   for nr = 1, vim.fn.getqflist({ nr = "$" }).nr do
     local qf = vim.fn.getqflist({ nr = nr, title = 0, items = 0, idx = 0, context = 0, quickfixtextfunc = 0 })
-    local items = vim.tbl_map(serializable_item, qf.items or {})
+    local items = vim.tbl_map(serializable_item, vim.list_slice(qf.items or {}, 1, MAX_QF_ITEMS_PER_LIST))
     table.insert(data.lists, {
       title = qf.title,
       idx = qf.idx,
