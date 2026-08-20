@@ -72,6 +72,7 @@ def execution_options(payload, args):
 
     model = args.model or execution.get("model") or None
     sandbox = args.sandbox or execution.get("sandbox") or "workspace-write"
+    unsandboxed = args.unsandboxed or bool(execution.get("unsandboxed"))
     timeout = (
         args.timeout
         or execution.get("timeout_seconds")
@@ -92,6 +93,7 @@ def execution_options(payload, args):
         "cwd": cwd,
         "model": model,
         "sandbox": sandbox,
+        "unsandboxed": unsandboxed,
         "timeout": timeout,
     }
 
@@ -139,22 +141,19 @@ def build_prompt(payload):
     )
 
 
+def launch_prefix(agent, opts):
+    if opts["unsandboxed"]:
+        return [agent]
+    return [f"fj-{agent}", "--exec", "--root", opts["cwd"], "--", agent]
+
+
 def run_agent(payload, opts):
     prompt = build_prompt(payload)
 
     if opts["agent"] == "codex":
-        cmd = [
-            "fj-codex",
-            "--exec",
-            "--root",
-            opts["cwd"],
-            "--",
-            "codex",
-            "-a",
-            "never",
-            "-s",
-            opts["sandbox"],
-        ]
+        cmd = launch_prefix("codex", opts)
+        cmd.extend(["-a", "never"])
+        cmd.extend(["-s", opts["sandbox"]])
         if opts["model"]:
             cmd.extend(["-m", opts["model"]])
         cmd.extend(
@@ -169,46 +168,18 @@ def run_agent(payload, opts):
             ]
         )
     elif opts["agent"] == "claude":
-        cmd = [
-            "fj-claude",
-            "--exec",
-            "--root",
-            opts["cwd"],
-            "--",
-            "claude",
-            "-p",
-            "--permission-mode",
-            "dontAsk",
-            "--output-format",
-            "text",
-        ]
+        cmd = launch_prefix("claude", opts)
+        cmd.extend(["-p", "--permission-mode", "dontAsk", "--output-format", "text"])
         if opts["model"]:
             cmd.extend(["--model", opts["model"]])
     elif opts["agent"] == "opencode":
-        cmd = [
-            "fj-opencode",
-            "--exec",
-            "--root",
-            opts["cwd"],
-            "--",
-            "opencode",
-            "run",
-            "--dir",
-            opts["cwd"],
-        ]
+        cmd = launch_prefix("opencode", opts)
+        cmd.extend(["run", "--dir", opts["cwd"]])
         if opts["model"]:
             cmd.extend(["-m", opts["model"]])
     else:
-        cmd = [
-            "fj-gemini",
-            "--exec",
-            "--root",
-            opts["cwd"],
-            "--",
-            "gemini",
-            "--prompt",
-            "",
-        ]
+        cmd = launch_prefix("gemini", opts)
+        cmd.extend(["--prompt", ""])
         if opts["model"]:
             cmd.extend(["--model", opts["model"]])
 
@@ -246,6 +217,11 @@ def main():
     parser.add_argument("--cwd")
     parser.add_argument("--model")
     parser.add_argument("--sandbox", default=None)
+    parser.add_argument(
+        "--unsandboxed",
+        action="store_true",
+        help="launch the agent without the Firejail fj-* wrapper so it reads its own config",
+    )
     parser.add_argument("--timeout", type=int)
     args = parser.parse_args()
 
@@ -256,6 +232,7 @@ def main():
         payload.setdefault("execution", {})["model"] = opts["model"]
     payload.setdefault("execution", {})["cwd"] = opts["cwd"]
     payload.setdefault("execution", {})["sandbox"] = opts["sandbox"]
+    payload.setdefault("execution", {})["unsandboxed"] = opts["unsandboxed"]
     raise SystemExit(run_agent(payload, opts))
 
 

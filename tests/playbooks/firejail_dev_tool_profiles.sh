@@ -127,12 +127,10 @@ firejail-ai-agent-runtime-launchers-use-wrappers)
         fi
     done
     for expected in \
-        '"fj-codex"' \
-        '"fj-claude"' \
-        '"fj-gemini"' \
-        '"fj-opencode"'; do
+        'f"fj-{agent}"' \
+        'launch_prefix'; do
         if ! grep -Fq "$expected" "$local_execution"; then
-            printf 'agent-local-execution is missing wrapper command: %s\n' "$expected" >&2
+            printf 'agent-local-execution is missing dynamic fj-* wrapper construction: %s\n' "$expected" >&2
             exit 1
         fi
     done

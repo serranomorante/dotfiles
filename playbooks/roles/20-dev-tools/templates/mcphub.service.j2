@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Local MCPHub HTTP proxy for AI-agent MCP servers
+After=default.target
+
+[Service]
+ExecStart={{ node_user_bin_dir }}/mcp-hub --port {{ mcphub_setup.port }} --config %h/.config/mcphub/servers.json --watch
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=default.target

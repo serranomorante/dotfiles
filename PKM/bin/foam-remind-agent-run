@@ -230,6 +230,7 @@ def payload_for(todo, notes_root):
         "model": meta.get("model") or None,
         "cwd": os.path.abspath(os.path.expanduser(os.path.expandvars(meta.get("cwd") or notes_root))),
         "sandbox": meta.get("sandbox") or "workspace-write",
+        "unsandboxed": True,
     }
     if meta.get("timeout"):
         execution["timeout_seconds"] = meta["timeout"]

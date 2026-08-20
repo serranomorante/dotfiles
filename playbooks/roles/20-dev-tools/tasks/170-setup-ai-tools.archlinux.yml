@@ -261,11 +261,19 @@
     dest: ~/.config/mcphub/client.json
     mode: "644"
 
-- name: "[{{ user_os }}] Setup ai tools: install MCPHub runner"
+- name: "[{{ user_os }}] Setup ai tools: install MCPHub user service"
   ansible.builtin.template:
-    src: mcphub-run.j2
-    dest: "{{ node_user_bin_dir }}/mcphub-run"
-    mode: "755"
+    src: mcphub.service.j2
+    dest: ~/.config/systemd/user/{{ mcphub_setup.service_name }}
+    mode: "644"
+
+- name: "[{{ user_os }}] Setup ai tools: enable MCPHub user service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: "{{ mcphub_setup.service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
 
 - name: "[{{ user_os }}] Setup ai tools: install MCP-aware agent launchers"
   ansible.builtin.template:

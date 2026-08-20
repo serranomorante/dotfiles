@@ -5,4 +5,4 @@
 
 set -eu
 
-exec "{{ node_user_bin_dir }}/fj-claude" --exec -- "{{ node_user_bin_dir }}/mcphub-run" "{{ node_user_bin_dir }}/claude" --strict-mcp-config --mcp-config "$HOME/.config/mcphub/client.json" "$@"
+exec "{{ node_user_bin_dir }}/fj-claude" --exec -- "{{ node_user_bin_dir }}/claude" --strict-mcp-config --mcp-config "$HOME/.config/mcphub/client.json" "$@"

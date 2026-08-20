@@ -5,4 +5,4 @@
 
 set -eu
 
-exec "{{ node_user_bin_dir }}/fj-opencode" --exec -- "{{ node_user_bin_dir }}/mcphub-run" env OPENCODE_CONFIG="$HOME/.config/opencode/mcphub.json" "{{ node_user_bin_dir }}/opencode" "$@"
+exec "{{ node_user_bin_dir }}/fj-opencode" --exec -- env OPENCODE_CONFIG="$HOME/.config/opencode/mcphub.json" "{{ node_user_bin_dir }}/opencode" "$@"
