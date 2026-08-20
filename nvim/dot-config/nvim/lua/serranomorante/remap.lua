@@ -219,13 +219,14 @@ end, { desc = "Yank <filename>:<line>:<col>" })
 vim.keymap.set("n", "<leader>wb", function()
   local path = vim.fn.expand("%:p")
   if path == "" then
-    vim.api.nvim_echo({ { "No file to open in browser", "DiagnosticWarn" } }, false, {})
+    vim.api.nvim_echo({ { "No file to import into Calibre", "DiagnosticWarn" } }, false, {})
     return
   end
-  if utils.cmd({ "serve-local", path }) then
-    vim.api.nvim_echo({ { "Opened in browser: " }, { path, "DiagnosticInfo" } }, false, {})
+  local result = utils.cmd({ "markdown-to-calibre", path })
+  if result then
+    vim.api.nvim_echo({ { result:gsub("%s+$", ""), "DiagnosticInfo" } }, false, {})
   end
-end, { desc = "Open current file in browser via local nginx" })
+end, { desc = "Import current markdown file into Calibre as a book" })
 
 vim.keymap.set({ "n", "x" }, "<C-S-e>", "zl", { desc = "Scroll right horizontally" })
 vim.keymap.set({ "n", "x" }, "<C-S-y>", "zh", { desc = "Scroll left horizontally" })

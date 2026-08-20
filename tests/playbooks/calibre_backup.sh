@@ -5,6 +5,8 @@ set -euo pipefail
 # dotfiles-test-tags: playbooks backup calibre shell fast
 # dotfiles-test-case: calibre-backup-export-refreshes-staging-and-calls-native-export
 # dotfiles-test-case: calibre-backup-import-extracts-then-restores
+# dotfiles-test-case: calibre-backup-import-moves-existing-library-aside
+# dotfiles-test-case: calibre-backup-import-defaults-to-real-library-parent
 # dotfiles-test-case: calibre-backup-import-fails-without-sx
 # dotfiles-test-case: calibre-backup-export-dir-is-backed-up-by-user-data-repos
 
@@ -12,9 +14,12 @@ set -euo pipefail
 #   path is exercised with a fake `calibre-debug` in PATH so the native binary
 #   is never invoked; the import path is exercised with a fake `sx` that logs
 #   the borg subcommands and fabricates the extracted `part-*.calibre-data`
-#   tree. A final case checks the backups.vars.yml invariant that the staged
-#   export dir is part of the user-data backup and that each user-data repo
-#   runs the export as its pre-backup hook.
+#   tree. Import now defaults to the real library parent (/srv/media/books)
+#   and moves any existing content aside into CALIBRE_RESTORE_DIR so a restore
+#   never leaves a shadow library registered in calibre. A final case checks
+#   the backups.vars.yml invariant that the staged export dir is part of the
+#   user-data backup and that each user-data repo runs the export as its
+#   pre-backup hook.
 
 wrapper="$DOTFILES_TEST_ROOT/for-my-eyes-only/bin/calibre-backup"
 
@@ -102,6 +107,29 @@ calibre-backup-import-extracts-then-restores)
     [ -n "$extracted_dir" ]
     [ "$extracted_dir" != "$exportdir" ]
     printf '%s' "$extracted_dir" | grep -Fq "${exportdir#/}"
+    ;;
+calibre-backup-import-moves-existing-library-aside)
+    make_fixture
+    exportdir="${fixture}/export"
+    mkdir -p "${fixture}/libs/calibre-library"
+    : >"${fixture}/libs/calibre-library/metadata.db"
+    : >"${fixture}/libs/calibre-library/Book.pdf"
+
+    CALIBRE_LIBRARY_DIR="${fixture}/libs" \
+        CALIBRE_RESTORE_DIR="${fixture}/old" \
+        run_calibre_backup --import >"${fixture}/out" 2>&1
+
+    refute [ -e "${fixture}/libs/calibre-library" ]
+    bak=$(find "${fixture}/old" -maxdepth 1 -type d -name 'calibre-library.bak-*')
+    [ -n "$bak" ]
+    [ -f "$bak/metadata.db" ]
+    grep -Fq "LIBRARY_DIR=${fixture}/libs" "$debuglog"
+    grep -Fq 'moved existing' "${fixture}/out"
+    ;;
+calibre-backup-import-defaults-to-real-library-parent)
+    src="$(cat "$wrapper")"
+    printf '%s' "$src" | grep -Fq 'CALIBRE_LIBRARY_DIR:-/srv/media/books'
+    printf '%s' "$src" | grep -Fq 'CALIBRE_RESTORE_DIR:-$HOME/data/backups/calibre-restore'
     ;;
 calibre-backup-import-fails-without-sx)
     make_fixture
