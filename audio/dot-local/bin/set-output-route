@@ -12,12 +12,13 @@ usage() {
 Usage:
   set-output-route list
   set-output-route status
-  set-output-route <${logical_list}|all> <studio-monitors|focusrite|laptop-speakers|internal-speakers|speakers|motherboard|node:<node.name>>
+  set-output-route <${logical_list}|all> <studio-monitors|focusrite|laptop-speakers|internal-speakers|speakers|motherboard|default|node:<node.name>>
 
 Examples:
   set-output-route multimedia studio-monitors
   set-output-route work laptop-speakers
   set-output-route music-production studio-monitors
+  set-output-route all default
   set-output-route all node:alsa_output.pci-0000_00_1f.3.analog-stereo
 EOF
 }
@@ -29,7 +30,7 @@ die() {
 
 require_commands() {
   local cmd
-  for cmd in pw-link grep awk sort uniq sed; do
+  for cmd in pw-link pactl grep awk sort uniq sed; do
     command -v "$cmd" >/dev/null 2>&1 || die "missing required command: $cmd"
   done
 }
@@ -73,6 +74,10 @@ resolve_motherboard_sink() {
     | grep -m1 '^alsa_output\.' || true
 }
 
+resolve_default_sink() {
+  pactl get-default-sink 2>/dev/null || true
+}
+
 resolve_target_node() {
   local target=$1
   case "$target" in
@@ -81,6 +86,9 @@ resolve_target_node() {
       ;;
     laptop-speakers|internal-speakers|speakers|motherboard)
       resolve_motherboard_sink
+      ;;
+    default|default-sink)
+      resolve_default_sink
       ;;
     node:*)
       printf '%s\n' "${target#node:}"
@@ -221,13 +229,15 @@ connect_logical_to_target() {
 }
 
 print_status() {
-  local logical focusrite_4i4 motherboard
+  local logical focusrite_4i4 motherboard default_sink
   focusrite_4i4="$(resolve_focusrite_4i4_sink)"
   motherboard="$(resolve_motherboard_sink)"
+  default_sink="$(resolve_default_sink)"
 
   printf 'presets:\n'
   printf '  studio-monitors -> %s\n' "${focusrite_4i4:-unavailable}"
   printf '  laptop-speakers -> %s\n' "${motherboard:-unavailable}"
+  printf '  default         -> %s\n' "${default_sink:-unavailable}"
   printf 'logical sinks:\n'
   for logical in "${LOGICAL_SINKS[@]}"; do
     status_line_for_logical "$logical"
