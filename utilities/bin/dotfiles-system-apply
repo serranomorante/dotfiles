@@ -170,13 +170,6 @@ def tag_sort_key(tag):
     return tuple(int(part) for part in tag.split("-") if part.isdigit())
 
 
-def summarize_paths(paths):
-    shown = sorted(set(paths))
-    if len(shown) <= 3:
-        return ", ".join(shown)
-    return ", ".join(shown[:3]) + f" (+{len(shown) - 3})"
-
-
 def shell_path(path):
     path = os.path.abspath(path)
     home = os.path.expanduser("~")
@@ -329,7 +322,7 @@ def main(argv):
     commands = []
 
     for package in sorted(stow_sources):
-        commands.append(f"dotfiles-stow {package}  # {summarize_paths(stow_sources[package])}")
+        commands.append(f"dotfiles-stow {package}")
 
     cd = f"cd {shell_path(public_repo / 'playbooks')}"
 
@@ -347,12 +340,9 @@ def main(argv):
             if any(tag in aur_tags for tag in tags) and AUR_PREP_TAG not in tags:
                 tags.insert(0, AUR_PREP_TAG)
             scope = "_".join(tags)
-            sources = []
-            for tag in tags:
-                sources.extend(tag_sources.get(tag, []))
             commands.append(
                 f"{cd} && ansible-playbook tools.yml -l localhost -K --tags {','.join(tags)} "
-                f"2>&1 | tee /tmp/ansible-{scope}.log  # {summarize_paths(sources)}"
+                f"2>&1 | tee /tmp/ansible-{scope}.log"
             )
 
     if submodule_note:
