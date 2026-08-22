@@ -15,14 +15,23 @@ set -eu
 CONF=/etc/dnsmasq.d/lan.conf
 
 get_lan_ip() {
+    # Pick the source IP of the outbound route to the internet, but skip
+    # VPN/tunnel interfaces (wg*, tun*) whose src is unreachable from the LAN.
     ip -4 route get 1.1.1.1 2>/dev/null |
-        awk '{ for (i = 1; i <= NF; i++) if ($i == "src") { print $(i + 1); exit } }'
+        awk '{
+            dev = src = ""
+            for (i = 1; i <= NF; i++) {
+                if ($i == "dev") dev = $(i + 1)
+                if ($i == "src") src = $(i + 1)
+            }
+            if (dev != "" && src != "" && dev !~ /^(wg|tun)/) print src
+        }'
 }
 
 lan_ip=$(get_lan_ip) || true
 if [ -z "${lan_ip:-}" ]; then
     lan_ip=$(ip -o -4 addr show |
-        awk '$2 !~ /^(lo|docker|br-|veth|wine)/ && $4 ~ /^[0-9]+\./ { print $4; exit }' |
+        awk '$2 !~ /^(lo|docker|br-|veth|wine|wg|tun)/ && $4 ~ /^[0-9]+\./ { print $4; exit }' |
         cut -d/ -f1)
 fi
 [ -n "${lan_ip:-}" ] || exit 1
