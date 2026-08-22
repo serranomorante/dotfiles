@@ -9,13 +9,55 @@
     url: https://downloads.gather.town/desktop/Gather-{{ arch_gather_wine_setup.version }}-Setup.exe
     dest: "{{ arch_gather_wine_setup.backup_path }}/"
     mode: "755"
+  ignore_errors: true
+  register: var_new_gather_town_version_downloaded
   when: not var_gather_town_installer.stat.exists
+
+- name: "[{{ user_os }}] Wine tools: stat gather town installed config"
+  ansible.builtin.stat:
+    path: "{{ arch_gather_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/Gather/config.json"
+  register: var_gather_town_installed
+
+- name: "[{{ user_os }}] Wine tools: check gather town installed version marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "gather-town-installed-{{ arch_gather_wine_setup.version }}"
+    dotfiles_marker_register: var_gather_town_install_marker
 
 - name: "[{{ user_os }}] Wine tools: install gather town"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ arch_gather_wine_setup.wine_prefix }}'
     wine start /unix '{{ arch_gather_wine_setup.backup_path }}/Gather-{{ arch_gather_wine_setup.version }}-Setup.exe'
   timeout: 60
-  args:
-    creates: "{{ arch_gather_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/Gather/config.json"
-  when: is_x_display_session
+  changed_when: true
+  failed_when: false
+  register: var_install_gather_town
+  when:
+    - is_x_display_session
+    - >
+      (not var_gather_town_installed.stat.exists)
+      or
+      (not var_gather_town_install_marker.stat.exists)
+    - >
+      var_gather_town_installer.stat.exists
+      or
+      (var_new_gather_town_version_downloaded.changed | default(false))
+
+- name: "[{{ user_os }}] Wine tools: stat gather town installed config after install"
+  ansible.builtin.stat:
+    path: "{{ arch_gather_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/Gather/config.json"
+  register: var_gather_town_installed_after_install
+  when: var_install_gather_town.changed | default(false)
+
+- name: "[{{ user_os }}] Wine tools: record gather town installed version marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "gather-town-installed-{{ arch_gather_wine_setup.version }}"
+    dotfiles_marker_content: "{{ arch_gather_wine_setup.version }}\n"
+  when:
+    - var_install_gather_town.changed | default(false)
+    - var_gather_town_installed_after_install.stat.exists

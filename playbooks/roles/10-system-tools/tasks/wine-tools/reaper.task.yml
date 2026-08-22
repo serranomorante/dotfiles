@@ -38,6 +38,14 @@
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/Program Files/REAPER (x64)/reaper.exe"
   register: var_reaper_executable
 
+- name: "[{{ user_os }}] Wine tools: check reaper installed version marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "reaper-installed-{{ arch_reaper_wine_setup.version }}"
+    dotfiles_marker_register: var_reaper_install_marker
+
 - name: "[{{ user_os }}] Wine tools: install reaper"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
@@ -48,7 +56,10 @@
   register: var_install_reaper
   when:
     - is_x_display_session
-    - not var_reaper_executable.stat.exists
+    - >
+      (not var_reaper_executable.stat.exists)
+      or
+      (not var_reaper_install_marker.stat.exists)
     - >
       var_reaper_installer.stat.exists
       or
@@ -61,11 +72,31 @@
     mode: "755"
   when:
     - is_x_display_session
-    - not var_reaper_executable.stat.exists
+    - >
+      (not var_reaper_executable.stat.exists)
+      or
+      (not var_reaper_install_marker.stat.exists)
     - >
       var_reaper_installer.stat.exists
       or
       (var_new_reaper_version_downloaded.changed | default(false))
+
+- name: "[{{ user_os }}] Wine tools: stat reaper executable after install"
+  ansible.builtin.stat:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/Program Files/REAPER (x64)/reaper.exe"
+  register: var_reaper_executable_after_install
+  when: var_install_reaper.changed | default(false)
+
+- name: "[{{ user_os }}] Wine tools: record reaper installed version marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "reaper-installed-{{ arch_reaper_wine_setup.version }}"
+    dotfiles_marker_content: "{{ arch_reaper_wine_setup.version }}\n"
+  when:
+    - var_install_reaper.changed | default(false)
+    - var_reaper_executable_after_install.stat.exists
 
 - name: "[{{ user_os }}] Wine tools: close stale Reaper installer Wine processes"
   ansible.builtin.command: >

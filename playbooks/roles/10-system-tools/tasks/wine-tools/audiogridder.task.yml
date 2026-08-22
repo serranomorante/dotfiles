@@ -9,13 +9,38 @@
   ignore_errors: true
   register: var_get_audiogridder_server
 
+- name: "[{{ user_os }}] Wine tools: stat audiogridder server installer"
+  ansible.builtin.stat:
+    path: "{{ arch_audiogridder_wine_setup.backup_path }}/AudioGridderServer_{{ arch_audiogridder_wine_setup.version }}.exe"
+  register: var_audiogridder_server_installer
+
+- name: "[{{ user_os }}] Wine tools: stat audiogridder server installed exe"
+  ansible.builtin.stat:
+    path: "{{ arch_audiogridder_wine_setup.wine_prefix }}/drive_c/Program Files/AudioGridderServer/AudioGridderServer.exe"
+  register: var_audiogridder_server_installed
+
+- name: "[{{ user_os }}] Wine tools: check audiogridder server installed version marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "audiogridder-server-installed-{{ arch_audiogridder_wine_setup.version }}"
+    dotfiles_marker_register: var_audiogridder_server_install_marker
+
 - name: "[{{ user_os }}] Wine tools: install audiogridder server"
   ansible.builtin.include_role:
     name: wine-installer-poll
   vars:
     wine_installer_name: audiogridder server
     wine_installer_prefix: "{{ arch_audiogridder_wine_setup.wine_prefix }}"
-    wine_installer_creates: "{{ arch_audiogridder_wine_setup.wine_prefix }}/drive_c/Program Files/AudioGridderServer/AudioGridderServer.exe"
+    wine_installer_creates: >-
+      {{
+        var_audiogridder_server_install_marker.stat.exists
+        | ternary(
+            arch_audiogridder_wine_setup.wine_prefix ~ '/drive_c/Program Files/AudioGridderServer/AudioGridderServer.exe',
+            omit
+          )
+      }}
     wine_installer_register: var_install_audiogridder
     wine_installer_launch_timeout: 300
     wine_installer_argv:
@@ -29,7 +54,28 @@
       - "{{ arch_audiogridder_wine_setup.backup_path }}/AudioGridderServer_{{ arch_audiogridder_wine_setup.version }}.exe"
   when:
     - is_x_display_session
-    - var_get_audiogridder_server is success
+    - >
+      (not var_audiogridder_server_installed.stat.exists)
+      or
+      (not var_audiogridder_server_install_marker.stat.exists)
+    - var_audiogridder_server_installer.stat.exists
+
+- name: "[{{ user_os }}] Wine tools: stat audiogridder server installed exe after install"
+  ansible.builtin.stat:
+    path: "{{ arch_audiogridder_wine_setup.wine_prefix }}/drive_c/Program Files/AudioGridderServer/AudioGridderServer.exe"
+  register: var_audiogridder_server_installed_after_install
+  when: var_install_audiogridder.changed | default(false)
+
+- name: "[{{ user_os }}] Wine tools: record audiogridder server installed version marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "audiogridder-server-installed-{{ arch_audiogridder_wine_setup.version }}"
+    dotfiles_marker_content: "{{ arch_audiogridder_wine_setup.version }}\n"
+  when:
+    - var_install_audiogridder.changed | default(false)
+    - var_audiogridder_server_installed_after_install.stat.exists
 
 - name: "[{{ user_os }}] Wine tools: stat audiogridder client marker"
   ansible.builtin.include_role:

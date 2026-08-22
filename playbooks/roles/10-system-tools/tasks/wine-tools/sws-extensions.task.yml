@@ -223,6 +223,14 @@
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/UserPlugins/reaper_sws-x64.dll"
   register: var_sws_extension_installed
 
+- name: "[{{ user_os }}] Wine tools: check sws extension installed version marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "sws-extension-installed-{{ arch_reaper_sws_extension_setup.version }}"
+    dotfiles_marker_register: var_sws_extension_install_marker
+
 - name: "[{{ user_os }}] Wine tools: install sws extension"
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix reaper
@@ -233,12 +241,32 @@
   failed_when: false
   when:
     - is_x_display_session
-    - not var_sws_extension_installed.stat.exists
+    - >
+      (not var_sws_extension_installed.stat.exists)
+      or
+      (not var_sws_extension_install_marker.stat.exists)
     - >
       var_sws_extension_installer.stat.exists
       or
       (var_new_sws_extension_version_downloaded.changed | default(false))
   register: var_sws_install
+
+- name: "[{{ user_os }}] Wine tools: stat installed sws extension after install"
+  ansible.builtin.stat:
+    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/UserPlugins/reaper_sws-x64.dll"
+  register: var_sws_extension_installed_after_install
+  when: var_sws_install.changed | default(false)
+
+- name: "[{{ user_os }}] Wine tools: record sws extension installed version marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "sws-extension-installed-{{ arch_reaper_sws_extension_setup.version }}"
+    dotfiles_marker_content: "{{ arch_reaper_sws_extension_setup.version }}\n"
+  when:
+    - var_sws_install.changed | default(false)
+    - var_sws_extension_installed_after_install.stat.exists
 
 - name: "[{{ user_os }}] Wine tools: close stale SWS installer Wine processes"
   ansible.builtin.command: >
