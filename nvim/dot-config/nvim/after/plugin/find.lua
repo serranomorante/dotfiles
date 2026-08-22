@@ -7,6 +7,10 @@ local function find(arg_lead)
   return vim.split(vim.fn.system("fd --type file --full-path " .. arg_lead) or "", "\n", { trimempty = true })
 end
 
+local utils = require("serranomorante.utils")
+
+local MIN_SEARCH_LEN = 5
+
 vim.api.nvim_create_user_command(
   "Find",
   "find <args>",
@@ -17,6 +21,11 @@ vim.api.nvim_create_user_command(
 function _G.user.findfunc(cmd_arg)
   if cmd_arg == "''" then
     vim.api.nvim_echo({ { "Empty search pattern" } }, false, { err = true })
+    return {}
+  end
+  local term = utils.search_term_from_args(cmd_arg)
+  if #term < MIN_SEARCH_LEN then
+    vim.api.nvim_echo({ { ("Find search blocked: '%s' has fewer than %d chars"):format(term, MIN_SEARCH_LEN), "DiagnosticWarn" } }, false, {})
     return {}
   end
   local files = find(cmd_arg)

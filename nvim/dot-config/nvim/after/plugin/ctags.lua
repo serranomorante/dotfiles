@@ -155,3 +155,22 @@ vim.api.nvim_create_user_command("TagReferences", tag_references, {
 })
 
 vim.keymap.set("n", "<leader>cr", tag_references, { desc = "Find ctags references" })
+
+local MIN_TAG_SEARCH_LEN = 6
+
+local function guarded_tag_jump()
+  local name = vim.fn.expand("<cword>")
+  if name == "" then
+    vim.api.nvim_echo({ { "No tag name under cursor" } }, false, { err = true })
+    return
+  end
+  if #name < MIN_TAG_SEARCH_LEN then
+    vim.api.nvim_echo({
+      { ("Ctags search blocked: '%s' has fewer than %d chars"):format(name, MIN_TAG_SEARCH_LEN), "DiagnosticWarn" },
+    }, false, {})
+    return
+  end
+  vim.cmd.tag(name)
+end
+
+vim.keymap.set("n", "<C-]>", guarded_tag_jump, { desc = "Go to tag definition (blocked under 6 chars)" })

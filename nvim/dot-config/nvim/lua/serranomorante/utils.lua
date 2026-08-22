@@ -138,6 +138,16 @@ end
 
 local function lua_pattern_escape(value) return (value:gsub("([^%w])", "%%%1")) end
 
+---Extract the meaningful search term from a Grep/Find command-line argument,
+---stripping surrounding quotes and regex word-boundary markers.
+---@param args string
+---@return string
+function M.search_term_from_args(args)
+  args = vim.trim(args or "")
+  local pattern = args:match("^'([^']*)'") or args:match('^"([^"]*)"') or args:match("^(%S+)") or ""
+  return (pattern:gsub("\\b", ""))
+end
+
 local FOAM_TODO_EXCLUDED_PATHS = {
   ["docs/agents/remind-usage.md"] = true,
   ["docs/agents/ai-autotrigger.md"] = true,

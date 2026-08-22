@@ -11,6 +11,8 @@ set -euo pipefail
 # dotfiles-test-case: nvim-ctags-links-tag-references-qf
 # dotfiles-test-case: nvim-ctags-links-ctrl-bracket-manual-priority
 # dotfiles-test-case: nvim-ctags-links-ctrl-bracket-hyphen-role
+# dotfiles-test-case: nvim-ctags-links-short-tag-blocked
+# dotfiles-test-case: nvim-ctags-links-long-tag-jumps
 
 # Purpose: Exercise the ctags structural-link workflow end to end.
 
@@ -331,6 +333,63 @@ nvim-ctags-links-ctrl-bracket-manual-priority)
         '  assert(vim.api.nvim_buf_get_name(0):match("group_vars/main%.yml$"), vim.api.nvim_buf_get_name(0))' \
         '  assert(vim.fn.line(".") == 2, vim.fn.line("."))' \
         '  assert(vim.fn.getline("."):match("^arch_wine_prefix_setups:"), vim.fn.getline("."))' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua "$project" "$lua_file"
+    ;;
+nvim-ctags-links-short-tag-blocked)
+    require_tool ctags
+    [[ -x "$nvim_bin" ]] || {
+        printf 'missing nvim binary: %s\n' "$nvim_bin" >&2
+        exit 77
+    }
+    project=$(make_project)
+    run_refresh_ctags "$project"
+
+    lua_file="${DOTFILES_TEST_TMP}/ctags-short-tag-blocked.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  vim.cmd.runtime({ "after/plugin/ctags.lua", bang = true })' \
+        '  vim.o.tags = "tags"' \
+        '  vim.cmd.edit("tasks/main.yml")' \
+        '  vim.cmd.normal({ "3G11|", bang = true })' \
+        '  assert(vim.fn.expand("<cword>") == "wine", vim.fn.expand("<cword>"))' \
+        '  local mapping = vim.fn.maparg("<C-]>", "n", false, true)' \
+        '  assert(mapping.desc:match("blocked under 6 chars"), vim.inspect(mapping))' \
+        '  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-]>", true, false, true), "x", false)' \
+        '  assert(vim.api.nvim_buf_get_name(0):match("tasks/main%.yml$"), vim.api.nvim_buf_get_name(0))' \
+        '  vim.cmd.qa({ bang = true })' \
+        'end' \
+        'local ok, err = xpcall(main, debug.traceback)' \
+        'if not ok then print(err); vim.cmd.cquit({ bang = true }) end'
+    run_nvim_lua "$project" "$lua_file"
+    ;;
+nvim-ctags-links-long-tag-jumps)
+    require_tool ctags
+    [[ -x "$nvim_bin" ]] || {
+        printf 'missing nvim binary: %s\n' "$nvim_bin" >&2
+        exit 77
+    }
+    project=$(make_project)
+    run_refresh_ctags "$project"
+
+    lua_file="${DOTFILES_TEST_TMP}/ctags-long-tag-jumps.lua"
+    write_lua "$lua_file" \
+        'local function main()' \
+        '  vim.cmd.runtime({ "after/plugin/ctags.lua", bang = true })' \
+        '  vim.o.tags = "tags"' \
+        '  vim.cmd.edit("tasks/main.yml")' \
+        '  vim.cmd.normal({ "3G11|", bang = true })' \
+        '  assert(vim.fn.expand("<cword>") == "wine", vim.fn.expand("<cword>"))' \
+        '  vim.cmd.normal({ "15G1|", bang = true })' \
+        '  assert(vim.fn.search("var_remote_commit", "c", 15) > 0, "missing usage")' \
+        '  assert(vim.fn.expand("<cword>") == "var_remote_commit", vim.fn.expand("<cword>"))' \
+        '  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-]>", true, false, true), "x", false)' \
+        '  assert(vim.api.nvim_buf_get_name(0):match("tasks/main%.yml$"), vim.api.nvim_buf_get_name(0))' \
+        '  assert(vim.fn.line(".") == 11, vim.fn.line("."))' \
+        '  assert(vim.fn.col(".") == 13, vim.fn.col("."))' \
         '  vim.cmd.qa({ bang = true })' \
         'end' \
         'local ok, err = xpcall(main, debug.traceback)' \
