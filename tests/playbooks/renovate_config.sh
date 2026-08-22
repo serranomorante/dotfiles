@@ -13,6 +13,7 @@ set -euo pipefail
 # dotfiles-test-case: renovate-config-constrains-mixed-tag-sources
 # dotfiles-test-case: renovate-config-covers-reaper-download-page
 # dotfiles-test-case: renovate-config-covers-music-production-release-assets
+# dotfiles-test-case: renovate-config-covers-davinci-resolve
 # dotfiles-test-case: renovate-config-keeps-vscode-js-debug-install-scripts-disabled
 # dotfiles-test-case: renovate-config-covers-hypothesis-branch-pins
 # dotfiles-test-case: renovate-config-covers-pkm-dependency-pins
@@ -30,6 +31,8 @@ go_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/30-lang-tools/tasks/140-setup-go
 javascript_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/30-lang-tools/tasks/30-setup-javascript-tools.archlinux.yml"
 font_defaults="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/defaults/main/fonts.vars.yml"
 music_defaults="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/defaults/main/music-production.vars.yml"
+system_vars="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/defaults/main/main.vars.yml"
+video_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/tasks/220-setup-video-tools.archlinux.yml"
 dev_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/20-dev-tools/tasks/175-setup-dependency-update-tools.archlinux.yml"
 dev_main_tasks="${DOTFILES_TEST_ROOT}/playbooks/roles/20-dev-tools/tasks/main.yml"
 pkm_defaults="${DOTFILES_TEST_ROOT}/playbooks/roles/40-PKM/defaults/main.yml"
@@ -256,6 +259,31 @@ PY
     refute rg -q 'M0n7y5/pipeasio|arch_pipeasio_setup\.version|pipeasio-[0-9][.0-9]*' "$music_defaults"
     rg -q 'arch_reaper_sws_extension_setup:' "$music_defaults"
     rg -q 'arch_helgobox_setup:' "$music_defaults"
+    ;;
+renovate-config-covers-davinci-resolve)
+    python3 - "$config_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    config = json.load(handle)
+
+datasource = config["customDatasources"]["aur-pkgbuild"]
+assert datasource["defaultRegistryUrlTemplate"] == "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h={{packageName}}"
+assert datasource["format"] == "plain"
+
+for manager in config["customManagers"]:
+    if manager.get("depNameTemplate") == "davinci-resolve":
+        assert manager["datasourceTemplate"] == "custom.aur-pkgbuild"
+        assert manager["extractVersionTemplate"] == "^pkgver=(?<version>[^\\s#]+)$"
+        assert "validationUrlTemplates" not in manager
+        break
+else:
+    raise SystemExit("missing davinci-resolve manager")
+PY
+    rg -q '^arch_davinci_resolve_version: "[0-9][0-9.]*"$' "$system_vars"
+    rg -Fq 'pkgver={{ arch_davinci_resolve_version }}' "$video_tasks"
+    rg -Fq 'DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip' "$video_tasks"
     ;;
 renovate-config-keeps-vscode-js-debug-install-scripts-disabled)
     python3 - "$javascript_tasks" <<'PY'

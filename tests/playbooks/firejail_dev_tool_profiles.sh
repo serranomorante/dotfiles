@@ -134,8 +134,12 @@ firejail-ai-agent-runtime-launchers-use-wrappers)
             exit 1
         fi
     done
-    if ! grep -Fq '/bin/fj-claude' "$davinci_tasks"; then
-        printf 'DaVinci Claude runtime task does not use fj-claude\n' >&2
+    if ! grep -Fq '/bin/agent-local-execution' "$davinci_tasks"; then
+        printf 'DaVinci download task does not use agent-local-execution\n' >&2
+        exit 1
+    fi
+    if ! grep -Fq 'opencode' "$davinci_tasks"; then
+        printf 'DaVinci download task does not use opencode\n' >&2
         exit 1
     fi
     ;;

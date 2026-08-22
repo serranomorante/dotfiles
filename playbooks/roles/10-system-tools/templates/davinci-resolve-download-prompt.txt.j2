@@ -1,0 +1,19 @@
+Use the Playwright MCP browser tools to download DaVinci Resolve for Linux.
+
+Requirements:
+- Use the browser, not shell commands, to access Blackmagic Design.
+- Do not print, log, summarize, or expose the password.
+- Navigate to https://apps.cloud.blackmagicdesign.com/davinci-resolve
+- Wait 4 seconds after navigation before deciding what page loaded.
+- If you are redirected to a login page, fill the login form with:
+  - Email: {{ var_davinci_resolve_blackmagic_email.stdout | trim }}
+  - Password: {{ var_davinci_resolve_blackmagic_password.stdout | trim }}
+- Submit the login form.
+- Confirm the browser reaches https://apps.cloud.blackmagicdesign.com/davinci-resolve
+- Scroll to the bottom of the page.
+- Click the "Download Linux" button.
+- Accept the default browser download location and filename.
+- Wait until the download has been initiated and the browser reports the download action.
+
+Expected completed file path after the browser download finishes:
+{{ ansible_facts.env.HOME }}/Downloads/DaVinci_Resolve_{{ arch_davinci_resolve_version }}_Linux.zip

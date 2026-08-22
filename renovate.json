@@ -276,6 +276,17 @@
     },
     {
       "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/main\\.vars\\.yml$/"],
+      "matchStrings": ["(?:^|\\n)arch_davinci_resolve_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "davinci-resolve",
+      "packageNameTemplate": "davinci-resolve",
+      "datasourceTemplate": "custom.aur-pkgbuild",
+      "versioningTemplate": "semver",
+      "extractVersionTemplate": "^pkgver=(?<version>[^\\s#]+)$",
+      "depTypeTemplate": "aur-pkgver"
+    },
+    {
+      "customType": "regex",
       "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/fonts\\.vars\\.yml$/"],
       "matchStrings": ["(?:^|\\n)arch_pragmasevka_nerd_font_version: \"?(?<currentValue>[^\"\\s]+)\"?"],
       "depNameTemplate": "pragmasevka",
@@ -438,6 +449,10 @@
     "sws-pre-release-downloads": {
       "defaultRegistryUrlTemplate": "https://www.sws-extension.org/download/pre-release/",
       "format": "html"
+    },
+    "aur-pkgbuild": {
+      "defaultRegistryUrlTemplate": "https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h={{packageName}}",
+      "format": "plain"
     }
   },
   "packageRules": [

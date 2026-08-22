@@ -12,6 +12,8 @@ set -euo pipefail
 # dotfiles-test-case: agent-local-execution-claude-builds-unfirejailed-command
 # dotfiles-test-case: agent-local-execution-gemini-builds-unfirejailed-command
 # dotfiles-test-case: agent-local-execution-opencode-builds-unfirejailed-command
+# dotfiles-test-case: agent-local-execution-opencode-raw-passes-prompt-through
+# dotfiles-test-case: agent-local-execution-raw-rejects-json-args
 # dotfiles-test-case: agent-local-execution-rejects-unsupported-schema
 
 # Purpose: Verify the local agent wrapper contract without invoking real agents.
@@ -202,6 +204,32 @@ agent-local-execution-gemini-builds-unfirejailed-command)
     [[ "$actual" == "$expected" ]]
     rg -q "agent: gemini" "${DOTFILES_TEST_TMP}/agent.stdin"
     rg -q "model: gpt-5" "${DOTFILES_TEST_TMP}/agent.stdin"
+    ;;
+agent-local-execution-opencode-raw-passes-prompt-through)
+    bin=$(make_fake_path)
+    write_fake_agent "$bin" fj-opencode
+    mkdir -p "${DOTFILES_TEST_TMP}/work"
+
+    printf 'Download the file now.\n' | run_wrapper_with_path "$bin" --agent opencode --raw --cwd "${DOTFILES_TEST_TMP}/work" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+
+    rg -q "agent result" "${DOTFILES_TEST_TMP}/stdout"
+    expected="--exec --root ${DOTFILES_TEST_TMP}/work -- opencode run --dir ${DOTFILES_TEST_TMP}/work"
+    actual=$(cat "${DOTFILES_TEST_TMP}/agent.args")
+    [[ "$actual" == "$expected" ]]
+    rg -q "Download the file now." "${DOTFILES_TEST_TMP}/agent.stdin"
+    refute rg -q "Execute this automated Foam TODO" "${DOTFILES_TEST_TMP}/agent.stdin"
+    refute rg -q "origin_link:" "${DOTFILES_TEST_TMP}/agent.stdin"
+    ;;
+agent-local-execution-raw-rejects-json-args)
+    bin=$(make_fake_path)
+
+    if run_wrapper_with_path "$bin" --agent opencode --raw --text 'download' >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"; then
+        printf 'wrapper unexpectedly succeeded\n' >&2
+        exit 1
+    fi
+
+    rg -q -- "--raw is incompatible" "${DOTFILES_TEST_TMP}/stderr"
+    [[ ! -e "${DOTFILES_TEST_TMP}/agent.args" ]]
     ;;
 agent-local-execution-rejects-unsupported-schema)
     bin=$(make_fake_path)

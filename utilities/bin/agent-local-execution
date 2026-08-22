@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Purpose: Run a local AI agent from a stable JSON TODO execution payload.
 # Usage: agent-local-execution --agent codex --input-json -; agent-local-execution --agent gemini --text '<payload>'
+#        agent-local-execution --agent opencode --raw --cwd DIR --timeout S  # reads a raw prompt from stdin
 # Notes: Intended for non-interactive service execution; it never asks the user for approval.
 
 import argparse
@@ -147,9 +148,7 @@ def launch_prefix(agent, opts):
     return [f"fj-{agent}", "--exec", "--root", opts["cwd"], "--", agent]
 
 
-def run_agent(payload, opts):
-    prompt = build_prompt(payload)
-
+def run_agent(prompt, opts):
     if opts["agent"] == "codex":
         cmd = launch_prefix("codex", opts)
         cmd.extend(["-a", "never"])
@@ -209,11 +208,40 @@ def run_agent(payload, opts):
     return result.returncode
 
 
+def raw_options(args):
+    agent = args.agent or "codex"
+    if agent not in SUPPORTED_AGENTS:
+        die(f"unsupported agent: {agent}")
+
+    cwd = args.cwd or os.getcwd()
+    cwd = os.path.expanduser(cwd)
+    if not os.path.isdir(cwd):
+        die(f"cwd does not exist: {cwd}")
+
+    timeout = args.timeout
+    if timeout is not None and timeout <= 0:
+        die("timeout must be positive")
+
+    return {
+        "agent": agent,
+        "cwd": cwd,
+        "model": args.model,
+        "sandbox": args.sandbox or "workspace-write",
+        "unfirejailed": args.unfirejailed,
+        "timeout": timeout,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", choices=sorted(SUPPORTED_AGENTS))
     parser.add_argument("--input-json", metavar="PATH|-")
     parser.add_argument("--text")
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help="read a raw prompt from stdin and pass it to the agent unchanged (no JSON payload)",
+    )
     parser.add_argument("--cwd")
     parser.add_argument("--model")
     parser.add_argument("--sandbox", default=None)
@@ -225,6 +253,12 @@ def main():
     parser.add_argument("--timeout", type=int)
     args = parser.parse_args()
 
+    if args.raw:
+        if args.input_json or args.text:
+            die("--raw is incompatible with --input-json and --text")
+        opts = raw_options(args)
+        raise SystemExit(run_agent(sys.stdin.read(), opts))
+
     payload = load_payload(args)
     opts = execution_options(payload, args)
     payload.setdefault("execution", {})["agent"] = opts["agent"]
@@ -233,7 +267,7 @@ def main():
     payload.setdefault("execution", {})["cwd"] = opts["cwd"]
     payload.setdefault("execution", {})["sandbox"] = opts["sandbox"]
     payload.setdefault("execution", {})["unfirejailed"] = opts["unfirejailed"]
-    raise SystemExit(run_agent(payload, opts))
+    raise SystemExit(run_agent(build_prompt(payload), opts))
 
 
 if __name__ == "__main__":
