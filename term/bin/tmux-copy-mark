@@ -1,15 +1,24 @@
 #!/bin/sh
 
 # Purpose: Save and restore Vim-style copy-mode scroll marks for a tmux pane.
-# Named marks persist to $XDG_STATE_HOME/dotfiles/tmux-copy-mark/state so they
-# survive tmux server restarts; the state pool is hydrated into panes that have
-# no marks loaded yet.
-# Usage: tmux-copy-mark save|restore SOCKET_PATH PANE_ID MARK
+# Named marks persist per session to
+# $XDG_STATE_HOME/dotfiles/tmux-copy-mark/state-<session> so they survive tmux
+# server restarts; each pane hydrates from its session's file the first time it
+# loads marks. A one-line snippet of the scrollback at each mark, plus an
+# optional user label, is stored in state-<session>.labels and shown by the
+# picker.
+# Usage: tmux-copy-mark save|save-prompt SOCKET_PATH PANE_ID MARK
+# Usage: tmux-copy-mark label SOCKET_PATH PANE_ID MARK LABEL
+# Usage: tmux-copy-mark restore SOCKET_PATH PANE_ID MARK
 # Usage: tmux-copy-mark record-entry|save-last-and-cancel|restore-last SOCKET_PATH PANE_ID
+# Usage: tmux-copy-mark list|picker SOCKET_PATH PANE_ID
 
 usage() {
-    printf '%s\n' 'Usage: tmux-copy-mark save|restore SOCKET_PATH PANE_ID MARK' >&2
+    printf '%s\n' 'Usage: tmux-copy-mark save|save-prompt SOCKET_PATH PANE_ID MARK' >&2
+    printf '%s\n' 'Usage: tmux-copy-mark label SOCKET_PATH PANE_ID MARK LABEL' >&2
+    printf '%s\n' 'Usage: tmux-copy-mark restore SOCKET_PATH PANE_ID MARK' >&2
     printf '%s\n' 'Usage: tmux-copy-mark record-entry|save-last-and-cancel|restore-last SOCKET_PATH PANE_ID' >&2
+    printf '%s\n' 'Usage: tmux-copy-mark list|picker SOCKET_PATH PANE_ID' >&2
     exit 2
 }
 
@@ -19,6 +28,7 @@ action=$1
 socket_path=$2
 pane=$3
 mark=${4:-}
+label=${5:-}
 
 tmux_cmd() {
     tmux -S "$socket_path" "$@"
@@ -90,7 +100,64 @@ set_option() {
 }
 
 state_file() {
-    printf '%s\n' "${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/tmux-copy-mark/state"
+    session=$(tmux_format '#{session_name}')
+    key=$(printf '%s' "$session" | tr -c 'A-Za-z0-9._-' '_')
+    printf '%s\n' "${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/tmux-copy-mark/state-$key"
+}
+
+labels_file() {
+    printf '%s\n' "$(state_file).labels"
+}
+
+meta_value() {
+    key=$1
+    file=$(labels_file)
+    [ -f "$file" ] || return 0
+    while IFS= read -r line; do
+        case $line in
+        "$key"=*) printf '%s\n' "${line#"$key"=}" ;;
+        esac
+    done <"$file"
+}
+
+meta_set() {
+    key=$1
+    value=$2
+    file=$(labels_file)
+    dir=$(dirname "$file")
+    mkdir -p "$dir" || return 0
+    tmp=$(mktemp "$dir/state.labels.XXXXXX") || return 0
+
+    if [ -f "$file" ]; then
+        while IFS= read -r line; do
+            case $line in
+            "$key"=*) ;;
+            *) printf '%s\n' "$line" ;;
+            esac
+        done <"$file" >"$tmp"
+    fi
+    printf '%s=%s\n' "$key" "$value" >>"$tmp"
+    mv "$tmp" "$file"
+}
+
+clean_text() {
+    printf '%s' "$1" | tr '\t\n' ' ' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+capture_snippet() {
+    line=$(tmux_format '#{copy_cursor_line}')
+    line=$(clean_text "$line")
+    printf '%s\n' "$line" | cut -c1-60
+}
+
+mark_title() {
+    m=$1
+    title=$(meta_value "${m}-label")
+    if [ -n "$title" ]; then
+        printf '%s\n' "$title"
+    else
+        meta_value "${m}-snippet"
+    fi
 }
 
 pane_pool_loaded() {
@@ -116,7 +183,8 @@ load_marks() {
 }
 
 save_marks() {
-    dir=$(dirname "$(state_file)")
+    file=$(state_file)
+    dir=$(dirname "$file")
     mkdir -p "$dir" || return 0
     tmp=$(mktemp "$dir/state.XXXXXX") || return 0
 
@@ -131,7 +199,7 @@ save_marks() {
     } >"$tmp"
 
     if [ -s "$tmp" ]; then
-        mv "$tmp" "$dir/state"
+        mv "$tmp" "$file"
     else
         rm -f "$tmp"
     fi
@@ -150,7 +218,23 @@ save_mark() {
     set_option "$(option_name mark "$mark" x)" "$(tmux_format '#{copy_cursor_x}')"
     set_option "$(option_name mark "$mark" y)" "$(tmux_format '#{copy_cursor_y}')"
     save_marks
+
+    snippet=$(capture_snippet)
+    [ -n "$snippet" ] && meta_set "${mark}-snippet" "$snippet"
+
     display_note "tmux copy mark: saved $mark"
+}
+
+label_mark() {
+    valid_mark "$mark" || usage
+    label=$(clean_text "$label")
+    [ -n "$label" ] && meta_set "${mark}-label" "$label"
+}
+
+save_prompt() {
+    save_mark
+    tmux_cmd command-prompt -p 'mark label (optional): ' \
+        "run-shell -b '\"$0\" label \"$socket_path\" \"$pane\" \"$mark\" \"%%%\"'"
 }
 
 store_current_position() {
@@ -283,6 +367,34 @@ restore_position() {
     store_current_position entry
 }
 
+list_marks() {
+    for m in a b c d e f g h i j k l m n o p q r s t u v w x y z; do
+        if [ -n "$(get_option "@dotfiles-copy-mark-$m-scroll-position")" ]; then
+            title=$(mark_title "$m")
+            if [ -n "$title" ]; then
+                printf '%s %s\n' "$m" "$title"
+            else
+                printf '%s\n' "$m"
+            fi
+        fi
+    done
+    return 0
+}
+
+picker() {
+    load_marks
+    command -v fzf-tmux >/dev/null 2>&1 || { display_note 'tmux copy mark: fzf-tmux not found'; return 0; }
+
+    marks=$(list_marks)
+    [ -n "$marks" ] || { display_note 'tmux copy mark: no marks in this pane'; return 0; }
+
+    selected=$(printf '%s\n' "$marks" | fzf-tmux -p 60%,60% --reverse --no-multi --exit-0 --prompt='tmux mark> ')
+    [ -n "$selected" ] || return 0
+
+    mark=${selected%% *}
+    restore_position mark
+}
+
 case $action in
 record-entry)
     [ "$#" -eq 3 ] || usage
@@ -291,6 +403,14 @@ record-entry)
 save)
     [ "$#" -eq 4 ] || usage
     save_mark
+    ;;
+save-prompt)
+    [ "$#" -eq 4 ] || usage
+    save_prompt
+    ;;
+label)
+    [ "$#" -eq 5 ] || usage
+    label_mark
     ;;
 save-last-and-cancel)
     [ "$#" -eq 3 ] || usage
@@ -303,6 +423,15 @@ restore)
 restore-last)
     [ "$#" -eq 3 ] || usage
     restore_position last
+    ;;
+list)
+    [ "$#" -eq 3 ] || usage
+    load_marks
+    list_marks
+    ;;
+picker)
+    [ "$#" -eq 3 ] || usage
+    picker
     ;;
 *)
     usage

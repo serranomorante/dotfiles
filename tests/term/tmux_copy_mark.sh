@@ -9,24 +9,35 @@ set -euo pipefail
 # dotfiles-test-case: tmux-copy-mark-missing-mark-is-noop
 # dotfiles-test-case: tmux-copy-mark-survives-server-restart
 # dotfiles-test-case: tmux-copy-mark-save-last-does-not-persist
+# dotfiles-test-case: tmux-copy-mark-per-session-isolation
+# dotfiles-test-case: tmux-copy-mark-list-lists-saved-marks
+# dotfiles-test-case: tmux-copy-mark-save-stores-snippet
+# dotfiles-test-case: tmux-copy-mark-label-sets-label
 
-# Purpose: Verify tmux copy marks persist to the state pool and hydrate into
-# fresh panes after a tmux server restart.
+# Purpose: Verify tmux copy marks persist per session, hydrate into fresh panes
+# after a tmux server restart, and list through the list action.
 
 mark_script="${DOTFILES_TEST_ROOT}/term/bin/tmux-copy-mark"
 sock="${DOTFILES_TEST_TMP}/tmux.sock"
-state="${XDG_STATE_HOME:-${DOTFILES_TEST_TMP}/xdg-state}/dotfiles/tmux-copy-mark/state"
+session="tmux-copy-mark-test"
+state_dir="${XDG_STATE_HOME:-${DOTFILES_TEST_TMP}/xdg-state}/dotfiles/tmux-copy-mark"
+state="${state_dir}/state-${session}"
+labels="${state_dir}/state-${session}.labels"
 
 start_server() {
-    tmux -f /dev/null -S "$sock" new-session -d -x 80 -y 24 -s tmux-copy-mark-test
+    tmux -f /dev/null -S "$sock" new-session -d -x 80 -y 24 -s "$session"
 }
 
 stop_server() {
     tmux -S "$sock" kill-server 2>/dev/null || true
 }
 
+pane_of() {
+    tmux -S "$sock" display-message -p -t "$1" '#{pane_id}'
+}
+
 pane_id() {
-    tmux -S "$sock" display-message -p -t tmux-copy-mark-test '#{pane_id}'
+    pane_of "$session"
 }
 
 pane_in_mode() {
@@ -114,6 +125,64 @@ tmux-copy-mark-save-last-does-not-persist)
     tmux -S "$sock" copy-mode -t "$P"
     "$mark_script" save-last-and-cancel "$sock" "$P"
     [ ! -e "$state" ]
+    stop_server
+    ;;
+tmux-copy-mark-per-session-isolation)
+    export XDG_STATE_HOME="${DOTFILES_TEST_TMP}/xdg-state"
+    start_server
+    tmux -f /dev/null -S "$sock" new-session -d -x 80 -y 24 -s 'beta one'
+    P=$(pane_id)
+    Q=$(pane_of 'beta one')
+    tmux -S "$sock" copy-mode -t "$P"
+    "$mark_script" save "$sock" "$P" a
+    tmux -S "$sock" copy-mode -t "$Q"
+    "$mark_script" save "$sock" "$Q" b
+
+    [ -f "$state" ]
+    [ -f "${state_dir}/state-beta_one" ]
+    refute test -e "${state_dir}/state"
+
+    rg -q '^@dotfiles-copy-mark-a-scroll-position=' "$state"
+    refute rg -q '^@dotfiles-copy-mark-b-scroll-position=' "$state"
+    rg -q '^@dotfiles-copy-mark-b-scroll-position=' "${state_dir}/state-beta_one"
+    refute rg -q '^@dotfiles-copy-mark-a-scroll-position=' "${state_dir}/state-beta_one"
+    stop_server
+    ;;
+tmux-copy-mark-list-lists-saved-marks)
+    export XDG_STATE_HOME="${DOTFILES_TEST_TMP}/xdg-state"
+    start_server
+    P=$(pane_id)
+    write_pool \
+        '@dotfiles-copy-mark-b-scroll-position=77' \
+        '@dotfiles-copy-mark-m-scroll-position=7'
+    "$mark_script" list "$sock" "$P" >"${DOTFILES_TEST_TMP}/out"
+    grep -qx 'b' "${DOTFILES_TEST_TMP}/out"
+    grep -qx 'm' "${DOTFILES_TEST_TMP}/out"
+    refute grep -qx 'a' "${DOTFILES_TEST_TMP}/out"
+    stop_server
+    ;;
+tmux-copy-mark-save-stores-snippet)
+    export XDG_STATE_HOME="${DOTFILES_TEST_TMP}/xdg-state"
+    start_server
+    P=$(pane_id)
+    tmux -S "$sock" send-keys -t "$P" 'echo SNIPPET-LINE-42' Enter
+    sleep 1
+    tmux -S "$sock" copy-mode -t "$P"
+    "$mark_script" save "$sock" "$P" a
+    [ -f "$labels" ]
+    rg -q '^a-snippet=.+$' "$labels"
+    stop_server
+    ;;
+tmux-copy-mark-label-sets-label)
+    export XDG_STATE_HOME="${DOTFILES_TEST_TMP}/xdg-state"
+    start_server
+    P=$(pane_id)
+    tmux -S "$sock" copy-mode -t "$P"
+    "$mark_script" save "$sock" "$P" a
+    "$mark_script" label "$sock" "$P" a 'my loop title'
+    rg -q '^a-label=my loop title$' "$labels"
+    "$mark_script" list "$sock" "$P" >"${DOTFILES_TEST_TMP}/out"
+    grep -qx 'a my loop title' "${DOTFILES_TEST_TMP}/out"
     stop_server
     ;;
 *)
