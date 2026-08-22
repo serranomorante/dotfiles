@@ -6,6 +6,7 @@
     name:
       - base-devel
       - devtools
+      - pacman-contrib
       - git
 
 - name: "[{{ user_os }}] AUR: remove legacy aur_builder passwordless pacman rule"

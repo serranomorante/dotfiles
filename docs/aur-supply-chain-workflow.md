@@ -38,6 +38,8 @@ Use `aur-review publish --nocheck <package>` only when the diff has been reviewe
 
 Ansible owns the local repository configuration through the `10-20` tag. Normal Ansible package tasks must not build AUR packages or call AUR helpers; they install official packages with pacman and install approved AUR packages from `[aur-local]` with `community.general.pacman`. If an AUR package has not been reviewed and published yet, Ansible reports it as skipped and continues instead of fetching from AUR, building during the run, or failing the whole playbook.
 
+`davinci-resolve` is the one deliberate exception: its Blackmagic installer is login-walled and version-pinned by Renovate, so the `220-setup-video-tools` task downloads the zip through the browser, recomputes the PKGBUILD checksums, builds with `makepkg`, and installs the resulting package with `pacman -U` directly, without going through `aur-review` or `[aur-local]`. Do not extend this exception to other AUR packages.
+
 The daily workflow is:
 
 ```sh
