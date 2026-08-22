@@ -541,6 +541,7 @@ keyboard-midi-controller-dotfiles-contract)
     rg -q 'track_lock_sync\.lua' "$sws_task"
     rg -q 'reaper-track-lock-sync' "$sws_task"
     rg -q 'GetTrackStateChunk' "$track_lock_sync"
+    rg -q 'EnumProjects' "$track_lock_sync"
     rg -Fq 'LOCK%s+1%s*$' "$track_lock_sync"
     rg -q 'TrackFX_GetParamName' "$track_lock_sync"
     rg -Fq '/Disable' "$track_lock_sync"

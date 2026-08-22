@@ -7,7 +7,8 @@
 --   minimum (OFF) when the track is enabled or its maximum (ON) when disabled, and only when
 --   the current value already differs. REAPER exposes track lock only through the state chunk
 --   (a top-level "LOCK 1" line, absent when unlocked), so item locks nested in the chunk are
---   ignored.
+--   ignored. When more than one project tab is open (a project opened via "New project tab"),
+--   the initial sync is skipped and only the resident lock watcher keeps running.
 
 local poll_interval = 0.2
 local instance_track_name = "instance-1"
@@ -33,6 +34,7 @@ local log_file = log_dir .. "/track-lock-sync.log"
 
 local next_poll = 0
 local last_lock_state = nil
+local last_tab_count = nil
 local logged_open_error = false
 
 local function safe_number(default, fn, ...)
@@ -156,17 +158,49 @@ local function read_lock_signature()
     return signature
 end
 
+local function open_project_tab_count()
+    local count = 0
+    for index = 0, 255 do
+        local ok, project = pcall(reaper.EnumProjects, index)
+        if not ok or not project then
+            break
+        end
+        count = count + 1
+    end
+    return count
+end
+
+local function sync_all_tracks(signature)
+    for index = 0, signature.track_count - 1 do
+        local track = reaper.GetTrack(0, index)
+        if track then
+            handle_lock_change(track, signature[index] == 1)
+        end
+    end
+end
+
+local function log_skip_sync(tab_count)
+    append_log(("[%s] skipped initial sync: %d project tabs open"):format(
+        os.date("%Y-%m-%d %H:%M:%S"), tab_count))
+end
+
 local function loop()
     local now = reaper.time_precise()
     if now >= next_poll then
         next_poll = now + poll_interval
         local current = read_lock_signature()
-        if last_lock_state == nil then
-            for index = 0, current.track_count - 1 do
-                local track = reaper.GetTrack(0, index)
-                if track then
-                    handle_lock_change(track, current[index] == 1)
-                end
+        local tab_count = open_project_tab_count()
+
+        if last_lock_state == nil or (last_tab_count ~= nil and tab_count ~= last_tab_count) then
+            -- First observation or a project tab was opened/closed: re-baseline the
+            -- watcher. Only push the initial sync while a single project is open, so a
+            -- project opened in a new tab does not overwrite VE Pro state.
+            last_lock_state = current
+            last_tab_count = tab_count
+            if tab_count <= 1 then
+                sync_all_tracks(current)
+            else
+                log_skip_sync(tab_count)
             end
         else
             local shared = math.min(last_lock_state.track_count, current.track_count)
@@ -178,8 +212,8 @@ local function loop()
                     end
                 end
             end
+            last_lock_state = current
         end
-        last_lock_state = current
     end
     reaper.defer(loop)
 end

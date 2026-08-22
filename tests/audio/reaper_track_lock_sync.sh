@@ -4,6 +4,7 @@ set -euo pipefail
 # dotfiles-test-unit: audio
 # dotfiles-test-tags: audio reaper lua firejail
 # dotfiles-test-case: reaper-track-lock-sync-syncs-on-load-and-lock-change
+# dotfiles-test-case: reaper-track-lock-sync-skips-sync-on-new-project-tab
 
 track_lock_sync="${DOTFILES_TEST_ROOT}/assets/scripts/reaper/track_lock_sync.lua"
 
@@ -38,6 +39,7 @@ local tracks = {
 local now = 0
 local defer_cb = nil
 local set_param_calls = 0
+local open_projects = { "project-A" }
 
 reaper = {}
 function reaper.CountTracks() return #tracks end
@@ -64,6 +66,7 @@ end
 function reaper.time_precise() return now end
 function reaper.defer(cb) defer_cb = cb end
 function reaper.ShowConsoleMsg() end
+function reaper.EnumProjects(idx) return open_projects[idx + 1] end
 
 local code = assert(io.open(script_path):read("*a"))
 assert(load(code, "chunk"))()
@@ -93,6 +96,109 @@ assert(value(2) == 1.0, string.format("lock should set ON (1.0), got %s", value(
 
 -- The instance-1 host track is never touched.
 assert(value(1) == 0.0 and value(2) == 1.0, "instance params must reflect the final state")
+
+print("PASS")
+LUA
+
+    HOME="$home" \
+        XDG_STATE_HOME="$state_home" \
+        TRACK_LOCK_SYNC_SCRIPT="$track_lock_sync" \
+        lua "$harness"
+    ;;
+reaper-track-lock-sync-skips-sync-on-new-project-tab)
+    command -v lua >/dev/null 2>&1 || {
+        printf 'lua is not available\n' >&2
+        exit 77
+    }
+
+    home="${DOTFILES_TEST_TMP}/home"
+    state_home="${DOTFILES_TEST_TMP}/state"
+    mkdir -p "$home" "${state_home}/dotfiles/reaper-track-lock-sync"
+    harness="${DOTFILES_TEST_TMP}/track-lock-sync-harness.lua"
+
+    cat >"$harness" <<'LUA'
+local script_path = assert(os.getenv("TRACK_LOCK_SYNC_SCRIPT"), "TRACK_LOCK_SYNC_SCRIPT not set")
+
+local instance_params = {
+    { name = "8 guitar-1/Disable", value = 0.0, min = 0.0, max = 1.0 },
+    { name = "9 guitar-2/Disable", value = 1.0, min = 0.0, max = 1.0 },
+}
+local tracks = {
+    { name = "guitar-1", locked = true },
+    { name = "guitar-2", locked = false },
+    { name = "instance-1", locked = false, params = instance_params },
+}
+local open_projects = { "project-A" }
+local now = 0
+local defer_cb = nil
+local set_param_calls = 0
+
+reaper = {}
+function reaper.CountTracks() return #tracks end
+function reaper.GetTrack(_, i) return tracks[i + 1] end
+function reaper.GetTrackName(t) return true, t.name end
+function reaper.GetTrackStateChunk(t, _, _)
+    local lines = { "<TRACK {00000000-0000-0000-0000-000000000000}", '  NAME "' .. t.name .. '"' }
+    if t.locked then table.insert(lines, "  LOCK 1") end
+    table.insert(lines, ">")
+    return true, table.concat(lines, "\n")
+end
+function reaper.TrackFX_GetCount(t) return t.params and 1 or 0 end
+function reaper.TrackFX_GetNumParams(t, _) return t.params and #t.params or 0 end
+function reaper.TrackFX_GetParamName(t, _, p) return true, t.params[p + 1].name end
+function reaper.TrackFX_GetParam(t, _, p)
+    local prm = t.params[p + 1]
+    return prm.value, prm.min, prm.max
+end
+function reaper.TrackFX_SetParam(t, _, p, v)
+    set_param_calls = set_param_calls + 1
+    t.params[p + 1].value = v
+    return true
+end
+function reaper.time_precise() return now end
+function reaper.defer(cb) defer_cb = cb end
+function reaper.ShowConsoleMsg() end
+function reaper.EnumProjects(idx) return open_projects[idx + 1] end
+
+local code = assert(io.open(script_path):read("*a"))
+assert(load(code, "chunk"))()
+
+local function pump()
+    local cb = defer_cb
+    if cb then defer_cb = nil; now = now + 0.3; cb() end
+end
+
+local function value(i) return instance_params[i].value end
+
+-- First load with a single tab syncs the out-of-sync tracks.
+pump()
+assert(value(1) == 1.0, string.format("locked track should sync to ON, got %s", value(1)))
+assert(value(2) == 0.0, string.format("unlocked track should sync to OFF, got %s", value(2)))
+assert(set_param_calls == 2, string.format("expected 2 sets on load, got %d", set_param_calls))
+
+-- Open a second project tab: a new instance-1 with out-of-sync params and different
+-- tracks. The initial sync must be skipped, leaving values untouched.
+open_projects = { "project-A", "project-B" }
+instance_params = {
+    { name = "20 bass-1/Disable", value = 0.0, min = 0.0, max = 1.0 },
+    { name = "21 bass-2/Disable", value = 0.0, min = 0.0, max = 1.0 },
+}
+tracks = {
+    { name = "bass-1", locked = true },   -- would sync to ON (1.0) if not skipped
+    { name = "bass-2", locked = false },  -- OFF, already 0.0
+    { name = "instance-1", locked = false, params = instance_params },
+}
+set_param_calls = 0
+pump()
+assert(value(1) == 0.0, "new-tab initial sync must be skipped")
+assert(value(2) == 0.0, "new-tab initial sync must be skipped")
+assert(set_param_calls == 0, string.format("expected 0 sets on new tab, got %d", set_param_calls))
+
+-- The resident watcher still runs: manually locking bass-2 pushes ON (1.0).
+tracks[2].locked = true
+pump()
+assert(value(2) == 1.0, string.format("manual lock should sync to ON, got %s", value(2)))
+assert(set_param_calls == 1, string.format("expected 1 set on manual lock, got %d", set_param_calls))
 
 print("PASS")
 LUA
