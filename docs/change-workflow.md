@@ -63,4 +63,5 @@ Use this for Ansible, Stow, systemctl, validation, and follow-up commands.
 - keyd templates require Ansible to install `/etc/keyd/default.conf`; systemd units require stowing plus the relevant task/handler; long-lived services need restart to pick up script changes.
 - When changing Ansible playbooks and suggesting application, provide a single-line command using `cd ~/dotfiles/playbooks && ansible-playbook tools.yml --tags <tag>`, include `-K` for become paths, and append `2>&1 | tee /tmp/ansible-<scope>.log`. Offer tags, not roles.
 - If applying a scope that installs local AUR packages, include tag `10-20` before the requested tag so `[aur-local]` is prepared. `dotfiles-system-apply` does this automatically when a changed yml mentions AUR or sets `aur_local_packages`.
+- `dotfiles-system-apply` maps role `defaults`/`vars` changes to the tags of task files that reference the diff-changed variables, so version bumps re-run their consumers; cross-role pins (for example `python_ml_version`) are covered by searching every role.
 - Inspect large Ansible logs with `tail`, `rg`, and narrow `sed -n` excerpts, not full-file dumps.

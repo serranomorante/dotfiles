@@ -6,9 +6,12 @@
 #        `A..B`/`A...B` range. Stow packages map to `dotfiles-stow <pkg>`;
 #        top-level playbooks map to their own ansible-playbook run; role task,
 #        template and file changes map to `tools.yml --tags` using the
-#        `<role>-<task>` tag convention. When a changed yml installs local AUR
-#        packages, tag `10-20` is prepended so the `[aur-local]` repo is prepared
-#        first. Pass --run to execute instead of print.
+#        `<role>-<task>` tag convention. Role `defaults`/`vars` changes map to
+#        the tags of task files that reference the variables changed by the
+#        diff, so version bumps re-run their consumers' playbooks. When a
+#        changed yml installs local AUR packages, tag `10-20` is prepended so
+#        the `[aur-local]` repo is prepared first. Pass --run to execute
+#        instead of print.
 
 import argparse
 import os
@@ -24,6 +27,7 @@ PLAYBOOKS_CFG = "playbooks/roles/10-system-tools/defaults/main/main.vars.yml"
 
 ROLE_FILE_RE = re.compile(r"^playbooks/roles/([^/]+)/(tasks|templates|files|handlers|defaults|vars|meta)/(.+)$")
 TOPLEVEL_PLAYBOOK_RE = re.compile(r"^playbooks/([^/]+)\.yml$")
+TOPLEVEL_YAML_KEY_RE = re.compile(r"^([A-Za-z_][\w-]*)\s*:")
 
 AUR_PREP_TAG = "10-20"
 AUR_RELATED_RE = re.compile(r"(?i)\baur\b|\baur[_]|install-local-aur|arch_aur|aur_local|aur-review|\[aur-local\]")
@@ -77,6 +81,50 @@ def is_aur_related(repo, rel_path):
     return AUR_RELATED_RE.search(text) is not None
 
 
+def diff_patch(repo, rev, rel_path):
+    if ".." in rev:
+        return run_git(repo, "diff", "--no-ext-diff", rev, "--", rel_path).stdout
+    return run_git(repo, "show", "--format=", "--no-ext-diff", rev, "--", rel_path).stdout
+
+
+def changed_new_lines(patch):
+    lines = set()
+    new_line = None
+    for line in patch.splitlines():
+        match = re.match(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
+        if match:
+            new_line = int(match.group(1))
+            continue
+        if new_line is None or not line or line.startswith(("+++", "---", "diff ", "index ")):
+            continue
+        if line.startswith("+"):
+            lines.add(new_line)
+            new_line += 1
+        elif not line.startswith("-"):
+            new_line += 1
+    return lines
+
+
+def owning_top_keys(repo, rel_path, new_lines):
+    try:
+        lines = (repo / rel_path).read_text(encoding="utf-8", errors="ignore").splitlines()
+    except OSError:
+        return set()
+    keys = set()
+    current = None
+    for index, line in enumerate(lines, 1):
+        match = TOPLEVEL_YAML_KEY_RE.match(line)
+        if match:
+            current = match.group(1)
+        if index in new_lines and current:
+            keys.add(current)
+    return keys
+
+
+def changed_top_keys(repo, rev, rel_path):
+    return owning_top_keys(repo, rel_path, changed_new_lines(diff_patch(repo, rev, rel_path)))
+
+
 def extract_yaml_list(path, key):
     if not path.is_file():
         return []
@@ -117,6 +165,7 @@ def task_tag(role_num, rel_path):
 def build_indexes(repos):
     task_index = []
     playbook_index = {}
+    all_task_files = []
     for repo in repos:
         playbooks_dir = repo / "playbooks"
         if not playbooks_dir.is_dir():
@@ -139,15 +188,16 @@ def build_indexes(repos):
             if not tasks_dir.is_dir():
                 continue
             for task_file in sorted(tasks_dir.rglob("*.yml")):
-                match = re.match(r"^(\d+)-", task_file.name)
-                if not match:
-                    continue
                 try:
                     text = task_file.read_text(encoding="utf-8", errors="ignore")
                 except OSError:
                     text = ""
+                all_task_files.append((role_dir.name, task_file.relative_to(tasks_dir).as_posix(), text))
+                match = re.match(r"^(\d+)-", task_file.name)
+                if not match:
+                    continue
                 task_index.append((f"{rn}-{match.group(1)}", text))
-    return task_index, playbook_index
+    return task_index, playbook_index, all_task_files
 
 
 def boundary_pattern(literal):
@@ -202,16 +252,23 @@ def main(argv):
 
     public_changed = {}
     private_changed = {}
+    path_revs = {}
     submodule_note = False
     for rev in args.commits:
         if repo_contains(public_repo, rev):
-            public_changed.update(changed_files(public_repo, rev))
+            changed = changed_files(public_repo, rev)
+            public_changed.update(changed)
+            for path in changed:
+                path_revs.setdefault(path, []).append((public_repo, rev))
         elif repo_contains(private_repo, rev):
-            private_changed.update(changed_files(private_repo, rev))
+            changed = changed_files(private_repo, rev)
+            private_changed.update(changed)
+            for path in changed:
+                path_revs.setdefault(path, []).append((private_repo, rev))
         else:
             die(f"cannot resolve '{rev}' in {public_repo} or {private_repo}")
 
-    task_index, playbook_index = build_indexes([public_repo, private_repo])
+    task_index, playbook_index, all_task_files = build_indexes([public_repo, private_repo])
 
     stow_sources = {}
     playbook_sources = {}
@@ -257,6 +314,34 @@ def main(argv):
         else:
             ignored.append((path, "no referencing numeric task found"))
 
+    def map_defaults(path, role, rel_path):
+        rn = role_number(role)
+        if rn is None:
+            ignored.append((path, f"non-numeric helper role '{role}'"))
+            return
+        keys = set()
+        for repo, rev in path_revs.get(path, []):
+            keys |= changed_top_keys(repo, rev, path)
+        if not keys:
+            ignored.append((path, "no changed variable detected"))
+            return
+        tags = set()
+        for name in keys:
+            pattern = boundary_pattern(name)
+            name_tags = search_tags(task_index, pattern)
+            if not name_tags:
+                for trole, trel, ttext in all_task_files:
+                    if not pattern.search(ttext):
+                        continue
+                    for tag in search_tags(task_index, boundary_pattern(Path(trel).name)):
+                        if tag.startswith(rn + "-"):
+                            name_tags.add(tag)
+            tags |= name_tags
+        if tags:
+            add_tags(tags, path)
+        else:
+            ignored.append((path, "no task references changed variable(s)"))
+
     def map_role_file(path, role, subdir, rel_path):
         rn = role_number(role)
         if rn is None:
@@ -266,6 +351,8 @@ def main(argv):
             map_task(rn, rel_path, path)
         elif subdir in ("templates", "files"):
             map_asset(path)
+        elif subdir in ("defaults", "vars"):
+            map_defaults(path, role, rel_path)
         else:
             ignored.append((path, f"{subdir} change not auto-mapped"))
 
