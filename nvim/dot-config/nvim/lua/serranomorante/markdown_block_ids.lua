@@ -3,6 +3,9 @@ local utils = require("serranomorante.utils")
 
 local ID_PATTERN = "[A-Za-z][A-Za-z0-9-]*"
 local ID_LINE_PATTERN = "^%s*@id%s+(" .. ID_PATTERN .. ")%s*$"
+local MARKDOWN_KNOWN_ROOTS = {
+  vim.fn.expand("~/data/notes/foam"),
+}
 
 local function warn(message) vim.notify("[Markdown @id] " .. message, vim.log.levels.WARN) end
 
@@ -114,6 +117,13 @@ local function get_root(bufnr)
   if buf_path then
     local ok, root = pcall(vim.fs.root, buf_path, { ".marksman.toml", ".git" })
     if ok and root then return normalize(root) end
+
+    for _, known in ipairs(MARKDOWN_KNOWN_ROOTS) do
+      local normalized_known = normalize(known)
+      if normalized_known and vim.startswith(normalize(buf_path), normalized_known .. "/") then
+        return normalized_known
+      end
+    end
   end
 
   return normalize(vim.fn.getcwd())
@@ -129,8 +139,9 @@ end
 local function parse_block_target(raw_target, kind)
   local target = kind == "wiki" and strip_wiki_alias(raw_target) or strip_markdown_title(raw_target)
   local file_part, id = target:match("^(.-)#%^(" .. ID_PATTERN .. ")$")
-  if not id then return nil end
-  return { file_part = file_part, id = id, kind = kind }
+  if id then return { file_part = file_part, id = id, kind = kind } end
+  if target:find("#") then return nil end
+  return { file_part = target, kind = kind }
 end
 
 local function find_wikilink_at_cursor(line, cursor_col)
@@ -146,9 +157,11 @@ end
 local function find_markdown_link_at_cursor(line, cursor_col)
   local search_from = 1
   while true do
-    local start_col, end_col, target = line:find("!-%[[^%]]-%]%(([^%)]+)%)", search_from)
+    local start_col, end_col, image, target = line:find("(!-)%[[^%]]-%]%(([^%)]+)%)", search_from)
     if not start_col then return nil end
-    if cursor_col >= start_col and cursor_col <= end_col then return parse_block_target(target, "markdown") end
+    if image == "" and cursor_col >= start_col and cursor_col <= end_col then
+      return parse_block_target(target, "markdown")
+    end
     search_from = end_col + 1
   end
 end
@@ -291,7 +304,11 @@ function M.goto_block_id_under_cursor(bufnr)
       warn(err or "Could not resolve block target")
       return
     end
-    go_to_id(path, target.id)
+    if target.id then
+      go_to_id(path, target.id)
+    else
+      open_at(path, 1)
+    end
   end)
 
   return true
