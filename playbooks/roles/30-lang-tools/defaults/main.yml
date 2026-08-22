@@ -1,5 +1,5 @@
 ---
-cpptools_version: v1.32.2
+cpptools_version: v1.33.8
 bash_debug_adapter_version: 0.3.7
 vscode_js_debug_version: 1.117.0
 arch_superhtml_version: 0.5.3
@@ -39,7 +39,7 @@ node_javascript_npm_packages:
     bins:
       - tailwindcss-language-server
   - name: "@vue/language-server"
-    version: 3.3.9
+    version: 3.3.10
     bins:
       - vue-language-server
 node_vim_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/vim-tools/.npm"

@@ -21,7 +21,7 @@ piper_tts_setup:
   venv_path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/piper-tts/.venv"
   voice_dir: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/piper-tts/voices"
   python_version: "3.11.3"
-  version: "1.6.0"
+  version: "1.7.0"
   service_name: piper-tts.service
   default_voice: en_US-lessac-medium
   voices:
@@ -60,7 +60,7 @@ node_ai_npm_packages:
     bins:
       - figma-developer-mcp
   - name: "@anthropic-ai/claude-code"
-    version: 2.1.228
+    version: 2.1.234
     bins:
       - claude
   - name: "@google/gemini-cli"
@@ -68,7 +68,7 @@ node_ai_npm_packages:
     bins:
       - gemini
   - name: opencode-ai
-    version: 1.18.16
+    version: 1.18.18
     bins:
       - opencode
   - name: chrome-devtools-mcp
@@ -105,7 +105,7 @@ node_ai_npm_packages:
     bins:
       - codex-acp
   - name: postman-cli
-    version: 1.46.0
+    version: 1.46.1
     bins:
       - postman
 
