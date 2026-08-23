@@ -327,7 +327,7 @@ def main(argv):
             return
         tags = set()
         for name in keys:
-            pattern = boundary_pattern(name)
+            pattern = prefix_pattern(name)
             name_tags = search_tags(task_index, pattern)
             if not name_tags:
                 for trole, trel, ttext in all_task_files:

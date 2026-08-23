@@ -7,6 +7,7 @@ set -euo pipefail
 # dotfiles-test-case: dotfiles-system-apply-maps-commit-to-commands
 # dotfiles-test-case: dotfiles-system-apply-prepends-aur-prep-tag
 # dotfiles-test-case: dotfiles-system-apply-unresolvable-commit-fails
+# dotfiles-test-case: dotfiles-system-apply-maps-defaults-dict-field-access
 
 # Purpose: Verify the commit -> Stow/Ansible command mapping contract without
 # invoking Stow, Ansible, or the active dotfiles repo.
@@ -111,6 +112,60 @@ YAML
     printf '%s\n' "$repo"
 }
 
+make_fake_defaults_repo() {
+    local repo="${DOTFILES_TEST_TMP}/defaults-repo"
+    mkdir -p "${repo}/playbooks/roles/10-system-tools/defaults/main"
+    mkdir -p "${repo}/playbooks/roles/60-foo/defaults/main"
+    mkdir -p "${repo}/playbooks/roles/60-foo/tasks/sub"
+
+    cat >"${repo}/playbooks/roles/10-system-tools/defaults/main/main.vars.yml" <<'YAML'
+---
+dotfiles_public_stow_packages: []
+YAML
+
+    cat >"${repo}/playbooks/tools.yml" <<'YAML'
+---
+- hosts: localhost
+  tasks: []
+YAML
+
+    cat >"${repo}/playbooks/roles/60-foo/tasks/10-setup-foo.archlinux.yml" <<'YAML'
+---
+- name: install foo
+  ansible.builtin.include_tasks:
+    file: sub/foo.task.yml
+YAML
+
+    cat >"${repo}/playbooks/roles/60-foo/tasks/sub/foo.task.yml" <<'YAML'
+---
+- name: stat foo backup
+  ansible.builtin.stat:
+    path: "{{ arch_foo_setup.backup_path }}"
+YAML
+
+    cat >"${repo}/playbooks/roles/60-foo/defaults/main/foo.vars.yml" <<'YAML'
+---
+YAML
+
+    git -C "$repo" init -q -b main
+    git -C "$repo" config user.name "Dotfiles Test"
+    git -C "$repo" config user.email test@example.invalid
+    git -C "$repo" add .
+    git -C "$repo" commit -q -m "chore: repo infra"
+
+    cat >"${repo}/playbooks/roles/60-foo/defaults/main/foo.vars.yml" <<'YAML'
+---
+arch_foo_setup:
+  backup_path: /tmp/foo
+  version: "1.0.0"
+YAML
+
+    git -C "$repo" add .
+    git -C "$repo" commit -q -m "feat(foo): add foo setup"
+
+    printf '%s\n' "$repo"
+}
+
 case "${DOTFILES_TEST_CASE:-}" in
 dotfiles-system-apply-syntax)
     PYTHONPYCACHEPREFIX="${DOTFILES_TEST_TMP}/pycache" python -m py_compile "$script_under_test"
@@ -144,6 +199,15 @@ dotfiles-system-apply-unresolvable-commit-fails)
     fi
 
     rg -q 'cannot resolve' "${DOTFILES_TEST_TMP}/stderr"
+    ;;
+dotfiles-system-apply-maps-defaults-dict-field-access)
+    repo=$(make_fake_defaults_repo)
+    sha=$(git -C "$repo" rev-parse HEAD)
+
+    "$script_under_test" --repo "$repo" "$sha" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+
+    rg -q -- '--tags 60-10' "${DOTFILES_TEST_TMP}/stdout"
+    refute rg -q 'no task references changed variable' "${DOTFILES_TEST_TMP}/stderr"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2
