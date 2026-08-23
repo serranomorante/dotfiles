@@ -13,11 +13,11 @@
   ansible.builtin.stat:
     path: "{{ wine_installer_creates }}"
   register: wine_installer_creates_stat
-  when: wine_installer_creates is defined
+  when: wine_installer_creates is defined and wine_installer_creates != omit
 
 - name: "[wine-installer-poll] Set {{ wine_installer_name }} run state"
   ansible.builtin.set_fact:
-    wine_installer_should_run: "{{ wine_installer_creates is not defined or not wine_installer_creates_stat.stat.exists }}"
+    wine_installer_should_run: "{{ wine_installer_creates is not defined or wine_installer_creates == omit or not wine_installer_creates_stat.stat.exists }}"
 
 - name: "[wine-installer-poll] Stop {{ wine_installer_name }} Wine server before installer setup"
   ansible.builtin.command:
