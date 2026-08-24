@@ -16,12 +16,19 @@
   timeout: 60
 
 - name: "[wine-prefix-setup] Check {{ wine_prefix_setup.name }} Wine Mono registration"
+  # Wine Mono 11.x registers through the shared support MSI, which sets the
+  # .NET Framework v4 Full key; it never appears in `wine uninstaller --list`.
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
-    wine uninstaller --list
+    wine reg query 'HKEY_LOCAL_MACHINE\Software\Microsoft\NET Framework Setup\NDP\v4\Full' /v Version
   changed_when: false
   failed_when: false
   register: wine_prefix_setup_mono_registration
+  when: wine_prefix_setup.ensure_mono | default(false) | bool
+
+- name: "[wine-prefix-setup] Set {{ wine_prefix_setup.name }} Wine Mono registration state"
+  ansible.builtin.set_fact:
+    wine_prefix_setup_mono_registered: "{{ wine_prefix_setup_mono_registration.rc | default(1) == 0 }}"
   when: wine_prefix_setup.ensure_mono | default(false) | bool
 
 - name: "[wine-prefix-setup] Find system Wine Mono support MSI"
@@ -44,23 +51,25 @@
   timeout: 120
   when:
     - wine_prefix_setup.ensure_mono | default(false) | bool
-    - "'Wine Mono' not in (wine_prefix_setup_mono_registration.stdout | default(''))"
+    - not wine_prefix_setup_mono_registered | bool
     - wine_prefix_setup_mono_support_msi.files | default([]) | length > 0
 
 - name: "[wine-prefix-setup] Ensure {{ wine_prefix_setup.name }} Wine Mono is registered"
+  # Fallback only when the shared support MSI is missing. The support MSI path
+  # already registers Mono on its own, so no wineboot is needed there; this
+  # update can hang on the Wine Mono install dialog, so it must never fail.
   ansible.builtin.command: >
     {{ ansible_facts.env.HOME }}/bin/wwine --prefix '{{ wine_prefix_setup.name }}'
     --arch '{{ wine_prefix_setup.architecture | default('win64') }}'
     wineboot -u
   changed_when: true
+  failed_when: false
   register: wine_prefix_setup_ensure_mono
-  timeout: 120
+  timeout: 300
   when:
     - wine_prefix_setup.ensure_mono | default(false) | bool
-    - "'Wine Mono' not in (wine_prefix_setup_mono_registration.stdout | default(''))"
-    - >
-      (wine_prefix_setup_install_mono_support.changed | default(false))
-      or (wine_prefix_setup_mono_support_msi.files | default([]) | length == 0)
+    - not wine_prefix_setup_mono_registered | bool
+    - wine_prefix_setup_mono_support_msi.files | default([]) | length == 0
 
 - name: "[wine-prefix-setup] Stop {{ wine_prefix_setup.name }} wineserver after Wine Mono registration"
   ansible.builtin.command: >
@@ -69,7 +78,9 @@
   changed_when: true
   failed_when: false
   timeout: 60
-  when: wine_prefix_setup_ensure_mono.changed | default(false)
+  when: >
+    (wine_prefix_setup_install_mono_support.changed | default(false))
+    or (wine_prefix_setup_ensure_mono.changed | default(false))
 
 - name: "[wine-prefix-setup] Stat {{ wine_prefix_setup.name }} LogPixels marker"
   ansible.builtin.include_role:
