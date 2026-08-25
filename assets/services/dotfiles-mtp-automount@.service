@@ -1,0 +1,16 @@
+# {{ ansible_managed }}
+# Instance name (%i) is the MTP device serial to mount.
+# Started on device connect by /etc/udev/rules.d/70-dotfiles-mtp-automount.rules
+# and stopped on device remove. jmtpfs runs as the desktop user (not root) so
+# the FUSE mount goes through fusermount like a normal interactive mount; as
+# root, libfuse falls back to fusermount with a subtype option it rejects.
+# jmtpfs runs in the foreground so a service stop SIGTERMs it and unmounts.
+[Unit]
+Description=Mount MTP device %i
+DefaultDependencies=no
+After=local-fs.target
+
+[Service]
+Type=simple
+User={{ ansible_facts.env.USER }}
+ExecStart=/usr/local/bin/dotfiles-mtp-automount %i

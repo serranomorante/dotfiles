@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+# On connect, hand off to dotfiles-mtp-automount@<serial>.service so the MTP
+# device is mounted at its configured path. On remove, stop the service so the
+# FUSE mount is torn down with the device. Clearing ID_MTP_DEVICE/ID_MEDIA_PLAYER
+# keeps Solid (and thus KDE's kmtpd daemon, hosted inside kiod6) from claiming
+# the device, which would otherwise make jmtpfs fail with "device is busy".
+{% for entry in arch_mtp_automounts %}
+ACTION=="add", SUBSYSTEM=="usb", ATTR{serial}=="{{ entry.serial }}", ENV{ID_MTP_DEVICE}="", ENV{ID_MEDIA_PLAYER}="", TAG+="systemd", ENV{SYSTEMD_WANTS}+="dotfiles-mtp-automount@{{ entry.serial }}.service"
+ACTION=="remove", SUBSYSTEM=="usb", ATTR{serial}=="{{ entry.serial }}", RUN+="/usr/bin/systemctl --no-block stop dotfiles-mtp-automount@{{ entry.serial }}.service"
+{% endfor %}

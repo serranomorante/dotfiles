@@ -47,6 +47,7 @@
   vars:
     aur_local_packages:
       - pmount
+      - jmtpfs
       - xdg-desktop-portal-termfilechooser-hunkyburrito-git
     aur_local_package_notify:
       - handler_restart_xdg_desktop_portal_termfilechooser
@@ -196,6 +197,49 @@
   ansible.builtin.template:
     src: 70-dotfiles-automount.rules
     dest: /etc/udev/rules.d/70-dotfiles-automount.rules
+    owner: root
+    mode: "644"
+  notify: "10-system-tools : handler_reload_udev_rules"
+
+# Mount MTP devices (e.g. the Boox e-reader) on connect via jmtpfs. A udev
+# rule matches the configured USB serials and hands off to
+# dotfiles-mtp-automount@<serial>.service, which mounts at the configured
+# path. The service is stopped on device remove, tearing down the FUSE mount.
+- name: "[{{ user_os }}] Setup file manager: install mtp automount helper"
+  become: true
+  ansible.builtin.copy:
+    src: ~/dotfiles/assets/scripts/storage/dotfiles-mtp-automount
+    dest: /usr/local/bin/dotfiles-mtp-automount
+    owner: root
+    mode: "755"
+
+- name: "[{{ user_os }}] Setup file manager: write mtp automount config"
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/dotfiles/mtp-automounts.conf
+    owner: root
+    mode: "644"
+    content: |
+      # {{ ansible_managed }}
+      # Managed by 10-200 (arch_mtp_automounts). "<serial> <mountpoint> <owner>" per line.
+      {% for entry in arch_mtp_automounts %}
+      {{ entry.serial }} {{ entry.mountpoint }} {{ entry.owner }}
+      {% endfor %}
+
+- name: "[{{ user_os }}] Setup file manager: install mtp automount service unit"
+  become: true
+  ansible.builtin.template:
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/services/dotfiles-mtp-automount@.service"
+    dest: /etc/systemd/system/dotfiles-mtp-automount@.service
+    owner: root
+    mode: "644"
+  notify: "10-system-tools : handler_reload_systemd"
+
+- name: "[{{ user_os }}] Setup file manager: install mtp automount udev rule"
+  become: true
+  ansible.builtin.template:
+    src: 70-dotfiles-mtp-automount.rules
+    dest: /etc/udev/rules.d/70-dotfiles-mtp-automount.rules
     owner: root
     mode: "644"
   notify: "10-system-tools : handler_reload_udev_rules"

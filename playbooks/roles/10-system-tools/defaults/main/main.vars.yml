@@ -154,6 +154,14 @@ arch_filesystem_automounts:
     mountpoint: /run/media/{{ ansible_facts.env.USER }}/dev4
     owner: "{{ ansible_facts.env.USER }}"
 
+# MTP devices mounted on connect by dotfiles-mtp-automount@.service. Match is
+# by USB serial, which stays stable across MTP/MTP+ADB mode switches (the
+# idProduct changes between 18d1:4ee1 and 18d1:4ee2 depending on USB debugging).
+arch_mtp_automounts:
+  - serial: 5DEEF0C9
+    mountpoint: "{{ ansible_facts.env.HOME }}/boox"
+    owner: "{{ ansible_facts.env.USER }}"
+
 arch_ansible_long_retries_config:
   delay_n: 5
   retries_n: 10000

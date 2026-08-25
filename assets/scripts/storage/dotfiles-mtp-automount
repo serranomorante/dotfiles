@@ -1,0 +1,46 @@
+#!/usr/bin/env sh
+#
+# Purpose: Mount the MTP device identified by its USB serial at its configured
+#          mountpoint via jmtpfs. Idempotent and non-fatal on failure.
+# Usage:   dotfiles-mtp-automount <serial>
+# Notes:   Runs as the desktop user from the udev-triggered
+#          dotfiles-mtp-automount@.service (User= in the unit). jmtpfs runs as
+#          that user so it mounts through fusermount like a normal interactive
+#          mount; running jmtpfs as root instead trips a libfuse subtype
+#          fallback that aborts with "fuse: unknown option '-osubtype=jmtpfs'".
+#          jmtpfs stays in the foreground so a service stop SIGTERMs it and
+#          libfuse unmounts. The serial -> mountpoint -> owner map is read from
+#          /etc/dotfiles/mtp-automounts.conf, one "<serial> <mountpoint>
+#          <owner>" line per device. Assumes the serialed device is the sole
+#          MTP device present, since jmtpfs mounts the first libmtp device by
+#          default.
+
+set -eu
+
+serial="${1:?usage: dotfiles-mtp-automount <serial>}"
+conf="${DOTFILES_MTP_AUTOMOUNTS_CONF:-/etc/dotfiles/mtp-automounts.conf}"
+
+[ -r "$conf" ] || exit 0
+
+mp=""
+while read -r conf_serial conf_mp _owner _rest; do
+    case "$conf_serial" in
+        ''|'#'*) continue ;;
+    esac
+    if [ "$conf_serial" = "$serial" ]; then
+        mp="$conf_mp"
+        break
+    fi
+done < "$conf"
+
+# Serial not configured: nothing to do.
+[ -n "$mp" ] || exit 0
+
+# Already mounted at the target: idempotent no-op.
+if mountpoint -q -- "$mp" 2>/dev/null || grep -q " $mp " /proc/mounts; then
+    exit 0
+fi
+
+mkdir -p -- "$mp"
+
+exec jmtpfs -f -- "$mp"
