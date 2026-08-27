@@ -1,34 +1,57 @@
-local toboolean = { ["true"] = true, ["false"] = false }
----@type string
-local should_go_to_previous_position = reaper.GetExtState("custom", "should_go_to_previous_position") or "true"
-local previous_edit_cursor_pos = tonumber(tostring(reaper.GetExtState("custom", "previous_edit_cursor_pos")))
+-- Purpose: Toggle the edit cursor between the current position and the last
+--   position it was at. If the cursor was moved manually since the last toggle,
+--   jump back to the last toggled position and remember the manual position as
+--   the new "other" slot, so the next toggle returns to it.
+-- Notes: State is stored in REAPER ExtState (session only). Two slots are kept:
+--   "last" is where the cursor is expected to be after our own move, and "prev"
+--   is the position to jump back to. Cursor positions are compared with a small
+--   epsilon because floating-point times do not round-trip exactly.
 
-local GO_TO = {
-  PREVIOUS_POS_ACTION = "SWS: Undo edit cursor move",
-  CURRENT_POS_ACTION = "SWS: Redo edit cursor move"
-}
+local NAMESPACE = "alternate_position"
+local EPSILON = 0.000001
 
----@param search string
-local function get_id_from_action_name(search)
-  local name, cnt, ret = "", 0, 1
-  while ret > 0 do
-    ret, name = reaper.CF_EnumerateActions(0, cnt, "")
-    if name == search then return ret end
-    cnt = cnt + 1
-  end
+local function get_position(key)
+    local value = reaper.GetExtState(NAMESPACE, key)
+    if value == nil or value == "" then
+        return nil
+    end
+    return tonumber(value)
 end
 
-local action_id = get_id_from_action_name(toboolean[should_go_to_previous_position] and GO_TO.CURRENT_POS_ACTION or GO_TO.PREVIOUS_POS_ACTION)
-reaper.SetExtState("custom", "should_go_to_previous_position", tostring(not toboolean[should_go_to_previous_position]), false)
-local current_edit_cursor_pos = tonumber(tostring(reaper.GetCursorPosition()))
-local current_should_go_to_previous_position = tostring(not toboolean[should_go_to_previous_position])
-reaper.Main_OnCommand(action_id, 0, 0)
+local function set_position(key, value)
+    reaper.SetExtState(NAMESPACE, key, string.format("%.9f", value), false)
+end
 
--- if same edit cursor position, toggle again
-if previous_edit_cursor_pos == current_edit_cursor_pos then
-  action_id = action_id == GO_TO.CURRENT_POS_ACTION and GO_TO.PREVIOUS_POS_ACTION or GO_TO.CURRENT_POS_ACTION
-  reaper.Main_OnCommand(action_id, 0, 0)
+local function nearly_equal(a, b)
+    if a == nil or b == nil then
+        return false
+    end
+    return math.abs(a - b) < EPSILON
+end
+
+local now = reaper.GetCursorPosition()
+local last = get_position("last")
+local prev = get_position("prev")
+
+if last == nil then
+    -- First run: record the current position as the anchor; there is nothing to
+    -- toggle back to yet.
+    set_position("last", now)
+    set_position("prev", now)
+    return
+end
+
+if nearly_equal(now, last) then
+    -- Cursor is still at the anchor. Toggle back to the previous position and
+    -- swap the slots so the next toggle returns here.
+    if prev ~= nil and not nearly_equal(prev, last) then
+        reaper.SetEditCurPos(prev, true, false)
+    end
+    set_position("last", prev)
+    set_position("prev", last)
 else
-  reaper.SetExtState("custom", "should_go_to_previous_position", current_should_go_to_previous_position, false)
-  reaper.SetExtState("custom", "previous_edit_cursor_pos", current_edit_cursor_pos, false)
+    -- Cursor was moved manually. Jump back to the last anchor and remember the
+    -- manual position as the new previous position.
+    reaper.SetEditCurPos(last, true, false)
+    set_position("prev", now)
 end
