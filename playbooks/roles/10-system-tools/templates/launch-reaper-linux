@@ -104,6 +104,26 @@ export_audio_latency_env() {
   export PIPEWIRE_RATE="1/${audio_latency_rate}"
 }
 
+preload_linvst_server() {
+  # Prestart the LinVst-X server before REAPER so the first plugin load does not
+  # hit LinVst-X's cold-start dll load timeout. The server re-enters wwine via
+  # WINELOADER, so it always starts inside the configured Firejail sandbox.
+  local server="/usr/bin/lin-vst-server-x.exe"
+  local log_file="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/linvstx-server.log"
+
+  if [ ! -x "$server" ]; then
+    return 0
+  fi
+
+  if pgrep -f 'lin-vst-server-x' >/dev/null 2>&1; then
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$log_file")"
+  nohup "$server" >>"$log_file" 2>&1 </dev/null &
+  disown 2>/dev/null || true
+}
+
 sandbox_is_registered() {
   firejail --list 2>/dev/null | awk -F: -v name="$firejail_sandbox_name" '$3 == name { found = 1 } END { exit found ? 0 : 1 }'
 }
@@ -166,6 +186,8 @@ fi
 "{{ ansible_facts.env.HOME }}/.local/bin/connect-reaper-to-music-production" &
 
 eval "$("{{ ansible_facts.env.HOME }}/bin/wwine" "${wwine_prepare_args[@]}" prepare-env)"
+
+preload_linvst_server
 
 export WINEDEBUG=-all,+err
 export_audio_latency_env
