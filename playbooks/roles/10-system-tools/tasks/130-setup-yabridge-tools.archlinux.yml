@@ -22,3 +22,63 @@
     dotfiles_marker_name: "yabridge-{{ arch_yabridge_version }}"
     dotfiles_marker_content: "{{ arch_yabridge_version }}\n"
   when: not var_yabridge_marker.stat.exists
+
+- name: "[{{ user_os }}] LinVst-X tools: stat linvstx marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "linvstx-{{ arch_linvstx_setup.version }}"
+    dotfiles_marker_register: var_linvstx_marker
+
+- name: "[{{ user_os }}] LinVst-X tools: ensure archive cache folder"
+  ansible.builtin.file:
+    path: ~/data/apps/virt-tools
+    state: directory
+    mode: "0755"
+
+- name: "[{{ user_os }}] LinVst-X tools: download LinVst-X"
+  ansible.builtin.get_url:
+    url: "{{ arch_linvstx_setup.archive_url }}"
+    dest: "~/data/apps/virt-tools/{{ arch_linvstx_setup.archive_name }}"
+    checksum: "{{ arch_linvstx_setup.archive_checksum }}"
+    mode: "0644"
+  when: not var_linvstx_marker.stat.exists
+
+- name: "[{{ user_os }}] LinVst-X tools: install LinVst-X"
+  ansible.builtin.unarchive:
+    src: "~/data/apps/virt-tools/{{ arch_linvstx_setup.archive_name }}"
+    dest: "{{ arch_linvstx_setup.install_parent_path }}"
+    remote_src: true
+  when: not var_linvstx_marker.stat.exists
+
+- name: "[{{ user_os }}] LinVst-X tools: install LinVst-X server binaries"
+  become: true
+  ansible.builtin.copy:
+    src: "{{ arch_linvstx_setup.install_path }}/{{ item }}"
+    dest: "/usr/bin/{{ item }}"
+    mode: "0755"
+    remote_src: true
+  loop:
+    - lin-vst-server-x.exe
+    - lin-vst-server-x.exe.so
+    - lin-vst-server-x32.exe
+    - lin-vst-server-x32.exe.so
+  when: not var_linvstx_marker.stat.exists
+
+- name: "[{{ user_os }}] LinVst-X tools: install LinVst-X converter"
+  ansible.builtin.copy:
+    src: "{{ arch_linvstx_setup.install_path }}/linvstxconvert"
+    dest: ~/.local/bin/linvstxconvert
+    mode: "0755"
+    remote_src: true
+  when: not var_linvstx_marker.stat.exists
+
+- name: "[{{ user_os }}] LinVst-X tools: record linvstx marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "linvstx-{{ arch_linvstx_setup.version }}"
+    dotfiles_marker_content: "{{ arch_linvstx_setup.version }}\n"
+  when: not var_linvstx_marker.stat.exists
