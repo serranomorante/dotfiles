@@ -56,19 +56,19 @@
 
 - name: "[{{ user_os }}] Wine tools: stat native reaper ini"
   ansible.builtin.stat:
-    path: ~/.config/REAPER/REAPER.ini
+    path: ~/.config/REAPER/reaper.ini
   register: var_native_reaper_ini
 
 - name: "[{{ user_os }}] Wine tools: check native reaper VST path key"
-  ansible.builtin.command: grep -Eq "^vstpath64=" "{{ ansible_facts.env.HOME }}/.config/REAPER/REAPER.ini"
+  ansible.builtin.command: grep -Eq "^vstpath=" "{{ ansible_facts.env.HOME }}/.config/REAPER/reaper.ini"
   changed_when: false
   failed_when: false
-  register: var_native_reaper_vstpath64_key
+  register: var_native_reaper_vstpath_key
   when: var_native_reaper_ini.stat.exists
 
 - name: "[{{ user_os }}] Wine tools: check native reaper user VST path"
-  ansible.builtin.command: grep -Eq "^vstpath64=.*(^|;){{ ansible_facts.env.HOME | regex_escape }}/\\.vst/helgobox(;|$)" "{{ ansible_facts.env.HOME
-    }}/.config/REAPER/REAPER.ini"
+  ansible.builtin.command: grep -Eq "^vstpath=.*(^|;){{ ansible_facts.env.HOME | regex_escape }}/\\.vst/helgobox(;|$)" "{{ ansible_facts.env.HOME
+    }}/.config/REAPER/reaper.ini"
   changed_when: false
   failed_when: false
   register: var_native_reaper_user_vst_path
@@ -76,23 +76,23 @@
 
 - name: "[{{ user_os }}] Wine tools: add native reaper VST path key"
   ansible.builtin.lineinfile:
-    path: ~/.config/REAPER/REAPER.ini
+    path: ~/.config/REAPER/reaper.ini
     insertafter: "^\\[reaper\\]"
-    line: "vstpath64={{ ansible_facts.env.HOME }}/.vst/helgobox"
+    line: "vstpath={{ ansible_facts.env.HOME }}/.vst/helgobox"
     mode: "644"
   when:
     - var_native_reaper_ini.stat.exists
-    - var_native_reaper_vstpath64_key.rc != 0
+    - var_native_reaper_vstpath_key.rc != 0
 
 - name: "[{{ user_os }}] Wine tools: prepend native reaper user VST path"
   ansible.builtin.lineinfile:
-    path: ~/.config/REAPER/REAPER.ini
-    regexp: "^vstpath64=(.*)$"
-    line: "vstpath64={{ ansible_facts.env.HOME }}/.vst/helgobox;\\1"
+    path: ~/.config/REAPER/reaper.ini
+    regexp: "^vstpath=(.*)$"
+    line: "vstpath={{ ansible_facts.env.HOME }}/.vst/helgobox;\\1"
     backrefs: true
   when:
     - var_native_reaper_ini.stat.exists
-    - var_native_reaper_vstpath64_key.rc == 0
+    - var_native_reaper_vstpath_key.rc == 0
     - var_native_reaper_user_vst_path.rc != 0
 
 - name: "[{{ user_os }}] Wine tools: install native Helgobox/ReaLearn extension"
