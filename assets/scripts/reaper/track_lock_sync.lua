@@ -8,7 +8,10 @@
 --   the current value already differs. REAPER exposes track lock only through the state chunk
 --   (a top-level "LOCK 1" line, absent when unlocked), so item locks nested in the chunk are
 --   ignored. When more than one project tab is open (a project opened via "New project tab"),
---   the initial sync is skipped and only the resident lock watcher keeps running.
+--   the initial sync is skipped and only the resident lock watcher keeps running. The lock
+--   signature skips the instance track's state chunk: reading it would serialize the whole
+--   VE Pro plugin state through yabridge every poll, which is needlessly expensive since the
+--   instance track is discarded by handle_lock_change anyway.
 
 local poll_interval = 0.2
 local instance_track_name = "instance-1"
@@ -153,7 +156,15 @@ local function read_lock_signature()
     local signature = { track_count = track_count }
     for index = 0, track_count - 1 do
         local track = reaper.GetTrack(0, index)
-        signature[index] = (track and track_controls_locked(track)) and 1 or 0
+        -- The instance track is skipped in handle_lock_change, so its lock state is
+        -- never used. Not reading its state chunk avoids serializing the whole VE Pro
+        -- plugin state through yabridge on every poll, which was the main source of
+        -- CPU load under native REAPER.
+        if track and track_name(track) ~= instance_track_name then
+            signature[index] = track_controls_locked(track) and 1 or 0
+        else
+            signature[index] = 0
+        end
     end
     return signature
 end
