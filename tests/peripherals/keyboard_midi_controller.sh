@@ -500,7 +500,7 @@ keyboard-midi-controller-dotfiles-contract)
     rg -q 'midi_editor_state_feedback\.lua' "$reaper_startup_script"
     rg -q 'item_state_feedback\.lua' "$reaper_startup_script"
     rg -q 'project_transport_state_feedback\.lua' "$reaper_startup_script"
-    refute rg -q 'track_lock_sync\.lua' "$reaper_startup_script"
+    rg -q 'track_lock_sync\.lua' "$reaper_startup_script"
     rg -q 'MIDIEditor_GetActive' "$midi_editor_state_feedback"
     refute rg -q 'MIDIEditor_GetMode' "$midi_editor_state_feedback"
     rg -q 'MIDIEditor_GetTake' "$midi_editor_state_feedback"

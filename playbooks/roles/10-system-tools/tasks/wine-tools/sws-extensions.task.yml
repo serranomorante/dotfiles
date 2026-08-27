@@ -202,6 +202,7 @@
     - item_state_feedback.lua
     - midi_editor_state_feedback.lua
     - project_transport_state_feedback.lua
+    - track_lock_sync.lua
     - yabridge_focus_repair.lua
 
 - name: "[{{ user_os }}] Wine tools: stat sws extension installer"
