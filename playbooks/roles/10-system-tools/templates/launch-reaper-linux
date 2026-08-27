@@ -73,7 +73,7 @@ audio_latency_buffer={{ audio_latency_buffer_size }}
 audio_latency_rate={{ audio_latency_sample_rate }}
 audio_latency_defaults_file="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/audio-latency.defaults.env"
 audio_latency_state_file="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/audio-latency.env"
-wwine_prepare_args=(--prefix musicplugins --use-sandbox)
+wwine_prepare_args=(--prefix reaper --use-sandbox)
 if [ -n "${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-}" ]; then
   wwine_prepare_args+=(--sandbox-name "$firejail_sandbox_name")
 fi
