@@ -11,6 +11,9 @@ return {
     local output = vim.fn.fnamemodify(input, ":r") .. ".pdf"
     local fullhrule = ("%s/fullhrule.tex"):format(vim.fn.getcwd())
     local bib_file = ("%s/myrefs.public.bib"):format(vim.fn.getcwd())
+    -- Wraps code blocks; without it a line wider than the page runs off the paper.
+    local config_dir = vim.fn.stdpath("config")
+    local code_wrap = ("%s/lua/overseer/template/editor-tasks/export_markdown/code-wrap.tex"):format(config_dir)
 
     local args = {
       "--from=markdown+rebase_relative_paths",
@@ -20,6 +23,7 @@ return {
       "--mathjax",
       "--filter=mermaid-filter",
       "--citeproc",
+      ("--include-in-header=%s"):format(code_wrap),
     }
     if utils.exists(fullhrule) then table.insert(args, ("--include-in-header=%s"):format(fullhrule)) end
     if utils.exists(bib_file) then table.insert(args, ("--bibliography=%s"):format(bib_file)) end

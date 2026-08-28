@@ -1,0 +1,23 @@
+% Long code lines must wrap: a PDF page has no horizontal scroll, and fancyvrb's
+% Verbatim -- what pandoc builds its code blocks on -- runs a long line straight
+% past the right margin and off the paper without a word of warning.
+\usepackage{fvextra}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\},breaklines,breakanywhere}
+\RecustomVerbatimEnvironment{verbatim}{Verbatim}{breaklines,breakanywhere}
+\renewcommand{\VERB}{\Verb[commandchars=\\\{\},breaklines,breakanywhere]}
+
+% Inline code has the same problem inside a table cell, whose width is fixed:
+% an identifier or a path is one unbreakable word to TeX. Offer a break after
+% the punctuation code is made of, so the cell can wrap instead of overflowing.
+\ExplSyntaxOn
+\tl_new:N \l__cfwrap_tt_tl
+\NewDocumentCommand \cfwrapbreakable { m } {
+  \tl_set:Nn \l__cfwrap_tt_tl {#1}
+  \clist_map_inline:nn { / , . , - , : , = , ? , \& , | , * , + , ; , \{ , \} , \_ , \% , \# }
+    { \tl_replace_all:Nnn \l__cfwrap_tt_tl {##1} {##1 \allowbreak} }
+  \tl_replace_all:Nnn \l__cfwrap_tt_tl { , } { , \allowbreak }
+  \tl_use:N \l__cfwrap_tt_tl
+}
+\ExplSyntaxOff
+\let\cfwrapOrigTexttt\texttt
+\renewcommand{\texttt}[1]{\cfwrapOrigTexttt{\cfwrapbreakable{#1}}}
