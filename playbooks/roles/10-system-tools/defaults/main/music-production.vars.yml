@@ -77,6 +77,19 @@ arch_linvstx_setup:
   install_path: "{{ ansible_facts.env.HOME }}/.local/share/LinVst-X-4.9-wine-10.x-arch"
   linvstx_so_path: "{{ ansible_facts.env.HOME }}/.local/share/LinVst-X-4.9-wine-10.x-arch/linvstx.so"
 
+# Carla Windows bridge binaries. The Arch carla package ships without them, so
+# they are cross-compiled directly from the matching Carla tag instead of via a
+# (stale) AUR package whose 32-bit build no longer works against the current
+# mingw-w64 toolchain.
+arch_carla_bridge_setup:
+  repo: https://github.com/falkTX/Carla
+  version: ad09259060a4e660a5033024406a1c3cc9f9c198  # refs/tags/v2.5.10, matches installed carla
+  source_path: "{{ ansible_facts.env.HOME }}/data/repos/carla-bridges"
+  install_path: /usr/lib/carla
+  bridge_name: carla-bridge-win64.exe
+  discovery_name: carla-discovery-win64.exe
+  dll_name: jackbridge-wine64.dll
+
 wwine_prefix_aliases:
   musicproduction:
     path: "{{ arch_musicproduction_wine_prefix }}"

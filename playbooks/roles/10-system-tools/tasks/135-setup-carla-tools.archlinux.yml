@@ -1,0 +1,130 @@
+---
+# Carla is an audio plugin host that can also bridge Windows VST plugins through
+# Wine. It is installed as a third bridge alongside yabridge (VST3) and LinVst-X
+# (VST2), but unlike those it keeps its Windows plugins inside its own rack, so
+# it never writes wrapper .so files into the native VST scan paths that yabridge
+# and LinVst-X manage.
+#
+# The Arch `carla` package ships without the Windows bridge binaries
+# (carla-bridge-win64.exe / carla-discovery-win64.exe), so they are cross-compiled
+# directly from the matching Carla tag with mingw-w64 and installed next to the
+# packaged binaries. The bridge also requires the winegcc-built
+# jackbridge-wine64.dll (make wine64) to instantiate plugins. This replaces the
+# stale `carla-bridges-win` AUR package, whose combined 32/64-bit build no longer
+# works against the current mingw-w64 toolchain and whose 32-bit bridge is
+# useless for wow64 wine anyway.
+#
+# The Wine bridge is pinned to the system Wine profile on the Reaper prefix so
+# Vienna Ensemble Pro resolves from the same prefix the other bridges already
+# use. The VEP bridge folders are pre-registered in the VST2/VST3 search paths so
+# they show up in Carla's plugin browser without any manual path setup; adding a
+# plugin to a rack remains host (REAPER project) state and cannot be expressed
+# declaratively.
+- name: "[{{ user_os }}] Carla tools: install Carla host"
+  become: true
+  ansible.builtin.package:
+    name: carla
+    state: present
+
+- name: "[{{ user_os }}] Carla tools: ensure bridge build dependencies"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - mingw-w64-gcc
+      - mingw-w64-winpthreads
+
+- name: "[{{ user_os }}] Carla tools: clone bridge source"
+  ansible.builtin.git:
+    repo: "{{ arch_carla_bridge_setup.repo }}"
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
+    dest: "{{ arch_carla_bridge_setup.source_path }}"
+    version: "{{ arch_carla_bridge_setup.version }}"
+  register: var_carla_bridge_repo
+
+- name: "[{{ user_os }}] Carla tools: check bridge build marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "carla-bridges-{{ arch_carla_bridge_setup.version }}-stack-v2"
+    dotfiles_marker_register: var_carla_bridge_marker
+
+- name: "[{{ user_os }}] Carla tools: build win64 bridges"
+  ansible.builtin.command:
+    argv:
+      - make
+      - win64
+      - "AR=x86_64-w64-mingw32-ar"
+      - "CC=x86_64-w64-mingw32-gcc"
+      - "CXX=x86_64-w64-mingw32-g++"
+      - "HAVE_LIBLO=false"
+  args:
+    chdir: "{{ arch_carla_bridge_setup.source_path }}"
+  changed_when: true
+  when: not var_carla_bridge_marker.stat.exists
+
+- name: "[{{ user_os }}] Carla tools: build wine64 bridge library"
+  ansible.builtin.command:
+    argv:
+      - make
+      - wine64
+      - "JACKBRIDGE_FLAGS=-D__WIDL_objidl_generated_name_0000000C="
+  args:
+    chdir: "{{ arch_carla_bridge_setup.source_path }}"
+  changed_when: true
+  when: not var_carla_bridge_marker.stat.exists
+
+- name: "[{{ user_os }}] Carla tools: record bridge build marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "carla-bridges-{{ arch_carla_bridge_setup.version }}-stack-v2"
+    dotfiles_marker_content: "carla-bridges {{ arch_carla_bridge_setup.version }} stack-v2\n"
+  when: not var_carla_bridge_marker.stat.exists
+
+- name: "[{{ user_os }}] Carla tools: install win64 bridge binaries"
+  become: true
+  ansible.builtin.copy:
+    src: "{{ arch_carla_bridge_setup.source_path }}/bin/{{ item }}"
+    dest: "{{ arch_carla_bridge_setup.install_path }}/{{ item }}"
+    mode: "0755"
+    remote_src: true
+  loop:
+    - "{{ arch_carla_bridge_setup.bridge_name }}"
+    - "{{ arch_carla_bridge_setup.discovery_name }}"
+    - "{{ arch_carla_bridge_setup.dll_name }}"
+
+- name: "[{{ user_os }}] Carla tools: link bridge binaries into plugin bundles"
+  become: true
+  ansible.builtin.file:
+    src: "../../carla/{{ item.file }}"
+    dest: "{{ item.dir }}/{{ item.file }}"
+    state: link
+    force: true
+  loop:
+    - dir: /usr/lib/lv2/carla.lv2
+      file: "{{ arch_carla_bridge_setup.bridge_name }}"
+    - dir: /usr/lib/lv2/carla.lv2
+      file: "{{ arch_carla_bridge_setup.discovery_name }}"
+    - dir: /usr/lib/lv2/carla.lv2
+      file: "{{ arch_carla_bridge_setup.dll_name }}"
+    - dir: /usr/lib/vst/carla.vst
+      file: "{{ arch_carla_bridge_setup.bridge_name }}"
+    - dir: /usr/lib/vst/carla.vst
+      file: "{{ arch_carla_bridge_setup.discovery_name }}"
+    - dir: /usr/lib/vst/carla.vst
+      file: "{{ arch_carla_bridge_setup.dll_name }}"
+
+- name: "[{{ user_os }}] Carla tools: ensure falkTX config directory"
+  ansible.builtin.file:
+    path: ~/.config/falkTX
+    state: directory
+    mode: "755"
+
+- name: "[{{ user_os }}] Carla tools: configure Wine bridge for the Reaper prefix"
+  ansible.builtin.template:
+    src: carla2.conf
+    dest: ~/.config/falkTX/Carla2.conf
+    mode: "644"
