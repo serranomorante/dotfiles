@@ -4,6 +4,7 @@ set -euo pipefail
 # dotfiles-test-unit: playbooks
 # dotfiles-test-tags: playbooks calibre markdown shell fast
 # dotfiles-test-case: markdown-to-calibre-converts-and-adds
+# dotfiles-test-case: markdown-to-calibre-wraps-code-blocks
 # dotfiles-test-case: markdown-to-calibre-updates-existing-book
 # dotfiles-test-case: markdown-to-calibre-honors-tag-override
 # dotfiles-test-case: markdown-to-calibre-honors-server-override
@@ -51,6 +52,17 @@ SH
 #!/usr/bin/env sh
 log="${MD2C_EBOOK_LOG}"
 printf 'EBOOK %s\n' "$*" >>"$log"
+css=""
+prev=""
+for arg in "$@"; do
+    if [ "$prev" = "--extra-css" ]; then
+        css="$arg"
+    fi
+    prev="$arg"
+done
+if [ -n "$css" ] && [ -n "${MD2C_EXTRA_CSS_COPY:-}" ]; then
+    cat "$css" >"$MD2C_EXTRA_CSS_COPY"
+fi
 if [ "${MD2C_EBOOK_FAIL:-0}" = 1 ]; then
     printf 'conversion failed\n' >&2
     exit 1
@@ -87,6 +99,7 @@ run_markdown_to_calibre() {
         MD2C_PANDOC_LOG="$pandoclog" \
         MD2C_EBOOK_LOG="$ebooklog" \
         MD2C_CALIBREDB_LOG="$calibreblog" \
+        MD2C_EXTRA_CSS_COPY="${fixture}/extra.css" \
         MD2C_CALIBREDB_FAIL_MARKER="${fixture}/fail-once" \
         "$wrapper" "$@"
 }
@@ -113,6 +126,20 @@ markdown-to-calibre-converts-and-adds)
     grep -Fq "${title}.pdf" "$calibreblog"
     grep -Fq 'Added book ids: 7' <<<"$out"
     refute grep -q '\.html' <<<"$calibreblog"
+    ;;
+markdown-to-calibre-wraps-code-blocks)
+    # A PDF page has no horizontal scroll: pandoc leaves code blocks on
+    # `white-space: pre` inside a scrollable box, so without extra CSS every
+    # code line wider than the page comes out clipped.
+    make_fixture
+    printf '# Hello\n\n```php\nconst X = 1;\n```\n' >"${fixture}/note.md"
+
+    run_markdown_to_calibre "${fixture}/note.md" >/dev/null
+
+    grep -Fq -- '--extra-css ' "$ebooklog"
+    grep -Fq 'white-space: pre-wrap' "${fixture}/extra.css"
+    grep -Fq 'overflow: visible' "${fixture}/extra.css"
+    grep -Fq 'overflow-wrap: break-word' "${fixture}/extra.css"
     ;;
 markdown-to-calibre-updates-existing-book)
     make_fixture
