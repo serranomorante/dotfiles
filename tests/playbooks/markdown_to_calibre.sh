@@ -140,6 +140,7 @@ markdown-to-calibre-wraps-code-blocks)
     grep -Fq 'white-space: pre-wrap' "${fixture}/extra.css"
     grep -Fq 'overflow: visible' "${fixture}/extra.css"
     grep -Fq 'overflow-wrap: break-word' "${fixture}/extra.css"
+    grep -Fq 'table { display: table; overflow: visible; }' "${fixture}/extra.css"
     ;;
 markdown-to-calibre-updates-existing-book)
     make_fixture
