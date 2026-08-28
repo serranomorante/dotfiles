@@ -4,9 +4,6 @@ local ui2_available, ui2 = pcall(require, "vim._core.ui2")
 if ui2_available then ui2.enable({
   msg = {
     targets = "msg",
-    msg = {
-      timeout = 4000,
-    },
   },
 }) end
 
