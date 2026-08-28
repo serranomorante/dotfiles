@@ -153,6 +153,10 @@
   ansible.builtin.include_tasks:
     file: wine-tools/reaper.task.yml
 
+- name: "[{{ user_os }}] Wine tools: reaperlegacy vepro bridge"
+  ansible.builtin.include_tasks:
+    file: wine-tools/reaper-legacy-vepro.task.yml
+
 - name: "[{{ user_os }}] Wine tools: sws extensions"
   ansible.builtin.include_tasks:
     file: wine-tools/sws-extensions.task.yml

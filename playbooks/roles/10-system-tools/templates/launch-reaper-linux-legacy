@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# {{ ansible_managed }}
+# Purpose: Launch native Linux REAPER with yabridge/VEP bridged through the legacy (fsync) Wine prefix.
+# Usage: launch-reaper-linux-legacy [--firejail|--no-firejail] [-- REAPER_ARGS...]
+set -euo pipefail
+
+exec env DOTFILES_REAPER_WWINE_PREFIX=reaperlegacy \
+  "{{ ansible_facts.env.HOME }}/.local/bin/launch-reaper-linux" "$@"

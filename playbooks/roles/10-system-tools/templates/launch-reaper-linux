@@ -17,6 +17,7 @@ Options:
 
 Environment:
   DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME  Override the Firejail sandbox name.
+  DOTFILES_REAPER_WWINE_PREFIX           Override the wwine prefix alias (default: reaper).
 EOF
 }
 
@@ -69,11 +70,15 @@ reaper_boost_stop() {
 use_firejail=0
 firejail_sandbox_name="${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-wwine-reaper}"
 firejail_profile="{{ ansible_facts.env.HOME }}/.config/firejail/wine-reaper.local"
+# Select which Wine prefix yabridge/LinVst-X plugin hosts inherit. Defaults to
+# the reaper alias (system Wine); launch-reaper-linux-legacy overrides this to
+# reaperlegacy so plugins run on the legacy (fsync) Wine build instead.
+reaper_wine_prefix="${DOTFILES_REAPER_WWINE_PREFIX:-reaper}"
 audio_latency_buffer={{ audio_latency_buffer_size }}
 audio_latency_rate={{ audio_latency_sample_rate }}
 audio_latency_defaults_file="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/audio-latency.defaults.env"
 audio_latency_state_file="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/audio-latency.env"
-wwine_prepare_args=(--prefix reaper --use-sandbox)
+wwine_prepare_args=(--prefix "$reaper_wine_prefix" --use-sandbox)
 if [ -n "${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-}" ]; then
   wwine_prepare_args+=(--sandbox-name "$firejail_sandbox_name")
 fi

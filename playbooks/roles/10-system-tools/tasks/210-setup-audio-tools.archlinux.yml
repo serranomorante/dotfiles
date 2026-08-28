@@ -182,12 +182,20 @@
   loop:
     - reaper-linux.desktop
     - reaper-linux-firejail.desktop
+    - reaper-linux-legacy.desktop
+    - reaper-linux-legacy-firejail.desktop
   notify: handler_update_desktop_database
 
 - name: "[{{ user_os }}] Setup audio tools: setup launch-reaper-linux file"
   ansible.builtin.template:
     src: launch-reaper-linux
     dest: ~/.local/bin/launch-reaper-linux
+    mode: "755"
+
+- name: "[{{ user_os }}] Setup audio tools: setup launch-reaper-linux-legacy file"
+  ansible.builtin.template:
+    src: launch-reaper-linux-legacy
+    dest: ~/.local/bin/launch-reaper-linux-legacy
     mode: "755"
 
 - name: "[{{ user_os }}] Setup audio tools: ensure dotfiles config directory"
