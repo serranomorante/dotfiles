@@ -60,7 +60,7 @@ node_ai_npm_packages:
     bins:
       - figma-developer-mcp
   - name: "@anthropic-ai/claude-code"
-    version: 2.1.238
+    version: 2.1.245
     bins:
       - claude
   - name: "@google/gemini-cli"
@@ -68,11 +68,11 @@ node_ai_npm_packages:
     bins:
       - gemini
   - name: opencode-ai
-    version: 1.18.19
+    version: 1.18.23
     bins:
       - opencode
   - name: chrome-devtools-mcp
-    version: 1.7.0
+    version: 1.8.0
     bins:
       - chrome-devtools-mcp
       - chrome-devtools
@@ -89,7 +89,7 @@ node_ai_npm_packages:
     bins:
       - mcp-figma-comment-summary
   - name: "@upstash/context7-mcp"
-    version: 4.0.2
+    version: 4.0.3
     bins:
       - context7-mcp
   - name: cloudframework-projects-mcp
@@ -105,7 +105,7 @@ node_ai_npm_packages:
     bins:
       - codex-acp
   - name: postman-cli
-    version: 1.48.0
+    version: 1.49.0
     bins:
       - postman
 

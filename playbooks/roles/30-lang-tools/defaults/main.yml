@@ -13,7 +13,7 @@ node_ansible_language_server_npm_packages:
     version: 26.6.0
 node_javascript_npm_packages:
   - name: eslint
-    version: 10.8.1
+    version: 10.9.1
     bins:
       - eslint
   - name: eslint_d
@@ -39,7 +39,7 @@ node_javascript_npm_packages:
     bins:
       - tailwindcss-language-server
   - name: "@vue/language-server"
-    version: 3.3.10
+    version: 3.3.11
     bins:
       - vue-language-server
 node_vim_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/lang-tools/vim-tools/.npm"

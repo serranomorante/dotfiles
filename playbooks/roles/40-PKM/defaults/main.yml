@@ -18,7 +18,7 @@ hypothesis_viahtml_version: 3d8fd9e36edc8fbcbf39d789aac41de57e43c501
 # of its default branch and tracked via the git-refs Renovate datasource.
 pkm_promnesia_version: 1.5.20251011
 pkm_browserexport_version: 0.4.4
-pkm_cachew_version: 0.24.20260815
+pkm_cachew_version: 0.25.20260820
 pkm_hypexport_version: d5547621a790efc734a0f0b8f3116d7f9ca868f8
 
 hypothesis_username_keyring:
