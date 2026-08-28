@@ -56,7 +56,18 @@ mkdir -p /etc/dnsmasq.d
     echo "bogus-priv"
     echo "no-hosts"
     echo "no-resolv"
-    awk '/^nameserver/ { print "server=" $2 }' /etc/resolv.conf
+    # Never let dnsmasq be its own upstream: skip nameservers that point at
+    # this host (loopback or one of its own addresses), or dnsmasq would loop
+    # on external queries (the machine's resolv.conf lists its own LAN IP).
+    own_addrs=$(ip -o -4 addr show 2>/dev/null |
+        awk '{ split($4, a, "/"); list = list " " a[1] } END { print list }') || true
+    awk -v own="${own_addrs:-} " '
+        /^nameserver/ {
+            srv = $2
+            if (srv ~ /^127\./) next
+            if (index(own, " " srv " ")) next
+            print "server=" srv
+        }' /etc/resolv.conf
     for alias in $aliases; do
         echo "address=/$alias/$lan_ip"
     done
