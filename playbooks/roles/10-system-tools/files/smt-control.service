@@ -1,0 +1,13 @@
+[Unit]
+Description=Disable SMT (hyper-threading) during low-latency audio
+Documentation=https://wiki.linuxaudio.org/wiki/system_configuration#simultaneous_multithreading
+ConditionVirtualization=!container
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/smt-control off
+ExecStop=/usr/local/bin/smt-control on
+
+[Install]
+WantedBy=multi-user.target

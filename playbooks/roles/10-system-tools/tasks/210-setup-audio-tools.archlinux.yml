@@ -357,6 +357,36 @@
     dest: /etc/polkit-1/rules.d/49-cpu-governor-boost.rules
     mode: "644"
 
+- name: "[{{ user_os }}] Setup audio tools: install smt-control helper"
+  become: true
+  ansible.builtin.copy:
+    src: smt-control
+    dest: /usr/local/bin/smt-control
+    mode: "755"
+
+- name: "[{{ user_os }}] Setup audio tools: install smt-control service unit"
+  become: true
+  ansible.builtin.copy:
+    src: smt-control.service
+    dest: /etc/systemd/system/smt-control.service
+    mode: "644"
+
+- name: "[{{ user_os }}] Setup audio tools: allow realtime group to toggle smt-control"
+  become: true
+  ansible.builtin.copy:
+    src: 49-smt-control.rules
+    dest: /etc/polkit-1/rules.d/49-smt-control.rules
+    mode: "644"
+
+- name: "[{{ user_os }}] Setup audio tools: ensure smt-control service (on-demand only)"
+  become: true
+  ansible.builtin.systemd_service:
+    scope: system
+    name: smt-control.service
+    enabled: false
+    masked: false
+    daemon_reload: true
+
 - name: "[{{ user_os }}] Setup audio tools: ensure system services"
   become: true
   ansible.builtin.systemd_service:

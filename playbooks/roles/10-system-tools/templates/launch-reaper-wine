@@ -23,6 +23,7 @@ EOF
 
 governor_boost_started=0
 platform_profile_boost_started=0
+smt_boost_started=0
 
 platform_profile_boost_start() {
   # Raise the platform firmware profile while REAPER runs. This controls the
@@ -57,12 +58,32 @@ governor_boost_stop() {
   fi
 }
 
+smt_boost_start() {
+  # Disable SMT (hyper-threading) while REAPER runs; rtcqs warns that enabled
+  # SMT can spike DSP load under heavy load. Authorized for the 'realtime' group
+  # via polkit; non-fatal if it fails so REAPER still launches without the unit.
+  if systemctl start smt-control.service 2>/dev/null; then
+    smt_boost_started=1
+  fi
+}
+
+smt_boost_stop() {
+  # Re-enable SMT once REAPER exits. Registered on EXIT so it also runs when the
+  # launcher is interrupted by a signal.
+  if [ "$smt_boost_started" -eq 1 ]; then
+    systemctl stop smt-control.service 2>/dev/null || true
+    smt_boost_started=0
+  fi
+}
+
 reaper_boost_start() {
   platform_profile_boost_start
   governor_boost_start
+  smt_boost_start
 }
 
 reaper_boost_stop() {
+  smt_boost_stop
   governor_boost_stop
   platform_profile_boost_stop
 }

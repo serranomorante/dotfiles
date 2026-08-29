@@ -1,0 +1,12 @@
+// Allow members of the "realtime" group to start/stop smt-control.service
+// without authentication, so the REAPER launcher can disable SMT for the
+// duration of a session and re-enable it on exit.
+polkit.addRule(function (action, subject) {
+  if (
+    action.id == "org.freedesktop.systemd1.manage-units" &&
+    action.lookup("unit") == "smt-control.service" &&
+    subject.isInGroup("realtime")
+  ) {
+    return polkit.Result.YES;
+  }
+});
