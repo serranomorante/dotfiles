@@ -425,12 +425,12 @@ launch-reaper-linux-boosts-platform-profile-while-running)
     [ "$(sed -n '2p' "$power_profile_log")" = "powerprofilesctl <set> <balanced>" ]
     ;;
 launch-reaper-linux-desktop-entries-are-terminal-free)
-    grep -Fxq "Name=REAPER linux [NO FIREJAIL]" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
+    grep -Fxq "Name=REAPER linux · wine system · reaper [NO FIREJAIL]" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
     grep -Fxq "Terminal=false" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
     grep -Fq -- "--no-firejail" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
     refute grep -Fq "kitty" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
 
-    grep -Fxq "Name=REAPER linux [FIREJAIL]" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
+    grep -Fxq "Name=REAPER linux · wine system · reaper [FIREJAIL]" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
     grep -Fxq "Terminal=false" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
     refute grep -Fq "kitty" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
 
