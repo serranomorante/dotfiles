@@ -8,11 +8,11 @@ usage() {
   cat <<'EOF'
 Usage: launch-reaper-linux [--firejail|--no-firejail] [-- REAPER_ARGS...]
 
-Launch native Linux REAPER without Firejail by default.
+Launch native Linux REAPER inside the configured Wine Firejail sandbox by default.
 
 Options:
-  --firejail     Run REAPER through the configured Wine Firejail profile.
-  --no-firejail  Run REAPER directly. This is the default.
+  --firejail     Run REAPER through the configured Wine Firejail profile. This is the default.
+  --no-firejail  Run REAPER directly, without Firejail.
   -h, --help     Show this help.
 
 Environment:
@@ -67,7 +67,7 @@ reaper_boost_stop() {
   platform_profile_boost_stop
 }
 
-use_firejail=0
+use_firejail=1
 firejail_sandbox_name="${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-wwine-reaper}"
 firejail_profile="{{ ansible_facts.env.HOME }}/.config/firejail/wine-reaper.local"
 # Select which Wine prefix yabridge/LinVst-X plugin hosts inherit. Defaults to
@@ -78,10 +78,9 @@ audio_latency_buffer={{ audio_latency_buffer_size }}
 audio_latency_rate={{ audio_latency_sample_rate }}
 audio_latency_defaults_file="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/audio-latency.defaults.env"
 audio_latency_state_file="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/audio-latency.env"
-wwine_prepare_args=(--prefix "$reaper_wine_prefix" --use-sandbox)
-if [ -n "${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-}" ]; then
-  wwine_prepare_args+=(--sandbox-name "$firejail_sandbox_name")
-fi
+# Built after the Firejail flag is parsed below so the no-firejail path leaves
+# yabridge/LinVst-X plugin hosts unsandboxed as well as REAPER itself.
+wwine_prepare_args=(--prefix "$reaper_wine_prefix")
 
 load_audio_latency_file() {
   local file=$1 name value
@@ -112,7 +111,8 @@ export_audio_latency_env() {
 preload_linvst_server() {
   # Prestart the LinVst-X server before REAPER so the first plugin load does not
   # hit LinVst-X's cold-start dll load timeout. The server re-enters wwine via
-  # WINELOADER, so it always starts inside the configured Firejail sandbox.
+  # WINELOADER, so it follows the launcher's Firejail mode: inside the sandbox
+  # when --firejail is set, or directly under the pinned Wine build otherwise.
   local server="/usr/bin/lin-vst-server-x.exe"
   local log_file="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/linvstx-server.log"
 
@@ -176,6 +176,7 @@ case "${1:-}" in
     shift
     ;;
   --no-firejail)
+    use_firejail=0
     shift
     ;;
   -h|--help)
@@ -186,6 +187,13 @@ esac
 
 if [ "${1:-}" = "--" ]; then
   shift
+fi
+
+if [ "$use_firejail" -eq 1 ]; then
+  wwine_prepare_args+=(--use-sandbox)
+  if [ -n "${DOTFILES_REAPER_FIREJAIL_SANDBOX_NAME:-}" ]; then
+    wwine_prepare_args+=(--sandbox-name "$firejail_sandbox_name")
+  fi
 fi
 
 "{{ ansible_facts.env.HOME }}/.local/bin/connect-reaper-to-music-production" &

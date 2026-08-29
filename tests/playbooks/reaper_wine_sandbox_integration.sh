@@ -4,7 +4,7 @@ set -euo pipefail
 # dotfiles-test-unit: playbooks
 # dotfiles-test-tags: playbooks reaper wine firejail wwine integration shell fast
 # dotfiles-test-firejail: disabled
-# dotfiles-test-case: launch-reaper-linux-no-firejail-prepares-sandboxed-yabridge-env
+# dotfiles-test-case: launch-reaper-linux-no-firejail-prepares-unsandboxed-yabridge-env
 # dotfiles-test-case: launch-reaper-linux-firejail-uses-wwine-reaper-sandbox
 # dotfiles-test-case: launch-reaper-linux-firejail-sandbox-is-joinable-by-wwine
 # dotfiles-test-case: launch-reaper-linux-firejail-joins-existing-wwine-reaper-sandbox
@@ -57,6 +57,7 @@ make_fixture() {
     sandbox_check_profile="${home}/.local/share/wwine/firejail-profiles/wine-reaper.local"
     fake_wine_log="${fixture}/fake-wine.log"
     fake_reaper_log="${fixture}/fake-reaper.log"
+    fake_wine="${fixture}/fake-wine"
     power_profile_log="${fixture}/powerprofilesctl.log"
     checker_log="${fixture}/fj-profile-checker.log"
     kitty_log="${fixture}/kitty.log"
@@ -353,15 +354,14 @@ wait_for_file() {
 }
 
 case "${DOTFILES_TEST_CASE:-}" in
-launch-reaper-linux-no-firejail-prepares-sandboxed-yabridge-env)
+launch-reaper-linux-no-firejail-prepares-unsandboxed-yabridge-env)
     make_fixture
 
     run_launch --no-firejail -- --empty-project
     grep -Fxq "INSIDE_FIREJAIL=0" "$fake_reaper_log"
-    grep -Fxq "WINEPREFIX=$musicplugins_prefix" "$fake_reaper_log"
-    grep -Fxq "WINELOADER=$wwine_loader" "$fake_reaper_log"
-    grep -Fxq "WWINE_SANDBOX_NAME=$sandbox_name" "$fake_reaper_log"
-    grep -Fxq "WWINE_USE_SANDBOX=1" "$fake_reaper_log"
+    grep -Fxq "WINEPREFIX=$wine_prefix" "$fake_reaper_log"
+    grep -Fxq "WINELOADER=$fake_wine" "$fake_reaper_log"
+    grep -Fxq "WWINE_USE_SANDBOX=0" "$fake_reaper_log"
     grep -Fxq "PIPEWIRE_LATENCY=256/48000" "$fake_reaper_log"
     grep -Fxq "PIPEWIRE_QUANTUM=256/48000" "$fake_reaper_log"
     grep -Fxq "ARGS=<--empty-project>" "$fake_reaper_log"
@@ -373,7 +373,7 @@ launch-reaper-linux-firejail-uses-wwine-reaper-sandbox)
 
     run_launch --firejail -- --new-project
     grep -Fxq "INSIDE_FIREJAIL=1" "$fake_reaper_log"
-    grep -Fxq "WINEPREFIX=$musicplugins_prefix" "$fake_reaper_log"
+    grep -Fxq "WINEPREFIX=$wine_prefix" "$fake_reaper_log"
     grep -Fxq "WINELOADER=$wwine_loader" "$fake_reaper_log"
     grep -Fxq "WWINE_SANDBOX_NAME=$sandbox_name" "$fake_reaper_log"
     grep -Fxq "WWINE_USE_SANDBOX=1" "$fake_reaper_log"
@@ -425,13 +425,16 @@ launch-reaper-linux-boosts-platform-profile-while-running)
     [ "$(sed -n '2p' "$power_profile_log")" = "powerprofilesctl <set> <balanced>" ]
     ;;
 launch-reaper-linux-desktop-entries-are-terminal-free)
-    grep -Fxq "Name=REAPER linux" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
+    grep -Fxq "Name=REAPER linux [NO FIREJAIL]" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
     grep -Fxq "Terminal=false" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
+    grep -Fq -- "--no-firejail" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
     refute grep -Fq "kitty" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux.desktop"
 
     grep -Fxq "Name=REAPER linux [FIREJAIL]" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
     grep -Fxq "Terminal=false" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
     refute grep -Fq "kitty" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-firejail.desktop"
+
+    grep -Fq -- "--no-firejail" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/reaper-linux-legacy.desktop"
 
     refute grep -Fq "exec kitty" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/launch-reaper-linux"
     refute grep -Fq "kitty --hold" "${DOTFILES_TEST_ROOT}/playbooks/roles/10-system-tools/templates/launch-reaper-linux"
