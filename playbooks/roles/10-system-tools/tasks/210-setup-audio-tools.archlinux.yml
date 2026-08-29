@@ -48,6 +48,7 @@
     aur_local_packages:
       - patchance-git
       - nerd-dictation-git
+      - rtcqs
 
 - name: "[{{ user_os }}] Setup audio tools: remove conflicting packages"
   become: true
