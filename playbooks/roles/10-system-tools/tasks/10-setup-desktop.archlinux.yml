@@ -203,6 +203,15 @@
     - { name: sddm.service, enabled: true, masked: false }
     - { name: NetworkManager-wait-online.service, state: stopped, enabled: false, masked: true }
 
+- name: "[{{ user_os }}] Setup desktop: keep wifi disabled (ethernet only)"
+  # Blacklist the iwlwifi driver so the wifi controller never initializes.
+  # Ethernet (r8169) and bluetooth drivers are unaffected.
+  become: true
+  ansible.builtin.copy:
+    src: wifi-module-blacklist.conf
+    dest: /etc/modprobe.d/wifi-module-blacklist.conf
+    mode: "644"
+
 - name: "[{{ user_os }}] Setup desktop: register pinentry"
   # Use pinentry-qt on desktop to store passwords in kwallet
   ansible.builtin.command: which pinentry-qt
