@@ -22,6 +22,7 @@ color_mode=${AUR_REVIEW_COLOR:-auto}
 upstream_from=
 upstream_to=
 upstream_source=
+patch_dir=${AUR_REVIEW_PATCH_DIR:-"$HOME/dotfiles/assets/patches/aur-review"}
 
 usage() {
     cat <<EOF
@@ -65,6 +66,7 @@ Environment:
   AUR_REVIEW_REPO_NAME   Local pacman repo name. Default: aur-local
   AUR_REVIEW_REPO_DIR    Local pacman repo path. Default: /var/cache/pacman/aur-local
   AUR_REVIEW_CHROOT_DIR  Clean chroot parent. Default: /var/lib/aurbuild
+  AUR_REVIEW_PATCH_DIR   Root of repo-owned PKGBUILD patches per package. Default: ~/dotfiles/assets/patches/aur-review
   AUR_REVIEW_BUILD_MODE  Build mode: chroot or makepkg. Default: chroot
   AUR_REVIEW_NOCHECK     Skip PKGBUILD check() during publish when set to 1.
   AUR_REVIEW_PHP_EXTENSIONS
@@ -1035,6 +1037,20 @@ configure_chroot_local_repo() {
     done
 }
 
+apply_repo_patches() {
+    pkg=$1
+    work_dir=$2
+    patch_root=$patch_dir/$pkg
+    [ -d "$patch_root" ] || return 0
+    for patch in "$patch_root"/*.patch; do
+        [ -f "$patch" ] || continue
+        printf '==> Applying repo-owned patch %s\n' "${patch#"$patch_dir"/}"
+        if ! (cd "$work_dir" && patch --batch --fuzz=0 -p1 <"$patch"); then
+            die "repo patch no longer applies for $pkg: ${patch#"$patch_dir"/} (upstream PKGBUILD changed; regenerate or remove the patch)"
+        fi
+    done
+}
+
 verify_sources() {
     pkg=$1
     repo=$2
@@ -1200,6 +1216,7 @@ publish_repo() {
     printf '==> Prepared isolated build tree for %s at %s\n' "$pkg" "$work_dir"
     (
         trap 'cleanup_publish_tree "$work_dir"' EXIT
+        apply_repo_patches "$pkg" "$work_dir"
         verify_sources "$pkg" "$work_dir"
         build_package "$pkg" "$work_dir"
         publish_built_packages "$pkg"
