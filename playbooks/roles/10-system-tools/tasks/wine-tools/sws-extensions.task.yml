@@ -67,11 +67,18 @@
   when: var_native_reaper_ini.stat.exists
 
 - name: "[{{ user_os }}] Wine tools: check native reaper user VST path"
-  ansible.builtin.command: grep -Eq "^vstpath=.*(^|;){{ ansible_facts.env.HOME | regex_escape }}/\\.vst/helgobox(;|$)" "{{ ansible_facts.env.HOME
+  ansible.builtin.command: grep -Eq "^vstpath=(.*;)?{{ ansible_facts.env.HOME | regex_escape }}/\\.vst/helgobox(;|$)" "{{ ansible_facts.env.HOME
     }}/.config/REAPER/reaper.ini"
   changed_when: false
   failed_when: false
   register: var_native_reaper_user_vst_path
+  when: var_native_reaper_ini.stat.exists
+
+- name: "[{{ user_os }}] Wine tools: dedupe native reaper user VST path"
+  ansible.builtin.replace:
+    path: ~/.config/REAPER/reaper.ini
+    regexp: "^(vstpath=)(.*?)(?:{{ ansible_facts.env.HOME | regex_escape }}/\\.vst/helgobox;)+{{ ansible_facts.env.HOME | regex_escape }}/\\.vst/helgobox(;|$)"
+    replace: "\\1\\2{{ ansible_facts.env.HOME }}/.vst/helgobox\\3"
   when: var_native_reaper_ini.stat.exists
 
 - name: "[{{ user_os }}] Wine tools: add native reaper VST path key"
