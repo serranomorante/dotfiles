@@ -1,0 +1,65 @@
+---
+# Centralized REAPER VST path writer. This is the single place that edits a
+# REAPER.ini `vstpath` (native Linux REAPER) or `vstpath64` (Wine REAPER) key.
+# It prepends the managed entries while preserving any other user-added paths,
+# dropping obsolete entries and duplicates.
+#
+# Parameters (passed via include_role vars):
+#   reaper_vst_path_ini:               path to the REAPER.ini file
+#   reaper_vst_path_key:               vstpath | vstpath64
+#   reaper_vst_path_entries:           list of managed entries to ensure (in order)
+#   reaper_vst_path_obsolete_regexes:  optional list of regexes; existing paths
+#                                      matching any are dropped
+- name: "[{{ user_os }}] Wine tools: stat reaper ini for VST paths"
+  ansible.builtin.stat:
+    path: "{{ reaper_vst_path_ini }}"
+  register: var_reaper_vst_path_ini
+
+- name: "[{{ user_os }}] Wine tools: read reaper VST path line"
+  ansible.builtin.command: grep -m1 "^{{ reaper_vst_path_key | regex_escape }}=" "{{ reaper_vst_path_ini }}"
+  changed_when: false
+  failed_when: false
+  register: var_reaper_vst_path_line
+  when: var_reaper_vst_path_ini.stat.exists
+
+- name: "[{{ user_os }}] Wine tools: prepare reaper VST paths"
+  ansible.builtin.set_fact:
+    var_reaper_vst_path_existing: >-
+      {{
+        (var_reaper_vst_path_line.stdout | regex_replace('^' ~ (reaper_vst_path_key | regex_escape) ~ '=', ''))
+        if var_reaper_vst_path_line.rc == 0
+        else ''
+      }}
+    var_reaper_vst_path_obsolete_regex: >-
+      {{
+        (reaper_vst_path_obsolete_regexes | default([]) | join('|'))
+        if (reaper_vst_path_obsolete_regexes | default([]) | length > 0)
+        else '^$'
+      }}
+  when: var_reaper_vst_path_ini.stat.exists
+
+- name: "[{{ user_os }}] Wine tools: compute reaper VST paths"
+  ansible.builtin.set_fact:
+    var_reaper_desired_vst_paths: >-
+      {{
+        (
+          reaper_vst_path_entries
+          + (var_reaper_vst_path_existing.split(';') if var_reaper_vst_path_existing else [])
+        )
+        | reject('equalto', '')
+        | reject('search', var_reaper_vst_path_obsolete_regex)
+        | unique
+        | join(';')
+      }}
+  when: var_reaper_vst_path_ini.stat.exists
+
+- name: "[{{ user_os }}] Wine tools: ensure reaper VST paths"
+  ansible.builtin.lineinfile:
+    path: "{{ reaper_vst_path_ini }}"
+    regexp: "^{{ reaper_vst_path_key | regex_escape }}="
+    insertafter: "^\\[reaper\\]"
+    line: "{{ reaper_vst_path_key }}={{ var_reaper_desired_vst_paths }}"
+    mode: "644"
+  when:
+    - var_reaper_vst_path_ini.stat.exists
+    - var_reaper_desired_vst_paths != var_reaper_vst_path_existing

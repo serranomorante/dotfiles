@@ -174,32 +174,6 @@
     force: true
   loop: "{{ arch_reaper_wine_vepro_runtime_dlls }}"
 
-- name: "[{{ user_os }}] Wine tools: read reaper VST path"
-  ansible.builtin.command: grep -m1 "^vstpath64=" "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
-  changed_when: false
-  failed_when: false
-  register: var_reaper_vstpath64_line
-  when: var_reaper_ini_file.stat.exists
-
-- name: "[{{ user_os }}] Wine tools: prepare reaper VST paths"
-  ansible.builtin.set_fact:
-    var_reaper_desired_vst_paths: "{{ (arch_reaper_wine_vepro_vst_paths + ((var_reaper_vstpath64_line.stdout | regex_replace('^vstpath64=', '')).split(';') if var_reaper_vstpath64_line.rc == 0 else [])) | reject('equalto', '') | reject('search', arch_reaper_wine_obsolete_vst_path_regexes | default([]) | join('|')) | unique | join(';') }}"
-  when:
-    - var_reaper_ini_file.stat.exists
-    - arch_reaper_wine_vepro_vst_paths | length > 0
-
-- name: "[{{ user_os }}] Wine tools: ensure reaper VEPro VST paths"
-  ansible.builtin.lineinfile:
-    path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/REAPER.ini"
-    regexp: "^vstpath64="
-    insertafter: "^\\[reaper\\]"
-    line: "vstpath64={{ var_reaper_desired_vst_paths }}"
-    mode: "644"
-  when:
-    - var_reaper_ini_file.stat.exists
-    - arch_reaper_wine_vepro_vst_paths | length > 0
-    - var_reaper_desired_vst_paths != (var_reaper_vstpath64_line.stdout | default('') | regex_replace('^vstpath64=', ''))
-
 - name: "[{{ user_os }}] Wine tools: stat reaper VST cache"
   ansible.builtin.stat:
     path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/reaper-vstplugins64.ini"
