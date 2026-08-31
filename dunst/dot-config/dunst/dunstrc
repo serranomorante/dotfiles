@@ -409,6 +409,7 @@
     timeout = 12
     word_wrap = true
     override_pause_level = 45
+    script = $HOME/bin/notification-sound
 
 # Shell-like globbing will get expanded.
 #

@@ -1,0 +1,21 @@
+#!/bin/sh
+# Purpose: Play a short notification sound for matched dunst notifications.
+# Usage: invoked by a dunst rule's script option; the positional args
+# (appname summary body icon urgency) and DUNST_* env vars are ignored here.
+# Notes: Prefers the themed libcanberra player, then direct playback of the
+# freedesktop theme sample via the first available pipewire/pulse/alsa player.
+
+sound=/usr/share/sounds/freedesktop/stereo/message-new-instant.oga
+
+if command -v canberra-gtk-play >/dev/null 2>&1; then
+  canberra-gtk-play -i message-new-instant >/dev/null 2>&1 && exit 0
+fi
+
+for player in pw-play paplay aplay; do
+  if command -v "$player" >/dev/null 2>&1 && [ -f "$sound" ]; then
+    "$player" "$sound" >/dev/null 2>&1
+    exit $?
+  fi
+done
+
+exit 0
