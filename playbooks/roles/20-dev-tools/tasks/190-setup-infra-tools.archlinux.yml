@@ -45,7 +45,7 @@
             or k3s_install_version not in (var_k3s_version.stdout | default(''))
             or (
               var_k3s_install_marker.stat.exists
-              and ((var_k3s_install_marker.content | default('') | b64decode | trim) != k3s_install_marker)
+              and ((var_k3s_install_marker.content_text | trim) != k3s_install_marker)
             )
           }}
 

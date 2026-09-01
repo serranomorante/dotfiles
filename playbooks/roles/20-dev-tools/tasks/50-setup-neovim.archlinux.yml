@@ -98,7 +98,7 @@
         or not var_neovim_installed_binary.stat.exists
         or not var_neovim_installed_runtime.stat.exists
         or not var_neovim_installed_revision_marker.stat.exists
-        or ((var_neovim_installed_revision_marker.content | default('') | b64decode | trim) != (var_neovim_repo.after | trim))
+        or ((var_neovim_installed_revision_marker.content_text | trim) != (var_neovim_repo.after | trim))
       }}
 
 - name: "[{{ user_os }}] Neovim: remove stale installed runtime"

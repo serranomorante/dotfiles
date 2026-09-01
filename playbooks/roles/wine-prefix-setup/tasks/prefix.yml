@@ -99,7 +99,7 @@
       {{
         (not wine_prefix_setup_dpi_marker.stat.exists)
         or
-        ((wine_prefix_setup_dpi_marker.content | default('') | b64decode) != ("prefix " ~ wine_prefix_setup.path ~ " dpi " ~ wine_prefix_setup.dpi ~ "\n"))
+        (wine_prefix_setup_dpi_marker.content_text != ("prefix " ~ wine_prefix_setup.path ~ " dpi " ~ wine_prefix_setup.dpi ~ "\n"))
       }}
   when: wine_prefix_setup.dpi is defined
 

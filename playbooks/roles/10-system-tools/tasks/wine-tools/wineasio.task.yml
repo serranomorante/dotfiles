@@ -70,7 +70,7 @@
         or
         (not var_wineasio_build_marker.stat.exists)
         or
-        ((var_wineasio_build_marker.content | default('') | b64decode) != var_wineasio_build_marker_content)
+        (var_wineasio_build_marker.content_text != var_wineasio_build_marker_content)
       }}
 
 - name: "[{{ user_os }}] Wine tools: clean stale wineasio build artifacts"
@@ -240,7 +240,7 @@
         or
         (not var_wineasio_registration_marker.stat.exists)
         or
-        ((var_wineasio_registration_marker.content | default('') | b64decode) != var_wineasio_registration_marker_content)
+        (var_wineasio_registration_marker.content_text != var_wineasio_registration_marker_content)
       }}
     var_wineasio_registration_env: "{{ wine_env_profiles.get(var_wineasio_reaper_wine_profile, wine_env_vars) | combine({ 'WINEPREFIX': arch_reaper_wine_setup.wine_prefix, 'WINEARCH': arch_reaper_wine_setup.architecture | default('win64'), 'WINEDLLPATH': var_wineasio_reaper_wineasio_lib ~ (((wine_env_profiles.get(var_wineasio_reaper_wine_profile, wine_env_vars).WINEDLLPATH | default('')) | length > 0) | ternary(':' ~ wine_env_profiles.get(var_wineasio_reaper_wine_profile, wine_env_vars).WINEDLLPATH, '')) }) }}"
 
@@ -380,7 +380,7 @@
   changed_when: true
   when: >
     (not var_wineasio_reaper_config_marker.stat.exists) or
-    ((var_wineasio_reaper_config_marker.content | default('') | b64decode) != var_wineasio_reaper_config_marker_content)
+    (var_wineasio_reaper_config_marker.content_text != var_wineasio_reaper_config_marker_content)
 
 - name: "[{{ user_os }}] Wine tools: stat wine reaper ini for wineasio"
   ansible.builtin.stat:
@@ -433,4 +433,4 @@
     dotfiles_marker_content: "{{ var_wineasio_reaper_config_marker_content }}"
   when: >
     (not var_wineasio_reaper_config_marker.stat.exists) or
-    ((var_wineasio_reaper_config_marker.content | default('') | b64decode) != var_wineasio_reaper_config_marker_content)
+    (var_wineasio_reaper_config_marker.content_text != var_wineasio_reaper_config_marker_content)

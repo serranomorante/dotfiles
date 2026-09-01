@@ -64,7 +64,7 @@
     var_vscode_js_debug_needs_refresh: >-
       {{
         not var_vscode_js_debug_marker_result.stat.exists
-        or ((var_vscode_js_debug_marker_result.content | default('') | b64decode | trim) != ('v' ~ vscode_js_debug_version ~ ':stderr-patch-v1'))
+        or ((var_vscode_js_debug_marker_result.content_text | trim) != ('v' ~ vscode_js_debug_version ~ ':stderr-patch-v1'))
       }}
 
 - name: "[{{ user_os }}] Javascript language: clone vscode-js-debug with diff capture"

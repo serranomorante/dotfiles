@@ -41,7 +41,7 @@
 
 - name: "[{{ user_os }}] Wine tools: read pipeasio registration marker content"
   ansible.builtin.set_fact:
-    var_pipeasio_registration_marker_text: "{{ (var_pipeasio_registration_marker.content | default('') | b64decode) if var_pipeasio_registration_marker.stat.exists else '' }}"
+    var_pipeasio_registration_marker_text: "{{ var_pipeasio_registration_marker.content_text }}"
   when: var_pipeasio_package.rc == 0
 
 - name: "[{{ user_os }}] Wine tools: parse registered pipeasio package version"
@@ -131,7 +131,7 @@
     - var_pipeasio_package.rc == 0
     - >
       (not var_pipeasio_registration_marker.stat.exists) or
-      ((var_pipeasio_registration_marker.content | default('') | b64decode) != var_pipeasio_registration_marker_content)
+      (var_pipeasio_registration_marker.content_text != var_pipeasio_registration_marker_content)
 
 - name: "[{{ user_os }}] Wine tools: set pipeasio registration state"
   ansible.builtin.set_fact:
@@ -142,7 +142,7 @@
         (
           var_pipeasio_registration_marker.stat.exists
           and
-          ((var_pipeasio_registration_marker.content | default('') | b64decode) == var_pipeasio_registration_marker_content)
+          (var_pipeasio_registration_marker.content_text == var_pipeasio_registration_marker_content)
         )
       }}
   when: var_pipeasio_package.rc == 0
@@ -160,7 +160,7 @@
     - var_pipeasio_register_result.rc | default(-1) == 0
     - >
       (not var_pipeasio_registration_marker.stat.exists) or
-      ((var_pipeasio_registration_marker.content | default('') | b64decode) != var_pipeasio_registration_marker_content)
+      (var_pipeasio_registration_marker.content_text != var_pipeasio_registration_marker_content)
 
 - name: "[{{ user_os }}] Wine tools: stat wine reaper ini for pipeasio"
   ansible.builtin.stat:

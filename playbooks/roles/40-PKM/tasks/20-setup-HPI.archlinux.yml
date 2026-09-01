@@ -79,7 +79,7 @@
       {{
         not h_setup_marker_result.stat.exists
         or not h_bouncer_checkout_result.stat.exists
-        or ((h_setup_marker_result.content | default('') | b64decode | trim)
+        or ((h_setup_marker_result.content_text | trim)
             != ('h:' ~ hypothesis_h_version ~ ':bouncer:' ~ hypothesis_bouncer_version ~ ':h-patches-v5'))
       }}
 
@@ -765,7 +765,7 @@
     hypothesis_client_refresh_required: >-
       {{
         not hypothesis_client_marker_result.stat.exists
-        or ((hypothesis_client_marker_result.content | default('') | b64decode | trim) != ('v' ~ hypothesis_client_version ~ ':' ~ hypothesis_client_contract))
+        or ((hypothesis_client_marker_result.content_text | trim) != ('v' ~ hypothesis_client_version ~ ':' ~ hypothesis_client_contract))
       }}
 
 - name: "[{{ user_os }}] Setup HPI: clone hypothesis client"
@@ -1003,7 +1003,7 @@
     hypothesis_extension_refresh_required: >-
       {{
         not hypothesis_extension_marker_result.stat.exists
-        or ((hypothesis_extension_marker_result.content | default('') | b64decode | trim) != ('v' ~ hypothesis_browser_extension_version ~ ':extension-patches-v1'))
+        or ((hypothesis_extension_marker_result.content_text | trim) != ('v' ~ hypothesis_browser_extension_version ~ ':extension-patches-v1'))
       }}
 
 - name: "[{{ user_os }}] Setup HPI: clone hypothesis browser extension"

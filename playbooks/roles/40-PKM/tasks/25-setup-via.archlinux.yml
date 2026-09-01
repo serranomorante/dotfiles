@@ -34,7 +34,7 @@
         not via_setup_marker_result.stat.exists
         or not via_checkout_result.stat.exists
         or not viahtml_checkout_result.stat.exists
-        or ((via_setup_marker_result.content | default('') | b64decode | trim)
+        or ((via_setup_marker_result.content_text | trim)
             != ('via:' ~ hypothesis_via_version ~ ':viahtml:' ~ hypothesis_viahtml_version ~ ':via-patches-v8'))
       }}
 

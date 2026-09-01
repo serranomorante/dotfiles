@@ -40,7 +40,8 @@
       {{
         {
           'stat': dotfiles_marker_stat.stat,
-          'path': dotfiles_marker_path
+          'path': dotfiles_marker_path,
+          'content_text': (dotfiles_marker_slurp.content | default('') | b64decode)
         }
         | combine(
           (dotfiles_marker_slurp.content is defined)
