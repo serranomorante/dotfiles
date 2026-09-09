@@ -1,0 +1,17 @@
+# {{ ansible_managed }}
+[Desktop Entry]
+Version=1.5
+Type=Application
+Name=Bitwig Studio · low latency
+GenericName=Digital Audio Workstation
+NoDisplay=false
+Comment=Modern music production and performance (low-latency dotfiles profile ≈5.3 ms @ 48 kHz)
+Icon=com.bitwig.BitwigStudio
+DBusActivatable=false
+Exec={{ ansible_facts.env.HOME }}/.local/bin/launch-bitwig %F
+Terminal=false
+MimeType=application/bitwig-clip;application/bitwig-device;application/bitwig-package;application/bitwig-preset;application/bitwig-project;application/bitwig-scene;application/bitwig-template;application/bitwig-extension;application/bitwig-remote-controls;application/bitwig-module;application/bitwig-modulator;application/vnd.bitwig.dawproject
+Categories=AudioVideo;Music;Audio;Sequencer;Midi;Mixer;Player;Recorder
+Keywords=daw;bitwig;audio;midi
+StartupNotify=true
+StartupWMClass=com.bitwig.BitwigStudio

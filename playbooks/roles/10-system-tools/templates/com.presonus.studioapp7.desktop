@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+[Desktop Entry]
+Version=1.5
+Type=Application
+Name=Studio One 7 · low latency
+Comment=Digital Audio Workstation (nested Wayland via weston, low-latency dotfiles profile ≈5.3 ms @ 48 kHz)
+Exec={{ ansible_facts.env.HOME }}/.local/bin/launch-studio-one %u
+Icon=com.presonus.studioapp7
+Categories=AudioVideo;Audio
+StartupNotify=true
+MimeType=x-scheme-handler/studioone;

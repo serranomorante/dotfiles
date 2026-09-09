@@ -116,6 +116,13 @@ wwine_prefix_aliases:
     sandbox_check_profile: "{{ ansible_facts.env.HOME }}/.local/share/wwine/firejail-profiles/wine-reaper.local"
     sandbox_name: wwine-reaper
     wine_profile: legacy
+  studioone:
+    path: "{{ arch_studio_one_wine_setup.wine_prefix }}"
+    architecture: "{{ arch_studio_one_wine_setup.architecture | default('win64') }}"
+    sandbox_profile: "{{ ansible_facts.env.HOME }}/.config/firejail/wine-reaper.local"
+    sandbox_check_profile: "{{ ansible_facts.env.HOME }}/.local/share/wwine/firejail-profiles/wine-reaper.local"
+    sandbox_name: wwine-reaper
+    wine_profile: system
   synthv:
     path: "{{ arch_synthv_wine_prefix }}"
     architecture: win64
@@ -128,6 +135,8 @@ arch_reaper_legacy_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-r
 arch_reaper_legacy_wine_drive_c: "{{ arch_reaper_legacy_wine_prefix }}/drive_c"
 arch_synthv_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-synthv2"
 arch_musicproduction_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-musicproduction"
+arch_studio_one_wine_prefix: "{{ ansible_facts.env.HOME }}/data/.wine-win64-studio-one"
+arch_studio_one_wine_drive_c: "{{ arch_studio_one_wine_prefix }}/drive_c"
 
 arch_reaper_wine_setup:
   version: "779"
@@ -138,6 +147,11 @@ arch_reaper_wine_setup:
 arch_reaper_legacy_wine_setup:
   wine_prefix: "{{ arch_reaper_legacy_wine_prefix }}"
   architecture: win64
+
+arch_studio_one_wine_setup:
+  wine_prefix: "{{ arch_studio_one_wine_prefix }}"
+  architecture: win64
+  installer_path: "{{ ansible_facts.env.HOME }}/Downloads/PreSonus Studio One 5 Installer.exe"
 
 arch_reaper_wine_vepro_bridge_path: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/reaper-vst-bridge/vepro"
 
@@ -158,6 +172,27 @@ arch_reaper_wine_vepro_plugin_links:
     dest: "{{ arch_reaper_wine_vepro_bridge_path }}/VST3/Vienna Ensemble Pro Surround x64.vst3"
   - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST3/Vienna Ensemble Pro x64.vst3"
     dest: "{{ arch_reaper_wine_vepro_bridge_path }}/VST3/Vienna Ensemble Pro x64.vst3"
+
+# Vienna Ensemble Pro plugin bridge for the Windows Studio One prefix. Unlike the
+# REAPER bridge, these land in the standard Common Files VST paths so the native
+# Windows Studio One scanner picks them up directly.
+arch_studio_one_vepro_plugin_links:
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST2/Vienna Ensemble Pro Audio Input x64.dll"
+    dest: "{{ arch_studio_one_wine_drive_c }}/Program Files/Common Files/VST2/Vienna Ensemble Pro Audio Input x64.dll"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST2/Vienna Ensemble Pro Event Input x64.dll"
+    dest: "{{ arch_studio_one_wine_drive_c }}/Program Files/Common Files/VST2/Vienna Ensemble Pro Event Input x64.dll"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST2/Vienna Ensemble Pro Surround x64.dll"
+    dest: "{{ arch_studio_one_wine_drive_c }}/Program Files/Common Files/VST2/Vienna Ensemble Pro Surround x64.dll"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST2/Vienna Ensemble Pro x64.dll"
+    dest: "{{ arch_studio_one_wine_drive_c }}/Program Files/Common Files/VST2/Vienna Ensemble Pro x64.dll"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST3/Vienna Ensemble Pro Audio Input x64.vst3"
+    dest: "{{ arch_studio_one_wine_drive_c }}/Program Files/Common Files/VST3/Vienna Ensemble Pro Audio Input x64.vst3"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST3/Vienna Ensemble Pro Event Input x64.vst3"
+    dest: "{{ arch_studio_one_wine_drive_c }}/Program Files/Common Files/VST3/Vienna Ensemble Pro Event Input x64.vst3"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST3/Vienna Ensemble Pro Surround x64.vst3"
+    dest: "{{ arch_studio_one_wine_drive_c }}/Program Files/Common Files/VST3/Vienna Ensemble Pro Surround x64.vst3"
+  - src: "{{ arch_music_plugins_wine_prefix }}/drive_c/Program Files/Common Files/VST3/Vienna Ensemble Pro x64.vst3"
+    dest: "{{ arch_studio_one_wine_drive_c }}/Program Files/Common Files/VST3/Vienna Ensemble Pro x64.vst3"
 
 arch_reaper_legacy_vepro_bridge_path: "{{ arch_reaper_legacy_wine_setup.wine_prefix }}/drive_c/reaper-vst-bridge/vepro"
 

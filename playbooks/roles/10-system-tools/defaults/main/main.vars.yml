@@ -36,6 +36,11 @@ debian_fzf_version: 0.55.0
 debian_rg_version: 14.0.3
 debian_fd_version: 10.1.0
 arch_davinci_resolve_version: "21.0.4"
+arch_studio_one_version: "7.2.3.108761"
+arch_studio_one_deb_name: "studioone7-x86_64.deb"
+arch_studio_one_deb_path: "{{ ansible_facts.env.HOME }}/data/Downloads/music-production/external-libraries/studio-one-7/{{ arch_studio_one_deb_name }}"
+arch_studio_one_build_dir: "{{ ansible_facts.env.HOME }}/data/apps/audio-tools/studio-one-7"
+arch_sdbus_cpp1_build_dir: "{{ ansible_facts.env.HOME }}/data/apps/audio-tools/sdbus-cpp1"
 davinci_resolve_blackmagic_email_keyring:
   folder: creative-tools
   passkey: davinci-resolve-blackmagic-email
@@ -141,6 +146,23 @@ arch_wine_prefix_setups:
       - "{{ arch_reaper_legacy_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Music"
       - "{{ arch_reaper_legacy_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Pictures"
       - "{{ arch_reaper_legacy_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Videos"
+  - name: studioone
+    path: "{{ arch_studio_one_wine_setup.wine_prefix }}"
+    architecture: "{{ arch_studio_one_wine_setup.architecture | default('win64') }}"
+    winver: win10
+    ensure_mono: true
+    dpi: "{{ arch_reaper_wine_setup.dpi | default(0x60) }}"
+    show_dot_files: true
+    virtual_desktop: true
+    real_folders:
+      - "{{ arch_studio_one_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Desktop"
+    folders:
+      - "{{ arch_studio_one_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Desktop"
+      - "{{ arch_studio_one_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Documents"
+      - "{{ arch_studio_one_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Downloads"
+      - "{{ arch_studio_one_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Music"
+      - "{{ arch_studio_one_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Pictures"
+      - "{{ arch_studio_one_wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/Videos"
   - name: musicproduction
     path: "{{ arch_musicproduction_wine_prefix }}"
     architecture: win64

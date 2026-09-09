@@ -1,0 +1,41 @@
+# Local pinned mirror of the AUR `studio-one-7` package (PreSonus Studio One 7
+# for Linux), from the snapshot that last ran on this workstation.
+# Upstream: PreSonus Audio Electronics, Inc.
+# AUR maintainer: Chip Collier <photex@gmail.com>
+# The installer .deb is downloaded manually from https://my.presonus.com and kept
+# beside this recipe as `studioone7-x86_64.deb` (see the 210-setup-audio-tools
+# task); it is too large to version in dotfiles.
+# Depends on `sdbus-cpp1` (mirrored in files/sdbus-cpp1/), which provides the
+# libsdbus-c++.so.1 ABI this build links against; current Arch sdbus-cpp is 2.x
+# and only ships the .so.2 ABI.
+
+pkgname='studio-one-7'
+pkgver='7.2.3.108761'
+pkgrel='1'
+pkgdesc='Digital audio workstation for music production, remixing and live performance'
+arch=('x86_64')
+url='https://www.presonus.com/'
+license=('custom')
+depends=('alsa-lib' 'egl-wayland' 'wayland' 'libjpeg-turbo' 'sdbus-cpp1')
+optdepends=('jack' 'pipewire' 'vulkan-icd-loader' 'vulkan-intel' 'vulkan-radeon' 'vulkan-nouveau' 'nvidia-utils')
+provides=('clap-host' 'vst3-host')
+replaces=()
+conflicts=()
+options=(!strip)
+DLAGENTS+=('manual::/usr/bin/echo \ \ Note: Please download \"studioone7-x86_64.deb\" manually from https://my.presonus.com')
+source=('manual://studioone7-x86_64.deb')
+sha256sums=('c9cac512e5a75a584c4ac2a303510d964767f4ad310bac0ff863668bff538052')
+
+package() {
+  # Unpack package contents
+  bsdtar -xf ${srcdir}/data.tar.gz -C ${pkgdir}/
+
+  # Fix permissions
+  chmod -R g-w ${pkgdir}/opt
+  chmod -R g-w ${pkgdir}/usr
+
+  # Create our shared extensions location (based on deb pkg postinst script)
+  mkdir -p ${pkgdir}/var/opt/PreSonus/Extensions
+  chmod 777 ${pkgdir}/var/opt/PreSonus
+  chmod 777 ${pkgdir}/var/opt/PreSonus/Extensions
+}

@@ -1,0 +1,57 @@
+---
+# Windows Studio One prefix: run the installer once (the user clicks through the
+# wizard), then bridge Vienna Ensemble Pro by symlinking its VST2/VST3 plugins
+# and runtime DLLs into the standard Common Files paths so the native Windows
+# Studio One can scan and load VEP directly.
+- name: "[{{ user_os }}] Wine tools: stat studio one installer"
+  ansible.builtin.stat:
+    path: "{{ arch_studio_one_wine_setup.installer_path }}"
+  register: var_studio_one_installer
+
+- name: "[{{ user_os }}] Wine tools: install studio one"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix studioone
+    wine start /wait /unix '{{ arch_studio_one_wine_setup.installer_path }}'
+  args:
+    creates: "{{ arch_studio_one_wine_prefix }}/drive_c/Program Files/PreSonus/Studio One 5/Studio One.exe"
+  timeout: 1800
+  changed_when: true
+  failed_when: false
+  register: var_install_studio_one
+  when:
+    - is_x_display_session
+    - var_studio_one_installer.stat.exists
+
+- name: "[{{ user_os }}] Wine tools: close stale studio one installer Wine processes"
+  ansible.builtin.command: >
+    {{ ansible_facts.env.HOME }}/bin/wwine --prefix studioone kill-prefix
+  timeout: 60
+  changed_when: true
+  failed_when: false
+  no_log: true
+  when: var_install_studio_one.changed | default(false)
+
+- name: "[{{ user_os }}] Wine tools: ensure studio one VEPro VST folders"
+  ansible.builtin.file:
+    path: "{{ arch_studio_one_wine_drive_c }}/Program Files/Common Files/{{ item }}"
+    state: directory
+    mode: "755"
+  loop:
+    - VST2
+    - VST3
+
+- name: "[{{ user_os }}] Wine tools: link VEPro plugins into studio one prefix"
+  ansible.builtin.file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    state: link
+    force: true
+  loop: "{{ arch_studio_one_vepro_plugin_links }}"
+
+- name: "[{{ user_os }}] Wine tools: link VEPro runtime DLLs into studio one prefix"
+  ansible.builtin.file:
+    src: "{{ arch_music_plugins_wine_prefix }}/drive_c/windows/system32/{{ item }}"
+    dest: "{{ arch_studio_one_wine_prefix }}/drive_c/windows/system32/{{ item }}"
+    state: link
+    force: true
+  loop: "{{ arch_reaper_wine_vepro_runtime_dlls }}"

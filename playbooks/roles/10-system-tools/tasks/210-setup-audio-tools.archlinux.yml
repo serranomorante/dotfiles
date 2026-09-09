@@ -232,6 +232,288 @@
     dest: ~/.local/bin/launch-reaper-linux
     mode: "755"
 
+- name: "[{{ user_os }}] Setup audio tools: setup ardour low-latency desktop file"
+  ansible.builtin.template:
+    src: ardour-low-latency.desktop
+    dest: ~/.local/share/applications/
+    mode: "644"
+  notify: handler_update_desktop_database
+
+- name: "[{{ user_os }}] Setup audio tools: setup launch-ardour file"
+  ansible.builtin.template:
+    src: launch-ardour
+    dest: ~/.local/bin/launch-ardour
+    mode: "755"
+
+- name: "[{{ user_os }}] Setup audio tools: setup bitwig low-latency desktop file"
+  ansible.builtin.template:
+    src: com.bitwig.BitwigStudio.desktop
+    dest: ~/.local/share/applications/com.bitwig.BitwigStudio.desktop
+    mode: "644"
+  notify: handler_update_desktop_database
+
+- name: "[{{ user_os }}] Setup audio tools: setup launch-bitwig file"
+  ansible.builtin.template:
+    src: launch-bitwig
+    dest: ~/.local/bin/launch-bitwig
+    mode: "755"
+
+# Studio One 7 (PreSonus native Linux DAW). The install recipe is pinned in
+# files/studio-one-7/PKGBUILD (a mirror of the AUR package); the ~280 MB
+# upstream .deb is downloaded once from my.presonus.com and kept under the
+# read-only external-libraries share (arch_studio_one_deb_path) so the binary
+# never enters the repo. The build happens in a writable local copy under
+# arch_studio_one_build_dir because makepkg needs to write beside the source.
+# Personal prefs (~/.config/PreSonus) and user projects (~/Studio One) are
+# intentionally not managed here. The binary links libsdbus-c++.so.1 (sdbus-c++
+# 1.x); the sdbus-cpp1 compat mirror (files/sdbus-cpp1) is built below whenever
+# it is missing so the installed app can actually start.
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: stat external deb"
+  ansible.builtin.stat:
+    path: "{{ arch_studio_one_deb_path }}"
+  register: var_studio_one_external_deb
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: get installed version"
+  ansible.builtin.command: pacman -Q studio-one-7
+  changed_when: false
+  failed_when: false
+  register: var_pacman_studio_one
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: set installed fact"
+  ansible.builtin.set_fact:
+    var_studio_one_installed: >-
+      {{
+        var_pacman_studio_one.rc == 0 and
+        (var_pacman_studio_one.stdout.split() | length) > 1 and
+        var_pacman_studio_one.stdout.split()[1].split('-')[0] == arch_studio_one_version
+      }}
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: sdbus-cpp1: get installed version"
+  ansible.builtin.command: pacman -Q sdbus-cpp1
+  changed_when: false
+  failed_when: false
+  register: var_pacman_sdbus_cpp1
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: sdbus-cpp1: set installed fact"
+  ansible.builtin.set_fact:
+    var_sdbus_cpp1_installed: "{{ var_pacman_sdbus_cpp1.rc == 0 }}"
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: sdbus-cpp1: ensure build directory"
+  ansible.builtin.file:
+    path: "{{ arch_sdbus_cpp1_build_dir }}"
+    state: directory
+    mode: "755"
+  when:
+    - not var_sdbus_cpp1_installed
+    - var_studio_one_external_deb.stat.exists or var_pacman_studio_one.rc == 0
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: sdbus-cpp1: copy pinned PKGBUILD"
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/sdbus-cpp1/PKGBUILD"
+    dest: "{{ arch_sdbus_cpp1_build_dir }}/PKGBUILD"
+    mode: "644"
+  when:
+    - not var_sdbus_cpp1_installed
+    - var_studio_one_external_deb.stat.exists or var_pacman_studio_one.rc == 0
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: sdbus-cpp1: ensure build dependencies"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - cmake
+      - doxygen
+      - systemd
+      - expat
+      - systemd-libs
+  when:
+    - not var_sdbus_cpp1_installed
+    - var_studio_one_external_deb.stat.exists or var_pacman_studio_one.rc == 0
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: sdbus-cpp1: build package"
+  ansible.builtin.command:
+    argv:
+      - makepkg
+      - -C
+      - -c
+      - -f
+      - --noconfirm
+  args:
+    chdir: "{{ arch_sdbus_cpp1_build_dir }}"
+  changed_when: true
+  timeout: 0
+  when:
+    - not var_sdbus_cpp1_installed
+    - var_studio_one_external_deb.stat.exists or var_pacman_studio_one.rc == 0
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: sdbus-cpp1: locate built package"
+  ansible.builtin.find:
+    paths: "{{ arch_sdbus_cpp1_build_dir }}"
+    patterns: "sdbus-cpp1-*.pkg.tar*"
+    file_type: file
+  register: var_sdbus_cpp1_built_package
+  when:
+    - not var_sdbus_cpp1_installed
+    - var_studio_one_external_deb.stat.exists or var_pacman_studio_one.rc == 0
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: sdbus-cpp1: install package"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - pacman
+      - -U
+      - --needed
+      - --noconfirm
+      - "{{ var_sdbus_cpp1_built_package.files[0].path }}"
+  changed_when: true
+  timeout: 0
+  when:
+    - not var_sdbus_cpp1_installed
+    - var_studio_one_external_deb.stat.exists or var_pacman_studio_one.rc == 0
+    - (var_sdbus_cpp1_built_package.files | default([]) | length) > 0
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: ensure build directory"
+  ansible.builtin.file:
+    path: "{{ arch_studio_one_build_dir }}"
+    state: directory
+    mode: "755"
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: symlink external deb into build directory"
+  ansible.builtin.file:
+    path: "{{ arch_studio_one_build_dir }}/{{ arch_studio_one_deb_name }}"
+    src: "{{ arch_studio_one_deb_path }}"
+    state: link
+  when:
+    - not var_studio_one_installed
+    - var_studio_one_external_deb.stat.exists
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: copy pinned PKGBUILD"
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/studio-one-7/PKGBUILD"
+    dest: "{{ arch_studio_one_build_dir }}/PKGBUILD"
+    mode: "644"
+  when:
+    - not var_studio_one_installed
+    - var_studio_one_external_deb.stat.exists
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: ensure runtime dependencies"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - alsa-lib
+      - egl-wayland
+      - wayland
+      - libjpeg-turbo
+  when:
+    - not var_studio_one_installed
+    - var_studio_one_external_deb.stat.exists
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: build package"
+  ansible.builtin.command:
+    argv:
+      - makepkg
+      - -C
+      - -c
+      - -f
+      - --noconfirm
+  args:
+    chdir: "{{ arch_studio_one_build_dir }}"
+  environment:
+    PKGEXT: ".pkg.tar"
+  changed_when: true
+  timeout: 0
+  when:
+    - not var_studio_one_installed
+    - var_studio_one_external_deb.stat.exists
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: locate built package"
+  ansible.builtin.find:
+    paths: "{{ arch_studio_one_build_dir }}"
+    patterns: "studio-one-7-{{ arch_studio_one_version }}-*.pkg.tar"
+    file_type: file
+  register: var_studio_one_built_package
+  when:
+    - not var_studio_one_installed
+    - var_studio_one_external_deb.stat.exists
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: install package"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - pacman
+      - -U
+      - --needed
+      - --noconfirm
+      - "{{ var_studio_one_built_package.files[0].path }}"
+  changed_when: true
+  timeout: 0
+  notify: handler_update_desktop_database
+  when:
+    - not var_studio_one_installed
+    - var_studio_one_external_deb.stat.exists
+    - (var_studio_one_built_package.files | default([]) | length) > 0
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: stat installed desktop entry"
+  ansible.builtin.stat:
+    path: /usr/share/applications/com.presonus.studioapp7.desktop
+  register: var_studio_one_desktop_entry
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: register scheme handler"
+  # The deb postinst registers x-scheme-handler/studioone in the system
+  # mimeapps.list; the Arch package() does not, so mirror it here. The user
+  # mimeapps.list is Ansible-owned from the private package and must not be
+  # rewritten by xdg-mime.
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/xdg/mimeapps.list
+    create: true
+    regexp: "^x-scheme-handler/studioone=.*"
+    line: "x-scheme-handler/studioone=com.presonus.studioapp7.desktop"
+    insertafter: "^\\[Default Applications\\]"
+  when: var_studio_one_desktop_entry.stat.exists
+
+# Studio One 7 Linux only runs as a Wayland client; this workstation's KDE
+# session is X11, so the launcher hosts it inside a nested weston (X11 backend)
+# and overrides the broken Exec the deb ships (it escapes spaces as literal
+# backslash-s, so the stock menu entry does nothing).
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: ensure weston wayland host"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - weston
+  when:
+    - var_studio_one_desktop_entry.stat.exists or var_studio_one_external_deb.stat.exists
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: setup launch-studio-one file"
+  ansible.builtin.template:
+    src: launch-studio-one
+    dest: ~/.local/bin/launch-studio-one
+    mode: "755"
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: setup nested-weston desktop entry"
+  ansible.builtin.template:
+    src: com.presonus.studioapp7.desktop
+    dest: ~/.local/share/applications/com.presonus.studioapp7.desktop
+    mode: "644"
+  notify: handler_update_desktop_database
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: ensure weston config directory"
+  ansible.builtin.file:
+    path: ~/.config/dotfiles
+    state: directory
+    mode: "755"
+
+- name: "[{{ user_os }}] Setup audio tools: studio one: setup weston config"
+  # Removes the desktop-shell panel so it does not overlay Studio One's menu bar.
+  ansible.builtin.template:
+    src: weston-studio-one.ini
+    dest: ~/.config/dotfiles/weston-studio-one.ini
+    mode: "644"
+
 - name: "[{{ user_os }}] Setup audio tools: setup launch-reaper-linux-legacy file"
   ansible.builtin.template:
     src: launch-reaper-linux-legacy
