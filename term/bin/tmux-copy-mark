@@ -5,8 +5,8 @@
 # $XDG_STATE_HOME/dotfiles/tmux-copy-mark/state-<session> so they survive tmux
 # server restarts; each pane hydrates from its session's file the first time it
 # loads marks. A one-line snippet of the scrollback at each mark, plus an
-# optional user label, is stored in state-<session>.labels and shown by the
-# picker.
+# optional user label, is stored in the shared mark-label store at
+# $XDG_STATE_HOME/dotfiles/marks/<session>.labels and shown by the picker.
 # Usage: tmux-copy-mark save|save-prompt SOCKET_PATH PANE_ID MARK
 # Usage: tmux-copy-mark label SOCKET_PATH PANE_ID MARK LABEL
 # Usage: tmux-copy-mark restore SOCKET_PATH PANE_ID MARK
@@ -382,14 +382,35 @@ list_marks() {
     return 0
 }
 
+# The picker runs fzf inside a tmux display-popup. Let tmux draw the popup border
+# and keep fzf borderless: fzf's own border inside a borderless popup is painted
+# once from the left edge of the client until the next full repaint, which shows
+# as a flicker on some terminals.
 picker() {
     load_marks
-    command -v fzf-tmux >/dev/null 2>&1 || { display_note 'tmux copy mark: fzf-tmux not found'; return 0; }
+    command -v fzf >/dev/null 2>&1 || { display_note 'tmux copy mark: fzf not found'; return 0; }
 
     marks=$(list_marks)
     [ -n "$marks" ] || { display_note 'tmux copy mark: no marks in this pane'; return 0; }
 
-    selected=$(printf '%s\n' "$marks" | fzf-tmux -p 60%,60% --reverse --no-multi --exit-0 --prompt='tmux mark> ')
+    tmpdir=${TMPDIR:-/tmp}
+    marks_file=$(mktemp "$tmpdir/tmux-copy-mark.XXXXXX")
+    result_file=$(mktemp "$tmpdir/tmux-copy-mark.XXXXXX")
+    run_file=$(mktemp "$tmpdir/tmux-copy-mark-fzf.XXXXXX")
+    printf '%s\n' "$marks" >"$marks_file"
+
+    cat >"$run_file" <<EOF
+#!/bin/sh
+FZF_DEFAULT_OPTS=
+export FZF_DEFAULT_OPTS
+exec fzf --no-height --border=none --reverse --no-multi --exit-0 --bind=ctrl-z:ignore --prompt='tmux mark> ' <'$marks_file' >'$result_file'
+EOF
+    chmod +x "$run_file"
+
+    tmux_cmd display-popup -E -b rounded -w60% -h60% "sh '$run_file'"
+
+    selected=$(cat "$result_file" 2>/dev/null)
+    rm -f "$marks_file" "$result_file" "$run_file"
     [ -n "$selected" ] || return 0
 
     mark=${selected%% *}
