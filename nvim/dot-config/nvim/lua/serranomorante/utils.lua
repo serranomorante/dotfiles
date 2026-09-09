@@ -1715,7 +1715,13 @@ local function overseer_task_for_buf(bufnr)
   local tasks = overseer.list_tasks({
     include_ephemeral = true,
     recent_first = true,
-    filter = function(task) return task:get_bufnr() == bufnr end,
+    filter = function(task)
+      if task:get_bufnr() == bufnr then return true end
+      -- `jobstart`-based strategies keep the interactive terminal on
+      -- strategy.bufnr while get_bufnr() may point elsewhere (or be nil).
+      local strategy = task.strategy
+      return strategy ~= nil and strategy.bufnr == bufnr
+    end,
   })
   return tasks[1]
 end
@@ -2364,23 +2370,10 @@ end
 function M.refresh_terminal_window(bufnr, job_id, opts)
   opts = opts or {}
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-  job_id = job_id or vim.b[bufnr].terminal_job_id or overseer_job_id_for_buf(bufnr)
+  job_id = job_id or M.terminal_job_id(bufnr)
 
   local ok_agent_tasks, agent_tasks = pcall(require, "serranomorante.plugins.jobs.agent_tasks")
   if ok_agent_tasks then pcall(agent_tasks.resize_tmux_sessions) end
-
-  if not job_id or job_id == 0 then
-    local channel = vim.api.nvim_get_option_value("channel", { buf = bufnr })
-    job_id = channel ~= 0 and channel or nil
-  end
-  if not job_id or job_id == 0 then
-    for _, chan in ipairs(vim.api.nvim_list_chans()) do
-      if chan.mode == "terminal" and (chan.buffer == bufnr or chan.buf == bufnr) then
-        job_id = chan.id
-        break
-      end
-    end
-  end
 
   if job_id and job_id ~= 0 then
     local ok, err = pcall(vim.fn.jobresize, job_id, vim.fn.winwidth(0), vim.fn.winheight(0))
@@ -2407,6 +2400,102 @@ function M.refresh_task_terminal_window(task)
 
     M.refresh_terminal_window(bufnr, job_id)
   end)
+end
+
+---Resolve the job/channel id that feeds a terminal buffer, including
+---Overseer-managed agent terminals whose live channel lives on the owning task.
+---@param bufnr integer
+---@return integer?
+function M.terminal_job_id(bufnr)
+  if type(bufnr) ~= "number" or not vim.api.nvim_buf_is_valid(bufnr) then return nil end
+
+  local bufvar_job = vim.b[bufnr].terminal_job_id
+  if type(bufvar_job) == "number" and bufvar_job ~= 0 then return bufvar_job end
+
+  local overseer_job = overseer_job_id_for_buf(bufnr)
+  if overseer_job then return overseer_job end
+
+  local ok_channel, channel = pcall(vim.api.nvim_get_option_value, "channel", { buf = bufnr })
+  if ok_channel and type(channel) == "number" and channel ~= 0 then return channel end
+
+  for _, chan in ipairs(vim.api.nvim_list_chans()) do
+    if chan.mode == "terminal" and (chan.buffer == bufnr or chan.buf == bufnr) then return chan.id end
+  end
+
+  return nil
+end
+
+---Whether a process or any of its descendants is a running tmux client/server.
+---`ps` labels them with comm `tmux` or `tmux: client`/`tmux: server`.
+---@param pid integer
+---@return boolean
+function M.pid_runs_tmux(pid)
+  if type(pid) ~= "number" or pid <= 0 then return false end
+
+  local ok, rows = pcall(vim.fn.systemlist, { "ps", "-eo", "pid=,ppid=,comm=" })
+  if not ok then return false end
+
+  local comm_by_pid, children = {}, {}
+  for _, line in ipairs(rows) do
+    local pid_str, ppid_str, comm = line:match("^%s*(%d+)%s+(%d+)%s+(%S+)")
+    if pid_str then
+      local process, parent = tonumber(pid_str), tonumber(ppid_str)
+      comm_by_pid[process] = comm
+      if not children[parent] then children[parent] = {} end
+      table.insert(children[parent], process)
+    end
+  end
+
+  local function is_tmux(process)
+    local comm = comm_by_pid[process]
+    return type(comm) == "string" and (comm == "tmux" or vim.startswith(comm, "tmux:"))
+  end
+
+  if is_tmux(pid) then return true end
+
+  local queue, seen = {}, {}
+  local function push_children(process)
+    for _, child in ipairs(children[process] or {}) do
+      if not seen[child] then
+        seen[child] = true
+        table.insert(queue, child)
+      end
+    end
+  end
+
+  push_children(pid)
+  while #queue > 0 do
+    local process = table.remove(queue, 1)
+    if is_tmux(process) then return true end
+    push_children(process)
+  end
+  return false
+end
+
+---Send the tmux prefix chord Ctrl-S followed by `keys` into a terminal buffer
+---that runs tmux underneath. Ctrl-S is this workstation's tmux prefix
+---(`set-option -g prefix C-s`), so the bytes match what Neovim forwards when the
+---chord is typed from Terminal mode; sending them from Normal mode lets a
+---mapped chord such as `g` (copy-mode marks picker) still reach tmux.
+---@param bufnr integer
+---@param keys string
+---@return boolean
+function M.send_tmux_prefix_to_terminal(bufnr, keys)
+  if not M.is_terminal_buffer(bufnr) then return false end
+
+  local job_id = M.terminal_job_id(bufnr)
+  if not job_id then return false end
+
+  local ok, pid = pcall(vim.fn.jobpid, job_id)
+  if not ok or type(pid) ~= "number" or pid <= 0 then return false end
+  if not M.pid_runs_tmux(pid) then return false end
+
+  local ok_send, err = pcall(vim.api.nvim_chan_send, job_id, "\x13" .. keys)
+  if not ok_send then
+    vim.notify(("Could not send tmux prefix to terminal: %s"):format(err), vim.log.levels.WARN)
+    return false
+  end
+  return true
 end
 
 local function shell_fence_under_cursor()

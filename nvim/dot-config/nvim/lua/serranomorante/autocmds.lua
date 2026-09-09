@@ -1,4 +1,5 @@
 local utils = require("serranomorante.utils")
+local constants = require("serranomorante.constants")
 
 local general_settings_group = vim.api.nvim_create_augroup("general_settings", { clear = true })
 local indent_line_group = vim.api.nvim_create_augroup("indent_line", { clear = true })
@@ -316,5 +317,16 @@ vim.api.nvim_create_autocmd({ "TermOpen", "BufWinEnter" }, {
   callback = function(args)
     if not utils.is_terminal_buffer(args.buf) then return end
     vim.keymap.set("n", "i", "<cmd>normal! m`<CR>i", { buffer = args.buf, desc = "" })
+
+    -- While in Normal mode Neovim swallows keys that would otherwise reach tmux,
+    -- so forward tmux prefix chords (Ctrl-S + key, configured in constants) to
+    -- terminals that actually run tmux; see utils.send_tmux_prefix_to_terminal.
+    for _, passthrough in ipairs(constants.TMUX_PREFIX_PASSTHROUGHS) do
+      vim.keymap.set("n", passthrough.lhs, function()
+        if not utils.send_tmux_prefix_to_terminal(args.buf, passthrough.keys) then return end
+        -- Enter Terminal mode so the keys that follow reach the tmux command.
+        if passthrough.terminal_mode ~= false then utils.feedkeys("i", "m") end
+      end, { buffer = args.buf, desc = passthrough.desc })
+    end
   end,
 })

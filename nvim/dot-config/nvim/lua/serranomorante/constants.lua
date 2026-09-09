@@ -70,6 +70,23 @@ M.BINARIES = ok and binaries or {}
 
 M.NUMBERED_MARKS = { "'0", "'1", "'2", "'3", "'4", "'5", "'6", "'7", "'8", "'9" }
 
+---Normal-mode chords that forward the tmux prefix (Ctrl-S, see tmux.conf) to a
+---tmux running inside a Neovim terminal buffer, where Normal mode would swallow
+---the keys. `keys` are the tmux keys typed right after the prefix. To add a new
+---passthrough, append an entry here; the terminal keymap autocmd registers it.
+---@class TmuxPrefixPassthrough
+---@field lhs string # Neovim Normal-mode mapping to define
+---@field keys string # tmux keys sent after the Ctrl-S prefix
+---@field desc string
+---@field terminal_mode? boolean # enter Terminal mode after sending (default true)
+M.TMUX_PREFIX_PASSTHROUGHS = {
+  {
+    lhs = "<C-s>g",
+    keys = "g", -- tmux root binding: copy-mode marks picker
+    desc = "Send C-s g (tmux prefix) to the nested tmux",
+  },
+}
+
 M.KEYRINGS = {
   anthropic = {
     folder = "dev-tools",

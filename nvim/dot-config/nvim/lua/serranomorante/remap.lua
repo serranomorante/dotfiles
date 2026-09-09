@@ -368,23 +368,10 @@ vim.keymap.set("t", "<A-r>", function() utils.refresh_terminal_window(nil, nil, 
 -- The channel is NOT vim.b.terminal_job_id for Overseer-managed agent terminals (they
 -- run under the `jobstart` strategy, which leaves that buffer var unset); the live
 -- channel lives on the owning task's strategy.job_id, exactly as agent_tasks.lua
--- resolves it. Try the plain terminal var first, then fall back to the Overseer task
--- whose strategy owns the current buffer.
-local function terminal_channel_for_current_buf()
-  local buf = vim.api.nvim_get_current_buf()
-  local job = vim.b[buf].terminal_job_id
-  if job then return job end
-  local ok, overseer = pcall(require, "overseer")
-  if not ok then return nil end
-  for _, task in ipairs(overseer.list_tasks({})) do
-    local strategy = task.strategy
-    if strategy and strategy.bufnr == buf then return strategy.job_id or task.job_id end
-  end
-  return nil
-end
-
+-- resolves it. utils.terminal_job_id handles the plain terminal var and then falls
+-- back to the Overseer task whose terminal this buffer is.
 vim.keymap.set("t", "<S-CR>", function()
-  local job = terminal_channel_for_current_buf()
+  local job = utils.terminal_job_id(vim.api.nvim_get_current_buf())
   if job then vim.api.nvim_chan_send(job, "\n") end
 end, {
   desc = "Shift+Enter -> newline (LF) for nested TUIs",
