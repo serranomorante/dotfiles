@@ -7,6 +7,9 @@ set -euo pipefail
 # dotfiles-test-case: snippets-panel-pick-pastes-selection
 # dotfiles-test-case: snippets-lists-public-and-private
 # dotfiles-test-case: snippets-direct-paste-by-name-with-vars
+# dotfiles-test-case: snippets-direct-paste-expands-clipboard-regex
+# dotfiles-test-case: snippets-preview-renders-clipboard-regex-expansion
+# dotfiles-test-case: snippets-invalid-regex-aborts-before-paste
 # dotfiles-test-case: snippets-refocus-click-for-wine-target
 
 # Purpose: Verify the shared snippet picker metadata display and paste handoff.
@@ -78,10 +81,37 @@ SH
 #!/usr/bin/env sh
 set -eu
 
-cat >"${DOTFILES_TEST_TMP}/clipboard.txt"
+read_only=0
+for arg in "$@"; do
+    [ "$arg" = "-o" ] && read_only=1
+done
+
+if [ "$read_only" = 1 ]; then
+    if [ -e "${DOTFILES_TEST_TMP}/clipboard-source.txt" ]; then
+        cat "${DOTFILES_TEST_TMP}/clipboard-source.txt"
+    else
+        exit 1
+    fi
+else
+    cat >"${DOTFILES_TEST_TMP}/clipboard.txt"
+fi
 printf 'xclip\n' >>"${DOTFILES_TEST_TMP}/events.log"
 SH
     chmod +x "${bin}/xclip"
+    cat >"${bin}/bat" <<'SH'
+#!/usr/bin/env sh
+set -eu
+
+file=
+for arg in "$@"; do
+    case "$arg" in
+    --*) ;;
+    *) file=$arg ;;
+    esac
+done
+cat "$file"
+SH
+    chmod +x "${bin}/bat"
 cat >"${bin}/xdotool" <<'SH'
 #!/usr/bin/env sh
 set -eu
@@ -197,6 +227,8 @@ Recuerda que puedes paralelizar el trabajo usando los agentes hijos que están e
 
 Recuerda que tenemos varias instancias de chromium abiertas en puertos específicos para que puedas paralelizar también los tests usando alguno de los mcps de playwright que hemos creado para esas instancias/perfiles de chromium.
 EOF
+    expected_content=$(cat "$expected_payload")
+    printf '%s' "$expected_content" >"$expected_payload"
     grep -Fqx "$expected_input" "${DOTFILES_TEST_TMP}/fzf-input"
     grep -Fqx -- '--gap=1' "${DOTFILES_TEST_TMP}/fzf-args"
     cmp -s "$expected_payload" "${DOTFILES_TEST_TMP}/clipboard.txt"
@@ -315,6 +347,115 @@ snippets-refocus-click-for-wine-target)
     refocus_click_line=$(rg -n '^refocus-click$' "${DOTFILES_TEST_TMP}/events.log" | cut -d: -f1)
     paste_line=$(rg -n '^paste-browser$' "${DOTFILES_TEST_TMP}/events.log" | cut -d: -f1)
     [ "$refocus_click_line" -lt "$paste_line" ]
+    ;;
+snippets-direct-paste-expands-clipboard-regex)
+    # Direct paste mode must expand {regex:s/.../.../} placeholders against the
+    # current clipboard before copying and pasting: the payload becomes the
+    # snippet body with the converted clipboard text inlined.
+    bin=$(make_fake_path)
+    snippets_dir=$(write_snippet_fixture)
+    cat >"${snippets_dir}/regex-https" <<'EOF'
+---
+snippet-title: Regex clipboard
+snippet-summary: Clipboard regex placeholder expansion.
+---
+
+Convierte a https estos enlaces: {regex:s/http:(.*)/https:\1/g}
+EOF
+    printf 'http://first.test/a\nhttp://second.test/b' >"${DOTFILES_TEST_TMP}/clipboard-source.txt"
+    : >"${DOTFILES_TEST_TMP}/events.log"
+
+    PATH="${bin}:/usr/bin:/bin" \
+        HOME="${DOTFILES_TEST_TMP}/home" \
+        DISPLAY=:99 \
+        XAUTHORITY="${DOTFILES_TEST_TMP}/Xauthority" \
+        DOTFILES_TEST_XDOTOOL_CLASS_DURING_PANEL=kitty \
+        "$script_under_test" \
+        regex-https
+
+    wait_for_file "${DOTFILES_TEST_TMP}/clipboard.txt"
+    wait_for_file "${DOTFILES_TEST_TMP}/xdotool-key.txt"
+
+    expected_payload="${DOTFILES_TEST_TMP}/expected-payload"
+    cat >"$expected_payload" <<'EOF'
+Convierte a https estos enlaces: https://first.test/a
+https://second.test/b
+EOF
+    expected_content=$(cat "$expected_payload")
+    printf '%s' "$expected_content" >"$expected_payload"
+    cmp -s "$expected_payload" "${DOTFILES_TEST_TMP}/clipboard.txt"
+    grep -Fxq 'key --clearmodifiers ctrl+shift+v' "${DOTFILES_TEST_TMP}/xdotool-key.txt"
+    if rg -Fq '{regex:' "${DOTFILES_TEST_TMP}/clipboard.txt"; then
+        printf 'unresolved {regex:} placeholder in direct paste payload\n' >&2
+        exit 1
+    fi
+    rg -q '^paste-terminal$' "${DOTFILES_TEST_TMP}/events.log"
+    ;;
+snippets-preview-renders-clipboard-regex-expansion)
+    # The picker preview action must render the body with {regex:...}
+    # placeholders already resolved against the current clipboard, so the user
+    # sees the conversion result before choosing the snippet.
+    bin=$(make_fake_path)
+    snippets_dir=$(write_snippet_fixture)
+    cat >"${snippets_dir}/regex-https" <<'EOF'
+---
+snippet-title: Regex clipboard
+snippet-summary: Clipboard regex placeholder expansion.
+---
+
+Convierte a https estos enlaces: {regex:s/http:(.*)/https:\1/g}
+EOF
+    printf 'http://first.test/a\nhttp://second.test/b' >"${DOTFILES_TEST_TMP}/clipboard-source.txt"
+    : >"${DOTFILES_TEST_TMP}/events.log"
+
+    DOTFILES_SNIPPETS_ACTION=preview \
+        PATH="${bin}:/usr/bin:/bin" \
+        HOME="${DOTFILES_TEST_TMP}/home" \
+        DISPLAY=:99 \
+        XAUTHORITY="${DOTFILES_TEST_TMP}/Xauthority" \
+        "$script_under_test" \
+        "${snippets_dir}/regex-https" >"${DOTFILES_TEST_TMP}/preview.out"
+
+    expected_payload="${DOTFILES_TEST_TMP}/expected-payload"
+    cat >"$expected_payload" <<'EOF'
+Convierte a https estos enlaces: https://first.test/a
+https://second.test/b
+EOF
+    cmp -s "$expected_payload" "${DOTFILES_TEST_TMP}/preview.out"
+    if rg -Fq '{regex:' "${DOTFILES_TEST_TMP}/preview.out"; then
+        printf 'raw {regex:} placeholder leaked into preview\n' >&2
+        exit 1
+    fi
+    ;;
+snippets-invalid-regex-aborts-before-paste)
+    # A snippet whose {regex:...} substitution does not compile must abort the
+    # paste before the clipboard is overwritten or a paste keystroke is sent.
+    bin=$(make_fake_path)
+    snippets_dir=$(write_snippet_fixture)
+    cat >"${snippets_dir}/regex-bad" <<'EOF'
+---
+snippet-title: Regex bad
+snippet-summary: Invalid clipboard regex placeholder.
+---
+
+Mensaje {regex:s/(/x/g} final
+EOF
+    printf 'http://first.test/a\n' >"${DOTFILES_TEST_TMP}/clipboard-source.txt"
+    : >"${DOTFILES_TEST_TMP}/events.log"
+
+    if PATH="${bin}:/usr/bin:/bin" \
+        HOME="${DOTFILES_TEST_TMP}/home" \
+        DISPLAY=:99 \
+        XAUTHORITY="${DOTFILES_TEST_TMP}/Xauthority" \
+        DOTFILES_TEST_XDOTOOL_CLASS_DURING_PANEL=kitty \
+        "$script_under_test" \
+        regex-bad >"${DOTFILES_TEST_TMP}/run.out" 2>&1; then
+        printf 'invalid {regex:...} placeholder should abort the paste\n' >&2
+        exit 1
+    fi
+    [ ! -e "${DOTFILES_TEST_TMP}/clipboard.txt" ]
+    [ ! -e "${DOTFILES_TEST_TMP}/xdotool-key.txt" ]
+    rg -Fq 'could not expand {regex:...}' "${DOTFILES_TEST_TMP}/run.out"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

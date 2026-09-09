@@ -1,0 +1,6 @@
+---
+snippet-title: Clipboard regex example
+snippet-summary: Example of an in-body {regex:s/pat/rep/flags} placeholder. Copy text, pick this snippet, and the marker expands to the clipboard run through the substitution (here http: becomes https:). Edit the regex and surrounding prose, or delete this file once you have real ones.
+---
+
+The clipboard text, run through the substitution, is inserted at the marker: {regex:s/http:(.*)/https:\1/g}

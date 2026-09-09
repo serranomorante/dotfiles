@@ -1,8 +1,9 @@
 #!/usr/bin/env sh
 # Purpose: Open a shared snippet picker and paste the selected text, or paste a
-# named snippet directly with dynamic {var:KEY} substitution.
+# named snippet directly with dynamic {var:KEY} substitution and {regex:...}
+# clipboard substitution.
 # Usage: snippets [<name> [var:KEY=VALUE ...]]
-# Notes: Snippets are stored as plain files under utilities/dot-local/share/dotfiles/snippets/ and, when present, for-my-eyes-only/dot-local/share/dotfiles/snippets/. Snippet files can add YAML frontmatter with `snippet-title:` and `snippet-summary:` keys; the picker shows those fields but pastes only the body after the closing `---`. The picker wraps long title/summary rows and renders the body in an fzf preview pane on the right (via the internal `preview` action); when `bat` is installed the preview is Markdown-highlighted, otherwise it falls back to plain text. When launched from Kitty, the parent process waits for the quick-access picker to close before copying and pasting, so terminal detection never sees the picker itself. When invoked with a snippet name, it resolves that snippet by basename across the public and private roots, strips the metadata, replaces any `{var:KEY}` placeholders with the provided `var:KEY=VALUE` pairs, and pastes the result directly without opening the picker.
+# Notes: Snippets are stored as plain files under utilities/dot-local/share/dotfiles/snippets/ and, when present, for-my-eyes-only/dot-local/share/dotfiles/snippets/. Snippet files can add YAML frontmatter with `snippet-title:` and `snippet-summary:` keys; the picker shows those fields but pastes only the body after the closing `---`. The picker wraps long title/summary rows and renders the body in an fzf preview pane on the right (via the internal `preview` action); when `bat` is installed the preview is Markdown-highlighted, otherwise it falls back to plain text. When launched from Kitty, the parent process waits for the quick-access picker to close before copying and pasting, so terminal detection never sees the picker itself. When invoked with a snippet name, it resolves that snippet by basename across the public and private roots, strips the metadata, replaces any `{var:KEY}` placeholders with the provided `var:KEY=VALUE` pairs, and pastes the result directly without opening the picker. Snippet bodies can also embed `{regex:s/pat/rep/flags}` placeholders (optionally with a different delimiter such as `s|...|...|`); those expand to the current clipboard text run through that sed-style substitution, with each clipboard line processed independently like `sed s///`, `\1`..`\9` backreferences rewritten to `$1`..`$9`, and Perl escapes/flags (`gimsx`) available. The fzf preview and the paste handoff both resolve `{regex:...}` against the live clipboard; if the clipboard is unreadable a paste aborts before anything is copied or pasted, and the preview then shows the raw body.
 
 set -eu
 
@@ -28,6 +29,23 @@ snippet_paste_settle_delay=${DOTFILES_SNIPPETS_PASTE_SETTLE_DELAY:-0.12}
 # active when the picker was summoned before sending the paste keystroke.
 snippet_refocus_click=${DOTFILES_SNIPPETS_REFOCUS_CLICK:-1}
 snippet_refocus_click_classes=${DOTFILES_SNIPPETS_REFOCUS_CLICK_CLASSES:-reaper}
+# Wine needs a beat after the replayed click to hand keyboard focus to the
+# control before the paste keystroke will land. Tune with
+# DOTFILES_SNIPPETS_REFOCUS_CLICK_DELAY if a target is slower.
+snippet_refocus_click_delay=${DOTFILES_SNIPPETS_REFOCUS_CLICK_DELAY:-0.5}
+snippet_debug=${DOTFILES_SNIPPETS_DEBUG:-0}
+snippet_debug_log=${DOTFILES_SNIPPETS_DEBUG_LOG:-"${XDG_STATE_HOME:-$HOME/.local/state}/snippets/debug.log"}
+# A body copied straight from the snippet file ends with a newline, which some
+# targets paste as stray junk (for example Wine/REAPER edit fields). Strip
+# trailing blank lines and the final newline before the clipboard copy.
+snippet_trim_trailing_newline=${DOTFILES_SNIPPETS_TRIM_TRAILING_NEWLINE:-1}
+
+debug_log() {
+    [ "${snippet_debug:-0}" = 1 ] || return 0
+    [ -n "$snippet_debug_log" ] || return 0
+    mkdir -p "$(dirname "$snippet_debug_log")" 2>/dev/null || return 0
+    printf '%s: %s\n' "$(date +%s)" "$*" >>"$snippet_debug_log"
+}
 terminal_classes='kitty alacritty foot wezterm xterm urxvt konsole st ghostty kitty-lazygit kitty-nnn kitty-dmenu'
 
 die() {
@@ -43,7 +61,9 @@ Usage:
 
 Open the shared snippet picker and paste the selected text into the previously focused window.
 With a <name>, paste that snippet directly without the picker, resolving it by
-basename and substituting {var:KEY} placeholders with the given values.
+basename and substituting {var:KEY} placeholders with the given values and
+{regex:s/pat/rep/flags} placeholders with the current clipboard text run
+through that substitution.
 EOF
 }
 
@@ -241,6 +261,163 @@ apply_snippet_vars() {
     done
 }
 
+snippet_body_has_regex() {
+    grep -q '{regex:' "$1"
+}
+
+read_snippet_clipboard() {
+    out_path=$1
+    if command -v xclip >/dev/null 2>&1 && xclip -selection clipboard -o >"$out_path" 2>/dev/null; then
+        return 0
+    fi
+    rm -f "$out_path"
+    return 1
+}
+
+# Expand every {regex:s<D>pat<D>rep<D>flags} placeholder in the payload by
+# applying that substitution to the current clipboard text. The substitution
+# syntax follows sed, so each clipboard line is processed independently (like
+# sed s///) and sed-style \1..\9 backreferences are rewritten to $1..$9; the
+# pattern/replacement run through perl, so Perl escapes (\d, \s, \x1b, ...)
+# and flags (gimsx) work. SNIPPETS_REGEX_MODE=strict (default) aborts the
+# whole expansion on the first invalid placeholder so nothing broken is
+# pasted; SNIPPETS_REGEX_MODE=preview replaces the failed placeholder with a
+# visible [regex error: ...] marker so the picker can still show a preview.
+expand_regex_placeholders() {
+    payload_path=$1
+    clip_path=$2
+
+    perl - "$payload_path" "$clip_path" >"${payload_path}.expanded" <<'PERL' || return 1
+use strict;
+use warnings;
+
+my ($body_file, $clip_file) = @ARGV;
+my $strict = ($ENV{'SNIPPETS_REGEX_MODE'} || 'strict') ne 'preview';
+
+open my $bfh, '<', $body_file or die "cannot read $body_file: $!\n";
+local $/;
+my $body = <$bfh>;
+
+my $clip = '';
+if (defined $clip_file && $clip_file ne '' && -f $clip_file) {
+    open my $cfh, '<', $clip_file or die "cannot read clipboard: $!\n";
+    $clip = <$cfh>;
+}
+
+sub sed_backrefs {
+    my ($text) = @_;
+    return $text if index($text, '\\') < 0;
+    $text =~ s/\\([1-9])/\$$1/g;
+    return $text;
+}
+
+sub parse_substitution {
+    my ($s, $pos) = @_;
+    my $len = length $s;
+    return if $pos >= $len || substr($s, $pos, 1) ne 's';
+
+    my $nl = index($s, "\n", $pos);
+    $nl = $len if $nl < 0;
+
+    my $i = $pos + 1;
+    while ($i < $nl && substr($s, $i, 1) =~ /[ \t]/) { $i++; }
+    return if $i >= $nl;
+    my $d = substr($s, $i, 1);
+    $i++;
+    return if $d eq "\n" || $d eq "\r";
+
+    my $ok = 0;
+    while ($i < $len) {
+        my $c = substr($s, $i, 1);
+        if ($c eq '\\' && $i + 1 < $len) { $i += 2; next; }
+        if ($c eq '\\') { $i++; next; }
+        if ($c eq $d) { $ok = 1; $i++; last; }
+        return if $c eq "\n";
+        $i++;
+    }
+    return if !$ok;
+    my $repl_start = $i;
+
+    $ok = 0;
+    while ($i < $len) {
+        my $c = substr($s, $i, 1);
+        if ($c eq '\\' && $i + 1 < $len) { $i += 2; next; }
+        if ($c eq '\\') { $i++; next; }
+        if ($c eq $d) { $ok = 1; $i++; last; }
+        return if $c eq "\n";
+        $i++;
+    }
+    return if !$ok;
+    my $rep_end = $i - 1;
+
+    while ($i < $len) {
+        my $c = substr($s, $i, 1);
+        if ($c eq '\\' && $i + 1 < $len) { $i += 2; next; }
+        if ($c eq '\\') { $i++; next; }
+        if ($c eq '}') {
+            my $spec = substr($s, $pos, $repl_start - $pos)
+                . sed_backrefs(substr($s, $repl_start, $rep_end - $repl_start))
+                . substr($s, $rep_end, $i - $rep_end);
+            return ($spec, $i + 1);
+        }
+        if ($c eq "\n") { return; }
+        $i++;
+    }
+    return;
+}
+
+sub transform_clipboard {
+    my ($spec) = @_;
+    my $err = '';
+    my @out;
+    for my $line (split /\n/, $clip, -1) {
+        my $rc = eval {
+            local $_ = $line;
+            eval $spec;
+            die $@ if $@;
+            push @out, $_;
+            1;
+        };
+        if (!$rc) {
+            $err = $@;
+            last;
+        }
+    }
+    if ($err) {
+        if ($strict) {
+            print STDERR "snippets: {regex:...} failed: $err";
+            exit 1;
+        }
+        return "[{regex:$spec} ERROR: $err]";
+    }
+    return join "\n", @out;
+}
+
+my $out = '';
+my $i = 0;
+my $prefix = '{regex:';
+my $plen = length $prefix;
+while ($i <= length $body) {
+    my $start = index($body, $prefix, $i);
+    if ($start < 0) { $out .= substr($body, $i); last; }
+    $out .= substr($body, $i, $start - $i);
+    my $after = $start + $plen;
+    if ($after < length $body && substr($body, $after, 1) eq 's') {
+        my ($spec, $next) = parse_substitution($body, $after);
+        if (defined $spec) {
+            $out .= transform_clipboard($spec);
+            $i = $next;
+            next;
+        }
+    }
+    $out .= $prefix;
+    $i = $after;
+}
+print $out;
+PERL
+    mv "${payload_path}.expanded" "$payload_path"
+}
+
 cleanup_snippets_tmpdir() {
     if [ "${snippets_handoff:-0}" -eq 0 ] && [ -n "${snippets_tmpdir:-}" ] && [ -d "$snippets_tmpdir" ]; then
         rm -rf "$snippets_tmpdir"
@@ -299,6 +476,7 @@ capture_launch_target() {
     snippet_launch_window=$window_id
     snippet_launch_x=$px
     snippet_launch_y=$py
+    debug_log "capture window=$window_id xy=$px,$py"
 }
 
 refocus_click_matches_class() {
@@ -319,13 +497,21 @@ maybe_refocus_click_target() {
     [ -n "${snippet_launch_window:-}" ] || return 1
 
     target_window_id=$(active_window_id) || return 1
-    [ "$target_window_id" = "$snippet_launch_window" ] || return 1
+    [ "$target_window_id" = "$snippet_launch_window" ] || {
+        debug_log "refocus skipped: active=$target_window_id launch=$snippet_launch_window"
+        return 1
+    }
 
-    refocus_click_matches_class "$target_window_id" || return 1
+    refocus_click_matches_class "$target_window_id" || {
+        debug_log "refocus skipped: class not in $snippet_refocus_click_classes"
+        return 1
+    }
 
+    debug_log "refocus click at $snippet_launch_x,$snippet_launch_y on window=$target_window_id"
     xdotool mousemove --sync "$snippet_launch_x" "$snippet_launch_y" >/dev/null 2>&1 || return 1
     xdotool click --clearmodifiers 1 >/dev/null 2>&1 || return 1
-    sleep "$snippet_paste_settle_delay"
+    sleep "$snippet_refocus_click_delay"
+    debug_log "refocus click done"
     return 0
 }
 
@@ -379,14 +565,44 @@ paste_clipboard() {
     maybe_refocus_click_target || true
 
     if focused_is_terminal; then
+        debug_log "paste ctrl+shift+v"
         xdotool key --clearmodifiers ctrl+shift+v >/dev/null 2>&1
     else
+        debug_log "paste ctrl+v"
         xdotool key --clearmodifiers ctrl+v >/dev/null 2>&1
     fi
 }
 
+trim_payload_file() {
+    payload_path=$1
+    tmp=$(mktemp "${TMPDIR:-/tmp}/snippets.trim.XXXXXX") || return 1
+
+    if awk '
+        { lines[NR] = $0 }
+        END {
+            n = NR
+            while (n > 0 && lines[n] ~ /^[[:space:]]*$/) n--
+            for (i = 1; i <= n; i++) {
+                printf "%s", lines[i]
+                if (i < n) printf "\n"
+            }
+        }
+    ' "$payload_path" >"$tmp"; then
+        mv "$tmp" "$payload_path"
+        return 0
+    fi
+
+    rm -f "$tmp"
+    return 1
+}
+
 paste_payload() {
     payload_path=$1
+
+    if [ "${snippet_trim_trailing_newline:-1}" = 1 ]; then
+        trim_payload_file "$payload_path" || die "cannot trim payload: $payload_path"
+    fi
+
     xclip -selection clipboard <"$payload_path"
     paste_clipboard
 }
@@ -409,6 +625,15 @@ paste_named_snippet() {
 
     if [ "$#" -gt 0 ]; then
         apply_snippet_vars "$payload_path" "$@"
+    fi
+
+    if snippet_body_has_regex "$payload_path"; then
+        clip_tmp=$tmpdir/clipboard
+        if ! read_snippet_clipboard "$clip_tmp"; then
+            die "snippet $name: clipboard text is required to expand {regex:...} placeholders"
+        fi
+        SNIPPETS_REGEX_MODE=strict expand_regex_placeholders "$payload_path" "$clip_tmp" \
+            || die "snippet $name: could not expand {regex:...} placeholders"
     fi
 
     if [ "$snippet_context" = panel ]; then
@@ -448,6 +673,15 @@ EOF
     trap cleanup_snippets_tmpdir EXIT INT HUP TERM
     payload_path=$tmpdir/payload
     strip_snippet_metadata "$snippet_path" >"$payload_path" || exit 1
+
+    if snippet_body_has_regex "$payload_path"; then
+        clip_tmp=$tmpdir/clipboard
+        if ! read_snippet_clipboard "$clip_tmp"; then
+            die "snippet $_snippet_name: clipboard text is required to expand {regex:...} placeholders"
+        fi
+        SNIPPETS_REGEX_MODE=strict expand_regex_placeholders "$payload_path" "$clip_tmp" \
+            || die "snippet $_snippet_name: could not expand {regex:...} placeholders"
+    fi
 
     if [ "$snippet_context" = panel ]; then
         [ -n "$snippet_payload_out" ] || die "missing panel payload output path"
@@ -552,6 +786,17 @@ pick)
 preview)
     [ "$#" -ge 1 ] || die "missing snippet path for preview"
     [ -r "$1" ] || die "missing snippet: $1"
+    body_tmp=$(mktemp "${TMPDIR:-/tmp}/snippets-preview.XXXXXX") || exit 1
+    trap 'rm -f "$body_tmp" "$body_tmp.clip"' EXIT HUP INT TERM
+    strip_snippet_metadata "$1" >"$body_tmp" || exit 1
+
+    if snippet_body_has_regex "$body_tmp"; then
+        if read_snippet_clipboard "$body_tmp.clip"; then
+            SNIPPETS_REGEX_MODE=preview expand_regex_placeholders "$body_tmp" "$body_tmp.clip" || true
+            rm -f "$body_tmp.clip"
+        fi
+    fi
+
     bat_bin=
     if command -v bat >/dev/null 2>&1; then
         bat_bin=bat
@@ -559,15 +804,17 @@ preview)
         bat_bin=batcat
     fi
     if [ -n "$bat_bin" ]; then
-        strip_snippet_metadata "$1" | "$bat_bin" \
+        "$bat_bin" \
             --color=always \
             --style=plain \
             --paging=never \
             --language=markdown \
-            --terminal-width="${FZF_PREVIEW_COLUMNS:-80}"
+            --terminal-width="${FZF_PREVIEW_COLUMNS:-80}" \
+            "$body_tmp"
     else
-        strip_snippet_metadata "$1"
+        cat "$body_tmp"
     fi
+    rm -f "$body_tmp"
     ;;
 *)
     die "unsupported action: ${DOTFILES_SNIPPETS_ACTION:-}"
