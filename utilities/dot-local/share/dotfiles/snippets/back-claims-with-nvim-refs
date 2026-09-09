@@ -13,6 +13,8 @@ Si la prueba es un commit, cítalo así:
 
 nvim.commit:<ruta absoluta del repositorio>:<hash del commit>
 
+y también menciona el email del autor del commit.
+
 Ejemplos del formato exacto:
 
 - El endpoint rechaza la petición sin token en nvim.file:/home/aaaa/proyecto/backend/api/users.php:214

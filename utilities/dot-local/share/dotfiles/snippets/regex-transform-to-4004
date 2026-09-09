@@ -1,0 +1,6 @@
+---
+snippet-title: tranforms url to localhost:4000
+snippet-summary: transform url to localhost:4000
+---
+
+{regex:s/(.*#)https?:\/\/[^\/]+(\/.*)/\1http:\/\/localhost:4000\2/g}

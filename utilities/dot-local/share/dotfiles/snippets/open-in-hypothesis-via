@@ -1,0 +1,6 @@
+---
+snippet-title: Open in hypothesis via
+snippet-summary: Open in hypothesis via
+---
+
+{regex:s/.*\/(\d+)/http:\/\/via.local\/http:\/\/calibre-web.local\/download\/\1\/pdf/g}
