@@ -7,6 +7,7 @@ set -euo pipefail
 # dotfiles-test-case: snippets-panel-pick-pastes-selection
 # dotfiles-test-case: snippets-lists-public-and-private
 # dotfiles-test-case: snippets-direct-paste-by-name-with-vars
+# dotfiles-test-case: snippets-refocus-click-for-wine-target
 
 # Purpose: Verify the shared snippet picker metadata display and paste handoff.
 
@@ -87,18 +88,15 @@ set -eu
 
 case "$*" in
 "getactivewindow")
-    count_file="${DOTFILES_TEST_TMP}/active-window-count"
-    if [ -f "$count_file" ]; then
-        count=$(cat "$count_file")
-    else
-        count=0
-    fi
-    count=$((count + 1))
-    printf '%s\n' "$count" >"$count_file"
-
+    # Return the picker window (1000) while the panel is open, then model the
+    # handoff: the first poll after the panel closes still sees the picker
+    # (focus-still-picker), and later polls see the previously focused window
+    # (2000). Independent of how many window polls happen before the panel
+    # opens (for example the launch-target capture).
     if [ ! -e "${DOTFILES_TEST_TMP}/panel-closed" ]; then
         printf '%s\n' 1000
-    elif [ "$count" -lt 2 ]; then
+    elif [ ! -e "${DOTFILES_TEST_TMP}/after-panel-poll" ]; then
+        : >"${DOTFILES_TEST_TMP}/after-panel-poll"
         printf 'focus-still-picker\n' >>"${DOTFILES_TEST_TMP}/events.log"
         printf '%s\n' 1000
     else
@@ -118,6 +116,16 @@ case "$*" in
 "key --clearmodifiers ctrl+v")
     printf '%s\n' "$*" >"${DOTFILES_TEST_TMP}/xdotool-key.txt"
     printf 'paste-browser\n' >>"${DOTFILES_TEST_TMP}/events.log"
+    ;;
+"getmouselocation --shell")
+    printf 'X=42\nY=43\n'
+    ;;
+"mousemove --sync "*)
+    printf 'refocus-mousemove %s %s\n' "$3" "$4" >"${DOTFILES_TEST_TMP}/refocus-point.txt"
+    printf 'refocus-mousemove\n' >>"${DOTFILES_TEST_TMP}/events.log"
+    ;;
+"click --clearmodifiers 1")
+    printf 'refocus-click\n' >>"${DOTFILES_TEST_TMP}/events.log"
     ;;
 *)
     printf 'unexpected xdotool call: %s\n' "$*" >&2
@@ -278,6 +286,35 @@ EOF
     [ ! -e "${DOTFILES_TEST_TMP}/fzf-input" ]
     rg -q '^xclip$' "${DOTFILES_TEST_TMP}/events.log"
     rg -q '^paste-terminal$' "${DOTFILES_TEST_TMP}/events.log"
+    ;;
+snippets-refocus-click-for-wine-target)
+    # Regression: Wine/REAPER windows stop routing keyboard input to the
+    # focused control once another window has taken focus. When the target
+    # window class is a refocus-click class (default: reaper), snippets must
+    # replay the pointer click recorded when it was summoned before sending the
+    # Ctrl+V paste keystroke.
+    bin=$(make_fake_path)
+    snippets_dir=$(write_snippet_fixture)
+    : >"${DOTFILES_TEST_TMP}/events.log"
+
+    PATH="${bin}:/usr/bin:/bin" \
+        HOME="${DOTFILES_TEST_TMP}/home" \
+        DISPLAY=:99 \
+        XAUTHORITY="${DOTFILES_TEST_TMP}/Xauthority" \
+        DOTFILES_TEST_XDOTOOL_CLASS_DURING_PANEL=REAPER \
+        "$script_under_test" \
+        orchestrate-agent-tasks-reminder
+
+    wait_for_file "${DOTFILES_TEST_TMP}/clipboard.txt"
+    wait_for_file "${DOTFILES_TEST_TMP}/xdotool-key.txt"
+
+    grep -Fxq 'refocus-mousemove 42 43' "${DOTFILES_TEST_TMP}/refocus-point.txt"
+    grep -Fxq 'key --clearmodifiers ctrl+v' "${DOTFILES_TEST_TMP}/xdotool-key.txt"
+    rg -q '^refocus-click$' "${DOTFILES_TEST_TMP}/events.log"
+    rg -q '^paste-browser$' "${DOTFILES_TEST_TMP}/events.log"
+    refocus_click_line=$(rg -n '^refocus-click$' "${DOTFILES_TEST_TMP}/events.log" | cut -d: -f1)
+    paste_line=$(rg -n '^paste-browser$' "${DOTFILES_TEST_TMP}/events.log" | cut -d: -f1)
+    [ "$refocus_click_line" -lt "$paste_line" ]
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2
