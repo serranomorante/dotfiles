@@ -29,6 +29,7 @@ dotfiles_stow_options:
   - --dotfiles
   - --no-folding
 dotfiles_stow_ignore_patterns: []
+dotfiles_stow_real_file_conflicts: []
 dotfiles_agent_context_source_name: AGENTS.md
 dotfiles_agent_context_symlink_names: []
 dotfiles_private_agent_context_doc_paths: []

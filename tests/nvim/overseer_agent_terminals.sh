@@ -647,8 +647,10 @@ SH
 #!/bin/sh
 set -eu
 
-printf '%s\n' "$PWD" >"${DOTFILES_TEST_TMP}/codex-resume-pwd"
+# Write args before the pwd marker so the test can treat pwd as the
+# completion signal and never observe a half-written args file.
 printf '%s\n' "$*" >"${DOTFILES_TEST_TMP}/codex-resume-args"
+printf '%s\n' "$PWD" >"${DOTFILES_TEST_TMP}/codex-resume-pwd"
 printf 'OpenAI Codex\n'
 printf 'model: fake\n'
 printf 'directory: %s\n' "$PWD"

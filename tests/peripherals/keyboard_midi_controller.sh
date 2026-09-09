@@ -504,8 +504,8 @@ keyboard-midi-controller-dotfiles-contract)
     rg -q 'if \(noteBank != 0\)' "$tft_firmware"
     [[ -s "$reaper_startup_script" ]]
     [[ -s "$realearn_beatstep_preset" ]]
-    rg -q 'ch 9 step input' "$realearn_beatstep_preset"
-    rg -q 'Toggle step recording all MIDI inputs' "$realearn_beatstep_preset"
+    rg -q '"name": "ch 9 grid editing"' "$realearn_beatstep_preset"
+    rg -q '"name": "Step sequence"' "$realearn_beatstep_preset"
     rg -q '"commandName": "40481"' "$realearn_beatstep_preset"
     rg -q '"number": 52' "$realearn_beatstep_preset"
     [[ -s "$midi_editor_state_feedback" ]]
