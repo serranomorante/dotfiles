@@ -36,12 +36,14 @@ local function opts()
     },
     view = {
       default = {
+        layout = "diff2_vertical",
         winbar_info = true,
       },
       merge_tool = {
         layout = "diff4_mixed",
       },
       file_history = {
+        layout = "diff2_vertical",
         winbar_info = true,
       },
     },
