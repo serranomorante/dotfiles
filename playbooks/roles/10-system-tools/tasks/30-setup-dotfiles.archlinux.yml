@@ -58,32 +58,15 @@
       - bash
       - -c
       - |
-        for path in "$@"; do
+        while IFS= read -r path; do
+          [ -n "$path" ] || continue
           expanded="${path/#\~/$HOME}"
           if [ -e "$expanded" ] && [ ! -L "$expanded" ]; then
             printf '%s\n' "$expanded"
           fi
         done
       - bash
-      - ~/.config/gromit-mpx.ini
-      - ~/.config/mimeapps.list
-      - ~/.config/ksplashrc
-      - ~/.config/kscreenlockerrc
-      - ~/.config/ktrashrc
-      - ~/.config/kiorc
-      - ~/.config/kded5rc
-      - ~/.config/kwalletrc
-      - ~/.config/baloofilerc
-      - ~/.config/kdedefaults/kdeglobals
-      - ~/.config/kdedefaults/ksplashrc
-      - ~/.config/kglobalshortcutsrc
-      - ~/.config/plasma-org.kde.plasma.desktop-appletsrc
-      - ~/.config/pipeasio/config.ini
-      - ~/.config/qBittorrent/categories.json
-      - ~/.bash_profile
-      - ~/.bashrc
-      - ~/.blerc
-      - ~/.local/share/applications/wine-protocol-dreamtonics-svstudio2.desktop
+    stdin: "{{ dotfiles_stow_real_file_conflicts | join('\n') }}"
   register: var_arch_problematic_files
   changed_when: false
 

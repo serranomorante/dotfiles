@@ -25,6 +25,9 @@ Wrapper behavior:
   Runs GNU Stow from the managed dotfiles repository, not from the caller's current directory.
   Applies the repository default Stow options and ignore patterns before any user-provided package arguments.
   Uses $HOME as Stow's target directory.
+  Clears repository-managed targets that were replaced by real files (desktop/XDG tools rewrite
+  some symlinked config atomically) before stowing, so manual stows no longer abort on those
+  conflicts; the repository copy stays authoritative.
 
 Wrapper options:
   --recreate                  Atomically re-stow packages (via `stow --restow`), migrating any links that point at a legacy Stow dir first.
@@ -97,6 +100,32 @@ canonical_dir() {
 
 dotfiles_target_rel_for_source_rel() {
     printf '%s\n' "$1" | sed 's#^dot-#.#; s#/dot-#/.#g'
+}
+
+dotfiles_stow_clear_real_conflicts() {
+    conflicts_file=$1
+    packages_file=$2
+
+    [ -s "$conflicts_file" ] || return 0
+    [ -s "$packages_file" ] || return 0
+
+    while IFS= read -r conflict_rel; do
+        [ -n "$conflict_rel" ] || continue
+        conflict_target=$HOME/$conflict_rel
+        # Only clear a real file (not a symlink/dir) that is still managed by one of
+        # the requested packages; never touch targets the caller did not ask to stow.
+        if [ -e "$conflict_target" ] && [ ! -L "$conflict_target" ] && [ ! -d "$conflict_target" ]; then
+            conflict_source_rel=$(printf '%s\n' "$conflict_rel" | sed 's#\(^\|/\)\.#\1dot-#g')
+            while IFS= read -r requested_package; do
+                [ -n "$requested_package" ] || continue
+                if [ -e "$dotfiles_stow_dir/$requested_package/$conflict_source_rel" ]; then
+                    echo "dotfiles-stow: clearing real file that blocks stow of $requested_package: $conflict_target" >&2
+                    rm -f "$conflict_target"
+                    break
+                fi
+            done <"$packages_file"
+        fi
+    done <"$conflicts_file"
 }
 
 current_stow_dir_for_package() {
@@ -191,7 +220,11 @@ if [ "$recreate" -eq 1 ]; then
     recreate_stow_args_file=$(mktemp "${TMPDIR:-/tmp}/dotfiles-stow-stow-args.XXXXXX")
     recreate_delete_args_file=$(mktemp "${TMPDIR:-/tmp}/dotfiles-stow-delete-args.XXXXXX")
     recreate_packages_file=$(mktemp "${TMPDIR:-/tmp}/dotfiles-stow-packages.XXXXXX")
-    trap 'rm -f "$recreate_stow_args_file" "$recreate_delete_args_file" "$recreate_packages_file"' EXIT HUP INT TERM
+    conflicts_list_file=$(mktemp "${TMPDIR:-/tmp}/dotfiles-stow-conflicts.XXXXXX")
+    trap 'rm -f "$recreate_stow_args_file" "$recreate_delete_args_file" "$recreate_packages_file" "$conflicts_list_file"' EXIT HUP INT TERM
+    cat >"$conflicts_list_file" <<'DOTFILES_STOW_CONFLICTS'
+{% for conflict_path in dotfiles_stow_real_file_conflicts %}{{ conflict_path | regex_replace('^~/', '') }}
+{% endfor %}DOTFILES_STOW_CONFLICTS
 
     recreate_package_count=0
     packages_only=0
@@ -290,6 +323,8 @@ if [ "$recreate" -eq 1 ]; then
         fi
     done <"$recreate_packages_file"
 
+    dotfiles_stow_clear_real_conflicts "$conflicts_list_file" "$recreate_packages_file"
+
     set -- {% for option in dotfiles_stow_options %}{{ option | quote }} {% endfor %}{% for pattern in stow_ignore_patterns %}--ignore={{ pattern | quote }} {% endfor %}--restow ;
     while IFS= read -r arg; do
         set -- "$@" "$arg"
@@ -303,7 +338,55 @@ if [ "$recreate" -eq 1 ]; then
     exit "$stow_rc"
 fi
 
-set -- {% for option in dotfiles_stow_options %}{{ option | quote }} {% endfor %}{% for pattern in stow_ignore_patterns %}--ignore={{ pattern | quote }} {% endfor %}"$@"
+normal_packages_file=$(mktemp "${TMPDIR:-/tmp}/dotfiles-stow-packages.XXXXXX")
+conflicts_list_file=$(mktemp "${TMPDIR:-/tmp}/dotfiles-stow-conflicts.XXXXXX")
+stow_forward_args_file=$(mktemp "${TMPDIR:-/tmp}/dotfiles-stow-forward-args.XXXXXX")
+trap 'rm -f "$normal_packages_file" "$conflicts_list_file" "$stow_forward_args_file"' EXIT HUP INT TERM
+cat >"$conflicts_list_file" <<'DOTFILES_STOW_CONFLICTS'
+{% for conflict_path in dotfiles_stow_real_file_conflicts %}{{ conflict_path | regex_replace('^~/', '') }}
+{% endfor %}DOTFILES_STOW_CONFLICTS
+
+for arg do
+    printf '%s\n' "$arg" >>"$stow_forward_args_file"
+done
+
+packages_only=0
+while [ "$#" -gt 0 ]; do
+    arg=$1
+    shift
+
+    if [ "$packages_only" -eq 1 ]; then
+        if [ -d "$dotfiles_stow_dir/$arg" ]; then
+            printf '%s\n' "$arg" >>"$normal_packages_file"
+        fi
+        continue
+    fi
+
+    case $arg in
+    --)
+        packages_only=1
+        ;;
+    --dir | -d | --target | -t | --ignore | --defer | --override)
+        if [ "$#" -gt 0 ]; then
+            shift
+        fi
+        ;;
+    -*)
+        ;;
+    *)
+        if [ -d "$dotfiles_stow_dir/$arg" ]; then
+            printf '%s\n' "$arg" >>"$normal_packages_file"
+        fi
+        ;;
+    esac
+done
+
+dotfiles_stow_clear_real_conflicts "$conflicts_list_file" "$normal_packages_file"
+
+set -- {% for option in dotfiles_stow_options %}{{ option | quote }} {% endfor %}{% for pattern in stow_ignore_patterns %}--ignore={{ pattern | quote }} {% endfor %} ;
+while IFS= read -r arg; do
+    set -- "$@" "$arg"
+done <"$stow_forward_args_file"
 
 "$stow_bin" "$@"
 stow_rc=$?

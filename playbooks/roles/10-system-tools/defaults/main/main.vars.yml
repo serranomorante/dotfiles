@@ -10,6 +10,29 @@ dotfiles_stow_ignore_patterns:
   - ^roles$
   - ^tags$
 dotfiles_stow_wrapper_path: "{{ ansible_facts.env.HOME }}/bin/dotfiles-stow"
+# Targets that desktop/XDG tools may rewrite atomically, replacing a stowed symlink
+# with a real file. Both the dotfiles-stow wrapper and the dotfiles apply task clear
+# these real files (keeping the repository copy authoritative) before stowing.
+dotfiles_stow_real_file_conflicts:
+  - ~/.config/gromit-mpx.ini
+  - ~/.config/mimeapps.list
+  - ~/.config/ksplashrc
+  - ~/.config/kscreenlockerrc
+  - ~/.config/ktrashrc
+  - ~/.config/kiorc
+  - ~/.config/kded5rc
+  - ~/.config/kwalletrc
+  - ~/.config/baloofilerc
+  - ~/.config/kdedefaults/kdeglobals
+  - ~/.config/kdedefaults/ksplashrc
+  - ~/.config/kglobalshortcutsrc
+  - ~/.config/plasma-org.kde.plasma.desktop-appletsrc
+  - ~/.config/pipeasio/config.ini
+  - ~/.config/qBittorrent/categories.json
+  - ~/.bash_profile
+  - ~/.bashrc
+  - ~/.blerc
+  - ~/.local/share/applications/wine-protocol-dreamtonics-svstudio2.desktop
 dotfiles_public_stow_packages:
   - dunst
   - lazygit

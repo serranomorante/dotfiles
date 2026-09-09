@@ -37,6 +37,7 @@ Use this file to choose the source file that owns a behavior before editing gene
 - Use `dot-*` names for hidden targets and `.stow-local-ignore` for files that must not link into `$HOME`.
 - New files under stowed packages are inactive until stowed; edited existing symlinked files update in place.
 - `dotfiles-stow` refreshes the generated Firejail include that exposes active Stow targets to sandboxed AI agents without opening all of `$HOME`.
+- Desktop/XDG tools rewrite some symlinked configs atomically, replacing them with real files that abort Stow (e.g. `mimeapps.list`); `dotfiles-stow` clears such real files for the requested packages before stowing. The curated fragile-target list is `dotfiles_stow_real_file_conflicts` in `playbooks/roles/10-system-tools/defaults/main/main.vars.yml`, shared by the wrapper template and the `30-setup-dotfiles.archlinux.yml` apply task.
 - Use `dotfiles-stow --recreate [--dir=...] <package>...` to migrate links between Stow directories; plain `--restow` does not migrate.
 - Termux packages are applied only by `android` tasks to `phone2`; widgets must be real executable files, not symlinks.
 
