@@ -43,6 +43,7 @@ midi_editor_state_feedback="${DOTFILES_TEST_ROOT}/assets/scripts/reaper/midi_edi
 item_state_feedback="${DOTFILES_TEST_ROOT}/assets/scripts/reaper/item_state_feedback.lua"
 project_transport_state_feedback="${DOTFILES_TEST_ROOT}/assets/scripts/reaper/project_transport_state_feedback.lua"
 track_lock_sync="${DOTFILES_TEST_ROOT}/assets/scripts/reaper/track_lock_sync.lua"
+vep_send_sync="${DOTFILES_TEST_ROOT}/assets/scripts/reaper/vep_send_sync.lua"
 readline_notify_service="${DOTFILES_TEST_ROOT}/assets/services/readline-mode-notify.service"
 readline_notify_watcher="${DOTFILES_TEST_ROOT}/assets/scripts/keyd/readline-mode-watcher.sh"
 cursor_indicator_unit="${DOTFILES_TEST_ROOT}/peripherals/dot-config/systemd/user/cursor_indicator@.service"
@@ -500,10 +501,12 @@ keyboard-midi-controller-dotfiles-contract)
     [[ -s "$item_state_feedback" ]]
     [[ -s "$project_transport_state_feedback" ]]
     [[ -s "$track_lock_sync" ]]
+    [[ -s "$vep_send_sync" ]]
     rg -q 'midi_editor_state_feedback\.lua' "$reaper_startup_script"
     rg -q 'item_state_feedback\.lua' "$reaper_startup_script"
     rg -q 'project_transport_state_feedback\.lua' "$reaper_startup_script"
     rg -q 'track_lock_sync\.lua' "$reaper_startup_script"
+    rg -q 'vep_send_sync\.lua' "$reaper_startup_script"
     refute rg -q 'yabridge_focus_repair\.lua' "$reaper_startup_script"
     refute rg -q '^    - yabridge_focus_repair\.lua' "$sws_task"
     rg -q 'remove obsolete native reaper yabridge focus repair script' "$sws_task"
@@ -555,16 +558,29 @@ keyboard-midi-controller-dotfiles-contract)
     rg -q 'project_transport_state_feedback\.lua' "$sws_task"
     rg -q 'track_lock_sync\.lua' "$sws_task"
     rg -q 'reaper-track-lock-sync' "$sws_task"
+    rg -q 'reaper-vep-send-sync' "$sws_task"
     rg -q 'GetTrackStateChunk' "$track_lock_sync"
     rg -q 'EnumProjects' "$track_lock_sync"
     rg -Fq 'LOCK%s+1%s*$' "$track_lock_sync"
     rg -q 'TrackFX_GetParamName' "$track_lock_sync"
     rg -Fq '/Disable' "$track_lock_sync"
+    rg -Fq ':%d+/Disable' "$track_lock_sync"
     rg -q 'TrackFX_GetParam' "$track_lock_sync"
     rg -q 'TrackFX_SetParam' "$track_lock_sync"
     rg -q 'instance-1' "$track_lock_sync"
     rg -q 'track-lock-sync\.log' "$track_lock_sync"
     rg -Fq 'return "/home/" .. user' "$track_lock_sync"
+    rg -q 'CreateTrackSend' "$vep_send_sync"
+    rg -q 'SetTrackSendInfo_Value' "$vep_send_sync"
+    rg -q 'GetTrackSendInfo_Value' "$vep_send_sync"
+    rg -Fq 'I_MIDIFLAGS' "$vep_send_sync"
+    rg -Fq 'I_SRCCHAN' "$vep_send_sync"
+    rg -Fq 'P_DESTTRACK' "$vep_send_sync"
+    rg -q 'TrackFX_GetParamName' "$vep_send_sync"
+    rg -Fq ':(%d+)/Disable' "$vep_send_sync"
+    rg -q 'instance-1' "$vep_send_sync"
+    rg -q 'reaper-vep-send-sync' "$vep_send_sync"
+    rg -Fq 'return "/home/" .. user' "$vep_send_sync"
     rg -Fq 'return "/home/" .. user' "$midi_editor_state_feedback"
     rg -Fq 'return "/home/" .. user' "$item_state_feedback"
     rg -Fq 'return "/home/" .. user' "$project_transport_state_feedback"
@@ -586,6 +602,7 @@ start = text.index('- name: "[{{ user_os }}] Wine tools: copy wine reaper startu
 end = text.index('- name: "[{{ user_os }}] Wine tools: copy wine reaper custom scripts"', start)
 block = text[start:end]
 assert "track_lock_sync.lua" in block
+assert "vep_send_sync.lua" in block
 assert "project_transport_state_feedback.lua" in block
 assert "midi_editor_state_feedback.lua" in block
 assert "item_state_feedback.lua" in block
@@ -596,6 +613,7 @@ PY
     refute rg -q 'dotfiles/audio/dot-config/pipeasio' "$wine_reaper_firejail_template"
     rg -q 'whitelist \$\{HOME\}/\.cache/dotfiles/keyboard-midi-controller' "$wine_reaper_firejail_template"
     rg -q 'whitelist \$\{HOME\}/\.local/state/dotfiles/reaper-track-lock-sync' "$wine_reaper_firejail_template"
+    rg -q 'whitelist \$\{HOME\}/\.local/state/dotfiles/reaper-vep-send-sync' "$wine_reaper_firejail_template"
     rg -q 'keyboard MIDI LED matrix firmware' "$embedded_task"
     rg -q 'keyboard MIDI TFT display firmware' "$embedded_task"
     rg -q 'pedalboard MIDI controller firmware' "$embedded_task"

@@ -2,8 +2,9 @@
 --   "instance-1" track, so track enabled/disabled state stays in sync with VE Pro.
 -- Notes: A track with "lock track controls" applied is treated as disabled. This resident
 --   watcher syncs every track once on load, then only acts when a track is locked or
---   unlocked: it looks up the parameter on "instance-1" named "<number> <track name>/Disable"
---   (the leading number varies and is ignored). Since it is a /Disable flag, it is set to its
+--   unlocked: it looks up the parameter on "instance-1" named
+--   "<number> <track name>:<port>/Disable" (the leading number varies and the ":<port>"
+--   suffix encodes the VEPRO MIDI port, both ignored). Since it is a /Disable flag, it is set to its
 --   minimum (OFF) when the track is enabled or its maximum (ON) when disabled, and only when
 --   the current value already differs. REAPER exposes track lock only through the state chunk
 --   (a top-level "LOCK 1" line, absent when unlocked), so item locks nested in the chunk are
@@ -84,8 +85,13 @@ local function find_track_named(name)
 end
 
 local function param_track_name(param_name)
-    -- Parameters are published as "<number> <track name>/Disable"; the leading number
-    -- varies between parameters and is ignored.
+    -- Parameters are published as "<number> <track name>:<port>/Disable"; the leading
+    -- number varies and the ":<port>" suffix encodes the VEPRO MIDI port, both ignored
+    -- so the name matches the Reaper track name.
+    local base = param_name and param_name:match("^%d+%s+(.+):%d+/Disable$")
+    if base then
+        return base
+    end
     return param_name and param_name:match("^%d+%s+(.+)/Disable$")
 end
 
@@ -213,10 +219,14 @@ local function loop()
         local current = read_lock_signature()
         local tab_count = open_project_tab_count()
 
-        if last_lock_state == nil or (last_tab_count ~= nil and tab_count ~= last_tab_count) then
-            -- First observation or a project tab was opened/closed: re-baseline the
-            -- watcher. Only push the initial sync while a single project is open, so a
-            -- project opened in a new tab does not overwrite VE Pro state.
+        if last_lock_state == nil
+            or (last_tab_count ~= nil and tab_count ~= last_tab_count)
+            or current.track_count ~= last_lock_state.track_count then
+            -- First observation, a project tab was opened/closed, or tracks were added
+            -- or removed (a track template imported mid-session adds tracks): re-baseline
+            -- the watcher. Only push the sync while a single project is open, so an
+            -- imported template enables/disables its VE Pro channels without a second
+            -- project tab overwriting VE Pro state.
             last_lock_state = current
             last_tab_count = tab_count
             if tab_count <= 1 then

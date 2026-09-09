@@ -1,6 +1,7 @@
 local resource_path = reaper.GetResourcePath()
 local startup_scripts = {
     resource_path .. "/Scripts/custom/track_lock_sync.lua",
+    resource_path .. "/Scripts/custom/vep_send_sync.lua",
     resource_path .. "/Scripts/custom/project_transport_state_feedback.lua",
     resource_path .. "/Scripts/custom/midi_editor_state_feedback.lua",
     resource_path .. "/Scripts/custom/item_state_feedback.lua",
