@@ -4,6 +4,11 @@ set -e
 
 # Default values
 TARGET_USER=""
+# A login shell re-runs the user's whole profile, which costs ~130 ms here. That
+# is most of the latency of a keyd command() binding and sits close enough to the
+# X autorepeat delay to turn one keypress into several. Callers that pass their
+# own absolute paths do not need the profile.
+NO_LOGIN=0
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -12,12 +17,17 @@ while [[ $# -gt 0 ]]; do
         TARGET_USER="$2"
         shift 2
         ;;
+    -n | --no-login)
+        NO_LOGIN=1
+        shift
+        ;;
     -h | --help)
-        echo "Usage: $0 [-u|--user USERNAME] COMMAND [ARGS...]"
+        echo "Usage: $0 [-u|--user USERNAME] [-n|--no-login] COMMAND [ARGS...]"
         echo "Run a command as another user with proper environment setup"
         echo ""
         echo "Options:"
         echo "  -u, --user USERNAME   Run as specified user (default: current user)"
+        echo "  -n, --no-login        Skip the login shell (faster; use absolute paths)"
         echo "  -h, --help           Show this help message"
         exit 0
         ;;
@@ -54,8 +64,16 @@ for arg in "$@"; do
     CMD+="$(printf '%q ' "$arg")"
 done
 
+# `su -` starts a login shell; `su` does not. Both get the same explicit
+# environment below, including HOME, so the only difference is the profile.
+SU_ARGS=(-)
+if [[ "$NO_LOGIN" -eq 1 ]]; then
+    SU_ARGS=()
+fi
+
 # Pass all remaining arguments to the su command
-exec su - "$TARGET_USER" -c "
+exec su "${SU_ARGS[@]}" "$TARGET_USER" -c "
+    HOME='$TARGET_HOME' \
     DISPLAY=:0 \
     XAUTHORITY='$TARGET_HOME/.Xauthority' \
     DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/$TARGET_UID/bus' \

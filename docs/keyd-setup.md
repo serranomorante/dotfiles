@@ -46,6 +46,31 @@ The stock keyd parser is also too small for a BeatStep-style layer set. This rep
 
 When the keyd binary itself has just been rebuilt or patched, restart `keyd.service`; do not rely on `keyd reload`. Reload asks the already-running daemon to parse the new config, so an old daemon that still has `MAX_SECTIONS=32` can crash on the expanded MIDI config while the `keyd reload` client spins at high CPU waiting for a reply.
 
+## Application mapper on a Plasma session running dwm
+
+`keyd-application-mapper` picks a window monitor in `get_monitor()` and this workstation defeats two of its assumptions, so `assets/patches/keyd/dwm-support-keyd-application-mapper.patch` fixes both. Rebuilding keyd with a changed patch requires bumping `keyd_build_marker` in `40-setup-keyboard-tools.archlinux.yml`; the marker is what gates the clone, patch and `make install`.
+
+The first assumption is that `KDE_SESSION_VERSION` implies KWin. A Plasma session still exports it when dwm is the window manager, so the KDE monitor wins the probe and then reports nothing, because everything it emits comes from a kwin script it cannot inject. The patch makes the KDE constructor require an `org.kde.KWin` D-Bus owner so the probe falls through to `XMonitor`.
+
+The second assumption is more expensive and is what made the service burn CPU. Upstream's `XMonitor` resolves the active window with `get_floating_window()`, a full recursive walk of the X window tree that issues two round trips per window, and it runs that walk on *every* event delivered to a root window subscribed with `SubstructureNotifyMask|PropertyChangeMask`. Two things follow on this machine:
+
+- The walk returns the first window carrying `_NET_WM_STATE_ABOVE`, which is never the focused client here. It resolves to whichever always-on-top helper is alive: `krunner`, and since 2026-05 also `warpd-marker` and `dotfiles-mode-osd`. Application mappings therefore matched the overlay instead of the real application.
+- Because the monitor then subscribes to property changes on that overlay and never unsubscribes, a cursor-following overlay feeds the loop its own event stream. Measured on this workstation: the walk costs about 10 ms and 180 X round trips over 90 windows, so a single overlay updating at cursor rate drove the mapper to about 59% of a core while the correct path costs 0.055 ms.
+
+The patched `XMonitor` reads `_NET_ACTIVE_WINDOW` from the root window instead (dwm publishes it in `focus()` and deletes it when nothing is focused, so `get_input_focus()` stays as the fallback), subscribes root to `PropertyChangeMask` only, filters every event down to `_NET_ACTIVE_WINDOW` on root or `_NET_WM_NAME`/`WM_NAME` on the currently tracked window before issuing any request, and drops the previous window's subscription so they cannot accumulate over a session. It also installs a no-op Xlib error handler, because `change_attributes` on a window that just disappeared reports through the handler rather than raising and would otherwise grow `~/.config/keyd/app.log` forever.
+
+When changing that patch, verify the monitor still resolves real windows rather than only that it starts: run the built script with `-v` and `KEYD_BIN` pointed at a harmless stub, and confirm the logged `Active window:` line names the focused application.
+
+## Latin characters, xdotool and autorepeat
+
+The `[spanish*]` layers type latin characters with `xdotool key <keysym>` rather than compose macros, because compose only works where the application implements XCompose; REAPER, for one, types the raw sequence instead. Applications that prefer compose are overridden per application in `app.conf`.
+
+`xdotool key` has a trap on this workstation. When no keycode carries the requested keysym, xdotool binds a scratch keycode, sends the keystroke and restores the mapping, which keeps the injected key down for a median of ~78 ms and up to ~130 ms. `configure-keyboard.sh` sets `xset r rate 190 50`, so anything that keeps a key down past 190 ms repeats at 50/s, and keyd's `oneshot_timeout` of 1000 ms keeps the `spanish` layer alive across the whole run, so every repeat comes out accented. Under load — a DAW session, for example — one keystroke becomes `ááááá`. Measured with the X RECORD extension: holding an injected keycode for 400 ms produced 13 keypresses.
+
+`configure-keyboard.sh` therefore pins each latin keysym to a permanent keycode and disables autorepeat on just those keycodes. Pinning drops the injected key-down window from ~130 ms to ~6 ms because xdotool no longer remaps anything, and `xset -r <keycode>` makes a repeat impossible even when the release is delayed. Normal keys keep their repeat. Two ordering rules matter: the block must run after `setxkbmap`, which reloads the keymap and would discard the assignments, and the keycodes must stay ones the active layout leaves free.
+
+Related: keyd commands run through `run_as_user`, whose default `su -` login shell costs ~130 ms per keystroke here. Latency-sensitive keyd bindings pass `--no-login` to skip it (~3 ms); the default keeps the login shell because the borg backup callers rely on that profile.
+
 ## Latin chars with keyd
 
 > This guide is specific to xorg only

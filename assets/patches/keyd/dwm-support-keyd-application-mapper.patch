@@ -1,19 +1,172 @@
 diff --git a/scripts/keyd-application-mapper b/scripts/keyd-application-mapper
-index 91a365b..ccec978 100755
 --- a/scripts/keyd-application-mapper
 +++ b/scripts/keyd-application-mapper
-@@ -121,6 +121,14 @@ class KDE():
+@@ -121,6 +121,14 @@
          self.on_window_change = on_window_change
          dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
  
-+        # Only use the KDE monitor if KWin's D-Bus service is present.
-+        # This allows Plasma users running a different window manager to fall back
-+        # to other monitors (e.g. XMonitor or Wlroots) instead of failing later.
-+        bus = dbus.SessionBus()
-+        if not bus.name_has_owner('org.kde.KWin'):
++        # A Plasma session sets KDE_SESSION_VERSION even when its window manager
++        # has been replaced (dwm here), and the kwin script injected by init()
++        # is the only thing this monitor reports windows through. Refuse the
++        # monitor when KWin is absent so get_monitor() falls through to XMonitor
++        # instead of selecting a backend that can never emit an event.
++        if not dbus.SessionBus().name_has_owner('org.kde.KWin'):
 +            raise Exception('org.kde.KWin D-Bus service not available')
-+
 +
      # Inject the kwin script
      def init(self):
          import dbus
+@@ -344,9 +352,21 @@
+         import Xlib.display
+ 
+         self.dpy = Xlib.display.Display()
+-        self.dpy.screen().root.change_attributes(
+-            event_mask = Xlib.X.SubstructureNotifyMask|Xlib.X.PropertyChangeMask)
++        self.root = self.dpy.screen().root
++
++        # Requests without a reply (change_attributes below) report failures
++        # through the error handler instead of raising. A window may always be
++        # destroyed between resolving it and subscribing to it, so swallow those
++        # here rather than letting the default handler write to the log forever.
++        self.dpy.set_error_handler(lambda *args: None)
++
++        # Root property changes alone are enough: the window manager republishes
++        # _NET_ACTIVE_WINDOW on every focus change. SubstructureNotifyMask would
++        # also deliver every map/unmap/configure of every client, which
++        # always-on-top helpers (cursor markers, OSDs, krunner) emit continuously.
++        self.root.change_attributes(event_mask = Xlib.X.PropertyChangeMask)
+ 
++        self._NET_ACTIVE_WINDOW = self.dpy.intern_atom('_NET_ACTIVE_WINDOW')
+         self._NET_WM_NAME = self.dpy.intern_atom('_NET_WM_NAME')
+         self.WM_NAME = self.dpy.intern_atom('WM_NAME')
+ 
+@@ -375,60 +395,89 @@
+ 
+     def run(self):
+         import Xlib
++        import Xlib.error
+ 
+         last_active_class = ""
+         last_active_title = ""
++        tracked = None
+ 
+-        _NET_WM_STATE = self.dpy.intern_atom('_NET_WM_STATE', False)
+-        _NET_WM_STATE_ABOVE = self.dpy.intern_atom('_NET_WM_STATE_ABOVE', False)
+-        _NET_WM_WINDOW_TYPE_NOTIFICATION = self.dpy.intern_atom('_NET_WM_WINDOW_TYPE_NOTIFICATION', False)
+-        _NET_WM_WINDOW_TYPE = self.dpy.intern_atom('_NET_WM_WINDOW_TYPE', False)
+-
+-        def get_floating_window():
+-            q = [self.dpy.screen().root]
+-            while q:
+-                w = q.pop()
+-                q.extend(w.query_tree().children)
+-
+-                v = w.get_full_property(_NET_WM_STATE, Xlib.Xatom.ATOM)
+-
+-                if v and v.value and v.value[0] == _NET_WM_STATE_ABOVE:
+-                    types = w.get_full_property(_NET_WM_WINDOW_TYPE, Xlib.Xatom.ATOM)
+-
+-                    # Ignore persistent notification windows like dunst
+-                    if not types or _NET_WM_WINDOW_TYPE_NOTIFICATION not in types.value:
+-                        return w
++        def get_active_window():
++            # One round trip, and it names the window the WM considers focused.
++            # Scanning the tree for _NET_WM_STATE_ABOVE instead costs a round trip
++            # per window and, on a desktop that keeps always-on-top helpers alive,
++            # resolves to one of those helpers instead of the focused client.
++            try:
++                prop = self.root.get_full_property(self._NET_ACTIVE_WINDOW, Xlib.Xatom.WINDOW)
++            except Xlib.error.XError:
++                prop = None
+ 
+-            return None
++            if prop and prop.value and prop.value[0]:
++                return self.dpy.create_resource_object('window', prop.value[0])
+ 
+-        def get_active_window():
+-            win = get_floating_window()
+-            if win != None:
+-                return win
++            # Window managers drop the property while nothing is focused.
++            try:
++                return self.dpy.get_input_focus().focus
++            except Xlib.error.XError:
++                return None
++
++        def track(win):
++            # Follow title changes on the focused window only, and drop the
++            # previous subscription so they do not accumulate over the session.
++            nonlocal tracked
++
++            if tracked is not None:
++                if win is not None and tracked.id == win.id:
++                    return
++                tracked.change_attributes(event_mask = Xlib.X.NoEventMask)
++                tracked = None
++
++            if win is not None:
++                win.change_attributes(event_mask = Xlib.X.PropertyChangeMask)
++                tracked = win
++
++        def refresh():
++            nonlocal last_active_class, last_active_title
+ 
+-            return self.dpy.get_input_focus().focus
++            win = get_active_window()
++
++            if isinstance(win, int) or win == None:
++                return
++
++            track(win)
++
++            try:
++                cls, title = self.get_window_info(win)
++            except Xlib.error.XError:
++                return
++
++            if cls != last_active_class or title != last_active_title:
++                last_active_class = cls
++                last_active_title = title
++
++                self.on_window_change(cls, title)
++
++        refresh()
+ 
+         for ev in new_interruptible_generator(self.dpy.fileno(), self.dpy.next_event, lambda: not self.dpy.pending_events()):
+             if ev == None:
+                 self.on_window_change(last_active_class, last_active_title)
+-            else:
+-                try:
+-                    win = get_active_window()
+-
+-                    if isinstance(win, int) or win == None:
+-                        continue
+-
+-                    win.change_attributes(event_mask = Xlib.X.SubstructureNotifyMask|Xlib.X.PropertyChangeMask)
++                continue
+ 
+-                    cls, title = self.get_window_info(win)
++            # This runs for every event the server sends, so discard anything that
++            # cannot have changed the active window or its title before issuing a
++            # single request of our own.
++            if ev.type != Xlib.X.PropertyNotify:
++                continue
+ 
+-                    if cls != last_active_class or title != last_active_title:
+-                        last_active_class = cls
+-                        last_active_title = title
++            if ev.window.id == self.root.id:
++                if ev.atom != self._NET_ACTIVE_WINDOW:
++                    continue
++            elif tracked == None or ev.window.id != tracked.id:
++                continue
++            elif ev.atom != self._NET_WM_NAME and ev.atom != self.WM_NAME:
++                continue
+ 
+-                        self.on_window_change(cls, title)
+-                except:
+-                    pass
++            refresh()
+ 
+ 
+ # :(

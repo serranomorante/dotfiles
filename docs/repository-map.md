@@ -68,3 +68,4 @@ Use this file to choose the source file that owns a behavior before editing gene
 - Runtime Neovim paths must not block the main loop with recursive scans, large reads, synchronous JSON parsing, waits, or polling; use async APIs/background jobs.
 - For cross-tool runtime identity, reuse central resolvers such as `kitty-window-utils.sh` and `open_in_nvim` rather than reimplementing socket/server naming.
 - Prefer event-driven desktop state monitors for desktop action feedback; avoid polling loops in `desktop-state-monitor` unless the bounded fallback is documented and tested.
+- Anything that resolves the focused X window must read `_NET_ACTIVE_WINDOW` from the root window, never scan the window tree for `_NET_WM_STATE_ABOVE`: this session keeps always-on-top helpers alive (`krunner`, `warpd-marker`, `dotfiles-mode-osd`), so a tree scan both picks the wrong window and turns overlay updates into a per-event tree walk. See `docs/keyd-setup.md`.

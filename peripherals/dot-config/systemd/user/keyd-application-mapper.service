@@ -3,7 +3,16 @@ Description=Start keyd-application-mapper
 After=plasma-workspace.target
 
 [Service]
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=%h/.Xauthority"
+# The patched keyd is installed under /usr/local/bin; do not depend on the user
+# manager PATH to resolve the client the mapper shells out to on every switch.
+Environment="KEYD_BIN=/usr/local/bin/keyd"
 ExecStart=/usr/local/bin/keyd-application-mapper
+# The script exits 0 on deliberate stops (missing app.conf, another instance
+# already holding the lock), so only a real failure should be retried.
+Restart=on-failure
+RestartSec=2s
 MemoryAccounting=yes
 MemoryHigh=150M
 MemoryMax=300M

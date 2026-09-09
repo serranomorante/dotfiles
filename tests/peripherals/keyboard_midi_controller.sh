@@ -339,7 +339,10 @@ keyboard-midi-controller-dotfiles-contract)
     rg -q '^- name: handler_enable_start_keyd_application_mapper_service$' "$handlers_file"
     awk '/^- name: handler_enable_start_keyd_application_mapper_service$/{in_handler=1} in_handler{print} in_handler && /^$/{exit}' "$handlers_file" >"${DOTFILES_TEST_TMP}/keyd-application-mapper-handler"
     rg -q '^    name: keyd-application-mapper.service$' "${DOTFILES_TEST_TMP}/keyd-application-mapper-handler"
-    rg -q '^    enabled: false$' "${DOTFILES_TEST_TMP}/keyd-application-mapper-handler"
+    rg -q '^    state: started$' "${DOTFILES_TEST_TMP}/keyd-application-mapper-handler"
+    rg -q '^    enabled: true$' "${DOTFILES_TEST_TMP}/keyd-application-mapper-handler"
+    rg -q '^- name: handler_restart_keyd_application_mapper_service$' "$handlers_file"
+    rg -q '^    - keyd-application-mapper.service$' "$keyboard_task"
     rg -q '^    state: restarted$' "$handlers_file"
     rg -q '^    daemon_reload: true$' "$handlers_file"
 

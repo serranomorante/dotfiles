@@ -21,6 +21,8 @@
       # keyboard-midi-controller dependencies
       - alsa-lib
       - pipewire-jack
+      # configure-keyboard.sh pins the latin keysyms to fixed keycodes
+      - xorg-xmodmap
       # warpd dependencies
       - libxi
       - libxinerama
@@ -45,7 +47,7 @@
 
 - name: "[{{ user_os }}] Keyboard peripheral: set keyd build marker fact"
   ansible.builtin.set_fact:
-    keyd_build_marker: "keyd-{{ var_keyd_remote_commit.stdout.split()[0] }}-midi-layers-v1"
+    keyd_build_marker: "keyd-{{ var_keyd_remote_commit.stdout.split()[0] }}-midi-layers-v2"
 
 - name: "[{{ user_os }}] Keyboard peripheral: stat keyd build marker"
   ansible.builtin.include_role:
@@ -91,7 +93,12 @@
   args:
     chdir: "{{ ansible_facts.env.HOME }}/data/repos/keyd"
   when: not var_keyd_build_marker.stat.exists
-  notify: "10-system-tools : handler_ensure_keyd_service"
+  notify:
+    - "10-system-tools : handler_ensure_keyd_service"
+    # A rebuilt binary is only picked up by a restart; keyd reload asks the
+    # running daemon to reparse instead. See docs/keyd-setup.md.
+    - "10-system-tools : handler_restart_keyd"
+    - "10-system-tools : handler_restart_keyd_application_mapper_service"
 
 - name: "[{{ user_os }}] Keyboard peripheral: record keyd build marker"
   ansible.builtin.include_role:
@@ -134,6 +141,7 @@
   loop:
     - kbdrate.service
     - keyd-observer.service
+    - keyd-application-mapper.service
     - keyboard-midi-controller.service
     - warpd-marker.service
     - mode-osd.service
@@ -154,6 +162,25 @@
     dotfiles_marker_notify:
       - "10-system-tools : handler_restart_keyd_observer_service"
   when: var_arch_keyd_observer_script.stat.exists
+
+- name: "[{{ user_os }}] Keyboard peripheral: stat keyd application mapper config"
+  ansible.builtin.stat:
+    path: ~/dotfiles/peripherals/dot-config/keyd/app.conf
+    checksum_algorithm: sha256
+  register: var_arch_keyd_app_conf
+
+# app.conf is only re-read by the running mapper on the next window change, so a
+# restart is what makes an applied change deterministic at the end of a run.
+- name: "[{{ user_os }}] Keyboard peripheral: record applied keyd app.conf checksum"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: keyd-app-conf-sha256
+    dotfiles_marker_content: "{{ var_arch_keyd_app_conf.stat.checksum }}\n"
+    dotfiles_marker_notify:
+      - "10-system-tools : handler_restart_keyd_application_mapper_service"
+  when: var_arch_keyd_app_conf.stat.exists
 
 - name: "[{{ user_os }}] Keyboard peripheral: ensure X11 helper cache dirs"
   ansible.builtin.file:
