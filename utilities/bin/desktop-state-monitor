@@ -72,6 +72,10 @@ publish_desktop_action_state() {
   "$command_path" desktop-action-state "$slot" "$label" "$value" >/dev/null 2>&1 || true
 }
 
+# Full sync is only safe at startup, before the watcher subshells spawn. Each
+# watcher runs in its own subshell with private copies of the state variables,
+# so per-event handlers must publish only the slot they own; publishing all
+# slots here would overwrite the other slots with stale values.
 publish_desktop_action_states() {
   publish_desktop_action_state 0 MODE "$desktop_layer"
   publish_desktop_action_state 1 MIC "$mic_state"
@@ -172,17 +176,17 @@ emit_default_mic_state() {
 
   last_mic_state=$state
   mic_state=$state
-  publish_desktop_action_states
+  publish_desktop_action_state 1 MIC "$mic_state"
 }
 
 emit_recording_state() {
   record_state=$(read_recording_state)
-  publish_desktop_action_states
+  publish_desktop_action_state 3 REC "$record_state"
 }
 
 emit_display_state() {
   display_state=$(read_display_state)
-  publish_desktop_action_states
+  publish_desktop_action_state 4 MON "$display_state"
 }
 
 handle_desktop_action_event() {
@@ -239,7 +243,7 @@ handle_desktop_action_event() {
           screenshot_state=READY
           ;;
       esac
-      publish_desktop_action_states
+      publish_desktop_action_state 2 SHOT "$screenshot_state"
       screenshot_state=READY
       ;;
   esac

@@ -93,6 +93,10 @@ SH
     rg -q '^desktop-action-state 3 REC IDLE$' "${DOTFILES_TEST_TMP}/feedback.log"
     rg -q '^desktop-action-state 4 MON UNKNOWN$' "${DOTFILES_TEST_TMP}/feedback.log"
     rg -q 'watching PipeWire default-source events' "${DOTFILES_TEST_TMP}/monitor.err"
+
+    # A mic-state change must not republish the other slots: REC stays at its two
+    # startup publishes and the PipeWire watcher does not re-emit it.
+    [[ $(rg -c '^desktop-action-state 3 REC IDLE$' "${DOTFILES_TEST_TMP}/feedback.log") -eq 2 ]]
     ;;
 desktop-state-monitor-publishes-dbus-layer-state)
     fake_bin="${DOTFILES_TEST_TMP}/bin"
@@ -192,6 +196,10 @@ SH
     wait_for_pattern '^desktop-action-state 4 MON BUSY$' "${DOTFILES_TEST_TMP}/feedback.log"
     wait_for_pattern '^desktop-action-state 4 MON EXT$' "${DOTFILES_TEST_TMP}/feedback.log"
     rg -q 'watching desktop action DBus events' "${DOTFILES_TEST_TMP}/monitor.err"
+
+    # Recording/display/screenshot events must not republish the MIC slot; it
+    # stays at its two startup publishes and the DBus watcher does not re-emit it.
+    [[ $(rg -c '^desktop-action-state 1 MIC MUTED$' "${DOTFILES_TEST_TMP}/feedback.log") -eq 2 ]]
     ;;
 desktop-state-monitor-service-contract)
     [[ -x "$script" ]]
