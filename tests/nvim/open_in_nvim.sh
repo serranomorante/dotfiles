@@ -6,6 +6,7 @@ set -euo pipefail
 # dotfiles-test-case: open-in-nvim-goto-foam-closes-terminal-window
 # dotfiles-test-case: open-in-nvim-agent-conversation-uses-agent-tasks
 # dotfiles-test-case: open-in-nvim-agent-conversation-falls-back-to-nvr
+# dotfiles-test-case: open-in-nvim-show-commit-opens-diffview
 
 # Purpose: Verify remote editor actions preserve expected pre-navigation window cleanup.
 
@@ -94,6 +95,19 @@ assert args[:3] == ["--servername", "/tmp/nvim.sock", "--nostart"], args
 assert args[3] == "-c", args
 assert args[4] == "AgentResumeById 019ec503-1d4c", args
 PY
+    ;;
+open-in-nvim-show-commit-opens-diffview)
+    home=$(make_fake_home)
+    bin=$(make_fake_nvr_bin)
+
+    HOME="$home" PATH="${bin}:/usr/bin:/bin" "$script_under_test" --servername /tmp/nvim.sock kitty_show_commit 4f4a77b
+
+    python - "${DOTFILES_TEST_TMP}/nvr.args" <<'PY_ASSERT'
+import sys
+
+args = open(sys.argv[1], encoding="utf-8").read().splitlines()
+assert args == ["--servername", "/tmp/nvim.sock", "--nostart", "-c", "DiffviewOpen 4f4a77b^!"], args
+PY_ASSERT
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

@@ -1,0 +1,28 @@
+---
+snippet-title: Back every claim with an openable reference
+snippet-summary: Force the agent to cite the absolute path and line, or the repository and commit, that proves each claim, in the nvim.file / nvim.commit format the Kitty hint can open.
+---
+
+Toda afirmación que hagas sobre el código, la configuración o el historial tiene que venir acompañada de la prueba que la sostiene, y esa prueba se cita en un formato que yo pueda abrir directamente desde la terminal.
+
+Si la prueba está en un fichero, cítala así:
+
+nvim.file:<ruta absoluta del fichero>:<línea>
+
+Si la prueba es un commit, cítalo así:
+
+nvim.commit:<ruta absoluta del repositorio>:<hash del commit>
+
+Ejemplos del formato exacto:
+
+- El endpoint rechaza la petición sin token en nvim.file:/home/aaaa/proyecto/backend/api/users.php:214
+- Ese comportamiento se introdujo en nvim.commit:/home/aaaa/proyecto:4f4a77b
+
+Reglas:
+
+- Ruta siempre absoluta y real, de un fichero que hayas abierto de verdad. Nada de rutas relativas, nada de `~`, nada de rutas reconstruidas de memoria.
+- Línea exacta donde está la prueba, no la del principio de la función ni un rango aproximado. Si la prueba ocupa varias líneas, cita la primera y explica el alcance en el texto.
+- Usa el prefijo que corresponda: `nvim.file:` para una posición en un fichero, `nvim.commit:` para un commit. Para un commit, hash de al menos 7 caracteres y la ruta del repositorio que lo contiene, no la del fichero tocado.
+- Una referencia por afirmación, pegada a la afirmación que respalda, no agrupadas al final del mensaje.
+- No partas la referencia en dos líneas ni la envuelvas en nada que la corte: tiene que quedar entera y seguida.
+- Si no puedes citar la prueba —porque la afirmación es negativa, porque sale de la salida de un comando, o porque simplemente no lo has comprobado— dilo explícitamente y cita el comando exacto que lo demuestra. Una referencia inventada o aproximada es peor que no dar ninguna.

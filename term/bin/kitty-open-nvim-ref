@@ -1,0 +1,135 @@
+#!/usr/bin/env sh
+
+# Purpose: Open an evidence reference emitted by an agent in the CWD-derived
+#   Neovim server that owns it: `nvim.file:<absolute-file>:<line>` edits the file
+#   at that line, `nvim.commit:<absolute-repo>:<hash>` shows that commit in
+#   Diffview.
+# Usage: kitty-open-nvim-ref nvim.file:<absolute-file>:<line>
+#        kitty-open-nvim-ref nvim.commit:<absolute-repo>:<hash>
+# Notes: Kitty's hints kitten launches this detached, so a missing Neovim
+#   session has to be reported through notify-send, not only on stderr.
+
+set -eu
+
+. "$HOME/dotfiles/term/bin/kitty-window-utils.sh"
+
+prog=${0##*/}
+
+fail() {
+    printf '%s: %s\n' "$prog" "$1" >&2
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send "Error: $prog" "$1"
+    fi
+    exit 1
+}
+
+is_digits() {
+    case ${1:-} in
+    '' | *[!0-9]*) return 1 ;;
+    esac
+}
+
+is_hex() {
+    case ${1:-} in
+    '' | *[!0-9a-fA-F]*) return 1 ;;
+    esac
+}
+
+git_toplevel() {
+    command -v git >/dev/null 2>&1 || return 1
+    git -C "$1" rev-parse --show-toplevel 2>/dev/null
+}
+
+parent_dir() {
+    dir=${1%/}
+    dir=${dir%/*}
+    printf '%s\n' "${dir:-/}"
+}
+
+usage() {
+    cat <<EOF
+Usage: $prog nvim.file:<absolute-file>:<line>
+       $prog nvim.commit:<absolute-repo>:<hash>
+
+Open an agent evidence reference in the Neovim server derived from its path:
+  nvim.file:/abs/path/to/file.php:120   edit the file at line 120
+  nvim.commit:/abs/path/to/repo:4f4a77b show that commit in Diffview
+EOF
+}
+
+case ${1:-} in
+-h | --help)
+    usage
+    exit 0
+    ;;
+esac
+
+ref=${1:-}
+[ -n "$ref" ] || fail "missing reference; expected nvim.file:<absolute-file>:<line> or nvim.commit:<absolute-repo>:<hash>"
+
+# The prefix names the kind, so nothing has to be inferred from the locator.
+case $ref in
+nvim.file:/*)
+    kind=line
+    rest=${ref#nvim.file:}
+    ;;
+nvim.commit:/*)
+    kind=commit
+    rest=${ref#nvim.commit:}
+    ;;
+*) fail "not an nvim.file: or nvim.commit: reference with an absolute path: $ref" ;;
+esac
+
+locator=${rest##*:}
+path=${rest%:*}
+[ "$path" != "$rest" ] || fail "missing line or commit hash in reference: $ref"
+path=${path%/}
+[ -n "$path" ] || path=/
+
+if [ "$kind" = commit ]; then
+    is_hex "$locator" && [ "${#locator}" -ge 7 ] && [ "${#locator}" -le 40 ] ||
+        fail "not a commit hash: $locator"
+    [ -d "$path" ] || fail "commit reference does not point at a directory: $path"
+    target_dir=$path
+    repo_root=$(git_toplevel "$path" || true)
+    [ -n "$repo_root" ] || fail "not a Git repository: $path"
+else
+    is_digits "$locator" || fail "not a line number: $locator"
+    [ -e "$path" ] || fail "file does not exist: $path"
+    target_dir=$(dirname -- "$path")
+    repo_root=
+fi
+
+# Sessions are rooted at a project directory, not at the cited file's directory,
+# so walk up until a live socket appears. Commit references additionally require
+# that session to own the same repository, or the diff would target another one.
+servername=
+dir=$target_dir
+while :; do
+    candidate=$(kitty_nvim_servername_from_cwd "$dir" 2>/dev/null || true)
+    if [ -n "$candidate" ] && [ -S "$candidate" ]; then
+        if [ -z "$repo_root" ] || [ "$(git_toplevel "$dir" || true)" = "$repo_root" ]; then
+            servername=$candidate
+            break
+        fi
+    fi
+
+    [ "$dir" != / ] || break
+    dir=$(parent_dir "$dir")
+done
+
+if [ -z "$servername" ]; then
+    if [ -n "$repo_root" ]; then
+        fail "no Neovim session for repository $repo_root"
+    fi
+    fail "no Neovim session for $target_dir"
+fi
+
+case $kind in
+line)
+    open_in_nvim --servername "$servername" kitty_simple_edit_at_line "$path" "$locator"
+    ;;
+commit)
+    open_in_nvim --servername "$servername" kitty_show_commit "$locator"
+    ;;
+esac
