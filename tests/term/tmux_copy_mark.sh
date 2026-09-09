@@ -22,7 +22,8 @@ sock="${DOTFILES_TEST_TMP}/tmux.sock"
 session="tmux-copy-mark-test"
 state_dir="${XDG_STATE_HOME:-${DOTFILES_TEST_TMP}/xdg-state}/dotfiles/tmux-copy-mark"
 state="${state_dir}/state-${session}"
-labels="${state_dir}/state-${session}.labels"
+labels_dir="${XDG_STATE_HOME:-${DOTFILES_TEST_TMP}/xdg-state}/dotfiles/marks"
+labels="${labels_dir}/${session}.labels"
 
 start_server() {
     tmux -f /dev/null -S "$sock" new-session -d -x 80 -y 24 -s "$session"

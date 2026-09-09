@@ -1,0 +1,62 @@
+#!/bin/sh
+# Purpose: CLI for the shared named-mark label store (see marks-common.sh).
+# Usage: marks-label get|set|clear|list <scope> [key [value]]
+# Notes: Scopes are caller-defined namespaces such as a tmux session name or a
+# Neovim cwd key. `set` stores the value passed as its third argument after
+# collapsing whitespace; `clear` removes a key; `list` prints key<TAB>value.
+
+set -eu
+
+prog=${0##*/}
+
+usage() {
+    cat >&2 <<EOF
+Usage:
+  $prog get <scope> <key>
+  $prog set <scope> <key> <value>
+  $prog clear <scope> <key>
+  $prog list <scope>
+EOF
+    exit 2
+}
+
+self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+marks_common=
+for candidate in "$self_dir/marks-common.sh" "$HOME/dotfiles/utilities/bin/marks-common.sh"; do
+    if [ -r "$candidate" ]; then
+        marks_common=$candidate
+        break
+    fi
+done
+if [ -z "$marks_common" ]; then
+    printf '%s: cannot locate marks-common.sh\n' "$prog" >&2
+    exit 1
+fi
+# shellcheck source=/dev/null
+. "$marks_common"
+
+[ "$#" -ge 1 ] || usage
+command=$1
+shift
+
+case $command in
+get)
+    [ "$#" -eq 2 ] || usage
+    marks_meta_get "$1" "$2"
+    ;;
+set)
+    [ "$#" -eq 3 ] || usage
+    marks_meta_set "$1" "$2" "$(marks_clean_text "$3")"
+    ;;
+clear)
+    [ "$#" -eq 2 ] || usage
+    marks_meta_clear "$1" "$2"
+    ;;
+list)
+    [ "$#" -eq 1 ] || usage
+    marks_meta_list "$1"
+    ;;
+*)
+    usage
+    ;;
+esac

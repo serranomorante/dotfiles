@@ -99,49 +99,50 @@ set_option() {
     tmux_cmd set-option -p -t "$pane" "$1" "$2" >/dev/null
 }
 
+# Resolve and source the shared mark-label store, caching the session scope so
+# repeated metadata reads do not re-query tmux.
+marks_common=
+for candidate in \
+    "$(dirname "$0")/marks-common.sh" \
+    "$(dirname "$0")/../../utilities/bin/marks-common.sh" \
+    "$HOME/dotfiles/utilities/bin/marks-common.sh"; do
+    if [ -r "$candidate" ]; then
+        marks_common=$candidate
+        break
+    fi
+done
+if [ -n "$marks_common" ]; then
+    # shellcheck source=/dev/null
+    . "$marks_common"
+fi
+
+marks_scope=
+resolve_marks_scope() {
+    [ -n "$marks_scope" ] || marks_scope=$(tmux_format '#{session_name}')
+    printf '%s\n' "$marks_scope"
+}
+
 state_file() {
-    session=$(tmux_format '#{session_name}')
-    key=$(printf '%s' "$session" | tr -c 'A-Za-z0-9._-' '_')
+    key=$(printf '%s' "$(resolve_marks_scope)" | tr -c 'A-Za-z0-9._-' '_')
     printf '%s\n' "${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/tmux-copy-mark/state-$key"
 }
 
-labels_file() {
-    printf '%s\n' "$(state_file).labels"
-}
-
 meta_value() {
-    key=$1
-    file=$(labels_file)
-    [ -f "$file" ] || return 0
-    while IFS= read -r line; do
-        case $line in
-        "$key"=*) printf '%s\n' "${line#"$key"=}" ;;
-        esac
-    done <"$file"
+    [ -n "$marks_common" ] || return 0
+    marks_meta_get "$(resolve_marks_scope)" "$1"
 }
 
 meta_set() {
-    key=$1
-    value=$2
-    file=$(labels_file)
-    dir=$(dirname "$file")
-    mkdir -p "$dir" || return 0
-    tmp=$(mktemp "$dir/state.labels.XXXXXX") || return 0
-
-    if [ -f "$file" ]; then
-        while IFS= read -r line; do
-            case $line in
-            "$key"=*) ;;
-            *) printf '%s\n' "$line" ;;
-            esac
-        done <"$file" >"$tmp"
-    fi
-    printf '%s=%s\n' "$key" "$value" >>"$tmp"
-    mv "$tmp" "$file"
+    [ -n "$marks_common" ] || return 0
+    marks_meta_set "$(resolve_marks_scope)" "$1" "$2"
 }
 
 clean_text() {
-    printf '%s' "$1" | tr '\t\n' ' ' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+    if [ -n "$marks_common" ]; then
+        marks_clean_text "$1"
+    else
+        printf '%s' "$1" | tr '\t\n' ' ' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+    fi
 }
 
 capture_snippet() {

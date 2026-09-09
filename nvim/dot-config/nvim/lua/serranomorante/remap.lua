@@ -442,22 +442,7 @@ vim.keymap.set("n", "<leader>tb", function()
 end, { desc = "Reload colors/default.lua" })
 
 vim.keymap.set("n", "<A-'>", function()
-  local global_marks = constants.global_marks_for_cwd()
-  local marks = vim.tbl_filter(
-    ---@param item vim.fn.getmarklist.ret.item
-    function(item) return not vim.list_contains(constants.NUMBERED_MARKS, item.mark) end,
-    vim.fn.getmarklist()
-  )
-  vim.ui.select(marks, {
-    prompt = "Go to mark",
-    ---@param item vim.fn.getmarklist.ret.item
-    format_item = function(item) return string.format("%s | %s", global_marks[item.mark] or item.mark, item.file) end,
-  }, function(choice)
-    if not choice then return end
-    vim.cmd.normal({ "`" .. choice.mark:sub(2), bang = true })
-    vim.cmd.normal({ "zz", bang = true })
-    vim.notify(string.format("[marks] go to mark: %s", global_marks[choice.mark] or choice.mark))
-  end)
+  require("serranomorante.global_marks").jump()
 end, { desc = "[marks] Go to custom mark" })
 
 vim.keymap.set("n", "<leader>m'", function()
@@ -483,27 +468,12 @@ vim.keymap.set("n", "<leader>m'", function()
 end, { desc = "[marks] Go to buffer mark" })
 
 vim.keymap.set("n", "<A-l>", function()
-  local global_marks = constants.global_marks_for_cwd()
-  local global_mark_keys = vim.tbl_keys(global_marks)
-  table.sort(global_mark_keys)
-
-  vim.ui.select(global_mark_keys, {
-    prompt = "Set a mark",
-    ---@param item string
-    format_item = function(item)
-      local has_marks = vim.tbl_count(vim.tbl_filter(
-        ---@param mark vim.fn.getmarklist.ret.item
-        function(mark) return mark.mark == item end,
-        vim.fn.getmarklist()
-      )) > 0
-      return string.format("%s %s", has_marks and " " or "", global_marks[item] or item)
-    end,
-  }, function(choice)
-    if not choice then return end
-    vim.cmd.normal({ "m" .. choice:sub(2), bang = true })
-    vim.notify(string.format("[marks] new mark: %s", global_marks[choice] or choice))
-  end)
+  require("serranomorante.global_marks").set()
 end, { desc = "[marks] set a custom mark" })
+
+vim.keymap.set("n", "<A-d>", function()
+  require("serranomorante.global_marks").delete()
+end, { desc = "[marks] delete a custom mark" })
 
 vim.keymap.set("n", "'0", function()
   for _, m in ipairs(vim.fn.getmarklist()) do
