@@ -1,0 +1,20 @@
+diff --git a/SnM/SnM_Notes.cpp b/SnM/SnM_Notes.cpp
+index 7669475..893e86e 100644
+--- a/SnM/SnM_Notes.cpp
++++ b/SnM/SnM_Notes.cpp
+@@ -468,6 +468,15 @@ int NotesWnd::OnKey(MSG* _msg, int _iKeyState)
+ 		_msg->hwnd = m_hwnd; // redirect to main window
+ 		return 0;
+ 	}
++	else if (_msg->hwnd == m_edit && (_iKeyState & (LVKF_ALT | LVKF_SHIFT)) == (LVKF_ALT | LVKF_SHIFT))
++	{
++		// Pass Alt+Shift chords through to the main window so a bound
++		// "SWS/S&M: Open/close Notes window" shortcut (e.g. Shift+Alt+F) can
++		// toggle the Notes window even while its editor has focus. Otherwise
++		// every key while editing is sent to the text control (return -1 below)
++		// and never reaches REAPER's action handling.
++		return 0;
++	}
+ 	else if(_msg->hwnd == m_edit)
+ 	{
+ #ifdef _SNM_SWELL_ISSUES

@@ -1,9 +1,7 @@
 ---
-- name: "[{{ user_os }}] Wine tools: install arch sws extension"
-  become: true
-  ansible.builtin.package:
-    name: sws
-    state: present
+# The native Linux SWS extension is built from source with repo-owned patches
+# (see wine-tools/sws-patched-linux.task.yml); the Wine REAPER still uses the
+# upstream Windows installer further below.
 
 - name: "[{{ user_os }}] Wine tools: ensure native reaper sws folders"
   ansible.builtin.file:
@@ -17,6 +15,9 @@
     - ~/.config/REAPER/Data/helgoboss/realearn/presets/main
     - ~/.vst
     - ~/.vst/helgobox
+
+- name: "[{{ user_os }}] Wine tools: build and install patched native sws extension"
+  ansible.builtin.include_tasks: sws-patched-linux.task.yml
 
 - name: "[{{ user_os }}] Wine tools: get native Helgobox/ReaLearn"
   ansible.builtin.get_url:
@@ -98,18 +99,6 @@
     dest: "{{ arch_reaper_wine_setup.wine_prefix }}/drive_c/users/{{ ansible_facts.env.USER }}/AppData/Roaming/REAPER/UserPlugins/{{ arch_helgobox_setup.windows_reaper_extension_name }}"
     mode: "755"
     remote_src: true
-
-- name: "[{{ user_os }}] Wine tools: symlink native reaper sws extension"
-  ansible.builtin.file:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-    state: link
-    force: true
-  loop:
-    - src: /usr/lib/sws/reaper_sws-x86_64.so
-      dest: ~/.config/REAPER/UserPlugins/reaper_sws-x86_64.so
-    - src: /usr/lib/sws/sws_python64.py
-      dest: ~/.config/REAPER/Scripts/sws_python64.py
 
 - name: "[{{ user_os }}] Wine tools: copy native reaper startup script"
   ansible.builtin.copy:

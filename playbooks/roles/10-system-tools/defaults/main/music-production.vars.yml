@@ -54,6 +54,21 @@ arch_reaper_sws_extension_setup:
   version: 2.14.0.7
   backup_path: ~/data/Downloads/music-production
 
+# Native Linux SWS extension built from source with repo-owned patches. The
+# distro `sws` package cannot be patched, so this pins an upstream tag, applies
+# the patches under assets/patches/sws/ and builds reaper_sws-x86_64.so into
+# ~/.config/REAPER/UserPlugins. Bump `version` to track a new upstream release
+# or `patch_set_version` after editing/adding a patch; either re-runs the patch
+# and build step, and a patch that no longer applies fails the playbook so it
+# can be refreshed. See docs/sws-patched-build.md.
+arch_sws_patched_setup:
+  repo: https://github.com/reaper-oss/sws
+  version: v2.14.0.7
+  source_path: "{{ ansible_facts.env.HOME }}/data/repos/sws"
+  patch_set_version: v1
+  patches:
+    - notes-alt-shift-shortcuts-while-editing.patch
+
 arch_helgobox_setup:
   version: 2.18.2
   backup_path: ~/data/Downloads/music-production

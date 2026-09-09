@@ -1,0 +1,155 @@
+---
+# Native Linux SWS extension built from source with repo-owned patches, replacing
+# the distro `sws` package whose binary cannot be patched. See
+# docs/sws-patched-build.md for the patch workflow.
+#
+# The build is gated by a dotfiles marker keyed on the pinned upstream tag and
+# the patch-set version, so it re-runs (clean checkout, clone, patch, build,
+# install) only when either changes. Patch application intentionally has no
+# fallback: if a patch no longer applies against the new source, the playbook
+# fails here so the patch can be refreshed, instead of silently shipping an
+# unpatched extension.
+
+- name: "[{{ user_os }}] SWS native: remove distro sws extension"
+  become: true
+  ansible.builtin.package:
+    name: sws
+    state: absent
+
+- name: "[{{ user_os }}] SWS native: ensure build dependencies"
+  become: true
+  ansible.builtin.package:
+    state: present
+    name:
+      - cmake
+      - git
+      - gtk3
+      - ninja
+      - perl
+      - php
+      - taglib
+
+- name: "[{{ user_os }}] SWS native: ensure install directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "755"
+  loop:
+    - ~/.config/REAPER/UserPlugins
+    - ~/.config/REAPER/Scripts
+
+- name: "[{{ user_os }}] SWS native: check build marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "sws-patched-{{ arch_sws_patched_setup.version }}-{{ arch_sws_patched_setup.patch_set_version }}"
+    dotfiles_marker_register: var_sws_patched_build_marker
+
+- name: "[{{ user_os }}] SWS native: clean checkout for new build"
+  ansible.builtin.file:
+    path: "{{ arch_sws_patched_setup.source_path }}"
+    state: absent
+  when: not var_sws_patched_build_marker.stat.exists
+
+- name: "[{{ user_os }}] SWS native: clone source"
+  ansible.builtin.git:
+    repo: "{{ arch_sws_patched_setup.repo }}"
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
+    dest: "{{ arch_sws_patched_setup.source_path }}"
+    version: "{{ arch_sws_patched_setup.version }}"
+    force: true
+  when: not var_sws_patched_build_marker.stat.exists
+
+- name: "[{{ user_os }}] SWS native: init required submodules"
+  # Only vendor/WDL and vendor/reaper-sdk are needed; vendor/taglib is skipped
+  # because USE_SYSTEM_TAGLIB=ON below builds against the system taglib.
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
+      - submodule
+      - update
+      - --init
+      - vendor/WDL
+      - vendor/reaper-sdk
+  args:
+    chdir: "{{ arch_sws_patched_setup.source_path }}"
+  changed_when: true
+  when: not var_sws_patched_build_marker.stat.exists
+
+- name: "[{{ user_os }}] SWS native: apply patches"
+  ansible.posix.patch:
+    src: ~/dotfiles/assets/patches/sws/{{ item }}
+    basedir: "{{ arch_sws_patched_setup.source_path }}"
+    strip: 1
+  loop: "{{ arch_sws_patched_setup.patches }}"
+  when: not var_sws_patched_build_marker.stat.exists
+
+- name: "[{{ user_os }}] SWS native: configure build"
+  # Pin the C++ standard to 17: SWS declares only `cxx_std_11` (a minimum), so
+  # GCC 16 defaults to C++20, where a struct with a deleted copy constructor is
+  # no longer an aggregate (P1008) and BR_ContextualToolbars.cpp fails to
+  # compile. C++17 matches what the distro `sws` package was effectively built
+  # with and lets the aggregate initializer compile.
+  ansible.builtin.command:
+    argv:
+      - cmake
+      - -B
+      - build
+      - -G
+      - Ninja
+      - -D
+      - CMAKE_BUILD_TYPE=None
+      - -D
+      - USE_SYSTEM_TAGLIB=ON
+      - -D
+      - CMAKE_CXX_STANDARD=17
+  args:
+    chdir: "{{ arch_sws_patched_setup.source_path }}"
+  changed_when: true
+  when: not var_sws_patched_build_marker.stat.exists
+
+- name: "[{{ user_os }}] SWS native: build extension"
+  ansible.builtin.command:
+    argv:
+      - cmake
+      - --build
+      - build
+  args:
+    chdir: "{{ arch_sws_patched_setup.source_path }}"
+  changed_when: true
+  timeout: 0
+  when: not var_sws_patched_build_marker.stat.exists
+
+- name: "[{{ user_os }}] SWS native: remove legacy packaged symlinks"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - ~/.config/REAPER/UserPlugins/reaper_sws-x86_64.so
+    - ~/.config/REAPER/Scripts/sws_python64.py
+  when: not var_sws_patched_build_marker.stat.exists
+
+- name: "[{{ user_os }}] SWS native: install extension artifacts"
+  ansible.builtin.copy:
+    src: "{{ arch_sws_patched_setup.source_path }}/build/{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode }}"
+    remote_src: true
+  loop:
+    - src: reaper_sws-x86_64.so
+      dest: ~/.config/REAPER/UserPlugins/reaper_sws-x86_64.so
+      mode: "755"
+    - src: sws_python64.py
+      dest: ~/.config/REAPER/Scripts/sws_python64.py
+      mode: "644"
+  when: not var_sws_patched_build_marker.stat.exists
+
+- name: "[{{ user_os }}] SWS native: record build marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "sws-patched-{{ arch_sws_patched_setup.version }}-{{ arch_sws_patched_setup.patch_set_version }}"
+    dotfiles_marker_content: "{{ arch_sws_patched_setup.version }} {{ arch_sws_patched_setup.patch_set_version }}\n"
+  when: not var_sws_patched_build_marker.stat.exists

@@ -367,6 +367,16 @@
     {
       "customType": "regex",
       "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/music-production\\.vars\\.yml$/"],
+      "matchStrings": ["arch_sws_patched_setup:\\n(?:\\s+[^\\n]+\\n)*?\\s+version: \"?(?<currentValue>[^\"\\s]+)\"?"],
+      "depNameTemplate": "sws-native",
+      "packageNameTemplate": "reaper-oss/sws",
+      "datasourceTemplate": "github-tags",
+      "versioningTemplate": "regex:^v?(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\.(?<build>\\d+)(-(?<prerelease>.*))?$",
+      "depTypeTemplate": "github-tag"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^playbooks\\/roles\\/10-system-tools\\/defaults\\/main\\/music-production\\.vars\\.yml$/"],
       "matchStrings": ["arch_reaper_wine_setup:\\n(?:\\s+[^\\n]+\\n)*?\\s+version: \"?(?<currentValue>[^\"\\s]+)\"?"],
       "depNameTemplate": "reaper-windows-x64",
       "packageNameTemplate": "reaper-windows-x64",

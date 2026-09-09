@@ -13,6 +13,7 @@ set -euo pipefail
 # dotfiles-test-case: renovate-config-constrains-mixed-tag-sources
 # dotfiles-test-case: renovate-config-covers-reaper-download-page
 # dotfiles-test-case: renovate-config-covers-music-production-release-assets
+# dotfiles-test-case: renovate-config-covers-sws-native-source-pin
 # dotfiles-test-case: renovate-config-covers-davinci-resolve
 # dotfiles-test-case: renovate-config-keeps-vscode-js-debug-install-scripts-disabled
 # dotfiles-test-case: renovate-config-covers-hypothesis-branch-pins
@@ -259,6 +260,35 @@ PY
     refute rg -q 'M0n7y5/pipeasio|arch_pipeasio_setup\.version|pipeasio-[0-9][.0-9]*' "$music_defaults"
     rg -q 'arch_reaper_sws_extension_setup:' "$music_defaults"
     rg -q 'arch_helgobox_setup:' "$music_defaults"
+    ;;
+renovate-config-covers-sws-native-source-pin)
+    python3 - "$config_file" "$music_defaults" <<'PY'
+import json
+import re
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    config = json.load(handle)
+
+with open(sys.argv[2], encoding="utf-8") as handle:
+    vars_text = handle.read()
+
+for manager in config["customManagers"]:
+    if manager.get("depNameTemplate") == "sws-native":
+        assert manager["packageNameTemplate"] == "reaper-oss/sws"
+        assert manager["datasourceTemplate"] == "github-tags"
+        assert manager["depTypeTemplate"] == "github-tag"
+        assert manager["versioningTemplate"].startswith("regex:^v?")
+        assert "<build>" in manager["versioningTemplate"]
+        pattern = re.sub(r"\(\?<([A-Za-z_][A-Za-z0-9_]*)>", r"(?P<\1>", manager["matchStrings"][0])
+        match = re.search(pattern, vars_text)
+        assert match is not None, "sws-native matchStrings did not match"
+        assert re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+", match.group("currentValue"))
+        break
+else:
+    raise SystemExit("missing SWS native manager")
+PY
+    rg -q 'arch_sws_patched_setup:' "$music_defaults"
     ;;
 renovate-config-covers-davinci-resolve)
     python3 - "$config_file" <<'PY'
