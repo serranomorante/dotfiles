@@ -271,6 +271,68 @@ func TestParsePiSessionAcceptsRepositoryRootForNestedCWD(t *testing.T) {
 	}
 }
 
+func TestParseClaudeSessionAcceptsRepositoryRootForNestedCWD(t *testing.T) {
+	root := t.TempDir()
+	repo := filepath.Join(root, "repo")
+	nested := filepath.Join(repo, "playbooks")
+	sibling := filepath.Join(root, "other")
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(sibling, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	sessionPath := filepath.Join(root, "claude-session-1.jsonl")
+	lines := strings.Join([]string{
+		`{"sessionId":"claude-session-1","cwd":"` + repo + `","timestamp":"2026-07-16T14:10:00.000Z","lastPrompt":"Investigate nested cwd linking"}`,
+	}, "\n")
+	if err := os.WriteFile(sessionPath, []byte(lines), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if session := parseClaudeSession(sessionPath, nested); session == nil {
+		t.Fatal("expected repo-root Claude session to match nested cwd")
+	}
+	if session := parseClaudeSession(sessionPath, sibling); session != nil {
+		t.Fatalf("expected sibling cwd filter to reject session: %#v", session)
+	}
+}
+
+func TestParseGeminiSessionAcceptsRepositoryRootForNestedCWD(t *testing.T) {
+	root := t.TempDir()
+	repo := filepath.Join(root, "repo")
+	nested := filepath.Join(repo, "playbooks")
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sessionDir := filepath.Join(root, "gemini", "playbooks", "chats")
+	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "gemini", "playbooks", ".project_root"), []byte(repo), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sessionPath := filepath.Join(sessionDir, "session-2026-06-19T10-20-abcd1234.jsonl")
+	line := `{"sessionId":"abcd1234-1111-2222-3333-444455556666","startTime":"2026-06-19T10:20:30.000Z"}`
+	if err := os.WriteFile(sessionPath, []byte(line), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if session := parseGeminiSession(sessionPath, nested); session == nil {
+		t.Fatal("expected repo-root Gemini session to match nested cwd")
+	}
+	if session := parseGeminiSession(sessionPath, filepath.Join(root, "other")); session != nil {
+		t.Fatalf("expected sibling cwd filter to reject session: %#v", session)
+	}
+}
+
 func TestParseGeminiSessionRejectsOtherCWD(t *testing.T) {
 	root := t.TempDir()
 	sessionDir := filepath.Join(root, "gemini", "playbooks", "chats")

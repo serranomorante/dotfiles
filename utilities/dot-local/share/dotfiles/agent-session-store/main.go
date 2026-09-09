@@ -640,11 +640,19 @@ func hasGitMarker(path string) bool {
 	return err == nil
 }
 
-func sessionMatchesCWD(provider string, requestedCWD string, sessionCWD string) bool {
+// sessionMatchesCWD reports whether a stored session belongs to the requested
+// scope. Exact equality always matches. Beyond that a session is only accepted
+// when it was recorded at a repository git root and the requested cwd is at or
+// inside that root: agents launched at a repo root store that root as the
+// session cwd, so such sessions are repo-wide regardless of which agent wrote
+// them, while sessions recorded in plain directories (for example a launch from
+// a non-root subdirectory) stay exact. This is intentionally provider-agnostic
+// so a new agent inherits the rule without an edit here.
+func sessionMatchesCWD(requestedCWD string, sessionCWD string) bool {
 	if requestedCWD == "" || requestedCWD == sessionCWD {
 		return true
 	}
-	return (provider == "codex" || provider == "opencode" || provider == "pi") && sessionCWD != "" && hasGitMarker(sessionCWD) && pathIsAtOrInside(sessionCWD, requestedCWD)
+	return sessionCWD != "" && hasGitMarker(sessionCWD) && pathIsAtOrInside(sessionCWD, requestedCWD)
 }
 
 func parseCodexSession(path string, cwd string) *session {
@@ -688,7 +696,7 @@ func parseCodexSession(path string, cwd string) *session {
 	if result.ThreadSource == "subagent" {
 		return nil
 	}
-	if (cwd != "" && !sessionMatchesCWD("codex", cwd, result.CWD)) || result.ID == "" || result.Timestamp == "" || result.Originator != "codex-tui" {
+	if (cwd != "" && !sessionMatchesCWD(cwd, result.CWD)) || result.ID == "" || result.Timestamp == "" || result.Originator != "codex-tui" {
 		return nil
 	}
 
@@ -758,7 +766,7 @@ func parseClaudeSession(path string, cwd string) *session {
 	if result.Title == "" {
 		result.Title = fallbackTitle
 	}
-	if (cwd != "" && result.CWD != cwd) || result.ID == "" || result.Timestamp == "" {
+	if (cwd != "" && !sessionMatchesCWD(cwd, result.CWD)) || result.ID == "" || result.Timestamp == "" {
 		return nil
 	}
 
@@ -856,7 +864,7 @@ func finishGeminiSession(result session, cwd string, promptSearch string) *sessi
 			}
 		}
 	}
-	if (cwd != "" && result.CWD != cwd) || result.ID == "" || result.CWD == "" || result.Timestamp == "" {
+	if (cwd != "" && !sessionMatchesCWD(cwd, result.CWD)) || result.ID == "" || result.CWD == "" || result.Timestamp == "" {
 		return nil
 	}
 
@@ -942,8 +950,8 @@ func parsePiSession(path string, cwd string) *session {
 	}
 	// Pi records its session cwd at the repository git root (it chdirs there on
 	// startup), so an Overseer task launched from a repo subdirectory must still
-	// match, using the same repo-root rule as Codex and OpenCode.
-	if (cwd != "" && !sessionMatchesCWD("pi", cwd, result.CWD)) || result.ID == "" || result.Timestamp == "" {
+	// match; the shared repo-root rule in sessionMatchesCWD covers this.
+	if (cwd != "" && !sessionMatchesCWD(cwd, result.CWD)) || result.ID == "" || result.Timestamp == "" {
 		return nil
 	}
 
@@ -1006,7 +1014,7 @@ func parseOpenCodeSessionObject(item map[string]any, sourcePath string, cwd stri
 	if result.UpdatedAt == "" {
 		result.UpdatedAt = result.Timestamp
 	}
-	if (cwd != "" && !sessionMatchesCWD("opencode", cwd, result.CWD)) || result.ID == "" || result.CWD == "" || result.Timestamp == "" {
+	if (cwd != "" && !sessionMatchesCWD(cwd, result.CWD)) || result.ID == "" || result.CWD == "" || result.Timestamp == "" {
 		return nil
 	}
 	finishSessionSearchText(&result, "")
@@ -1118,7 +1126,7 @@ func opencodeSqliteSessions(dbPath string, cwd string) []session {
 		if s.UpdatedAt == "" {
 			s.UpdatedAt = s.Timestamp
 		}
-		if (cwd != "" && !sessionMatchesCWD("opencode", cwd, s.CWD)) || s.ID == "" || s.CWD == "" || s.Timestamp == "" {
+		if (cwd != "" && !sessionMatchesCWD(cwd, s.CWD)) || s.ID == "" || s.CWD == "" || s.Timestamp == "" {
 			continue
 		}
 		finishSessionSearchText(&s, "")

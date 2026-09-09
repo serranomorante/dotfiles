@@ -760,14 +760,16 @@ local function path_is_at_or_inside(parent, child)
   return vim.startswith(child, parent .. "/")
 end
 
----@param provider table
 ---@param requested_cwd string?
 ---@param session_cwd string?
 ---@return boolean
-local function session_matches_cwd(provider, requested_cwd, session_cwd)
+-- Scoping rule shared by every provider: a stored session belongs to the
+-- requested scope when its cwd equals the request or was recorded at a
+-- repository git root that contains the request. Sessions recorded in plain
+-- directories stay exact. Provider-agnostic so adding an agent needs no edit.
+local function session_matches_cwd(requested_cwd, session_cwd)
   if type(requested_cwd) ~= "string" or requested_cwd == "" or requested_cwd == session_cwd then return true end
-  return (provider.name == "codex" or provider.name == "opencode" or provider.name == "pi")
-    and type(session_cwd) == "string"
+  return type(session_cwd) == "string"
     and session_cwd ~= ""
     and vim.uv.fs_stat(utils.join_paths(session_cwd, ".git")) ~= nil
     and path_is_at_or_inside(session_cwd, requested_cwd)
@@ -786,7 +788,7 @@ local function scoped_sessions(provider, sessions, cwd, opts)
   cwd = cwd or vim.fn.getcwd()
   local scoped = {}
   for _, session in ipairs(sessions) do
-    if session.provider == provider.name and session_matches_cwd(provider, cwd, session.cwd) then
+    if session.provider == provider.name and session_matches_cwd(cwd, session.cwd) then
       table.insert(scoped, session)
     end
   end
@@ -1183,7 +1185,7 @@ local function unlinked_task_session_delta(provider, task, session, known_sessio
   if known_session_ids and known_session_ids[session.id] then return nil end
   if session.provider ~= provider.name then return nil end
   if not is_unlinked_plain_agent_task(provider, task) then return nil end
-  if not session_matches_cwd(provider, task.cwd, session.cwd) then return nil end
+  if not session_matches_cwd(task.cwd, session.cwd) then return nil end
   if type(task.time_start) ~= "number" then return nil end
   if type(provider.session_epoch_seconds) ~= "function" then return nil end
 
