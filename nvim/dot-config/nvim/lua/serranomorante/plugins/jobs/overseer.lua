@@ -33,7 +33,7 @@ local function keys()
     pcall(overseer.open, { winid = 0 })
   end, { desc = "Overseer: Toggle the overseer window" })
   vim.keymap.set("n", "<leader>or", "<cmd>OverseerRun<CR>", { desc = "Overseer: Run a task from a template" })
-  vim.keymap.set("n", "<leader>oc", "<cmd>OverseerRunCmd<CR>", { desc = "Overseer: Run a raw shell command" })
+  vim.keymap.set("n", "<leader>oc", "<cmd>OverseerShell<CR>", { desc = "Overseer: Run a raw shell command" })
   require("serranomorante.plugins.jobs.agent_sessions").keys()
   require("serranomorante.plugins.jobs.agent_tasks").setup_commands()
   vim.keymap.set(
