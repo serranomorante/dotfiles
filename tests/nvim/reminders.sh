@@ -15,6 +15,9 @@ set -euo pipefail
 # dotfiles-test-case: reminders-long-body-fence-found
 # dotfiles-test-case: reminders-long-body-intermediate-code-fence
 # dotfiles-test-case: reminders-execution-metadata-outside-fence
+# dotfiles-test-case: reminders-startup-foam-cwd-runs-remind
+# dotfiles-test-case: reminders-startup-other-cwd-skips-remind
+# dotfiles-test-case: reminders-startup-headless-skips-remind
 
 # Purpose: Verify generated Remind RUN entries for @run agent TODOs.
 
@@ -52,6 +55,53 @@ BASH
     chmod +x "${bin}/systemctl"
     printf '%s\n' "$bin"
 }
+
+write_startup_probe() {
+    local probe=$1
+    cat >"$probe" <<'LUA'
+local marker = vim.env.DOTFILES_TEST_TMP .. "/remind-startup.marker"
+local loaded = vim.env.DOTFILES_TEST_TMP .. "/remind-startup.loaded"
+os.remove(marker)
+os.remove(loaded)
+local plugin = vim.env.DOTFILES_TEST_ROOT .. "/nvim/dot-config/nvim/after/plugin/reminders.lua"
+vim.cmd.source(plugin)
+vim.fn.writefile({ "loaded" }, loaded)
+vim.api.nvim_create_user_command("Remind", function()
+  vim.fn.writefile({ "remind-called" }, marker)
+end, { force = true, nargs = "*", bar = true })
+if vim.env.DOTFILES_TEST_STUB_UI == "1" then
+  vim.api.nvim_list_uis = function() return { { width = 80, height = 24 } } end
+end
+vim.api.nvim_exec_autocmds("VimEnter", { group = "remind_startup" })
+vim.wait(1500, function() return vim.fn.filereadable(marker) == 1 end, 10)
+vim.cmd.qa({ bang = true })
+LUA
+}
+
+run_startup_probe() {
+    local cwd=$1
+    local stub_ui=$2
+    local probe=$3
+    local runtime_parent="/run/user/$(id -u)"
+    local runtime_dir
+    local rc=0
+
+    runtime_dir=$(mktemp -d "${runtime_parent}/dotfiles-test-nvim-reminders.XXXXXX" 2>/dev/null || mktemp -d "${DOTFILES_TEST_TMP}/dotfiles-test-nvim-reminders.XXXXXX")
+    mkdir -p "$runtime_dir"
+    (
+        cd "$cwd"
+        export XDG_RUNTIME_DIR="$runtime_dir"
+        export DOTFILES_TEST_STUB_UI="$stub_ui"
+        "$nvim_bin" --headless -u NONE \
+            -c "set rtp^=${rtp}" \
+            -S "$probe"
+    ) || rc=$?
+    rm -rf "$runtime_dir"
+    return "$rc"
+}
+
+startup_probe_marker="${DOTFILES_TEST_TMP}/remind-startup.marker"
+startup_probe_loaded="${DOTFILES_TEST_TMP}/remind-startup.loaded"
 
 case "${DOTFILES_TEST_CASE:-}" in
 reminders-agent-run-uses-attached-id)
@@ -257,6 +307,39 @@ reminders-execution-metadata-outside-fence)
     rg -q "RUN '${HOME}/bin/remind-run' 'agent' 'todo-metadata-task'" "${HOME}/.config/remind/reminders.rem"
     refute rg -q "@timeout" "${HOME}/.config/remind/reminders.rem"
     refute rg -q "@model" "${HOME}/.config/remind/reminders.rem"
+    ;;
+reminders-startup-foam-cwd-runs-remind)
+    foam="${HOME}/data/notes/foam"
+    mkdir -p "$foam"
+    probe="${DOTFILES_TEST_TMP}/remind-startup.lua"
+    write_startup_probe "$probe"
+
+    run_startup_probe "$foam" 1 "$probe"
+
+    test -f "${startup_probe_loaded}"
+    rg -q "remind-called" "$startup_probe_marker"
+    ;;
+reminders-startup-other-cwd-skips-remind)
+    project="${DOTFILES_TEST_TMP}/project-a"
+    mkdir -p "$project"
+    probe="${DOTFILES_TEST_TMP}/remind-startup.lua"
+    write_startup_probe "$probe"
+
+    run_startup_probe "$project" 1 "$probe"
+
+    test -f "${startup_probe_loaded}"
+    refute test -f "${startup_probe_marker}"
+    ;;
+reminders-startup-headless-skips-remind)
+    foam="${HOME}/data/notes/foam"
+    mkdir -p "$foam"
+    probe="${DOTFILES_TEST_TMP}/remind-startup.lua"
+    write_startup_probe "$probe"
+
+    run_startup_probe "$foam" 0 "$probe"
+
+    test -f "${startup_probe_loaded}"
+    refute test -f "${startup_probe_marker}"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

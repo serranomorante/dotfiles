@@ -240,3 +240,15 @@ vim.api.nvim_create_user_command(
   remind,
   { force = true, nargs = "*", bar = true, desc = "Run remind command" }
 )
+
+local remind_startup_group = vim.api.nvim_create_augroup("remind_startup", { clear = true })
+
+vim.api.nvim_create_autocmd("VimEnter", {
+  desc = "Show reminders when opening the foam notes repo",
+  group = remind_startup_group,
+  callback = function()
+    if not utils.cwd_is_notes() then return end
+    if #vim.api.nvim_list_uis() == 0 then return end
+    vim.schedule(function() vim.cmd.Remind() end)
+  end,
+})
