@@ -2,9 +2,12 @@
 
 # thanks: https://github.com/systemd/systemd/issues/26310#issuecomment-1685170189
 
-# Set nvim color mode based on system color
+# Push the system color scheme to the consumers that cannot follow it on their
+# own: Neovim servers and the terminal AI agent configs.
 
 set -euo pipefail
+
+agent_color_mode=${DBUS_COLOR_CHANGE_AGENT_HOOK:-"$HOME/bin/agent-color-mode"}
 
 # Filter to the portal Settings signal (correct bus name/interface)
 match="\
@@ -16,20 +19,44 @@ path='/org/freedesktop/portal/desktop',\
 arg0='org.kde.kdeglobals.General',\
 arg1='ColorScheme'"
 
+apply_agent_color_mode() {
+    [[ -x "$agent_color_mode" ]] || return 0
+    "$agent_color_mode" "$@" || echo "agent-color-mode failed: $*" >&2
+}
+
+apply_nvim_color_mode() {
+    local mode=$1
+    local server_list
+    local server_name
+
+    # A failing nvr must not tear down the listener, or later color changes are
+    # never delivered to the agent configs either.
+    server_list=$(nvr --serverlist || true)
+    if [[ -z "$server_list" ]]; then
+        echo "No Neovim servers found."
+        return 0
+    fi
+
+    while IFS= read -r server_name; do
+        nvr --servername "$server_name" --nostart -c "ColorMode $mode" || true
+    done <<<"$server_list"
+}
+
+# Seed the agent configs before watching: agents read them at launch, and a
+# session started after login would otherwise keep the previous mode. Neovim
+# syncs itself on startup.
+apply_agent_color_mode
+
 # Force line buffering and use the user/session bus
 while IFS= read -r data; do
-    theme=$(echo $data | jq .payload.data[2].data)
-    server_list=$(nvr --serverlist)
+    theme=$(echo "$data" | jq .payload.data[2].data)
 
-    if [[ -n "$server_list" ]]; then
-        while IFS= read -r server_name; do
-            if [[ "$theme" == *"BreezeLight"* ]]; then
-                nvr --servername "$server_name" --nostart -c 'ColorMode light'
-            else
-                nvr --servername "$server_name" --nostart -c 'ColorMode dark'
-            fi
-        done <<<"$server_list"
+    if [[ "$theme" == *"BreezeLight"* ]]; then
+        mode=light
     else
-        echo "No Neovim servers found."
+        mode=dark
     fi
+
+    apply_agent_color_mode "$mode"
+    apply_nvim_color_mode "$mode"
 done < <(busctl --user monitor --match "$match" --json=short)

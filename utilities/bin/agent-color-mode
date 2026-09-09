@@ -1,0 +1,125 @@
+#!/bin/sh
+# Purpose: Apply the system light/dark color mode to terminal AI agent configs.
+# Usage: agent-color-mode [light|dark]
+# Notes: Without an argument the mode comes from the KDE color scheme, the same
+#        source kitty and Neovim follow. Claude Code watches its themes
+#        directory, so switching its theme file is live; Codex reads
+#        config.toml at startup, so its syntax theme applies to new sessions.
+#        Gemini CLI and OpenCode track the terminal background themselves and
+#        are configured declaratively by Ansible instead of written here.
+
+set -eu
+
+program=$(basename "$0")
+
+claude_theme_slug=dotfiles-system
+claude_theme_name='Dotfiles System'
+codex_dark_syntax_theme=base16-ocean.dark
+codex_light_syntax_theme=base16-ocean.light
+codex_marker_begin='# BEGIN DOTFILES MANAGED CODEX SYNTAX THEME'
+codex_marker_end='# END DOTFILES MANAGED CODEX SYNTAX THEME'
+
+usage() {
+    cat <<EOF
+Usage: ${program} [light|dark]
+
+Apply a color mode to the terminal AI agent configs this repository owns.
+With no argument the mode is detected from ColorScheme in kdeglobals.
+EOF
+}
+
+detect_mode() {
+    kdeglobals=${XDG_CONFIG_HOME:-$HOME/.config}/kdeglobals
+    scheme=$(sed -n 's/^ColorScheme=//p' "$kdeglobals" 2>/dev/null | head -n 1)
+
+    # Anything that is not explicitly a light scheme stays dark, which is the
+    # default on this workstation.
+    case $scheme in
+    *Light*) printf 'light\n' ;;
+    *) printf 'dark\n' ;;
+    esac
+}
+
+# Replace target with stdin only when the content differs, so watchers such as
+# Claude Code's themes directory watcher are not woken for a no-op write.
+install_stdin() {
+    target=$1
+    tmp=$(mktemp "${target}.XXXXXX")
+    cat >"$tmp"
+    if cmp -s "$tmp" "$target"; then
+        rm -f "$tmp"
+        return 0
+    fi
+    chmod 644 "$tmp"
+    mv -f "$tmp" "$target"
+}
+
+# Claude Code reloads ~/.claude/themes while running, so a custom theme whose
+# base flips between the stock light and dark palettes switches live. The
+# `theme` setting that selects it is owned by Ansible.
+apply_claude() {
+    mode=$1
+    [ -d "$HOME/.claude" ] || return 0
+    themes_dir=$HOME/.claude/themes
+    mkdir -p "$themes_dir"
+    install_stdin "${themes_dir}/${claude_theme_slug}.json" <<EOF
+{
+  "name": "${claude_theme_name}",
+  "base": "${mode}"
+}
+EOF
+}
+
+# Codex renders its own chrome from the terminal palette, so only the syntax
+# theme used for code and diffs has to be flipped.
+apply_codex() {
+    mode=$1
+    config=$HOME/.codex/config.toml
+    [ -f "$config" ] || return 0
+
+    theme=$codex_dark_syntax_theme
+    if [ "$mode" = light ]; then
+        theme=$codex_light_syntax_theme
+    fi
+
+    # The managed line is a root-level dotted key, which TOML requires before
+    # any table header and which would collide with a `[tui]` table written by
+    # Codex itself. Leave such a file alone rather than corrupt it.
+    if grep -q '^[[:space:]]*\[tui\]' "$config"; then
+        printf '%s: %s already has a [tui] table; leaving the syntax theme alone\n' \
+            "$program" "$config" >&2
+        return 0
+    fi
+
+    {
+        printf '%s\n' "$codex_marker_begin"
+        printf 'tui.theme = "%s"\n' "$theme"
+        printf '%s\n' "$codex_marker_end"
+        awk -v begin="$codex_marker_begin" -v end="$codex_marker_end" '
+            $0 == begin { skip = 1; next }
+            $0 == end { skip = 0; next }
+            !skip { print }
+        ' "$config"
+    } | install_stdin "$config"
+}
+
+case ${1:-} in
+-h | --help)
+    usage
+    exit 0
+    ;;
+light | dark)
+    mode=$1
+    ;;
+'')
+    mode=$(detect_mode)
+    ;;
+*)
+    printf '%s: unknown color mode: %s\n' "$program" "$1" >&2
+    usage >&2
+    exit 2
+    ;;
+esac
+
+apply_claude "$mode"
+apply_codex "$mode"

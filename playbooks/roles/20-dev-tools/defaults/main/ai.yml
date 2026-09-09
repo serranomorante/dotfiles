@@ -12,10 +12,22 @@ mcphub_setup:
 
 # Claude Code global settings forced into ~/.claude/settings.json. Runtime state and caches live in ~/.claude.json, but user-editable settings such as promptSuggestionEnabled belong in ~/.claude/settings.json.
 # claude is a pinned npm install whose prefix cannot auto-update, so DISABLE_AUTOUPDATER stops the background check and silences the "Auto-update failed" notice.
+# The theme points at the ~/.claude/themes entry that agent-color-mode rewrites on every
+# system color scheme change. Claude Code watches that directory, so the switch reaches
+# running sessions instead of only the next launch.
 claude_global_settings_config:
   env:
     DISABLE_AUTOUPDATER: "1"
   promptSuggestionEnabled: false
+  theme: custom:dotfiles-system
+
+# Gemini CLI polls the terminal background and picks its light or dark default theme from
+# it, but only while ui.theme stays unset: a pinned theme wins over the detection and
+# freezes the UI in one mode.
+gemini_terminal_color_mode_ui:
+  autoThemeSwitching: true
+  terminalBackgroundPollingInterval: 5
+
 piper_tts_setup:
   project_path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/piper-tts"
   venv_path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/piper-tts/.venv"
