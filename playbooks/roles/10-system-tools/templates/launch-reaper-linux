@@ -79,11 +79,13 @@ smt_boost_stop() {
 reaper_boost_start() {
   platform_profile_boost_start
   governor_boost_start
-  smt_boost_start
+  # commented out for now because it makes the rest of my system more slow
+  # smt_boost_start
 }
 
 reaper_boost_stop() {
-  smt_boost_stop
+  # commented out for now because it makes the rest of my system more slow
+  # smt_boost_stop
   governor_boost_stop
   platform_profile_boost_stop
 }
