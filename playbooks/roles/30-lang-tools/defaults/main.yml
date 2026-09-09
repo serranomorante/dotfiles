@@ -13,7 +13,7 @@ node_ansible_language_server_npm_packages:
     version: 26.6.0
 node_javascript_npm_packages:
   - name: eslint
-    version: 10.9.1
+    version: 10.10.0
     bins:
       - eslint
   - name: eslint_d
@@ -61,7 +61,7 @@ node_html_npm_packages:
 node_markdown_npm_prefix: "{{ ansible_facts.env.HOME }}/data/apps/note-taking-tools/utilities/.npm"
 node_markdown_npm_packages:
   - name: "@mermaid-js/mermaid-cli"
-    version: 11.16.0
+    version: 11.17.0
     bins:
       - mmdc
   - name: mermaid-filter
