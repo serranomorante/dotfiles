@@ -38,6 +38,27 @@ function M.run_recent_task_action(opts)
   end
   if opts.noop_task_id and #tasks == 1 and tasks[1].id == opts.noop_task_id then return end
 
+  -- Only the <leader>od "open" listing pins the task it was invoked from: when
+  -- the current buffer is an Overseer task output, that task becomes the first
+  -- entry instead of following the recent-activity order. The capture above
+  -- already resolved that task as the action prompt context source.
+  local pinned_task_id = opts.noop_task_id
+  if opts.action_name == "open" and not pinned_task_id and agent_prompt_context then
+    local source_task = agent_prompt_context.source_task
+    pinned_task_id = source_task and source_task.id or nil
+  end
+  if pinned_task_id then
+    for index, task in ipairs(tasks) do
+      if task.id == pinned_task_id then
+        if index ~= 1 then
+          table.remove(tasks, index)
+          table.insert(tasks, 1, task)
+        end
+        break
+      end
+    end
+  end
+
   local task_summaries = vim.tbl_map(function(task) return { name = task.name, id = task.id } end, tasks)
 
   vim.ui.select(task_summaries, {

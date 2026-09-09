@@ -1720,6 +1720,8 @@ local function overseer_task_for_buf(bufnr)
   return tasks[1]
 end
 
+M.overseer_task_for_buf = overseer_task_for_buf
+
 local OVERSEER_TASK_OUTPUT_LABEL_MAX = 44
 
 ---@param label string?
