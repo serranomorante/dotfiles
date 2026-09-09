@@ -811,7 +811,8 @@ overseer-open-recent-other-agent-task-pastes-visual)
         '  end' \
         '  vim.ui.select = function(items, _, on_choice)' \
         '    assert(#items == 2, vim.inspect(items))' \
-        '    on_choice(items[1])' \
+        '    assert(items[1].id == source_task.id, ("current buffer task should be pinned first, got %s"):format(vim.inspect(items)))' \
+        '    on_choice(items[2])' \
         '  end' \
         '  require("serranomorante.plugins.jobs.overseer_task_actions").open_recent_task({ visual = true })' \
         '  assert(opened_task == target_task, "target task was not opened through agent prompt path")' \
@@ -868,7 +869,8 @@ overseer-open-recent-other-agent-task-continues-without-visual)
         '  end' \
         '  vim.ui.select = function(items, _, on_choice)' \
         '    assert(#items == 2, vim.inspect(items))' \
-        '    on_choice(items[1])' \
+        '    assert(items[1].id == source_task.id, ("current buffer task should be pinned first, got %s"):format(vim.inspect(items)))' \
+        '    on_choice(items[2])' \
         '  end' \
         '  require("serranomorante.plugins.jobs.overseer_task_actions").open_recent_task()' \
         '  assert(opened_task == target_task, "target task was not opened through agent prompt path")' \
