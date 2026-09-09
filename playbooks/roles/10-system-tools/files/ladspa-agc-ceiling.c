@@ -13,7 +13,7 @@
  * boost). "Floor LUFS" is therefore the point where boosting becomes complete,
  * not the point where it starts; with the defaults (-58 LUFS floor, 14 dB
  * knee) nothing below -72 LUFS is lifted, so base mic/room hiss is never
- * raised into audibility. Lowering "Floor LUFS" ignores more near-silent
+ * raised into audibility. Raising "Floor LUFS" ignores more near-silent
  * content.
  *
  * Stereo: this is a single 2-in/2-out plugin, not two mono instances. One
@@ -174,8 +174,10 @@ static void agc_run(LADSPA_Handle h, unsigned long n)
 	double max_gain = agc_clampd(agc_read(s->max_gain_db, 34.0), 0.0, 60.0);
 	double attack_ms = agc_clampd(agc_read(s->attack_ms, 20.0), 1.0, 1000.0);
 	double release_ms = agc_clampd(agc_read(s->release_ms, 500.0), 10.0, 5000.0);
-	/* Clamped to at most 0 dBFS: the ceiling can never be raised above full scale. */
-	double ceiling_db = agc_clampd(agc_read(s->ceiling_db, -1.0), -40.0, 0.0);
+	/* Clamped to at most 0 dBFS: the ceiling can never be raised above full
+	 * scale. The NaN/default fallback is the safe -6 dBFS so a non-finite
+	 * control cannot silently relax the ear-safety cap. */
+	double ceiling_db = agc_clampd(agc_read(s->ceiling_db, -6.0), -40.0, 0.0);
 	double lim_release_ms = agc_clampd(agc_read(s->lim_release_ms, 200.0), 1.0, 5000.0);
 
 	double desired_db = 0.0;

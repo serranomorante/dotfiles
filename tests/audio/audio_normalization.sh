@@ -11,6 +11,7 @@ set -euo pipefail
 # dotfiles-test-case: audio-normalization-plugin-hard-caps-output
 # dotfiles-test-case: audio-normalization-plugin-survives-nan-controls
 # dotfiles-test-case: audio-normalization-agc-levels-quiet-passages
+# dotfiles-test-case: audio-normalization-plugin-ignores-below-floor
 # dotfiles-test-case: audio-normalization-filter-chains-are-nofail
 # dotfiles-test-case: audio-normalization-rebuild-restarts-pipewire
 # dotfiles-test-case: audio-normalization-lua-syntax
@@ -141,13 +142,13 @@ int main(int argc, char **argv)
 	const char *controls[] = { "Target LUFS", "Floor LUFS", "Knee (dB)",
 				   "Max Gain (dB)", "Attack (ms)", "Release (ms)",
 				   "Ceiling (dB)", "Limiter Release (ms)" };
-	float values[] = { -28.f, -58.f, 14.f, 34.f, 20.f, 500.f, -1.f, 200.f };
+	float values[] = { -28.f, -45.f, 14.f, 34.f, 20.f, 500.f, -6.f, 200.f };
 	int q = argc > 2 ? atoi(argv[2]) : 256;
 	void *lib;
 	LADSPA_Handle h;
 	double ph = 0.0, w, amp, peak = 0.0, el = 0.0, er = 0.0, windup = 0.0;
 	long b, i, blocks, switch_at;
-	int nonfinite = 0, k;
+	int nonfinite = 0, k, below_floor = 0;
 
 	if (q < 1 || q > MAXQ)
 		return 2;
@@ -174,14 +175,18 @@ int main(int argc, char **argv)
 	 * raw AGC gain through unbounded. */
 	if (argc > 3 && strcmp(argv[3], "nan-ceiling") == 0)
 		set_control("Ceiling (dB)", (float)NAN);
+	if (argc > 3 && strcmp(argv[3], "below-floor") == 0)
+		below_floor = 1;
 	d->activate(h);
 
 	w = 2.0 * M_PI * 440.0 / 48000.0;
 	blocks = 900000L / q;
 	switch_at = 700000L / q;
 	/* Hard-panned so a per-channel AGC or limiter would be visible: L sits
-	 * 24 dB above R throughout. */
-	amp = pow(10.0, -58.0 / 20.0);
+	 * 24 dB above R throughout. A -45 LUFS passage (peak -42 dBFS) sits at
+	 * the floor for full boost; below-floor mode feeds a -65 LUFS passage
+	 * (peak -62 dBFS) that must draw no boost at all. */
+	amp = below_floor ? pow(10.0, -62.0 / 20.0) : pow(10.0, -42.0 / 20.0);
 	for (b = 0; b < blocks; b++) {
 		if (b == switch_at) {
 			windup = notify[gain_notify];
@@ -240,10 +245,10 @@ audio-normalization-config-consistent)
     assert_contains "$conf" 'plugin = /usr/lib/ladspa/libdotfiles-agc-ceiling.so'
     assert_contains "$conf" 'label = agc_ceiling'
     assert_contains "$conf" '"Target LUFS" = -28.0'
-    assert_contains "$conf" '"Floor LUFS" = -58.0'
+    assert_contains "$conf" '"Floor LUFS" = -45.0'
     assert_contains "$conf" '"Knee (dB)" = 14.0'
     assert_contains "$conf" '"Max Gain (dB)" = 34.0'
-    assert_contains "$conf" '"Ceiling (dB)" = -1.0'
+    assert_contains "$conf" '"Ceiling (dB)" = -6.0'
     assert_contains "$conf" '"Limiter Release (ms)" = 200.0'
     # One stereo instance, not two mono ones: L and R must share a single gain
     # and a single limiter or the stereo image collapses on panned material.
@@ -378,12 +383,12 @@ audio-normalization-plugin-hard-caps-output)
     build_harness "${DOTFILES_TEST_TMP}/agc-harness.c" "${DOTFILES_TEST_TMP}/agc-harness"
     harness="${DOTFILES_TEST_TMP}/agc-harness"
 
-    # 10^(-1/20) plus a rounding margin: the configured ceiling is -1 dBFS.
-    ceiling_limit=0.8913
+    # 10^(-6/20) plus a rounding margin: the configured ceiling is -6 dBFS.
+    ceiling_limit=0.5012
     for q in 32 64 128 256 512 1024 2048; do
         read -r peak nonfinite balance windup < <("$harness" "$so" "$q")
         awk -v p="$peak" -v c="$ceiling_limit" -v q="$q" \
-            'BEGIN { if (p > c + 1e-6) { printf "quantum %s: output peak %s exceeds the -1 dBFS ceiling (%s)\n", q, p, c > "/dev/stderr"; exit 1 } }'
+            'BEGIN { if (p > c + 1e-6) { printf "quantum %s: output peak %s exceeds the -6 dBFS ceiling (%s)\n", q, p, c > "/dev/stderr"; exit 1 } }'
         [[ "$nonfinite" = 0 ]] || {
             printf 'quantum %s: %s non-finite output samples\n' "$q" "$nonfinite" >&2
             exit 1
@@ -391,7 +396,7 @@ audio-normalization-plugin-hard-caps-output)
         # The cap is only meaningful if the AGC really had a large boost wound
         # on when the fortissimo hit; otherwise this asserts nothing.
         awk -v g="$windup" -v q="$q" \
-            'BEGIN { if (g < 20.0) { printf "quantum %s: AGC had only %s dB of boost wound on, the ceiling assertion is vacuous\n", q, g > "/dev/stderr"; exit 1 } }'
+            'BEGIN { if (g < 12.0) { printf "quantum %s: AGC had only %s dB of boost wound on, the ceiling assertion is vacuous\n", q, g > "/dev/stderr"; exit 1 } }'
         # A single shared gain and a single shared limiter must preserve the
         # 24 dB L/R balance of the input. Two independent mono instances
         # collapsed it to ~1.5 dB.
@@ -410,7 +415,7 @@ audio-normalization-plugin-survives-nan-controls)
     build_harness "${DOTFILES_TEST_TMP}/agc-harness.c" "${DOTFILES_TEST_TMP}/agc-harness"
     harness="${DOTFILES_TEST_TMP}/agc-harness"
 
-    ceiling_limit=0.8913
+    ceiling_limit=0.5012
     for q in 32 256 1024; do
         read -r peak nonfinite balance windup < <("$harness" "$so" "$q" nan-ceiling)
         awk -v p="$peak" -v c="$ceiling_limit" -v q="$q" \
@@ -420,7 +425,7 @@ audio-normalization-plugin-survives-nan-controls)
             exit 1
         }
         awk -v g="$windup" -v q="$q" \
-            'BEGIN { if (g < 20.0) { printf "quantum %s: AGC had only %s dB of boost wound on, the assertion is vacuous\n", q, g > "/dev/stderr"; exit 1 } }'
+            'BEGIN { if (g < 12.0) { printf "quantum %s: AGC had only %s dB of boost wound on, the assertion is vacuous\n", q, g > "/dev/stderr"; exit 1 } }'
     done
     ;;
 audio-normalization-agc-levels-quiet-passages)
@@ -437,13 +442,34 @@ audio-normalization-agc-levels-quiet-passages)
 
     for q in 32 64 128 256 512 1024; do
         read -r peak nonfinite balance windup < <("$harness" "$so" "$q")
-        # A -58 dBFS passage against a -28 LUFS target must draw a large boost
-        # at every quantum, not just the large ones.
+        # A -45 LUFS passage (peak -42 dBFS) against a -28 LUFS target must
+        # draw a large boost at every quantum, not just the large ones.
         awk -v g="$windup" -v q="$q" \
-            'BEGIN { if (g < 20.0) { printf "quantum %s: AGC boosted a -58 dBFS passage by only %s dB; the leveler is frozen\n", q, g > "/dev/stderr"; exit 1 } }'
+            'BEGIN { if (g < 12.0) { printf "quantum %s: AGC boosted a -45 LUFS passage by only %s dB; the leveler is frozen\n", q, g > "/dev/stderr"; exit 1 } }'
         # And it must stay inside the documented Max Gain safety bound.
         awk -v g="$windup" -v q="$q" \
             'BEGIN { if (g > 34.0 + 1e-3) { printf "quantum %s: AGC boost %s dB exceeds Max Gain 34 dB\n", q, g > "/dev/stderr"; exit 1 } }'
+    done
+    ;;
+audio-normalization-plugin-ignores-below-floor)
+    # The noise floor: content at or below (Floor - Knee) must draw no boost,
+    # otherwise near-silent room/mic noise is lifted into audibility and, worse,
+    # leaves a large boost wound on that overshoots when a loud sound suddenly
+    # arrives. This pins the raised-floor semantics.
+    require_plugin_toolchain
+    so="${DOTFILES_TEST_TMP}/agc-ceiling.so"
+    build_plugin "$so"
+    build_harness "${DOTFILES_TEST_TMP}/agc-harness.c" "${DOTFILES_TEST_TMP}/agc-harness"
+    harness="${DOTFILES_TEST_TMP}/agc-harness"
+
+    for q in 32 256 1024; do
+        read -r peak nonfinite balance windup < <("$harness" "$so" "$q" below-floor)
+        awk -v g="$windup" -v q="$q" \
+            'BEGIN { if (g > 1.0) { printf "quantum %s: AGC boosted a below-floor passage by %s dB; the noise floor is being ignored\n", q, g > "/dev/stderr"; exit 1 } }'
+        [[ "$nonfinite" = 0 ]] || {
+            printf 'quantum %s: %s non-finite output samples\n' "$q" "$nonfinite" >&2
+            exit 1
+        }
     done
     ;;
 audio-normalization-filter-chains-are-nofail)
