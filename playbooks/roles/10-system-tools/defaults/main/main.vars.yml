@@ -59,7 +59,7 @@ arch_amdgpu_force_performance_level: auto
 arch_nvidia_display_profile: offload_only
 arch_wine_staging_version: "9.21"
 arch_dwm_version: HEAD
-arch_docker_credential_helpers_version: 0.9.8
+arch_docker_credential_helpers_version: 0.9.9
 chrome_session_dump_version: 0.0.2
 wine_path: "{{ ansible_facts.env.HOME }}/data/apps/virt-tools/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64/wine-{{ arch_wine_staging_version }}-staging-tkg-amd64"
 arch_mypaint_version: 2.1.0-alpha-400-g90b36db-2021-05-04_18.41
