@@ -1254,8 +1254,8 @@ function M.detach_from_sandbox(ref)
   local t, err = resolve_task(ref)
   if not t then return vim.json.encode({ ok = false, error = err }) end
   local provider = task_provider(t)
-  if provider ~= "codex" and provider ~= "opencode" and provider ~= "claude" and provider ~= "gemini" then
-    return vim.json.encode({ ok = false, error = "detach from sandbox is only supported for codex, opencode, claude and gemini tasks" })
+  if provider ~= "codex" and provider ~= "opencode" and provider ~= "claude" and provider ~= "gemini" and provider ~= "pi" then
+    return vim.json.encode({ ok = false, error = "detach from sandbox is only supported for codex, opencode, claude, gemini and pi tasks" })
   end
 
   local tmux_session_name = task_tmux_session_name(t)

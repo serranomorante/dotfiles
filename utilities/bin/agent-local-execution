@@ -12,7 +12,7 @@ import sys
 
 
 SCHEMA = "foam-ai-autotrigger.v1"
-SUPPORTED_AGENTS = {"codex", "claude", "gemini", "opencode"}
+SUPPORTED_AGENTS = {"codex", "claude", "gemini", "opencode", "pi"}
 
 
 def die(message, code=2):
@@ -176,6 +176,11 @@ def run_agent(prompt, opts):
         cmd.extend(["run", "--dir", opts["cwd"]])
         if opts["model"]:
             cmd.extend(["-m", opts["model"]])
+    elif opts["agent"] == "pi":
+        cmd = launch_prefix("pi", opts)
+        cmd.extend(["-p", "-a"])
+        if opts["model"]:
+            cmd.extend(["--model", opts["model"]])
     else:
         cmd = launch_prefix("gemini", opts)
         cmd.extend(["--prompt", ""])

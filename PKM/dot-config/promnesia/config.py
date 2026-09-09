@@ -78,6 +78,7 @@ SOURCES = [
         "~/.codex/sessions",
         "~/.gemini/tmp",
         "~/.local/share/opencode",
+        "~/.pi/agent/sessions",
         name="agent-conversations",
     ),
 ]

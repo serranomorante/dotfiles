@@ -28,6 +28,13 @@ gemini_terminal_color_mode_ui:
   autoThemeSwitching: true
   terminalBackgroundPollingInterval: 5
 
+# Pi has no built-in MCP, so unlike claude/codex/opencode it has no MCPHub
+# launcher. Its telemetry opt-out lives in ~/.pi/agent/settings.json (forced here
+# over whatever Pi writes itself), while the update-check and telemetry env
+# kill-switches are set by the fj-pi wrapper so Pi never phones pi.dev on start.
+pi_global_settings_config:
+  enableInstallTelemetry: false
+
 piper_tts_setup:
   project_path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/piper-tts"
   venv_path: "{{ ansible_facts.env.HOME }}/data/apps/dev-tools/ai-tools/piper-tts/.venv"
@@ -83,6 +90,10 @@ node_ai_npm_packages:
     version: 1.18.28
     bins:
       - opencode
+  - name: "@earendil-works/pi-coding-agent"
+    version: 0.85.1
+    bins:
+      - pi
   - name: chrome-devtools-mcp
     version: 1.8.0
     bins:

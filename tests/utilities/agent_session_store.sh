@@ -6,6 +6,7 @@ set -euo pipefail
 # dotfiles-test-case: agent-session-store-current-id-prefers-history-over-newer-cwd-session
 # dotfiles-test-case: agent-session-store-refresh-limits-old-sessions
 # dotfiles-test-case: agent-session-store-watch-new-ignores-stale-unknown-sessions
+# dotfiles-test-case: agent-session-store-pi-lists-sessions
 
 # Purpose: Exercise the agent-session-store CLI against realistic transcript files.
 
@@ -23,6 +24,20 @@ write_codex_session() {
     cat >"$path" <<EOF
 {"type":"session_meta","payload":{"id":"${id}","cwd":"${cwd}","timestamp":"${timestamp}","originator":"codex-tui"}}
 {"type":"event_msg","payload":{"type":"user_message","message":"${title}"}}
+EOF
+}
+
+write_pi_session() {
+    local path=$1
+    local id=$2
+    local cwd=$3
+    local timestamp=$4
+    local title=$5
+
+    mkdir -p "$(dirname "$path")"
+    cat >"$path" <<EOF
+{"type":"session","version":3,"id":"${id}","timestamp":"${timestamp}","cwd":"${cwd}"}
+{"type":"message","id":"a1b2c3d4","parentId":null,"timestamp":"${timestamp}","message":{"role":"user","content":"${title}"}}
 EOF
 }
 
@@ -117,6 +132,25 @@ agent-session-store-watch-new-ignores-stale-unknown-sessions)
     watch_json=$("$store" --provider codex --root "$root" watch-new "$cwd" "$known_json" 1 0.05 0.05)
     if [[ "$watch_json" != *'"event":"session"'* || "$watch_json" != *"\"id\":\"${new_id}\""* ]]; then
         printf 'expected watch-new to find newest session %s, got: %s\n' "$new_id" "$watch_json" >&2
+        exit 1
+    fi
+    ;;
+agent-session-store-pi-lists-sessions)
+    root="${DOTFILES_TEST_TMP}/pi-sessions"
+    cwd="${DOTFILES_TEST_TMP}/repo"
+    mkdir -p "$cwd"
+
+    write_pi_session "${root}/--repo--/20260716_pi-session-1.jsonl" "pi-session-1" "$cwd" "2026-07-16T14:10:00.000Z" "Investigate pi session"
+
+    ids_json=$("$store" --provider pi --root "$root" ids "$cwd")
+    if [[ "$ids_json" != *'"pi-session-1"'* ]]; then
+        printf 'expected pi ids to include the session, got: %s\n' "$ids_json" >&2
+        exit 1
+    fi
+
+    refresh_json=$("$store" --provider pi --root "$root" refresh)
+    if [[ "$refresh_json" != *'"title":"Investigate pi session"'* ]]; then
+        printf 'expected pi refresh to parse the title, got: %s\n' "$refresh_json" >&2
         exit 1
     fi
     ;;

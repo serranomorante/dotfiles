@@ -55,6 +55,21 @@ local function agent_tmux_server_name() return utils.agent_tmux_server_name() en
 ---@return string
 local function strip_ansi(output) return output:gsub("[\27\155][][()#;?%d]*[A-PRZcf-ntqry=><~]", "") end
 
+---Builds a ready() predicate shared by the simple marker-based agents: the agent
+---is ready once its terminal output shows any literal marker or the sandboxed
+---cwd. Codex keeps its own predicate because it needs a compound condition.
+---@param markers string[]
+---@return fun(output: string, cwd?: string): boolean
+local function marker_ready(markers)
+  return function(output, cwd)
+    local text = strip_ansi(output)
+    for _, marker in ipairs(markers) do
+      if text:find(marker, 1, true) ~= nil then return true end
+    end
+    return cwd ~= nil and text:find(vim.fn.fnamemodify(cwd, ":~"), 1, true) ~= nil
+  end
+end
+
 ---@param output string
 ---@param cwd? string
 ---@return boolean
@@ -65,38 +80,10 @@ local function codex_ready(output, cwd)
     or (cwd ~= nil and text:find(vim.fn.fnamemodify(cwd, ":~"), 1, true) ~= nil)
 end
 
----@param output string
----@param cwd? string
----@return boolean
-local function claude_ready(output, cwd)
-  local text = strip_ansi(output)
-  return text:find("Claude Code", 1, true) ~= nil
-    or text:find("? for shortcuts", 1, true) ~= nil
-    or (cwd ~= nil and text:find(vim.fn.fnamemodify(cwd, ":~"), 1, true) ~= nil)
-end
-
----@param output string
----@param cwd? string
----@return boolean
-local function gemini_ready(output, cwd)
-  local text = strip_ansi(output)
-  return text:find("Gemini CLI", 1, true) ~= nil
-    or text:find("Loaded cached credentials", 1, true) ~= nil
-    or text:find("? for shortcuts", 1, true) ~= nil
-    or (cwd ~= nil and text:find(vim.fn.fnamemodify(cwd, ":~"), 1, true) ~= nil)
-end
-
----@param output string
----@param cwd? string
----@return boolean
-local function opencode_ready(output, cwd)
-  local text = strip_ansi(output)
-  return text:find("OpenCode", 1, true) ~= nil
-    or text:find("opencode", 1, true) ~= nil
-    or text:find("? for help", 1, true) ~= nil
-    or text:find("? for commands", 1, true) ~= nil
-    or (cwd ~= nil and text:find(vim.fn.fnamemodify(cwd, ":~"), 1, true) ~= nil)
-end
+local claude_ready = marker_ready({ "Claude Code", "? for shortcuts" })
+local gemini_ready = marker_ready({ "Gemini CLI", "Loaded cached credentials", "? for shortcuts" })
+local opencode_ready = marker_ready({ "OpenCode", "opencode", "? for help", "? for commands" })
+local pi_ready = marker_ready({ "pi.dev", "Pi coding agent", "/hotkeys" })
 
 ---@param ... string
 ---@return string[]
@@ -196,6 +183,24 @@ local PROVIDERS = {
     ready = opencode_ready,
     start_args = function() return { "--auto", "--mini" } end,
     resume_args = function(session) return { "--auto", "--mini", "--session", session.id } end,
+  },
+  pi = {
+    name = "pi",
+    display_name = "Pi",
+    executable = "fj-pi",
+    unfirejailed_executable = "pi",
+    sessions_dir = vim.fn.expand("~/.pi/agent/sessions"),
+    cache_key = "agent-sessions-pi-v1",
+    key_prefix = "p",
+    continuation_name = "pi",
+    ready = pi_ready,
+    -- Pi has no built-in MCP, so there is intentionally no mcp_executable;
+    -- `agent-tasks new pi --mcp` reports that Pi has no MCP launcher.
+    -- --use-theme light/dark makes Pi follow the terminal background (the system
+    -- color mode, driven by kitty -> KDE) instead of persisting its first-run
+    -- theme detection.
+    start_args = function() return { "--use-theme", "light/dark" } end,
+    resume_args = function(session) return { "--session", session.id, "--use-theme", "light/dark" } end,
   },
 }
 
@@ -2137,6 +2142,7 @@ function M.keys()
   create_provider_keymaps(PROVIDERS.claude)
   create_provider_keymaps(PROVIDERS.gemini)
   create_provider_keymaps(PROVIDERS.opencode)
+  create_provider_keymaps(PROVIDERS.pi)
 end
 
 vim.api.nvim_create_autocmd({ "TermOpen", "BufEnter", "BufWinEnter" }, {

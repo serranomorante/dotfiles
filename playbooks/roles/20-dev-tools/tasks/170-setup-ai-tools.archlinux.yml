@@ -419,6 +419,11 @@
     - "{{ ansible_facts.env.HOME }}/.cache/opencode"
     - "{{ ansible_facts.env.HOME }}/.local/state/opencode"
     - "{{ ansible_facts.env.HOME }}/.local/share/opencode"
+    - "{{ ansible_facts.env.HOME }}/.pi"
+    - "{{ ansible_facts.env.HOME }}/.pi/agent"
+    - "{{ ansible_facts.env.HOME }}/.cache/pi"
+    - "{{ ansible_facts.env.HOME }}/.local/state/pi"
+    - "{{ ansible_facts.env.HOME }}/.local/share/pi"
     - "{{ ansible_facts.env.HOME }}/.local/state/mcp-hub"
     - "{{ ansible_facts.env.HOME }}/.local/share/mcp-hub"
 
@@ -492,6 +497,33 @@
     src: opencode_dotfiles_system_theme.json.j2
     dest: ~/.config/opencode/themes/dotfiles-system.json
     mode: "644"
+
+- name: "[{{ user_os }}] Setup ai tools: stat pi global settings"
+  ansible.builtin.stat:
+    path: ~/.pi/agent/settings.json
+  register: var_stat_pi_global_settings
+
+- name: "[{{ user_os }}] Setup ai tools: get pi global settings file"
+  ansible.builtin.set_fact:
+    pi_global_settings_json: "{{ lookup('file', '~/.pi/agent/settings.json') | default({}) | from_json }}"
+  when: var_stat_pi_global_settings.stat.exists
+
+- name: "[{{ user_os }}] Setup ai tools: initialize pi global settings"
+  ansible.builtin.set_fact:
+    pi_global_settings_json: {}
+  when: not var_stat_pi_global_settings.stat.exists
+
+- name: "[{{ user_os }}] Setup ai tools: force pi global settings"
+  ansible.builtin.set_fact:
+    pi_global_settings_json: "{{ pi_global_settings_json | combine(pi_global_settings_config) }}"
+  when: pi_global_settings_config | default({}) | length != 0
+
+- name: "[{{ user_os }}] Setup ai tools: override pi global settings file"
+  ansible.builtin.copy:
+    dest: ~/.pi/agent/settings.json
+    content: "{{ pi_global_settings_json | to_nice_json }}\n"
+    mode: "644"
+  when: pi_global_settings_json.values() | length != 0
 
 # Codex treats [permissions.<name>] as a named permission profile and refuses to
 # start unless the root-level `default_permissions` key selects one. TOML requires

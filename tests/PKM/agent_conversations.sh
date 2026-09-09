@@ -72,6 +72,15 @@ con.close()
 PY
 }
 
+write_pi_fixture() {
+    local dir=$1
+    mkdir -p "$dir/--repo-pi--"
+    cat >"$dir/--repo-pi--/20260716_pi-session-1.jsonl" <<'EOF'
+{"type":"session","version":3,"id":"pi-session-1","timestamp":"2026-07-16T14:10:00.000Z","cwd":"/repo/pi"}
+{"type":"message","id":"a1b2c3d4","parentId":null,"timestamp":"2026-07-16T14:10:00.000Z","message":{"role":"user","content":"check https://pi.example.com/page"}}
+EOF
+}
+
 run_source() {
     local root=$1
     "$venv_python" - "$source_module" "$root" <<'PY'
@@ -106,12 +115,14 @@ agent-conversations-extracts-links)
     write_codex_fixture "$root/.codex/sessions"
     write_gemini_fixture "$root/.gemini/tmp"
     write_opencode_fixture "$root/.local/share/opencode/opencode.db"
+    write_pi_fixture "$root/.pi/agent/sessions"
 
     out="${DOTFILES_TEST_TMP}/visits.jsonl"
     run_source "$root/.claude/projects" >"$out"
     run_source "$root/.codex/sessions" >>"$out"
     run_source "$root/.gemini/tmp" >>"$out"
     run_source "$root/.local/share/opencode" >>"$out"
+    run_source "$root/.pi/agent/sessions" >>"$out"
 
     rg -q 'https://example.org/foo' "$out"
     rg -q '"title": "claude: Investigate foo"' "$out"
@@ -128,6 +139,10 @@ agent-conversations-extracts-links)
     rg -q 'https://opencode.example.com/doc' "$out"
     rg -q '"title": "opencode: OpenCode session title"' "$out"
     rg -q 'editor:///agent_conversation/repo/opencode/ses_test123' "$out"
+
+    rg -q 'https://pi.example.com/page' "$out"
+    rg -q '"title": "pi: check https://pi.example' "$out"
+    rg -q 'editor:///agent_conversation/repo/pi/pi-session-1' "$out"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

@@ -67,7 +67,8 @@ firejail-promnesia-exposes-agent-conversation-dirs)
         'whitelist-ro ${HOME}/.claude/projects' \
         'whitelist-ro ${HOME}/.codex/sessions' \
         'whitelist-ro ${HOME}/.gemini/tmp' \
-        'whitelist-ro ${HOME}/.local/share/opencode'; do
+        'whitelist-ro ${HOME}/.local/share/opencode' \
+        'whitelist-ro ${HOME}/.pi/agent/sessions'; do
         if ! grep -Fqx "$path" "$profile"; then
             printf 'Promnesia profile does not expose agent conversation dir: %s\n' "$path" >&2
             exit 1
@@ -80,7 +81,8 @@ firejail-ai-agent-profiles-avoid-broad-xdg)
         "$root/playbooks/roles/20-dev-tools/templates/claude.profile" \
         "$root/playbooks/roles/20-dev-tools/templates/codex.profile" \
         "$root/playbooks/roles/20-dev-tools/templates/gemini.profile" \
-        "$root/playbooks/roles/20-dev-tools/templates/opencode.profile"; do
+        "$root/playbooks/roles/20-dev-tools/templates/opencode.profile" \
+        "$root/playbooks/roles/20-dev-tools/templates/pi.profile"; do
         if grep -Eq '^[[:space:]]*whitelist[[:space:]]+\$\{HOME\}/\.cache([[:space:]]|$)' "$profile"; then
             printf 'broad cache whitelist in %s\n' "$profile" >&2
             exit 1
@@ -120,6 +122,7 @@ firejail-ai-agent-runtime-launchers-use-wrappers)
         'executable = "fj-codex"' \
         'executable = "fj-claude"' \
         'executable = "fj-gemini"' \
+        'executable = "fj-pi"' \
         'mcp_executable = "gemini-mcp"'; do
         if ! grep -Fq "$expected" "$nvim_agent_sessions"; then
             printf 'Neovim agent launcher is missing wrapper config: %s\n' "$expected" >&2

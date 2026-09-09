@@ -8,10 +8,12 @@ set -euo pipefail
 # dotfiles-test-case: agent-local-execution-claude-builds-noninteractive-command
 # dotfiles-test-case: agent-local-execution-gemini-builds-noninteractive-command
 # dotfiles-test-case: agent-local-execution-opencode-builds-noninteractive-command
+# dotfiles-test-case: agent-local-execution-pi-builds-noninteractive-command
 # dotfiles-test-case: agent-local-execution-codex-builds-unfirejailed-command
 # dotfiles-test-case: agent-local-execution-claude-builds-unfirejailed-command
 # dotfiles-test-case: agent-local-execution-gemini-builds-unfirejailed-command
 # dotfiles-test-case: agent-local-execution-opencode-builds-unfirejailed-command
+# dotfiles-test-case: agent-local-execution-pi-builds-unfirejailed-command
 # dotfiles-test-case: agent-local-execution-opencode-raw-passes-prompt-through
 # dotfiles-test-case: agent-local-execution-raw-rejects-json-args
 # dotfiles-test-case: agent-local-execution-rejects-unsupported-schema
@@ -149,6 +151,20 @@ agent-local-execution-opencode-builds-noninteractive-command)
     rg -q "agent: opencode" "${DOTFILES_TEST_TMP}/agent.stdin"
     rg -q "model: gpt-5" "${DOTFILES_TEST_TMP}/agent.stdin"
     ;;
+agent-local-execution-pi-builds-noninteractive-command)
+    bin=$(make_fake_path)
+    write_fake_agent "$bin" fj-pi
+    payload=$(write_payload)
+
+    run_wrapper_with_path "$bin" --agent pi --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+
+    rg -q "agent result" "${DOTFILES_TEST_TMP}/stdout"
+    expected="--exec --root ${DOTFILES_TEST_TMP}/work -- pi -p -a --model gpt-5"
+    actual=$(cat "${DOTFILES_TEST_TMP}/agent.args")
+    [[ "$actual" == "$expected" ]]
+    rg -q "agent: pi" "${DOTFILES_TEST_TMP}/agent.stdin"
+    rg -q "model: gpt-5" "${DOTFILES_TEST_TMP}/agent.stdin"
+    ;;
 agent-local-execution-opencode-builds-unfirejailed-command)
     bin=$(make_fake_path)
     write_fake_agent "$bin" opencode
@@ -161,6 +177,20 @@ agent-local-execution-opencode-builds-unfirejailed-command)
     actual=$(cat "${DOTFILES_TEST_TMP}/agent.args")
     [[ "$actual" == "$expected" ]]
     rg -q "agent: opencode" "${DOTFILES_TEST_TMP}/agent.stdin"
+    rg -q "model: gpt-5" "${DOTFILES_TEST_TMP}/agent.stdin"
+    ;;
+agent-local-execution-pi-builds-unfirejailed-command)
+    bin=$(make_fake_path)
+    write_fake_agent "$bin" pi
+    payload=$(write_payload)
+
+    run_wrapper_with_path "$bin" --agent pi --unfirejailed --input-json "$payload" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+
+    rg -q "agent result" "${DOTFILES_TEST_TMP}/stdout"
+    expected="-p -a --model gpt-5"
+    actual=$(cat "${DOTFILES_TEST_TMP}/agent.args")
+    [[ "$actual" == "$expected" ]]
+    rg -q "agent: pi" "${DOTFILES_TEST_TMP}/agent.stdin"
     rg -q "model: gpt-5" "${DOTFILES_TEST_TMP}/agent.stdin"
     ;;
 agent-local-execution-codex-builds-unfirejailed-command)

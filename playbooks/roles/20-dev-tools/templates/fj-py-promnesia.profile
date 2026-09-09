@@ -19,6 +19,7 @@ whitelist-ro ${HOME}/.claude/projects
 whitelist-ro ${HOME}/.codex/sessions
 whitelist-ro ${HOME}/.gemini/tmp
 whitelist-ro ${HOME}/.local/share/opencode
+whitelist-ro ${HOME}/.pi/agent/sessions
 
 whitelist ${HOME}/data/PKM/data
 whitelist ${HOME}/.local/share/promnesia

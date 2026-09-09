@@ -33,6 +33,7 @@
     - codex.profile
     - gemini.profile
     - opencode.profile
+    - pi.profile
     - fj-node.profile
     - fj-node-ansible.profile
     - fj-node-volta-bootstrap.profile
@@ -66,6 +67,7 @@
     - codex.profile
     - gemini.profile
     - opencode.profile
+    - pi.profile
 
 - name: "[{{ user_os }}] Setup node: stat AI agent Stow target generator"
   ansible.builtin.stat:
@@ -171,6 +173,7 @@
     - fj-codex
     - fj-gemini
     - fj-opencode
+    - fj-pi
 
 - name: "[{{ user_os }}] Setup node: install OpenCode mini readability wrapper"
   ansible.builtin.copy:

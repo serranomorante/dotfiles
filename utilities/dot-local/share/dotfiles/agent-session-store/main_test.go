@@ -185,6 +185,60 @@ func TestParseGeminiJSONSessionUsesNestedMessages(t *testing.T) {
 	}
 }
 
+func TestParsePiSessionUsesHeaderAndSessionName(t *testing.T) {
+	root := t.TempDir()
+	cwd := filepath.Join(root, "repo")
+	if err := os.MkdirAll(cwd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sessionPath := filepath.Join(root, "20260716_pi-session-1.jsonl")
+	lines := strings.Join([]string{
+		`{"type":"session","version":3,"id":"pi-session-1","timestamp":"2026-07-16T14:10:00.000Z","cwd":"` + cwd + `"}`,
+		`{"type":"message","id":"a1b2c3d4","parentId":null,"timestamp":"2026-07-16T14:10:00.000Z","message":{"role":"user","content":"Investigate pi session"}}`,
+		`{"type":"session_info","id":"s1","parentId":null,"timestamp":"2026-07-16T14:11:00.000Z","name":"Renamed pi session"}`,
+	}, "\n")
+	if err := os.WriteFile(sessionPath, []byte(lines), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	session := parsePiSession(sessionPath, cwd)
+	if session == nil {
+		t.Fatal("expected Pi session")
+	}
+	if session.ID != "pi-session-1" {
+		t.Fatalf("unexpected id: %q", session.ID)
+	}
+	if session.CWD != cwd {
+		t.Fatalf("unexpected cwd: %q", session.CWD)
+	}
+	if session.Title != "Renamed pi session" {
+		t.Fatalf("expected session_info name to win the title, got %q", session.Title)
+	}
+	if session.Timestamp != "2026-07-16T14:10:00.000Z" {
+		t.Fatalf("unexpected timestamp: %q", session.Timestamp)
+	}
+}
+
+func TestParsePiSessionRejectsOtherCWD(t *testing.T) {
+	root := t.TempDir()
+	cwd := filepath.Join(root, "repo")
+	if err := os.MkdirAll(cwd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sessionPath := filepath.Join(root, "20260716_pi-session-1.jsonl")
+	lines := strings.Join([]string{
+		`{"type":"session","version":3,"id":"pi-session-1","timestamp":"2026-07-16T14:10:00.000Z","cwd":"` + cwd + `"}`,
+		`{"type":"message","id":"a1b2c3d4","parentId":null,"timestamp":"2026-07-16T14:10:00.000Z","message":{"role":"user","content":"Investigate pi session"}}`,
+	}, "\n")
+	if err := os.WriteFile(sessionPath, []byte(lines), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if session := parsePiSession(sessionPath, filepath.Join(root, "other")); session != nil {
+		t.Fatalf("expected cwd filter to reject session: %#v", session)
+	}
+}
+
 func TestParseGeminiSessionRejectsOtherCWD(t *testing.T) {
 	root := t.TempDir()
 	sessionDir := filepath.Join(root, "gemini", "playbooks", "chats")

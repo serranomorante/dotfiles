@@ -63,6 +63,12 @@ var providers = map[string]providerDefaults{
 			"OPENCODE_CURRENT_SESSION_ID",
 		},
 	},
+	"pi": {
+		root: "~/.pi/agent/sessions",
+		envSessionKeys: []string{
+			"PI_SESSION_ID",
+		},
+	},
 }
 
 type providerDefaults struct {
@@ -320,31 +326,31 @@ func wantsCommandHelp(args []string) bool {
 }
 
 func printUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] refresh")
-	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] ids CWD")
-	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] wait-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS")
-	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] watch-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS TITLE_TIMEOUT_SECONDS")
-	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] current-id [--cwd CWD] [--history PATH]")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode|pi] [--root PATH] refresh")
+	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini|opencode|pi] [--root PATH] ids CWD")
+	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini|opencode|pi] [--root PATH] wait-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS")
+	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini|opencode|pi] [--root PATH] watch-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS TITLE_TIMEOUT_SECONDS")
+	fmt.Fprintln(out, "       agent-session-store [--provider codex|claude|gemini|opencode|pi] [--root PATH] current-id [--cwd CWD] [--history PATH]")
 }
 
 func printRefreshUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] refresh")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode|pi] [--root PATH] refresh")
 }
 
 func printIDsUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] ids CWD")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode|pi] [--root PATH] ids CWD")
 }
 
 func printWaitNewUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] wait-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode|pi] [--root PATH] wait-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS")
 }
 
 func printWatchNewUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] watch-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS TITLE_TIMEOUT_SECONDS")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode|pi] [--root PATH] watch-new CWD KNOWN_IDS_JSON TIMEOUT_SECONDS INTERVAL_SECONDS TITLE_TIMEOUT_SECONDS")
 }
 
 func printCurrentIDUsage(out io.Writer) {
-	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode] [--root PATH] current-id [--cwd CWD] [--history PATH]")
+	fmt.Fprintln(out, "usage: agent-session-store [--provider codex|claude|gemini|opencode|pi] [--root PATH] current-id [--cwd CWD] [--history PATH]")
 }
 
 func compactTitleText(text string) string {
@@ -864,6 +870,88 @@ func finishGeminiSession(result session, cwd string, promptSearch string) *sessi
 	return &result
 }
 
+func piUserMessageText(message map[string]any) string {
+	role, _ := stringValue(message["role"])
+	if role != "user" {
+		return ""
+	}
+	return contentText(message["content"])
+}
+
+// Pi sessions are JSONL with a `{"type":"session",...}` header carrying the id,
+// cwd and timestamp, followed by `message`/`session_info` entries. The display
+// name (from `session_info`) wins over the first user prompt, mirroring how the
+// other providers prefer a provider-authored title when one exists.
+func parsePiSession(path string, cwd string) *session {
+	result := session{Provider: "pi", Path: path}
+	var promptSearch sessionSearchBuilder
+	var promptTitle string
+	err := readSessionLines(path, func(item map[string]any) bool {
+		itemType, _ := stringValue(item["type"])
+		switch itemType {
+		case "session":
+			if result.ID == "" {
+				if id, ok := stringValue(item["id"]); ok {
+					result.ID = id
+				}
+			}
+			if result.CWD == "" {
+				if itemCWD, ok := stringValue(item["cwd"]); ok {
+					result.CWD = itemCWD
+				}
+			}
+			if result.Timestamp == "" {
+				if timestamp, ok := stringValue(item["timestamp"]); ok {
+					result.Timestamp = timestamp
+				}
+			}
+		case "session_info":
+			// The display name set via /name always wins over the prompt-derived
+			// title, regardless of where the entry appears in the file.
+			if name, ok := stringValue(item["name"]); ok {
+				if title := normalizeTitle(name); title != "" {
+					result.Title = title
+				}
+			}
+		case "message":
+			if message, ok := item["message"].(map[string]any); ok {
+				if promptTitle == "" {
+					promptTitle = normalizeTitle(piUserMessageText(message))
+				}
+				promptSearch.addPrompt(piUserMessageText(message))
+			}
+		}
+		return !(result.ID != "" && result.CWD != "" && result.Timestamp != "" && promptTitle != "" && promptSearch.full)
+	})
+	if err != nil {
+		return nil
+	}
+	if result.ID == "" {
+		filename := filepath.Base(path)
+		if strings.HasSuffix(filename, ".jsonl") {
+			stem := strings.TrimSuffix(filename, ".jsonl")
+			if idx := strings.LastIndex(stem, "_"); idx >= 0 {
+				result.ID = stem[idx+1:]
+			} else {
+				result.ID = stem
+			}
+		}
+	}
+	if result.Title == "" {
+		result.Title = promptTitle
+	}
+	if (cwd != "" && result.CWD != cwd) || result.ID == "" || result.Timestamp == "" {
+		return nil
+	}
+
+	result.UpdatedAt = fileMtimeTimestamp(path)
+	if result.UpdatedAt == "" {
+		result.UpdatedAt = result.Timestamp
+	}
+	finishSessionSearchText(&result, promptSearch.text())
+	return &result
+}
+
 func timestampValue(value any) string {
 	if text, ok := stringValue(value); ok {
 		return text
@@ -1156,6 +1244,8 @@ func parseSession(provider string, path string, cwd string) *session {
 		return parseClaudeSession(path, cwd)
 	case "gemini":
 		return parseGeminiSession(path, cwd)
+	case "pi":
+		return parsePiSession(path, cwd)
 	default:
 		return nil
 	}

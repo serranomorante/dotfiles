@@ -194,7 +194,7 @@ local function opts()
         desc = "Dispose the sandboxed task, kill its tmux session, and resume it without Firejail",
         condition = function(task)
           return type(task.metadata) == "table"
-            and vim.list_contains({ "codex", "opencode", "claude", "gemini" }, task.metadata.agent_provider)
+            and vim.list_contains({ "codex", "opencode", "claude", "gemini", "pi" }, task.metadata.agent_provider)
             and type(task.metadata.agent_tmux_session_name) == "string"
             and task.metadata.agent_tmux_session_name ~= ""
         end,

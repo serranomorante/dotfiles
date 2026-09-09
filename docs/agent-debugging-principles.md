@@ -18,7 +18,7 @@ Prefer discovering existing runtime state before adding parameters, environment 
 
 ## Firejail Agent Orchestration
 
-- Terminal agents launched through `fj-claude`, `fj-codex`, `fj-gemini`, and `fj-opencode` must expose the real Stow symlink targets needed by runtime helpers, especially `~/dotfiles/utilities` for `agent-tasks` and `~/dotfiles/for-my-eyes-only` for private helper symlinks that the user has explicitly allowed.
+- Terminal agents launched through `fj-claude`, `fj-codex`, `fj-gemini`, `fj-opencode`, and `fj-pi` must expose the real Stow symlink targets needed by runtime helpers, especially `~/dotfiles/utilities` for `agent-tasks` and `~/dotfiles/for-my-eyes-only` for private helper symlinks that the user has explicitly allowed.
 - The AI-agent wrapper always exposes `~/dotfiles` read-write regardless of the launched project, matching the access agents get when cwd is `~/dotfiles`, so agents keep workstation context from any project.
 - The AI-agent profile does not blacklist `~/data/notes/foam`. `fj-ai-agent` controls exposure through whitelists: it always whitelists the current agent's own notes dir (`~/data/notes/foam/agents/<agent>`) read-write so the agent can persist transcripts from any project, and it whitelists the launch work root read-write on every run. Because Firejail mounts a tmpfs over `$HOME` (the whitelist top directory) and only bind-mounts whitelisted paths back in, a work root inside the foam tree exposes the notes whole while other launches see only the agent's own notes dir.
 - Their default writable project root is the current Git root, falling back to the launch cwd only outside Git repositories; use `--root` when a narrower or different root is intentional.

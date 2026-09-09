@@ -1,6 +1,6 @@
 '''
 Promnesia source that indexes web links referenced inside AI agent
-conversations (claude, codex, gemini, opencode).
+conversations (claude, codex, gemini, opencode, pi).
 
 Each conversation is scanned for its session id, title, working directory and
 timestamp (reusing the layout and parsing conventions of
@@ -22,6 +22,7 @@ Configured from ~/.config/promnesia/config.py as:
         '~/.codex/sessions',
         '~/.gemini/tmp',
         '~/.local/share/opencode',
+        '~/.pi/agent/sessions',
         name='agent-conversations',
     )
 
@@ -47,6 +48,7 @@ PROVIDER_ROOTS = {
     'codex': '~/.codex/sessions',
     'gemini': '~/.gemini/tmp',
     'opencode': '~/.local/share/opencode',
+    'pi': '~/.pi/agent/sessions',
 }
 
 # Bounded read so huge transcripts cannot balloon index memory.
@@ -452,6 +454,60 @@ def _opencode_conversations(db_path: Path) -> Iterator[Conversation]:
         connection.close()
 
 
+def _pi_conversation(path: Path) -> Conversation | None:
+    session_id = None
+    cwd = None
+    ts = None
+    display_name = ''
+    messages: list[str] = []
+    for item in _iter_jsonl(path):
+        item_type = item.get('type')
+        if item_type == 'session':
+            if session_id is None:
+                value = item.get('id')
+                if isinstance(value, str):
+                    session_id = value
+            if cwd is None:
+                value = item.get('cwd')
+                if isinstance(value, str):
+                    cwd = value
+            if ts is None:
+                value = item.get('timestamp')
+                if isinstance(value, str):
+                    ts = value
+        elif item_type == 'session_info':
+            if not display_name:
+                value = item.get('name')
+                if isinstance(value, str):
+                    display_name = _norm_title(value)
+        elif item_type == 'message':
+            message = item.get('message')
+            if isinstance(message, dict):
+                text = _content_text(message.get('content'))
+                if text:
+                    role = message.get('role')
+                    if role in ('user', 'assistant'):
+                        messages.append(text[:MESSAGE_MAX])
+                if len(messages) >= MESSAGES_MAX:
+                    break
+    if not messages:
+        return None
+    if session_id is None:
+        session_id = path.stem
+    if not session_id:
+        return None
+    dt = _parse_dt(ts) or _mtime_dt(path)
+    title = display_name or _norm_title(messages[0])
+    return Conversation(
+        provider='pi',
+        id=session_id,
+        title=title,
+        cwd=cwd or '',
+        dt=dt,
+        messages=tuple(messages),
+    )
+
+
 def _detect_provider(root: Path) -> str | None:
     low = str(root).lower()
     if '.claude' in low:
@@ -462,6 +518,8 @@ def _detect_provider(root: Path) -> str | None:
         return 'gemini'
     if 'opencode' in low:
         return 'opencode'
+    if '.pi' in low:
+        return 'pi'
     return None
 
 
@@ -475,6 +533,8 @@ def _parse_known_file(path: Path, provider: str) -> Conversation | None:
         if name.startswith('session-') and (name.endswith('.json') or name.endswith('.jsonl')):
             return _gemini_conversation(path)
         return None
+    if provider == 'pi':
+        return _pi_conversation(path) if name.endswith('.jsonl') else None
     return None
 
 
