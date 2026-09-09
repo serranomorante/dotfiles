@@ -29,6 +29,8 @@ The bindings wired around lazygit:
 
 See [nvim-kitty-integration.md](./nvim-kitty-integration.md) for the per-window Neovim server socket, Kitty window matching, and helper internals that the lazygit handoff builds on.
 
+`ctrl+alt+d` inside lazygit toggles the diff preview between its normal split and fullscreen. Both directions send the manual lazygit sequence anchored on the focused diff panel with `0` (focusMainView) first: entering is `0`, `+`, `R` (next screen mode, refresh) and leaving is `0`, `_`, `R` (prev screen mode, refresh) followed by `esc` so focus returns to the side panel that was active before fullscreen. The layout keys must stay symmetric and run while the diff panel is focused: lazygit applies screen mode to the focused panel and only re-renders the diff after a refresh, so sending `esc` before `_` (as an earlier version did) moves focus back to the side list and `_` then does not restore the diff width.
+
 ## Delta External Diff Adapter
 
 Do not point `diff.external` directly at `delta`.
