@@ -14,9 +14,13 @@ Labels are stored per scope at `$XDG_STATE_HOME/dotfiles/marks/<scope>.labels`, 
 
 Positions stay host-owned and use each host's native mechanism; only labels go through the shared store. `set` collapses whitespace and trims; `clear` removes a key (and the file once empty); `list` emits `key<TAB>value` lines.
 
+An empty scope is rejected: without that guard every caller with an unresolvable scope would silently share one `.labels` file whose entries no host can look up again.
+
 ## tmux
 
 `term/bin/tmux-copy-mark` sources the library and stores labels/snippets under keys like `a-label` and `a-snippet` in the session scope. Position data is unchanged: tmux pane options persisted to `$XDG_STATE_HOME/dotfiles/tmux-copy-mark/state-<session-name>`.
+
+The label prompt goes through tmux `command-prompt`, which replaces `%1` in its callback template with the answer to the first prompt. A pane id such as `%1` or `%10` interpolated into that template is therefore overwritten by the typed label, so the template must stay free of `%`: pass the socket and pane as the `#{socket_path}` and `#{pane_id}` formats and let tmux resolve them when the callback runs. `%%1` is not an escape; it consumes the substitution and also disables the later `%%%`.
 
 ## Neovim
 

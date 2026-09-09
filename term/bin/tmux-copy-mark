@@ -229,13 +229,20 @@ save_mark() {
 label_mark() {
     valid_mark "$mark" || usage
     label=$(clean_text "$label")
-    [ -n "$label" ] && meta_set "${mark}-label" "$label"
+    [ -n "$label" ] || return 0
+    meta_set "${mark}-label" "$label" ||
+        display_note "tmux copy mark: could not store label for $mark"
 }
 
+# `command-prompt` replaces `%1` in its template with the answer to the first
+# prompt, so a literal pane id (`%1`, `%10`, ...) interpolated here would be
+# overwritten by the typed label and the label would then be stored under an
+# unresolvable session scope. Keep the template free of `%` by letting tmux
+# resolve the socket and pane through formats when the callback runs.
 save_prompt() {
     save_mark
     tmux_cmd command-prompt -p 'mark label (optional): ' \
-        "run-shell -b '\"$0\" label \"$socket_path\" \"$pane\" \"$mark\" \"%%%\"'"
+        "run-shell -b '\"$0\" label \"#{socket_path}\" \"#{pane_id}\" \"$mark\" \"%%%\"'"
 }
 
 store_current_position() {

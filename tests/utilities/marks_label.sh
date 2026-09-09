@@ -7,6 +7,7 @@ set -euo pipefail
 # dotfiles-test-case: marks-label-set-get-clear
 # dotfiles-test-case: marks-label-scope-isolation
 # dotfiles-test-case: marks-label-list-format
+# dotfiles-test-case: marks-label-rejects-empty-scope
 
 # Purpose: Verify the shared named-mark label store CLI and library.
 
@@ -53,6 +54,13 @@ marks-label-list-format)
     "$script_under_test" list scope >"${DOTFILES_TEST_TMP}/out"
     grep -Fqx $'a\tfirst' "${DOTFILES_TEST_TMP}/out"
     grep -Fqx $'b\tsecond one' "${DOTFILES_TEST_TMP}/out"
+    ;;
+marks-label-rejects-empty-scope)
+    export XDG_STATE_HOME="${DOTFILES_TEST_TMP}/state"
+    # An empty scope would collapse unrelated callers onto one `.labels` file.
+    refute "$script_under_test" set '' a 'orphaned label'
+    refute "$script_under_test" get '' a
+    refute test -e "${marks_dir}/.labels"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2
