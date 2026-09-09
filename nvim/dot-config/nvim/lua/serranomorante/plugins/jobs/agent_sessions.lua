@@ -105,6 +105,30 @@ end
 
 math.randomseed(tonumber(tostring(vim.uv.hrtime()):sub(-8)) or os.time())
 
+---Parses an RFC3339 UTC timestamp such as "2026-09-09T18:46:23.390Z" into an
+---epoch. os.time interprets plain tables as local wall clock, so add the
+---current local/UTC offset; the orphan matcher only compares sessions started
+---within minutes of the task, so a DST skew at the boundary is irrelevant.
+---@param timestamp string?
+---@return number?
+local function utc_timestamp_epoch(timestamp)
+  if type(timestamp) ~= "string" then return nil end
+  local y, mo, d, h, mi, s = timestamp:match("^(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
+  if not y then return nil end
+
+  local as_local = os.time({
+    year = tonumber(y),
+    month = tonumber(mo),
+    day = tonumber(d),
+    hour = tonumber(h),
+    min = tonumber(mi),
+    sec = tonumber(s),
+    isdst = false,
+  })
+  local now = os.time()
+  return as_local + (now - os.time(os.date("!*t", now)))
+end
+
 local PROVIDERS = {
   codex = {
     name = "codex",
@@ -194,6 +218,13 @@ local PROVIDERS = {
     key_prefix = "p",
     continuation_name = "pi",
     ready = pi_ready,
+    -- Pi writes its session file only once the first message exchange flushes
+    -- and records the cwd at the repository git root, so late appearance and
+    -- subdirectory launches are handled like Codex: session_epoch_seconds lets
+    -- the orphan matcher tie a running task back to its transcript by time.
+    session_epoch_seconds = function(session)
+      return utc_timestamp_epoch(type(session) == "table" and session.timestamp or nil)
+    end,
     -- Pi has no built-in MCP, so there is intentionally no mcp_executable;
     -- `agent-tasks new pi --mcp` reports that Pi has no MCP launcher.
     -- --use-theme light/dark makes Pi follow the terminal background (the system
@@ -499,8 +530,8 @@ end
 ---@param role? string
 ---@return string
 local function tmux_session_name_for_task(provider, session_id, role)
-  -- Codex does not expose a session id up front, so give it a unique tmux
-  -- placeholder and rename it later once the real conversation id lands.
+  -- Codex and Pi do not expose a session id up front, so give them a unique
+  -- tmux placeholder and rename it later once the real conversation id lands.
   local prefix = tmux_session_name_prefix(provider, role)
   if type(session_id) == "string" and session_id ~= "" then return ("%s-%s"):format(prefix, session_id) end
   return ("%s-pending-%s"):format(prefix, generated_uuid())
@@ -735,7 +766,7 @@ end
 ---@return boolean
 local function session_matches_cwd(provider, requested_cwd, session_cwd)
   if type(requested_cwd) ~= "string" or requested_cwd == "" or requested_cwd == session_cwd then return true end
-  return (provider.name == "codex" or provider.name == "opencode")
+  return (provider.name == "codex" or provider.name == "opencode" or provider.name == "pi")
     and type(session_cwd) == "string"
     and session_cwd ~= ""
     and vim.uv.fs_stat(utils.join_paths(session_cwd, ".git")) ~= nil
@@ -1139,7 +1170,7 @@ local function is_unlinked_plain_agent_task(provider, task)
   then
     return false
   end
-  if provider.name ~= "codex" then return false end
+  if provider.name ~= "codex" and provider.name ~= "pi" then return false end
   return task_matches_provider_command(provider, task)
 end
 

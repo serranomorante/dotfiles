@@ -7,6 +7,7 @@ set -euo pipefail
 # dotfiles-test-case: agent-session-store-refresh-limits-old-sessions
 # dotfiles-test-case: agent-session-store-watch-new-ignores-stale-unknown-sessions
 # dotfiles-test-case: agent-session-store-pi-lists-sessions
+# dotfiles-test-case: agent-session-store-pi-discovers-session-from-repo-subdir
 
 # Purpose: Exercise the agent-session-store CLI against realistic transcript files.
 
@@ -151,6 +152,27 @@ agent-session-store-pi-lists-sessions)
     refresh_json=$("$store" --provider pi --root "$root" refresh)
     if [[ "$refresh_json" != *'"title":"Investigate pi session"'* ]]; then
         printf 'expected pi refresh to parse the title, got: %s\n' "$refresh_json" >&2
+        exit 1
+    fi
+    ;;
+agent-session-store-pi-discovers-session-from-repo-subdir)
+    root="${DOTFILES_TEST_TMP}/pi-sessions-subdir"
+    repo="${DOTFILES_TEST_TMP}/pi-repo"
+    nested="${repo}/playbooks"
+    sibling="${DOTFILES_TEST_TMP}/pi-other"
+    mkdir -p "$repo/.git" "$nested" "$sibling"
+
+    write_pi_session "${root}/--repo--/20260909_pi-session-1.jsonl" "pi-session-1" "$repo" "2026-09-09T18:46:23.390Z" "Repo-root pi session"
+
+    ids_json=$("$store" --provider pi --root "$root" ids "$nested")
+    if [[ "$ids_json" != *'"pi-session-1"'* ]]; then
+        printf 'expected pi ids from a repo subdir to include the repo-root session, got: %s\n' "$ids_json" >&2
+        exit 1
+    fi
+
+    sibling_ids=$("$store" --provider pi --root "$root" ids "$sibling")
+    if [[ "$sibling_ids" == *'"pi-session-1"'* ]]; then
+        printf 'expected sibling cwd ids to exclude the repo session, got: %s\n' "$sibling_ids" >&2
         exit 1
     fi
     ;;

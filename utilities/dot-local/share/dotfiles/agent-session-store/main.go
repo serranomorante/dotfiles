@@ -644,7 +644,7 @@ func sessionMatchesCWD(provider string, requestedCWD string, sessionCWD string) 
 	if requestedCWD == "" || requestedCWD == sessionCWD {
 		return true
 	}
-	return (provider == "codex" || provider == "opencode") && sessionCWD != "" && hasGitMarker(sessionCWD) && pathIsAtOrInside(sessionCWD, requestedCWD)
+	return (provider == "codex" || provider == "opencode" || provider == "pi") && sessionCWD != "" && hasGitMarker(sessionCWD) && pathIsAtOrInside(sessionCWD, requestedCWD)
 }
 
 func parseCodexSession(path string, cwd string) *session {
@@ -940,7 +940,10 @@ func parsePiSession(path string, cwd string) *session {
 	if result.Title == "" {
 		result.Title = promptTitle
 	}
-	if (cwd != "" && result.CWD != cwd) || result.ID == "" || result.Timestamp == "" {
+	// Pi records its session cwd at the repository git root (it chdirs there on
+	// startup), so an Overseer task launched from a repo subdirectory must still
+	// match, using the same repo-root rule as Codex and OpenCode.
+	if (cwd != "" && !sessionMatchesCWD("pi", cwd, result.CWD)) || result.ID == "" || result.Timestamp == "" {
 		return nil
 	}
 
