@@ -10,7 +10,7 @@ local notes = {
 local active_velocity = 90
 local inactive_velocity = 0
 local poll_interval = 0.08
-local command_timeout_ms = 100
+local exec_timeout_no_wait = -1
 local metronome_action_id = 40364
 
 local function resolve_home()
@@ -40,7 +40,11 @@ local function send_controller(args)
     if controller == "/dotfiles/keyboard-midi-controller/keyboard-midi-controller" then
         return
     end
-    reaper.ExecProcess(shell_quote(controller) .. " " .. args, command_timeout_ms)
+    -- timeoutmsec = -1 starts the process without waiting for it to exit
+    -- (documented REAPER behavior), so the main thread is never blocked.
+    -- ExecProcess does not interpret shell metacharacters on Linux, so a
+    -- trailing `&` or redirections would be passed as literal arguments.
+    reaper.ExecProcess(shell_quote(controller) .. " " .. args, exec_timeout_no_wait)
 end
 
 local function send_note(note, active)

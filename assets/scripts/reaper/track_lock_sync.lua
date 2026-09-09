@@ -13,7 +13,8 @@
 --   VE Pro plugin state through yabridge every poll, which is needlessly expensive since the
 --   instance track is discarded by handle_lock_change anyway.
 
-local poll_interval = 0.2
+local poll_interval = 0.4
+local idle_poll_interval = 1.0
 local instance_track_name = "instance-1"
 local param_tolerance = 0.001
 
@@ -198,6 +199,16 @@ end
 local function loop()
     local now = reaper.time_precise()
     if now >= next_poll then
+        if not find_track_named(instance_track_name) then
+            -- No VE Pro instance track to sync against; skip the state-chunk scan
+            -- entirely and poll slowly until one appears.
+            next_poll = now + idle_poll_interval
+            last_lock_state = nil
+            last_tab_count = nil
+            reaper.defer(loop)
+            return
+        end
+
         next_poll = now + poll_interval
         local current = read_lock_signature()
         local tab_count = open_project_tab_count()
