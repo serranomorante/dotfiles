@@ -28,6 +28,9 @@ PLAYBOOKS_CFG = "playbooks/roles/10-system-tools/defaults/main/main.vars.yml"
 ROLE_FILE_RE = re.compile(r"^playbooks/roles/([^/]+)/(tasks|templates|files|handlers|defaults|vars|meta)/(.+)$")
 TOPLEVEL_PLAYBOOK_RE = re.compile(r"^playbooks/([^/]+)\.yml$")
 TOPLEVEL_YAML_KEY_RE = re.compile(r"^([A-Za-z_][\w-]*)\s*:")
+INCLUDE_TASKS_RE = re.compile(r"include_tasks\s*:")
+FILE_KEY_RE = re.compile(r"^\s*file\s*:\s*(.+?)\s*$")
+STATIC_YAML_FILE_RE = re.compile(r"^[A-Za-z0-9_./-]+\.ya?ml$")
 
 AUR_PREP_TAG = "10-20"
 AUR_RELATED_RE = re.compile(r"(?i)\baur\b|\baur[_]|install-local-aur|arch_aur|aur_local|aur-review|\[aur-local\]")
@@ -162,6 +165,73 @@ def task_tag(role_num, rel_path):
     return f"{role_num}-{match.group(1)}" if match else None
 
 
+def static_include_targets(text):
+    """Static `.ya?ml` files pulled in via `include_tasks` in a task file."""
+    targets = set()
+    lines = text.splitlines()
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if not INCLUDE_TASKS_RE.search(line):
+            index += 1
+            continue
+        target = None
+        tail = line.split("include_tasks", 1)[1]
+        if ":" in tail:
+            target = tail.split(":", 1)[1].strip().strip("\"'")
+        if not target:
+            for ahead in lines[index + 1:index + 4]:
+                if not ahead.strip() or not ahead[0].isspace():
+                    break
+                match = FILE_KEY_RE.match(ahead)
+                if match:
+                    target = match.group(1).strip().strip("\"'")
+                    break
+        if target and "{{" not in target and STATIC_YAML_FILE_RE.match(target):
+            targets.add(target)
+        index += 1
+    return targets
+
+
+def build_include_graph(all_task_files):
+    """Map `(role, tasks-relative child)` to parent task files that statically
+    `include_tasks` it, so non-numeric includes resolve back to numeric tasks."""
+    by_role = {}
+    for role, rel, _text in all_task_files:
+        by_role.setdefault(role, set()).add(rel)
+    graph = {}
+    for role, rel, text in all_task_files:
+        parent_dir = os.path.dirname(rel)
+        for target in static_include_targets(text):
+            child = os.path.normpath(os.path.join(parent_dir, target))
+            if child in by_role.get(role, ()):
+                graph.setdefault((role, child), set()).add(rel)
+    return graph
+
+
+def include_tags(graph, role, rel):
+    """Tags of numeric task files in `role` that transitively include `rel`."""
+    role_num = role_number(role)
+    if role_num is None:
+        return set()
+    tags = set()
+    seen = set()
+    stack = [(role, rel)]
+    while stack:
+        current = stack.pop()
+        if current in seen:
+            continue
+        seen.add(current)
+        current_role, current_rel = current
+        match = re.match(r"^(\d+)-", current_rel.split("/")[-1])
+        if match:
+            tags.add(f"{role_number(current_role)}-{match.group(1)}")
+            continue
+        for parent in graph.get(current, ()):
+            stack.append((current_role, parent))
+    return tags
+
+
 def build_indexes(repos):
     task_index = []
     playbook_index = {}
@@ -269,6 +339,7 @@ def main(argv):
             die(f"cannot resolve '{rev}' in {public_repo} or {private_repo}")
 
     task_index, playbook_index, all_task_files = build_indexes([public_repo, private_repo])
+    include_graph = build_include_graph(all_task_files)
 
     stow_sources = {}
     playbook_sources = {}
@@ -290,25 +361,31 @@ def main(argv):
         pattern = boundary_pattern(path.split("/")[-1])
         tags = search_tags(task_index, pattern)
         playbooks = search_playbooks(playbook_index, pattern)
+        for role, rel, text in all_task_files:
+            if pattern.search(text):
+                tags |= include_tags(include_graph, role, rel)
         add_tags(tags, path)
         for playbook in playbooks:
             add_playbook(playbook, path)
         if not tags and not playbooks:
             ignored.append((path, "not referenced by any task or playbook"))
 
-    def map_task(role_num, rel_path, path):
-        tag = task_tag(role_num, rel_path)
+    def map_task(path, role, rel_path):
+        rn = role_number(role)
+        tag = task_tag(rn, rel_path)
         if tag:
             add_tags([tag], path)
             return
         if rel_path == "main.yml":
             ignored.append((path, "role main.yml glue; specific task files carry the tags"))
             return
-        tags = search_tags(task_index, boundary_pattern(rel_path))
-        if not tags and "/" in rel_path:
-            tags = search_tags(task_index, prefix_pattern(rel_path.split("/")[0] + "/"))
+        tags = include_tags(include_graph, role, rel_path)
         if not tags:
-            tags = search_tags(task_index, boundary_pattern(rel_path.split("/")[-1]))
+            tags = search_tags(task_index, boundary_pattern(rel_path))
+            if not tags and "/" in rel_path:
+                tags = search_tags(task_index, prefix_pattern(rel_path.split("/")[0] + "/"))
+            if not tags:
+                tags = search_tags(task_index, boundary_pattern(rel_path.split("/")[-1]))
         if tags:
             add_tags(tags, path)
         else:
@@ -348,7 +425,7 @@ def main(argv):
             ignored.append((path, f"non-numeric helper role '{role}'"))
             return
         if subdir == "tasks":
-            map_task(rn, rel_path, path)
+            map_task(path, role, rel_path)
         elif subdir in ("templates", "files"):
             map_asset(path)
         elif subdir in ("defaults", "vars"):

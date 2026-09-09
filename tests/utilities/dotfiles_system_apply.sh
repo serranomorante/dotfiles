@@ -8,6 +8,8 @@ set -euo pipefail
 # dotfiles-test-case: dotfiles-system-apply-prepends-aur-prep-tag
 # dotfiles-test-case: dotfiles-system-apply-unresolvable-commit-fails
 # dotfiles-test-case: dotfiles-system-apply-maps-defaults-dict-field-access
+# dotfiles-test-case: dotfiles-system-apply-maps-asset-via-nested-include
+# dotfiles-test-case: dotfiles-system-apply-maps-nested-task-via-include
 
 # Purpose: Verify the commit -> Stow/Ansible command mapping contract without
 # invoking Stow, Ansible, or the active dotfiles repo.
@@ -166,6 +168,78 @@ YAML
     printf '%s\n' "$repo"
 }
 
+make_fake_include_repo() {
+    local repo="${DOTFILES_TEST_TMP}/include-repo"
+    mkdir -p "${repo}/playbooks/roles/10-system-tools/defaults/main"
+    mkdir -p "${repo}/playbooks/roles/10-system-tools/tasks/wine-tools/sws"
+
+    cat >"${repo}/playbooks/roles/10-system-tools/defaults/main/main.vars.yml" <<'YAML'
+---
+dotfiles_public_stow_packages: []
+YAML
+
+    cat >"${repo}/playbooks/tools.yml" <<'YAML'
+---
+- hosts: localhost
+  tasks: []
+YAML
+
+    cat >"${repo}/playbooks/roles/10-system-tools/tasks/120-setup-wine-tools.archlinux.yml" <<'YAML'
+---
+- name: "Wine tools: sws extensions"
+  ansible.builtin.include_tasks:
+    file: wine-tools/bundle.task.yml
+YAML
+
+    cat >"${repo}/playbooks/roles/10-system-tools/tasks/wine-tools/bundle.task.yml" <<'YAML'
+---
+- name: "Wine tools: include sws extension tasks"
+  ansible.builtin.include_tasks:
+    file: sws/sws-extensions.task.yml
+YAML
+
+    cat >"${repo}/playbooks/roles/10-system-tools/tasks/wine-tools/sws/sws-extensions.task.yml" <<'YAML'
+---
+- name: "Wine tools: copy native reaper startup script"
+  ansible.builtin.copy:
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/scripts/reaper/__startup.lua"
+    dest: ~/.config/REAPER/Scripts/__startup.lua
+    mode: "644"
+YAML
+
+    git -C "$repo" init -q -b main
+    git -C "$repo" config user.name "Dotfiles Test"
+    git -C "$repo" config user.email test@example.invalid
+    git -C "$repo" add .
+    git -C "$repo" commit -q -m "chore: repo infra"
+
+    mkdir -p "${repo}/assets/scripts/reaper"
+    printf 'local x = 1\n' >"${repo}/assets/scripts/reaper/__startup.lua"
+    git -C "$repo" add .
+    git -C "$repo" commit -q -m "feat(reaper): add native startup script"
+    asset_sha=$(git -C "$repo" rev-parse HEAD)
+
+    cat >"${repo}/playbooks/roles/10-system-tools/tasks/wine-tools/sws/sws-extensions.task.yml" <<'YAML'
+---
+- name: "Wine tools: copy native reaper startup script"
+  ansible.builtin.copy:
+    src: "{{ ansible_facts.env.HOME }}/dotfiles/assets/scripts/reaper/__startup.lua"
+    dest: ~/.config/REAPER/Scripts/__startup.lua
+    mode: "644"
+
+- name: "Wine tools: copy native reaper sws symlink"
+  ansible.builtin.file:
+    src: /usr/lib/sws/reaper_sws-x86_64.so
+    dest: ~/.config/REAPER/UserPlugins/reaper_sws-x86_64.so
+    state: link
+YAML
+    git -C "$repo" add .
+    git -C "$repo" commit -q -m "feat(reaper): add native sws symlink"
+    task_sha=$(git -C "$repo" rev-parse HEAD)
+
+    printf '%s %s %s\n' "$repo" "$asset_sha" "$task_sha"
+}
+
 case "${DOTFILES_TEST_CASE:-}" in
 dotfiles-system-apply-syntax)
     PYTHONPYCACHEPREFIX="${DOTFILES_TEST_TMP}/pycache" python -m py_compile "$script_under_test"
@@ -208,6 +282,24 @@ dotfiles-system-apply-maps-defaults-dict-field-access)
 
     rg -q -- '--tags 60-10' "${DOTFILES_TEST_TMP}/stdout"
     refute rg -q 'no task references changed variable' "${DOTFILES_TEST_TMP}/stderr"
+    ;;
+dotfiles-system-apply-maps-asset-via-nested-include)
+    read -r repo asset_sha _task_sha < <(make_fake_include_repo)
+
+    "$script_under_test" --repo "$repo" "$asset_sha" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+
+    rg -q -- '--tags 10-120' "${DOTFILES_TEST_TMP}/stdout"
+    refute rg -q 'nothing to apply' "${DOTFILES_TEST_TMP}/stderr"
+    refute rg -q '__startup\.lua' "${DOTFILES_TEST_TMP}/stderr"
+    ;;
+dotfiles-system-apply-maps-nested-task-via-include)
+    read -r repo _asset_sha task_sha < <(make_fake_include_repo)
+
+    "$script_under_test" --repo "$repo" "$task_sha" >"${DOTFILES_TEST_TMP}/stdout" 2>"${DOTFILES_TEST_TMP}/stderr"
+
+    rg -q -- '--tags 10-120' "${DOTFILES_TEST_TMP}/stdout"
+    refute rg -q 'nothing to apply' "${DOTFILES_TEST_TMP}/stderr"
+    refute rg -q 'no referencing numeric task found' "${DOTFILES_TEST_TMP}/stderr"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2
