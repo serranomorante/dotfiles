@@ -54,6 +54,7 @@ bool headerTopDirty = false;
 bool midiEditorGridHeaderDirty = false;
 bool midiEditorGridTypeHeaderDirty = false;
 bool midiEditorSnapHeaderDirty = false;
+bool midiEditorStepHeaderDirty = false;
 bool badgeDirty[5];
 bool tileDirty[4][8];
 bool modifierDotDirty[2];
@@ -186,10 +187,14 @@ bool isMomentaryPadFlashNote(uint8_t channel, uint8_t note) {
     return false;
   }
   uint8_t noteInBank = (note - NOTE_BASE) % 16;
+  uint8_t noteBank = (note - NOTE_BASE) / 16;
   if (channel == 2) {
     return noteInBank == 0 || noteInBank == 1 || noteInBank >= 8;
   }
   if (channel == 9) {
+    if (noteBank != 0) {
+      return false;
+    }
     return noteInBank <= 4 || noteInBank == 9 || noteInBank >= 11;
   }
   if (channel == 10) {
@@ -246,6 +251,12 @@ void drawHeaderTop() {
 
   if (currentChannel == 9) {
     tft.setTextSize(1);
+    if (currentBank == 2) {
+      tft.setCursor(6, 5);
+      tft.print("Ch 9 Step | MIDI Editor");
+      drawMidiEditorStepHeaderValue();
+      return;
+    }
     tft.setCursor(6, 5);
     tft.print("Ch 9 Grid | ");
     drawMidiEditorGridHeaderValue();
@@ -282,6 +293,16 @@ void drawMidiEditorSnapHeaderValue() {
   tft.setCursor(6, 18);
   tft.print("Snap ");
   tft.print(noteOn(padNote(1, 2)) ? "ON" : "OFF");
+}
+
+void drawMidiEditorStepHeaderValue() {
+  uint16_t headerColor = ILI9341_NAVY;
+  tft.fillRect(6, 16, 314, 15, headerColor);
+  tft.setTextColor(ILI9341_WHITE, headerColor);
+  tft.setTextSize(1);
+  tft.setCursor(6, 18);
+  tft.print("Step Rec: ");
+  tft.print(noteOn(padNote(0, 0)) ? "ALL" : "TRACK");
 }
 
 const char *midiEditorGridLabel() {
@@ -602,6 +623,10 @@ bool tileAssigned(uint8_t row, uint8_t col) {
     case 3:
       return true;
     case 9:
+      if (currentBank == 2) {
+        return row == 2 && col == 0;
+      }
+      return row > 1;
     case 10:
     case 11:
     case 16:
@@ -722,6 +747,10 @@ void tileLabel(uint8_t row, uint8_t col, char *out, size_t outSize) {
   }
 
   if (currentChannel == 9) {
+    if (currentBank == 2) {
+      snprintf(out, outSize, row == 2 && col == 0 ? "STEPREC" : "");
+      return;
+    }
     const char *labels[4][8] = {
         {"", "", "", "", "", "", "", ""},
         {"", "", "", "", "", "", "", ""},
@@ -862,6 +891,10 @@ void tileValue(uint8_t row, uint8_t col, char *out, size_t outSize) {
   }
 
   if (currentChannel == 9) {
+    if (currentBank == 2 && row == 2 && col == 0) {
+      snprintf(out, outSize, noteOn(padNote(0, 0)) ? "ALL" : "TRACK");
+      return;
+    }
     snprintf(out, outSize, "Grid");
     return;
   }
@@ -960,6 +993,7 @@ void drawDashboard() {
   midiEditorGridHeaderDirty = false;
   midiEditorGridTypeHeaderDirty = false;
   midiEditorSnapHeaderDirty = false;
+  midiEditorStepHeaderDirty = false;
   for (uint8_t badge = 0; badge < 5; badge++) {
     badgeDirty[badge] = false;
   }
@@ -1030,11 +1064,17 @@ void markAllBadgesDirty() {
 
 void markTileForNote(uint8_t note) {
   if (currentChannel == 9) {
-    if (note == padNote(0, 5) || note == padNote(0, 6)) {
-      midiEditorGridTypeHeaderDirty = true;
-    }
-    if (note == padNote(1, 2)) {
-      midiEditorSnapHeaderDirty = true;
+    if (currentBank == 2) {
+      if (note == padNote(0, 0)) {
+        midiEditorStepHeaderDirty = true;
+      }
+    } else {
+      if (note == padNote(0, 5) || note == padNote(0, 6)) {
+        midiEditorGridTypeHeaderDirty = true;
+      }
+      if (note == padNote(1, 2)) {
+        midiEditorSnapHeaderDirty = true;
+      }
     }
   }
 
@@ -1093,15 +1133,23 @@ void renderDirty() {
     midiEditorGridHeaderDirty = false;
     midiEditorGridTypeHeaderDirty = false;
     midiEditorSnapHeaderDirty = false;
+    midiEditorStepHeaderDirty = false;
   } else if (currentChannel == 9) {
-    if (midiEditorGridHeaderDirty || midiEditorGridTypeHeaderDirty) {
-      drawMidiEditorGridHeaderValue();
-      midiEditorGridHeaderDirty = false;
-      midiEditorGridTypeHeaderDirty = false;
-    }
-    if (midiEditorSnapHeaderDirty) {
-      drawMidiEditorSnapHeaderValue();
-      midiEditorSnapHeaderDirty = false;
+    if (currentBank == 2) {
+      if (midiEditorStepHeaderDirty) {
+        drawMidiEditorStepHeaderValue();
+        midiEditorStepHeaderDirty = false;
+      }
+    } else {
+      if (midiEditorGridHeaderDirty || midiEditorGridTypeHeaderDirty) {
+        drawMidiEditorGridHeaderValue();
+        midiEditorGridHeaderDirty = false;
+        midiEditorGridTypeHeaderDirty = false;
+      }
+      if (midiEditorSnapHeaderDirty) {
+        drawMidiEditorSnapHeaderValue();
+        midiEditorSnapHeaderDirty = false;
+      }
     }
   }
 

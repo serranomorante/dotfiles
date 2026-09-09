@@ -495,8 +495,19 @@ keyboard-midi-controller-dotfiles-contract)
     rg -q '1/256' "$tft_firmware"
     rg -q '1/512' "$tft_firmware"
     rg -q 'drawBadge\(5, "PLAY"' "$tft_firmware"
+    rg -q 'Ch 9 Step | MIDI Editor' "$tft_firmware"
+    rg -q 'STEPREC' "$tft_firmware"
+    rg -q 'Step Rec: ' "$tft_firmware"
+    rg -q 'midiEditorStepHeaderDirty' "$tft_firmware"
+    rg -q 'drawMidiEditorStepHeaderValue' "$tft_firmware"
+    rg -q 'noteOn\(padNote\(0, 0\)\) \? "ALL" : "TRACK"' "$tft_firmware"
+    rg -q 'if \(noteBank != 0\)' "$tft_firmware"
     [[ -s "$reaper_startup_script" ]]
     [[ -s "$realearn_beatstep_preset" ]]
+    rg -q 'ch 9 step input' "$realearn_beatstep_preset"
+    rg -q 'Toggle step recording all MIDI inputs' "$realearn_beatstep_preset"
+    rg -q '"commandName": "40481"' "$realearn_beatstep_preset"
+    rg -q '"number": 52' "$realearn_beatstep_preset"
     [[ -s "$midi_editor_state_feedback" ]]
     [[ -s "$item_state_feedback" ]]
     [[ -s "$project_transport_state_feedback" ]]
@@ -518,6 +529,9 @@ keyboard-midi-controller-dotfiles-contract)
     rg -q 'GetMediaItemTake_Item' "$midi_editor_state_feedback"
     rg -q 'TimeMap2_timeToBeats' "$midi_editor_state_feedback"
     rg -q 'snap_enabled' "$midi_editor_state_feedback"
+    rg -q 'step_input = 52' "$midi_editor_state_feedback"
+    rg -q 'step_recording_command_id = 40481' "$midi_editor_state_feedback"
+    rg -q 'GetToggleCommandStateEx\(midi_editor_section' "$midi_editor_state_feedback"
     rg -q 'cache_home = os.getenv\("XDG_CACHE_HOME"\)' "$midi_editor_state_feedback"
     rg -q 'dotfiles/keyboard-midi-controller/keyboard-midi-controller' "$midi_editor_state_feedback"
     rg -q 'feedback-note %d %d %d' "$midi_editor_state_feedback"

@@ -733,6 +733,26 @@ func TestGridPersistentStatePadsDoNotFlashTFTOnLocalPress(t *testing.T) {
 	}
 }
 
+func TestGridStepInputPadDoesNotFlashTFTOnLocalPress(t *testing.T) {
+	d, out, _, tft := newTestDaemonWithLEDAndTFT(true)
+	d.state.channel = 8
+	d.state.bank = 1
+
+	d.handleKeydLayerEvent("+midi_pad_01")
+	d.handleKeydLayerEvent("-midi_pad_01")
+
+	wantMIDI := []recordedMIDIEvent{
+		{kind: "note", channel: 8, note: 52, velocity: 100, on: true},
+		{kind: "note", channel: 8, note: 52, velocity: 0, on: false},
+	}
+	if got := out.snapshot(); !reflect.DeepEqual(got, wantMIDI) {
+		t.Fatalf("step input MIDI events = %#v, want %#v", got, wantMIDI)
+	}
+	if got := tft.snapshot(); len(got) != 0 {
+		t.Fatalf("step input TFT events = %#v, want none", got)
+	}
+}
+
 func TestControlFeedbackCommandsUpdateRenderers(t *testing.T) {
 	d, _, led, tft := newTestDaemonWithLEDAndTFT(true)
 

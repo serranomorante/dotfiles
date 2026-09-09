@@ -3225,6 +3225,56 @@
       }
     },
     {
+      "id": "prBCm7-_T00Ay78FrrGyo",
+      "name": "Step sequence",
+      "groupId": "r8Q9MKvX6TsF3nlnHdq1r",
+      "source": {
+        "type": 1,
+        "channel": 8,
+        "number": 52,
+        "isRegistered": false,
+        "is14Bit": false,
+        "oscArgIndex": 0,
+        "buttonIndex": 0,
+        "buttonDesign": {
+          "background": {
+            "kind": "Color"
+          },
+          "foreground": {
+            "kind": "None"
+          },
+          "static_text": ""
+        }
+      },
+      "mode": {
+        "type": 2,
+        "maxStepSize": 0.05,
+        "minStepFactor": 1,
+        "maxStepFactor": 1,
+        "buttonUsage": "press-only"
+      },
+      "target": {
+        "type": 0,
+        "actionScope": "ActiveMidiEditor",
+        "commandName": "40481",
+        "fxAnchor": "id",
+        "useSelectionGanging": false,
+        "useTrackGrouping": false,
+        "seekBehavior": "Immediate",
+        "useProject": true,
+        "moveView": true,
+        "seekPlay": true,
+        "oscArgIndex": 0,
+        "mouseAction": {
+          "kind": "MoveTo",
+          "axis": "X"
+        },
+        "takeMappingSnapshot": {
+          "kind": "LastLoaded"
+        }
+      }
+    },
+    {
       "id": "hWsgQHSpoLhJIZaas0ltA",
       "name": "Humanize selected notes",
       "groupId": "r8Q9MKvX6TsF3nlnHdq1r",

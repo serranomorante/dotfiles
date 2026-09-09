@@ -2,12 +2,17 @@
 -- Notes: This is scoped to the focused MIDI editor. Add non-MIDI-editor state observers as separate scripts.
 
 local channel = 9
+local midi_editor_section = 32060
+-- MIDI Editor action listed in the Action List as "Options: MIDI inputs as step input mode"
+-- and shown in the Options menu as "Step sequencing: use all MIDI inputs for step recording".
+local step_recording_command_id = 40481
 local notes = {
     straight = 41,
     triplet = 42,
     grid_1 = 43,
     measure = 44,
     snap = 46,
+    step_input = 52,
 }
 local grid_cc = 90
 local active_velocity = 90
@@ -137,6 +142,7 @@ local function read_midi_editor_state()
     local triplet = grid_is_triplet(grid)
     local code = grid_code(grid)
     local snap = reaper.MIDIEditor_GetSetting_int(editor, "snap_enabled") == 1
+    local step_input = reaper.GetToggleCommandStateEx(midi_editor_section, step_recording_command_id) == 1
 
     return {
         grid_code = code,
@@ -145,6 +151,7 @@ local function read_midi_editor_state()
         grid_1 = grid_one_is_active(grid),
         measure = grid_matches_measure(grid, measure_length_qn),
         snap = snap,
+        step_input = step_input,
     }
 end
 

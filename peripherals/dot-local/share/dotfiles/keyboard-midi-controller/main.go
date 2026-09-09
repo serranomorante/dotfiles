@@ -1802,10 +1802,16 @@ func isLocalTFTMomentaryPadFlash(channel, note int) bool {
 		return false
 	}
 	noteInBank := (note - basePadNote) % 16
+	noteBank := (note - basePadNote) / 16
 	if channel == 1 {
 		return noteInBank == 0 || noteInBank == 1 || noteInBank >= 8
 	}
 	if channel == 8 {
+		// Only bank 1 has momentary grid actions. Bank 2 pads (for example the
+		// step-recording toggle) are stateful and must not flash locally.
+		if noteBank != 0 {
+			return false
+		}
 		return noteInBank <= 4 || noteInBank == 9 || noteInBank >= 11
 	}
 	if channel == 9 {
