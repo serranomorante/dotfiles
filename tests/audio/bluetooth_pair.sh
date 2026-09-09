@@ -150,6 +150,13 @@ state="${state}"
 . "\$state"
 printf '%s\n' "\$*" >>"${log}"
 
+if [ "\$#" -eq 0 ]; then
+  while IFS= read -r command; do
+    printf 'interactive:%s\n' "\$command" >>"${log}"
+  done
+  exit 0
+fi
+
 write_state() {
   {
     printf 'paired=%s\n' "\$paired"
@@ -321,6 +328,7 @@ bluetooth-pair-repairs-stale-pairing-timeout)
     assert_file_contains "$log" "remove 88:C9:E8:E7:C6:FC"
     assert_file_contains "$log" "--agent NoInputNoOutput pair 88:C9:E8:E7:C6:FC"
     assert_file_contains "$log" "trust 88:C9:E8:E7:C6:FC"
+    assert_file_contains "$log" "interactive:scan on"
     ;;
 bluetooth-pair-waits-after-removing-stale-pairing)
     make_fixture
@@ -332,6 +340,7 @@ bluetooth-pair-waits-after-removing-stale-pairing)
     assert_file_contains "${fixture}/err" "Waiting up to 3 seconds for 88:C9:E8:E7:C6:FC to become discoverable again"
     assert_file_contains "$log" "remove 88:C9:E8:E7:C6:FC"
     assert_file_contains "$log" "--agent NoInputNoOutput pair 88:C9:E8:E7:C6:FC"
+    assert_file_contains "$log" "interactive:scan on"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

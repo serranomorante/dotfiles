@@ -60,6 +60,8 @@ These contracts are intentionally visible and stable:
 
 Integration tests that intentionally load active user configuration should still avoid modifying the host. Use `# dotfiles-test-readonly:` for host config, plugin, parser, or tool paths, then create symlinks from the temporary XDG directories into those read-only paths. For example, a Neovim integration test can symlink `/home/aaaa/.config/nvim` into the temporary `XDG_CONFIG_HOME` and `/home/aaaa/.local/share/nvim/site` into the temporary `XDG_DATA_HOME` so Neovim loads the active config and plugins while writes still land in per-test temp/state/cache directories.
 
+A fake CLI that stands in for a real tool must answer every invocation shape the script under test uses, including the argument-less interactive form that a script keeps alive on a pipe or fifo. When the fake falls through to its `unexpected command` branch and exits there, the read end closes and the next write from the script under test raises SIGPIPE, so the case fails intermittently with exit `141` and no assertion output instead of a readable failure. Assert the interactive traffic too (for example `interactive:scan on`) so a missing branch fails deterministically rather than as a load-dependent flake.
+
 Minimal shell test shape:
 
 ```sh
