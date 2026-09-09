@@ -1,0 +1,10 @@
+[Unit]
+Description=Start weylus
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/local/bin/weylus --no-gui --try-nvenc
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target

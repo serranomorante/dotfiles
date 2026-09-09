@@ -1,0 +1,9 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -69,3 +69,6 @@
+ [profile.release]
+ lto = true
+ opt-level = 3
++
++[patch.crates-io]
++traitobject = { path = "third_party/traitobject" }

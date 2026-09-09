@@ -36,6 +36,7 @@
     mode: "644"
   loop:
     - { source: ~/dotfiles/assets/udev-rules/99-wacom.rules, dest: /etc/udev/rules.d/99-wacom.rules }
+    - { source: ~/dotfiles/assets/udev-rules/60-weylus.rules, dest: /etc/udev/rules.d/60-weylus.rules }
   notify: "10-system-tools : handler_reload_udev_rules"
 
 - name: "[{{ user_os }}] Graphic tablet peripheral: remove automatic display health udev trigger"
@@ -75,6 +76,195 @@
     scope: user
     name: wacom.service
     enabled: true
+    masked: false
+
+# Setup weylus
+# weylus is now built from the pinned source checkout (instead of the aur
+# weylus-bin package) so the tracked fix-weylus-*.patch stack actually reaches
+# the installed binary. Clone, patch, build and install are gated behind a
+# versioned marker so a commit or patch-stack bump triggers a clean rebuild.
+- name: "[{{ user_os }}] Graphic tablet peripheral: set weylus patch marker fact"
+  ansible.builtin.set_fact:
+    weylus_patch_marker: "weylus-{{ arch_weylus_version }}-patch-stack-v6"
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: stat weylus patch marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: check
+  vars:
+    dotfiles_marker_name: "{{ weylus_patch_marker }}"
+    dotfiles_marker_register: var_weylus_patch_marker
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: clone weylus"
+  # force: true resets the checkout to the pinned commit before the patch
+  # stack is (re)applied, so a failed build is retried without wiping
+  # target/ or the cargo cache (a full weylus build downloads many crates).
+  ansible.builtin.git:
+    repo: https://github.com/H-M-H/Weylus.git
+    executable: "{{ ansible_facts.env.HOME }}/dotfiles/utilities/bin/dotfiles-github-git"
+    dest: ~/data/repos/Weylus
+    version: "{{ arch_weylus_version }}"
+    depth: 1
+    single_branch: true
+    force: true
+  when: not var_weylus_patch_marker.stat.exists
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: apply weylus patches"
+  ansible.posix.patch:
+    src: "{{ item }}"
+    strip: 1
+    basedir: ~/data/repos/Weylus
+  loop:
+    - fix-weylus-active-window-null-deref.patch
+    - add-weylus-traitobject-vendor.patch
+    - fix-weylus-avio-write-packet-const.patch
+    - fix-weylus-drop-postproc-link.patch
+    - fix-weylus-xfixes-cursor-null.patch
+  when: not var_weylus_patch_marker.stat.exists
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: install weylus compiled frontend"
+  # weylus embeds www/static/lib.js at compile time (include_str!) but ships
+  # only ts/lib.ts upstream, so build.rs would need tsc. Pin the generated
+  # asset (files/weylus/lib.js) instead to avoid a node/typescript runtime
+  # dependency; regenerate it with `npx -p typescript@4.9.5 tsc` whenever the
+  # pinned weylus commit is bumped.
+  ansible.builtin.copy:
+    src: weylus/lib.js
+    dest: ~/data/repos/Weylus/www/static/lib.js
+    mode: "644"
+  when: not var_weylus_patch_marker.stat.exists
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: ensure vendored traitobject source dir"
+  ansible.builtin.file:
+    path: ~/data/repos/Weylus/third_party/traitobject/src
+    state: directory
+    mode: "755"
+  when: not var_weylus_patch_marker.stat.exists
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: install vendored traitobject patch source"
+  # traitobject 0.1.0 (a websocket-base dependency) declares duplicate
+  # `dyn Send`/`dyn Sync` impls that modern rustc rejects with E0119. Vendor a
+  # deduplicated copy under third_party/ (patched in via Cargo.toml) instead of
+  # editing the cargo registry cache. Regenerate from crates.io when the
+  # weylus dependency tree changes.
+  ansible.builtin.copy:
+    src: "weylus/traitobject/{{ item }}"
+    dest: "~/data/repos/Weylus/third_party/traitobject/{{ item }}"
+    mode: "644"
+  loop:
+    - Cargo.toml
+    - README.md
+    - src/lib.rs
+    - src/impls.rs
+  when: not var_weylus_patch_marker.stat.exists
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: stat weylus release binary"
+  ansible.builtin.stat:
+    path: ~/data/repos/Weylus/target/release/weylus
+  register: var_weylus_release_binary
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: stat cargo"
+  ansible.builtin.stat:
+    path: "{{ ansible_facts.env.HOME }}/.cargo/bin/cargo"
+  register: var_weylus_cargo
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: bootstrap rust toolchain for weylus build"
+  ansible.builtin.shell: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+  args:
+    executable: /bin/bash
+  when: not var_weylus_cargo.stat.exists
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: build weylus from patched source"
+  # ffmpeg-system links the Arch ffmpeg (which ships h264_nvenc); the default
+  # build compiles a bundled ffmpeg from source and is too heavy for Ansible.
+  # CMAKE_POLICY_VERSION_MINIMUM lets the bundled fltk 1.3 (cmake_minimum 3.0)
+  # configure under CMake >= 4, which dropped < 3.5 compatibility.
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.env.HOME }}/.cargo/bin/cargo"
+      - build
+      - --release
+      - --features
+      - ffmpeg-system
+  args:
+    chdir: "{{ ansible_facts.env.HOME }}/data/repos/Weylus"
+  environment:
+    CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+    PATH: "{{ ansible_facts.env.HOME }}/.cargo/bin:{{ ansible_facts.env.PATH }}"
+  when: not var_weylus_patch_marker.stat.exists or not var_weylus_release_binary.stat.exists
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: stat installed weylus binary"
+  ansible.builtin.stat:
+    path: /usr/local/bin/weylus
+  register: var_weylus_installed_binary
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: install weylus binary"
+  become: true
+  ansible.builtin.copy:
+    src: "{{ ansible_facts.env.HOME }}/data/repos/Weylus/target/release/weylus"
+    dest: /usr/local/bin/weylus
+    mode: "755"
+  when: not var_weylus_patch_marker.stat.exists or not var_weylus_installed_binary.stat.exists
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: remove aur weylus-bin package"
+  become: true
+  ansible.builtin.package:
+    name: weylus-bin
+    state: absent
+  when: not var_weylus_patch_marker.stat.exists
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: reload and restart weylus service"
+  # Pick up the stowed unit (ExecStart now points at /usr/local/bin/weylus)
+  # and the freshly installed binary.
+  ansible.builtin.systemd_service:
+    scope: user
+    daemon_reload: true
+    name: weylus.service
+    state: restarted
+  when: not var_weylus_patch_marker.stat.exists
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: record weylus patch marker"
+  ansible.builtin.include_role:
+    name: dotfiles-markers
+    tasks_from: record
+  vars:
+    dotfiles_marker_name: "{{ weylus_patch_marker }}"
+    dotfiles_marker_content: "{{ arch_weylus_version }}:patch-stack-v6\n"
+  when: not var_weylus_patch_marker.stat.exists
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: allow weylus tablet input over the LAN"
+  become: true
+  community.general.ufw:
+    rule: allow
+    direction: in
+    from_ip: "192.168.1.0/24"
+    to_port: "{{ item }}"
+    proto: tcp
+    comment: "weylus phone-as-tablet over LAN"
+  loop:
+    - 1701
+    - 9001
+  ignore_errors: true
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: weylus - ensure uinput group"
+  become: true
+  ansible.builtin.group:
+    name: uinput
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: weylus - append user to group"
+  become: true
+  ansible.builtin.user:
+    append: true
+    groups:
+      - uinput
+      - input
+    name: "{{ ansible_facts.env.USER }}"
+
+- name: "[{{ user_os }}] Graphic tablet peripheral: ensure weylus service"
+  ansible.builtin.systemd_service:
+    scope: user
+    name: weylus.service
+    enabled: false
     masked: false
 
 - name: "[{{ user_os }}] Graphic tablet: ensure setup-displays service"

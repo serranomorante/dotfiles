@@ -1,0 +1,17 @@
+--- a/lib/linux/xcapture.c
++++ b/lib/linux/xcapture.c
+@@ -166,7 +166,13 @@
+ 
+ 		active_window =
+ 			(Window*)get_property(ctx->cap.disp, root, XA_WINDOW, "_NET_ACTIVE_WINDOW", &size, err);
+-		if (!ctx->wayland && *active_window == ctx->cap.c.winfo.win && !is_offscreen)
++		if (!active_window) {
++			/* Window managers may delete the property when no window is focused
++			 * (e.g. an empty tag under dwm); fall through to capturing the window
++			 * itself instead of dereferencing NULL. */
++			err->code = 0;
++		}
++		if (!ctx->wayland && active_window && *active_window == ctx->cap.c.winfo.win && !is_offscreen)
+ 		{
+ 			// cap window within its root so menus are visible as strictly speaking menus do not
+ 			// belong to the window itself ...

@@ -1,0 +1,21 @@
+--- a/lib/linux/xcapture.c
++++ b/lib/linux/xcapture.c
+@@ -232,6 +232,10 @@
+ 	if (capture_cursor && ctx->has_xfixes)
+ 	{
+ 		XFixesCursorImage* cursor_img = XFixesGetCursorImage(ctx->cap.disp);
++		if (!cursor_img)
++			// XFixesGetCursorImage returns NULL when no cursor is available (e.g. a
++			// hidden/absent pointer); skip the overlay instead of dereferencing it.
++			goto no_cursor;
+ 		uint32_t* data = (uint32_t*)ctx->ximg->data;
+ 
+ 		// coordinates of cursor inside ximg
+@@ -271,6 +275,7 @@
+ 		XFree(cursor_img);
+ 	}
+ 
++no_cursor:
+ 	img->width = ctx->ximg->width;
+ 	img->height = ctx->ximg->height;
+ 	img->data = ctx->ximg->data;

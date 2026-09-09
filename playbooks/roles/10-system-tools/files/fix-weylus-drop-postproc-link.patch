@@ -1,0 +1,10 @@
+--- a/build.rs
++++ b/build.rs
+@@ -113,7 +113,6 @@
+     println!("cargo:rustc-link-lib={}=swresample", ffmpeg_link_kind);
+     println!("cargo:rustc-link-lib={}=swscale", ffmpeg_link_kind);
+     println!("cargo:rustc-link-lib={}=avutil", ffmpeg_link_kind);
+-    println!("cargo:rustc-link-lib={}=postproc", ffmpeg_link_kind);
+     println!("cargo:rustc-link-lib={}=x264", ffmpeg_link_kind);
+     if env::var("CARGO_FEATURE_FFMPEG_SYSTEM").is_err() {
+         println!(
