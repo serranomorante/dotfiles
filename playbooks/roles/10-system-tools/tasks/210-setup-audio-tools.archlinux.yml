@@ -87,7 +87,46 @@
       - python-qtpy
       - rtirq
       - reaper
+      - libebur128
+      - ladspa
   notify: handler_ensure_rtirq_service
+
+- name: "[{{ user_os }}] Setup audio tools: stat agc_ceiling plugin source"
+  ansible.builtin.stat:
+    path: "{{ role_path }}/files/ladspa-agc-ceiling.c"
+  register: var_agc_ceiling_source
+
+- name: "[{{ user_os }}] Setup audio tools: stat agc_ceiling plugin binary"
+  ansible.builtin.stat:
+    path: /usr/lib/ladspa/libdotfiles-agc-ceiling.so
+  register: var_agc_ceiling_plugin
+
+- name: "[{{ user_os }}] Setup audio tools: build agc_ceiling LADSPA plugin"
+  become: true
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/gcc
+      - -O2
+      - -shared
+      - -fPIC
+      - -Wall
+      - -Wextra
+      - -Werror
+      - "{{ role_path }}/files/ladspa-agc-ceiling.c"
+      - -o
+      - /usr/lib/ladspa/libdotfiles-agc-ceiling.so
+      - -lebur128
+      - -lm
+  when:
+    - var_agc_ceiling_source.stat.exists
+    - not var_agc_ceiling_plugin.stat.exists or var_agc_ceiling_source.stat.mtime > var_agc_ceiling_plugin.stat.mtime
+  # PipeWire keeps the previous .so mapped until the service restarts, so a
+  # rebuilt plugin never reaches the running graph on its own. This is a
+  # loudness-limiting plugin: a fix that stays on disk is a fix that is not
+  # applied.
+  notify:
+    - handler_restart_pipewire
+    - handler_restart_pipewire_pulse
 
 - name: "[{{ user_os }}] Setup audio tools: mask global ALSA state services"
   become: true

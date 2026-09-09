@@ -51,6 +51,18 @@
   ansible.builtin.command: udevadm control --reload-rules
   changed_when: false
 
+- name: handler_restart_pipewire
+  ansible.builtin.systemd_service:
+    scope: user
+    name: pipewire.service
+    state: restarted
+
+- name: handler_restart_pipewire_pulse
+  ansible.builtin.systemd_service:
+    scope: user
+    name: pipewire-pulse.service
+    state: restarted
+
 - name: handler_reload_user_systemd
   ansible.builtin.command: systemctl --user daemon-reload
   changed_when: false

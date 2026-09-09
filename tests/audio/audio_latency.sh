@@ -5,8 +5,10 @@ set -euo pipefail
 # dotfiles-test-tags: audio latency shell fast firejail
 # dotfiles-test-case: audio-latency-set-syncs-runtime-state
 # dotfiles-test-case: audio-latency-status-reports-runtime-state
+# dotfiles-test-case: audio-latency-alsa-clients-cannot-drag-the-graph
 
 script="${DOTFILES_TEST_ROOT}/audio/dot-local/bin/audio-latency"
+quantum_floor_conf="${DOTFILES_TEST_ROOT}/audio/dot-config/pipewire/pipewire.conf.d/15-alsa-client-latency-floor.conf"
 
 assert_file_contains() {
     local file=$1 pattern=$2
@@ -153,6 +155,37 @@ ENV
     assert_file_contains "${fixture}/status.out" "pipewire:   quantum=768"
     assert_file_contains "${fixture}/status.out" "pipeasio:   buffer_size=1024 (${xdg_config}/pipeasio/config.ini)"
     assert_file_contains "${fixture}/status.out" "reaper ini: asio_bsize=1024 asio_srate=44100 (${reaper_ini})"
+    ;;
+audio-latency-alsa-clients-cannot-drag-the-graph)
+    # All followers of a driver share one quantum, resolved as the minimum
+    # latency any of them asks for. pipewire-alsa forwards an application's raw
+    # ALSA period as node.latency, so a browser asking 480/48000 pulled the whole
+    # graph to 256 frames during ordinary desktop use. clock.quantum cannot stop
+    # that (it only applies when no client asks) and clock.min-quantum was
+    # measured not to clamp an explicit request; rewriting node.latency does.
+    test -f "$quantum_floor_conf"
+    assert_file_contains "$quantum_floor_conf" 'node.rules = ['
+    assert_file_contains "$quantum_floor_conf" 'node.latency = 1024/48000'
+    # Match the pipewire-alsa client streams only.
+    assert_file_contains "$quantum_floor_conf" '{ node.name = "~alsa_playback\\..*" }'
+    assert_file_contains "$quantum_floor_conf" '{ node.name = "~alsa_capture\\..*" }'
+    # Never the ALSA device nodes: flooring those would cap the interface itself
+    # and defeat low-latency music production outright. Only the match entries
+    # are checked - the fragment's comments name those nodes on purpose, to
+    # document what the rule deliberately excludes.
+    match_lines="${DOTFILES_TEST_TMP}/quantum-floor-matches.txt"
+    rg '^\s*\{ node\.name = ' "$quantum_floor_conf" >"$match_lines"
+    refute rg -q --fixed-strings 'alsa_output' "$match_lines"
+    refute rg -q --fixed-strings 'alsa_input' "$match_lines"
+    matched="$(wc -l <"$match_lines")"
+    [[ "$matched" = 2 ]] || {
+        printf 'expected exactly 2 node.name match entries, found: %s\n' "$matched" >&2
+        cat "$match_lines" >&2
+        exit 1
+    }
+    # The JACK path must stay untouched so the DAW launchers can still pull the
+    # graph down to the buffer selected with `audio-latency set`.
+    refute rg -q --fixed-strings 'client.api' "$quantum_floor_conf"
     ;;
 *)
     printf 'unknown DOTFILES_TEST_CASE: %s\n' "${DOTFILES_TEST_CASE:-}" >&2

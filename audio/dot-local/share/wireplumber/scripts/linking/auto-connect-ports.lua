@@ -21,7 +21,14 @@ local LOGICAL_SINKS = {
 }
 
 local APP_TARGETS = {
-  ["Brave"] = { logical_sink = "multimedia" },
+  ---Brave sink -> EBU R128 normalizer sink (classical music dynamics)
+  ---Brave (media.class = "Stream/Output/Audio")
+  ---capture.source_filter.ebur128_normalize (media.class = "Audio/Sink")
+  ["Brave"] = { node = "capture.source_filter.ebur128_normalize" },
+  ---Normalizer output -> Multimedia sink (keeps set-output-route control)
+  ---source_filter.ebur128_normalize (media.class = "Stream/Output/Audio")
+  ---capture.sink_node.multimedia (media.class = "Audio/Sink")
+  ["source_filter.ebur128_normalize"] = { logical_sink = "multimedia" },
   ["Firefox"] = { logical_sink = "multimedia" },
   ["ALSA plug-in [plexamp]"] = { logical_sink = "multimedia" },
   ---Denoiser source -> chromium input source?
